@@ -3,45 +3,73 @@ import { delay } from "__support__/utils";
 import { fetchData, mergeEntities, updateData } from "./utils";
 
 describe("Metadata", () => {
-  const getDefaultArgs = ({
-    existingData = "data",
-    newData = "new data",
-    requestState = null,
-    requestStateLoading = { loading: true },
-    requestStateLoaded = { loaded: true },
-    requestStateError = { error: new Error("error") },
-    statePath = ["test", "path"],
-    statePathFetch = statePath.concat("fetch"),
-    statePathUpdate = statePath.concat("update"),
-    requestStatePath = statePath,
-    existingStatePath = statePath,
-    getState = () => ({
-      requests: {
-        test: { path: { fetch: requestState, update: requestState } },
-      },
-      test: { path: existingData },
-    }),
-    dispatch = jest.fn(),
-    getData = () => Promise.resolve(newData),
-    putData = () => Promise.resolve(newData),
-  } = {}) => ({
-    dispatch,
-    getState,
-    requestStatePath,
-    existingStatePath,
-    getData,
-    putData,
-    // passthrough args constants
-    existingData,
-    newData,
-    requestState,
-    requestStateLoading,
-    requestStateLoaded,
-    requestStateError,
-    statePath,
-    statePathFetch,
-    statePathUpdate,
-  });
+  const getDefaultArgs = (
+    overrides: {
+      existingData?: string;
+      newData?: string;
+      requestState?: object | null;
+      requestStateLoading?: object;
+      requestStateLoaded?: object;
+      requestStateError?: object;
+      statePath?: string[];
+      statePathFetch?: string[];
+      statePathUpdate?: string[];
+      requestStatePath?: string[];
+      existingStatePath?: string[];
+      getState?: () => object;
+      dispatch?: jest.Mock;
+      getData?: () => Promise<unknown>;
+      putData?: () => Promise<unknown>;
+    } = {},
+  ) => {
+    const existingData = overrides.existingData ?? "data";
+    const newData = overrides.newData ?? "new data";
+    const requestState = overrides.requestState ?? null;
+    const requestStateLoading = overrides.requestStateLoading ?? {
+      loading: true,
+    };
+    const requestStateLoaded = overrides.requestStateLoaded ?? { loaded: true };
+    const requestStateError = overrides.requestStateError ?? {
+      error: new Error("error"),
+    };
+    const statePath = overrides.statePath ?? ["test", "path"];
+    const statePathFetch =
+      overrides.statePathFetch ?? statePath.concat("fetch");
+    const statePathUpdate =
+      overrides.statePathUpdate ?? statePath.concat("update");
+    const requestStatePath = overrides.requestStatePath ?? statePath;
+    const existingStatePath = overrides.existingStatePath ?? statePath;
+    const getState =
+      overrides.getState ??
+      (() => ({
+        requests: {
+          test: { path: { fetch: requestState, update: requestState } },
+        },
+        test: { path: existingData },
+      }));
+    const dispatch = overrides.dispatch ?? jest.fn();
+    const getData = overrides.getData ?? (() => Promise.resolve(newData));
+    const putData = overrides.putData ?? (() => Promise.resolve(newData));
+
+    return {
+      dispatch,
+      getState,
+      requestStatePath,
+      existingStatePath,
+      getData,
+      putData,
+      // passthrough args constants
+      existingData,
+      newData,
+      requestState,
+      requestStateLoading,
+      requestStateLoaded,
+      requestStateError,
+      statePath,
+      statePathFetch,
+      statePathUpdate,
+    };
+  };
 
   const args = getDefaultArgs({});
 

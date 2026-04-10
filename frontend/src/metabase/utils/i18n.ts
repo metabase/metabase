@@ -1,17 +1,23 @@
 import dayjs from "dayjs";
+import type { LocaleData } from "ttag";
 import { addLocale, useLocale } from "ttag";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api from "metabase/utils/api";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import MetabaseSettings from "metabase/utils/settings";
+import type { DayOfWeekId } from "metabase-types/api";
+
+type LocaleDataWithLanguage = LocaleData & { headers: { language: string } };
 
 // note this won't refresh strings that are evaluated at load time
-export async function loadLocalization(locale) {
+export async function loadLocalization(
+  locale: string,
+): Promise<LocaleDataWithLanguage> {
   // we need to be sure to set the initial localization before loading any files
   // so load metabase/services only when we need it
   // load and parse the locale
-  const translationsObject =
+  const translationsObject: LocaleDataWithLanguage =
     locale !== "en"
       ? // We don't use I18NApi.locale/the GET helper because those helpers adds custom headers,
         // which will make the browser do the pre-flight request on the SDK.
@@ -20,7 +26,7 @@ export async function loadLocalization(locale) {
         await fetch(`${api.basename}/app/locales/${locale}.json`).then(
           (response) => response.json(),
         )
-      : // We don't serve en.json. Instead, use this object to fall back to theliterals.
+      : // We don't serve en.json. Instead, use this object to fall back to the literals.
         {
           headers: {
             language: "en",
@@ -38,7 +44,9 @@ export async function loadLocalization(locale) {
 
 // Tell dayjs to use the value of the start-of-week Setting for its current locale
 // range Sunday (0) - Saturday (6)
-export function updateStartOfWeek(startOfWeekDayName) {
+export function updateStartOfWeek(
+  startOfWeekDayName: DayOfWeekId | null | undefined,
+): void {
   const startOfWeekDay = getStartOfWeekDay(startOfWeekDayName);
   if (startOfWeekDay != null) {
     dayjs.updateLocale(dayjs.locale(), { weekStart: startOfWeekDay });
@@ -48,7 +56,7 @@ export function updateStartOfWeek(startOfWeekDayName) {
 // if the start of week Setting is updated, update the dayjs start of week
 MetabaseSettings.on("start-of-week", updateStartOfWeek);
 
-function setLanguage(translationsObject) {
+function setLanguage(translationsObject: LocaleDataWithLanguage): void {
   const locale = translationsObject.headers.language;
   addMsgIds(translationsObject);
 
@@ -60,11 +68,13 @@ function setLanguage(translationsObject) {
 
 const ARABIC_LOCALES = ["ar", "ar-sa"];
 
-export function setLocalization(translationsObject) {
+export function setLocalization(
+  translationsObject: LocaleDataWithLanguage,
+): void {
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
   updateDayjsLocale(language);
-  updateStartOfWeek(MetabaseSettings.get("start-of-week"));
+  updateStartOfWeek(MetabaseSettings.get("start-of-week") as DayOfWeekId);
 
   if (ARABIC_LOCALES.includes(language)) {
     preserveLatinNumbersInDayjsLocale(language);
@@ -75,25 +85,26 @@ export function setLocalization(translationsObject) {
  * Ensures that we consistently use latin numbers in Arabic locales.
  * See https://github.com/metabase/metabase/issues/34271
  */
-function preserveLatinNumbersInDayjsLocale(locale) {
+function preserveLatinNumbersInDayjsLocale(locale: string): void {
   dayjs.updateLocale(locale, {
     // Preserve latin numbers, but still replace commas.
     // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
-    postformat(string) {
+    postformat(string: string) {
       return string.replace(/,/g, "،");
     },
-    meridiem: (hour) => {
+    meridiem: (hour: number) => {
       // https://github.com/iamkun/dayjs/pull/2717#issuecomment-2868626450
       return hour < 12 ? "ص" : "م";
     },
   });
 }
 
-function updateDayjsLocale(language) {
+function updateDayjsLocale(language: string): void {
   const locale = getLocale(language);
 
   try {
     if (locale !== "en") {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic locale loading
       require(`dayjs/locale/${locale}.js`);
     }
     dayjs.locale(locale);
@@ -103,7 +114,7 @@ function updateDayjsLocale(language) {
   }
 }
 
-function getLocale(language = "") {
+function getLocale(language = ""): string {
   switch (language) {
     case "zh":
     case "zh-Hans":
@@ -113,16 +124,18 @@ function getLocale(language = "") {
   }
 }
 
-function getStartOfWeekDay(startOfWeekDayName) {
+function getStartOfWeekDay(
+  startOfWeekDayName: DayOfWeekId | null | undefined,
+): number | undefined {
   if (!startOfWeekDayName) {
-    return;
+    return undefined;
   }
 
   const startOfWeekDayNumber = DAY_OF_WEEK_OPTIONS.findIndex(
     ({ id }) => id === startOfWeekDayName,
   );
   if (startOfWeekDayNumber === -1) {
-    return;
+    return undefined;
   }
 
   return startOfWeekDayNumber;
@@ -130,8 +143,11 @@ function getStartOfWeekDay(startOfWeekDayName) {
 
 // we delete msgid property since it's redundant, but have to add it back in to
 // make ttag happy
-function addMsgIds(translationsObject) {
-  const msgs = translationsObject.translations[""];
+function addMsgIds(translationsObject: LocaleDataWithLanguage): void {
+  const msgs = translationsObject.translations[""] as Record<
+    string,
+    { msgid?: string; msgstr: string[] }
+  >;
   for (const msgid in msgs) {
     if (msgs[msgid].msgid === undefined) {
       msgs[msgid].msgid = msgid;
@@ -142,7 +158,7 @@ function addMsgIds(translationsObject) {
 // Runs `f` with the current language for ttag set to the instance (site) locale rather than the user locale, then
 // restores the user locale. This can be used for translating specific strings into the instance language; e.g. for
 // parameter values in dashboard text cards that should be translated the same for all users viewing the dashboard.
-export function withInstanceLanguage(f) {
+export function withInstanceLanguage<T>(f: () => T): T {
   if (window.MetabaseSiteLocalization) {
     setLanguage(window.MetabaseSiteLocalization);
   }
@@ -155,10 +171,11 @@ export function withInstanceLanguage(f) {
   }
 }
 
-export function siteLocale() {
+export function siteLocale(): string | undefined {
   if (window.MetabaseSiteLocalization) {
     return window.MetabaseSiteLocalization.headers.language;
   }
+  return undefined;
 }
 
 // register site locale with ttag, if needed later
@@ -180,9 +197,11 @@ if (window.MetabaseUserLocalization) {
  * since they don't have a user locale. So this function is for them to set the locale from a URL hash as the user locale,
  * then the translation on some part of FE still works even after `withInstanceLanguage` is called.
  *
- * @param {object} translationsObject A translated object with the same structure as the one produced in `loadLocalization` function.
+ * @param translationsObject A translated object with the same structure as the one produced in `loadLocalization` function.
  */
-export function setUserLocale(translationsObject) {
+export function setUserLocale(
+  translationsObject: LocaleDataWithLanguage,
+): void {
   if (!isEmbeddingSdk()) {
     window.MetabaseUserLocalization = translationsObject;
   }

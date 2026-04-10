@@ -1,18 +1,19 @@
+import type { EnhancedStore, UnknownAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { setInitialUrlOptions } from "metabase/redux/embed";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
+import type { State } from "metabase-types/store";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason
 export const IS_EMBED_PREVIEW = IFRAMED_IN_SELF;
 
-export function initializeEmbedding(store) {
+export function initializeEmbedding(store: EnhancedStore<State>): void {
   if (isWithinIframe()) {
-    let currentHref;
-    let currentFrame;
+    let currentHref: string | undefined;
+    let currentFrame: ReturnType<typeof getFrameSpec> | undefined;
     // NOTE: history.listen and window's onhashchange + popstate events were not
     // enough to catch all URL changes, so just poll for now :(
     setInterval(() => {
@@ -21,7 +22,9 @@ export function initializeEmbedding(store) {
         sendMessage({
           type: "location",
           // extract just the string properties from window.location
-          location: _.pick(location, (v) => typeof v === "string"),
+          location: Object.fromEntries(
+            Object.entries(location).filter(([, v]) => typeof v === "string"),
+          ) as Record<string, string>,
         });
         currentHref = location.href;
       }
@@ -34,18 +37,29 @@ export function initializeEmbedding(store) {
         currentFrame = frame;
       }
     }, 100);
-    window.addEventListener("message", (e) => {
+    window.addEventListener("message", (e: MessageEvent) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
-          store.dispatch(push(e.data.metabase.location));
+          // push() from react-router-redux returns RouterAction which pre-dates UnknownAction;
+          // cast to satisfy the store's typed dispatch
+          store.dispatch(
+            push(e.data.metabase.location) as unknown as UnknownAction,
+          );
         }
       }
     });
-    store.dispatch(setInitialUrlOptions(window.location));
+    // setInitialUrlOptions is an async thunk; store.dispatch accepts thunks at runtime
+    store.dispatch(
+      setInitialUrlOptions(window.location) as unknown as UnknownAction,
+    );
   }
 }
 
-function sendMessage(message) {
+type MetabaseMessage =
+  | { type: "location"; location: Record<string, string> }
+  | { type: "frame"; frame: ReturnType<typeof getFrameSpec> };
+
+function sendMessage(message: MetabaseMessage): void {
   // Reason for using "*" (see #18824)
   //  1) We cannot use MetabaseSettings.get("embedding-app-origin") because the format is different
   //      - the setting value can have multiple URLs but postMessage only supports one URL
@@ -56,7 +70,7 @@ function sendMessage(message) {
   window.parent.postMessage({ metabase: message }, "*");
 }
 
-function isFitViewportMode() {
+function isFitViewportMode(): boolean {
   const root = document.getElementById("root");
 
   // get the first div, which may be preceded by style nodes
@@ -68,7 +82,11 @@ function isFitViewportMode() {
   return false;
 }
 
-function getFrameSpec() {
+type FrameSpec =
+  | { mode: "fit"; height: number }
+  | { mode: "normal"; height: number };
+
+function getFrameSpec(): FrameSpec {
   if (isFitViewportMode()) {
     return { mode: "fit", height: getScrollHeight() };
   } else {
@@ -76,16 +94,19 @@ function getFrameSpec() {
   }
 }
 
-function defaultGetScrollHeight() {
+function defaultGetScrollHeight(): number {
   return document.body.scrollHeight;
 }
 
-function getScrollHeight() {
+function getScrollHeight(): number {
   const appBarHeight =
     document.getElementById("[data-element-id=app-bar]")?.offsetHeight ?? 0;
   const dashboardHeaderHeight =
-    document.querySelector("[data-element-id=dashboard-header-container]")
-      ?.offsetHeight ?? 0;
+    (
+      document.querySelector(
+        "[data-element-id=dashboard-header-container]",
+      ) as HTMLElement | null
+    )?.offsetHeight ?? 0;
   const dashboardContentHeight =
     document.querySelector("[data-element-id=dashboard-parameters-and-cards]")
       ?.scrollHeight ?? 0;

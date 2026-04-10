@@ -12,7 +12,7 @@ import type { GroupListQuery } from "metabase-types/api";
 export const useGroupListQuery = (
   props: UseEntityListQueryProps<Record<string, never>> = {},
 ): UseEntityListQueryResult<GroupListQuery> => {
-  return useEntityListQuery(props, {
+  return useEntityListQuery<GroupListQuery, Record<string, never>>(props, {
     fetchList: Groups.actions.fetchList,
     getList: Groups.selectors.getList,
     getLoading: Groups.selectors.getLoading,

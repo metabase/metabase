@@ -3,15 +3,19 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import requestsReducer from "metabase/redux/requests";
 import { combineEntities, createEntity } from "metabase/utils/entities";
 
-function getObject(id) {
+type AnyEntity = any;
+
+function getObject(id: number) {
   return { id: id, name: `object${id}` };
 }
 
 function setup() {
-  const widgets = createEntity({
+  const widgets: AnyEntity = createEntity({
     name: "widgets",
     api: {
-      get: jest.fn().mockImplementation(({ id }) => getObject(id)),
+      get: jest
+        .fn()
+        .mockImplementation(({ id }: { id: number }) => getObject(id)),
       list: jest.fn().mockImplementation(() => [getObject(1), getObject(2)]),
     },
   });
@@ -19,9 +23,14 @@ function setup() {
   const entities = combineEntities([widgets]);
 
   const reducer = combineReducers({
-    entities: entities.reducer,
-    requests: (state, action) =>
-      requestsReducer(entities.requestsReducer(state, action), action),
+    entities: entities.reducer as (
+      state: Record<string, unknown> | undefined,
+      action: unknown,
+    ) => Record<string, unknown>,
+    requests: (
+      state: Record<string, unknown> | undefined,
+      action: { type: string },
+    ) => requestsReducer(entities.requestsReducer(state, action), action),
   });
 
   const initialState = {
@@ -35,8 +44,9 @@ function setup() {
 
   const store = configureStore({
     reducer,
-    initialState,
-    middleware: (getDefaultMiddleware) =>
+    preloadedState: initialState,
+
+    middleware: (getDefaultMiddleware: any) =>
       getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: false,

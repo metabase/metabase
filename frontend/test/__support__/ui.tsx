@@ -1,5 +1,5 @@
 import { Global } from "@emotion/react";
-import type { Reducer, Store } from "@reduxjs/toolkit";
+import type { Middleware, Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
@@ -204,7 +204,7 @@ export function getTestStoreAndWrapper({
   const store = getStore(
     reducers,
     initialState,
-    storeMiddleware,
+    storeMiddleware as Middleware[],
   ) as unknown as Store<State>;
 
   const wrapper = (props: any) => {
