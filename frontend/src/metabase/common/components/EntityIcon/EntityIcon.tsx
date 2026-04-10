@@ -46,5 +46,15 @@ export function EntityIcon({
     );
   }
 
-  return <Icon name={name} size={size} c={color} style={style} {...rest} />;
+  const resolvedColor =
+    color && color !== "inherit" ? `var(--mb-color-${color})` : color;
+
+  return (
+    <Icon
+      name={name}
+      size={size}
+      style={{ color: resolvedColor, ...style }}
+      {...rest}
+    />
+  );
 }
