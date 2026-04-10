@@ -35,6 +35,7 @@ export const createStaticRenderingContext = (
         typeof style.size === "number" ? style.size : parseInt(style.size),
       ),
     fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+    colorScheme: "light",
     theme: DEFAULT_VISUALIZATION_THEME,
   };
 };

@@ -9,6 +9,7 @@ import { useListCustomVizPluginsQuery } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { useColorScheme } from "metabase/ui";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
@@ -287,12 +288,15 @@ export async function loadCustomVizPlugin(
     }: Omit<VisualizationProps, "width" | "height"> & {
       width: number | null;
       height: number | null;
-    }) =>
-      React.createElement(vizDef.VisualizationComponent, {
+    }) => {
+      const { resolvedColorScheme } = useColorScheme();
+      return React.createElement(vizDef.VisualizationComponent, {
         ...rest,
+        colorScheme: resolvedColorScheme,
         onClick: onVisualizationClick,
         onHover: onHoverChange,
       });
+    };
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
