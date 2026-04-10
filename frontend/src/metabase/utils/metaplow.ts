@@ -1,15 +1,10 @@
 // FIXME: how to get a unique id?
-const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
+import Settings from "metabase/utils/settings";
 
 // Umami uses an in-memory cache token returned by the server on each response.
 // It's echoed back via x-umami-cache on subsequent requests — this is how the
 // server associates requests with a session/visit without client-side storage.
-let cache: string | undefined;
-
-function getMetaplowUrl(): string {
-  // get from settings
-  return `https://product-analytics-ingestion.staging.metabase.com/api/send`;
-}
+const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
 
 const anonymizedHostname = "my-instance.com";
 const anonymizedOrigin = `http://${anonymizedHostname}`;
@@ -34,23 +29,20 @@ function getBasePayload(url: string) {
 }
 
 async function send(payload: object): Promise<void> {
+  const metaplowUrl = Settings.get("metaplow-url");
+  if (!metaplowUrl) {
+    return;
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (cache !== undefined) {
-    headers["x-umami-cache"] = cache;
-  }
 
-  const res = await fetch(getMetaplowUrl(), {
+  fetch(metaplowUrl, {
     method: "POST",
     headers,
     body: JSON.stringify({ type: "event", payload }),
   });
-
-  const data = await res.json();
-  if (data?.cache) {
-    cache = data.cache;
-  }
 }
 
 export function trackMetaplowEvent(
