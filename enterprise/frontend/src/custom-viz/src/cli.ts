@@ -102,9 +102,9 @@ program
     console.log();
     console.log("Syncing with a Metabase instance:");
     console.log(
-      "  1. Register or select your plugin in Metabase Admin → Custom Visualizations",
+      "  1. Register your plugin in Metabase Admin → Custom visualizations → Development",
     );
-    console.log(`  2. Set the dev server URL to http://localhost:5174`);
+    console.log("  2. Set the dev server URL to http://localhost:5174");
     console.log(
       "  3. Changes will hot-reload automatically in your Metabase instance",
     );
