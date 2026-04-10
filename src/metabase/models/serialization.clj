@@ -1227,9 +1227,8 @@
                                               :id [:in fk-field-ids]
                                               :table_id [:not= nil]))
             all-table-ids (into #{table-id} fk-table-ids)
-            required-ids  (set (keys required))
             extras        (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
-                                            :id [:not-in required-ids]
+                                            :id [:not-in (set (keys required))]
                                             :table_id [:in all-table-ids]
                                             {:limit remaining})]
         (merge required extras)))))
