@@ -1,7 +1,10 @@
 import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { CustomVizPluginRuntime } from "metabase-types/api";
+import type {
+  CustomVizPluginId,
+  CustomVizPluginRuntime,
+} from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
 const getDefaultPluginCustomViz = () => ({
@@ -23,6 +26,9 @@ const getDefaultPluginCustomViz = () => ({
   ) => null as string | null,
   getPluginAssetUrl: (_pluginId: number, _assetPath: string | null) =>
     undefined as string | undefined,
+  getCustomVizIconComponent: (_pluginId: CustomVizPluginId) => undefined,
+  subscribeToCustomVizIcons:
+    (_listener: (pluginId: CustomVizPluginId) => void) => () => {},
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
   isCustomVizDisplay,

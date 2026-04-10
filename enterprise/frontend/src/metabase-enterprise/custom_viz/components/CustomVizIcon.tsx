@@ -1,7 +1,14 @@
+import { useSyncExternalStore } from "react";
+
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Flex } from "metabase/ui";
 import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type { CustomVizPlugin } from "metabase-types/api";
+
+import {
+  getCustomVizIconComponent,
+  subscribeToCustomVizIcons,
+} from "../custom-viz-plugins";
 
 type Props = {
   plugin: CustomVizPlugin;
@@ -12,6 +19,7 @@ const ICON_SIZE = 20;
 export function CustomVizIcon({ plugin }: Props) {
   const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
   const iconDarkUrl = getPluginAssetUrl(plugin.id, plugin.icon_dark);
+  const IconComponent = useCustomVizIconComponent(plugin.id);
 
   return (
     <Flex
@@ -30,9 +38,23 @@ export function CustomVizIcon({ plugin }: Props) {
         alt={plugin.display_name}
         iconUrl={iconUrl}
         iconDarkUrl={iconDarkUrl}
+        IconComponent={IconComponent}
         name="unknown"
         size={ICON_SIZE}
+        color="brand"
       />
     </Flex>
+  );
+}
+
+function useCustomVizIconComponent(pluginId: CustomVizPlugin["id"]) {
+  return useSyncExternalStore(
+    (onChange) =>
+      subscribeToCustomVizIcons((changedId) => {
+        if (changedId === pluginId) {
+          onChange();
+        }
+      }),
+    () => getCustomVizIconComponent(pluginId),
   );
 }

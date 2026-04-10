@@ -2,7 +2,12 @@
   "name": "__CUSTOM_VIZ_NAME__",
   "icon": "icon.svg",
   "iconDark": "icon-dark.svg",
+<<<<<<< Updated upstream
   "assets": ["thumbs-up.png", "thumbs-down.png"],
+=======
+  "iconBundle": "icon.js",
+  "assets": ["icon.svg", "icon-dark.svg", "thumbs-up.png", "thumbs-down.png"],
+>>>>>>> Stashed changes
   "metabase": {
     "version": ">=1.60.0"
   }

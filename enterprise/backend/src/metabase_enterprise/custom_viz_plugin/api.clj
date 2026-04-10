@@ -48,6 +48,7 @@
    [:display_name    ms/NonBlankString]
    [:icon            {:optional true} [:maybe :string]]
    [:icon_dark       {:optional true} [:maybe :string]]
+   [:icon_bundle_url {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
@@ -78,15 +79,18 @@
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
   [{:keys [id identifier display_name icon icon_dark resolved_commit manifest dev_bundle_url]}]
-  (cond-> {:id              id
-           :identifier      identifier
-           :display_name    display_name
-           :icon            icon
-           :icon_dark       icon_dark
-           :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
-           :resolved_commit resolved_commit
-           :manifest        manifest}
-    dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
+  (let [icon-bundle (manifest/icon-bundle-path manifest)]
+    (cond-> {:id              id
+             :identifier      identifier
+             :display_name    display_name
+             :icon            icon
+             :icon_dark       icon_dark
+             :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
+             :resolved_commit resolved_commit
+             :manifest        manifest}
+      icon-bundle    (assoc :icon_bundle_url
+                            (format "/api/ee/custom-viz-plugin/%d/asset?path=%s" id icon-bundle))
+      dev_bundle_url (assoc :dev_bundle_url dev_bundle_url))))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 

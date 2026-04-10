@@ -2,6 +2,7 @@ export interface CustomVizPluginManifest {
   name?: string;
   icon?: string;
   iconDark?: string;
+  iconBundle?: string;
   metabase?: {
     version?: string;
   };
@@ -36,6 +37,7 @@ export interface CustomVizPluginRuntime {
   display_name: string;
   icon: string | null;
   icon_dark: string | null;
+  icon_bundle_url?: string | null;
   bundle_url: string;
   resolved_commit: string | null;
   dev_bundle_url?: string | null;

@@ -9,6 +9,7 @@ import {
   measureTextWidth,
 } from "metabase/utils/measure-text";
 import { formatValue } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import type { VisualizationIconComponent } from "metabase/visualizations/types/visualization";
 import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
 
 declare global {
@@ -23,6 +24,7 @@ declare global {
       measureTextHeight: typeof measureTextHeight;
     };
     __customVizPlugin__?: CreateCustomVisualization<Record<string, unknown>>;
+    __customVizPluginIcon__?: VisualizationIconComponent;
   }
 }
 

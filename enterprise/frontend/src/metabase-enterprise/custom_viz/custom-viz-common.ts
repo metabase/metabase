@@ -1,6 +1,9 @@
 import type { CustomVisualization } from "custom-viz/src/types";
 
-import type { Visualization } from "metabase/visualizations/types/visualization";
+import type {
+  Visualization,
+  VisualizationIconComponent,
+} from "metabase/visualizations/types/visualization";
 
 /**
  * Assign properties derived from a vizDef onto a Visualization component
@@ -14,6 +17,7 @@ export function applyDefaultVisualizationProps(
     getUiName: () => string;
     iconUrl?: string | undefined;
     iconDarkUrl?: string | undefined;
+    IconComponent?: VisualizationIconComponent | undefined;
   },
 ) {
   Object.assign(Component, {

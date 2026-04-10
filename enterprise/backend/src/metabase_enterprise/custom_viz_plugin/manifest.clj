@@ -67,6 +67,12 @@
   (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) allowed-asset-extensions)))
 
+(defn- icon-bundle-file?
+  "Returns true if `path` looks like a themeable icon bundle: a `.js` file.
+   This is the only place we allow `.js` files through the asset whitelist."
+  [^String path]
+  (str/ends-with? (u/lower-case-en path) ".js"))
+
 (defn safe-relative-path?
   "Returns true if path normalizes to a relative path with no directory traversal."
   [^String path]
@@ -74,27 +80,43 @@
     (and (not (.isAbsolute normalized))
          (not (.startsWith normalized "..")))))
 
+(defn icon-bundle-path
+  "Returns the themeable icon bundle path declared in the manifest, if any.
+   Only `.js` files with safe relative paths are accepted."
+  [manifest]
+  (when-let [bundle (:iconBundle manifest)]
+    (when (and (icon-bundle-file? bundle) (safe-relative-path? bundle))
+      bundle)))
+
 (defn asset-paths
   "List the static asset paths whitelisted by the manifest.
    Includes paths from the `assets` array (filtered to allowed extensions and
-   safe relative paths) and the `icon` (if it's an image filename).
+   safe relative paths), the `icon` / `iconDark` images, and the optional
+   `iconBundle` JS file used for themeable picker icons.
    Only explicitly listed paths are supported — no glob patterns."
   [manifest]
-  (let [declared  (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
-        icon-name (when-let [icon (:icon manifest)]
-                    (when (and (image-file? icon) (safe-relative-path? icon)) icon))
+  (let [declared       (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
+        icon-name      (when-let [icon (:icon manifest)]
+                         (when (and (image-file? icon) (safe-relative-path? icon)) icon))
         icon-dark-name (when-let [icon-dark (:iconDark manifest)]
-                         (when (and (image-file? icon-dark) (safe-relative-path? icon-dark)) icon-dark))]
-    (distinct (concat declared (when icon-name [icon-name])
-                      (when icon-dark-name [icon-dark-name])))))
+                         (when (and (image-file? icon-dark) (safe-relative-path? icon-dark)) icon-dark))
+        icon-bundle    (icon-bundle-path manifest)]
+    (distinct (concat declared
+                      (when icon-name [icon-name])
+                      (when icon-dark-name [icon-dark-name])
+                      (when icon-bundle [icon-bundle])))))
 
 (defn asset-content-type
   "Return the MIME content type for an allowed asset file, or nil if not recognized.
-   Allows image files and JSON files (for locale translations)."
+   Allows image files, JSON files (for locale translations), and `.js` files
+   (used for themeable icon bundles)."
   [^String path]
   (cond
     (str/ends-with? path ".json")
     "application/json"
+
+    (icon-bundle-file? path)
+    "application/javascript"
 
     :else
     (let [ct (java.net.URLConnection/guessContentTypeFromName path)]

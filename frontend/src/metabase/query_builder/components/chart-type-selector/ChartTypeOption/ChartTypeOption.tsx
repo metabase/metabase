@@ -25,9 +25,11 @@ export const ChartTypeOption = ({
 
   const displayName = visualization?.getUiName() ?? visualizationType;
   const iconName = visualization?.iconName;
-  const hasCustomIcon = !!(
-    visualization?.iconUrl || visualization?.iconDarkUrl
-  );
+  const IconComponent = visualization?.IconComponent;
+  const hasUrlIcon = !!(visualization?.iconUrl || visualization?.iconDarkUrl);
+  // A themeable IconComponent already responds to `color`, so the selected-
+  // state `brightness(0) invert(1)` hack only applies to the URL-based path.
+  const needsSelectedImgFilter = hasUrlIcon && !IconComponent;
 
   return (
     <Center pos="relative" data-testid="chart-type-option">
@@ -62,11 +64,13 @@ export const ChartTypeOption = ({
             name={iconName ?? "unknown"}
             iconUrl={visualization?.iconUrl}
             iconDarkUrl={visualization?.iconDarkUrl}
+            IconComponent={IconComponent}
             alt={displayName}
+            color={isSelected ? "white" : "brand"}
             c={isSelected ? "white" : "brand"}
             size={20}
             style={
-              hasCustomIcon && isSelected
+              needsSelectedImgFilter && isSelected
                 ? { filter: "brightness(0) invert(1)" }
                 : undefined
             }

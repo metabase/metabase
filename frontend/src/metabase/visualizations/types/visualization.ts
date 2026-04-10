@@ -1,4 +1,4 @@
-import type { CSSProperties, ComponentType, ReactNode } from "react";
+import type { CSSProperties, ComponentType, ReactNode, SVGProps } from "react";
 
 import type { IconName, IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
@@ -600,6 +600,13 @@ export type Visualization = ComponentType<
 > &
   VisualizationDefinition;
 
+export type VisualizationIconComponent = ComponentType<
+  SVGProps<SVGSVGElement> & {
+    size?: number | string;
+    color?: string;
+  }
+>;
+
 export type VisualizationDefinition = {
   name?: string;
   noun?: string;
@@ -609,6 +616,13 @@ export type VisualizationDefinition = {
   iconName: IconName;
   iconUrl?: string;
   iconDarkUrl?: string;
+  /**
+   * Optional React component rendering the visualization's icon inline (as a
+   * themeable SVG). When present, `EntityIcon` renders this instead of the
+   * URL-based `<img>` so theme colors (white-labeling) flow through via
+   * `currentColor`. Used by custom visualization plugins.
+   */
+  IconComponent?: VisualizationIconComponent;
   hasEmptyState?: boolean;
 
   maxMetricsSupported?: number;
