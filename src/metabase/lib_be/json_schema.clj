@@ -5,7 +5,7 @@
 
   It sometimes emits branching nodes like :allOf, :anyOf, :oneOf with either
   one or zero children, which doesn't make any sense. These should be
-  collapsed down.
+  collapsed down. Empty conditions should be removed from these as well.
 
   Malli sometimes emits :items as `false` for arrays.
 
@@ -28,10 +28,11 @@
 (defn- collapse-branches [schema k]
   ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema
   ;; gets converted into an empty object in :allOf
-  (case (count (k schema))
-    1 (merge (dissoc schema k) (first (k schema)))
-    0 (dissoc schema k)
-    schema))
+  (let [schema (update schema k (partial remove mp/empty?))]
+    (case (count (k schema))
+      1 (merge (dissoc schema k) (first (k schema)))
+      0 (dissoc schema k)
+      schema)))
 
 (defn- update-properties [properties]
   (zipmap (map u/qualified-name (keys properties))
@@ -42,26 +43,27 @@
     (dissoc m :items)
     m))
 
-(defn- walk-map [m]
-  (-> m
-      (m/update-existing :required (partial map u/qualified-name))
-      (collapse-branches :allOf)
-      (collapse-branches :anyOf)
-      (collapse-branches :oneOf)
-      (m/update-existing :properties update-properties)
-      (dissoc-false-items)
-      (m/update-existing :type keyword)))
+(defn- update-required [required]
+  (if (map? required)
+    required
+    (map u/qualified-name required)))
 
-(defn- walk [node]
-  (cond (map? node) (walk-map node)
-        (vector? node) (mp/mapv walk node)
-        (sequential? node) (mp/mapv walk node)
-        :else node))
+(defn walk [node]
+  (if (map? node)
+    (-> node
+        (m/update-existing :required update-required)
+        (collapse-branches :allOf)
+        (collapse-branches :anyOf)
+        (collapse-branches :oneOf)
+        (m/update-existing :properties update-properties)
+        (dissoc-false-items)
+        (m/update-existing :type keyword))
+    node))
 
 (mu/defn make-schema :- map? ; :metabase.api.open-api/parameter.schema
   "Generate a schema from Malli and apply fixes."
   []
-  (mp/prewalk walk (mjs/transform ::schema/query
+  (mp/postwalk walk (mjs/transform ::schema/query
                                   ;; TODO: this makes the validator hate it, but
                                   ;; it's required for the malli schema above to
                                   ;; validate; what gives?
@@ -75,3 +77,5 @@
       (spit file json)
       #_{:clj-kondo/ignore [:discouraged-var]} ; the point is to print! not to log
       (println json))))
+
+(comment (print-schema {:file "schema.json"}))
