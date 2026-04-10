@@ -1028,11 +1028,39 @@
 
 ;;; ## Databases
 
-(defn ^:dynamic ^::cache *export-database-fk*
+(def ^:private cache-miss (Object.))
+
+(defn- make-batch-cache
+  "Returns a fn `(f id) -> entity`. On miss, calls `(load-fn id)` which must
+   return a map of `{id entity, ...}`. All returned entries are merged into
+   the cache so sibling lookups become hits."
+  [load-fn]
+  (let [cache (atom {})]
+    (fn [id]
+      (let [v (get @cache id cache-miss)]
+        (if-not (identical? v cache-miss)
+          v
+          (let [id->entity (load-fn id)]
+            (swap! cache merge id->entity)
+            (get id->entity id)))))))
+
+(defn- batch-load-databases
+  "Loads all databases as a map of `{id entity}`."
+  [_id]
+  (t2/select-pk->fn identity [:model/Database :id :name]))
+
+(defn- export-database-fk
+  "Given a numeric database ID and a fn that resolves it to a database entity,
+   return its name as a portable reference."
+  [id db-fn]
+  (when id
+    (:name (db-fn id))))
+
+(defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
   [id]
-  (*export-fk-keyed* id :model/Database :name))
+  (export-database-fk id #(t2/select-one [:model/Database :id :name] :id %)))
 
 (defn ^:dynamic ^::cache *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
@@ -1042,16 +1070,39 @@
 
 ;;; ## Tables
 
-(mu/defn ^:dynamic ^::cache *export-table-fk*
+(defn- batch-load-tables
+  "Loads the table with `id` plus all tables referenced via FK target fields,
+   returned as a map of `{id entity}`."
+  [id]
+  (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema]
+                    {:where [:or
+                             [:= :id id]
+                             [:in :id {:select [[:mf2.table_id]]
+                                       :from   [[:metabase_field :mf2]]
+                                       :where  [:in :mf2.id
+                                                {:select [[:mf.fk_target_field_id]]
+                                                 :from   [[:metabase_field :mf]]
+                                                 :where  [:and
+                                                          [:= :mf.table_id id]
+                                                          [:!= :mf.fk_target_field_id nil]]}]}]]}))
+
+(defn- export-table-fk
+  "Given a numeric table ID, a fn that resolves it to a table entity, and a fn
+   that resolves a database ID to a database entity, return `[db-name schema table-name]`."
+  [id table-fn db-fn]
+  (when id
+    (let [table (table-fn id)]
+      [(export-database-fk (:db_id table) db-fn) (:schema table) (:name table)])))
+
+(mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
   [[import-table-fk]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
-          db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
-      [db-name schema name])))
+  (export-table-fk table-id
+                   #(t2/select-one [:model/Table :id :db_id :name :schema] :id %)
+                   #(t2/select-one [:model/Database :id :name] :id %)))
 
 (mu/defn ^:dynamic ^::cache *import-table-fk*
   "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
@@ -1096,18 +1147,44 @@
 
 ;;; ## Fields
 
-(defn- field-hierarchy [id]
-  (reverse
-   (t2/select :model/Field
-              {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
-                                 {:union-all [{:from   [[:metabase_field :mf]]
-                                               :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                               :where  [:= :id id]}
-                                              {:from   [[:metabase_field :pf]]
-                                               :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
-                                               :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
-               :from           [:parents]
-               :select         [:name :table_id]})))
+(defn- field-name-chain
+  "Walks parent_id chain in memory using `field-fn` to resolve each field.
+   Returns a seq of field names from root parent to the given field."
+  [field-id field-fn]
+  (loop [id field-id
+         names ()]
+    (let [field (field-fn id)]
+      (if-let [pid (:parent_id field)]
+        (recur pid (cons (:name field) names))
+        (cons (:name field) names)))))
+
+(defn- export-field-fk
+  "Given a numeric field ID and lookup fns for fields, tables, and databases,
+   return `[db-name schema table-name & field-names]`."
+  [field-id field-fn table-fn db-fn]
+  (when field-id
+    (let [field (field-fn field-id)
+          table-ref (export-table-fk (:table_id field) table-fn db-fn)
+          names (field-name-chain field-id field-fn)]
+      (into table-ref names))))
+
+(defn- batch-load-fields
+  "Loads all fields for the same table as `field-id`, plus all fields in
+   FK-connected tables, returned as a map of `{id entity}`."
+  [field-id]
+  (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
+                    {:where [:in :table_id
+                             {:select [:table_id]
+                              :from   [:metabase_field]
+                              :where  [:or
+                                       [:= :id field-id]
+                                       [:in :id {:select [:fk_target_field_id]
+                                                 :from   [:metabase_field]
+                                                 :where  [:and
+                                                          [:= :table_id {:select [:table_id]
+                                                                         :from   [:metabase_field]
+                                                                         :where  [:= :id field-id]}]
+                                                          [:!= :fk_target_field_id nil]]}]]}]})))
 
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
@@ -1122,15 +1199,15 @@
               [:= :name field]
               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
-(mu/defn ^:dynamic ^::cache *export-field-fk*
+(mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (when field-id
-    (let [fields                      (field-hierarchy field-id)
-          [db-name schema field-name] (*export-table-fk* (:table_id (first fields)))]
-      (into [db-name schema field-name] (map :name fields)))))
+  (export-field-fk field-id
+                   #(t2/select-one [:model/Field :id :name :table_id :parent_id] :id %)
+                   #(t2/select-one [:model/Table :id :db_id :name :schema] :id %)
+                   #(t2/select-one [:model/Database :id :name] :id %)))
 
 (mu/defn ^:dynamic ^::cache *import-field-fk* :- [:maybe pos-int?]
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
@@ -1919,7 +1996,7 @@
 
 ;;; ## Memoizing appdb lookups
 
-(defmacro with-cache
+(defmacro with-memoize-cache
   "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
   [& body]
   (let [ns* 'metabase.models.serialization]
@@ -1929,3 +2006,23 @@
                              :let [fq-sym (symbol (name ns*) (name var-sym))]]
                          [fq-sym `(memoize ~fq-sym)]))
        ~@body)))
+
+(defmacro with-batch-cache
+  "Rebinds database/table export fns to versions backed by batch-loading caches."
+  [& body]
+  `(let [db-cache#    (make-batch-cache batch-load-databases)
+         table-cache# (make-batch-cache batch-load-tables)
+         field-cache# (make-batch-cache batch-load-fields)]
+     (binding [*export-database-fk* (fn [id#]
+                                      (export-database-fk id# db-cache#))
+               *export-table-fk*    (fn [table-id#]
+                                      (export-table-fk table-id# table-cache# db-cache#))
+               *export-field-fk*    (fn [field-id#]
+                                      (export-field-fk field-id# field-cache# table-cache# db-cache#))]
+       ~@body)))
+
+(defmacro with-cache
+  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance,
+   and with database/table lookups backed by batch-loading caches."
+  [& body]
+  `(with-batch-cache (with-memoize-cache ~@body)))
