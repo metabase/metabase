@@ -10,12 +10,11 @@ import { Markdown } from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { isTouchDevice } from "metabase/lib/browser";
-import { modelToUrl } from "metabase/lib/urls";
-import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import type { IconProps } from "metabase/ui";
-import { Ellipsified, Tooltip } from "metabase/ui";
+import { Ellipsified, type IconProps, Tooltip } from "metabase/ui";
+import { isTouchDevice } from "metabase/utils/browser";
+import { modelToUrl } from "metabase/utils/urls";
+import { getUserName } from "metabase/utils/user";
 import type {
   CollectionItem,
   ListCollectionItemsSortColumn,

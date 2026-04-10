@@ -137,8 +137,6 @@
                                   ;; cause the browser to ignore 'unsafe-inline' per the CSP spec.
                                   (when (and nonce (not config/is-dev?))
                                     (format "'nonce-%s'" nonce))
-                                  ;; for custom viz plugin bundles loaded via fetch + Blob URL
-                                  "blob:"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
                                   (when (analytics/anon-tracking-enabled)

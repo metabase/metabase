@@ -1,5 +1,5 @@
 import { render, screen } from "__support__/ui";
-import type { IconData } from "metabase/lib/icon";
+import type { IconData } from "metabase/utils/icon";
 
 import { HomeModelCard } from "./HomeModelCard";
 

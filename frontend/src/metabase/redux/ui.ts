@@ -1,7 +1,7 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { isProduction } from "metabase/env";
-import { isSerializable } from "metabase/lib/objects";
+import { isSerializable } from "metabase/utils/objects";
 import type { ModalState } from "metabase-types/store/modal";
 
 type SetOpenModalPayload = ModalState["id"];

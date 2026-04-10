@@ -1,5 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { setLocalization } from "metabase/lib/i18n";
+import { setLocalization } from "metabase/utils/i18n";
 import { createMockParameter } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import {

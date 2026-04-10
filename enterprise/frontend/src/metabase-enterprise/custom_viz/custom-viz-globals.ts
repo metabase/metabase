@@ -7,7 +7,7 @@ import {
   measureText,
   measureTextHeight,
   measureTextWidth,
-} from "metabase/lib/measure-text";
+} from "metabase/utils/measure-text";
 import { formatValue } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
 

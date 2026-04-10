@@ -1,4 +1,5 @@
 import type { DateTimeUnit } from "./date-time";
+import type { FormatValueOptions } from "./format";
 
 export type RowValue = string | number | null | boolean | object;
 
@@ -106,4 +107,4 @@ export type Column = {
   settings?: ColumnVisualizationSettings;
 };
 
-export type ColumnVisualizationSettings = Record<string, unknown>; //TODO
+export type ColumnVisualizationSettings = FormatValueOptions;

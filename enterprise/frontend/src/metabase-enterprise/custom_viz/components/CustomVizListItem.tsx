@@ -6,7 +6,6 @@ import {
   useUpdateCustomVizPluginMutation,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
 import {
   ActionIcon,
   Box,
@@ -17,6 +16,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizIcon } from "./CustomVizIcon";
@@ -56,13 +56,27 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
       to={Urls.customVizEdit(plugin.id)}
       justify="space-between"
       align="center"
+      gap="md"
       p="md"
       className={S.customVizListItem}
     >
-      <Group gap="md" align="center">
+      <Group align="flex-start" flex="1" wrap="nowrap">
         <CustomVizIcon plugin={plugin} />
-        <Stack gap={4}>
-          <Text fw={700}>{plugin.display_name}</Text>
+        <Stack flex="1" gap="xs" py="xs">
+          <Group justify="space-between">
+            <Text fw={700}>{plugin.display_name}</Text>
+
+            <Group align="center" flex="0 0 auto" gap="xs">
+              {plugin.enabled && <Icon c="success" name="check" />}
+
+              <Text
+                c={plugin.enabled ? "success" : "text-secondary"}
+                fw={plugin.enabled ? 700 : undefined}
+              >
+                {plugin.enabled ? t`Enabled` : t`Disabled`}
+              </Text>
+            </Group>
+          </Group>
           <Group gap="xs">
             <Text
               component="a"
@@ -94,10 +108,13 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
           )}
         </Stack>
       </Group>
+
       <Box
-        onClick={(e: React.MouseEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
+        className={S.menuContainer}
+        flex="0 0 auto"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
         }}
       >
         <Menu>
@@ -114,7 +131,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
               {t`Re-fetch`}
             </Menu.Item>
             <Menu.Item
-              leftSection={<Icon name={plugin.enabled ? "stop" : "play"} />}
+              leftSection={<Icon name={plugin.enabled ? "pause" : "play"} />}
               onClick={handleToggleEnabled}
             >
               {plugin.enabled ? t`Disable` : t`Enable`}

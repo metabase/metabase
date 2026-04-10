@@ -7,3 +7,11 @@
 .customVizListItem:hover {
   background-color: var(--mb-color-background-hover);
 }
+
+.menuContainer {
+  visibility: hidden;
+}
+
+.customVizListItem:hover .menuContainer {
+  visibility: visible;
+}

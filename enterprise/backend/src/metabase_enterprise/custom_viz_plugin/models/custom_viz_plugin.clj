@@ -10,7 +10,8 @@
 
 (t2/deftransforms :model/CustomVizPlugin
   {:access_token mi/transform-encrypted-json
-   :status       mi/transform-keyword})
+   :status       mi/transform-keyword
+   :manifest     mi/transform-json})
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)

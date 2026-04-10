@@ -7,8 +7,8 @@ import {
   useListAllCustomVizPluginsQuery,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
-import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Loader, Text } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizListItem } from "./CustomVizListItem";
@@ -39,10 +39,10 @@ export function ManageCustomVizPage() {
         <Button
           component={Link}
           to={Urls.customVizAdd()}
-          variant="filled"
           leftSection={<Icon name="add" />}
+          variant="filled"
         >
-          {t`Add visualization`}
+          {t`Add`}
         </Button>
       </Flex>
 
@@ -53,23 +53,22 @@ export function ManageCustomVizPage() {
       )}
 
       {repoPlugins && repoPlugins.length === 0 && !isLoading && (
-        <Box
+        <Group
+          align="center"
+          bd="1px solid var(--mb-color-border)"
           bdrs="md"
           bg="background-primary"
+          justify="center"
+          mih="15rem"
           p="xl"
-          style={{
-            minHeight: "20rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
         >
           <Text c="text-tertiary">{t`You don't have any custom visualizations.`}</Text>
-        </Box>
+        </Group>
       )}
 
       {repoPlugins && repoPlugins.length > 0 && (
         <Box
+          bd="1px solid var(--mb-color-border)"
           bdrs="md"
           bg="background-primary"
           className={S.pluginList}

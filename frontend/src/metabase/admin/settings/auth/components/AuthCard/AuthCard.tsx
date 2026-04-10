@@ -6,8 +6,8 @@ import { c, t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { isNotNull } from "metabase/lib/types";
 import { Anchor, Button, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import type { SettingDefinition } from "metabase-types/api";
 
 import {

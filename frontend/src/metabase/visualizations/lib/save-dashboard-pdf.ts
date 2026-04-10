@@ -3,7 +3,8 @@ import { t } from "ttag";
 
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { isStorybookActive } from "metabase/env";
-import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
+import { getCspNonce } from "metabase/utils/csp";
+import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -236,7 +237,7 @@ export const saveDashboardPdf = async ({
     scale: Math.min(window.devicePixelRatio || 1, 2),
     // We have patched html2canvas so that we can use our Nonce token. Without the patch, it complains
     // that the token is not long enough
-    cspNonce: window.MetabaseNonce,
+    cspNonce: getCspNonce(),
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;

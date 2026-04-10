@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { type NumberValue, parseNumber } from "metabase/lib/number";
+import { type NumberValue, parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 
 import { getClauseDefinition, getMBQLName, isDefinedClause } from "../clause";

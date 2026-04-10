@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
   const isAdmin = useSelector(getUserIsAdmin);

@@ -1,5 +1,5 @@
-import * as Urls from "metabase/lib/urls";
-import { isDataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
+import * as Urls from "metabase/utils/urls";
+import { isDataStudioTableMetadataTab } from "metabase/utils/urls/data-studio";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import type { ParsedRouteParams, RouteParams } from "./types";

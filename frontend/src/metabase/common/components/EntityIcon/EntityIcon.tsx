@@ -1,8 +1,8 @@
 import type { CSSProperties, ImgHTMLAttributes } from "react";
 
-import type { IconData } from "metabase/lib/icon";
 import { Icon, type IconProps, useMantineTheme } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
+import type { IconData } from "metabase/utils/icon";
 
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];
@@ -31,7 +31,7 @@ export function EntityIcon({
 }: EntityIconProps) {
   const theme = useMantineTheme();
   const isDarkMode = theme.other.colorScheme === "dark";
-  const resolvedIconUrl = (isDarkMode && iconDarkUrl) || iconUrl;
+  const resolvedIconUrl = isDarkMode ? (iconDarkUrl ?? iconUrl) : iconUrl;
 
   if (resolvedIconUrl) {
     // color is intentionally not applied — CSS color has no effect on <img>
@@ -46,13 +46,5 @@ export function EntityIcon({
     );
   }
 
-  return (
-    <Icon
-      name={name}
-      size={size}
-      color={color as ColorName}
-      style={style}
-      {...rest}
-    />
-  );
+  return <Icon name={name} size={size} c={color} style={style} {...rest} />;
 }

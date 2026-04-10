@@ -1,5 +1,5 @@
-import { stableStringify } from "metabase/lib/objects";
 import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
+import { stableStringify } from "metabase/utils/objects";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {

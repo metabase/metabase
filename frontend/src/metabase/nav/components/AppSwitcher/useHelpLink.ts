@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
-import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
+import { useSelector } from "metabase/utils/redux";
 
 import { getUser } from "../../../selectors/user";
 
