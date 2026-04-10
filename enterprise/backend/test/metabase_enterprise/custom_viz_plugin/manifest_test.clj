@@ -75,7 +75,12 @@
     (is (not (some #{"../secret.svg"} (manifest/asset-paths {:icon "../secret.svg"})))))
   (testing "deduplicates"
     (is (= ["icon.svg"]
-           (manifest/asset-paths {:icon "icon.svg" :assets ["icon.svg"]})))))
+           (manifest/asset-paths {:icon "icon.svg" :assets ["icon.svg"]}))))
+  (testing "icon and iconDark are auto-included without being listed in assets"
+    (is (= #{"icon.svg" "icon-dark.svg" "thumbs-up.png" "thumbs-down.png"}
+           (set (manifest/asset-paths {:icon     "icon.svg"
+                                       :iconDark "icon-dark.svg"
+                                       :assets   ["thumbs-up.png" "thumbs-down.png"]}))))))
 
 ;;; ------------------------------------------------ Content Type ------------------------------------------------
 
