@@ -9,4 +9,10 @@
  ;; https://github.com/metabase/metabase/actions/workflows/athena.yml
  ;; new versions of athena-jdbc appear here:
  ;; https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver.html#jdbc-v3-driver-download-uber-jar
- {com.metabase/athena-jdbc {:mvn/version "3.7.0"}}}
+ {com.metabase/athena-jdbc {:mvn/version "3.7.0"
+                            :exclusions [io.netty/netty-codec-http
+                                         io.netty/netty-codec-http2]}
+  ;; pin netty to same version as root deps.edn to resolve security vulnerabilities
+  ;; in transitive 4.1.x netty from aws sdk
+  io.netty/netty-codec-http  {:mvn/version "4.2.12.Final"}
+  io.netty/netty-codec-http2 {:mvn/version "4.2.12.Final"}}}
