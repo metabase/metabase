@@ -324,6 +324,7 @@
                (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
 (defn cli-print-affected-modules
+  "Print affected modules and driver decision summary for the given git ref."
   [[git-ref, :as _command-line-args]]
   (let [modules-config         (read-modules-config)
         deps                   (dependencies modules-config)
@@ -475,10 +476,14 @@
     #{}
     (into #{} (map str/trim) (str/split labels-str #","))))
 
-(defn break-quarantine-label [driver]
+(defn break-quarantine-label
+  "Return the PR label string that breaks quarantine for `driver`."
+  [driver]
   (str "break-quarantine-" (name driver)))
 
-(defn run-driver-label [driver]
+(defn run-driver-label
+  "Return the PR label string that forces CI to run `driver` tests."
+  [driver]
   (str "ci:run-" (name driver)))
 
 (defn- driver-decision
