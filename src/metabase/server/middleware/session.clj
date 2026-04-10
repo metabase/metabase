@@ -269,7 +269,7 @@
   (fn [request respond raise]
     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
                      (merge-current-user-info request))]
-      (analytics/with-auth-method! (:embedding/auth-method request)
+      (analytics/with-auth-method! (:embedding/auth-method request')
         (handler request' respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
