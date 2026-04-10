@@ -55,7 +55,7 @@
   (letfn [(normalize-module-path [module-path]
             (if (or (str/starts-with? filename "test/")
                     (str/starts-with? filename "enterprise/backend/test/"))
-              (str/replace module-path #"_test$" "")
+              (str/replace module-path #"[_-]test$" "")
               module-path))]
     (or
      (when-let [[_match module-path] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]

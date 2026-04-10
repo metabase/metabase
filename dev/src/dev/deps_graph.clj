@@ -785,7 +785,7 @@
         ;; Module-level tests live at e.g. test/metabase/lib/schema_test.cljc and
         ;; should map back to metabase.lib.schema for reverse lookup.
         (#(if test-file?
-            (str/replace % #"_test$" "")
+            (str/replace % #"[_-]test$" "")
             %))
         (str/replace #"/" ".")
         (str/replace #"_" "-")

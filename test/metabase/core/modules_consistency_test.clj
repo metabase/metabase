@@ -117,6 +117,25 @@
                        :expr expr})))
     (edn/read-string (str/trim out))))
 
+(defn- bb-mage-updated-files->updated-modules [modules-config filenames]
+  (let [expr               (str "(do "
+                                "(require 'mage.modules) "
+                                "(let [build-prefix->module (ns-resolve 'mage.modules 'build-prefix->module) "
+                                "      updated-files->updated-modules (ns-resolve 'mage.modules 'updated-files->updated-modules)] "
+                                "  (with-redefs [mage.modules/read-prefix->module (fn [] ((deref build-prefix->module) "
+                                (pr-str (list 'quote modules-config))
+                                "))] "
+                                "    (prn ((deref updated-files->updated-modules) "
+                                (pr-str filenames)
+                                ")))))")
+        {:keys [exit out err]} (shell/sh "bb" "-e" expr)]
+    (when-not (zero? exit)
+      (throw (ex-info "Babashka mage.modules updated-files evaluation failed"
+                      {:exit exit
+                       :stderr err
+                       :expr expr})))
+    (edn/read-string (str/trim out))))
+
 (defn- regex-literals-in-file
   "Parse the file at `path` as text and return the seq of regex literal strings
   it contains.
@@ -272,7 +291,10 @@
   (testing "Exact-file dotted-module tests resolve back to the dotted module"
     (let [deps        [{:module   'lib.schema
                         :deps     []
-                        :filename "src/metabase/lib/schema.cljc"}]
+                        :filename "src/metabase/lib/schema.cljc"}
+                       {:module   'lib
+                        :deps     []
+                        :filename "src/metabase/lib.clj"}]
           prefix->mod {"metabase.lib.schema" 'lib.schema}
           test-file   "test/metabase/lib/schema_test.cljc"]
       (is (= #{"src/metabase/lib/schema.cljc"}
@@ -281,9 +303,14 @@
                    prefix->mod
                    [test-file]))))
       (if (babashka-available?)
-        (is (= 'lib.schema
-               (bb-mage-file->module {'lib.schema {}}
-                                     test-file)))
+        (do
+          (is (= 'lib.schema
+                 (bb-mage-file->module {'lib.schema {}}
+                                       test-file)))
+          (is (= '#{lib.schema}
+                 (bb-mage-updated-files->updated-modules {'lib.schema {}
+                                                          'lib        {}}
+                                                         [test-file]))))
         (is true "Skipping mage.modules exact-file assertions because `bb` is unavailable")))))
 
 (deftest ^:parallel canonical-comments-present-test
