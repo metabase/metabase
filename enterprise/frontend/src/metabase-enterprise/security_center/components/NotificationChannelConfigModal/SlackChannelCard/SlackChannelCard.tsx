@@ -35,7 +35,7 @@ export function SlackChannelCard({ isConfigured }: { isConfigured: boolean }) {
 
   return (
     <Card withBorder p="lg" data-testid="slack-channel-card">
-      <Flex justify="space-between" align="center" mb="md">
+      <Flex justify="space-between" align="center" mb="lg">
         <Group gap="sm">
           <Icon name="slack" />
           <Title order={4}>{t`Slack`}</Title>

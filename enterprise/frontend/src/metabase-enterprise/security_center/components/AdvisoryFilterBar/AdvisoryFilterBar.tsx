@@ -64,7 +64,7 @@ export function AdvisoryFilterBar({
         data-testid="status-filter"
       />
       <Checkbox
-        label={t`Show acknowledged`}
+        label={t`Show dismissed`}
         checked={filter.showAcknowledged}
         onChange={(e) =>
           onChange({ ...filter, showAcknowledged: e.currentTarget.checked })

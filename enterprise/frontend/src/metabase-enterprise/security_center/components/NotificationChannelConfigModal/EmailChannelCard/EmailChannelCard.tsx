@@ -35,11 +35,11 @@ export function EmailChannelCard({ isConfigured }: { isConfigured: boolean }) {
 
   return (
     <Card withBorder p="lg" data-testid="email-channel-card">
-      <Group gap="sm" mb="md">
+      <Group gap="sm" mb="lg">
         <Icon name="mail" />
         <Title order={4}>{t`Email`}</Title>
       </Group>
-      <Stack gap="md">
+      <Stack gap="lg">
         <Switch
           label={t`Send to all instance admins`}
           checked={config.email.sendToAllAdmins}

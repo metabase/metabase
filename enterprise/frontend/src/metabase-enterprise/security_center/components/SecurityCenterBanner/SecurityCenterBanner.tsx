@@ -94,7 +94,7 @@ export function SecurityCenterBanner() {
       icon="warning_round_filled"
       bg="warning"
       body={
-        <Text lh="inherit">
+        <Text lh="inherit" c="text-primary">
           {jt`No notification channels are configured for security alerts. ${settingsLink}`}
         </Text>
       }

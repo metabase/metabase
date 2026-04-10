@@ -141,23 +141,23 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       });
     });
 
-    it("should toggle show acknowledged", () => {
-      // Acknowledge the critical advisory first
+    it("should toggle show dismissed", () => {
+      // Dismiss the critical advisory first
       cy.findAllByTestId("advisory-card")
         .first()
         .findByTestId("acknowledge-button")
         .click();
 
-      // It should be hidden by default (acknowledged are hidden)
+      // It should be hidden by default (dismissed are hidden)
       cy.findAllByTestId("advisory-card").should("have.length", 2);
 
-      // Show acknowledged
+      // Show dismissed
       cy.findByTestId("show-acknowledged-filter").click();
       cy.findAllByTestId("advisory-card").should("have.length", 3);
     });
   });
 
-  describe("acknowledge advisory", () => {
+  describe("dismiss advisory", () => {
     beforeEach(() => {
       seedAllAdvisories();
       cy.visit("/admin/security-center");
@@ -166,7 +166,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       });
     });
 
-    it("should acknowledge an advisory and show the badge", () => {
+    it("should dismiss an advisory and show the badge", () => {
       cy.intercept("POST", "/api/ee/security-center/*/acknowledge").as(
         "acknowledge",
       );
@@ -182,16 +182,16 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       cy.findAllByTestId("advisory-card")
         .first()
         .findByTestId("acknowledged-badge")
-        .should("have.text", "Acknowledged");
+        .should("have.text", "Dismissed");
     });
 
-    it("should hide acknowledged advisories by default", () => {
+    it("should hide dismissed advisories by default", () => {
       cy.findAllByTestId("advisory-card")
         .first()
         .findByTestId("acknowledge-button")
         .click();
 
-      // After acknowledging, the card should disappear
+      // After dismissing, the card should disappear
       cy.findAllByTestId("advisory-card").should("have.length", 2);
     });
   });

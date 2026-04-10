@@ -87,7 +87,7 @@ export function NotificationChannelConfigModal({
       <Stack gap="md" mt="md">
         <EmailChannelCard isConfigured={isEmailConfigured} />
         <SlackChannelCard isConfigured={isSlackConfigured} />
-        <Flex justify="flex-end" gap="md" mt="md">
+        <Flex justify="space-between" gap="md" mt="md">
           <Button
             variant="subtle"
             leftSection={<Icon name="mail" />}

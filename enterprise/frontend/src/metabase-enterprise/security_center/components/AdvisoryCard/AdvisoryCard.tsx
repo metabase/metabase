@@ -1,16 +1,7 @@
 import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import {
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Anchor, Badge, Card, Group, Stack, Text, Title } from "metabase/ui";
 import type {
   Advisory,
   AdvisoryId,
@@ -58,21 +49,21 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
       </Badge>
       {acknowledged && (
         <Badge color="brand" variant="light" data-testid="acknowledged-badge">
-          {t`Acknowledged`}
+          {t`Dismissed`}
         </Badge>
       )}
     </>
   );
 
   const acknowledgeButton = !acknowledged && onAcknowledge && (
-    <Button
-      variant="subtle"
-      size="compact-sm"
+    <Anchor
+      component="button"
+      size="sm"
       onClick={() => onAcknowledge(advisory.advisory_id)}
       data-testid="acknowledge-button"
     >
-      {t`Acknowledge`}
-    </Button>
+      {t`Dismiss`}
+    </Anchor>
   );
 
   return (
@@ -114,6 +105,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
 
         {(advisory.advisory_url || !isSmallScreen) && (
           <Group gap="md" h={28}>
+            {!isSmallScreen && acknowledgeButton}
             {advisory.advisory_url && (
               <Anchor
                 href={advisory.advisory_url}
@@ -124,7 +116,6 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
                 {t`View advisory`}
               </Anchor>
             )}
-            {!isSmallScreen && acknowledgeButton}
           </Group>
         )}
       </Stack>

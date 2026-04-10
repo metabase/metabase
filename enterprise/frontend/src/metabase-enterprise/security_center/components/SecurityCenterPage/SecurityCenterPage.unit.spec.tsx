@@ -140,7 +140,7 @@ describe("SecurityCenterPage", () => {
     expect(advisoryLink).toHaveAttribute("target", "_blank");
   });
 
-  it("calls acknowledgeAdvisory when acknowledge button is clicked", async () => {
+  it("calls acknowledgeAdvisory when dismiss button is clicked", async () => {
     const advisories = [
       createAdvisory({ advisory_id: "SA-001", acknowledged_at: null }),
     ];
@@ -151,7 +151,7 @@ describe("SecurityCenterPage", () => {
     expect(mockAcknowledge).toHaveBeenCalledWith("SA-001");
   });
 
-  it("does not show acknowledge button for already acknowledged advisories", async () => {
+  it("does not show dismiss button for already dismissed advisories", async () => {
     const advisories = [
       createAdvisory({
         advisory_id: "SA-001",
@@ -161,16 +161,16 @@ describe("SecurityCenterPage", () => {
 
     setup(advisories);
 
-    // Acknowledged advisories are hidden by default — enable the checkbox first
+    // Dismissed advisories are hidden by default — enable the checkbox first
     await userEvent.click(screen.getByTestId("show-acknowledged-filter"));
 
     expect(screen.queryByTestId("acknowledge-button")).not.toBeInTheDocument();
     expect(screen.getByTestId("acknowledged-badge")).toHaveTextContent(
-      "Acknowledged",
+      "Dismissed",
     );
   });
 
-  it("hides acknowledged advisories by default", () => {
+  it("hides dismissed advisories by default", () => {
     const advisories = [
       createAdvisory({
         advisory_id: "1",
