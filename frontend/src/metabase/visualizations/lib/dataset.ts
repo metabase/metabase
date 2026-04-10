@@ -1,4 +1,4 @@
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetData,

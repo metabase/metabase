@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 

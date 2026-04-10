@@ -10,12 +10,6 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Search } from "metabase/entities/search";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { getIcon } from "metabase/lib/icon";
-import { getName } from "metabase/lib/name";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
@@ -26,6 +20,12 @@ import {
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, Text } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { getIcon } from "metabase/utils/icon";
+import { getName } from "metabase/utils/name";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+import { modelToUrl } from "metabase/utils/urls";
 import {
   type RecentItem,
   isRecentCollectionItem,

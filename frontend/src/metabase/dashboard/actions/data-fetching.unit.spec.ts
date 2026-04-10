@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
-import { isQuestionDashCard } from "metabase/lib/dashboard";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";

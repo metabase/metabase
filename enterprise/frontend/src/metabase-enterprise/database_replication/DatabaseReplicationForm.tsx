@@ -12,7 +12,6 @@ import {
   FormSubmitButton,
   FormTextarea,
 } from "metabase/forms";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   Box,
   Card,
@@ -28,6 +27,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   PreviewDatabaseReplicationResponse,
   TableInfo,

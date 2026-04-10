@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 export class ExpandingContent extends Component {
   constructor({ isInitiallyOpen }) {

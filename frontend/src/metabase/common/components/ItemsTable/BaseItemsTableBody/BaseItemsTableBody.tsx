@@ -4,8 +4,8 @@ import {
 } from "metabase/common/components/ItemsTable/BaseItemTableRow";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
-import { useSelector } from "metabase/lib/redux";
 import { getIsDndAvailable } from "metabase/selectors/app";
+import { useSelector } from "metabase/utils/redux";
 import type { CollectionItem } from "metabase-types/api";
 
 import { TBody } from "../BaseItemsTable.styled";

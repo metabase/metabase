@@ -2,8 +2,8 @@ import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { FormikErrors } from "formik";
 import { P, isMatching } from "ts-pattern";
 
-import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
+import { useSelector } from "metabase/utils/redux";
 import type { MetabotProvider } from "metabase-types/api";
 
 type ApiKeylessProviders = "metabase";

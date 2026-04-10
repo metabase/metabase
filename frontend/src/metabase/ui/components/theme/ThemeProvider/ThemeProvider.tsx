@@ -5,8 +5,9 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import { type ReactNode, useContext, useMemo } from "react";
 
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getCspNonce } from "metabase/utils/csp";
 import type { ColorSettings } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
@@ -98,7 +99,7 @@ export const ThemeProvider = ({
     <MantineProvider
       theme={theme}
       forceColorScheme={resolvedColorScheme}
-      getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
+      getStyleNonce={() => getCspNonce() ?? "metabase"}
       classNamesPrefix="mb-mantine"
       cssVariablesSelector={cssVariablesSelector}
       withCssVariables={withCssVariables}

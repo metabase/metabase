@@ -12,6 +12,7 @@
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.log :as log]
+   [metabase.util.throttle :as u.throttle]
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
@@ -125,46 +126,30 @@
 (def ^:private token-ip-throttler
   (throttle/make-throttler :ip-address :attempts-threshold 50 :attempt-ttl-ms one-hour-ms))
 
-;; /oauth/register is unauthenticated and creates server-side state (client records).
-;; Without throttling, an attacker can exhaust storage or generate unlimited client_id/secret pairs.
-;; Per-IP only since there's no identity at registration time. Threshold allows burst setup of
-;; several agents without enabling sustained spam.
+;; /oauth/register is unauthenticated and creates server-side state (client records). Without
+;; throttling, an attacker can exhaust storage or generate unlimited client_id/secret pairs. Per-IP
+;; only since there's no identity at registration time. Threshold allows burst setup of several
+;; agents without enabling sustained spam.
 (def ^:private registration-throttler
   (throttle/make-throttler :ip-address :attempts-threshold 10 :attempt-ttl-ms one-minute-ms))
 
-;; /oauth/authorize/decision is lower risk (requires authentication + CSRF token),
-;; but a compromised session could automate consent-granting. A per-user cap limits the blast
-;; radius while allowing setup of many agents in a single session.
+;; /oauth/authorize/decision is lower risk (requires authentication + CSRF token), but a
+;; compromised session could automate consent-granting. A per-user cap limits the blast radius
+;; while allowing setup of many agents in a single session.
 (def ^:private authorize-decision-throttler
   (throttle/make-throttler :user-id :attempts-threshold 20 :attempt-ttl-ms one-hour-ms))
 
-(defn- throttle-response
-  "Build a 429 response from a throttle exception, extracting Retry-After when available."
-  [^ExceptionInfo e]
-  (let [message       (ex-message e)
-        retry-seconds (some->> message (re-find #"(\d+) seconds") second)]
-    (cond-> {:status  429
-             :headers {"Content-Type" "application/json"}
-             :body    {:error             "too_many_requests"
-                       :error_description message}}
-      retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))
-
-(defn- throttle-exception?
-  "True when `e` is a throttle-limit exception thrown by [[metabase.throttle]].
-   Coupled to the library's `\"Too many attempts!\"` message prefix — update here if that changes."
-  [^ExceptionInfo e]
-  (str/starts-with? (ex-message e) "Too many attempts!"))
-
 (defmacro ^:private with-throttling-429
-  "Like [[throttle/with-throttling]], but returns HTTP 429 with Retry-After instead of
-   throwing an unhandled exception (which the generic middleware would turn into a 500)."
+  "Like [[throttle/with-throttling]], but turns a throttle exception into an
+   OAuth-flavoured 429 response (`too_many_requests`) with Retry-After."
   {:style/indent 1}
   [bindings & body]
   `(try
      (throttle/with-throttling ~bindings ~@body)
      (catch ExceptionInfo e#
-       (if (throttle-exception? e#)
-         (throttle-response e#)
+       (if (u.throttle/throttle-exception? e#)
+         (u.throttle/throttle-response e# {:error             "too_many_requests"
+                                           :error_description (ex-message e#)})
          (throw e#)))))
 
 ;;; ------------------------------------------------ Endpoints ----------------------------------------------------

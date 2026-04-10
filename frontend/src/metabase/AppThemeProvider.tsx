@@ -5,22 +5,22 @@ import {
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { PUT } from "metabase/lib/api";
-import { parseHashOptions } from "metabase/lib/browser";
-import type {
-  ColorScheme,
-  ResolvedColorScheme,
-} from "metabase/lib/color-scheme";
-import {
-  getUserColorScheme,
-  isValidColorScheme,
-  setUserColorSchemeAfterUpdate,
-} from "metabase/lib/color-scheme";
-import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import type { MantineThemeOverride } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
+import { PUT } from "metabase/utils/api";
+import { parseHashOptions } from "metabase/utils/browser";
+import type {
+  ColorScheme,
+  ResolvedColorScheme,
+} from "metabase/utils/color-scheme";
+import {
+  getUserColorScheme,
+  isValidColorScheme,
+  setUserColorSchemeAfterUpdate,
+} from "metabase/utils/color-scheme";
+import MetabaseSettings from "metabase/utils/settings";
 import type { ColorSettings } from "metabase-types/api";
 
 import { AppColorSchemeProvider } from "./AppColorSchemeProvider";

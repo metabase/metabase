@@ -4,13 +4,12 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-// eslint-disable-next-line no-restricted-imports
+/* eslint-disable no-restricted-imports */
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import {
   type SerializeCardOptions,
   serializeCardForUrl,
-} from "metabase/lib/card";
-import { equals } from "metabase/lib/utils";
-import { applyParameter } from "metabase/querying/parameters/utils/query";
+} from "metabase/utils/card";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -685,7 +684,7 @@ class Question {
       const originalCard = originalQuestion?._getValueForComparison();
       const currentCard = this._getValueForComparison();
 
-      if (!equals(originalCard, currentCard)) {
+      if (!_.isEqual(originalCard, currentCard)) {
         return true;
       }
 

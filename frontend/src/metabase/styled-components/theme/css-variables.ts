@@ -12,10 +12,10 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
 import type { MantineTheme } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = (
