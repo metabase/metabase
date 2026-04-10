@@ -12,6 +12,7 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { useToast } from "metabase/common/hooks";
+import { useDispatch } from "metabase/lib/redux";
 import {
   Button,
   Flex,
