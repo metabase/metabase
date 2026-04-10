@@ -3128,6 +3128,7 @@
            app-db
            channel
            config
+           driver
            events
            models
            notification
