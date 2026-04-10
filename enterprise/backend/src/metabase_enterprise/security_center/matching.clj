@@ -4,10 +4,12 @@
   (:require
    [metabase-enterprise.security-center.schema :as schema]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as app-db.query]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [next.jdbc.result-set :as rs]
    [toucan2.core :as t2])
   (:import
    (org.semver4j Semver)))
@@ -52,20 +54,30 @@
   (or (get matching-query (mdb/db-type))
       (get matching-query :default)))
 
+(def ^:private ^:dynamic *query-timeout-seconds*
+  "Maximum execution time in seconds for advisory matching queries."
+  120)
+
 (defn- query-read-only!
   "Execute a HoneySQL query on a fresh connection with defense-in-depth:
-   1. setReadOnly(true) — driver-level write rejection (Postgres/MySQL enforce, H2 advisory)
+   1. setReadOnly(true) — driver-level write rejection
    2. Explicit transaction with unconditional rollback — guarantees no writes persist
-      even if the driver doesn't enforce read-only"
+      even if the driver doesn't enforce read-only
+   3. setQueryTimeout — kills the query if it exceeds [[*query-timeout-seconds*]]"
   [hsql-query]
-  (with-open [^java.sql.Connection conn (.getConnection (mdb/data-source))]
-    (.setReadOnly conn true)
-    (.setAutoCommit conn false)
-    (try
-      (t2/with-connection [_ conn]
-        (mdb/query hsql-query))
-      (finally
-        (.rollback conn)))))
+  (let [[sql & params] (app-db.query/compile hsql-query)]
+    (with-open [^java.sql.Connection conn (.getConnection (mdb/data-source))]
+      (.setReadOnly conn true)
+      (.setAutoCommit conn false)
+      (try
+        (with-open [stmt (doto (.prepareStatement conn sql)
+                           (.setQueryTimeout *query-timeout-seconds*))]
+          (doseq [[i param] (map-indexed vector params)]
+            (.setObject stmt (inc i) param))
+          (with-open [rs (.executeQuery stmt)]
+            (rs/datafiable-result-set rs conn {})))
+        (finally
+          (.rollback conn))))))
 
 (mu/defn execute-matching-query! :- QueryResult
   "Execute a matching query against the appdb.
