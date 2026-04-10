@@ -15,8 +15,11 @@
   of Fields that should have been updated. Returns the set of updated Field names."
   [f]
   (let [updated-field-names (atom #{})]
-    (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
-                                                                     (swap! updated-field-names conj (:name field)))]
+    ;; Intercept bulk-distinct-values — the new on-demand code calls this once per table with all the fields
+    ;; it intends to update. Returning nil short-circuits the persist step so no DB writes happen.
+    (with-redefs [field-values/bulk-distinct-values (fn [_table-id fields]
+                                                      (swap! updated-field-names into (map :name fields))
+                                                      nil)]
       (f updated-field-names)
       @updated-field-names)))
 

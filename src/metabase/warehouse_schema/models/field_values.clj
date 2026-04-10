@@ -629,17 +629,21 @@
   "Update the FieldValues for any Fields with `field-ids` if the Field should have FieldValues and it belongs to a
   Database that is set to do 'On-Demand' syncing."
   [field-ids]
-  (let [fields (when (seq field-ids)
-                 (filter field-should-have-field-values?
-                         (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
-                                     :semantic_type :visibility_type :table_id :has_field_values]
-                                    :id [:in field-ids])))
-        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
-    (doseq [{table-id :table_id, :as field} fields]
-      (when (table-id->is-on-demand? table-id)
-        (log/debugf "Field %s '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                    (u/the-id field) (:name field))
-        (create-or-update-full-field-values! field)))))
+  (let [fields                  (when (seq field-ids)
+                                  (filter field-should-have-field-values?
+                                          (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                                                      :semantic_type :visibility_type :table_id :has_field_values]
+                                                     :id [:in field-ids])))
+        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
+        on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
+    (when (seq on-demand-fields)
+      (let [fvs-map (batched-get-latest-full-field-values (map :id on-demand-fields))]
+        (doseq [[table-id fields] (group-by :table_id on-demand-fields)]
+          (when-let [bulk-values (bulk-distinct-values table-id fields)]
+            (doseq [field fields]
+              (let [fv (get fvs-map (:id field))
+                    dv (get bulk-values (:id field))]
+                (persist-field-values! field fv (:values dv) (:has_more_values dv))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |

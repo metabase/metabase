@@ -327,6 +327,56 @@
           (is (= ["c" "d"] (:values fv-after)))
           (is (true? (:has_more_values fv-after))))))))
 
+(deftest update-field-values-for-on-demand-dbs!-test
+  (mt/dataset test-data
+    (testing "fields in an on-demand DB get their FieldValues created/updated in a single bulk query per table"
+      (let [category-id (mt/id :products :category)
+            vendor-id   (mt/id :products :vendor)]
+        ;; Start fresh — no existing FVs for the fields under test
+        (t2/delete! :model/FieldValues :field_id [:in [category-id vendor-id]])
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:is_on_demand true}
+          (let [bulk-calls (atom 0)
+                orig       field-values/bulk-distinct-values]
+            (with-redefs [field-values/bulk-distinct-values (fn [& args]
+                                                              (swap! bulk-calls inc)
+                                                              (apply orig args))]
+              (field-values/update-field-values-for-on-demand-dbs! #{category-id vendor-id}))
+            (testing "exactly one bulk query was issued (both fields belong to the same table)"
+              (is (= 1 @bulk-calls))))
+          (testing "FieldValues were created for both fields"
+            (let [cat-fv    (t2/select-one :model/FieldValues :field_id category-id :type :full)
+                  vendor-fv (t2/select-one :model/FieldValues :field_id vendor-id :type :full)]
+              (is (some? cat-fv))
+              (is (= #{"Doohickey" "Gadget" "Gizmo" "Widget"} (set (:values cat-fv))))
+              (is (some? vendor-fv))
+              (is (= 200 (count (:values vendor-fv)))))))))
+    (testing "fields in a non-on-demand DB are not touched"
+      (let [category-id (mt/id :products :category)]
+        (t2/delete! :model/FieldValues :field_id category-id)
+        ;; DB defaults to is_on_demand=false in test fixtures
+        (field-values/update-field-values-for-on-demand-dbs! #{category-id})
+        (is (nil? (t2/select-one :model/FieldValues :field_id category-id :type :full)))))
+    (testing "fields that shouldn't have FieldValues are filtered out (no DB writes, no warehouse queries)"
+      (let [bulk-calls (atom 0)]
+        (with-redefs [field-values/bulk-distinct-values (fn [& _]
+                                                          (swap! bulk-calls inc)
+                                                          nil)]
+          ;; product_id is a PK/FK — field-should-have-field-values? returns false for it
+          (field-values/update-field-values-for-on-demand-dbs! #{(mt/id :orders :id)}))
+        (is (zero? @bulk-calls))))
+    (testing "existing FieldValues are updated, not duplicated"
+      (let [category-id (mt/id :products :category)]
+        (t2/delete! :model/FieldValues :field_id category-id)
+        (mt/with-temp [:model/FieldValues _ {:field_id category-id
+                                             :type     :full
+                                             :values   ["stale-1" "stale-2"]}]
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:is_on_demand true}
+            (field-values/update-field-values-for-on-demand-dbs! #{category-id}))
+          (let [fvs (t2/select :model/FieldValues :field_id category-id :type :full)]
+            (is (= 1 (count fvs)))
+            (is (= #{"Doohickey" "Gadget" "Gizmo" "Widget"}
+                   (set (:values (first fvs)))))))))))
+
 (defn- find-values [field-values-id]
   (-> (t2/select-one :model/FieldValues :id field-values-id)
       (select-keys [:values :human_readable_values])))
