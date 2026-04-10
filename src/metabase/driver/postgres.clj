@@ -317,6 +317,18 @@
   ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
 
+(defn- nullable-in
+  "Build a HoneySQL clause that handles nil values in `xs` correctly.
+  SQL `IN (NULL)` never matches NULL rows, so when `xs` contains nil we need an explicit `IS NULL` check."
+  [column xs]
+  (when xs
+    (let [non-nil (seq (remove nil? xs))
+          has-nil? (some nil? xs)]
+      (cond
+        (and non-nil has-nil?) [:or [:in column non-nil] [:= column nil]]
+        non-nil                [:in column non-nil]
+        has-nil?               [:= column nil]))))
+
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
   [driver & {:keys [schema-names table-names]}]
@@ -372,8 +384,7 @@
                    [:= :c.column_name :pk.column_name]]]
       :where [:and
               [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-              ;; Rendering nil as `IN (NULL)` silently matches zero rows, so drop nils entirely.
-              (when-let [schemas (seq (remove nil? schema-names))] [:in :c.table_schema schemas])
+              (nullable-in :c.table_schema schema-names)
               (when table-names [:in :c.table_name table-names])]}
      {:select [[:pa.attname :name]
                [[:case
@@ -400,7 +411,7 @@
       :where [:and
               [:= :pc.relkind [:inline "m"]]
               [:>= :pa.attnum [:inline 1]]
-              (when-let [schemas (seq (remove nil? schema-names))] [:in :pn.nspname schemas])
+              (nullable-in :pn.nspname schema-names)
               (when table-names [:in :pc.relname table-names])]}]
     :order-by [:table-schema :table-name :database-position]}
    :dialect (sql.qp/quote-style driver)))
