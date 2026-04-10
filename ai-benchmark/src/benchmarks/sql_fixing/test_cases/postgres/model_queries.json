@@ -1,0 +1,82 @@
+[
+  {
+    "description": "Typo in column name: quantty -> quantity",
+    "used_tables": [],
+    "used_models": [
+      125
+    ],
+    "fixed_query": "SELECT\n  order_line_id,\n  order_id,\n  quantity,\n  unit_price\nFROM {{#125-shopify-order-line-facts}} AS olf\nWHERE quantity > 1\nLIMIT 10",
+    "broken_query": "SELECT\n  order_line_id,\n  order_id,\n  quantty,\n  unit_price\nFROM {{#125-shopify-order-line-facts}} AS olf\nWHERE quantity > 1\nLIMIT 10",
+    "error_message": "ERROR: column \"quantty\" does not exist\n  Hint: Perhaps you meant to reference the column \"olf.quantity\".\n  Position: 157"
+  },
+  {
+    "description": "Wrong model id in model reference",
+    "used_tables": [],
+    "used_models": [
+      135
+    ],
+    "fixed_query": "SELECT refund_id, order_id, refund_created_at FROM {{#135-shopify-refund-facts}} AS rf LIMIT 5",
+    "broken_query": "SELECT refund_id, order_id, refund_created_at FROM {{#1135-shopify-refund-facts}} AS rf LIMIT 5",
+    "error_message": "Card 1135 does not exist, or is from a different Database."
+  },
+  {
+    "description": "Missing FROM keyword with model reference",
+    "used_tables": [],
+    "used_models": [
+      135
+    ],
+    "fixed_query": "SELECT refund_id, order_id, refund_created_at FROM {{#135-shopify-refund-facts}} AS rf LIMIT 5",
+    "broken_query": "SELECT refund_id, order_id, refund_created_at {{#135-shopify-refund-facts}} AS rf LIMIT 5",
+    "error_message": "ERROR: syntax error at or near \"SELECT\"\n  Position: 166"
+  },
+  {
+    "description": "Missing WHERE keyword with model reference",
+    "used_tables": [],
+    "used_models": [
+      125
+    ],
+    "fixed_query": "SELECT\n  quantity,\n  unit_price\nFROM {{#125-shopify-order-line-facts}} AS olf\nWHERE unit_price > 10\nLIMIT 10",
+    "broken_query": "SELECT\n  quantity,\n  unit_price\nFROM {{#125-shopify-order-line-facts}} AS olf\nunit_price > 10\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"unit_price\"\n  Position: 1916"
+  },
+  {
+    "description": "Missing closing parenthesis in SUM with model",
+    "used_tables": [],
+    "used_models": [
+      125
+    ],
+    "fixed_query": "SELECT\n  product_id,\n  SUM(quantity) AS total_qty\nFROM {{#125-shopify-order-line-facts}} AS olf\nGROUP BY product_id\nLIMIT 10",
+    "broken_query": "SELECT\n  product_id,\n  SUM(quantity AS total_qty\nFROM {{#125-shopify-order-line-facts}} AS olf\nGROUP BY product_id\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"AS\"\n  Position: 155"
+  },
+  {
+    "description": "Missing GROUP BY with model",
+    "used_tables": [],
+    "used_models": [
+      125
+    ],
+    "fixed_query": "SELECT\n  product_id,\n  SUM(quantity) AS total_qty\nFROM {{#125-shopify-order-line-facts}} AS olf\nGROUP BY product_id\nLIMIT 10",
+    "broken_query": "SELECT\n  product_id,\n  SUM(quantity) AS total_qty\nFROM {{#125-shopify-order-line-facts}} AS olf\nLIMIT 10",
+    "error_message": "ERROR: column \"olf.product_id\" must appear in the GROUP BY clause or be used in an aggregate function\n  Position: 128"
+  },
+  {
+    "description": "Wrong alias reference in WHERE clause with model",
+    "used_tables": [],
+    "used_models": [
+      135
+    ],
+    "fixed_query": "SELECT\n  rf.refund_id,\n  rf.order_id,\n  rf.refund_created_at\nFROM {{#135-shopify-refund-facts}} AS rf\nWHERE rf.order_id IS NOT NULL",
+    "broken_query": "SELECT\n  rf.refund_id,\n  rf.order_id,\n  rf.refund_created_at\nFROM {{#135-shopify-refund-facts}} AS rf\nWHERE r.order_id IS NOT NULL",
+    "error_message": "ERROR: missing FROM-clause entry for table \"r\"\n  Position: 1634"
+  },
+  {
+    "description": "Missing AS keyword in CTE with model",
+    "used_tables": [],
+    "used_models": [
+      125
+    ],
+    "fixed_query": "WITH order_totals AS (\n  SELECT\n    order_id,\n    SUM(quantity) AS total_qty\n  FROM {{#125-shopify-order-line-facts}} AS olf\n  GROUP BY order_id\n)\nSELECT * FROM order_totals\nLIMIT 10",
+    "broken_query": "WITH order_totals (\n  SELECT\n    order_id,\n    SUM(quantity) AS total_qty\n  FROM {{#125-shopify-order-line-facts}} AS olf\n  GROUP BY order_id\n)\nSELECT * FROM order_totals\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"SELECT\"\n  Position: 141"
+  }
+]

@@ -1,0 +1,702 @@
+[
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT SUM(amount) / 100.0 as total_revenue FROM stripe_data.charge WHERE paid = true AND created >= DATE_TRUNC('month', CURRENT_TIMESTAMP)",
+    "question": "How much payment revenue did we process this month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT COUNT(*) as successful_charges, SUM(amount) / 100.0 as total_amount FROM stripe_data.charge WHERE paid = true AND created >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many successful charges did we process this week?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT status, COUNT(*) as charge_count FROM stripe_data.charge GROUP BY status ORDER BY charge_count DESC",
+    "question": "What's the status breakdown of our payment charges?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT COUNT(*) as failed_charges, ROUND(COUNT(*)::numeric / (SELECT COUNT(*) FROM stripe_data.charge) * 100, 2) as failure_rate FROM stripe_data.charge WHERE paid = false",
+    "question": "What's our payment failure rate?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', created) as day, SUM(amount) / 100.0 as daily_revenue FROM stripe_data.charge WHERE paid = true AND created >= CURRENT_DATE - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "What's our daily payment revenue trend?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT ROUND(AVG(amount) / 100.0, 2) as avg_charge_amount FROM stripe_data.charge WHERE paid = true",
+    "question": "What's the average successful charge amount?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT SUM(amount_refunded) / 100.0 as total_refunded FROM stripe_data.charge WHERE refunded = true AND created >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How much have we refunded in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT currency, SUM(amount) / 100.0 as total FROM stripe_data.charge WHERE paid = true GROUP BY currency ORDER BY total DESC",
+    "question": "What currencies are we processing payments in?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT customer_id, SUM(amount) / 100.0 as total_charged FROM stripe_data.charge WHERE paid = true GROUP BY customer_id ORDER BY total_charged DESC LIMIT 10",
+    "question": "Which customers have paid us the most?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.charge"
+    ],
+    "sql": "SELECT COUNT(*) as captured_charges FROM stripe_data.charge WHERE captured = true",
+    "question": "How many charges have been captured?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as total_customers FROM stripe_data.customer",
+    "question": "How many payment customers do we have?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as new_customers FROM stripe_data.customer WHERE created >= DATE_TRUNC('month', CURRENT_TIMESTAMP)",
+    "question": "How many new payment customers were added this month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT SUM(balance) / 100.0 as total_customer_balance FROM stripe_data.customer",
+    "question": "What's the total customer balance across all accounts?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as delinquent_customers FROM stripe_data.customer WHERE delinquent = true",
+    "question": "How many payment customers have delinquent accounts?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT currency, COUNT(*) as customer_count FROM stripe_data.customer GROUP BY currency ORDER BY customer_count DESC",
+    "question": "What currencies do our customers use?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT email, balance / 100.0 as balance FROM stripe_data.customer WHERE balance != 0 ORDER BY balance DESC LIMIT 10",
+    "question": "Which customers have the highest account balances?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, COUNT(*) as new_customers FROM stripe_data.customer WHERE created >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our customer growth trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as customers_with_sources FROM stripe_data.customer WHERE default_source IS NOT NULL",
+    "question": "How many payment customers have payment methods on file?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT ROUND(AVG(balance) / 100.0, 2) as avg_balance FROM stripe_data.customer WHERE balance != 0",
+    "question": "What's the average customer balance for accounts with balances?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as customers_with_email FROM stripe_data.customer WHERE email IS NOT NULL AND email != ''",
+    "question": "How many payment customers have email addresses on record?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT SUM(amount_due) / 100.0 as total_outstanding FROM stripe_data.invoice WHERE status != 'paid'",
+    "question": "How much in unpaid payment invoices do we have?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT status, COUNT(*) as invoice_count FROM stripe_data.invoice GROUP BY status ORDER BY invoice_count DESC",
+    "question": "What's the status breakdown of our payment invoices?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT SUM(amount_paid) / 100.0 as total_collected FROM stripe_data.invoice WHERE paid = true AND created >= DATE_TRUNC('month', CURRENT_TIMESTAMP)",
+    "question": "How much did we collect from payment invoices this month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT COUNT(*) as overdue_invoices, SUM(amount_remaining) / 100.0 as overdue_amount FROM stripe_data.invoice WHERE status = 'open' AND due_date < CURRENT_TIMESTAMP",
+    "question": "How many payment invoices are overdue and what do customers owe?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT ROUND(COUNT(CASE WHEN paid = true THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as collection_rate FROM stripe_data.invoice WHERE attempted = true",
+    "question": "What's our payment invoice collection rate?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT customer_id, COUNT(*) as invoice_count, SUM(amount_due) / 100.0 as total_due FROM stripe_data.invoice WHERE status != 'paid' GROUP BY customer_id ORDER BY total_due DESC LIMIT 10",
+    "question": "Which payment customers have the most unpaid invoices?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, COUNT(*) as invoices_created FROM stripe_data.invoice WHERE created >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly payment invoice volume over the past year?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT COUNT(*) as invoices_created FROM stripe_data.invoice WHERE created >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many payment invoices were created this week?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT ROUND(AVG(amount_due) / 100.0, 2) as avg_invoice_amount FROM stripe_data.invoice",
+    "question": "What's the average payment invoice amount?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.invoice"
+    ],
+    "sql": "SELECT COUNT(*) as subscription_invoices FROM stripe_data.invoice WHERE subscription_id IS NOT NULL",
+    "question": "How many payment invoices are for subscriptions?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT status, COUNT(*) as intent_count FROM stripe_data.payment_intent GROUP BY status ORDER BY intent_count DESC",
+    "question": "What's the status breakdown of our payment intents?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT COUNT(*) as successful_payments FROM stripe_data.payment_intent WHERE status = 'succeeded' AND created >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many successful payments did we process this week?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT SUM(amount) / 100.0 as total_processed FROM stripe_data.payment_intent WHERE status = 'succeeded' AND created >= DATE_TRUNC('month', CURRENT_TIMESTAMP)",
+    "question": "How much payment volume did we process this month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT COUNT(*) as canceled_payments, SUM(amount) / 100.0 as lost_revenue FROM stripe_data.payment_intent WHERE canceled_at IS NOT NULL",
+    "question": "How many payment intents were canceled?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT cancellation_reason, COUNT(*) as count FROM stripe_data.payment_intent WHERE cancellation_reason IS NOT NULL GROUP BY cancellation_reason ORDER BY count DESC",
+    "question": "Why are payments being canceled?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', created) as day, COUNT(*) as payment_count FROM stripe_data.payment_intent WHERE status = 'succeeded' AND created >= CURRENT_DATE - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "What's our daily payment success trend?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT currency, SUM(amount) / 100.0 as total FROM stripe_data.payment_intent WHERE status = 'succeeded' GROUP BY currency ORDER BY total DESC",
+    "question": "What currencies are customers paying in?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT ROUND(AVG(amount) / 100.0, 2) as avg_payment FROM stripe_data.payment_intent WHERE status = 'succeeded'",
+    "question": "What's the average successful payment amount?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT COUNT(*) as requires_action FROM stripe_data.payment_intent WHERE status = 'requires_action'",
+    "question": "How many payments require customer action?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_intent"
+    ],
+    "sql": "SELECT customer_id, COUNT(*) as payment_count FROM stripe_data.payment_intent WHERE status = 'succeeded' GROUP BY customer_id ORDER BY payment_count DESC LIMIT 10",
+    "question": "Which customers make the most payments?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT COUNT(*) as total_payment_methods FROM stripe_data.payment_method",
+    "question": "How many payment methods do we have on file?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM stripe_data.payment_method GROUP BY type ORDER BY count DESC",
+    "question": "What types of payment methods do our customers use?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT card_brand, COUNT(*) as count FROM stripe_data.payment_method WHERE type = 'card' GROUP BY card_brand ORDER BY count DESC",
+    "question": "Which credit card brands are most popular?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT COUNT(*) as new_methods FROM stripe_data.payment_method WHERE created >= DATE_TRUNC('month', CURRENT_TIMESTAMP)",
+    "question": "How many new payment methods were added this month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT COUNT(*) as expiring_soon FROM stripe_data.payment_method WHERE type = 'card' AND card_exp_year = EXTRACT(YEAR FROM CURRENT_DATE) AND card_exp_month <= EXTRACT(MONTH FROM CURRENT_DATE) + 1",
+    "question": "How many cards are expiring soon?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT customer_id, COUNT(*) as method_count FROM stripe_data.payment_method GROUP BY customer_id ORDER BY method_count DESC LIMIT 10",
+    "question": "Which customers have the most payment methods on file?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT ROUND(COUNT(CASE WHEN type = 'card' THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as card_percentage FROM stripe_data.payment_method",
+    "question": "What percentage of payment methods are cards?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, COUNT(*) as new_methods FROM stripe_data.payment_method WHERE created >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our payment method growth over the past year?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT COUNT(DISTINCT customer_id) as customers_with_methods FROM stripe_data.payment_method",
+    "question": "How many payment customers have saved payment methods?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.payment_method"
+    ],
+    "sql": "SELECT card_exp_year, card_exp_month, COUNT(*) as expiring_cards FROM stripe_data.payment_method WHERE type = 'card' AND card_exp_year >= EXTRACT(YEAR FROM CURRENT_DATE) GROUP BY card_exp_year, card_exp_month ORDER BY card_exp_year, card_exp_month LIMIT 12",
+    "question": "When are our customers' cards expiring?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT COUNT(*) as total_plans, COUNT(CASE WHEN active = true THEN 1 END) as active_plans FROM stripe_data.plan",
+    "question": "How many subscription plans do we offer?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT interval, COUNT(*) as plan_count FROM stripe_data.plan WHERE active = true GROUP BY interval ORDER BY plan_count DESC",
+    "question": "What billing intervals do our plans use?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT nickname, amount / 100.0 as price, interval FROM stripe_data.plan WHERE active = true ORDER BY amount DESC",
+    "question": "What are our subscription plan prices?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT currency, COUNT(*) as plan_count FROM stripe_data.plan WHERE active = true GROUP BY currency",
+    "question": "What currencies are our plans priced in?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT ROUND(AVG(amount) / 100.0, 2) as avg_plan_price FROM stripe_data.plan WHERE active = true",
+    "question": "What's the average subscription plan price?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT interval, ROUND(AVG(amount) / 100.0, 2) as avg_price FROM stripe_data.plan WHERE active = true GROUP BY interval",
+    "question": "What's the average price by billing interval?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT COUNT(*) as inactive_plans FROM stripe_data.plan WHERE active = false",
+    "question": "How many inactive subscription plans do we have?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT nickname, amount / 100.0 as price FROM stripe_data.plan WHERE active = true AND interval = 'month' ORDER BY amount",
+    "question": "What are our monthly subscription plan options?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT COUNT(DISTINCT product_id) as unique_products FROM stripe_data.plan WHERE active = true",
+    "question": "How many products have subscription plans?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.plan"
+    ],
+    "sql": "SELECT COUNT(*) as annual_plans FROM stripe_data.plan WHERE active = true AND interval = 'year'",
+    "question": "How many annual subscription plans do we offer?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as total_products, COUNT(CASE WHEN active = true THEN 1 END) as active_products FROM stripe_data.product",
+    "question": "How many products do we have?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT name, description FROM stripe_data.product WHERE active = true ORDER BY created DESC LIMIT 10",
+    "question": "What are our most recently added products?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as new_products FROM stripe_data.product WHERE created >= DATE_TRUNC('quarter', CURRENT_TIMESTAMP)",
+    "question": "How many new products were added this quarter?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as inactive_products FROM stripe_data.product WHERE active = false",
+    "question": "How many inactive products do we have?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, COUNT(*) as new_products FROM stripe_data.product WHERE created >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our product catalog growth over the past year?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as recently_updated FROM stripe_data.product WHERE updated >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many products were updated in the last month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT name FROM stripe_data.product WHERE active = true ORDER BY name",
+    "question": "List all our active products alphabetically"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as products_with_description FROM stripe_data.product WHERE active = true AND description IS NOT NULL AND description != ''",
+    "question": "How many active products have descriptions?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (updated - created)) / 86400), 1) as avg_days_since_creation FROM stripe_data.product WHERE updated != created",
+    "question": "How long after creation do we typically update products?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.product"
+    ],
+    "sql": "SELECT name, created FROM stripe_data.product WHERE active = true ORDER BY created LIMIT 5",
+    "question": "What are our oldest active products?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT SUM(amount) / 100.0 as total_refunded FROM stripe_data.refund WHERE status = 'succeeded' AND created >= DATE_TRUNC('month', CURRENT_TIMESTAMP)",
+    "question": "How much have we refunded this month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT status, COUNT(*) as refund_count FROM stripe_data.refund GROUP BY status ORDER BY refund_count DESC",
+    "question": "What's the status breakdown of our refunds?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT reason, COUNT(*) as count FROM stripe_data.refund WHERE reason IS NOT NULL GROUP BY reason ORDER BY count DESC",
+    "question": "Why are customers requesting refunds?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT COUNT(*) as refunds_issued FROM stripe_data.refund WHERE created >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many refunds were issued this week?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created) as week, COUNT(*) as refund_count FROM stripe_data.refund WHERE created >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly refund trend?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT ROUND(AVG(amount) / 100.0, 2) as avg_refund_amount FROM stripe_data.refund WHERE status = 'succeeded'",
+    "question": "What's the average refund amount?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT charge_id, amount / 100.0 as refund_amount FROM stripe_data.refund WHERE status = 'succeeded' ORDER BY amount DESC LIMIT 10",
+    "question": "What are our largest refunds?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT currency, SUM(amount) / 100.0 as total_refunded FROM stripe_data.refund WHERE status = 'succeeded' GROUP BY currency ORDER BY total_refunded DESC",
+    "question": "How much have we refunded in each currency?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, SUM(amount) / 100.0 as monthly_refunds FROM stripe_data.refund WHERE status = 'succeeded' AND created >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly refund trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.refund"
+    ],
+    "sql": "SELECT COUNT(*) as total_refunds FROM stripe_data.refund",
+    "question": "How many refund requests have we had in total?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT COUNT(*) as active_subscriptions FROM stripe_data.subscription WHERE status = 'active'",
+    "question": "How many active subscriptions do we have?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT status, COUNT(*) as sub_count FROM stripe_data.subscription GROUP BY status ORDER BY sub_count DESC",
+    "question": "What's the status breakdown of our subscriptions?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT COUNT(*) as new_subscriptions FROM stripe_data.subscription WHERE created >= DATE_TRUNC('month', CURRENT_TIMESTAMP)",
+    "question": "How many new subscriptions did we get this month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT COUNT(*) as canceled_subs FROM stripe_data.subscription WHERE canceled_at >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many subscriptions were canceled in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT COUNT(*) as churned_subscriptions FROM stripe_data.subscription WHERE status = 'canceled' AND ended_at >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many subscriptions churned in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT COUNT(*) as trialing_subs FROM stripe_data.subscription WHERE status = 'trialing'",
+    "question": "How many subscriptions are currently in trial?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT COUNT(*) as cancel_at_end FROM stripe_data.subscription WHERE cancel_at_period_end = true AND status = 'active'",
+    "question": "How many subscriptions are set to cancel at period end?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, COUNT(*) as new_subs FROM stripe_data.subscription WHERE created >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly subscription growth trend?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT customer_id, COUNT(*) as sub_count FROM stripe_data.subscription WHERE status = 'active' GROUP BY customer_id ORDER BY sub_count DESC LIMIT 10",
+    "question": "Which customers have the most active subscriptions?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created)) / 86400), 0) as avg_subscription_age_days FROM stripe_data.subscription WHERE status = 'active'",
+    "question": "How long have our active subscriptions been running on average?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT COUNT(*) as total_items FROM stripe_data.subscription_item",
+    "question": "How many subscription line items do we have?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT plan_id, COUNT(*) as subscriber_count FROM stripe_data.subscription_item GROUP BY plan_id ORDER BY subscriber_count DESC LIMIT 10",
+    "question": "Which subscription plans have the most subscribers?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT plan_id, SUM(quantity) as total_quantity FROM stripe_data.subscription_item GROUP BY plan_id ORDER BY total_quantity DESC LIMIT 10",
+    "question": "Which plans have the highest total quantity?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT ROUND(AVG(quantity), 2) as avg_quantity FROM stripe_data.subscription_item WHERE quantity > 0",
+    "question": "What's the average quantity per subscription item?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT COUNT(DISTINCT subscription_id) as unique_subscriptions FROM stripe_data.subscription_item",
+    "question": "How many subscriptions have items?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT subscription_id, COUNT(*) as item_count FROM stripe_data.subscription_item GROUP BY subscription_id ORDER BY item_count DESC LIMIT 10",
+    "question": "Which subscriptions have the most line items?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT COUNT(*) as multi_item_subs FROM stripe_data.subscription_item GROUP BY subscription_id HAVING COUNT(*) > 1",
+    "question": "How many subscriptions have multiple items?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT COUNT(*) as new_items FROM stripe_data.subscription_item WHERE created >= DATE_TRUNC('month', CURRENT_TIMESTAMP)",
+    "question": "How many subscription items were added this month?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT COUNT(DISTINCT plan_id) as unique_plans FROM stripe_data.subscription_item",
+    "question": "How many different plans are being subscribed to?"
+  },
+  {
+    "data_sources": [
+      "stripe_data.subscription_item"
+    ],
+    "sql": "SELECT SUM(quantity) as total_quantity FROM stripe_data.subscription_item",
+    "question": "What's the total quantity across all subscription items?"
+  }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "description": "Subquery in aggregate SELECT references ungrouped column with multiple CTEs and nested subqueries",
+    "comments": ["https://metaboat.slack.com/archives/C07SJT1P0ET/p1763743762112309"],
+    "used_tables": [
+      "stripe_data.charge",
+      "stripe_data.customer"
+    ],
+    "fixed_query": "WITH\n  paid_charges AS (\n    SELECT\n      customer_id,\n      created,\n      amount\n    FROM stripe_data.charge\n    WHERE status = 'succeeded'\n  ),\n  failed_charges AS (\n    SELECT\n      customer_id,\n      created\n    FROM stripe_data.charge\n    WHERE status = 'failed'\n  ),\n  weekly_aggregates AS (\n    SELECT\n      DATE_TRUNC('week', pc.created) AS week,\n      pc.customer_id,\n      pc.amount\n    FROM paid_charges pc\n  )\nSELECT\n  week,\n  SUM(\n    CASE\n      WHEN customer_id IS NOT NULL THEN amount\n      ELSE 0\n    END\n  ) AS paid_amount,\n  COUNT(\n    CASE\n      WHEN amount > 1000 THEN 1\n      ELSE NULL\n    END\n  ) AS high_value_count,\n  (\n    SELECT SUM(amount)\n    FROM paid_charges pc2\n    WHERE customer_id NOT IN (\n      SELECT customer_id\n      FROM failed_charges\n    )\n    AND DATE_TRUNC('week', pc2.created) = week\n  ) AS clean_customer_revenue,\n  (\n    SELECT COUNT(*)\n    FROM stripe_data.customer cu\n    WHERE DATE_TRUNC('week', cu.created) = week\n  ) AS new_customers\nFROM weekly_aggregates\nGROUP BY week\nORDER BY week\nLIMIT 10",
+    "broken_query": "WITH\n  paid_charges AS (\n    SELECT\n      customer_id,\n      created,\n      amount\n    FROM stripe_data.charge\n    WHERE status = 'succeeded'\n  ),\n  failed_charges AS (\n    SELECT\n      customer_id,\n      created\n    FROM stripe_data.charge\n    WHERE status = 'failed'\n  )\nSELECT\n  DATE_TRUNC('week', pc.created) AS week,\n  SUM(\n    CASE\n      WHEN pc.customer_id IS NOT NULL THEN pc.amount\n      ELSE 0\n    END\n  ) AS paid_amount,\n  COUNT(\n    CASE\n      WHEN pc.amount > 1000 THEN 1\n      ELSE NULL\n    END\n  ) AS high_value_count,\n  (\n    SELECT SUM(amount)\n    FROM paid_charges pc2\n    WHERE customer_id NOT IN (\n      SELECT customer_id\n      FROM failed_charges\n    )\n    AND DATE_TRUNC('week', pc2.created) = DATE_TRUNC('week', pc.created)\n  ) AS clean_customer_revenue,\n  (\n    SELECT COUNT(*)\n    FROM stripe_data.customer cu\n    WHERE DATE_TRUNC('week', cu.created) = DATE_TRUNC('week', pc.created)\n  ) AS new_customers\nFROM paid_charges pc\nGROUP BY DATE_TRUNC('week', pc.created)\nORDER BY week\nLIMIT 10",
+    "error_message": "ERROR: subquery uses ungrouped column \"pc.created\" from outer query\n  Position: 855"
+  }
+]

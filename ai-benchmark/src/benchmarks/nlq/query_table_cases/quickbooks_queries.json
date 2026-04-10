@@ -1,0 +1,702 @@
+[
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT SUM(current_balance) as total_balance FROM quickbooks_data.account WHERE active = true AND account_sub_type = 'Cash'",
+    "question": "What's our total cash account balance?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT account_type, COUNT(*) as account_count, SUM(current_balance) as total_balance FROM quickbooks_data.account WHERE active = true GROUP BY account_type ORDER BY total_balance DESC",
+    "question": "Break down our accounting account balances by type"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT name, current_balance FROM quickbooks_data.account WHERE active = true AND account_sub_type = 'AccountsReceivable' ORDER BY current_balance DESC",
+    "question": "What's our accounts receivable balance by account?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as active_accounts, COUNT(CASE WHEN active = false THEN 1 END) as inactive_accounts FROM quickbooks_data.account",
+    "question": "How many active and inactive accounts do we have in our chart of accounts?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT classification, SUM(current_balance) as total FROM quickbooks_data.account WHERE active = true GROUP BY classification ORDER BY total DESC",
+    "question": "What's our balance breakdown by accounting account classification?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT name, current_balance FROM quickbooks_data.account WHERE active = true AND account_sub_type = 'AccountsPayable' ORDER BY current_balance DESC",
+    "question": "What do we owe across our accounts payable balances?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT currency_ref_value, COUNT(*) as account_count FROM quickbooks_data.account WHERE active = true GROUP BY currency_ref_value",
+    "question": "What currencies are we tracking in our accounting?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT account_sub_type, COUNT(*) as count FROM quickbooks_data.account WHERE active = true AND account_sub_type = 'Income' GROUP BY account_sub_type",
+    "question": "What types of income accounts do we have?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as new_accounts FROM quickbooks_data.account WHERE created_time >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many accounting accounts were added in the last quarter?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.account"
+    ],
+    "sql": "SELECT name, current_balance FROM quickbooks_data.account WHERE active = true AND classification = 'Liability' ORDER BY current_balance DESC",
+    "question": "Which liability accounts carry the highest balances?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT SUM(balance) as total_unpaid FROM quickbooks_data.bill WHERE balance > 0",
+    "question": "How much do we owe in unpaid bills?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT COUNT(*) as overdue_bills, SUM(balance) as overdue_amount FROM quickbooks_data.bill WHERE due_date < CURRENT_DATE AND balance > 0",
+    "question": "How many bills are overdue and what do we owe?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', txn_date) as month, SUM(total_amt) as total_bills FROM quickbooks_data.bill WHERE txn_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly bill trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT vendor_ref_value, COUNT(*) as bill_count, SUM(balance) as amount_owed FROM quickbooks_data.bill WHERE balance > 0 GROUP BY vendor_ref_value ORDER BY amount_owed DESC LIMIT 10",
+    "question": "Which vendors do we owe the most money to?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT COUNT(*) as bills_due_soon, SUM(balance) as amount_due FROM quickbooks_data.bill WHERE due_date >= CURRENT_DATE AND due_date < CURRENT_DATE + INTERVAL '7 days' AND balance > 0",
+    "question": "How many bills are due in the next week?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT ROUND(AVG(due_date - txn_date), 0) as avg_payment_terms_days FROM quickbooks_data.bill WHERE due_date IS NOT NULL",
+    "question": "What are our average payment terms with vendors?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT SUM(total_amt) as total_bills_this_month FROM quickbooks_data.bill WHERE txn_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much in bills did we receive this month?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT COUNT(*) as paid_bills, SUM(total_amt) as total_paid FROM quickbooks_data.bill WHERE balance = 0",
+    "question": "How many bills have we paid in full?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT ROUND(SUM(balance)::numeric / SUM(total_amt) * 100, 2) as unpaid_percentage FROM quickbooks_data.bill WHERE total_amt > 0",
+    "question": "What percentage of our bills remain unpaid?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.bill"
+    ],
+    "sql": "SELECT COUNT(*) as bills_received FROM quickbooks_data.bill WHERE txn_date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many bills did we receive in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as total_customers, COUNT(CASE WHEN active = true THEN 1 END) as active_customers FROM quickbooks_data.customer",
+    "question": "How many customers do we have in our accounting records?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT SUM(balance) as total_receivables FROM quickbooks_data.customer WHERE active = true AND balance > 0",
+    "question": "How much do accounting customers owe us in total?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT display_name, balance FROM quickbooks_data.customer WHERE active = true AND balance > 0 ORDER BY balance DESC LIMIT 10",
+    "question": "Which accounting customers owe us the most money?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as new_customers FROM quickbooks_data.customer WHERE created_time >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many new accounting customers were added this month?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as customers_with_balance, ROUND(AVG(balance), 2) as avg_balance FROM quickbooks_data.customer WHERE active = true AND balance > 0",
+    "question": "How many accounting customers have outstanding balances and what's the average?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_time) as month, COUNT(*) as new_customers FROM quickbooks_data.customer WHERE created_time >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our accounting customer acquisition trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT currency_ref_value, COUNT(*) as customer_count FROM quickbooks_data.customer WHERE active = true GROUP BY currency_ref_value",
+    "question": "What currencies do our accounting customers use?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as customers_with_jobs, SUM(balance_with_jobs - balance) as jobs_balance FROM quickbooks_data.customer WHERE active = true AND balance_with_jobs != balance",
+    "question": "How many accounting customers have sub-jobs and what's the total balance?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT ROUND(COUNT(CASE WHEN balance > 0 THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as percentage_with_balance FROM quickbooks_data.customer WHERE active = true",
+    "question": "What percentage of our accounting customers have outstanding balances?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as inactive_customers FROM quickbooks_data.customer WHERE active = false",
+    "question": "How many inactive accounting customers do we have?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT SUM(balance) as total_outstanding FROM quickbooks_data.invoice WHERE balance > 0",
+    "question": "How much in unpaid accounting invoices do we have?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT COUNT(*) as overdue_invoices, SUM(balance) as overdue_amount FROM quickbooks_data.invoice WHERE due_date < CURRENT_DATE AND balance > 0",
+    "question": "How many accounting invoices are past due?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', txn_date) as month, SUM(total_amt) as total_invoiced FROM quickbooks_data.invoice WHERE txn_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly invoicing trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT ROUND((SUM(total_amt) - SUM(balance))::numeric / NULLIF(SUM(total_amt), 0) * 100, 2) as collected_percentage FROM quickbooks_data.invoice WHERE total_amt > 0",
+    "question": "What percentage of our invoiced dollar amounts have been collected?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT email_status, COUNT(*) as count FROM quickbooks_data.invoice GROUP BY email_status",
+    "question": "What's the status of our invoice emails?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT customer_ref_value, COUNT(*) as invoice_count, SUM(balance) as amount_owed FROM quickbooks_data.invoice WHERE balance > 0 GROUP BY customer_ref_value ORDER BY amount_owed DESC LIMIT 10",
+    "question": "Which customers have the most unpaid accounting invoices?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT SUM(total_amt) as revenue_this_month FROM quickbooks_data.invoice WHERE txn_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much did we invoice this month?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT ROUND(AVG(due_date - txn_date), 0) as avg_payment_terms FROM quickbooks_data.invoice WHERE due_date IS NOT NULL",
+    "question": "What are our average payment terms on invoices?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT COUNT(*) as aged_receivables, SUM(balance) as aged_amount FROM quickbooks_data.invoice WHERE due_date < CURRENT_DATE - INTERVAL '60 days' AND balance > 0",
+    "question": "How many accounting invoices are over 60 days past due?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice"
+    ],
+    "sql": "SELECT COUNT(*) as invoices_sent FROM quickbooks_data.invoice WHERE txn_date >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many accounting invoices did we send this week?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT sales_item_item_ref_value, SUM(amount) as total_revenue FROM quickbooks_data.invoice_line WHERE sales_item_item_ref_value IS NOT NULL GROUP BY sales_item_item_ref_value ORDER BY total_revenue DESC LIMIT 10",
+    "question": "Which products or services generate the most revenue?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT sales_item_item_ref_value, SUM(sales_item_quantity) as total_quantity FROM quickbooks_data.invoice_line WHERE sales_item_item_ref_value IS NOT NULL GROUP BY sales_item_item_ref_value ORDER BY total_quantity DESC LIMIT 10",
+    "question": "What are our most frequently invoiced items in accounting?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT detail_type, COUNT(*) as line_count, SUM(amount) as total FROM quickbooks_data.invoice_line GROUP BY detail_type ORDER BY total DESC",
+    "question": "What types of line items are we invoicing?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT ROUND(AVG(sales_item_unit_price), 2) as avg_unit_price FROM quickbooks_data.invoice_line WHERE sales_item_unit_price IS NOT NULL",
+    "question": "What's the average unit price across all accounting invoiced items?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT COUNT(*) as invoices_with_multiple_lines FROM (SELECT invoice_id FROM quickbooks_data.invoice_line GROUP BY invoice_id HAVING COUNT(*) > 1) multi",
+    "question": "How many accounting invoices have multiple line items?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT sales_item_item_ref_value, ROUND(AVG(sales_item_unit_price), 2) as avg_price FROM quickbooks_data.invoice_line WHERE sales_item_item_ref_value IS NOT NULL AND sales_item_unit_price IS NOT NULL GROUP BY sales_item_item_ref_value ORDER BY avg_price DESC LIMIT 10",
+    "question": "What are our highest-priced items?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT COUNT(*) as total_line_items, ROUND(AVG(amount), 2) as avg_line_amount FROM quickbooks_data.invoice_line",
+    "question": "How many accounting invoice line items do we have and what's the average line amount?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT sales_item_item_ref_value, ROUND(AVG(sales_item_quantity), 2) as avg_quantity FROM quickbooks_data.invoice_line WHERE sales_item_item_ref_value IS NOT NULL GROUP BY sales_item_item_ref_value ORDER BY avg_quantity DESC LIMIT 10",
+    "question": "What are typical quantities for our most frequently invoiced accounting items?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT SUM(amount) as total_revenue FROM quickbooks_data.invoice_line",
+    "question": "What's our total invoiced revenue across all accounting line items?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.invoice_line"
+    ],
+    "sql": "SELECT COUNT(DISTINCT sales_item_item_ref_value) as unique_items FROM quickbooks_data.invoice_line WHERE sales_item_item_ref_value IS NOT NULL",
+    "question": "How many different products or services do we invoice for?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT COUNT(*) as total_items, COUNT(CASE WHEN active = true THEN 1 END) as active_items FROM quickbooks_data.item",
+    "question": "How many products or services do we have in our catalog?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM quickbooks_data.item WHERE active = true GROUP BY type ORDER BY count DESC",
+    "question": "What types of items do we sell?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT name, unit_price FROM quickbooks_data.item WHERE active = true AND type = 'Service' ORDER BY unit_price DESC LIMIT 10",
+    "question": "What are our most expensive services?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT ROUND(AVG(unit_price), 2) as avg_price, MIN(unit_price) as min_price, MAX(unit_price) as max_price FROM quickbooks_data.item WHERE active = true AND unit_price IS NOT NULL",
+    "question": "What's our pricing range across all items?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT COUNT(*) as new_items FROM quickbooks_data.item WHERE created_time >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many new items were added in the last quarter?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT name, description FROM quickbooks_data.item WHERE active = true AND type = 'Inventory' ORDER BY unit_price DESC LIMIT 10",
+    "question": "What inventory items do we stock?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT COUNT(*) as inactive_items FROM quickbooks_data.item WHERE active = false",
+    "question": "How many inactive items do we have?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT income_account_ref_value, COUNT(*) as item_count FROM quickbooks_data.item WHERE active = true AND income_account_ref_value IS NOT NULL GROUP BY income_account_ref_value ORDER BY item_count DESC",
+    "question": "Which income accounts do our items map to?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT type, ROUND(AVG(unit_price), 2) as avg_price FROM quickbooks_data.item WHERE active = true AND unit_price IS NOT NULL GROUP BY type",
+    "question": "What's the average price by item type?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.item"
+    ],
+    "sql": "SELECT COUNT(*) as recent_updates FROM quickbooks_data.item WHERE last_updated_time >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many items were updated in the last month?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT COUNT(*) as total_entries FROM quickbooks_data.journal_entry",
+    "question": "How many journal entries have been recorded?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', txn_date) as month, COUNT(*) as entry_count FROM quickbooks_data.journal_entry WHERE txn_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly journal entry volume over the past year?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT SUM(total_amt) as total_amount FROM quickbooks_data.journal_entry WHERE txn_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "What's the total value of journal entries this month?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT COUNT(*) as entries_this_week FROM quickbooks_data.journal_entry WHERE txn_date >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many journal entries were made this week?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT ROUND(AVG(total_amt), 2) as avg_entry_amount FROM quickbooks_data.journal_entry WHERE total_amt > 0",
+    "question": "What's the average journal entry amount?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT DATE_TRUNC('quarter', txn_date) as quarter, SUM(total_amt) as total FROM quickbooks_data.journal_entry WHERE txn_date >= CURRENT_DATE - INTERVAL '2 years' GROUP BY quarter ORDER BY quarter",
+    "question": "What's our quarterly journal entry trend?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT doc_number, total_amt FROM quickbooks_data.journal_entry WHERE total_amt > 0 ORDER BY total_amt DESC LIMIT 10",
+    "question": "What are the largest journal entries by amount?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT COUNT(*) as recent_entries FROM quickbooks_data.journal_entry WHERE created_time >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many journal entries were created in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT currency_ref_value, COUNT(*) as entry_count FROM quickbooks_data.journal_entry GROUP BY currency_ref_value",
+    "question": "What currencies are used in our journal entries?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.journal_entry"
+    ],
+    "sql": "SELECT EXTRACT(YEAR FROM txn_date) as year, COUNT(*) as entries FROM quickbooks_data.journal_entry GROUP BY year ORDER BY year DESC",
+    "question": "What's our annual journal entry volume?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT SUM(total_amt) as total_received FROM quickbooks_data.payment WHERE txn_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much in payments have we received this month?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', txn_date) as week, SUM(total_amt) as weekly_payments FROM quickbooks_data.payment WHERE txn_date >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly payment collection trend?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT payment_method_ref_value, COUNT(*) as payment_count, SUM(total_amt) as total FROM quickbooks_data.payment WHERE payment_method_ref_value IS NOT NULL GROUP BY payment_method_ref_value ORDER BY total DESC",
+    "question": "Which payment methods do our accounting customers use most?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT COUNT(*) as payments_with_unapplied, SUM(unapplied_amt) as total_unapplied FROM quickbooks_data.payment WHERE unapplied_amt > 0",
+    "question": "How much in unapplied payments do we have?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT customer_ref_value, COUNT(*) as payment_count, SUM(total_amt) as total_paid FROM quickbooks_data.payment GROUP BY customer_ref_value ORDER BY total_paid DESC LIMIT 10",
+    "question": "Which accounting customers have paid us the most?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', txn_date) as month, SUM(total_amt) as monthly_payments FROM quickbooks_data.payment WHERE txn_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly payment collection over the past year?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT ROUND(AVG(total_amt), 2) as avg_payment FROM quickbooks_data.payment WHERE total_amt > 0",
+    "question": "What's the average payment amount we receive?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT COUNT(*) as payment_count FROM quickbooks_data.payment WHERE txn_date >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many payments did we receive this week?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT currency_ref_value, SUM(total_amt) as total FROM quickbooks_data.payment GROUP BY currency_ref_value",
+    "question": "What currencies are we receiving payments in?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.payment"
+    ],
+    "sql": "SELECT COUNT(*) as total_payments, SUM(total_amt) as total_collected FROM quickbooks_data.payment",
+    "question": "How many payments have we recorded in total?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT SUM(total_amt) as total_purchases FROM quickbooks_data.purchase WHERE txn_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much have we spent on purchases this month?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT payment_type, COUNT(*) as count, SUM(total_amt) as total FROM quickbooks_data.purchase GROUP BY payment_type ORDER BY total DESC",
+    "question": "How are we paying for purchases?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', txn_date) as month, SUM(total_amt) as monthly_purchases FROM quickbooks_data.purchase WHERE txn_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly purchasing trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT entity_ref_value, COUNT(*) as purchase_count, SUM(total_amt) as total_spent FROM quickbooks_data.purchase WHERE entity_ref_value IS NOT NULL GROUP BY entity_ref_value ORDER BY total_spent DESC LIMIT 10",
+    "question": "Which vendors do we purchase from most?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT COUNT(*) as purchase_count FROM quickbooks_data.purchase WHERE txn_date >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many purchases were made this week?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT ROUND(AVG(total_amt), 2) as avg_purchase FROM quickbooks_data.purchase WHERE total_amt > 0",
+    "question": "What's our average purchase amount?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT account_ref_value, SUM(total_amt) as total FROM quickbooks_data.purchase WHERE account_ref_value IS NOT NULL GROUP BY account_ref_value ORDER BY total DESC LIMIT 10",
+    "question": "Which accounts do we charge purchases to?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', txn_date) as week, SUM(total_amt) as weekly_purchases FROM quickbooks_data.purchase WHERE txn_date >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly purchasing pattern?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT currency_ref_value, SUM(total_amt) as total FROM quickbooks_data.purchase GROUP BY currency_ref_value",
+    "question": "What currencies are we making purchases in?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.purchase"
+    ],
+    "sql": "SELECT COUNT(*) as total_purchases FROM quickbooks_data.purchase",
+    "question": "How many purchase transactions do we have recorded?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT COUNT(*) as total_vendors, COUNT(CASE WHEN active = true THEN 1 END) as active_vendors FROM quickbooks_data.vendor",
+    "question": "How many vendors do we work with?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT display_name, balance FROM quickbooks_data.vendor WHERE active = true AND balance > 0 ORDER BY balance DESC LIMIT 10",
+    "question": "Which vendors do we owe money to?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT SUM(balance) as total_payables FROM quickbooks_data.vendor WHERE active = true AND balance > 0",
+    "question": "What's our total accounts payable to vendors?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT COUNT(*) as new_vendors FROM quickbooks_data.vendor WHERE created_time >= DATE_TRUNC('quarter', CURRENT_DATE)",
+    "question": "How many new vendors did we add this quarter?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT COUNT(*) as vendors_with_balance, ROUND(AVG(balance), 2) as avg_balance FROM quickbooks_data.vendor WHERE active = true AND balance > 0",
+    "question": "How many vendors are we currently paying and what's the average balance?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT currency_ref_value, COUNT(*) as vendor_count FROM quickbooks_data.vendor WHERE active = true GROUP BY currency_ref_value",
+    "question": "What currencies do we use with our vendors?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT COUNT(*) as inactive_vendors FROM quickbooks_data.vendor WHERE active = false",
+    "question": "How many inactive vendors do we have on record?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_time) as month, COUNT(*) as new_vendors FROM quickbooks_data.vendor WHERE created_time >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our vendor onboarding trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT ROUND(COUNT(CASE WHEN balance > 0 THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as percentage_with_balance FROM quickbooks_data.vendor WHERE active = true",
+    "question": "What percentage of our vendors have outstanding balances?"
+  },
+  {
+    "data_sources": [
+      "quickbooks_data.vendor"
+    ],
+    "sql": "SELECT COUNT(*) as recent_updates FROM quickbooks_data.vendor WHERE last_updated_time >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many vendor records were updated in the last month?"
+  }
+]

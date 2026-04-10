@@ -1,0 +1,65 @@
+[
+  {
+    "description": "Attempt to use aggregated column in WHERE clause instead of HAVING",
+    "used_tables": [
+      "customerio_data.customer"
+    ],
+    "fixed_query": "SELECT created_at, COUNT(*)\nFROM customerio_data.customer\nGROUP BY created_at\nHAVING COUNT(*) > 5\nLIMIT 10",
+    "broken_query": "SELECT created_at, COUNT(*)\nFROM customerio_data.customer\nWHERE COUNT(*) > 5\nGROUP BY created_at\nLIMIT 10",
+    "error_message": "ERROR: aggregate functions are not allowed in WHERE\n  Position: 183"
+  },
+  {
+    "description": "Missing close parenthesis in aggregation function call",
+    "used_tables": [
+      "google_adwords_data.account"
+    ],
+    "fixed_query": "SELECT currency_code, MIN(id)\nFROM google_adwords_data.account\nGROUP BY currency_code\nLIMIT 5",
+    "broken_query": "SELECT currency_code, MIN(id\nFROM google_adwords_data.account\nGROUP BY currency_code\nLIMIT 5",
+    "error_message": "ERROR: syntax error at or near \"FROM\"\n  Position: 148"
+  },
+  {
+    "description": "Missing comma in SELECT list with aggregation",
+    "used_tables": [
+      "lever_data.application"
+    ],
+    "fixed_query": "SELECT type, COUNT(*)\nFROM lever_data.application\nGROUP BY type\nLIMIT 10",
+    "broken_query": "SELECT type COUNT(*)\nFROM lever_data.application\nGROUP BY type\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"(\"\n  Position: 136"
+  },
+  {
+    "description": "Typo in aggregation function: COUT instead of COUNT",
+    "used_tables": [
+      "linkedin_ads_data.campaign"
+    ],
+    "fixed_query": "SELECT status, COUNT(*)\nFROM linkedin_ads_data.campaign\nGROUP BY status\nLIMIT 10",
+    "broken_query": "SELECT status, COUT(*)\nFROM linkedin_ads_data.campaign\nGROUP BY status\nLIMIT 10",
+    "error_message": "ERROR: function cout() does not exist\n  Hint: No function matches the given name and argument types. You might need to add explicit type casts.\n  Position: 134"
+  },
+  {
+    "description": "Invalid aggregation function with no arguments",
+    "used_tables": [
+      "quickbooks_data.customer"
+    ],
+    "fixed_query": "SELECT display_name, SUM(balance)\nFROM quickbooks_data.customer\nGROUP BY display_name\nHAVING SUM(balance) > 0\nLIMIT 10",
+    "broken_query": "SELECT display_name, SUM()\nFROM quickbooks_data.customer\nGROUP BY display_name\nHAVING SUM(balance) > 0\nLIMIT 10",
+    "error_message": "ERROR: function sum() does not exist\n  Hint: No function matches the given name and argument types. You might need to add explicit type casts.\n  Position: 140"
+  },
+  {
+    "description": "Missing GROUP BY clause when using aggregation",
+    "used_tables": [
+      "quickbooks_data.customer"
+    ],
+    "fixed_query": "SELECT display_name, SUM(balance)\nFROM quickbooks_data.customer\nGROUP BY display_name",
+    "broken_query": "SELECT display_name, SUM(balance)\nFROM quickbooks_data.customer",
+    "error_message": "ERROR: column \"customer.display_name\" must appear in the GROUP BY clause or be used in an aggregate function\n  Position: 126"
+  },
+  {
+    "description": "Invalid HAVING clause without GROUP BY",
+    "used_tables": [
+      "shopify_data.order"
+    ],
+    "fixed_query": "SELECT currency, SUM(total_price)\nFROM shopify_data.order\nGROUP BY currency\nHAVING SUM(total_price) > 1000\nLIMIT 5",
+    "broken_query": "SELECT currency, SUM(total_price)\nFROM shopify_data.order\nHAVING SUM(total_price) > 1000\nLIMIT 5",
+    "error_message": "ERROR: column \"order.currency\" must appear in the GROUP BY clause or be used in an aggregate function\n  Position: 126"
+  }
+]

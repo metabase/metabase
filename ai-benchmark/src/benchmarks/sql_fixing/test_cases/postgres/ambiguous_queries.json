@@ -1,0 +1,82 @@
+[
+  {
+    "description": "Invalid string concatenation operator",
+    "comment": "Unclear what to replace `id + name` with: `id, name` or `id::text || name` etc",
+    "used_tables": [
+      "linkedin_ads_data.account"
+    ],
+    "fixed_query": "SELECT id, name FROM linkedin_ads_data.account WHERE id = 1 and name = 'Bob'",
+    "broken_query": "SELECT id + name FROM linkedin_ads_data.account WHERE id = 1 and name = 'Bob'",
+    "error_message": "ERROR: operator does not exist: bigint + character varying\n  Hint: No operator matches the given name and argument types. You might need to add explicit type casts.\n  Position: 129"
+  },
+  {
+    "description": "Invalid DISTINCT usage: missing column list",
+    "comment": "Unclear which columns to select: DISTINCT <what?>",
+    "used_tables": [
+      "quickbooks_data.item"
+    ],
+    "fixed_query": "SELECT DISTINCT * FROM quickbooks_data.item",
+    "broken_query": "SELECT DISTINCT FROM quickbooks_data.item",
+    "error_message": "ERROR: syntax error at or near \"FROM\"\n  Position: 135"
+  },
+  {
+    "description": "Invalid DISTINCT usage: missing column list",
+    "comment": "Unclear whether to `SELECT DISTINCT name` or `SELECT DISTINCT *`",
+    "used_tables": [
+      "quickbooks_data.item"
+    ],
+    "fixed_query": "SELECT DISTINCT name FROM quickbooks_data.item WHERE name IS NOT NULL",
+    "broken_query": "SELECT DISTINCT FROM quickbooks_data.item WHERE name IS NOT NULL",
+    "error_message": "ERROR: syntax error at or near \"FROM\"\n  Position: 135"
+  },
+  {
+    "description": "Missing aggregation function around non-grouped column",
+    "comment": "Unclear what to do with `id` in SELECT, but the HAVING clause should be a clue",
+    "used_tables": [
+      "salesforce_data.account"
+    ],
+    "fixed_query": "SELECT type, COUNT(id) FROM salesforce_data.account GROUP BY type HAVING COUNT(id) > 0",
+    "broken_query": "SELECT type, id FROM salesforce_data.account GROUP BY type HAVING COUNT(id) > 0",
+    "error_message": "ERROR: column \"account.id\" must appear in the GROUP BY clause or be used in an aggregate function\n  Position: 132"
+  },
+  {
+    "description": "Missing table name in FROM clause",
+    "comment": "Unclear which table to query, but SELECT list provides clue",
+    "used_tables": [
+      "calendly_data.event"
+    ],
+    "fixed_query": "SELECT uri, name, status FROM calendly_data.event WHERE status = 'confirmed' LIMIT 5",
+    "broken_query": "SELECT uri, name, status FROM calendly_data WHERE status = 'confirmed' LIMIT 5",
+    "error_message": "ERROR: relation \"calendly_data\" does not exist\n  Position: 149"
+  },
+  {
+    "description": "Attempt to select unaggregated column in GROUP BY query",
+    "comment": "Ambiguous which agg func to use: SUM vs AVG vs MIN etc",
+    "used_tables": [
+      "brex_data.account"
+    ],
+    "fixed_query": "SELECT status, SUM(current_balance) FROM brex_data.account GROUP BY status",
+    "broken_query": "SELECT status, current_balance FROM brex_data.account GROUP BY status",
+    "error_message": "ERROR: column \"account.current_balance\" must appear in the GROUP BY clause or be used in an aggregate function\n  Position: 134"
+  },
+  {
+    "description": "Typo in table name: quickbook -> quickbooks",
+    "comment": "Unclear source table but search should find it",
+    "used_tables": [
+      "quickbooks_data.customer"
+    ],
+    "fixed_query": "SELECT id, display_name, balance FROM quickbooks_data.customer WHERE balance > 0",
+    "broken_query": "SELECT id, display_name, balance FROM quickbook_data.customer WHERE balance > 0",
+    "error_message": "ERROR: relation \"quickbook_data.customer\" does not exist\n  Position: 157"
+  },
+  {
+    "description": "Invalid column reference: non-existent column",
+    "comment": "Unclear what to do with `invalid_column`. Drop it, or replace with something else?",
+    "used_tables": [
+      "lever_data.application"
+    ],
+    "fixed_query": "SELECT id, opportunity_id FROM lever_data.application",
+    "broken_query": "SELECT id, opportunity_id, invalid_column FROM lever_data.application",
+    "error_message": "ERROR: column \"invalid_column\" does not exist\n  Position: 146"
+  }
+]

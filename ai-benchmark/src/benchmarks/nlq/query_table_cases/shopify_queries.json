@@ -1,0 +1,702 @@
+[
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as total_customers FROM shopify_data.customer WHERE state != 'disabled'",
+    "question": "How many customers do we have in our store?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT SUM(total_spent) as lifetime_revenue FROM shopify_data.customer",
+    "question": "What's our total customer lifetime value?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT email, total_spent, orders_count FROM shopify_data.customer ORDER BY total_spent DESC LIMIT 10",
+    "question": "Who are our best customers by spending?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as new_customers FROM shopify_data.customer WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many new customers signed up this month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT ROUND(AVG(total_spent), 2) as avg_customer_value FROM shopify_data.customer WHERE total_spent > 0",
+    "question": "What's the average customer lifetime value?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as marketing_subscribers, ROUND(COUNT(*)::numeric / (SELECT COUNT(*) FROM shopify_data.customer) * 100, 2) as subscription_rate FROM shopify_data.customer WHERE accepts_marketing = true",
+    "question": "How many customers have opted into marketing?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as new_customers FROM shopify_data.customer WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our customer acquisition trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT email, orders_count FROM shopify_data.customer ORDER BY orders_count DESC LIMIT 10",
+    "question": "Which customers order from us most frequently?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT ROUND(AVG(orders_count), 2) as avg_orders_per_customer FROM shopify_data.customer WHERE orders_count > 0",
+    "question": "What's the average number of orders per customer?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.customer"
+    ],
+    "sql": "SELECT state, COUNT(*) as customer_count FROM shopify_data.customer GROUP BY state",
+    "question": "What's the status breakdown of our customers?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT COUNT(*) as total_codes FROM shopify_data.discount_code",
+    "question": "How many discount codes do we have?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT value_type, COUNT(*) as count FROM shopify_data.discount_code GROUP BY value_type",
+    "question": "What types of discounts are we offering?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT code, value, value_type FROM shopify_data.discount_code ORDER BY created_at DESC LIMIT 10",
+    "question": "What are our most recently created discount codes?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT ROUND(AVG(value), 2) as avg_discount FROM shopify_data.discount_code WHERE value_type = 'percentage'",
+    "question": "What's the average percentage discount we offer?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT COUNT(*) as limited_use_codes FROM shopify_data.discount_code WHERE usage_limit IS NOT NULL",
+    "question": "How many discount codes have usage limits?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT code, usage_limit FROM shopify_data.discount_code WHERE usage_limit IS NOT NULL ORDER BY usage_limit DESC LIMIT 10",
+    "question": "Which discount codes have the highest usage limits?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT COUNT(*) as new_codes FROM shopify_data.discount_code WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many discount codes were created this month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT value_type, ROUND(AVG(value), 2) as avg_value FROM shopify_data.discount_code GROUP BY value_type",
+    "question": "What's the average discount value by type?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT code, value FROM shopify_data.discount_code WHERE value_type = 'fixed_amount' ORDER BY value DESC LIMIT 10",
+    "question": "What are our largest fixed-amount discount codes?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.discount_code"
+    ],
+    "sql": "SELECT COUNT(*) as unlimited_codes FROM shopify_data.discount_code WHERE usage_limit IS NULL",
+    "question": "How many discount codes have unlimited usage?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT status, COUNT(*) as fulfillment_count FROM shopify_data.fulfillment GROUP BY status ORDER BY fulfillment_count DESC",
+    "question": "What's the status of our order fulfillments?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT COUNT(*) as recent_fulfillments FROM shopify_data.fulfillment WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many orders did we fulfill this week?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT tracking_company, COUNT(*) as shipment_count FROM shopify_data.fulfillment WHERE tracking_company IS NOT NULL GROUP BY tracking_company ORDER BY shipment_count DESC",
+    "question": "Which shipping carriers are we using?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as fulfillments FROM shopify_data.fulfillment WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "What's our daily fulfillment volume over the last month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT COUNT(*) as pending_fulfillments FROM shopify_data.fulfillment WHERE status = 'pending'",
+    "question": "How many fulfillments are pending?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT COUNT(*) as successful_fulfillments FROM shopify_data.fulfillment WHERE status = 'success' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many orders were successfully fulfilled this month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT COUNT(DISTINCT order_id) as orders_fulfilled FROM shopify_data.fulfillment WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many unique orders were fulfilled in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as fulfillments FROM shopify_data.fulfillment WHERE created_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly fulfillment trend?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT COUNT(*) as tracked_shipments FROM shopify_data.fulfillment WHERE tracking_number IS NOT NULL",
+    "question": "How many shipments have tracking numbers?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.fulfillment"
+    ],
+    "sql": "SELECT ROUND(COUNT(CASE WHEN tracking_number IS NOT NULL THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as tracking_rate FROM shopify_data.fulfillment",
+    "question": "What percentage of fulfillments have tracking?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT COUNT(*) as total_inventory_items FROM shopify_data.inventory_item",
+    "question": "How many inventory items do we track?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT COUNT(*) as tracked_items FROM shopify_data.inventory_item WHERE tracked = true",
+    "question": "How many inventory items are actively tracked?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT SUM(cost) as total_inventory_cost FROM shopify_data.inventory_item WHERE cost IS NOT NULL",
+    "question": "What's the total cost basis of our inventory?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT ROUND(AVG(cost), 2) as avg_item_cost FROM shopify_data.inventory_item WHERE cost IS NOT NULL AND cost > 0",
+    "question": "What's the average cost per inventory item?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT country_code_of_origin, COUNT(*) as item_count FROM shopify_data.inventory_item WHERE country_code_of_origin IS NOT NULL GROUP BY country_code_of_origin ORDER BY item_count DESC",
+    "question": "Where are our inventory items sourced from?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT sku, cost FROM shopify_data.inventory_item WHERE cost IS NOT NULL ORDER BY cost DESC LIMIT 10",
+    "question": "What are our most expensive inventory items?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT COUNT(*) as items_with_sku FROM shopify_data.inventory_item WHERE sku IS NOT NULL AND sku != ''",
+    "question": "How many inventory items have SKUs assigned?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT COUNT(*) as new_items FROM shopify_data.inventory_item WHERE created_at >= DATE_TRUNC('quarter', CURRENT_DATE)",
+    "question": "How many new inventory items were added this quarter?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT ROUND(COUNT(CASE WHEN tracked = true THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as tracking_percentage FROM shopify_data.inventory_item",
+    "question": "What percentage of our inventory is tracked?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.inventory_item"
+    ],
+    "sql": "SELECT COUNT(*) as recently_updated FROM shopify_data.inventory_item WHERE updated_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many inventory items were updated this week?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT SUM(total_price) as total_revenue FROM shopify_data.order WHERE cancelled_at IS NULL AND created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "What's our e-commerce revenue this month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT COUNT(*) as order_count, SUM(total_price) as revenue FROM shopify_data.order WHERE cancelled_at IS NULL AND created_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many orders and how much e-commerce revenue did we make this week?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', created_at) as day, SUM(total_price) as daily_revenue FROM shopify_data.order WHERE cancelled_at IS NULL AND created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "What's our daily e-commerce revenue trend over the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT ROUND(AVG(total_price), 2) as avg_order_value FROM shopify_data.order WHERE cancelled_at IS NULL",
+    "question": "What's our average order value?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT financial_status, COUNT(*) as order_count FROM shopify_data.order WHERE cancelled_at IS NULL GROUP BY financial_status",
+    "question": "What's the payment status of our orders?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT fulfillment_status, COUNT(*) as count FROM shopify_data.order WHERE cancelled_at IS NULL GROUP BY fulfillment_status",
+    "question": "What's the fulfillment status of our orders?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT COUNT(*) as cancelled_orders, SUM(total_price) as lost_revenue FROM shopify_data.order WHERE cancelled_at IS NOT NULL",
+    "question": "How many orders were cancelled and how much e-commerce revenue did we lose?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, SUM(total_price) as monthly_revenue FROM shopify_data.order WHERE cancelled_at IS NULL AND created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly e-commerce revenue trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT SUM(total_discounts) as total_discounts_given FROM shopify_data.order WHERE cancelled_at IS NULL AND created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much in discounts did we give out this month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order"
+    ],
+    "sql": "SELECT order_number, total_price FROM shopify_data.order WHERE cancelled_at IS NULL ORDER BY total_price DESC LIMIT 10",
+    "question": "What are our largest orders by value?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT name, SUM(quantity) as total_sold FROM shopify_data.order_line GROUP BY name ORDER BY total_sold DESC LIMIT 10",
+    "question": "What are our best-selling products by quantity?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT name, SUM(price * quantity) as total_revenue FROM shopify_data.order_line GROUP BY name ORDER BY total_revenue DESC LIMIT 10",
+    "question": "Which products generate the most revenue?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT product_id, SUM(quantity) as units_sold FROM shopify_data.order_line GROUP BY product_id ORDER BY units_sold DESC LIMIT 10",
+    "question": "What are our top products by units sold?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT SUM(quantity) as total_units_sold FROM shopify_data.order_line",
+    "question": "How many units have we sold in total?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT ROUND(AVG(price), 2) as avg_item_price FROM shopify_data.order_line WHERE price > 0",
+    "question": "What's the average item price in our orders?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT SUM(total_discount) as total_discounts FROM shopify_data.order_line",
+    "question": "How much in product discounts have we given?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT name, ROUND(AVG(quantity), 2) as avg_quantity_per_order FROM shopify_data.order_line GROUP BY name ORDER BY avg_quantity_per_order DESC LIMIT 10",
+    "question": "Which products do customers buy in the largest quantities?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT COUNT(DISTINCT product_id) as unique_products_sold FROM shopify_data.order_line",
+    "question": "How many different products have we sold?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT name, price FROM shopify_data.order_line ORDER BY price DESC LIMIT 10",
+    "question": "What are our highest-priced items?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.order_line"
+    ],
+    "sql": "SELECT COUNT(*) as total_line_items FROM shopify_data.order_line",
+    "question": "How many line items have been ordered in total?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as total_products FROM shopify_data.product WHERE status = 'active'",
+    "question": "How many active products do we have in our catalog?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT product_type, COUNT(*) as product_count FROM shopify_data.product WHERE status = 'active' GROUP BY product_type ORDER BY product_count DESC",
+    "question": "What types of products do we sell?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT vendor, COUNT(*) as product_count FROM shopify_data.product WHERE status = 'active' GROUP BY vendor ORDER BY product_count DESC",
+    "question": "Which vendors do we carry products from?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM shopify_data.product GROUP BY status",
+    "question": "What's the status breakdown of our products?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as new_products FROM shopify_data.product WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many new products did we add this month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT title FROM shopify_data.product WHERE published_at IS NULL AND status = 'active'",
+    "question": "Which active products haven't been published yet?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as new_products FROM shopify_data.product WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our product catalog growth over the past year?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as recently_updated FROM shopify_data.product WHERE updated_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many products were updated this week?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT product_type, vendor, COUNT(*) as count FROM shopify_data.product WHERE status = 'active' GROUP BY product_type, vendor ORDER BY count DESC LIMIT 10",
+    "question": "What are our top product type and vendor combinations?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product"
+    ],
+    "sql": "SELECT COUNT(*) as draft_products FROM shopify_data.product WHERE status = 'draft'",
+    "question": "How many products are in draft status?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT COUNT(*) as total_variants FROM shopify_data.product_variant",
+    "question": "How many product variants do we have?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT product_id, COUNT(*) as variant_count FROM shopify_data.product_variant GROUP BY product_id ORDER BY variant_count DESC LIMIT 10",
+    "question": "Which products have the most variants?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT ROUND(AVG(price), 2) as avg_price FROM shopify_data.product_variant WHERE price > 0",
+    "question": "What's the average price across all product variants?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT COUNT(*) as low_stock FROM shopify_data.product_variant WHERE inventory_quantity < 10 AND inventory_quantity > 0",
+    "question": "How many variants are running low on stock?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT COUNT(*) as out_of_stock FROM shopify_data.product_variant WHERE inventory_quantity = 0",
+    "question": "How many variants are out of stock?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT title, inventory_quantity FROM shopify_data.product_variant WHERE inventory_quantity > 0 ORDER BY inventory_quantity DESC LIMIT 10",
+    "question": "Which variants have the most inventory?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT SUM(inventory_quantity) as total_inventory_units FROM shopify_data.product_variant",
+    "question": "How many units do we have in inventory total?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT title, price FROM shopify_data.product_variant ORDER BY price DESC LIMIT 10",
+    "question": "What are our most expensive product variants?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT ROUND(AVG(inventory_quantity), 0) as avg_inventory_per_variant FROM shopify_data.product_variant",
+    "question": "What's the average inventory level per variant?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.product_variant"
+    ],
+    "sql": "SELECT weight_unit, COUNT(*) as variant_count FROM shopify_data.product_variant WHERE weight_unit IS NOT NULL GROUP BY weight_unit",
+    "question": "What weight units do we use for our products?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT COUNT(*) as total_refunds FROM shopify_data.refund",
+    "question": "How many refunds have we processed?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT COUNT(*) as recent_refunds FROM shopify_data.refund WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many refunds were issued in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as refund_count FROM shopify_data.refund WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly refund trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT COUNT(*) as refunds_this_month FROM shopify_data.refund WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many refunds have we issued this month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT COUNT(DISTINCT order_id) as orders_with_refunds FROM shopify_data.refund",
+    "question": "How many orders have had refunds?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT order_id, COUNT(*) as refund_count FROM shopify_data.refund GROUP BY order_id HAVING COUNT(*) > 1 ORDER BY refund_count DESC",
+    "question": "Which orders have had multiple refunds?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as refunds FROM shopify_data.refund WHERE created_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly refund trend?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT ROUND(COUNT(*)::numeric / (SELECT COUNT(*) FROM shopify_data.order WHERE cancelled_at IS NULL) * 100, 2) as refund_rate FROM shopify_data.refund",
+    "question": "What percentage of our orders result in refunds?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT COUNT(*) as refunds_processed FROM shopify_data.refund WHERE processed_at IS NOT NULL",
+    "question": "How many refunds have been fully processed?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.refund"
+    ],
+    "sql": "SELECT COUNT(*) as refunds_this_week FROM shopify_data.refund WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many refunds were issued this week?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT SUM(amount) as total_processed FROM shopify_data.transaction WHERE status = 'success' AND kind = 'sale' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much payment volume did we process this month?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT gateway, COUNT(*) as transaction_count, SUM(amount) as total_volume FROM shopify_data.transaction WHERE status = 'success' GROUP BY gateway ORDER BY total_volume DESC",
+    "question": "Which payment gateways are our customers using?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM shopify_data.transaction GROUP BY status ORDER BY count DESC",
+    "question": "What's the status breakdown of our payment transactions?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT kind, COUNT(*) as count FROM shopify_data.transaction GROUP BY kind ORDER BY count DESC",
+    "question": "What types of payment transactions are we processing?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT COUNT(*) as failed_transactions, ROUND(COUNT(*)::numeric / (SELECT COUNT(*) FROM shopify_data.transaction) * 100, 2) as failure_rate FROM shopify_data.transaction WHERE status = 'failure'",
+    "question": "What's our payment failure rate?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', created_at) as day, SUM(amount) as daily_volume FROM shopify_data.transaction WHERE status = 'success' AND kind = 'sale' AND created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "What's our daily payment processing volume?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT currency, SUM(amount) as total FROM shopify_data.transaction WHERE status = 'success' GROUP BY currency ORDER BY total DESC",
+    "question": "What currencies are we processing payments in?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT COUNT(*) as refund_transactions FROM shopify_data.transaction WHERE kind = 'refund'",
+    "question": "How many refund transactions have we processed?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT gateway, ROUND(AVG(amount), 2) as avg_transaction FROM shopify_data.transaction WHERE status = 'success' AND kind = 'sale' GROUP BY gateway",
+    "question": "What's the average transaction size by payment gateway?"
+  },
+  {
+    "data_sources": [
+      "shopify_data.transaction"
+    ],
+    "sql": "SELECT COUNT(*) as transactions_processed FROM shopify_data.transaction WHERE processed_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many transactions were processed this week?"
+  }
+]

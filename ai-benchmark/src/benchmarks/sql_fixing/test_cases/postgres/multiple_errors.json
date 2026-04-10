@@ -1,0 +1,105 @@
+[
+  {
+    "description": "Multiple errors: typo in column name (namr -> name), missing SELECT keyword, and extra comma in SELECT list",
+    "used_tables": [
+      "brex_data.account"
+    ],
+    "fixed_query": "SELECT name, current_balance\nFROM brex_data.account\nWHERE current_balance > 0\nORDER BY current_balance DESC\nLIMIT 10",
+    "broken_query": "namr, current_balance,\nFROM brex_data.account\nWHERE current_balance > 0\nORDER BY current_balance DESC\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"namr\"\n  Position: 119"
+  },
+  {
+    "description": "Multiple errors: typo in SQL keyword (FORM -> FROM), unclosed quote in string literal, and invalid operator (ISNOT)",
+    "used_tables": [
+      "salesforce_data.contact"
+    ],
+    "fixed_query": "SELECT id, first_name, last_name\nFROM salesforce_data.contact\nWHERE last_name LIKE '%Smith%'\n  AND phone IS NOT NULL\nLIMIT 10",
+    "broken_query": "SELECT id, first_name, last_name\nFORM salesforce_data.contact\nWHERE last_name LIKE '%Smith%\n  AND phone ISNOT NULL\nLIMIT 10",
+    "error_message": "Unterminated string literal started at position 201 in SQL -- Metabase:: userID: 1 queryType: native queryHash: 66f1e3cf53ca15bcd6cdfbad83ec2736b88123fea770f10d869d09ec4c310581\nSELECT id, first_name, last_name\nFORM salesforce_data.contact\nWHERE last_name LIKE '%Smith%\n  AND phone ISNOT NULL\nLIMIT 10. Expected  char"
+  },
+  {
+    "description": "Multiple errors: invalid logical operator (&&), missing closing parenthesis, and typo in column name (slg -> slug)",
+    "used_tables": [
+      "calendly_data.event_type"
+    ],
+    "fixed_query": "SELECT uri, name, slug\nFROM calendly_data.event_type\nWHERE (active = true AND duration > 30)\nLIMIT 10",
+    "broken_query": "SELECT uri, name, slg\nFROM calendly_data.event_type\nWHERE (active = true && duration > 30\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \">\"\n  Position: 204"
+  },
+  {
+    "description": "Multiple errors: missing GROUP BY clause, typo in aggregation function (COUT -> COUNT), and invalid alias reference",
+    "used_tables": [
+      "customerio_data.customer"
+    ],
+    "fixed_query": "SELECT email, COUNT(*)\nFROM customerio_data.customer c\nWHERE c.created_at > '2023-01-01'\nGROUP BY email\nLIMIT 10",
+    "broken_query": "SELECT email, COUT(*)\nFROM customerio_data.customer c\nWHERE cust.created_at > '2023-01-01'\nLIMIT 10",
+    "error_message": "ERROR: function cout() does not exist\n  Hint: No function matches the given name and argument types. You might need to add explicit type casts.\n  Position: 133"
+  },
+  {
+    "description": "Multiple errors: missing JOIN ON condition, mixing up columns from JOINed tables, and extra trailing comma",
+    "used_tables": [
+      "brex_data.user",
+      "brex_data.card"
+    ],
+    "fixed_query": "SELECT\n  u.email,\n  c.card_name,\n  c.status\nFROM brex_data.user u\nJOIN brex_data.card c\n  ON u.id = c.owner_user_id\nLIMIT 5",
+    "broken_query": "SELECT\n  u.email,\n  c.card_name,\n  u.status,\nFROM brex_data.user u\nJOIN brex_data.card c\nLIMIT 5",
+    "error_message": "ERROR: syntax error at or near \"FROM\"\n  Position: 164"
+  },
+  {
+    "description": "Multiple errors: invalid CASE expression missing END keyword, typo in column name, and missing comma in SELECT list",
+    "used_tables": [
+      "shopify_data.order"
+    ],
+    "fixed_query": "SELECT\n  id,\n  total_price,\n  CASE\n    WHEN total_price > 100 THEN 'high'\n    ELSE 'low'\n  END AS price_tier\nFROM shopify_data.order\nLIMIT 10",
+    "broken_query": "SELECT\n  id,\n  totl_price\n  CASE\n    WHEN total_price > 100 THEN 'high'\n    ELSE 'low'\n  AS price_tier\nFROM shopify_data.order\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"WHEN\"\n  Position: 156"
+  },
+  {
+    "description": "Multiple errors: attempt to use aggregated column in WHERE instead of HAVING, missing closing parenthesis in function call, and invalid SQL keyword (WERE -> WHERE)",
+    "used_tables": [
+      "google_adwords_data.campaign"
+    ],
+    "fixed_query": "SELECT status, COUNT(*)\nFROM google_adwords_data.campaign\nWHERE status IS NOT NULL\nGROUP BY status\nHAVING COUNT(*) > 5\nLIMIT 10",
+    "broken_query": "SELECT status, COUNT(\nFROM google_adwords_data.campaign\nWERE status IS NOT NULL\n  AND COUNT(*) > 5\nGROUP BY status\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"FROM\"\n  Position: 141"
+  },
+  {
+    "description": "Multiple errors: invalid CTE missing AS keyword, referencing undefined CTE name, and extra decimal point in numeric literal",
+    "used_tables": [
+      "stripe_data.customer",
+      "stripe_data.charge"
+    ],
+    "fixed_query": "WITH recent_customers AS (\n  SELECT id, email\n  FROM stripe_data.customer\n  WHERE created > '2023-01-01'\n)\nSELECT rc.email, COUNT(ch.id)\nFROM recent_customers rc\nLEFT JOIN stripe_data.charge ch\n  ON rc.id = ch.customer_id\nGROUP BY rc.email",
+    "broken_query": "WITH recent_customers (\n  SELECT id, email\n  FROM stripe_data.customer\n  WHERE created > '2023-01-01'\n)\nSELECT rc.email, COUNT(ch.id)\nFROM recent_customer rc\nLEFT JOIN stripe_data.charge ch\n  ON rc.id = ch.customer_id\nGROUP BY rc.email",
+    "error_message": "ERROR: syntax error at or near \"SELECT\"\n  Position: 145"
+  },
+  {
+    "description": "Multiple errors: typo in column name (nam -> name), missing closing parenthesis in IN clause, and missing column in ORDER BY",
+    "used_tables": [
+      "linkedin_ads_data.account"
+    ],
+    "fixed_query": "SELECT id, name\nFROM linkedin_ads_data.account\nWHERE id IN (1, 2, 3)\nORDER BY name",
+    "broken_query": "SELECT id, nam\nFROM linkedin_ads_data.account\nWHERE id IN (1, 2, 3\nORDER BY",
+    "error_message": "ERROR: syntax error at or near \"ORDER\"\n  Position: 186"
+  },
+  {
+    "description": "Multiple errors: missing GROUP BY, invalid aggregation function with no arguments, ambiguous column reference in multiple JOINs, and invalid LIMIT clause",
+    "used_tables": [
+      "shopify_data.order",
+      "shopify_data.order_line",
+      "shopify_data.customer"
+    ],
+    "fixed_query": "SELECT o.id AS order_id, COUNT(*) AS count_rows\nFROM shopify_data.order o\nJOIN shopify_data.order_line ol\n  ON o.id = ol.order_id\nJOIN shopify_data.customer c\n  ON o.customer_id = c.id\nGROUP BY o.id\nLIMIT 10",
+    "broken_query": "SELECT id AS order_id, COUNT() AS count_rows\nFROM shopify_data.order o\nJOIN shopify_data.order_line ol\n  ON o.id = ol.order_id\nJOIN shopify_data.customer c\n  ON o.customer_id = c.id\nLIMIT ten",
+    "error_message": "ERROR: column reference \"id\" is ambiguous\n  Position: 126"
+  },
+  {
+    "description": "Multiple errors: MySQL-style backticks for identifier quoting instead of double quotes",
+    "used_tables": [
+      "brex_data.account"
+    ],
+    "fixed_query": "SELECT\n  \"name\",\n  current_balance AS \"account balance\"\nFROM brex_data.account\nWHERE \"name\" IS NOT NULL\nLIMIT 10",
+    "broken_query": "SELECT\n  `name`,\n  current_balance AS `account balance`\nFROM brex_data.account\nWHERE `name` IS NOT NULL\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \",\"\n  Position: 134"
+  }
+]

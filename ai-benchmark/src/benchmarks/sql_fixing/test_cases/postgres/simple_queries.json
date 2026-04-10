@@ -1,0 +1,191 @@
+[
+  {
+    "description": "Typo in column name: namr -> name",
+    "used_tables": [
+      "brex_data.account"
+    ],
+    "fixed_query": "SELECT name, current_balance\nFROM brex_data.account\nWHERE current_balance > 0\nORDER BY current_balance DESC\nLIMIT 10",
+    "broken_query": "SELECT namr, current_balance\nFROM brex_data.account\nWHERE current_balance > 0\nORDER BY current_balance DESC\nLIMIT 10",
+    "error_message": "ERROR: column \"namr\" does not exist\n  Hint: Perhaps you meant to reference the column \"account.name\".\n  Position: 126"
+  },
+  {
+    "description": "Typo in column name: slg -> slug",
+    "used_tables": [
+      "calendly_data.event_type"
+    ],
+    "fixed_query": "SELECT uri, name, slug FROM calendly_data.event_type LIMIT 10",
+    "broken_query": "SELECT uri, name, slg FROM calendly_data.event_type LIMIT 10",
+    "error_message": "ERROR: column \"slg\" does not exist\n  Hint: Perhaps you meant to reference the column \"event_type.slug\".\n  Position: 137"
+  },
+  {
+    "description": "Missing SELECT keyword",
+    "used_tables": [
+      "salesforce_data.contact"
+    ],
+    "fixed_query": "SELECT id, first_name, last_name FROM salesforce_data.contact LIMIT 20",
+    "broken_query": "id, first_name, last_name FROM salesforce_data.contact LIMIT 20",
+    "error_message": "ERROR: syntax error at or near \"id\"\n  Position: 119"
+  },
+  {
+    "description": "Missing FROM keyword",
+    "used_tables": [
+      "salesforce_data.contact"
+    ],
+    "fixed_query": "SELECT id, first_name, last_name FROM salesforce_data.contact LIMIT 20",
+    "broken_query": "SELECT id, first_name, last_name salesforce_data.contact LIMIT 20",
+    "error_message": "ERROR: syntax error at or near \".\"\n  Position: 167"
+  },
+  {
+    "description": "Invalid SQL keyword: SELE instead of SELECT",
+    "used_tables": [
+      "salesforce_data.contact"
+    ],
+    "fixed_query": "SELECT id, first_name, last_name FROM salesforce_data.contact LIMIT 20",
+    "broken_query": "SELE id, first_name, last_name FROM salesforce_data.contact LIMIT 20",
+    "error_message": "ERROR: syntax error at or near \"SELE\"\n  Position: 119"
+  },
+  {
+    "description": "Invalid SQL keyword: FORM instead of FROM",
+    "used_tables": [
+      "brex_data.card"
+    ],
+    "fixed_query": "SELECT id, card_name, status FROM brex_data.card LIMIT 5",
+    "broken_query": "SELECT id, card_name, status FORM brex_data.card LIMIT 5",
+    "error_message": "ERROR: syntax error at or near \"brex_data\"\n  Position: 153"
+  },
+  {
+    "description": "Invalid SQL keyword: WERE instead of WHERE",
+    "used_tables": [
+      "google_adwords_data.campaign"
+    ],
+    "fixed_query": "SELECT id, name, status\nFROM google_adwords_data.campaign\nWHERE status = 'active'\nLIMIT 10",
+    "broken_query": "SELECT id, name, status\nFROM google_adwords_data.campaign\nWERE status = 'active'\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"status\"\n  Position: 182"
+  },
+  {
+    "description": "Invalid operation: adding string to numeric column",
+    "used_tables": [
+      "customerio_data.customer"
+    ],
+    "fixed_query": "SELECT id, email, created_at\nFROM customerio_data.customer\nWHERE email IS NOT NULL\nLIMIT 10",
+    "broken_query": "SELECT id, email + 1 - 1, created_at\nFROM customerio_data.customer\nWHERE email IS NOT NULL\nLIMIT 10",
+    "error_message": "ERROR: operator does not exist: character varying + integer\n  Hint: No operator matches the given name and argument types. You might need to add explicit type casts.\n  Position: 136"
+  },
+  {
+    "description": "Unclosed quote in string literal",
+    "used_tables": [
+      "customerio_data.campaign"
+    ],
+    "fixed_query": "SELECT id, name, type\nFROM customerio_data.campaign\nWHERE name LIKE '%welcome%'\nLIMIT 5",
+    "broken_query": "SELECT id, name, type\nFROM customerio_data.campaign\nWHERE name LIKE '%welcome%\nLIMIT 5",
+    "error_message": "Unterminated string literal started at position 186 in SQL -- Metabase:: userID: 1 queryType: native queryHash: cded8e395301ef02ccd7200c6b9217ebd188a67bc45c9173c4e48b76b3d9449c\nSELECT id, name, type\nFROM customerio_data.campaign\nWHERE name LIKE '%welcome%\nLIMIT 5. Expected  char"
+  },
+  {
+    "description": "Invalid alias reference: using wrong alias name",
+    "used_tables": [
+      "google_adwords_data.account"
+    ],
+    "fixed_query": "SELECT\n  a.id,\n  a.name,\n  a.currency_code\nFROM google_adwords_data.account AS a\nLIMIT 10",
+    "broken_query": "SELECT\n  acc.id,\n  acc.name,\n  acc.currency_code\nFROM google_adwords_data.account AS a\nLIMIT 10",
+    "error_message": "ERROR: missing FROM-clause entry for table \"acc\"\n  Position: 128"
+  },
+  {
+    "description": "Missing ORDER BY column reference",
+    "used_tables": [
+      "lever_data.opportunity"
+    ],
+    "fixed_query": "SELECT name\nFROM lever_data.opportunity\nORDER BY name\nLIMIT 10",
+    "broken_query": "SELECT name\nFROM lever_data.opportunity\nORDER BY\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"LIMIT\"\n  Position: 168"
+  },
+  {
+    "description": "Invalid logical operator &&",
+    "used_tables": [
+      "linkedin_ads_data.account"
+    ],
+    "fixed_query": "SELECT id, name\nFROM linkedin_ads_data.account\nWHERE id = 1\n  AND name = 'Bob'\nLIMIT 1",
+    "broken_query": "SELECT id, name\nFROM linkedin_ads_data.account\nWHERE id = 1\n  && name = 'Bob'\nLIMIT 1",
+    "error_message": "ERROR: syntax error at or near \"=\"\n  Position: 189"
+  },
+  {
+    "description": "Missing closing parenthesis in condition",
+    "used_tables": [
+      "linkedin_ads_data.campaign"
+    ],
+    "fixed_query": "SELECT id, name, status\nFROM linkedin_ads_data.campaign\nWHERE (status = 'active' OR status = 'paused')\nLIMIT 10",
+    "broken_query": "SELECT id, name, status\nFROM linkedin_ads_data.campaign\nWHERE (status = 'active' OR status = 'paused'\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"LIMIT\"\n  Position: 221"
+  },
+  {
+    "description": "Invalid operator GREATER THAN",
+    "used_tables": [
+      "quickbooks_data.customer"
+    ],
+    "fixed_query": "SELECT id, display_name, balance\nFROM quickbooks_data.customer\nWHERE balance > 0\nLIMIT 10",
+    "broken_query": "SELECT id, display_name, balance\nFROM quickbooks_data.customer\nWHERE balance GREATER THAN 0\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"GREATER\"\n  Position: 196"
+  },
+  {
+    "description": "Invalid comparison with unmatched quotes",
+    "used_tables": [
+      "salesforce_data.account"
+    ],
+    "fixed_query": "SELECT id, name, type\nFROM salesforce_data.account\nWHERE type = 'Customer'\nLIMIT 10",
+    "broken_query": "SELECT id, name, type\nFROM salesforce_data.account\nWHERE type = 'Customer\"\nLIMIT 10",
+    "error_message": "Unterminated string literal started at position 182 in SQL -- Metabase:: userID: 1 queryType: native queryHash: fcf3b8ef900c6186f16a209822d7132be3b4c78477b36805d236b64217d0a50b\nSELECT id, name, type\nFROM salesforce_data.account\nWHERE type = 'Customer\"\nLIMIT 10. Expected  char"
+  },
+  {
+    "description": "Invalid numeric literal: extra decimal point",
+    "used_tables": [
+      "shopify_data.order"
+    ],
+    "fixed_query": "SELECT id, total_price, currency\nFROM shopify_data.order\nWHERE total_price > 50.00\nLIMIT 5",
+    "broken_query": "SELECT id, total_price, currency\nFROM shopify_data.order\nWHERE total_price > 50..00\nLIMIT 5",
+    "error_message": "ERROR: syntax error at or near \"..\"\n  Position: 198"
+  },
+  {
+    "description": "Invalid column expression: missing * operator",
+    "used_tables": [
+      "shopify_data.order"
+    ],
+    "fixed_query": "SELECT total_price * 100 AS multiplied_price\nFROM shopify_data.order\nLIMIT 10",
+    "broken_query": "SELECT total_price 100 AS multiplied_price\nFROM shopify_data.order\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"100\"\n  Position: 138"
+  },
+  {
+    "description": "Extra comma in SELECT list",
+    "used_tables": [
+      "shopify_data.product"
+    ],
+    "fixed_query": "SELECT id, title, status\nFROM shopify_data.product",
+    "broken_query": "SELECT id, title,, status\nFROM shopify_data.product",
+    "error_message": "ERROR: syntax error at or near \",\"\n  Position: 136"
+  },
+  {
+    "description": "Extra trailing comma in SELECT list",
+    "used_tables": [
+      "shopify_data.product"
+    ],
+    "fixed_query": "SELECT id, title, status\nFROM shopify_data.product",
+    "broken_query": "SELECT id, title, status,\nFROM shopify_data.product",
+    "error_message": "ERROR: syntax error at or near \"FROM\"\n  Position: 145"
+  },
+  {
+    "description": "Invalid IN clause: missing closing parenthesis",
+    "used_tables": [
+      "stripe_data.customer"
+    ],
+    "fixed_query": "SELECT id, email, created\nFROM stripe_data.customer\nWHERE currency IN ('usd', 'eur', 'gbp')\nLIMIT 10",
+    "broken_query": "SELECT id, email, created\nFROM stripe_data.customer\nWHERE currency IN ('usd', 'eur', 'gbp'\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"LIMIT\"\n  Position: 210"
+  },
+  {
+    "description": "Invalid LIMIT clause: non-numeric value",
+    "used_tables": [
+      "stripe_data.charge"
+    ],
+    "fixed_query": "SELECT id, amount, currency\nFROM stripe_data.charge\nORDER BY amount DESC\nLIMIT 10",
+    "broken_query": "SELECT id, amount, currency\nFROM stripe_data.charge\nORDER BY amount DESC\nLIMIT ten",
+    "error_message": "ERROR: column \"ten\" does not exist\n  Position: 198"
+  }
+]

@@ -1,0 +1,625 @@
+[
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT SUM(current_balance) FROM brex_data.account WHERE status = 'active'",
+    "question": "What's the total balance across all our active corporate card accounts?"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT SUM(available_balance) FROM brex_data.account WHERE currency = 'USD'",
+    "question": "What's our total available USD balance?"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT name, current_balance FROM brex_data.account ORDER BY current_balance DESC LIMIT 10",
+    "question": "Show me our top 10 corporate card accounts by current balance"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT status, COUNT(*) as account_count FROM brex_data.account GROUP BY status",
+    "question": "Break down our corporate card accounts by status"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT AVG(current_balance) FROM brex_data.account WHERE status = 'active'",
+    "question": "What's the average balance across our active corporate card accounts?"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT currency, SUM(available_balance) as total_available FROM brex_data.account GROUP BY currency ORDER BY total_available DESC",
+    "question": "What's our available balance by currency?"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT name, available_balance FROM brex_data.account WHERE status = 'active' AND available_balance < 5000 ORDER BY available_balance ASC",
+    "question": "Which active corporate card accounts have less than $5,000 available?"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as low_balance_accounts FROM brex_data.account WHERE available_balance < current_balance * 0.1",
+    "question": "How many corporate card accounts have less than 10% of their balance available?"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT MAX(current_balance) as highest_balance, MIN(current_balance) as lowest_balance FROM brex_data.account WHERE status = 'active'",
+    "question": "What are our highest and lowest corporate card account balances?"
+  },
+  {
+    "data_sources": [
+      "brex_data.account"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) FROM brex_data.account WHERE created_at >= DATE '2023-01-01' AND created_at < DATE '2024-01-01' GROUP BY month ORDER BY month",
+    "question": "Show me the monthly trend of new corporate card account creation during 2023"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT card_type, COUNT(*) as card_count, SUM(limit_amount) as total_limit FROM brex_data.card WHERE status = 'active' GROUP BY card_type",
+    "question": "Break down our active corporate cards by type with total limits"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT SUM(limit_amount) FROM brex_data.card WHERE status = 'active'",
+    "question": "What's the total credit limit across all active cards?"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT card_name, limit_amount FROM brex_data.card WHERE status = 'active' ORDER BY limit_amount DESC LIMIT 10",
+    "question": "Show me the top 10 cards by credit limit"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT AVG(limit_amount) FROM brex_data.card WHERE status = 'active' AND card_type = 'physical'",
+    "question": "What's the average credit limit for active physical cards?"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT COUNT(DISTINCT owner_user_id) FROM brex_data.card WHERE status = 'active'",
+    "question": "How many employees currently have active corporate cards?"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT status, COUNT(*) as count, AVG(limit_amount) as avg_limit FROM brex_data.card GROUP BY status",
+    "question": "What's the distribution and average limit of cards by status?"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) FROM brex_data.card WHERE created_at >= DATE '2024-07-01' AND created_at < DATE '2025-01-01' GROUP BY month ORDER BY month",
+    "question": "Show me monthly corporate card issuance from July through December 2024"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT owner_user_id, COUNT(*) as card_count, SUM(limit_amount) as total_limit FROM brex_data.card WHERE status = 'active' GROUP BY owner_user_id HAVING COUNT(*) > 1 ORDER BY card_count DESC",
+    "question": "Which employees have multiple active cards?"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT currency, COUNT(*) as card_count FROM brex_data.card WHERE status = 'active' GROUP BY currency",
+    "question": "What currencies are our active cards using?"
+  },
+  {
+    "data_sources": [
+      "brex_data.card"
+    ],
+    "sql": "SELECT MAX(limit_amount) as highest_limit, MIN(limit_amount) as lowest_limit, AVG(limit_amount) as avg_limit FROM brex_data.card WHERE status = 'active'",
+    "question": "What are the min, max, and average credit limits for active cards?"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT COUNT(*) FROM brex_data.department",
+    "question": "How many departments are set up for expense tracking?"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT name, description FROM brex_data.department ORDER BY name",
+    "question": "Show me all our departments"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT name, created_at FROM brex_data.department ORDER BY created_at DESC LIMIT 5",
+    "question": "What are our most recently created departments?"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT DATE_TRUNC('quarter', created_at) as quarter, COUNT(*) FROM brex_data.department GROUP BY quarter ORDER BY quarter DESC",
+    "question": "Show me the quarterly trend of department creation"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT COUNT(*) as departments_with_descriptions FROM brex_data.department WHERE description IS NOT NULL",
+    "question": "How many departments have descriptions filled in?"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT name FROM brex_data.department WHERE updated_at >= DATE '2024-10-01' ORDER BY updated_at DESC",
+    "question": "Which departments were updated in Q4 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT name, created_at FROM brex_data.department ORDER BY created_at ASC LIMIT 1",
+    "question": "What was the first department created?"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT COUNT(*) as new_depts_2023 FROM brex_data.department WHERE created_at >= DATE '2023-01-01' AND created_at < DATE '2024-01-01'",
+    "question": "How many departments were created in 2023?"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT name, CASE WHEN description IS NULL THEN 'No description' ELSE 'Has description' END as status FROM brex_data.department ORDER BY name",
+    "question": "Show me which departments have descriptions"
+  },
+  {
+    "data_sources": [
+      "brex_data.department"
+    ],
+    "sql": "SELECT EXTRACT(YEAR FROM created_at) as year, COUNT(*) as dept_count FROM brex_data.department GROUP BY year ORDER BY year",
+    "question": "How many departments were created each year?"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT SUM(amount) FROM brex_data.expense WHERE approved_at >= DATE '2024-12-01' AND approved_at < DATE '2025-01-01'",
+    "question": "What's the total amount of expenses approved in December 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT status, COUNT(*) as count, SUM(amount) as total_amount FROM brex_data.expense GROUP BY status",
+    "question": "Break down our expenses by approval status with totals"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT SUM(amount) FROM brex_data.expense WHERE status = 'submitted'",
+    "question": "What's the total amount of submitted expense reports waiting for approval?"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT department_id, SUM(amount) as total, AVG(amount) as avg_expense FROM brex_data.expense WHERE status = 'approved' GROUP BY department_id ORDER BY total DESC LIMIT 10",
+    "question": "Which departments have the highest approved expenses?"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT AVG(amount) FROM brex_data.expense WHERE status = 'approved'",
+    "question": "What's the average amount for approved expenses?"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT COUNT(*) FROM brex_data.expense WHERE submitted_at IS NOT NULL AND approved_at IS NULL",
+    "question": "How many expenses are waiting for approval?"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', approved_at) as month, SUM(amount) as total, COUNT(*) as expense_count FROM brex_data.expense WHERE status = 'approved' AND approved_at >= DATE '2024-07-01' AND approved_at < DATE '2025-01-01' GROUP BY month ORDER BY month",
+    "question": "Show me the monthly trend of approved expenses for the second half of 2024"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT currency, SUM(amount) as total FROM brex_data.expense WHERE status = 'approved' GROUP BY currency ORDER BY total DESC",
+    "question": "What's the total approved expenses by currency?"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT user_id, COUNT(*) as expense_count, SUM(amount) as total_amount FROM brex_data.expense WHERE status = 'approved' GROUP BY user_id ORDER BY total_amount DESC LIMIT 10",
+    "question": "Which users have submitted the most expenses by total amount?"
+  },
+  {
+    "data_sources": [
+      "brex_data.expense"
+    ],
+    "sql": "SELECT MAX(amount) as largest_expense, MIN(amount) as smallest_expense FROM brex_data.expense WHERE status = 'approved'",
+    "question": "What are the largest and smallest approved expenses?"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as receipt_count FROM brex_data.receipt WHERE created_at >= DATE '2024-10-01' GROUP BY week ORDER BY week",
+    "question": "Show me the weekly trend of receipt uploads since October 2024"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT COUNT(DISTINCT transaction_id) FROM brex_data.receipt",
+    "question": "How many transactions have receipts attached?"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as daily_receipts FROM brex_data.receipt WHERE created_at >= DATE '2024-12-24' GROUP BY day ORDER BY day",
+    "question": "Show me daily receipt uploads for the final week of 2024"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as receipt_count FROM brex_data.receipt WHERE created_at >= DATE '2024-01-01' GROUP BY month ORDER BY month",
+    "question": "What's the monthly receipt upload trend across 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT COUNT(*) as receipts_final_days FROM brex_data.receipt WHERE created_at >= DATE '2024-12-30' AND created_at < DATE '2025-01-01'",
+    "question": "How many receipts were uploaded during the final two days of 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as receipt_count FROM brex_data.receipt WHERE created_at >= DATE '2024-12-24' GROUP BY hour ORDER BY hour",
+    "question": "What time of day were receipts uploaded during the final week of 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT COUNT(*) as receipts_december_2024 FROM brex_data.receipt WHERE created_at >= DATE '2024-12-01' AND created_at < DATE '2025-01-01'",
+    "question": "How many receipts were uploaded in December 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT DATE_TRUNC('quarter', created_at) as quarter, COUNT(*) as receipt_count FROM brex_data.receipt GROUP BY quarter ORDER BY quarter DESC LIMIT 4",
+    "question": "Show me quarterly receipt upload trends"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT transaction_id, COUNT(*) as receipt_count FROM brex_data.receipt GROUP BY transaction_id HAVING COUNT(*) > 1 ORDER BY receipt_count DESC",
+    "question": "Which transactions have multiple receipts attached?"
+  },
+  {
+    "data_sources": [
+      "brex_data.receipt"
+    ],
+    "sql": "SELECT AVG(daily_receipts) FROM (SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as daily_receipts FROM brex_data.receipt WHERE created_at >= DATE '2024-12-01' AND created_at < DATE '2025-01-01' GROUP BY day) subquery",
+    "question": "What's the average number of receipts uploaded per day in December 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT SUM(total_amount) FROM brex_data.statement WHERE end_date >= DATE '2024-10-01' AND end_date < DATE '2025-01-01'",
+    "question": "What's the total spending across statements in the final quarter of 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT period, SUM(total_amount) as total, COUNT(*) as statement_count FROM brex_data.statement GROUP BY period ORDER BY period DESC",
+    "question": "Show me spending by statement period"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT AVG(total_amount) as avg_statement_amount FROM brex_data.statement",
+    "question": "What's the average total amount on our statements?"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT account_id, SUM(total_amount) as total_spending, COUNT(*) as statement_count FROM brex_data.statement GROUP BY account_id ORDER BY total_spending DESC LIMIT 5",
+    "question": "Which corporate card accounts have the highest total statement amounts?"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT currency, SUM(total_amount) as total FROM brex_data.statement GROUP BY currency ORDER BY total DESC",
+    "question": "What's our total spending by currency?"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT account_id, start_date, end_date, total_amount FROM brex_data.statement ORDER BY end_date DESC LIMIT 1",
+    "question": "Show me the most recent statement"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', end_date) as month, SUM(total_amount) as total, AVG(total_amount) as avg FROM brex_data.statement WHERE end_date >= DATE '2024-01-01' GROUP BY month ORDER BY month",
+    "question": "What's the monthly spending trend across 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT MAX(total_amount) as highest_statement, MIN(total_amount) as lowest_statement FROM brex_data.statement",
+    "question": "What are our highest and lowest statement amounts?"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT account_id, MAX(total_amount) as peak_spending FROM brex_data.statement GROUP BY account_id ORDER BY peak_spending DESC LIMIT 10",
+    "question": "What's the peak spending for each corporate card account?"
+  },
+  {
+    "data_sources": [
+      "brex_data.statement"
+    ],
+    "sql": "SELECT EXTRACT(QUARTER FROM end_date) as quarter, EXTRACT(YEAR FROM end_date) as year, SUM(total_amount) as total FROM brex_data.statement GROUP BY year, quarter ORDER BY year DESC, quarter DESC",
+    "question": "Show me quarterly spending trends"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT SUM(amount) FROM brex_data.transaction WHERE posted_at_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "What's our total corporate card spending this month?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT category, SUM(amount) as total, COUNT(*) as transaction_count FROM brex_data.transaction WHERE posted_at_date >= CURRENT_DATE - INTERVAL '90 days' GROUP BY category ORDER BY total DESC",
+    "question": "Break down our spending by category for the last 90 days"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT merchant_name, COUNT(*) as transaction_count, SUM(amount) as total_spent FROM brex_data.transaction WHERE posted_at_date >= DATE '2024-10-01' AND posted_at_date < DATE '2025-01-01' GROUP BY merchant_name ORDER BY transaction_count DESC LIMIT 10",
+    "question": "Who were our most frequent merchants in Q4 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT AVG(amount) as avg_transaction FROM brex_data.transaction WHERE posted_at_date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "What's the average card transaction amount over the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', posted_at_date) as day, SUM(amount) as daily_spend, COUNT(*) as transaction_count FROM brex_data.transaction WHERE posted_at_date BETWEEN DATE '2024-12-24' AND DATE '2024-12-31' GROUP BY day ORDER BY day",
+    "question": "Show me daily card spend for the final week of 2024"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT COUNT(*) as large_transactions FROM brex_data.transaction WHERE amount > 1000 AND posted_at_date >= DATE '2024-12-01' AND posted_at_date < DATE '2025-01-01'",
+    "question": "How many card transactions over $1,000 did we have in December 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT merchant_name, SUM(amount) as total_spent FROM brex_data.transaction WHERE posted_at_date >= DATE_TRUNC('month', CURRENT_DATE) GROUP BY merchant_name ORDER BY total_spent DESC LIMIT 10",
+    "question": "Who are our top merchants by spend so far this month?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', posted_at_date) as week, SUM(amount) as weekly_spend FROM brex_data.transaction WHERE posted_at_date >= CURRENT_DATE - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "Show me our weekly card spend for the past 12 weeks"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM posted_at_time) as hour, COUNT(*) as transaction_count, AVG(amount) as avg_amount FROM brex_data.transaction WHERE posted_at_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY hour ORDER BY hour",
+    "question": "What time of day do transactions typically occur?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transaction"
+    ],
+    "sql": "SELECT category, AVG(amount) as avg_per_transaction FROM brex_data.transaction WHERE posted_at_date >= DATE '2024-10-01' AND posted_at_date < DATE '2025-01-01' GROUP BY category ORDER BY avg_per_transaction DESC",
+    "question": "What's the average transaction size by category in Q4 2024?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT SUM(amount) FROM brex_data.transfer WHERE status = 'completed' AND completed_at >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "What's the total amount transferred in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT status, COUNT(*) as transfer_count, SUM(amount) as total_amount FROM brex_data.transfer GROUP BY status",
+    "question": "Break down our transfers by status with totals"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT SUM(amount) FROM brex_data.transfer WHERE status = 'pending'",
+    "question": "What's the total amount of pending transfers?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT AVG(amount) as avg_transfer FROM brex_data.transfer WHERE status = 'completed'",
+    "question": "What's the average amount for completed transfers?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', completed_at) as month, SUM(amount) as total, COUNT(*) as transfer_count FROM brex_data.transfer WHERE status = 'completed' AND completed_at >= CURRENT_DATE - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "Show me the monthly trend of completed transfers"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT currency, SUM(amount) as total, COUNT(*) as transfer_count FROM brex_data.transfer WHERE status = 'completed' GROUP BY currency ORDER BY total DESC",
+    "question": "What's the total amount transferred by currency?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT from_account_id, to_account_id, amount, completed_at FROM brex_data.transfer WHERE status = 'completed' ORDER BY amount DESC LIMIT 10",
+    "question": "Show me the top 10 largest completed transfers"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT MAX(amount) as largest_transfer, MIN(amount) as smallest_transfer, AVG(amount) as avg_transfer FROM brex_data.transfer WHERE status = 'completed'",
+    "question": "What are the min, max, and average transfer amounts?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT from_account_id, COUNT(*) as transfer_count, SUM(amount) as total_transferred FROM brex_data.transfer WHERE status = 'completed' GROUP BY from_account_id ORDER BY total_transferred DESC LIMIT 10",
+    "question": "Which corporate card accounts are transferring out the most money?"
+  },
+  {
+    "data_sources": [
+      "brex_data.transfer"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', initiated_at) as week, COUNT(*) as transfers_initiated FROM brex_data.transfer WHERE initiated_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "Show me the weekly trend of transfer initiations"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT status, COUNT(*) as user_count FROM brex_data.user GROUP BY status",
+    "question": "Break down our Brex users by status"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT first_name, last_name, email, created_at FROM brex_data.user WHERE status = 'active' ORDER BY created_at DESC LIMIT 10",
+    "question": "Show me the 10 most recently added active Brex users"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as users_added FROM brex_data.user WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "Show me the monthly trend of Brex user creation"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as active_users FROM brex_data.user WHERE status = 'active'",
+    "question": "How many active Brex users do we have?"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT first_name, last_name, email, updated_at FROM brex_data.user WHERE updated_at >= CURRENT_DATE - INTERVAL '24 hours' ORDER BY updated_at DESC",
+    "question": "Which Brex user accounts were updated in the last 24 hours?"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as new_users_this_quarter FROM brex_data.user WHERE status = 'active' AND created_at >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many active Brex users were onboarded in the last quarter?"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT EXTRACT(YEAR FROM created_at) as year, COUNT(*) as users_added FROM brex_data.user GROUP BY year ORDER BY year",
+    "question": "How many Brex users were created each year?"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT status, MIN(created_at) as first_user, MAX(created_at) as latest_user FROM brex_data.user GROUP BY status",
+    "question": "When were the first and latest Brex users created for each status?"
+  },
+  {
+    "data_sources": [
+      "brex_data.user"
+    ],
+    "sql": "SELECT DATE_TRUNC('quarter', created_at) as quarter, COUNT(*) as users_added FROM brex_data.user GROUP BY quarter ORDER BY quarter DESC",
+    "question": "Show me quarterly Brex user creation trends"
+  }
+]

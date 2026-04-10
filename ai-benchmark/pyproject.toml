@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "ai-benchmark"
+version = "0.1.0"
+description = "E2E benchmarks for the Metabase AI Agent"
+authors = ["Metabase AI Team"]
+readme = "README.md"
+packages = [
+    { include = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+aiohttp = "^3.11.12"
+asgi-correlation-id = "^4.3.4"
+cachetools = "^5.5.0"
+fastapi = "^0.111.0"
+jinja2 = "^3.1.4"
+jsonref = "^1.1.0"
+litellm = "^1.80.15"
+numpy = "^2.3.1"
+openai = "^2.8.0"
+pandas = "^2.2.3"
+pydantic = "^2.11.7"
+pydantic-settings = "^2.10.1"
+python-slugify = "^8.0.4"
+pyyaml = "^6.0.2"
+sqlglot = "^27.29.0"
+tenacity = "^8.4.1"
+# Benchmark-specific deps
+tabulate = "^0.9.0"
+tqdm = "^4.67.1"
+sqlalchemy = "^2.0"
+factory-boy = "^3.3"
+faker = "^33.1"
+psycopg2-binary = "^2.9"
+
+[tool.poetry.scripts]
+ai-benchmark = "src.__main__:main"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.12.0"
+pytest = "^8.2.2"
+pytest-asyncio = "^0.24.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+exclude = [".git", ".venv", "__pycache__", "build", "dist", "db_dump.sql"]
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "B"]
+ignore = ["B011", "E741", "UP007"]
+fixable = ["F", "E", "W", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/benchmarks/**/*" = ["E501"]
+"src/benchmarks/e2e/__main__.py" = ["E402"]

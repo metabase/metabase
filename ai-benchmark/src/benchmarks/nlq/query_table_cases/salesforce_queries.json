@@ -1,0 +1,709 @@
+[
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as total_accounts FROM salesforce_data.account WHERE is_deleted = false",
+    "question": "How many accounts do we have in our CRM?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT industry, COUNT(*) as account_count FROM salesforce_data.account WHERE is_deleted = false GROUP BY industry ORDER BY account_count DESC LIMIT 10",
+    "question": "Which industries are most of our CRM accounts in?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT SUM(annual_revenue) as total_revenue_potential FROM salesforce_data.account WHERE is_deleted = false AND annual_revenue IS NOT NULL",
+    "question": "What's the total annual revenue across all our CRM accounts?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM salesforce_data.account WHERE is_deleted = false GROUP BY type ORDER BY count DESC",
+    "question": "What types of accounts are in our CRM?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as new_accounts FROM salesforce_data.account WHERE created_date >= CURRENT_DATE - INTERVAL '30 days' AND is_deleted = false",
+    "question": "How many new CRM accounts were added in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT name, annual_revenue, number_of_employees FROM salesforce_data.account WHERE is_deleted = false AND annual_revenue IS NOT NULL ORDER BY annual_revenue DESC LIMIT 10",
+    "question": "Who are our largest CRM accounts by annual revenue?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT owner_id, COUNT(*) as account_count FROM salesforce_data.account WHERE is_deleted = false GROUP BY owner_id ORDER BY account_count DESC LIMIT 10",
+    "question": "Which sales reps own the most CRM accounts?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT ROUND(AVG(number_of_employees), 0) as avg_company_size FROM salesforce_data.account WHERE is_deleted = false AND number_of_employees IS NOT NULL",
+    "question": "What's the average company size of our CRM accounts?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_date) as month, COUNT(*) as new_accounts FROM salesforce_data.account WHERE created_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our CRM account growth trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as enterprise_accounts FROM salesforce_data.account WHERE is_deleted = false AND number_of_employees > 1000",
+    "question": "How many enterprise-sized CRM accounts do we have?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT status, COUNT(*) as campaign_count FROM salesforce_data.campaign GROUP BY status ORDER BY campaign_count DESC",
+    "question": "What's the status breakdown of our sales campaigns?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT SUM(actual_cost) as total_spent, SUM(expected_revenue) as expected_return, ROUND(SUM(expected_revenue) / NULLIF(SUM(actual_cost), 0), 2) as roi FROM salesforce_data.campaign WHERE actual_cost > 0",
+    "question": "What's our ROI across all sales campaigns?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT name, expected_revenue, actual_cost, ROUND(expected_revenue / NULLIF(actual_cost, 0), 2) as roi FROM salesforce_data.campaign WHERE actual_cost > 0 ORDER BY roi DESC LIMIT 10",
+    "question": "Which sales campaigns have the best ROI?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT type, COUNT(*) as count, SUM(actual_cost) as total_cost FROM salesforce_data.campaign GROUP BY type ORDER BY total_cost DESC",
+    "question": "What types of sales campaigns are we running and how much do they cost?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT COUNT(*) as active_campaigns FROM salesforce_data.campaign WHERE status = 'In Progress'",
+    "question": "How many sales campaigns are currently running?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT SUM(budgeted_cost - actual_cost) as budget_variance FROM salesforce_data.campaign WHERE budgeted_cost IS NOT NULL AND actual_cost IS NOT NULL",
+    "question": "Are we under or over budget across all sales campaigns?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', start_date) as month, COUNT(*) as campaigns_launched FROM salesforce_data.campaign WHERE start_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "How many sales campaigns have we launched each month?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT name, actual_cost FROM salesforce_data.campaign WHERE actual_cost IS NOT NULL ORDER BY actual_cost DESC LIMIT 10",
+    "question": "What are our most expensive sales campaigns?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT COUNT(*) as campaigns_ending_soon FROM salesforce_data.campaign WHERE end_date >= CURRENT_DATE AND end_date < CURRENT_DATE + INTERVAL '30 days'",
+    "question": "How many sales campaigns are ending in the next 30 days?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.campaign"
+    ],
+    "sql": "SELECT owner_id, COUNT(*) as campaign_count FROM salesforce_data.campaign GROUP BY owner_id ORDER BY campaign_count DESC LIMIT 10",
+    "question": "Which team members are managing the most sales campaigns?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT COUNT(*) as open_cases FROM salesforce_data.case WHERE is_closed = false",
+    "question": "How many open support cases do we have?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT priority, COUNT(*) as case_count FROM salesforce_data.case WHERE is_closed = false GROUP BY priority ORDER BY CASE priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 END",
+    "question": "What's the priority breakdown of our open cases?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM salesforce_data.case GROUP BY status ORDER BY count DESC",
+    "question": "What's the status distribution of all our cases?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT origin, COUNT(*) as case_count FROM salesforce_data.case WHERE created_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY origin ORDER BY case_count DESC",
+    "question": "Where are our support cases coming from?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (closed_date - created_date)) / 3600), 1) as avg_resolution_hours FROM salesforce_data.case WHERE is_closed = true AND closed_date IS NOT NULL",
+    "question": "What's our average case resolution time for closed cases?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created_date)) / 3600), 1) as avg_age_hours FROM salesforce_data.case WHERE is_closed = false",
+    "question": "What's the average age of currently open cases?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM salesforce_data.case WHERE is_closed = false GROUP BY type ORDER BY count DESC",
+    "question": "What types of support cases are we handling?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT owner_id, COUNT(*) as case_count FROM salesforce_data.case WHERE is_closed = false GROUP BY owner_id ORDER BY case_count DESC LIMIT 10",
+    "question": "Which support agents have the most open cases?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT COUNT(*) as new_cases FROM salesforce_data.case WHERE created_date >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many new cases were opened this week?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_date) as week, COUNT(*) as cases FROM salesforce_data.case WHERE created_date >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly case volume trend?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.case"
+    ],
+    "sql": "SELECT COUNT(*) as cases_resolved FROM salesforce_data.case WHERE closed_date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many cases did we close in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT COUNT(*) as total_contacts FROM salesforce_data.contact WHERE is_deleted = false",
+    "question": "How many contacts do we have in our CRM?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT COUNT(*) as new_contacts FROM salesforce_data.contact WHERE created_date >= DATE_TRUNC('month', CURRENT_DATE) AND is_deleted = false",
+    "question": "How many new CRM contacts were added this month?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT title, COUNT(*) as contact_count FROM salesforce_data.contact WHERE is_deleted = false AND title IS NOT NULL GROUP BY title ORDER BY contact_count DESC LIMIT 10",
+    "question": "What are the most common job titles in our contact database?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT owner_id, COUNT(*) as contact_count FROM salesforce_data.contact WHERE is_deleted = false GROUP BY owner_id ORDER BY contact_count DESC LIMIT 10",
+    "question": "Which sales reps have the most contacts?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT account_id, COUNT(*) as contact_count FROM salesforce_data.contact WHERE is_deleted = false GROUP BY account_id ORDER BY contact_count DESC LIMIT 10",
+    "question": "Which CRM accounts have the most contacts?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_date) as month, COUNT(*) as new_contacts FROM salesforce_data.contact WHERE created_date >= CURRENT_DATE - INTERVAL '12 months' AND is_deleted = false GROUP BY month ORDER BY month",
+    "question": "What's our contact growth trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT COUNT(*) as contacts_without_email FROM salesforce_data.contact WHERE is_deleted = false AND (email IS NULL OR email = '')",
+    "question": "How many contacts are missing email addresses?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT COUNT(*) as contacts_without_phone FROM salesforce_data.contact WHERE is_deleted = false AND (phone IS NULL OR phone = '')",
+    "question": "How many contacts don't have phone numbers?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT COUNT(*) as recently_updated FROM salesforce_data.contact WHERE last_modified_date >= CURRENT_DATE - INTERVAL '7 days' AND is_deleted = false",
+    "question": "How many contact records were updated this week?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.contact"
+    ],
+    "sql": "SELECT ROUND(COUNT(CASE WHEN email IS NOT NULL AND email != '' THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as email_completeness FROM salesforce_data.contact WHERE is_deleted = false",
+    "question": "What percentage of our CRM contacts have email addresses?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT COUNT(*) as upcoming_events FROM salesforce_data.event WHERE start_date_time >= CURRENT_TIMESTAMP",
+    "question": "How many CRM events are scheduled in the future?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', start_date_time) as day, COUNT(*) as event_count FROM salesforce_data.event WHERE start_date_time >= CURRENT_DATE AND start_date_time < CURRENT_DATE + INTERVAL '7 days' GROUP BY day ORDER BY day",
+    "question": "What does our CRM event calendar look like for the next week?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT subject, COUNT(*) as count FROM salesforce_data.event GROUP BY subject ORDER BY count DESC LIMIT 10",
+    "question": "What are the most common types of sales events?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT owner_id, COUNT(*) as event_count FROM salesforce_data.event WHERE start_date_time >= CURRENT_DATE GROUP BY owner_id ORDER BY event_count DESC LIMIT 10",
+    "question": "Who has the most events scheduled in the next week?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT ROUND(AVG(duration_in_minutes), 0) as avg_duration FROM salesforce_data.event WHERE duration_in_minutes > 0",
+    "question": "What's the average length of our sales events?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT COUNT(*) as events_last_week FROM salesforce_data.event WHERE start_date_time >= CURRENT_DATE - INTERVAL '7 days' AND start_date_time < CURRENT_DATE",
+    "question": "How many sales events did we have last week?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM start_date_time) as hour, COUNT(*) as event_count FROM salesforce_data.event WHERE start_date_time >= CURRENT_DATE - INTERVAL '90 days' GROUP BY hour ORDER BY event_count DESC",
+    "question": "What times of day do we typically schedule sales events?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_date) as week, COUNT(*) as events_scheduled FROM salesforce_data.event WHERE created_date >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "How has our sales event scheduling been trending?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT COUNT(*) as events_today FROM salesforce_data.event WHERE DATE_TRUNC('day', start_date_time) = CURRENT_DATE",
+    "question": "How many sales events are scheduled for today?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.event"
+    ],
+    "sql": "SELECT owner_id, SUM(duration_in_minutes) / 60.0 as total_hours FROM salesforce_data.event WHERE start_date_time >= CURRENT_DATE - INTERVAL '30 days' AND start_date_time < CURRENT_DATE GROUP BY owner_id ORDER BY total_hours DESC LIMIT 10",
+    "question": "Who spent the most time in sales events last month?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT COUNT(*) as total_leads FROM salesforce_data.lead",
+    "question": "How many sales leads do we have in our CRM?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT status, COUNT(*) as lead_count FROM salesforce_data.lead GROUP BY status ORDER BY lead_count DESC",
+    "question": "What's the status breakdown of our sales leads?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT COUNT(*) as converted_leads, ROUND(COUNT(*)::numeric / (SELECT COUNT(*) FROM salesforce_data.lead) * 100, 2) as conversion_rate FROM salesforce_data.lead WHERE is_converted = true",
+    "question": "What's our sales lead conversion rate?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT source, COUNT(*) as lead_count FROM salesforce_data.lead GROUP BY source ORDER BY lead_count DESC",
+    "question": "Where are our sales leads coming from?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT COUNT(*) as new_leads FROM salesforce_data.lead WHERE created_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many new sales leads did we get this month?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT rating, COUNT(*) as count FROM salesforce_data.lead WHERE rating IS NOT NULL GROUP BY rating ORDER BY CASE rating WHEN 'Hot' THEN 1 WHEN 'Warm' THEN 2 WHEN 'Cold' THEN 3 END",
+    "question": "How are our sales leads rated by quality?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT owner_id, COUNT(*) as lead_count FROM salesforce_data.lead WHERE is_converted = false GROUP BY owner_id ORDER BY lead_count DESC LIMIT 10",
+    "question": "Which sales reps have the most unconverted leads?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_date) as week, COUNT(*) as new_leads FROM salesforce_data.lead WHERE created_date >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly sales lead generation trend?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (converted_date - created_date)) / 86400), 1) as avg_days_to_convert FROM salesforce_data.lead WHERE is_converted = true AND converted_date IS NOT NULL",
+    "question": "How long does it typically take to convert a sales lead?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.lead"
+    ],
+    "sql": "SELECT COUNT(*) as leads_converted_this_month FROM salesforce_data.lead WHERE is_converted = true AND converted_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many sales leads did we convert this month?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT SUM(amount) as total_pipeline FROM salesforce_data.opportunity WHERE is_closed = false",
+    "question": "What's our total pipeline value?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT stage_name, COUNT(*) as opp_count, SUM(amount) as total_value FROM salesforce_data.opportunity WHERE is_closed = false GROUP BY stage_name ORDER BY total_value DESC",
+    "question": "How is our pipeline distributed across stages?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT COUNT(*) as won_deals, SUM(amount) as revenue FROM salesforce_data.opportunity WHERE is_won = true AND close_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many deals did we close this month and for how much?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT COUNT(*) as total_opportunities, COUNT(CASE WHEN is_won = true THEN 1 END) as won, ROUND(COUNT(CASE WHEN is_won = true THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as win_rate FROM salesforce_data.opportunity WHERE is_closed = true",
+    "question": "What's our overall win rate?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT owner_id, SUM(amount) as pipeline_value FROM salesforce_data.opportunity WHERE is_closed = false GROUP BY owner_id ORDER BY pipeline_value DESC LIMIT 10",
+    "question": "Which sales reps have the most valuable pipelines?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT type, COUNT(*) as count, SUM(amount) as total_value FROM salesforce_data.opportunity WHERE is_closed = false GROUP BY type ORDER BY total_value DESC",
+    "question": "What types of opportunities are in our pipeline?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT lead_source, COUNT(*) as opp_count, SUM(amount) as total_value FROM salesforce_data.opportunity WHERE is_won = true GROUP BY lead_source ORDER BY total_value DESC",
+    "question": "Which lead sources have generated the most revenue?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', close_date) as month, SUM(amount) as revenue FROM salesforce_data.opportunity WHERE is_won = true AND close_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly won deals revenue trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT COUNT(*) as closing_soon FROM salesforce_data.opportunity WHERE is_closed = false AND close_date >= CURRENT_DATE AND close_date < CURRENT_DATE + INTERVAL '30 days'",
+    "question": "How many opportunities are expected to close in the next 30 days?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity"
+    ],
+    "sql": "SELECT ROUND(AVG(amount), 0) as avg_deal_size FROM salesforce_data.opportunity WHERE is_won = true AND amount IS NOT NULL",
+    "question": "What's our average deal size for won opportunities?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT COUNT(DISTINCT opportunity_id) as opportunities_tracked FROM salesforce_data.opportunity_history",
+    "question": "How many opportunities have stage history tracked?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT opportunity_id, COUNT(*) as stage_changes FROM salesforce_data.opportunity_history GROUP BY opportunity_id ORDER BY stage_changes DESC LIMIT 10",
+    "question": "Which opportunities have moved through the most stages?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT stage_name, COUNT(*) as entries FROM salesforce_data.opportunity_history GROUP BY stage_name ORDER BY entries DESC",
+    "question": "Which stages do opportunities spend time in most frequently?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT opportunity_id, stage_name, amount, created_date FROM salesforce_data.opportunity_history ORDER BY created_date DESC LIMIT 100",
+    "question": "What are the most recent opportunity stage changes?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_date) as week, COUNT(*) as stage_changes FROM salesforce_data.opportunity_history WHERE created_date >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "How many opportunity stage changes happened in the last 8 weeks?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT COUNT(*) as recent_changes FROM salesforce_data.opportunity_history WHERE created_date >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many opportunity stage changes happened this week?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT stage_name, ROUND(AVG(amount), 0) as avg_amount FROM salesforce_data.opportunity_history WHERE amount IS NOT NULL GROUP BY stage_name",
+    "question": "What's the average opportunity size at each stage?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT stage_name, ROUND(AVG(probability), 0) as avg_probability FROM salesforce_data.opportunity_history WHERE probability IS NOT NULL GROUP BY stage_name ORDER BY avg_probability DESC",
+    "question": "What's the average win probability at each stage?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT COUNT(*) as history_records FROM salesforce_data.opportunity_history WHERE created_date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many opportunity updates have been made this month?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.opportunity_history"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_date) as month, COUNT(*) as stage_changes FROM salesforce_data.opportunity_history WHERE created_date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly pipeline activity trend?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT COUNT(*) as open_tasks FROM salesforce_data.task WHERE is_closed = false",
+    "question": "How many open tasks do we have?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT status, COUNT(*) as task_count FROM salesforce_data.task GROUP BY status ORDER BY task_count DESC",
+    "question": "What's the status distribution of our tasks?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT priority, COUNT(*) as count FROM salesforce_data.task WHERE is_closed = false GROUP BY priority ORDER BY CASE priority WHEN 'High' THEN 1 WHEN 'Normal' THEN 2 WHEN 'Low' THEN 3 END",
+    "question": "What's the priority breakdown of open tasks?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT owner_id, COUNT(*) as task_count FROM salesforce_data.task WHERE is_closed = false GROUP BY owner_id ORDER BY task_count DESC LIMIT 10",
+    "question": "Who has the most open tasks?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT COUNT(*) as overdue_tasks FROM salesforce_data.task WHERE is_closed = false AND activity_date < CURRENT_DATE",
+    "question": "How many tasks are overdue?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT subject, COUNT(*) as count FROM salesforce_data.task GROUP BY subject ORDER BY count DESC LIMIT 10",
+    "question": "What are the most common types of sales tasks?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT COUNT(*) as tasks_due_today FROM salesforce_data.task WHERE is_closed = false AND activity_date = CURRENT_DATE",
+    "question": "How many tasks are due today?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_date) as week, COUNT(*) as tasks_created FROM salesforce_data.task WHERE created_date >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "How has our task creation been trending?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT COUNT(*) as tasks_completed FROM salesforce_data.task WHERE is_closed = true AND created_date >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many tasks were completed this week?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.task"
+    ],
+    "sql": "SELECT COUNT(*) as tasks_due_soon FROM salesforce_data.task WHERE is_closed = false AND activity_date >= CURRENT_DATE AND activity_date < CURRENT_DATE + INTERVAL '7 days'",
+    "question": "How many tasks are due in the next week?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as total_users, COUNT(CASE WHEN is_active = true THEN 1 END) as active_users FROM salesforce_data.user",
+    "question": "How many users do we have in Salesforce?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as new_users FROM salesforce_data.user WHERE created_date >= DATE_TRUNC('quarter', CURRENT_DATE)",
+    "question": "How many new Salesforce users were added this quarter?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT COALESCE(user_role_id, 'Unassigned') as role_id, COUNT(*) as user_count FROM salesforce_data.user WHERE is_active = true GROUP BY COALESCE(user_role_id, 'Unassigned') ORDER BY user_count DESC",
+    "question": "How many Salesforce users do we have in each role assignment?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT COALESCE(profile_id, 'Unassigned') as profile_id, COUNT(*) as user_count FROM salesforce_data.user WHERE is_active = true GROUP BY COALESCE(profile_id, 'Unassigned') ORDER BY user_count DESC",
+    "question": "What's the distribution of Salesforce users across profile assignments?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as inactive_users FROM salesforce_data.user WHERE is_active = false",
+    "question": "How many inactive Salesforce user accounts do we have?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_date) as month, COUNT(*) as new_users FROM salesforce_data.user WHERE created_date >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our Salesforce user growth trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as recently_updated FROM salesforce_data.user WHERE last_modified_date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many Salesforce user records were updated in the last month?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT ROUND(COUNT(CASE WHEN is_active = true THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as active_percentage FROM salesforce_data.user",
+    "question": "What percentage of our Salesforce users are active?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as users_this_year FROM salesforce_data.user WHERE created_date >= DATE_TRUNC('year', CURRENT_DATE)",
+    "question": "How many Salesforce users were added this year?"
+  },
+  {
+    "data_sources": [
+      "salesforce_data.user"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created_date)) / 86400 / 365), 1) as avg_tenure_years FROM salesforce_data.user WHERE is_active = true",
+    "question": "What's the average tenure of our active Salesforce users?"
+  }
+]

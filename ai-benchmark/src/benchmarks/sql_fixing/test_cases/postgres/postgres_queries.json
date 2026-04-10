@@ -1,0 +1,155 @@
+[
+  {
+    "description": "Invalid EXTRACT function: typo in date part",
+    "used_tables": [
+      "brex_data.account"
+    ],
+    "fixed_query": "SELECT\n  name,\n  EXTRACT(YEAR FROM created_at) AS year_created\nFROM brex_data.account",
+    "broken_query": "SELECT\n  name,\n  EXTRACT(YEER FROM created_at) AS year_created\nFROM brex_data.account",
+    "error_message": "ERROR: unit \"yeer\" not recognized for type timestamp without time zone"
+  },
+  {
+    "description": "Invalid type cast: wrong cast syntax",
+    "used_tables": [
+      "calendly_data.event"
+    ],
+    "fixed_query": "SELECT name, start_time::date AS event_date\nFROM calendly_data.event\nWHERE start_time > '2023-01-01'",
+    "broken_query": "SELECT name, CAST start_time AS date AS event_date\nFROM calendly_data.event\nWHERE start_time > '2023-01-01'",
+    "error_message": "ERROR: syntax error at or near \"start_time\"\n  Position: 137"
+  },
+  {
+    "description": "Invalid window function: PARTITION BY with wrong syntax",
+    "used_tables": [
+      "customerio_data.customer"
+    ],
+    "fixed_query": "SELECT\n  email,\n  created_at,\n  RANK() OVER (\n    PARTITION BY DATE_TRUNC('month', created_at)\n    ORDER BY created_at\n  ) AS monthly_rank\nFROM customerio_data.customer",
+    "broken_query": "SELECT\n  email,\n  created_at,\n  RANK() OVER (\n    PARTITION DATE_TRUNC('month', created_at)\n    ORDER BY created_at\n  ) AS monthly_rank\nFROM customerio_data.customer",
+    "error_message": "ERROR: syntax error at or near \"DATE_TRUNC\"\n  Position: 179"
+  },
+  {
+    "description": "Invalid PostgreSQL array syntax: missing brackets",
+    "used_tables": [
+      "google_adwords_data.account"
+    ],
+    "fixed_query": "SELECT name\nFROM google_adwords_data.account\nWHERE currency_code = ANY(ARRAY['USD', 'EUR', 'GBP'])",
+    "broken_query": "SELECT name\nFROM google_adwords_data.account\nWHERE currency_code = ANY(ARRAY 'USD', 'EUR', 'GBP')",
+    "error_message": "ERROR: syntax error at or near \"'USD'\"\n  Position: 196"
+  },
+  {
+    "description": "Invalid window frame specification: wrong keywords",
+    "used_tables": [
+      "lever_data.application"
+    ],
+    "fixed_query": "SELECT\n  id,\n  type,\n  COUNT(*) OVER (\n    PARTITION BY type\n    ORDER BY id\n    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW\n  ) AS running_count\nFROM lever_data.application",
+    "broken_query": "SELECT\n  id,\n  type,\n  COUNT(*) OVER (\n    PARTITION BY type\n    ORDER BY id\n    ROWS FROM UNBOUNDED PRECEDING TO CURRENT ROW\n  ) AS running_count\nFROM lever_data.application",
+    "error_message": "ERROR: syntax error at or near \"FROM\"\n  Position: 205"
+  },
+  {
+    "description": "Invalid string concatenation: missing concatenation operator",
+    "used_tables": [
+      "linkedin_ads_data.campaign"
+    ],
+    "fixed_query": "SELECT name || ' Campaign' AS full_name FROM linkedin_ads_data.campaign",
+    "broken_query": "SELECT name + ' Campaign' AS full_name FROM linkedin_ads_data.campaign",
+    "error_message": "ERROR: operator does not exist: character varying + unknown\n  Hint: No operator matches the given name and argument types. You might need to add explicit type casts.\n  Position: 131"
+  },
+  {
+    "description": "Invalid GENERATE_SERIES function: missing parentheses",
+    "used_tables": [
+      "quickbooks_data.customer"
+    ],
+    "fixed_query": "SELECT c.email, gs.month_num\nFROM quickbooks_data.customer c\nCROSS JOIN GENERATE_SERIES(1, 12) AS gs(month_num)",
+    "broken_query": "SELECT c.email, gs.month_num\nFROM quickbooks_data.customer c\nCROSS JOIN GENERATE_SERIES 1, 12 AS gs(month_num)",
+    "error_message": "ERROR: syntax error at or near \"1\"\n  Position: 207"
+  },
+  {
+    "description": "Invalid window function: LAG with wrong parameter count",
+    "used_tables": [
+      "salesforce_data.account"
+    ],
+    "fixed_query": "SELECT\n  name,\n  created_date,\n  LAG(created_date, 1) OVER (ORDER BY created_date) AS prev_date\nFROM salesforce_data.account",
+    "broken_query": "SELECT\n  name,\n  created_date,\n  LAG(created_date, 1, 0, 'default') OVER (ORDER BY created_date) AS prev_date\nFROM salesforce_data.account",
+    "error_message": "ERROR: function lag(timestamp without time zone, integer, integer, unknown) does not exist\n  Hint: No function matches the given name and argument types. You might need to add explicit type casts.\n  Position: 152"
+  },
+  {
+    "description": "Invalid REGEXP_REPLACE function: missing flags parameter delimiter",
+    "used_tables": [
+      "shopify_data.product"
+    ],
+    "fixed_query": "SELECT\n  title,\n  REGEXP_REPLACE(title, '[^A-Za-z0-9]', '_', 'g') AS clean_title\nFROM shopify_data.product",
+    "broken_query": "SELECT\n  title,\n  REGEXP_REPLACE(title, '[^A-Za-z0-9]', '_' 'g') AS clean_title\nFROM shopify_data.product",
+    "error_message": "ERROR: syntax error at or near \"'g'\"\n  Position: 179"
+  },
+  {
+    "description": "Invalid DATE_TRUNC function: unsupported precision",
+    "used_tables": [
+      "stripe_data.charge"
+    ],
+    "fixed_query": "SELECT\n  DATE_TRUNC('week', created) AS charge_week,\n  COUNT(*)\nFROM stripe_data.charge\nGROUP BY DATE_TRUNC('week', created)",
+    "broken_query": "SELECT\n  DATE_TRUNC(7 * 'day', created) AS charge_week,\n  COUNT(*)\nFROM stripe_data.charge\nGROUP BY DATE_TRUNC(7 * 'day', created)",
+    "error_message": "ERROR: invalid input syntax for type integer: \"day\"\n  Position: 143"
+  },
+  {
+    "description": "Invalid column alias with / in name",
+    "used_tables": [
+      "salesforce_data.account"
+    ],
+    "fixed_query": "SELECT\n  annual_revenue / number_of_employees AS \"revenue/employee\"\nFROM salesforce_data.account\nLIMIT 10",
+    "broken_query": "SELECT\n  annual_revenue / number_of_employees AS revenue/employee\nFROM salesforce_data.account\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"/\"\n  Position: 175"
+  },
+  {
+    "description": "Single quotes used for identifier instead of double quotes",
+    "used_tables": [
+      "calendly_data.event"
+    ],
+    "fixed_query": "SELECT\n  name,\n  status,\n  start_time AS \"Event Start\"\nFROM calendly_data.event\nWHERE status = 'active'",
+    "broken_query": "SELECT\n  name,\n  status,\n  start_time AS 'Event Start'\nFROM calendly_data.event\nWHERE status = 'active'",
+    "error_message": "ERROR: syntax error at or near \"'Event Start'\"\n  Position: 160"
+  },
+  {
+    "description": "Double quotes used for string literal instead of single quotes",
+    "used_tables": [
+      "customerio_data.customer"
+    ],
+    "fixed_query": "SELECT email, created_at\nFROM customerio_data.customer\nWHERE email LIKE '%@example.com'\nLIMIT 5",
+    "broken_query": "SELECT email, created_at\nFROM customerio_data.customer\nWHERE email LIKE \"%@example.com\"\nLIMIT 5",
+    "error_message": "ERROR: column \"%@example.com\" does not exist\n  Position: 191"
+  },
+  {
+    "description": "Unquoted identifier with special characters that requires quoting",
+    "used_tables": [
+      "salesforce_data.account"
+    ],
+    "fixed_query": "SELECT\n  name,\n  annual_revenue,\n  annual_revenue * 0.15 AS \"tax@15%\"\nFROM salesforce_data.account\nWHERE annual_revenue > 1000000",
+    "broken_query": "SELECT\n  name,\n  annual_revenue,\n  annual_revenue * 0.15 AS tax@15%\nFROM salesforce_data.account\nWHERE annual_revenue > 1000000",
+    "error_message": "ERROR: syntax error at or near \"@\"\n  Position: 182"
+  },
+  {
+    "description": "Incorrect dollar-quoted string constant syntax: $ vs $$",
+    "used_tables": [
+      "stripe_data.charge"
+    ],
+    "fixed_query": "SELECT\n  id,\n  amount,\n  description\nFROM stripe_data.charge\nWHERE description = $$Payment for order #123$$\nLIMIT 10",
+    "broken_query": "SELECT\n  id,\n  amount,\n  description\nFROM stripe_data.charge\nWHERE description = $Payment for order #123$\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"$\"\n  Position: 200"
+  },
+  {
+    "description": "Incorrect dollar-quoted string constant syntax: missing closing $",
+    "used_tables": [
+      "stripe_data.charge"
+    ],
+    "fixed_query": "SELECT\n  id,\n  amount,\n  description\nFROM stripe_data.charge\nWHERE description = $$Payment for order #123$$\nLIMIT 10",
+    "broken_query": "SELECT\n  id,\n  amount,\n  description\nFROM stripe_data.charge\nWHERE description = $$Payment for order #123$\nLIMIT 10",
+    "error_message": "Unterminated dollar quote started at position 199 in SQL -- Metabase:: userID: 1 queryType: native queryHash: 0724383c87a3ff7c9dcf7dae3ebd1dafcaae62c59cf7f8251d01697c3db18408\nSELECT\n  id,\n  amount,\n  description\nFROM stripe_data.charge\nWHERE description = $$Payment for order #123$\nLIMIT 10. Expected terminating $$"
+  },
+  {
+    "description": "Incorrectly quoting fully-qualified identifier as single string instead of quoting each part",
+    "used_tables": [
+      "salesforce_data.account"
+    ],
+    "fixed_query": "SELECT * FROM (\nSELECT\n  name,\n  annual_revenue AS \"annual $$\"\nFROM salesforce_data.account\n) AS \"our revenue \"\nWHERE \"our revenue \".\"annual $$\" > 500000\nLIMIT 10",
+    "broken_query": "SELECT * FROM (\nSELECT\n  name,\n  annual_revenue AS \"annual $$\"\nFROM salesforce_data.account\n) AS \"our revenue \"\nWHERE \"our revenue.annual $$\" > 500000\nLIMIT 10",
+    "error_message": "ERROR: column \"our revenue.annual $$\" does not exist\n  Position: 237"
+  }
+]
