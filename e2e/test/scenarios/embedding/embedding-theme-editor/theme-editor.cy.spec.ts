@@ -71,5 +71,38 @@ describe(
 
       H.main().findByText("We're a little lost...").should("be.visible");
     });
+
+    describe("preview panel", () => {
+      it("shows enable embedding prompt when embedding is not enabled", () => {
+        H.updateSetting("enable-embedding-simple", false);
+
+        createThemeViaApi("Preview test").then((theme) => {
+          cy.visit(`/admin/embedding/themes/${theme.id}`);
+        });
+
+        cy.log("should show prompt to enable embedding");
+        H.main()
+          .findByText(
+            "Enable modular embedding to see a live preview of your theme.",
+          )
+          .should("be.visible");
+
+        H.main()
+          .findByRole("button", { name: /Enable modular embedding/ })
+          .should("be.visible");
+      });
+
+      it("shows theme preview when embedding is enabled", () => {
+        H.updateSetting("enable-embedding-simple", true);
+        H.updateSetting("show-simple-embed-terms", false);
+
+        createThemeViaApi("Preview test").then((theme) => {
+          cy.visit(`/admin/embedding/themes/${theme.id}`);
+        });
+
+        cy.log("should show the theme preview heading");
+        H.main().findByText("Theme preview").should("be.visible");
+      });
+    });
   },
 );
