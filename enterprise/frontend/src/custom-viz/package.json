@@ -26,6 +26,7 @@
     "build": "vite build && cp -r src/templates dist/templates",
     "test": "vitest run",
     "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
     "lint": "oxlint src/",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
