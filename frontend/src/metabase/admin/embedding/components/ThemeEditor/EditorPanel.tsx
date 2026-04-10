@@ -3,16 +3,40 @@ import { t } from "ttag";
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
 import { ColorPickerContent } from "metabase/common/components/ColorPicker/ColorPickerContent";
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
+import type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 import {
   Box,
   Button,
   Card,
   Flex,
   Popover,
+  Select,
   Stack,
   Text,
   TextInput,
 } from "metabase/ui";
+
+const FONT_FAMILY_OPTIONS: { value: string; label: string }[] = [
+  { value: "Roboto", label: "Roboto" },
+  { value: "Merriweather", label: "Merriweather" },
+  { value: "Open Sans", label: "Open Sans" },
+  { value: "Lato", label: "Lato" },
+  { value: "Noto Sans", label: "Noto Sans" },
+  { value: "Roboto Slab", label: "Roboto Slab" },
+  { value: "Source Sans Pro", label: "Source Sans Pro" },
+  { value: "Raleway", label: "Raleway" },
+  { value: "Slabo 27px", label: "Slabo 27px" },
+  { value: "PT Sans", label: "PT Sans" },
+  { value: "Poppins", label: "Poppins" },
+  { value: "PT Serif", label: "PT Serif" },
+  { value: "Roboto Mono", label: "Roboto Mono" },
+  { value: "Roboto Condensed", label: "Roboto Condensed" },
+  { value: "Playfair Display", label: "Playfair Display" },
+  { value: "Oswald", label: "Oswald" },
+  { value: "Ubuntu", label: "Ubuntu" },
+  { value: "Montserrat", label: "Montserrat" },
+  { value: "Lora", label: "Lora" },
+];
 
 const PRIMARY_COLORS: {
   key: Exclude<MetabaseColor, "charts">;
@@ -35,6 +59,14 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
   }
 
   const colors = currentTheme.settings.colors ?? {};
+
+  const parseFontSizeNumber = (fontSize: string | undefined): string => {
+    if (!fontSize) {
+      return "";
+    }
+    const num = parseFloat(fontSize);
+    return isNaN(num) ? "" : String(num);
+  };
 
   return (
     <Flex
@@ -69,6 +101,40 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
                 />
               ))}
             </Flex>
+          </Card>
+
+          {/* Font */}
+          <Card withBorder p="lg">
+            <Stack gap="md">
+              <Select
+                label={t`Font`}
+                data={FONT_FAMILY_OPTIONS}
+                value={currentTheme.settings.fontFamily ?? ""}
+                onChange={(value) =>
+                  editor.setFontFamily((value ?? "") as MetabaseFontFamily)
+                }
+                clearable
+                searchable
+              />
+              <TextInput
+                label={t`Base font size`}
+                value={parseFontSizeNumber(currentTheme.settings.fontSize)}
+                onChange={(e) => {
+                  const num = e.currentTarget.value;
+                  editor.setFontSize(num ? `${num}px` : "");
+                }}
+                rightSection={
+                  <Text c="text-tertiary" fz="sm">
+                    {"px"}
+                  </Text>
+                }
+              />
+              <TextInput
+                label={t`Line height`}
+                value={String(currentTheme.settings.lineHeight ?? "")}
+                onChange={(e) => editor.setLineHeight(e.currentTarget.value)}
+              />
+            </Stack>
           </Card>
         </Stack>
       </Box>

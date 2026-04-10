@@ -72,6 +72,47 @@ describe(
       H.main().findByText("We're a little lost...").should("be.visible");
     });
 
+    describe("font settings", () => {
+      it("can edit font settings and save them", () => {
+        cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");
+
+        createThemeViaApi("Font test").then((theme) => {
+          cy.visit(`/admin/embedding/themes/${theme.id}`);
+        });
+
+        H.main().within(() => {
+          cy.log("font fields should be visible");
+          cy.findByLabelText("Font").should("be.visible");
+          cy.findByLabelText("Base font size").should("be.visible");
+          cy.findByLabelText("Line height").should("be.visible");
+        });
+
+        cy.log("select a font family");
+        H.main().findByLabelText("Font").click();
+        cy.findByRole("option", { name: "Lato" }).click();
+
+        H.main().within(() => {
+          cy.log("set base font size");
+          cy.findByLabelText("Base font size").type("16");
+
+          cy.log("set line height");
+          cy.findByLabelText("Line height").type("2");
+
+          cy.log("save the theme");
+          cy.findByRole("button", { name: /Save theme/ }).click();
+        });
+
+        cy.wait("@updateTheme").then((interception) => {
+          const { settings } = interception.request.body;
+          expect(settings.fontFamily).to.eq("Lato");
+          expect(settings.fontSize).to.eq("16px");
+          expect(settings.lineHeight).to.eq(2);
+        });
+
+        H.undoToast().findByText("Theme saved").should("exist");
+      });
+    });
+
     describe("main colors", () => {
       it("shows the main color swatches", () => {
         createThemeViaApi("Color test").then((theme) => {
