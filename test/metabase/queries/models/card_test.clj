@@ -858,8 +858,8 @@
                  t/offset-date-time
                  (.withNano 0)))))))
 
-(deftest save-mlv2-card-test
-  (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
+(deftest save-mbql5-card-test
+  (testing "App DB CRUD should work for a Card with an MBQL 5 query (#39024)"
     (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
@@ -872,7 +872,7 @@
                    :table_id      (mt/id :venues)
                    :database_id   (mt/id)}
                   card)))
-        (testing "Save to app DB: Check MLv2 query was serialized to app DB in a sane way. Metadata provider should be removed"
+        (testing "Save to app DB: Check MBQL 5 query was serialized to app DB in a sane way. Metadata provider should be removed"
           (is (= {"lib/type" "mbql/query"
                   "database" (mt/id)
                   "stages"   [{"lib/type"     "mbql.stage/mbql"

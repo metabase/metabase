@@ -1,4 +1,4 @@
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";

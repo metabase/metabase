@@ -3,14 +3,14 @@ import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useSelector } from "metabase/lib/redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
 import { Switch, Title } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { getIsStepActive, getUserEmail } from "../../selectors";
 
 import { StepBody, StepFooter, StepRoot } from "./CompletedStep.styled";
+import { trackNewsletterToggleClicked } from "./analytics";
 
 export const CompletedStep = (): JSX.Element | null => {
   const [checkboxValue, setCheckboxValue] = useState(false);
@@ -27,11 +27,7 @@ export const CompletedStep = (): JSX.Element | null => {
 
   const handleSwitchToggle = (e: ChangeEvent<HTMLInputElement>) => {
     setCheckboxValue(e.target.checked);
-    trackSimpleEvent({
-      event: "newsletter-toggle-clicked",
-      triggered_from: "setup",
-      event_detail: e.target.checked ? "opted-in" : "opted-out",
-    });
+    trackNewsletterToggleClicked(e.target.checked);
   };
 
   const handleGoToMetabase = () => {

@@ -21,12 +21,12 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { PLUGIN_TENANTS } from "metabase/plugins";
+} from "metabase/utils/groups";
 import type {
   Collection,
   CollectionId,

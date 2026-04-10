@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
 import { Box } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Table } from "metabase-types/api";
 
 import S from "./TableCollection.module.css";

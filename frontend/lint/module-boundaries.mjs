@@ -22,6 +22,8 @@ const appMiscFilePaths = [
   "frontend/src/metabase/routes.jsx",
   "frontend/src/metabase/routes-embed.tsx",
   "frontend/src/metabase/routes-public.tsx",
+  "frontend/src/metabase/AppThemeProvider.tsx",
+  "frontend/src/metabase/AppColorSchemeProvider.tsx",
 ];
 
 const elements = [
@@ -40,6 +42,11 @@ const elements = [
     type: "feature/enterprise",
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full", // matches the entire path, because enterprise is in a different directory
+  },
+  {
+    type: "lib/env",
+    pattern: "frontend/src/metabase/env.ts",
+    mode: "full",
   },
   ...appMiscFilePaths.map((path) => ({
     type: "app/misc",

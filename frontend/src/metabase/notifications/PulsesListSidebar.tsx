@@ -7,16 +7,16 @@ import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
 import { getParameters } from "metabase/dashboard/selectors";
+import { formatDateValue } from "metabase/parameters/utils/date-formatting";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import {
   conjunct,
   formatDateTimeWithUnit,
   formatTimeWithUnit,
-} from "metabase/lib/formatting";
-import { getActivePulseParameters } from "metabase/lib/pulse";
-import { connect } from "metabase/lib/redux";
-import { formatFrame } from "metabase/lib/time-dayjs";
-import { formatDateValue } from "metabase/parameters/utils/date-formatting";
-import { Button, Icon, Tooltip } from "metabase/ui";
+} from "metabase/utils/formatting";
+import { getActivePulseParameters } from "metabase/utils/pulse";
+import { connect } from "metabase/utils/redux";
+import { formatFrame } from "metabase/utils/time-dayjs";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,

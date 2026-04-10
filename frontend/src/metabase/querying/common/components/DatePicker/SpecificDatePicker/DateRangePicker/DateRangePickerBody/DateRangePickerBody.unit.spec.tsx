@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import { setLocalization } from "metabase/lib/i18n";
+import { setLocalization } from "metabase/utils/i18n";
 
 import { DateRangePickerBody } from "./DateRangePickerBody";
 

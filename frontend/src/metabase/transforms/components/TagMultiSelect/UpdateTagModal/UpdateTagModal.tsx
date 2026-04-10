@@ -10,8 +10,8 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import type { TransformTag } from "metabase-types/api";
 
 type UpdateTagModalProps = {

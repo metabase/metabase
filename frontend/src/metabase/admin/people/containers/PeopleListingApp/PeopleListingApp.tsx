@@ -6,11 +6,11 @@ import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 import { PeopleList } from "../../components/PeopleList";
 import { SearchFilter } from "../../components/SearchFilter";

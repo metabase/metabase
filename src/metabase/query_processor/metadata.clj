@@ -76,14 +76,14 @@
     (driver/query-result-metadata driver query)))
 
 (mu/defn- add-extra-column-metadata :- :map
-  [col            :- :map
-   legacy-or-mlv2 :- [:enum ::legacy ::mlv2]]
-  (let [display-name-key (case legacy-or-mlv2
+  [col           :- :map
+   legacy-or-lib :- [:enum ::legacy ::lib]]
+  (let [display-name-key (case legacy-or-lib
                            ::legacy :display_name
-                           ::mlv2   :display-name)
-        semantic-type-key (case legacy-or-mlv2
+                           ::lib    :display-name)
+        semantic-type-key (case legacy-or-lib
                             ::legacy :semantic_type
-                            ::mlv2   :semantic-type)]
+                            ::lib    :semantic-type)]
     (letfn [(ensure-display-name [col]
               (cond-> col
                 ;; I'm trying to disable nice display name humanization because it breads like 100 Cypress tests and I
@@ -93,7 +93,7 @@
                 (assoc display-name-key (:name col) #_(u.humanization/name->human-readable-name :simple (:name col)))))
             (infer-semantic-type-by-name [col]
               (let [legacy-col    (cond-> col
-                                    (= legacy-or-mlv2 ::mlv2)
+                                    (= legacy-or-lib ::lib)
                                     (perf/update-keys u/->snake_case_en))
                     semantic-type (analyze/infer-semantic-type-by-name legacy-col)]
                 (merge col
@@ -116,7 +116,7 @@
   to run the query. In this case, `current-user-id` is used so we can associate that information with the query that is
   run.
 
-  Returns columns as MLv2-style `kebab-case` column metadata; for legacy metadata you can use [[legacy-result-metadata]]
+  Returns columns as Lib-style `kebab-case` column metadata; for legacy metadata you can use [[legacy-result-metadata]]
   instead."
   ([query]
    (result-metadata query nil))
@@ -127,7 +127,7 @@
     (fn [col]
       (-> col
           (lib-be/instance->metadata :metadata/column)
-          (add-extra-column-metadata ::mlv2)))
+          (add-extra-column-metadata ::lib)))
     (result-metadata* query current-user-id))))
 
 (mu/defn- ensure-legacy :- ::qp.schema/result-metadata.column
@@ -145,8 +145,8 @@
         (->> (lib/normalize ::qp.schema/result-metadata.column)))))
 
 (mu/defn legacy-result-metadata :- [:maybe ::qp.schema/result-metadata.columns]
-  "Like [[result-metadata]], but return metadata in legacy format rather than MLv2 format. This should be considered
-  deprecated, as we're working on moving towards using MLv2-style metadata everywhere; avoid new usages of this function
+  "Like [[result-metadata]], but return metadata in legacy format rather than Lib format. This should be considered
+  deprecated, as we're working on moving towards using Lib-style metadata everywhere; avoid new usages of this function
   if possible, and prefer [[result-metadata]] instead.
 
   Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] directly if you really

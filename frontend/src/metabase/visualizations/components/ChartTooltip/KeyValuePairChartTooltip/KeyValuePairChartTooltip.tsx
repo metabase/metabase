@@ -2,7 +2,7 @@ import cx from "classnames";
 import { isValidElement, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type {
   ComputedVisualizationSettings,
   DataPoint,

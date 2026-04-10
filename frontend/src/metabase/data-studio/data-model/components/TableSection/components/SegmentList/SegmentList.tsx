@@ -4,9 +4,9 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";

@@ -8,8 +8,8 @@ import {
   type UseDownloadDataParams,
   useDownloadData,
 } from "metabase/common/components/QuestionDownloadWidget";
+import { canDownloadResults } from "metabase/common/utils/dataset";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   ActionIcon,
   type ActionIconProps,
@@ -118,11 +118,7 @@ interface ShouldRenderDownloadPopoverProps {
 }
 
 const shouldRender = ({ result }: ShouldRenderDownloadPopoverProps) => {
-  return (
-    result &&
-    !result.error &&
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result)
-  );
+  return canDownloadResults(result);
 };
 
 QuestionDownloadPopover.shouldRender = shouldRender;

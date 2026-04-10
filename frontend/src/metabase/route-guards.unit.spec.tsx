@@ -5,8 +5,8 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { MetabaseReduxContext } from "./lib/redux";
 import { isBackendOnlyPath } from "./route-guards";
+import { MetabaseReduxContext } from "./utils/redux";
 
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {

@@ -8,7 +8,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { RouteParams } from "metabase/data-studio/data-model/pages/DataModel/types";
-import type { DataStudioTableMetadataTab } from "metabase/lib/urls";
+import type { DataStudioTableMetadataTab } from "metabase/utils/urls";
 import type {
   Database,
   EnterpriseSettings,

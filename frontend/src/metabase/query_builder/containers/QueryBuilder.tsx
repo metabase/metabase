@@ -18,7 +18,6 @@ import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { connect, useSelector } from "metabase/lib/redux";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import {
   getDatabasesList,
@@ -55,6 +54,7 @@ import {
   getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import { connect, useSelector } from "metabase/utils/redux";
 import type {
   BookmarkId,
   Bookmark as BookmarkType,

@@ -1099,8 +1099,8 @@
                 [str str u.date/temporal-str->iso8601-str 2.0 4.0]
                 (qp/process-query query))))))))
 
-(deftest ^:parallel mlv2-references-in-join-conditions-test
-  (testing "Make sure join conditions that contain MLv2-generated refs with extra info like `:base-type` work correctly (#33083)"
+(deftest ^:parallel mbql5-references-in-join-conditions-test
+  (testing "Make sure join conditions that contain Lib-generated refs with extra info like `:base-type` work correctly (#33083)"
     (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                       [(mt/mbql-query reviews
                                          {:joins       [{:source-table $$products
@@ -1142,7 +1142,7 @@
 
 ;;; see also [[metabase.query-processor.preprocess-test/test-31769]]
 (deftest ^:parallel test-31769
-  (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
+  (testing "Make sure queries built with Lib that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
                              (mt/metadata-provider)
                              mt/id)]

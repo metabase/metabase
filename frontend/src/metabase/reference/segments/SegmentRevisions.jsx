@@ -9,10 +9,10 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getShallowTables as getTables } from "metabase/selectors/metadata";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
+import { connect } from "metabase/utils/redux";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {

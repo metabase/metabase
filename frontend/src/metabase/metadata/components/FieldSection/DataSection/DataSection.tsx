@@ -3,13 +3,13 @@ import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import {
   canCoerceFieldType,
   getFieldRawName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import { Box, Flex, Group, Stack, Switch, rem } from "metabase/ui";
-import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type { Field } from "metabase-types/api";
 
 import { CoercionStrategyPicker } from "../../CoercionStrategyPicker";

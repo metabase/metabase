@@ -1,5 +1,5 @@
-import { formatValue } from "metabase/lib/formatting/value";
 import { Flex } from "metabase/ui";
+import { formatValue } from "metabase/utils/formatting/value";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
