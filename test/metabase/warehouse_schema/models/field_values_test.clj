@@ -211,10 +211,6 @@
       (binding [field-values/*total-max-length* 2]
         (is (= {:values ["a" "b"] :has_more_values false}
                (limit-values ["a" "a" "a" "a" "b"])))))
-    (testing "distinct-count cap triggers has_more_values"
-      (binding [field-values/*absolute-max-distinct-values-limit* 3]
-        (is (= {:values ["a" "b" "c"] :has_more_values true}
-               (limit-values ["a" "b" "c" "d" "e"])))))
     (testing "total-length cap triggers has_more_values"
       (binding [field-values/*total-max-length* 3]
         (is (= {:values ["aa"] :has_more_values true}
@@ -273,7 +269,14 @@
       (testing "higher-cardinality column (still under the cap) matches distinct-values"
         (is (= (set (map first (:values (field-values/distinct-values vendor-field))))
                (set (:values (get bulk-result (:id vendor-field))))))
-        (is (false? (:has_more_values (get bulk-result (:id vendor-field)))))))))
+        (is (false? (:has_more_values (get bulk-result (:id vendor-field))))))
+      (testing "row cap forces has_more_values=true on every column"
+        ;; Lower the row cap below the table size (products has 200 rows). With cap 5, the bulk
+        ;; query fetches 5 rows, hits the row cap, and every column should be marked has_more.
+        (binding [field-values/*absolute-max-distinct-values-limit* 5]
+          (let [capped (field-values/bulk-distinct-values (mt/id :products) [cat-field vendor-field])]
+            (is (true? (:has_more_values (get capped (:id cat-field)))))
+            (is (true? (:has_more_values (get capped (:id vendor-field)))))))))))
 
 (deftest persist-field-values!-test
   (testing "nil values with nil existing-fv returns ::fv-deleted without creating anything"

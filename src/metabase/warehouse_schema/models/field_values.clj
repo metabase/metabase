@@ -412,35 +412,32 @@
       (log/error e "Error fetching field values")
       nil)))
 
-(defn- limit-values [values]
+(defn- limit-values
+  "Accumulate distinct, non-nil values from `values` until the total stringified length exceeds
+   [[*total-max-length*]]. Returns {:values sorted-vec, :has_more_values bool}.
+
+   `:has_more_values` reflects only the char-length cap. The distinct-count cap is enforced one
+   level up by [[bulk-distinct-values]] (via the row-cap check) — by pigeonhole, no column can
+   have more than (count rows) distinct values, so a count cap here would be redundant."
+  [values]
   (loop [str-length 0
-         acc (sorted-set)
-         values values]
-    (let [new-str-length (+ str-length (count (str (first values))))]
-      (cond
-        (empty? values)
-        {:values (vec acc)
-         :has_more_values false}
+         acc        (sorted-set)
+         values     values]
+    (cond
+      (empty? values)
+      {:values (vec acc) :has_more_values false}
 
-        (nil? (first values)) ;; skip NULLs
-        (recur str-length acc (rest values))
+      (nil? (first values)) ;; skip NULLs
+      (recur str-length acc (rest values))
 
-        (contains? acc (first values))
-        (recur str-length acc (rest values))
+      (contains? acc (first values))
+      (recur str-length acc (rest values))
 
-        (or
-         (> new-str-length *total-max-length*)
-         ;; I don't think this can be true, but just in case
-         (> (inc (count acc)) *absolute-max-distinct-values-limit*))
-        {:values (vec acc)
-         :has_more_values true}
-
-        (= (inc (count acc)) *absolute-max-distinct-values-limit*)
-        {:values (vec (conj acc (first values)))
-         :has_more_values true} ;; 1000 distinct in 1000 rows, probably more
-
-        :else
-        (recur new-str-length (conj acc (first values)) (rest values))))))
+      :else
+      (let [new-str-length (+ str-length (count (str (first values))))]
+        (if (> new-str-length *total-max-length*)
+          {:values (vec acc) :has_more_values true}
+          (recur new-str-length (conj acc (first values)) (rest values)))))))
 
 (defn- rows->per-field-distinct-values
   "Process multi-column result rows into per-field distinct value maps.
@@ -458,8 +455,15 @@
 
 (defn bulk-distinct-values
   "Fetch distinct values for multiple fields from the same table in a single query.
-   Uses `SELECT col1, col2, ... FROM table LIMIT 1000` instead of one GROUP BY per field.
-   Returns {field-id -> {:values [v1 v2 ...], :has_more_values bool}}, or nil on failure."
+   Uses `SELECT col1, col2, ... FROM table LIMIT K` instead of one GROUP BY per field.
+   Returns {field-id -> {:values [v1 v2 ...], :has_more_values bool}}, or nil on failure.
+
+   If the row cap is hit (i.e. the table has at least K rows), every column is marked
+   `has_more_values=true` since we can't tell from a sample whether more distinct values exist
+   beyond the sampled rows. This may over-flag low-cardinality columns in big tables, forcing
+   the parameter widget into search mode instead of a static list — but the cached values are
+   still shown and the search still works, so the cost is small relative to silently returning
+   an incomplete list."
   [table-id fields]
   (try
     (let [metadata-cols (mapv (fn [field]
@@ -473,8 +477,11 @@
                                (lib/with-fields metadata-cols)
                                (lib/limit *absolute-max-distinct-values-limit*)))
                          nil)
-          rows          (-> result :data :rows)]
-      (rows->per-field-distinct-values fields rows))
+          rows          (-> result :data :rows)
+          per-field     (rows->per-field-distinct-values fields rows)]
+      (if (>= (count rows) *absolute-max-distinct-values-limit*)
+        (update-vals per-field #(assoc % :has_more_values true))
+        per-field))
     (catch Throwable e
       (log/error e "Error in bulk-distinct-values, will fall back to per-field queries")
       nil)))
