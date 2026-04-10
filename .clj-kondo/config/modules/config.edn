@@ -960,6 +960,7 @@
    :api  #{metabase.frontend-errors.api}
    :uses #{analytics
            api
+           request
            util}}
 
   geojson
@@ -2158,7 +2159,10 @@
            premium-features
            search
            util}
-   :model-imports #{:model/AiUsageLog :model/Card :model/Dashboard}}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
+                    :model/Dashboard
+                    :model/SecurityAdvisory}}
 
   tiles
   {:team "UX West"
@@ -3137,6 +3141,28 @@
    :api  #{}
    :uses #{premium-features
            search}}
+
+  enterprise/security-center
+  {:team "Gadget"
+   :api  #{metabase-enterprise.security-center.api
+           metabase-enterprise.security-center.init}
+   :uses #{analytics
+           api
+           app-db
+           channel
+           config
+           driver
+           events
+           models
+           notification
+           permissions
+           premium-features
+           settings
+           system
+           task
+           util}
+   :model-exports #{:model/SecurityAdvisory}
+   :model-imports #{:model/User}}
 
   enterprise/semantic-search
   {:team "Metabot"
