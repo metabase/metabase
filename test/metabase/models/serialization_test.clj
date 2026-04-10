@@ -206,7 +206,10 @@
           (is (= "db1" (serdes/*export-database-fk* db1-id)))
           (is (= "db2" (serdes/*export-database-fk* db2-id)))
           (is (= "db3" (serdes/*export-database-fk* db3-id)))
-          (is (= "db1" (serdes/*export-database-fk* db1-id))))))))
+          (is (= "db1" (serdes/*export-database-fk* db1-id)))))))
+  (testing "non-existent database ID returns nil"
+    (serdes/with-cache
+      (is (nil? (serdes/*export-database-fk* Integer/MAX_VALUE))))))
 
 (deftest export-table-fk-with-cache-test
   (testing "3 tables with FK and cache limit 2: batch-loads FK target, evicts and re-loads"
@@ -222,7 +225,10 @@
           (is (= ["db" "public" "t1"] (serdes/*export-table-fk* t1-id)))
           (is (= ["db" "public" "t2"] (serdes/*export-table-fk* t2-id)))
           (is (= ["db" nil "t3"]      (serdes/*export-table-fk* t3-id)))
-          (is (= ["db" "public" "t1"] (serdes/*export-table-fk* t1-id))))))))
+          (is (= ["db" "public" "t1"] (serdes/*export-table-fk* t1-id)))))))
+  (testing "non-existent table ID returns nil"
+    (serdes/with-cache
+      (is (nil? (serdes/*export-table-fk* Integer/MAX_VALUE))))))
 
 (deftest export-field-fk-with-cache-test
   (testing "3-level parent chain with cache limit 2: all ancestors kept even when exceeding limit"
@@ -237,4 +243,7 @@
         (serdes/with-cache
           (is (= ["db" nil "t" "f1" "f2" "f3"] (serdes/*export-field-fk* f3-id)))
           (is (= ["db" nil "t" "f1" "f2"]      (serdes/*export-field-fk* f2-id)))
-          (is (= ["db" nil "t" "f1"]           (serdes/*export-field-fk* f1-id))))))))
+          (is (= ["db" nil "t" "f1"]           (serdes/*export-field-fk* f1-id)))))))
+  (testing "non-existent field ID returns nil"
+    (serdes/with-cache
+      (is (nil? (serdes/*export-field-fk* Integer/MAX_VALUE))))))
