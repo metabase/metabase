@@ -31,6 +31,7 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -115,10 +116,11 @@
         ;; :data is like `:navigate_to`
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
-                        (mapv strip-tool-output-bloat))]
+                        (mapv strip-tool-output-bloat))
+        content-json (json/encode content)]
     (prometheus/observe! :metabase-metabot/message-persist-bytes
                          {:profile-id (or profile-id "unknown")}
-                         (count (pr-str content)))
+                         (u/string-byte-count content-json))
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
@@ -126,7 +128,7 @@
                                                :state   (:data state-part)})))
       (t2/insert! :model/MetabotMessage
                   {:conversation_id conversation-id
-                   :data            content
+                   :data            content-json
                    :usage           usage
                    :role            :assistant
                    :profile_id      profile-id
