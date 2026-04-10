@@ -9,7 +9,6 @@ import { useListApiKeysQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import CS from "metabase/css/core/index.css";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import {
   Button,
   Ellipsified,
@@ -20,6 +19,7 @@ import {
   Title,
 } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
+import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
 import type { ApiKey } from "metabase-types/api";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";

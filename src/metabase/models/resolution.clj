@@ -42,6 +42,7 @@
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
+    :model/DependencyStatus                  metabase-enterprise.dependencies.models.dependency-status
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
@@ -100,6 +101,7 @@
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
+    :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
     :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session

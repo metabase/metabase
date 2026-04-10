@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 
 import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { MetricDefinition } from "metabase-lib/metric";
 import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 import type { State } from "metabase-types/store";

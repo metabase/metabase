@@ -3,8 +3,8 @@ import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import _, { type Dictionary } from "underscore";
 
-import { isDefaultGroup } from "metabase/lib/groups";
 import { Box, Checkbox, Switch, Text } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
 import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import {
   AIToolKey,

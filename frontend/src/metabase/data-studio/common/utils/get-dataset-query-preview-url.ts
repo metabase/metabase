@@ -1,4 +1,4 @@
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { DatasetQuery } from "metabase-types/api";
 
 export function getDatasetQueryPreviewUrl(

@@ -7,10 +7,10 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { modelToUrl } from "metabase/lib/urls";
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { createWrappedSearchResult } from "metabase/search/components/SearchResult/tests/util";
 import type { WrappedResult } from "metabase/search/types";
+import { modelToUrl } from "metabase/utils/urls";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 const TEST_REGULAR_COLLECTION = createMockCollection({

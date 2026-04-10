@@ -6,8 +6,8 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { useDispatch } from "metabase/utils/redux";
 
 export const useSlowCardNotification = () => {
   const { dashboard, isRunning, isLoadingComplete } = useDashboardContext();

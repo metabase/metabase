@@ -2,10 +2,10 @@ import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 
 import { OverviewVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetricDefinition } from "metabase/metrics/common/hooks";
 import { Box, Flex, Stack } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import * as LibMetric from "metabase-lib/metric";
 import type { Card } from "metabase-types/api";
 

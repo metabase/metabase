@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
 

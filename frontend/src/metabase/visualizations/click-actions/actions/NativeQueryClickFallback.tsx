@@ -1,9 +1,9 @@
 import { c } from "ttag";
 
-import { isWithinIframe } from "metabase/lib/dom";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Flex } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   CustomClickActionWithCustomView,
   LegacyDrill,

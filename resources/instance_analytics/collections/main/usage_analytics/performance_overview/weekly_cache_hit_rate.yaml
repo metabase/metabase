@@ -21,7 +21,7 @@ dataset_query:
       - {base-type: type/Boolean, lib/uuid: cabd94ca-0b39-4fd5-9e3c-5ddf352bee47}
       - cache_hit
     - - field
-      - {temporal-unit: week, base-type: type/DateTimeWithLocalTZ, lib/uuid: 4ebd8013-03f0-407c-8c6d-c73c4371cf91}
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week, lib/uuid: 4ebd8013-03f0-407c-8c6d-c73c4371cf91}
       - started_at
     filters:
     - - not-null

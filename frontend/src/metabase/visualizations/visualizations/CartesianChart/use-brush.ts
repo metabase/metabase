@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-import { isTouchDevice } from "metabase/lib/browser";
+import { isTouchDevice } from "metabase/utils/browser";
 
 const LONG_PRESS_DURATION_MS = 500;
 const TOUCH_MOVE_THRESHOLD_PX = 10;

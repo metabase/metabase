@@ -4,6 +4,10 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.61.0
+
+- `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
+
 ## Metabase 0.60.0
 
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.

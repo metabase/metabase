@@ -802,8 +802,8 @@
       ;; NULL` for us.
       (let [clause (into [op field]
                          ;; we're compiling this ahead of time and throwing out the compiled value to make it easier to
-                         ;; get the real database type of the expression... maybe when we convert this to MLv2 we can
-                         ;; just use MLv2 metadata or type calculation functions instead.
+                         ;; get the real database type of the expression... maybe when we convert this to MBQL 5 we can
+                         ;; just use Lib metadata or type calculation functions instead.
                          (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
                                (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
                                  (map (fn [[_type val :as expr]]

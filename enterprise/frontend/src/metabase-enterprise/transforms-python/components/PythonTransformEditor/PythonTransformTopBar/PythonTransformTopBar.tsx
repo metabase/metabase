@@ -4,11 +4,11 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { EditTransformMenu } from "metabase-enterprise/data-studio/workspaces/components/EditTransformMenu";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";

@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject, RefObject } from "react";
 
-import { isTouchDevice } from "metabase/lib/browser";
+import { isTouchDevice } from "metabase/utils/browser";
 
 import {
   createZrenderMousedownEvent,

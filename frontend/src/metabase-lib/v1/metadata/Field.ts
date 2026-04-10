@@ -2,7 +2,7 @@
 // @ts-nocheck
 import _ from "underscore";
 
-import { formatField, stripId } from "metabase/lib/formatting";
+import { formatField, stripId } from "metabase/utils/formatting";
 import {
   getFieldValues,
   getRemappings,

@@ -3,9 +3,9 @@ import {
   getActionExecutionMessage,
 } from "metabase/actions/utils";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { getDashboardType } from "metabase/lib/dashboard";
 import { addUndo } from "metabase/redux/undo";
 import { ActionsApi, PublicApi } from "metabase/services";
+import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
   ActionFormSubmitResult,

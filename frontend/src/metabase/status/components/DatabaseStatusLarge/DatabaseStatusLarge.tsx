@@ -4,7 +4,7 @@ import {
   isSyncAborted,
   isSyncCompleted,
   isSyncInProgress,
-} from "metabase/lib/syncing";
+} from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
 
 import StatusLarge from "../StatusLarge";

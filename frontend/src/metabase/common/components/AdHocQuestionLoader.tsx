@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { deserializeCardFromUrl } from "metabase/lib/card";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
+import { deserializeCardFromUrl } from "metabase/utils/card";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UnsavedCard } from "metabase-types/api";

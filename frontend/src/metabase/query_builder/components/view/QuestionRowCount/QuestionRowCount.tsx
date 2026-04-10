@@ -12,7 +12,6 @@ import { formatRowCount } from "metabase/common/utils/format-row-count";
 import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
 import { LimitPopover } from "metabase/query_builder/components/LimitPopover";
 import {
@@ -21,6 +20,7 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { Box, Popover, UnstyledButton } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
