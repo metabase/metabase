@@ -5,6 +5,11 @@
     "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo",
     "outDir": "build",
     "paths": {
+      // `@metabase/custom-viz` (under enterprise/frontend/src/custom-viz) has
+      // its own tsconfig, nested node_modules, and a different React major —
+      // it's type-checked independently. Redirect its source imports to a
+      // stub so the main repo's tsc doesn't pull the source files in.
+      "custom-viz/*": ["./frontend/src/custom-viz-stubs.d.ts"],
       "*": [
         "./frontend/src/*",
         "./frontend/test/*",
