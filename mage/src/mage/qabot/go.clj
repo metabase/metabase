@@ -8,32 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- generate-workmux-config
-  "Generate the .workmux.yaml content from the common template."
-  [app-db]
-  (let [ee-token (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly ""))
-        linear-key (u/env "LINEAR_API_KEY" (constantly ""))]
-    (-> (slurp (str u/project-root-directory "/dev/bot/common/workmux-template.yaml"))
-        (str/replace "{{BOT_NAME}}" "qabot")
-        (str/replace "{{SOURCE_REPO}}" u/project-root-directory)
-        (str/replace "{{BOT_POST_CREATE}}"
-                     (str "  - mkdir -p .qabot\n"
-                          "  - MB_PREMIUM_EMBEDDING_TOKEN=" ee-token
-                          " LINEAR_API_KEY=" linear-key
-                          " ./bin/mage -bot-dev-env --app-db " app-db "\n")))))
-
-(defn- branch-to-session-name
-  "Convert a branch name to a qabot session name.
-   e.g., 'feature/my-branch' -> 'qabot-my-branch'"
-  [branch-name]
-  (let [slug (-> branch-name
-                 (str/replace #".+/" "")
-                 (str/lower-case)
-                 (str/replace #"[^a-z0-9-]" "-")
-                 (str/replace #"-+" "-")
-                 (str/replace #"^-|-$" ""))]
-    (str "qabot-" (subs slug 0 (min (count slug) 40)))))
-
 (defn run!
   "Main entry point for qabot workmux mode."
   [{:keys [arguments options]}]
@@ -44,8 +18,8 @@
     (let [branch-name  (str/trim branch-name)
           app-db       (or (:app-db options) "postgres")
           prompt-file  (:prompt-file options)
-          session-name (branch-to-session-name branch-name)
-          config       (generate-workmux-config app-db)]
+          session-name (bot/branch-to-session-name "qabot" branch-name)
+          config       (launch/generate-workmux-config "qabot" app-db)]
       (when (str/includes? branch-name "/")
         (println (c/red "Pass a local branch name, not a remote ref."))
         (println "Example: ./bin/mage qabot-go master  (not origin/master)")

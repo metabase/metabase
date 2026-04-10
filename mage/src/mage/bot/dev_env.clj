@@ -1,112 +1,15 @@
 (ns mage.bot.dev-env
   (:require
    [clojure.string :as str]
+   [mage.bot.dev-env-core :as core]
    [mage.color :as c]
-   [mage.shell :as shell]
    [mage.util :as u]
    [table.core :as t]))
 
 (set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Port bases (same as edpaget's dev-env)
-
-(def ^:private port-bases
-  {:jetty           3000
-   :frontend-dev    8080
-   :nrepl           50605
-   :socket-repl     50505
-   :postgres-app    15432
-   :mysql           13309
-   :mariadb         13306})
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Service specs
-
-(def ^:private service-specs
-  {:postgres {:image          "postgres:17"
-              :internal-ports [[:postgres-app 5432]]
-              :env            {"POSTGRES_USER"     "metabase"
-                               "POSTGRES_DB"       "metabase"
-                               "POSTGRES_PASSWORD" "password"
-                               "PGDATA"            "/var/lib/postgresql/data"}}
-   :mysql    {:image          "mysql:8.4"
-              :internal-ports [[:mysql 3306]]
-              :env            {"MYSQL_DATABASE"             "metabase_test"
-                               "MYSQL_ALLOW_EMPTY_PASSWORD" "yes"}}
-   :mariadb  {:image          "mariadb:11"
-              :internal-ports [[:mariadb 3306]]
-              :env            {"MYSQL_DATABASE"             "metabase_test"
-                               "MYSQL_ALLOW_EMPTY_PASSWORD" "yes"}}})
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Helpers
-
-(defn- worktree-name
-  "Last path component of the project root directory."
-  []
-  (last (str/split u/project-root-directory #"/")))
-
-(defn- compute-slot
-  "Deterministic slot 0-99 from worktree name, or override."
-  [slot-override]
-  (if slot-override
-    slot-override
-    (mod (Math/abs (.hashCode ^String (worktree-name))) 100)))
-
-(defn- container-prefix []
-  (str "mb-" (worktree-name) "-"))
-
-(defn- port-for [port-key slot]
-  (+ (get port-bases port-key) slot))
-
-(defn- kill-container! [container-name]
-  (shell/sh* {:quiet? true} "docker" "kill" container-name)
-  (shell/sh* {:quiet? true} "docker" "rm" container-name))
-
-(defn- check-docker! []
-  (when-not (u/can-run? "docker")
-    (println (c/red "Docker is not installed. Please install Docker to use dev-env."))
-    (u/exit 1))
-  (let [{:keys [exit]} (shell/sh* {:quiet? true} "docker" "info")]
-    (when-not (zero? exit)
-      (println (c/red "Docker daemon is not running. Please start Docker."))
-      (u/exit 1))))
-
-(defn- build-docker-cmd [container-name image port-mappings env-map]
-  (into ["docker" "run" "-d"]
-        (concat
-         (mapcat (fn [[host-port internal-port]]
-                   ["-p" (str host-port ":" internal-port)])
-                 port-mappings)
-         (mapcat (fn [[k v]]
-                   ["-e" (str k "=" v)])
-                 env-map)
-         ["--name" container-name
-          image])))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Core
-
-(defn- start-service! [service-key slot]
-  (let [spec           (get service-specs service-key)
-        container-name (str (container-prefix) (name service-key) "-app")
-        port-mappings  (mapv (fn [[pk ip]] [(port-for pk slot) ip])
-                             (:internal-ports spec))
-        cmd            (build-docker-cmd container-name (:image spec) port-mappings (:env spec))]
-    (println (c/yellow "Starting " container-name "..."))
-    (kill-container! container-name)
-    (u/debug "Running: " (str/join " " cmd))
-    (apply shell/sh cmd)
-    (println (c/green "  Started ") container-name)))
-
-(defn- validate-app-db! [app-db]
-  (let [app-db-kw (keyword app-db)
-        valid-dbs #{:h2 :postgres :mysql :mariadb}]
-    (when-not (valid-dbs app-db-kw)
-      (println (c/red "Invalid --app-db: " app-db ". Must be one of: " (str/join ", " (map name valid-dbs))))
-      (u/exit 1))
-    app-db-kw))
+;; Config file for auto-setup
 
 (def ^:private config-file-content
   "version: 1
@@ -135,6 +38,9 @@ config:
       key: mb_RegularApiKey
 ")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Core
+
 (defn- write-config-file!
   "Write the Metabase config file for auto-setup of users and API keys."
   []
@@ -142,72 +48,71 @@ config:
     (spit path config-file-content)
     (println (c/green "Wrote " path))))
 
-(defn- generate-mise-local! [slot app-db-kw]
-  (let [wt-name (worktree-name)
+(defn- generate-mise-local!
+  "Generate mise.local.toml for bot worktrees (Docker-based DBs, slot-based ports)."
+  [slot app-db-kw bot-name]
+  (let [wt-name     (core/worktree-name u/project-root-directory)
         config-path (str u/project-root-directory "/metabase.config.yml")
-        ;; Services run inside a container — use fixed base ports.
-        ;; Only the DB port needs slot-based allocation (it runs on the host).
-        lines   (cond-> [(str "# Auto-generated by ./bin/mage -bot-dev-env")
-                         (str "# Worktree: " wt-name " (slot " slot ")")
-                         (str "# Re-run `./bin/mage -bot-dev-env` to regenerate.")
-                         ""
-                         "[env]"
-                         (str "MB_CONFIG_FILE_PATH = \"" config-path "\"")
-                         "MB_EDITION = \"ee\""
-                         "DISABLE_BUILD_NOTIFICATIONS = \"1\""
-                         (str "MB_PREMIUM_EMBEDDING_TOKEN = \"" (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly "")) "\"")
-                         (str "LINEAR_API_KEY = \"" (u/env "LINEAR_API_KEY" (constantly "")) "\"")
-                         (str "MB_JETTY_PORT = \"" (port-for :jetty slot) "\"")
-                         (str "MB_FRONTEND_DEV_PORT = \"" (port-for :frontend-dev slot) "\"")
-                         (str "NREPL_PORT = \"" (port-for :nrepl slot) "\"")
-                         (str "SOCKET_REPL_PORT = \"" (port-for :socket-repl slot) "\"")
-                         (str "PLAYWRIGHT_DAEMON_SESSION_DIR = \"" u/project-root-directory "/.fixbot/playwright/sessions\"")
-                         (str "PLAYWRIGHT_DAEMON_SOCKETS_DIR = \"" u/project-root-directory "/.fixbot/playwright/sockets\"")]
-                  (= app-db-kw :postgres)
-                  (conj (str "MB_DB_TYPE = \"postgres\"")
-                        (str "MB_DB_CONNECTION_URI = \"jdbc:postgresql://localhost:"
-                             (port-for :postgres-app slot)
-                             "/metabase?user=metabase&password=password\""))
-                  (= app-db-kw :mysql)
-                  (conj (str "MB_DB_TYPE = \"mysql\"")
-                        (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:"
-                             (port-for :mysql slot)
-                             "/metabase?user=root&password=\""))
-                  (= app-db-kw :mariadb)
-                  (conj (str "MB_DB_TYPE = \"mysql\"")
-                        (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:"
-                             (port-for :mariadb slot)
-                             "/metabase?user=root&password=\"")))
+        bot-dir     (str "." (or bot-name "fixbot"))
+        lines       (cond-> [(str "# Auto-generated by ./bin/mage -bot-dev-env")
+                             (str "# Worktree: " wt-name " (slot " slot ")")
+                             (str "# Re-run `./bin/mage -bot-dev-env` to regenerate.")
+                             ""
+                             "[env]"
+                             (str "MB_CONFIG_FILE_PATH = \"" config-path "\"")
+                             "MB_EDITION = \"ee\""
+                             "DISABLE_BUILD_NOTIFICATIONS = \"1\""
+                             (str "MB_PREMIUM_EMBEDDING_TOKEN = \"" (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly "")) "\"")
+                             (str "LINEAR_API_KEY = \"" (u/env "LINEAR_API_KEY" (constantly "")) "\"")
+                             (str "MB_JETTY_PORT = \"" (core/port-for :jetty slot) "\"")
+                             (str "MB_FRONTEND_DEV_PORT = \"" (core/port-for :frontend-dev slot) "\"")
+                             (str "NREPL_PORT = \"" (core/port-for :nrepl slot) "\"")
+                             (str "SOCKET_REPL_PORT = \"" (core/port-for :socket-repl slot) "\"")
+                             (str "PLAYWRIGHT_DAEMON_SESSION_DIR = \"" u/project-root-directory "/" bot-dir "/playwright/sessions\"")
+                             (str "PLAYWRIGHT_DAEMON_SOCKETS_DIR = \"" u/project-root-directory "/" bot-dir "/playwright/sockets\"")]
+                      (= app-db-kw :postgres)
+                      (conj (str "MB_DB_TYPE = \"postgres\"")
+                            (str "MB_DB_CONNECTION_URI = \"jdbc:postgresql://localhost:"
+                                 (core/port-for :postgres-app slot)
+                                 "/metabase?user=metabase&password=password\""))
+                      (= app-db-kw :mysql)
+                      (conj (str "MB_DB_TYPE = \"mysql\"")
+                            (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:"
+                                 (core/port-for :mysql slot)
+                                 "/metabase?user=root&password=\""))
+                      (= app-db-kw :mariadb)
+                      (conj (str "MB_DB_TYPE = \"mysql\"")
+                            (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:"
+                                 (core/port-for :mariadb slot)
+                                 "/metabase?user=root&password=\"")))
         content (str (str/join "\n" lines) "\n")
         path    (str u/project-root-directory "/mise.local.toml")]
     (spit path content)
     (println (c/green "Wrote " path))))
 
 (defn- write-status-file!
-  "Write initial LLM status to the fixbot status pane.
-   The status watch renders issue info and health separately;
-   this file only contains the agent's status message."
-  [_slot _app-db-kw]
-  (let [dir  (str u/project-root-directory "/.fixbot")
-        _    (.mkdirs (java.io.File. dir))
+  "Write initial LLM status file."
+  [bot-name]
+  (let [dir  (str u/project-root-directory "/." (or bot-name "fixbot"))
+        _    (.mkdirs (java.io.File. ^String dir))
         path (str dir "/llm-status.txt")]
     (spit path "Booting up...")
     (println (c/green "Wrote " path))))
 
 (defn- print-summary! [slot app-db-kw]
-  (let [wt-name (worktree-name)
-        rows    (cond-> [{:service "Jetty backend"  :port (port-for :jetty slot)        :env-var "MB_JETTY_PORT"}
-                         {:service "Frontend dev"   :port (port-for :frontend-dev slot)  :env-var "MB_FRONTEND_DEV_PORT"}
-                         {:service "nREPL"          :port (port-for :nrepl slot)         :env-var "NREPL_PORT"}
-                         {:service "Socket REPL"    :port (port-for :socket-repl slot)   :env-var "SOCKET_REPL_PORT"}]
+  (let [wt-name (core/worktree-name u/project-root-directory)
+        rows    (cond-> [{:service "Jetty backend"  :port (core/port-for :jetty slot)        :env-var "MB_JETTY_PORT"}
+                         {:service "Frontend dev"   :port (core/port-for :frontend-dev slot)  :env-var "MB_FRONTEND_DEV_PORT"}
+                         {:service "nREPL"          :port (core/port-for :nrepl slot)         :env-var "NREPL_PORT"}
+                         {:service "Socket REPL"    :port (core/port-for :socket-repl slot)   :env-var "SOCKET_REPL_PORT"}]
                   (= app-db-kw :postgres)
-                  (conj {:service "Postgres (app-db)" :port (port-for :postgres-app slot) :env-var "MB_DB_CONNECTION_URI"})
+                  (conj {:service "Postgres (app-db)" :port (core/port-for :postgres-app slot) :env-var "MB_DB_CONNECTION_URI"})
                   (= app-db-kw :mysql)
-                  (conj {:service "MySQL (app-db)" :port (port-for :mysql slot) :env-var "MB_DB_CONNECTION_URI"})
+                  (conj {:service "MySQL (app-db)" :port (core/port-for :mysql slot) :env-var "MB_DB_CONNECTION_URI"})
                   (= app-db-kw :mariadb)
-                  (conj {:service "MariaDB (app-db)" :port (port-for :mariadb slot) :env-var "MB_DB_CONNECTION_URI"}))]
+                  (conj {:service "MariaDB (app-db)" :port (core/port-for :mariadb slot) :env-var "MB_DB_CONNECTION_URI"}))]
     (println)
-    (println (c/bold (c/green "Fixbot dev environment for ") (c/cyan wt-name) (c/green " (slot " slot ")")))
+    (println (c/bold (c/green "Bot dev environment for ") (c/cyan wt-name) (c/green " (slot " slot ")")))
     (println)
     (t/table rows :style :unicode)
     (println)
@@ -216,72 +121,49 @@ config:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Entry points
 
+(defn- validate-app-db! [app-db]
+  (let [app-db-kw (keyword app-db)
+        valid-dbs #{:h2 :postgres :mysql :mariadb}]
+    (when-not (valid-dbs app-db-kw)
+      (println (c/red "Invalid --app-db: " app-db ". Must be one of: " (str/join ", " (map name valid-dbs))))
+      (u/exit 1))
+    app-db-kw))
+
 (defn- stand-up! [opts]
-  (let [slot      (compute-slot (:slot opts))
-        app-db-kw (validate-app-db! (:app-db opts))]
-    (check-docker!)
+  (let [slot      (core/compute-slot u/project-root-directory (:slot opts))
+        app-db-kw (validate-app-db! (:app-db opts))
+        bot-name  (:bot opts)]
+    (core/check-docker!)
     (when (not= app-db-kw :h2)
-      (start-service! app-db-kw slot))
+      (core/start-service! u/project-root-directory app-db-kw "app" slot))
     (write-config-file!)
-    (generate-mise-local! slot app-db-kw)
-    (write-status-file! slot app-db-kw)
+    (generate-mise-local! slot app-db-kw bot-name)
+    (write-status-file! bot-name)
     (print-summary! slot app-db-kw)))
 
 (defn- tear-down! []
-  (check-docker!)
-  (let [prefix     (container-prefix)
-        {:keys [out]} (shell/sh* {:quiet? true}
-                                 "docker" "ps" "-a"
-                                 "--filter" (str "name=^" prefix)
-                                 "--format" "{{.Names}}")
-        containers (when (seq out)
-                     (->> out (remove str/blank?) vec))]
-    (if (seq containers)
-      (do
-        (println (c/yellow "Stopping containers:"))
-        (doseq [cname containers]
-          (println (c/red "  Killing " cname))
-          (kill-container! cname))
-        (println (c/green "All containers stopped.")))
-      (println (c/yellow "No containers found for prefix: " prefix)))
-    (let [toml-path (str u/project-root-directory "/mise.local.toml")]
-      (when (.exists (java.io.File. toml-path))
-        (.delete (java.io.File. toml-path))
-        (println (c/green "Removed " toml-path))))
-    (let [config-path (str u/project-root-directory "/metabase.config.yml")]
-      (when (.exists (java.io.File. config-path))
-        (.delete (java.io.File. config-path))
-        (println (c/green "Removed " config-path))))
-    (let [fixbot-dir (str u/project-root-directory "/.fixbot")]
-      (when (.isDirectory (java.io.File. fixbot-dir))
-        (doseq [f (.listFiles (java.io.File. fixbot-dir))]
-          (.delete ^java.io.File f))
-        (.delete (java.io.File. fixbot-dir))
-        (println (c/green "Removed " fixbot-dir))))))
+  (core/check-docker!)
+  (core/kill-all-containers! u/project-root-directory)
+  (let [toml-path (str u/project-root-directory "/mise.local.toml")]
+    (when (.exists (java.io.File. ^String toml-path))
+      (.delete (java.io.File. ^String toml-path))
+      (println (c/green "Removed " toml-path))))
+  (let [config-path (str u/project-root-directory "/metabase.config.yml")]
+    (when (.exists (java.io.File. ^String config-path))
+      (.delete (java.io.File. ^String config-path))
+      (println (c/green "Removed " config-path)))))
 
 (defn- print-status! []
-  (check-docker!)
-  (let [prefix     (container-prefix)
-        {:keys [out]} (shell/sh* {:quiet? true}
-                                 "docker" "ps" "-a"
-                                 "--filter" (str "name=^" prefix)
-                                 "--format" "{{.Names}}\t{{.Status}}\t{{.Ports}}")
-        lines      (when (seq out)
-                     (->> out (remove str/blank?) vec))]
-    (if (seq lines)
-      (let [rows (mapv (fn [line]
-                         (let [[cname status ports] (str/split line #"\t" 3)]
-                           {:container cname
-                            :status    (or status "")
-                            :ports     (or ports "")}))
-                       lines)]
-        (println (c/bold (c/green "Containers for " (worktree-name) ":")))
-        (println)
-        (t/table rows :style :unicode))
-      (println (c/yellow "No containers found for " (worktree-name))))))
+  (core/check-docker!)
+  (if-let [rows (core/list-containers u/project-root-directory)]
+    (do
+      (println (c/bold (c/green "Containers for " (core/worktree-name u/project-root-directory) ":")))
+      (println)
+      (t/table rows :style :unicode))
+    (println (c/yellow "No containers found for " (core/worktree-name u/project-root-directory)))))
 
 (defn dev-env!
-  "Top-level dispatcher for fixbot dev-env command."
+  "Top-level dispatcher for bot dev-env command."
   [{:keys [options]}]
   (let [{:keys [down status]} options]
     (cond

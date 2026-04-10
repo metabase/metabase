@@ -249,6 +249,23 @@
             (spit modules-xml updated)
             (println (c/green "Updated modules.xml: " main-name ".iml -> " wt-name ".iml"))))))))
 
+(defn- apply-bot-patch!
+  "If bot.patch exists in the main worktree, apply it to the new worktree.
+   This allows bot infrastructure changes to be applied to worktrees based on
+   branches that don't have those changes yet."
+  [main-path worktree-root]
+  (let [patch-file (str main-path "/bot.patch")]
+    (if (fs/exists? patch-file)
+      (let [{:keys [exit]} (shell/sh* {:quiet? true :dir worktree-root}
+                                      "git" "apply" "--stat" patch-file)]
+        (if (zero? exit)
+          (do
+            (println (c/yellow "Applying bot.patch..."))
+            (shell/sh {:dir worktree-root} "git" "apply" patch-file)
+            (println (c/green "Applied bot.patch")))
+          (println (c/yellow "Skipping bot.patch (does not apply cleanly to this branch)"))))
+      (println (c/yellow "No bot.patch found, skipping")))))
+
 (defn setup-worktree!
   "Run final configuration steps after a new worktree is created."
   [{:keys [options]}]
@@ -260,6 +277,7 @@
     (println)
     (println (c/cyan "Main rep: ") main-path)
     (println)
+    (apply-bot-patch! main-path worktree-root)
     (symlink-bb! main-path worktree-root)
     (clone-cpcache! main-path worktree-root)
     (symlink-jars! main-path worktree-root)

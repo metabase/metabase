@@ -2,11 +2,22 @@
   "Shared workmux session launch logic for fixbot, uxbot, and other bot types."
   (:require
    [clojure.string :as str]
+   [mage.bot.setup :as bot-setup]
    [mage.color :as c]
    [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Workmux config generation
+
+(defn generate-workmux-config
+  "Generate the .workmux.yaml content from the common template for a given bot."
+  [bot-name app-db]
+  (-> (slurp (str u/project-root-directory "/dev/bot/common/workmux-template.yaml"))
+      (str/replace "{{BOT_NAME}}" bot-name)
+      (str/replace "{{APP_DB}}" app-db)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Fresh launch (workmux add — creates new worktree)
@@ -25,12 +36,6 @@
         backup-path  (str workmux-path ".bak")
         had-backup?  (.exists (java.io.File. workmux-path))
         in-tmux?     (not (str/blank? (u/env "TMUX" (constantly nil))))]
-
-    ;; Write Claude Code hooks to main repo so workmux doesn't prompt
-    (let [hooks-dir (str u/project-root-directory "/.github/hooks/workmux-status")]
-      (.mkdirs (java.io.File. ^String hooks-dir))
-      (spit (str hooks-dir "/hooks.json")
-            "{\"version\":1,\"hooks\":{\"userPromptSubmitted\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],\"postToolUse\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],\"agentStop\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status done\"}]}}"))
 
     ;; Back up existing .workmux.yaml if it exists
     (when had-backup?
@@ -98,47 +103,21 @@
 
 (defn relaunch-existing-session!
   "Relaunch a bot session in an existing worktree.
-   Copies fresh tooling from source repo, regenerates config, starts dev env, and launches tmux.
+   Runs consolidated bot setup (git-ignored files only), then launches tmux.
    Options:
-     :bot-name       — \"fixbot\" or \"uxbot\"
+     :bot-name       — \"fixbot\", \"qabot\", or \"uxbot\"
      :session-name   — tmux session name
      :wt-path        — absolute path to existing worktree
      :prompt-file    — path to prompt file (relative to main repo)
      :app-db         — database type (\"postgres\", \"mysql\", etc.)
-     :workmux-config — rendered .workmux.yaml content (for panes section)
-     :env-vars       — extra env vars for dev-env command (e.g., \"LINEAR_API_KEY=xxx\")"
-  [{:keys [bot-name session-name wt-path prompt-file app-db workmux-config env-vars]}]
+     :workmux-config — rendered .workmux.yaml content (for panes section)"
+  [{:keys [bot-name session-name wt-path prompt-file app-db workmux-config]}]
   (let [in-tmux? (not (str/blank? (u/env "TMUX" (constantly nil))))]
-    ;; Copy fresh tooling into worktree
-    (println (c/yellow "Updating tooling in existing worktree..."))
-    (shell/sh "bash" "-c"
-              (str "mkdir -p " wt-path "/.claude/" bot-name
-                   " && cp -r " u/project-root-directory "/dev/bot/" bot-name "/* " wt-path "/.claude/" bot-name "/"
-                   " && cp -r " u/project-root-directory "/dev/bot/common/* " wt-path "/.claude/" bot-name "/"
-                   " && cp -r " u/project-root-directory "/mage/src/mage/ " wt-path "/mage/src/mage/"
-                   " && cp " u/project-root-directory "/bb.edn " wt-path "/bb.edn"
-                   " && rm -f " wt-path "/.claude/commands/" bot-name "*.md"
-                   " && cp " wt-path "/.claude/" bot-name "/commands/*.md " wt-path "/.claude/commands/"))
-
-    ;; Regenerate settings
-    (let [settings-template (str wt-path "/.claude/" bot-name "/settings.local-template.json")]
-      (when (.exists (java.io.File. ^String settings-template))
-        (shell/sh "bash" "-c"
-                  (str "sed 's|{{pwd}}|" wt-path "|;s|{{tmpdir}}|${TMPDIR%/}|' "
-                       settings-template " > " wt-path "/.claude/settings.local.json"))))
-
-    ;; Regenerate .mcp.json
-    (spit (str wt-path "/.mcp.json")
-          "{\"mcpServers\":{\"playwright\":{\"command\":\"npx\",\"args\":[\"-y\",\"@playwright/mcp@0.0.68\",\"--headless\",\"--browser\",\"chrome\",\"--viewport-size\",\"1440x900\",\"--snapshot-mode\",\"full\",\"--block-service-workers\",\"--isolated\",\"--timeout-action\",\"10000\"]}}}")
-
-    ;; Start dev environment
-    (println (c/yellow "Starting dev environment..."))
-    (let [ee-token (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly ""))
-          env-str  (str "MB_PREMIUM_EMBEDDING_TOKEN=" ee-token
-                        (when env-vars (str " " env-vars)))]
-      (shell/sh {:dir wt-path} "bash" "-c"
-                (str env-str " ./bin/mage -bot-dev-env --app-db " app-db)))
-    (shell/sh {:dir wt-path} "mise" "trust" "mise.local.toml")
+    ;; Run consolidated bot setup (git-ignored files only)
+    (bot-setup/setup-bot-worktree!
+     {:bot-name bot-name
+      :wt-path  wt-path
+      :app-db   (or app-db "postgres")})
 
     ;; Copy prompt file into worktree as prompt.md
     (let [prompt-src  (if (.isAbsolute (java.io.File. ^String prompt-file))

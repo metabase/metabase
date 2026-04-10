@@ -3,28 +3,9 @@ agent: claude
 files:
   symlink:
     - node_modules
-    - bin/bb
 
 post_create:
-  # Copy bot tooling from source repo (worktree is based on master, not the bot branch)
-  - mkdir -p .claude/{{BOT_NAME}}
-  - cp -r {{SOURCE_REPO}}/dev/bot/{{BOT_NAME}}/* .claude/{{BOT_NAME}}/
-  - cp -r {{SOURCE_REPO}}/dev/bot/common/* .claude/{{BOT_NAME}}/
-  - cp -r {{SOURCE_REPO}}/mage/src/mage/ mage/src/mage/
-  - cp {{SOURCE_REPO}}/bb.edn bb.edn
-
-  - sed "s|{{pwd}}|$(pwd)|;s|{{tmpdir}}|${TMPDIR%/}|" .claude/{{BOT_NAME}}/settings.local-template.json > .claude/settings.local.json
-  - mkdir -p .{{BOT_NAME}}
-  - "echo 'Starting up' > .{{BOT_NAME}}/llm-status.txt"
-  - rm -f .claude/commands/{{BOT_NAME}}*.md
-  - cp .claude/{{BOT_NAME}}/commands/*.md .claude/commands/
-  - mkdir -p .github/hooks/workmux-status
-  - echo '{"version":1,"hooks":{"userPromptSubmitted":[{"type":"command","bash":"workmux set-window-status working"}],"postToolUse":[{"type":"command","bash":"workmux set-window-status working"}],"agentStop":[{"type":"command","bash":"workmux set-window-status done"}]}}' > .github/hooks/workmux-status/hooks.json
-{{BOT_POST_CREATE}}
-  - mise trust mise.local.toml
-  - bun install
-  - npx -y @playwright/mcp@0.0.68 --version
-  - 'echo ''{"mcpServers":{"playwright":{"command":"npx","args":["-y","@playwright/mcp@0.0.68","--headless","--browser","chrome","--viewport-size","1440x900","--snapshot-mode","full","--block-service-workers","--isolated","--timeout-action","10000"]}}}'' > .mcp.json'
+  - ./bin/mage -bot-setup --bot {{BOT_NAME}} --app-db {{APP_DB}}
 
 pre_remove:
   - ./bin/mage -bot-dev-env --down

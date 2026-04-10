@@ -13,7 +13,7 @@ If any of these fail, **STOP immediately** and tell the user what you tried and 
 - Playwright MCP tools unavailable or erroring → STOP
 - Backend server not responding to health check → **STOP. Do NOT continue.**
 - API calls returning connection errors → STOP
-- REPL not responding on `{{NREPL_PORT}}` → STOP (REPL is required for thorough verification)
+- REPL not responding on `$NREPL_PORT` → STOP (REPL is required for thorough verification)
 - Linear API unreachable → continue without Linear context (this is optional)
 
 ## CRITICAL: Getting the User's Attention
@@ -41,10 +41,10 @@ The orchestrator has already verified the backend is healthy, discovered ports, 
 
 Parse the above to extract:
 - **MB_JETTY_PORT** — for `./bin/mage -bot-api-call` (auto-discovered, but useful for Playwright URLs)
-- **User credentials** (email + password for admin and regular users)
-- **API keys** (key values for the `--api-key` flag in `-bot-api-call`)
+- **User credentials** (email + password for admin and regular users — from `metabase.config.yml`)
+- **API keys** (key values for the `--api-key` flag in `-bot-api-call` — from `metabase.config.yml`)
 
-Use the Admin API key for admin-level testing and the Regular API key for permission-boundary testing.
+Read `metabase.config.yml` (path in `MB_CONFIG_FILE_PATH` from the server info above) to discover the actual API key values. Do NOT hardcode key values — always read them from the config file. Use the Admin API key for admin-level testing and the Regular API key for permission-boundary testing.
 
 ### Linear Context
 {{LINEAR_CONTEXT}}
@@ -57,7 +57,7 @@ Use the Admin API key for admin-level testing and the Regular API key for permis
 ## Phase 0: Setup
 
 1. Your output directory is already created at `{{OUTPUT_DIR}}`. Use this path for ALL output files. Subdirectory `{{OUTPUT_DIR}}/output/` is also ready.
-2. Your nREPL port is `{{NREPL_PORT}}`. Use this for all `clj-nrepl-eval` calls: `clj-nrepl-eval -p {{NREPL_PORT}} "<expression>"`. Verify connectivity: `clj-nrepl-eval -p {{NREPL_PORT}} "(+ 1 1)"`. If this fails, STOP and tell the user the REPL is not responding.
+2. Discover your nREPL port using `clj-nrepl-eval --discover-ports`. Use the discovered port for all subsequent `clj-nrepl-eval` calls: `clj-nrepl-eval -p $DISCOVERED_PORT "<expression>"`. Verify connectivity: `clj-nrepl-eval -p $DISCOVERED_PORT "(+ 1 1)"`. If discovery fails or the REPL is not responding, STOP and tell the user.
 3. Load Playwright MCP tools:
    ```
    ToolSearch: select:mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_fill,mcp__playwright__browser_type,mcp__playwright__browser_press_key,mcp__playwright__browser_hover,mcp__playwright__browser_take_screenshot,mcp__playwright__browser_close,mcp__playwright__browser_evaluate,mcp__playwright__browser_console_messages,mcp__playwright__browser_network_requests
@@ -195,7 +195,7 @@ For each finding from Phase 2 with confidence MEDIUM or above. Also, spend extra
 
 Before reproducing each finding, pick the fastest tool:
 - **API endpoint bug** → `./bin/mage -bot-api-call` (fast, direct)
-- **Internal function logic** → `clj-nrepl-eval -p {{NREPL_PORT}}` REPL (fastest for verifying edge cases, type coercions, nil handling)
+- **Internal function logic** → `clj-nrepl-eval -p $NREPL_PORT` REPL (fastest for verifying edge cases, type coercions, nil handling)
 - **UI interaction bug** → Playwright (slowest — use only when the finding genuinely requires browser interaction)
 
 Start with the fastest tool. Only escalate to Playwright for findings that require visual verification or multi-step UI interaction sequences.
@@ -215,8 +215,8 @@ Start with the fastest tool. Only escalate to Playwright for findings that requi
 2. Save the full response to `{{OUTPUT_DIR}}/output/` as JSON files by redirecting stdout
 3. Check response codes, body structure, error messages
 
-### Backend Logic Issues (use REPL via `clj-nrepl-eval -p {{NREPL_PORT}}`)
-For Clojure-heavy changes, the REPL is often the most powerful verification tool. Use `clj-nrepl-eval -p {{NREPL_PORT}}` to:
+### Backend Logic Issues (use REPL via `clj-nrepl-eval -p $NREPL_PORT`)
+For Clojure-heavy changes, the REPL is often the most powerful verification tool. Use `clj-nrepl-eval -p $NREPL_PORT` to:
 - Call functions directly to verify their behavior (e.g., `(settings/get :some-setting)`)
 - Test edge cases that are hard to trigger via the API (e.g., nil inputs, empty collections, type coercions)
 - Verify database state after operations (e.g., `(t2/select-one :model/Setting :key "some-key")`)
@@ -542,6 +542,18 @@ Bash commands can trigger permission prompts that slow you down. Prefer tools an
 | `find`, `ls` | `Glob` tool | Never prompts |
 
 When you must use bash (e.g., `npx`), keep each command simple and standalone — do NOT chain commands with `&&`, `;`, or `|` as this creates compound commands that won't match permission globs like `Bash(./bin/mage *)`. Use the `Write` tool to create files/directories instead of `mkdir -p`, and use your built-in knowledge for timestamps instead of `date`.
+
+## Status Tracking
+
+Write to `.qabot/llm-status.txt` when your status changes meaningfully:
+- "Phase 1: Analyzing diff"
+- "Phase 2: Code analysis"
+- "Phase 3: Reproducing issues"
+- "Phase 4: UX review"
+- "Phase 5: Writing report"
+- "Blocked: <what's blocking>"
+
+Read `.qabot/llm-status.txt` with the `Read` tool before writing to it (the Write tool requires a prior Read). Keep it to 1-3 short lines.
 
 ## Important Rules
 

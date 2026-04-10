@@ -1,8 +1,9 @@
 (ns mage.nvoxland.dev-env
   (:require
    [babashka.process :as p]
-   [clojure.edn :as edn]
    [clojure.string :as str]
+   [mage.bot.dev-env-core :as core]
+   [mage.bot.env :as bot-env]
    [mage.color :as c]
    [mage.shell :as shell]
    [mage.util :as u]
@@ -10,70 +11,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *root*
-  "Root directory of the target worktree. Defaults to the project root of the running mage process.
-  Bind this to target a different worktree without shelling out."
-  nil)
+(def ^:private *root* (atom nil))
 
-(defn- root [] (or *root* u/project-root-directory))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Port bases
-
-(def ^:private port-bases
-  {:jetty           3000
-   :frontend-dev    8080
-   :nrepl           50605
-   :socket-repl     50505
-   :postgres-app    15432
-   :postgres-wh     25432
-   :mysql           13309
-   :mariadb         13306
-   :mongo           37017
-   :clickhouse-http 18123
-   :clickhouse-nat  19000
-   :ldap            11389
-   :maildev-smtp    11025
-   :maildev-ui      11080})
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Service specs
-
-(def ^:private service-specs
-  "Map of service-key -> spec. :internal-ports is a vector of [host-key internal-port] pairs."
-  {:postgres   {:image          "postgres:17"
-                :internal-ports [[:postgres-app 5432]]
-                :wh-ports       [[:postgres-wh 5432]]
-                :env            {"POSTGRES_USER"     "metabase"
-                                 "POSTGRES_DB"       "metabase"
-                                 "POSTGRES_PASSWORD" "password"
-                                 "PGDATA"            "/var/lib/postgresql/data"}
-                :can-be-app-db? true}
-   :mysql      {:image          "mysql:8.4"
-                :internal-ports [[:mysql 3306]]
-                :env            {"MYSQL_DATABASE"             "metabase_test"
-                                 "MYSQL_ALLOW_EMPTY_PASSWORD" "yes"}
-                :can-be-app-db? true}
-   :mariadb    {:image          "mariadb:11"
-                :internal-ports [[:mariadb 3306]]
-                :env            {"MYSQL_DATABASE"             "metabase_test"
-                                 "MYSQL_ALLOW_EMPTY_PASSWORD" "yes"}
-                :can-be-app-db? true}
-   :mongo      {:image          "mongo:8"
-                :internal-ports [[:mongo 27017]]
-                :env            {"MONGO_INITDB_ROOT_USERNAME" "metabase"
-                                 "MONGO_INITDB_ROOT_PASSWORD" "metasample123"}}
-   :clickhouse {:image          "clickhouse/clickhouse-server:latest"
-                :internal-ports [[:clickhouse-http 8123] [:clickhouse-nat 9000]]
-                :env            {"CLICKHOUSE_USER"     "metabase"
-                                 "CLICKHOUSE_PASSWORD" "metasample123"}}
-   :ldap       {:image          "bitnami/openldap:latest"
-                :internal-ports [[:ldap 1389]]
-                :env            {"LDAP_ADMIN_USERNAME" "admin"
-                                 "LDAP_ADMIN_PASSWORD" "adminpassword"}}
-   :maildev    {:image          "maildev/maildev"
-                :internal-ports [[:maildev-smtp 1025] [:maildev-ui 1080]]
-                :env            {}}})
+(defn- root [] (or @*root* u/project-root-directory))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Token env var mapping
@@ -83,72 +23,6 @@
    :starter-cloud   "MBDEV_STARTER_CLOUD_TOKEN"
    :pro-cloud       "MBDEV_PRO_CLOUD_TOKEN"
    :pro-self-hosted "MBDEV_PRO_SELF_HOSTED_TOKEN"})
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Helpers
-
-(defn- worktree-name
-  "Last path component of the project root directory."
-  []
-  (let [path (root)]
-    (last (str/split path #"/"))))
-
-(defn- db-name
-  "Database name for this worktree: worktree name with non-alphanumeric chars replaced by _."
-  []
-  (str/replace (worktree-name) #"[^a-zA-Z0-9_]" "_"))
-
-;; Services that use a shared local instance rather than a per-worktree Docker container.
-;; Connection uses standard ports; a per-worktree database is created by name.
-(def ^:private shared-db-services #{:postgres :mysql :mariadb :mongo})
-
-(defn- compute-slot
-  "Deterministic slot 0-99 from worktree name, or override."
-  [slot-override]
-  (if slot-override
-    slot-override
-    (mod (Math/abs (.hashCode ^String (worktree-name))) 100)))
-
-(defn- container-prefix
-  "Prefix for all docker containers for this worktree."
-  []
-  (str "mb-" (worktree-name) "-"))
-
-(defn- port-for
-  "Compute the port for a given service key and slot."
-  [port-key slot]
-  (+ (get port-bases port-key) slot))
-
-(defn- kill-container!
-  "Kill and remove a docker container (quiet, no error on missing)."
-  [container-name]
-  (shell/sh* {:quiet? true} "docker" "kill" container-name)
-  (shell/sh* {:quiet? true} "docker" "rm" container-name))
-
-(defn- check-docker!
-  "Verify docker is available and the daemon is running."
-  []
-  (when-not (u/can-run? "docker")
-    (println (c/red "Docker is not installed. Please install Docker to use dev-env."))
-    (u/exit 1))
-  (let [{:keys [exit]} (shell/sh* {:quiet? true} "docker" "info")]
-    (when-not (zero? exit)
-      (println (c/red "Docker daemon is not running. Please start Docker."))
-      (u/exit 1))))
-
-(defn- build-docker-cmd
-  "Build a docker run command vector for a service."
-  [container-name image port-mappings env-map]
-  (into ["docker" "run" "-d"]
-        (concat
-         (mapcat (fn [[host-port internal-port]]
-                   ["-p" (str host-port ":" internal-port)])
-                 port-mappings)
-         (mapcat (fn [[k v]]
-                   ["-e" (str k "=" v)])
-                 env-map)
-         ["--name" container-name
-          image])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TUI prompts
@@ -190,49 +64,10 @@
              (remove #(= % "(none)"))
              (mapv keyword))))))
 
-(defn- read-mise-local-env
-  "Parse the [env] section of mise.local.toml into a {\"KEY\" \"value\"} map."
-  []
-  (let [f (clojure.java.io/file (root) "mise.local.toml")]
-    (when (.exists f)
-      (->> (line-seq (clojure.java.io/reader f))
-           (drop-while #(not= % "[env]"))
-           (drop 1)
-           (take-while #(not (re-matches #"^\[.*\]$" %)))
-           (filter #(re-matches #"^\w+ = \".*\"$" %))
-           (into {} (map (fn [line]
-                           (let [[_ k v] (re-matches #"^(\w+) = \"(.*)\"$" line)]
-                             [k v]))))))))
-
-(defn- read-dot-env
-  "Parse .env into a {\"KEY\" \"value\"} map. Supports KEY=value, export KEY=value, and quoted values."
-  []
-  (let [f (clojure.java.io/file (root) ".env")]
-    (when (.exists f)
-      (->> (line-seq (clojure.java.io/reader f))
-           (remove #(or (str/blank? %) (str/starts-with? (str/triml %) "#")))
-           (map #(str/replace % #"^\s*export\s+" ""))
-           (filter #(str/includes? % "="))
-           (into {} (map (fn [line]
-                           (let [idx (str/index-of line "=")
-                                 k   (str/trim (subs line 0 idx))
-                                 v   (-> (subs line (inc idx))
-                                         str/trim
-                                         (str/replace #"^\"(.*)\"$" "$1")
-                                         (str/replace #"^'(.*)'$" "$1"))]
-                             [k v]))))))))
-
-(defn- resolve-env
-  "Get an env var value with priority: mise.local.toml > .env > system environment."
-  [var-name]
-  (or (get (read-mise-local-env) var-name)
-      (get (read-dot-env) var-name)
-      (let [v (System/getenv var-name)] (when-not (str/blank? v) v))))
-
 (defn- resolve-token-value
   "Get the actual token string for the given token type."
   [token]
-  (resolve-env (get token-env-vars token)))
+  (bot-env/resolve-env (get token-env-vars token) (root)))
 
 (defn- validate-token!
   "Verify the token value is available (from env var or mise.local.toml)."
@@ -246,22 +81,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core infra
-
-(defn- start-service!
-  "Kill existing container and start a new one."
-  [service-key suffix slot]
-  (let [spec           (get service-specs service-key)
-        container-name (str (container-prefix) (name service-key) (when suffix (str "-" suffix)))
-        port-key-src   (if (= suffix "app")
-                         (:internal-ports spec)
-                         (or (:wh-ports spec) (:internal-ports spec)))
-        port-mappings  (mapv (fn [[pk ip]] [(port-for pk slot) ip]) port-key-src)
-        cmd            (build-docker-cmd container-name (:image spec) port-mappings (:env spec))]
-    (println (c/yellow "Starting " container-name "..."))
-    (kill-container! container-name)
-    (u/debug "Running: " (str/join " " cmd))
-    (apply shell/sh cmd)
-    (println (c/green "  Started ") container-name)))
 
 (defn- validate-services!
   "Validate the app-db and --with values. Returns normalized config map."
@@ -286,16 +105,16 @@
 (defn- generate-mise-local!
   "Generate mise.local.toml at the project root."
   [slot {:keys [app-db edition token]}]
-  (let [wt-name (worktree-name)
+  (let [wt-name (core/worktree-name (root))
         lines   (cond-> ["# Auto-generated by ./bin/mage -nvoxland-dev-env"
                          (str "# Worktree: " wt-name " (slot " slot ")")
                          "# Re-run `./bin/mage -nvoxland-dev-env` to regenerate."
                          ""
                          "[env]"
-                         (str "MB_JETTY_PORT = \"" (port-for :jetty slot) "\"")
-                         (str "MB_FRONTEND_DEV_PORT = \"" (port-for :frontend-dev slot) "\"")
-                         (str "NREPL_PORT = \"" (port-for :nrepl slot) "\"")
-                         (str "SOCKET_REPL_PORT = \"" (port-for :socket-repl slot) "\"")]
+                         (str "MB_JETTY_PORT = \"" (core/port-for :jetty slot) "\"")
+                         (str "MB_FRONTEND_DEV_PORT = \"" (core/port-for :frontend-dev slot) "\"")
+                         (str "NREPL_PORT = \"" (core/port-for :nrepl slot) "\"")
+                         (str "SOCKET_REPL_PORT = \"" (core/port-for :socket-repl slot) "\"")]
 
                   ;; Edition
                   edition
@@ -315,19 +134,19 @@
                   (= app-db :postgres)
                   (conj "MB_DB_TYPE = \"postgres\""
                         (str "MB_DB_CONNECTION_URI = \"jdbc:postgresql://localhost:5432/"
-                             (db-name)
+                             (core/db-name (root))
                              "?user=metabase&password=password\""))
 
                   (= app-db :mysql)
                   (conj "MB_DB_TYPE = \"mysql\""
                         (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:3306/"
-                             (db-name)
+                             (core/db-name (root))
                              "?user=root&password=\""))
 
                   (= app-db :mariadb)
                   (conj "MB_DB_TYPE = \"mysql\""
                         (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:3306/"
-                             (db-name)
+                             (core/db-name (root))
                              "?user=root&password=\"")))
         content (str (str/join "\n" lines) "\n")
         path    (str (root) "/mise.local.toml")]
@@ -345,7 +164,7 @@
         (let [content (slurp sources-xml)
               updated (str/replace content
                                    #"(<data-source[^>]*name=\"Project Appdb\"[^>]*>[\s\S]*?<jdbc-url>)([^<]*)(</jdbc-url>)"
-                                   (str "$1jdbc:postgresql://localhost:5432/" (db-name) "$3"))]
+                                   (str "$1jdbc:postgresql://localhost:5432/" (core/db-name (root)) "$3"))]
           (when (not= content updated)
             (spit sources-xml updated)
             (println (c/green "Updated .idea/dataSources.xml jdbc-url for Project Appdb")))))
@@ -362,52 +181,52 @@
   "Return the container names that would be created for the given config."
   [{:keys [app-db with]}]
   (cond-> []
-    (and (not= app-db :h2) (not (shared-db-services app-db)))
-    (conj (str (container-prefix) (name app-db) "-app"))
+    (and (not= app-db :h2) (not (core/shared-db-services app-db)))
+    (conj (str (core/container-prefix (root)) (name app-db) "-app"))
 
     true
-    (into (map #(str (container-prefix) (name %) "-wh") (remove shared-db-services with)))))
+    (into (map #(str (core/container-prefix (root)) (name %) "-wh") (remove core/shared-db-services with)))))
 
 (defn- print-summary!
   "Print a summary table of ports, containers, and connection info."
   [slot {:keys [app-db with]}]
-  (let [wt-name (worktree-name)
-        rows    (cond-> [{:service "Jetty backend"  :port (port-for :jetty slot)        :env-var "MB_JETTY_PORT"}
-                         {:service "Frontend dev"   :port (port-for :frontend-dev slot)  :env-var "MB_FRONTEND_DEV_PORT"}
-                         {:service "nREPL"          :port (port-for :nrepl slot)         :env-var "NREPL_PORT"}
-                         {:service "Socket REPL"    :port (port-for :socket-repl slot)   :env-var "SOCKET_REPL_PORT"}]
+  (let [wt-name (core/worktree-name (root))
+        rows    (cond-> [{:service "Jetty backend"  :port (core/port-for :jetty slot)        :env-var "MB_JETTY_PORT"}
+                         {:service "Frontend dev"   :port (core/port-for :frontend-dev slot)  :env-var "MB_FRONTEND_DEV_PORT"}
+                         {:service "nREPL"          :port (core/port-for :nrepl slot)         :env-var "NREPL_PORT"}
+                         {:service "Socket REPL"    :port (core/port-for :socket-repl slot)   :env-var "SOCKET_REPL_PORT"}]
 
                   (= app-db :postgres)
-                  (conj {:service (str "Postgres (app-db, db: " (db-name) ")") :port 5432 :env-var "MB_DB_CONNECTION_URI"})
+                  (conj {:service (str "Postgres (app-db, db: " (core/db-name (root)) ")") :port 5432 :env-var "MB_DB_CONNECTION_URI"})
 
                   (= app-db :mysql)
-                  (conj {:service (str "MySQL (app-db, db: " (db-name) ")") :port 3306 :env-var "MB_DB_CONNECTION_URI"})
+                  (conj {:service (str "MySQL (app-db, db: " (core/db-name (root)) ")") :port 3306 :env-var "MB_DB_CONNECTION_URI"})
 
                   (= app-db :mariadb)
-                  (conj {:service (str "MariaDB (app-db, db: " (db-name) ")") :port 3306 :env-var "MB_DB_CONNECTION_URI"})
+                  (conj {:service (str "MariaDB (app-db, db: " (core/db-name (root)) ")") :port 3306 :env-var "MB_DB_CONNECTION_URI"})
 
                   (some #{:postgres} with)
-                  (conj {:service (str "Postgres (warehouse, db: " (db-name) "_wh)") :port 5432 :env-var ""})
+                  (conj {:service (str "Postgres (warehouse, db: " (core/db-name (root)) "_wh)") :port 5432 :env-var ""})
 
                   (some #{:mysql} with)
-                  (conj {:service (str "MySQL (warehouse, db: " (db-name) "_wh)") :port 3306 :env-var ""})
+                  (conj {:service (str "MySQL (warehouse, db: " (core/db-name (root)) "_wh)") :port 3306 :env-var ""})
 
                   (some #{:mariadb} with)
-                  (conj {:service (str "MariaDB (warehouse, db: " (db-name) "_wh)") :port 3306 :env-var ""})
+                  (conj {:service (str "MariaDB (warehouse, db: " (core/db-name (root)) "_wh)") :port 3306 :env-var ""})
 
                   (some #{:mongo} with)
-                  (conj {:service (str "MongoDB (db: " (db-name) ")") :port 27017 :env-var ""})
+                  (conj {:service (str "MongoDB (db: " (core/db-name (root)) ")") :port 27017 :env-var ""})
 
                   (some #{:clickhouse} with)
-                  (conj {:service "ClickHouse HTTP" :port (port-for :clickhouse-http slot) :env-var ""}
-                        {:service "ClickHouse native" :port (port-for :clickhouse-nat slot) :env-var ""})
+                  (conj {:service "ClickHouse HTTP" :port (core/port-for :clickhouse-http slot) :env-var ""}
+                        {:service "ClickHouse native" :port (core/port-for :clickhouse-nat slot) :env-var ""})
 
                   (some #{:ldap} with)
-                  (conj {:service "OpenLDAP" :port (port-for :ldap slot) :env-var ""})
+                  (conj {:service "OpenLDAP" :port (core/port-for :ldap slot) :env-var ""})
 
                   (some #{:maildev} with)
-                  (conj {:service "Maildev SMTP" :port (port-for :maildev-smtp slot) :env-var ""}
-                        {:service "Maildev UI" :port (port-for :maildev-ui slot) :env-var ""}))]
+                  (conj {:service "Maildev SMTP" :port (core/port-for :maildev-smtp slot) :env-var ""}
+                        {:service "Maildev UI" :port (core/port-for :maildev-ui slot) :env-var ""}))]
     (println)
     (println (c/bold (c/green "Dev environment for ") (c/cyan wt-name) (c/green " (slot " slot ")")))
     (println)
@@ -461,10 +280,10 @@
 (defn- build-env
   "Assemble the env map for spawning backend/frontend processes."
   [slot {:keys [app-db edition token]}]
-  (cond-> {"MB_JETTY_PORT"        (str (port-for :jetty slot))
-           "MB_FRONTEND_DEV_PORT" (str (port-for :frontend-dev slot))
-           "NREPL_PORT"           (str (port-for :nrepl slot))
-           "SOCKET_REPL_PORT"     (str (port-for :socket-repl slot))
+  (cond-> {"MB_JETTY_PORT"        (str (core/port-for :jetty slot))
+           "MB_FRONTEND_DEV_PORT" (str (core/port-for :frontend-dev slot))
+           "NREPL_PORT"           (str (core/port-for :nrepl slot))
+           "SOCKET_REPL_PORT"     (str (core/port-for :socket-repl slot))
            "MB_ENABLE_TEST_ENDPOINTS" "true"
            "MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE" "true"}
 
@@ -478,13 +297,13 @@
     (= app-db :postgres)
     (assoc "MB_DB_TYPE" "postgres"
            "MB_DB_CONNECTION_URI" (str "jdbc:postgresql://localhost:5432/"
-                                       (db-name)
+                                       (core/db-name (root))
                                        "?user=metabase&password=password"))
 
     (#{:mysql :mariadb} app-db)
     (assoc "MB_DB_TYPE" "mysql"
            "MB_DB_CONNECTION_URI" (str "jdbc:mysql://localhost:3306/"
-                                       (db-name)
+                                       (core/db-name (root))
                                        "?user=root&password="))))
 
 (defn- build-aliases
@@ -497,8 +316,8 @@
   "Launch backend process in background. Returns PID."
   [slot edition env-map]
   (let [aliases    (build-aliases edition)
-        nrepl-port (str (port-for :nrepl slot))
-        log-file   (str "/tmp/mb-" (worktree-name) "-backend.log")
+        nrepl-port (str (core/port-for :nrepl slot))
+        log-file   (str "/tmp/mb-" (core/worktree-name (root)) "-backend.log")
         cmd        ["clojure" (str "-M" aliases) "-p" nrepl-port]
         log        (java.io.File. log-file)
         proc       (apply p/process {:dir       (root)
@@ -516,7 +335,7 @@
 (defn- start-frontend!
   "Launch frontend dev server in background. Returns PID."
   [env-map]
-  (let [log-file (str "/tmp/mb-" (worktree-name) "-frontend.log")
+  (let [log-file (str "/tmp/mb-" (core/worktree-name (root)) "-frontend.log")
         log      (java.io.File. log-file)
         proc     (p/process {:dir       (root)
                              :out       log
@@ -588,20 +407,20 @@
                           t)))
         app-db      (or (:app-db saved) (select-app-db opts))
         with        (or (:with saved) (select-with opts))
-        slot        (compute-slot (:slot opts))
+        slot        (core/compute-slot (root) (:slot opts))
         config      (validate-services! {:app-db app-db :with with})
         full-config (assoc config :edition edition :token token)]
     ;; Start docker containers for non-shared services only
     (let [docker-app-db (when (and (not= (:app-db config) :h2)
-                                   (not (shared-db-services (:app-db config))))
+                                   (not (core/shared-db-services (:app-db config))))
                           (:app-db config))
-          docker-with   (remove shared-db-services (:with config))]
+          docker-with   (remove core/shared-db-services (:with config))]
       (when (or docker-app-db (seq docker-with))
-        (check-docker!))
+        (core/check-docker!))
       (when docker-app-db
-        (start-service! docker-app-db "app" slot))
+        (core/start-service! (root) docker-app-db "app" slot))
       (doseq [svc docker-with]
-        (start-service! svc "wh" slot)))
+        (core/start-service! (root) svc "wh" slot)))
     ;; Write mise.local.toml
     (generate-mise-local! slot full-config)
     ;; Update IntelliJ data source config
@@ -626,8 +445,8 @@
     (when-let [pid (get-in state [:frontend :pid])]
       (kill-pid! pid "frontend")))
   ;; Kill containers
-  (check-docker!)
-  (let [prefix     (container-prefix)
+  (core/check-docker!)
+  (let [prefix     (core/container-prefix (root))
         {:keys [out]} (shell/sh* {:quiet? true}
                                  "docker" "ps" "-a"
                                  "--filter" (str "name=^" prefix)
@@ -641,7 +460,7 @@
         (println (c/yellow "Stopping containers:"))
         (doseq [cname containers]
           (println (c/red "  Killing " cname))
-          (kill-container! cname))
+          (core/kill-container! cname))
         (println (c/green "All containers stopped.")))
       (println (c/yellow "No containers found for prefix: " prefix))))
   ;; Remove mise.local.toml
@@ -675,8 +494,8 @@
         (t/table rows :style :unicode)
         (println))))
   ;; Container status
-  (check-docker!)
-  (let [prefix     (container-prefix)
+  (core/check-docker!)
+  (let [prefix     (core/container-prefix (root))
         {:keys [out]} (shell/sh* {:quiet? true}
                                  "docker" "ps" "-a"
                                  "--filter" (str "name=^" prefix)
@@ -690,17 +509,18 @@
                             :status    (or status "")
                             :ports     (or ports "")}))
                        lines)]
-        (println (c/bold (c/green "Containers for " (worktree-name) ":")))
+        (println (c/bold (c/green "Containers for " (core/worktree-name (root)) ":")))
         (println)
         (t/table rows :style :unicode))
-      (println (c/yellow "No containers found for " (worktree-name))))))
+      (println (c/yellow "No containers found for " (core/worktree-name (root)))))))
 
 (defn dev-env!
   "Top-level dispatcher for dev-env command."
   [{:keys [options]}]
-  (binding [*root* (or (:worktree options) *root*)]
-    (let [{:keys [down status]} options]
-      (cond
-        down   (tear-down!)
-        status (print-status!)
-        :else  (stand-up! options)))))
+  (when (:worktree options)
+    (reset! *root* (:worktree options)))
+  (let [{:keys [down status]} options]
+    (cond
+      down   (tear-down!)
+      status (print-status!)
+      :else  (stand-up! options))))

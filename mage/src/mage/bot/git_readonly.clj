@@ -13,11 +13,11 @@
 ;;; git subcommand classification
 
 (def ^:private git-readonly-subcommands
-  "git subcommands that are read-only (do not modify the working tree, index, or refs)."
-  #{"blame" "branch" "cat-file" "config" "describe" "diff" "diff-tree"
+  "git subcommands that are always read-only (do not modify the working tree, index, or refs)."
+  #{"blame" "cat-file" "describe" "diff" "diff-tree"
     "for-each-ref" "log" "ls-files" "ls-remote" "ls-tree" "merge-base"
-    "name-rev" "remote" "rev-list" "rev-parse" "shortlog" "show"
-    "show-ref" "stash" "status" "tag" "version"})
+    "name-rev" "rev-list" "rev-parse" "shortlog" "show"
+    "show-ref" "status" "version"})
 
 (def ^:private git-readonly-with-caveats
   "git subcommands that are read-only depending on flags."
@@ -29,7 +29,7 @@
   #{"add" "am" "apply" "bisect" "checkout" "cherry-pick" "clean" "clone"
     "commit" "gc" "init" "merge" "mv" "notes" "pack-refs" "pull" "push"
     "rebase" "reflog" "replace" "rerere" "reset" "restore" "revert" "rm"
-    "sparse-checkout" "stash" "submodule" "switch" "update-index"
+    "sparse-checkout" "submodule" "switch" "update-index"
     "update-ref" "worktree"})
 
 (defn- git-subcommand-readonly?
@@ -49,10 +49,11 @@
     (= subcommand "branch")
     (not (some #(re-matches #"-[dDmMcC]|--delete|--move|--copy|--set-upstream.*" %) args))
 
-    ;; tag: read-only unless -d/--delete or creating (non-flag first arg after tag)
+    ;; tag: read-only if listing (no args or only flags that aren't -d/--delete)
     (= subcommand "tag")
-    (or (empty? args)
-        (every? #(str/starts-with? % "-") args))
+    (and (not (some #(re-matches #"-d|--delete|-f|--force" %) args))
+         (or (empty? args)
+             (every? #(str/starts-with? % "-") args)))
 
     ;; stash: "list" and "show" are read-only, everything else writes
     (= subcommand "stash")

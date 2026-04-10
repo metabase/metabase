@@ -675,12 +675,22 @@
               :multi true :default [] :update-fn conj]]
    :task (task! (bot-prompt/generate-prompt! parsed))}
 
+  -bot-setup
+  {:doc "Set up a bot worktree (git-ignored files: settings, dev-env, deps, mcp)"
+   :examples [["./bin/mage -bot-setup --bot fixbot --app-db postgres"
+               "Set up fixbot worktree"]]
+   :requires [[mage.bot.setup :as bot-setup]]
+   :options [[nil "--bot BOT" "Bot name: fixbot, qabot, uxbot"]
+             [nil "--app-db DB" "App database" :default "postgres"]]
+   :task (task! (bot-setup/setup! parsed))}
+
   -bot-dev-env
   {:doc "Stand up/tear down dev environment (BE, FE, DB) for bot worktrees"
    :examples [["./bin/mage -bot-dev-env --app-db postgres" "Postgres app-db"]
               ["./bin/mage -bot-dev-env --down" "Tear down"]]
    :requires [[mage.bot.dev-env :as bot-dev-env]]
    :options [[nil "--app-db DB" "App database: postgres (default), mysql, h2" :default "postgres"]
+             [nil "--bot BOT" "Bot name (for path generation)"]
              [nil "--down" "Tear down containers"]
              [nil "--status" "Show status"]
              [nil "--slot SLOT" "Override port slot" :parse-fn Integer/parseInt]]
@@ -691,6 +701,7 @@
   {:doc "Alias for -bot-dev-env"
    :requires [[mage.bot.dev-env :as bot-dev-env]]
    :options [[nil "--app-db DB" :default "postgres"]
+             [nil "--bot BOT"]
              [nil "--down"] [nil "--status"]
              [nil "--slot SLOT" :parse-fn Integer/parseInt]]
    :task (task! (bot-dev-env/dev-env! parsed))}
@@ -708,13 +719,6 @@
    :requires [[mage.fixbot.session :as session]]
    :arg-schema [:tuple [:string {:name "name-or-id"}]]
    :task (task! (session/pause! parsed))}
-
-  -fixbot-resume
-  {:doc "Resume a paused fixbot session"
-   :examples [["./bin/mage -fixbot-resume mb-12345" "Resume session"]]
-   :requires [[mage.fixbot.session :as session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (session/resume! parsed))}
 
   -fixbot-list
   {:doc "List fixbot sessions with status"

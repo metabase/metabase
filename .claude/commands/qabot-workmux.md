@@ -18,9 +18,9 @@ Optional (warn but continue if missing):
 
 The user provided: `$ARGUMENTS`
 
-Parse as: `<branch-name> [linear-issue-id]`
+Parse as: `<branch-name> [linear-issue-id] [--app-db postgres|mysql|mariadb]`
 
-The first word is the branch name. The second (optional) is a Linear issue ID.
+The first word is the branch name. The second (optional) is a Linear issue ID. If `--app-db` is specified, use that database type; otherwise default to `postgres`.
 
 If no Linear issue ID is provided, try to detect from the branch name (pattern: `*/mb-NNNNN-*`).
 
@@ -41,7 +41,7 @@ Run:
 
 Run:
 ```
-./bin/mage qabot-go <BRANCH_NAME> --app-db postgres --prompt-file .qabot/qabot-prompt.md
+./bin/mage qabot-go <BRANCH_NAME> --app-db <APP_DB> --prompt-file .qabot/qabot-prompt.md
 ```
 
 This will:

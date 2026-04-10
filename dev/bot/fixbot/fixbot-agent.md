@@ -62,7 +62,7 @@ The user is NOT a developer — do not ask them for implementation help, code su
 
 {{FILE:dev/bot/common/instance-setup.md}}
 
-Use these credentials to log in via the UI or make API calls.
+Read `metabase.config.yml` (path in `MB_CONFIG_FILE_PATH` from `mise.local.toml`) to discover the pre-configured user credentials and API keys. Do NOT hardcode key values — always read them from the config file.
 
 ## Instructions
 
@@ -119,7 +119,7 @@ Before asking the user to test, review your own changes thoroughly:
    - Which URL to visit — **always use `http://localhost:$MB_JETTY_PORT/...`** (the backend port), never the frontend dev server port
    - What steps to reproduce
    - What the expected behavior should be now
-   - Remind them of login credentials: admin (`admin@example.com` / `admin123`) and regular user (`regular@example.com` / `regular123`), and API keys (`mb_AdminApiKey`, `mb_RegularApiKey`)
+   - Remind them of login credentials and API keys (read from `metabase.config.yml` — see Instance Setup section above)
 2. WAIT for the user to test and provide feedback
 3. If they report issues, iterate (go back to Phase 2, then re-review in Phase 3 before asking the user again)
 
@@ -197,10 +197,10 @@ Write to `.fixbot/llm-status.txt` (overwrite the whole file each time) when some
 
 ### nREPL
 
-The backend runs an nREPL server. Connect using `localhost` and the nREPL port (read `NREPL_PORT` from `mise.local.toml`):
+The backend runs an nREPL server. Discover the port dynamically using `clj-nrepl-eval --discover-ports` — do NOT rely on `NREPL_PORT` from `mise.local.toml` as it may not match the actual running server. Once discovered:
 
 ```bash
-clj-nrepl-eval -H localhost -p $NREPL_PORT "(+ 1 2)"
+clj-nrepl-eval -p $DISCOVERED_PORT "(+ 1 2)"
 ```
 
 Use nREPL for:

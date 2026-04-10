@@ -1,8 +1,8 @@
 (ns mage.bot.linear
   (:require
    [babashka.json :as json]
-   [clojure.edn :as edn]
    [clojure.string :as str]
+   [mage.bot.env :as bot-env]
    [mage.color :as c]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -11,40 +11,12 @@
 
 (def ^:private linear-api-url "https://api.linear.app/graphql")
 
-(defn- read-dot-env-key
-  "Read a key from the .env file in the project root."
-  [key-name]
-  (let [path (str u/project-root-directory "/.env")]
-    (when (.exists (java.io.File. ^String path))
-      (some (fn [line]
-              (let [trimmed (str/trim line)]
-                (when (and (seq trimmed)
-                           (not (str/starts-with? trimmed "#")))
-                  (when-let [[_ k v] (re-matches #"(\w+)\s*=\s*(.*)" trimmed)]
-                    (when (= k key-name) v)))))
-            (str/split-lines (slurp path))))))
-
-(defn- read-lein-env-key
-  "Read a key from .lein-env (EDN with keyword keys, e.g. :linear-api-key)."
-  [key-name]
-  (let [path (str u/project-root-directory "/.lein-env")]
-    (when (.exists (java.io.File. ^String path))
-      (try
-        (let [m (edn/read-string (slurp path))
-              kw (keyword (-> key-name
-                              str/lower-case
-                              (str/replace "_" "-")))]
-          (some-> (get m kw) str))
-        (catch Exception _e nil)))))
-
 (defn- get-api-key!
-  "Get LINEAR_API_KEY from env, .env, or .lein-env. Exit with instructions if not found."
+  "Get LINEAR_API_KEY using shared env resolution. Exit with instructions if not found."
   []
-  (or (u/env "LINEAR_API_KEY" (constantly nil))
-      (read-dot-env-key "LINEAR_API_KEY")
-      (read-lein-env-key "LINEAR_API_KEY")
+  (or (bot-env/resolve-env "LINEAR_API_KEY")
       (do
-        (println (c/red "LINEAR_API_KEY not found in environment, .env, or .lein-env."))
+        (println (c/red "LINEAR_API_KEY not found in mise.local.toml, .env, .lein-env, or environment."))
         (println)
         (println "To get a Linear API key:")
         (println "  1. Go to https://linear.app/metabase/settings/account/security/api-keys/new")

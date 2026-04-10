@@ -3,6 +3,7 @@
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.string :as str]
+   [mage.color :as c]
    [mage.shell :as shell])
   (:import
    (java.io File)
@@ -11,16 +12,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- parse-mise-env
-  "Parse key=value pairs from mise.local.toml [env] section.
-   Returns a map of env var name -> value (unquoted)."
-  [^String path]
-  (when (.exists (File. path))
-    (let [lines (str/split-lines (slurp path))]
-      (->> lines
-           (keep (fn [line]
-                   (when-let [[_ k v] (re-matches #"\s*(\w+)\s*=\s*\"([^\"]*)\"\s*" line)]
-                     [k v])))
-           (into {})))))
+  "Parse key=value pairs from mise.local.toml [env] section."
+  [^String _path]
+  (bot-env/read-mise-local-toml))
 
 (defn- extract-port
   "Extract port number from a string, trying env value directly or parsing from JDBC URL."
@@ -58,13 +52,8 @@
       :ready)
     (catch Exception _ :waiting)))
 
-(def ^:private green "\033[32m")
-(def ^:private red "\033[31m")
-(def ^:private yellow "\033[33m")
-(def ^:private reset "\033[0m")
-
-(defn- colorize [color text]
-  (str color text reset))
+(defn- colorize [color-fn text]
+  (color-fn text))
 
 (defn- load-ports
   "Read mise.local.toml and extract ports. Returns a map or nil if file not ready."
@@ -129,16 +118,16 @@
     (when issue
       (.append sb (str (:id issue) " | " (:url issue)))
       (when pr-info
-        (.append sb (str " | " (colorize green (str "PR #" (:number pr-info))))))
+        (.append sb (str " | " (colorize c/green (str "PR #" (:number pr-info))))))
       (.append sb "\n"))
     ;; Line 3: Metabase | URL | DB
     (when ports
       (let [be-up?      (= be-status :ready)
-            mb-color    (if be-up? green red)
+            mb-color    (if be-up? c/green c/red)
             mb-text     (str (if be-up? "http" "error") "://localhost:" (:jetty-port ports))
             db-name     (when (:db-type ports)
                           (str/upper-case (name (:db-type ports))))
-            db-color    (if (= db-status :ready) green red)
+            db-color    (if (= db-status :ready) c/green c/red)
             db-text     (when (and db-name (:db-port ports))
                           (str db-name ": " (:db-port ports)))]
         (.append sb (colorize mb-color mb-text))

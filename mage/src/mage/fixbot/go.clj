@@ -8,23 +8,6 @@
 (set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Workmux config
-
-(defn- generate-workmux-config
-  "Generate the .workmux.yaml content from the common template."
-  [app-db]
-  (let [ee-token   (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly ""))
-        linear-key (u/env "LINEAR_API_KEY" (constantly ""))]
-    (-> (slurp (str u/project-root-directory "/dev/bot/common/workmux-template.yaml"))
-        (str/replace "{{BOT_NAME}}" "fixbot")
-        (str/replace "{{SOURCE_REPO}}" u/project-root-directory)
-        (str/replace "{{BOT_POST_CREATE}}"
-                     (str "  - mkdir -p .fixbot/playwright/sessions .fixbot/playwright/sockets\n"
-                          "  - MB_PREMIUM_EMBEDDING_TOKEN=" ee-token
-                          " LINEAR_API_KEY=" linear-key
-                          " ./bin/mage -bot-dev-env --app-db " app-db "\n")))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main orchestrator
 
 (defn run!
@@ -59,6 +42,6 @@
          {:session-name   session-name
           :branch-name    branch-name
           :prompt-file    prompt-file
-          :workmux-config (generate-workmux-config app-db)
+          :workmux-config (launch/generate-workmux-config "fixbot" app-db)
           :base-branch    base-branch
           :display-info   {"App DB" app-db}})))))

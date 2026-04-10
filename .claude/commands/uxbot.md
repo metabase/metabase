@@ -15,9 +15,9 @@ Verify these are available by running each check (stop if any fail):
 
 The user provided: `$ARGUMENTS`
 
-Parse as: `<branch-name> [task description...]`
+Parse as: `<branch-name> [task description...] [--app-db postgres|mysql|mariadb]`
 
-The first word is the branch name. Everything after it is the initial task description (optional).
+The first word is the branch name. Everything after it is the initial task description (optional). If `--app-db` is specified, use that database type; otherwise default to `postgres`.
 
 ### 3. Generate the agent prompt
 
@@ -50,7 +50,7 @@ Show me the "orders" dashboard'`. When in doubt, write the value to a temp file 
 
 Run:
 ```
-./bin/mage uxbot-go <BRANCH_NAME> --app-db postgres --prompt-file .uxbot/uxbot-prompt.md
+./bin/mage uxbot-go <BRANCH_NAME> --app-db <APP_DB> --prompt-file .uxbot/uxbot-prompt.md
 ```
 
 This will:

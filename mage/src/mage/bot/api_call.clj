@@ -5,26 +5,16 @@
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.string :as str]
+   [mage.bot.env :as bot-env]
    [mage.color :as c]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
-(defn- read-mise-local-toml-val
-  "Read a single value from mise.local.toml."
-  [var-name]
-  (let [path (str u/project-root-directory "/mise.local.toml")]
-    (when (.exists (java.io.File. ^String path))
-      (some (fn [line]
-              (when-let [[_ k v] (re-matches #"(\w+)\s*=\s*\"(.*)\"" (str/trim line))]
-                (when (= k var-name) v)))
-            (str/split-lines (slurp path))))))
-
 (defn- discover-port
-  "Discover MB_JETTY_PORT from env > mise.local.toml > default 3000."
+  "Discover MB_JETTY_PORT using shared env resolution, default 3000."
   []
-  (or (u/env "MB_JETTY_PORT" (constantly nil))
-      (read-mise-local-toml-val "MB_JETTY_PORT")
+  (or (bot-env/resolve-env "MB_JETTY_PORT")
       "3000"))
 
 (defn api-call!

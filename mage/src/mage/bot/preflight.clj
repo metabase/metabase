@@ -23,7 +23,8 @@
   "Check that clj-nrepl-eval is installed. Exits on failure."
   []
   (when-not (u/can-run? "clj-nrepl-eval")
-    (println (c/red "clojure-mcp-light not installed"))
+    (println (c/red "clj-nrepl-eval is not installed."))
+    (println "  cargo install clj-nrepl-eval")
     (u/exit 1)))
 
 (defn check-docker!

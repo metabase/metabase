@@ -8,20 +8,9 @@ Read `.mcp.json` in the project root.
 
 **Check:** Does it exist?
 **Check:** Does it contain a `playwright` entry in `mcpServers`?
-**Check:** Is the playwright version pinned to `@playwright/mcp@0.0.68`?
 **Check:** Is it configured with `--headless`, `--browser chrome`, `--viewport-size 1440x900`, `--snapshot-mode full`, `--isolated`?
 
-If `.mcp.json` is missing or doesn't have playwright, report the exact file to create:
-```json
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@0.0.68", "--headless", "--browser", "chrome", "--viewport-size", "1440x900", "--snapshot-mode", "full", "--block-service-workers", "--isolated", "--timeout-action", "10000"]
-    }
-  }
-}
-```
+If `.mcp.json` is missing or doesn't have playwright, tell the user to run `./bin/mage -bot-setup` to regenerate it.
 
 ### 2. Claude permissions
 

@@ -3,88 +3,17 @@
    Finds MB_CONFIG_FILE_PATH from env, mise.local.toml, or .lein-env,
    then prints the config YAML along with port/connection info."
   (:require
-   [clojure.edn :as edn]
    [clojure.string :as str]
+   [mage.bot.env :as bot-env]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
-(defn- read-mise-local-toml
-  "Parse mise.local.toml and return a map of env var name -> value."
-  []
-  (let [path (str u/project-root-directory "/mise.local.toml")]
-    (when (.exists (java.io.File. ^String path))
-      (let [lines (str/split-lines (slurp path))]
-        (into {}
-              (keep (fn [line]
-                      (when-let [[_ k v] (re-matches #"(\w+)\s*=\s*\"(.*)\"" (str/trim line))]
-                        [k v])))
-              lines)))))
-
-(defn- read-lein-env
-  "Parse .lein-env (EDN map with keyword keys) and return a map of env var name -> value."
-  []
-  (let [path (str u/project-root-directory "/.lein-env")]
-    (when (.exists (java.io.File. ^String path))
-      (try
-        (let [m (edn/read-string (slurp path))]
-          (into {}
-                (map (fn [[k v]]
-                       [(-> (name k)
-                            (str/replace "-" "_")
-                            str/upper-case)
-                        (str v)]))
-                m))
-        (catch Exception _e nil)))))
-
-(defn- read-dot-env
-  "Parse .env file and return a map of env var name -> value."
-  []
-  (let [path (str u/project-root-directory "/.env")]
-    (when (.exists (java.io.File. ^String path))
-      (let [lines (str/split-lines (slurp path))]
-        (into {}
-              (keep (fn [line]
-                      (let [trimmed (str/trim line)]
-                        (when (and (seq trimmed)
-                                   (not (str/starts-with? trimmed "#")))
-                          (when-let [[_ k v] (re-matches #"(\w+)\s*=\s*(.*)" trimmed)]
-                            [k v])))))
-              lines)))))
-
-(defn- resolve-env
-  "Resolve all environment variables from all sources, with priority:
-   system env > mise.local.toml > .env > .lein-env.
-   Returns a map of all resolved vars."
-  [mise-map lein-map]
-  (let [dot-env-map (or (read-dot-env) {})
-        ;; Collect all known keys from all sources
-        all-keys    (into (sorted-set)
-                          (concat (keys mise-map)
-                                  (keys dot-env-map)
-                                  (keys lein-map)))]
-    ;; For each key, resolve with priority: system env > mise > .env > lein
-    (into (sorted-map)
-          (keep (fn [k]
-                  (when-let [v (or (u/env k (constantly nil))
-                                   (get mise-map k)
-                                   (get dot-env-map k)
-                                   (get lein-map k))]
-                    [k v])))
-          all-keys)))
-
-(defn- find-config-file-path
-  "Find MB_CONFIG_FILE_PATH from resolved env."
-  [resolved-env]
-  (get resolved-env "MB_CONFIG_FILE_PATH"))
-
 (defn server-info!
   "Print server configuration for bot agents."
   [& _]
-  (let [mise-map     (or (read-mise-local-toml) {})
-        lein-map     (or (read-lein-env) {})
-        resolved     (resolve-env mise-map lein-map)
-        config-path  (find-config-file-path resolved)]
+  (let [resolved     (bot-env/resolve-all)
+        config-path  (get resolved "MB_CONFIG_FILE_PATH")]
 
     ;; MB_* environment variables section
     (println "## Environment Variables")
@@ -111,14 +40,16 @@
     ;; Source info
     (println "## Sources")
     (println)
-    (cond
-      (seq mise-map) (println "Primary: mise.local.toml")
-      (seq lein-map) (println "Primary: .lein-env")
-      :else          (println "Primary: system environment only"))
-    (when (.exists (java.io.File. ^String (str u/project-root-directory "/.env")))
-      (println "Also loaded: .env"))
-    (when (seq lein-map)
-      (println "Also loaded: .lein-env"))
+    (let [has-mise? (seq (bot-env/read-mise-local-toml))
+          has-lein? (seq (bot-env/read-lein-env))]
+      (cond
+        has-mise? (println "Primary: mise.local.toml")
+        has-lein? (println "Primary: .lein-env")
+        :else     (println "Primary: system environment only"))
+      (when (.exists (java.io.File. ^String (str u/project-root-directory "/.env")))
+        (println "Also loaded: .env"))
+      (when has-lein?
+        (println "Also loaded: .lein-env")))
     (println)
 
     ;; Config file section

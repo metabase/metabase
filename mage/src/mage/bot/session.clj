@@ -9,6 +9,21 @@
 (set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Session naming
+
+(defn branch-to-session-name
+  "Convert a branch name to a bot session name.
+   e.g., (branch-to-session-name \"qabot\" \"feature/my-branch\") -> \"qabot-my-branch\""
+  [bot-prefix branch-name]
+  (let [slug (-> branch-name
+                 (str/replace #".+/" "")
+                 (str/lower-case)
+                 (str/replace #"[^a-z0-9-]" "-")
+                 (str/replace #"-+" "-")
+                 (str/replace #"^-|-$" ""))]
+    (str bot-prefix "-" (subs slug 0 (min (count slug) 40)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Helpers
 
 (defn workmux-list-raw
