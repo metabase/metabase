@@ -1,7 +1,5 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
-const { H } = cy;
-
 function createThemeViaApi(name = "Test theme") {
   return cy.request("POST", "/api/embed-theme", {
     name,
