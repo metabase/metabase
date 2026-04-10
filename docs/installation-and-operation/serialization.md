@@ -45,6 +45,17 @@ Check out our guides for:
 
 ### What gets exported
 
+Top-level directories can include:
+
+```
+├── collections
+├── databases
+├── export.log
+├── python_libraries
+├── settings.yaml
+└── transforms
+```
+
 Metabase will only export the following entities:
 
 - Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
@@ -109,46 +120,85 @@ Database connection details are not included by default, but you can [configure 
 Here's the list of the general settings Metabase exports in the `settings.yaml` file. For more on Metabase settings, see [Configuring Metabase](../configuring-metabase/start.md).
 
 ```
-humanization-strategy
-native-query-autocomplete-match-style
-site-locale
-report-timezone-short
-report-timezone-long
-application-name
-enable-xrays
-show-homepage-pin-message
-source-address-header
-enable-nested-queries
-custom-geojson-enabled
-start-of-week
-custom-geojson
-available-timezones
-unaggregated-query-row-limit
-aggregated-query-row-limit
-hide-embed-branding?
-search-typeahead-enabled
-enable-sandboxes?
-application-font
-available-locales
-landing-page
-enable-embedding
-application-colors
-application-logo-url
-application-favicon-url
-show-homepage-xrays
-show-metabot
-enable-whitelabeling?
-show-homepage-data
-site-name
-application-font-files
-loading-message
-report-timezone
-persisted-models-enabled
-enable-content-management?
-subscription-allowed-domains
-breakout-bins-num
-available-fonts
-custom-formatting
+aggregated-query-row-limit: null
+allowed-iframe-hosts: null
+application-colors: null
+application-favicon-url: null
+application-font: null
+application-font-files: null
+application-logo-url: null
+application-name: null
+available-fonts: null
+available-locales: null
+available-timezones: null
+breakout-bins-num: null
+csv-field-separator: null
+custom-formatting: null
+custom-geojson: null
+custom-geojson-enabled: null
+custom-homepage: null
+custom-homepage-dashboard: null
+default-maps-enabled: null
+disable-cors-on-localhost: null
+email-max-recipients-per-second: null
+embedded-metabot-enabled?: null
+embedding-homepage: null
+embedding-hub-production-embed-snippet-created: null
+embedding-hub-sso-auth-manual-tested: null
+embedding-hub-test-embed-snippet-created: null
+enable-embedding: null
+enable-nested-queries: null
+enable-pivoted-exports: null
+enable-sandboxes?: null
+enable-whitelabeling?: null
+enable-xrays: null
+gsheets: '{}'
+hide-embed-branding?: null
+humanization-strategy: null
+landing-page: null
+landing-page-illustration: null
+landing-page-illustration-custom: null
+loading-message: null
+login-page-illustration: null
+login-page-illustration-custom: null
+metabot-chat-system-prompt: null
+metabot-enabled?: null
+metabot-icon: null
+metabot-limit-reset-rate: null
+metabot-limit-unit: null
+metabot-name: null
+metabot-nlq-system-prompt: null
+metabot-quota-reached-message: null
+metabot-show-illustrations: null
+metabot-sql-system-prompt: null
+native-query-autocomplete-match-style: null
+no-data-illustration: null
+no-data-illustration-custom: null
+no-object-illustration: null
+no-object-illustration-custom: null
+non-table-chart-generated: null
+persisted-models-enabled: null
+report-timezone: null
+report-timezone-long: null
+report-timezone-short: null
+search-typeahead-enabled: null
+setup-embedding-autoenabled: null
+setup-license-active-at-setup: null
+show-homepage-data: null
+show-homepage-pin-message: null
+show-homepage-xrays: null
+show-metabot: null
+show-sdk-embed-terms: null
+show-simple-embed-terms: null
+show-static-embed-terms: null
+site-locale: null
+site-name: null
+source-address-header: null
+start-of-week: null
+subscription-allowed-domains: null
+synchronous-batch-updates: null
+system-timezone: null
+unaggregated-query-row-limit: null
 ```
 
 ### Customize what gets exported
@@ -156,9 +206,9 @@ custom-formatting
 You can customize what gets exported. You can tell Metabase:
 
 - Export specific collections
-- Do not export collections
-- Do not export Metabase settings
-- Do not export table metadata
+- Exclude collections
+- Exclude Metabase settings
+- Exclude table metadata
 - Include sample field values (excluded by default)
 - Include database connection details (excluded by default)
 
