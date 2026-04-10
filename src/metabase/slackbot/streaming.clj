@@ -224,10 +224,6 @@
                  :profile-id :slackbot
                  :context    context}))
     (let [parts     @parts-atom
-          ;; Filter metadata, convert to v2 storage format
-          content   (->> parts
-                         (remove #(#{:start :usage :finish :data :tool-input-start} (:type %)))
-                         metabot.persistence/internal-parts->storable)
           ;; Extract usage: take last usage per model (cumulative)
           usage-map (transduce
                      (filter #(= :usage (:type %)))
@@ -240,7 +236,7 @@
                      parts)
           pk        (metabot.persistence/store-message!
                      conversation-id "slackbot"
-                     content
+                     (metabot.persistence/parts->storable-content parts)
                      :role         :assistant
                      :usage        (when (seq usage-map) usage-map)
                      :channel-id   channel-id

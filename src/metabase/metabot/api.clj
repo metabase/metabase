@@ -92,17 +92,13 @@
   "Store assistant response parts directly to the database in v2 storage format.
 
   Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format
-  (via `internal-parts->storable`), avoiding the intermediate 'aisdk messages' format. "
+  (via `parts->storable-content`), avoiding the intermediate 'aisdk messages' format. "
   [conversation-id profile-id parts]
   (let [state-part (u/seek #(and (= :data (:type %))
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
-        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-        ;; Filter out metadata parts, then convert to v2 storage format
-        content    (->> parts
-                        (remove #(#{:start :usage :finish :data :tool-input-start} (:type %)))
-                        metabot-persistence/internal-parts->storable)]
+        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
@@ -110,7 +106,7 @@
                                                :state   (:data state-part)})))
       (t2/insert! :model/MetabotMessage
                   {:conversation_id conversation-id
-                   :data            content
+                   :data            (metabot-persistence/parts->storable-content parts)
                    :usage           usage
                    :role            :assistant
                    :profile_id      profile-id

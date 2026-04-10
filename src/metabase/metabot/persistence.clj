@@ -105,6 +105,22 @@
                              (:text part) (assoc :text (:text part)))]
                      (if (seq m) m part))))))))
 
+(def ^:private non-storable-part-types
+  "Transient parts that are not persisted in message history.
+
+  `:start`/`:finish`/`:usage` are stream lifecycle/metadata;
+  `:data` is surfaced via a separate column; `:tool-input-start` is
+  the eager signal whose content is fully contained in the final
+  `:tool-input` part."
+  #{:start :usage :finish :data :tool-input-start})
+
+(defn parts->storable-content
+  "Drop transient/lifecycle parts and convert what remains to v2 storage format."
+  [parts]
+  (->> parts
+       (remove #(non-storable-part-types (:type %)))
+       internal-parts->storable))
+
 (defn storable->tool-history
   "Extract tool call history entries from v2 storable parts.
    Returns a seq of maps suitable for the slackbot history format."
