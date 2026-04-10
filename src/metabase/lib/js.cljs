@@ -2391,16 +2391,6 @@
   [a-drill-thru pivot-type]
   (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
-(defn ^:export with-different-table
-  "Changes an existing `a-query` to use a different source table or card.
-
-  Can be passed an integer table id or a legacy `\"card__<id>\"` string.
-
-  > **Code health:** Smelly. This leaks the `card__<id>` format and how sources work. Should be refactored into a new
-  system for handling data sources."
-  [a-query table-id]
-  (lib.core/with-different-table a-query table-id))
-
 (defn ^:export format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
