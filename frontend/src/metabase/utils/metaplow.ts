@@ -11,9 +11,12 @@ function getMetaplowUrl(): string {
   return `https://product-analytics-ingestion.staging.metabase.com/api/send`;
 }
 
+const anonymizedHostname = "my-instance.com";
+const anonymizedOrigin = `http://${anonymizedHostname}`;
+
 const getSanitizedUrl = (url: string) => {
   const urlWithoutSlug = url.replace(/(\/\d+)-[^\/]+$/, (match, path) => path);
-  const urlWithoutHost = new URL(urlWithoutSlug, "http://anonymized.limo");
+  const urlWithoutHost = new URL(urlWithoutSlug, anonymizedOrigin);
   return urlWithoutHost.href;
 };
 
@@ -22,6 +25,8 @@ function getBasePayload(url: string) {
     website: METAPLOW_WEBSITE_ID,
     url: getSanitizedUrl(url),
     referrer: "",
+    title: "",
+    hostname: anonymizedHostname,
     screen: `${window.screen.width}x${window.screen.height}`,
     language: navigator.language,
     tag: "metabase-instance",
@@ -53,7 +58,7 @@ export function trackMetaplowEvent(
   data: Record<string, unknown>,
 ): void {
   send({
-    ...getBasePayload(window.location.pathname),
+    ...getBasePayload(window.location.href),
     name,
     data,
   }).catch(() => undefined);
