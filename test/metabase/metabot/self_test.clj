@@ -158,13 +158,14 @@
               {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
 
-  (testing "still collects tool inputs for JSON parsing"
+  (testing "eagerly forwards :tool-input-start, then collects tool inputs for JSON parsing"
     (let [chunks [{:type :start :messageId "msg-1"}
                   {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
                   {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"query\":"}
                   {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "\"test\"}"}
                   {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]]
       (is (= [{:type :start :id "msg-1"}
+              {:type :tool-input-start :id "call-1" :function "search"}
               {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
 
@@ -297,6 +298,7 @@
   (testing "an intervening non-text part closes the current text block before its own events"
     (let [parts  [{:type :start :id "msg-1"}
                   {:type :text :id "t1" :text "before tool"}
+                  {:type :tool-input-start :id "call-1" :function "search"}
                   {:type :tool-input :id "call-1" :function "search" :arguments {:q "x"}}
                   {:type :text :id "t1" :text "after tool"}]
           events (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
@@ -664,8 +666,34 @@
       (is (apply = (map :id text-evts))))))
 
 (deftest parts->aisdk-sse-xf-tool-input-test
-  (testing ":tool-input emits tool-input-start + tool-input-available with toolCallId, toolName, and input"
+  (testing ":tool-input-start emits an eager tool-input-start SSE event"
     (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :tool-input-start :id "call-1" :function "search"}])]
+      (is (=? [{:type "start"}
+               {:type "start-step"}
+               {:type "tool-input-start" :toolCallId "call-1" :toolName "search"}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events))))
+
+  (testing ":tool-input (finalized) emits tool-input-available with the parsed arguments"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type      :tool-input
+                               :id        "call-1"
+                               :function  "search"
+                               :arguments {:q "revenue"}}])]
+      (is (=? [{:type "start"}
+               {:type "start-step"}
+               {:type "tool-input-available" :toolCallId "call-1" :toolName "search" :input {:q "revenue"}}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events))))
+
+  (testing "the full pair: :tool-input-start then :tool-input produce start + available in order"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :tool-input-start :id "call-1" :function "search"}
                               {:type      :tool-input
                                :id        "call-1"
                                :function  "search"
@@ -772,9 +800,10 @@
       (is (=? [{:type "finish"} :done] events)))))
 
 (deftest parts->aisdk-sse-xf-full-conversation-test
-  (testing "realistic sequence: start, text, tool-input, tool-output, text"
+  (testing "realistic sequence: start, text, tool-input-start, tool-input, tool-output, text"
     (let [events (run-sse-xf [{:type :start :id "msg-1"}
                               {:type :text :id "t1" :text "Looking that up..."}
+                              {:type :tool-input-start :id "call-1" :function "search"}
                               {:type      :tool-input
                                :id        "call-1"
                                :function  "search"
@@ -785,7 +814,7 @@
                                :result   {:hits 3}}
                               {:type :text :id "t2" :text "Found 3 results."}])]
       ;; The t1 text block is implicitly closed by the next non-text part
-      ;; (the :tool-input). The t2 text block is closed by the completion arity.
+      ;; (the :tool-input-start). The t2 text block is closed by the completion arity.
       (is (=? [{:type "start" :messageId "msg-1"}
                {:type "start-step"}
                {:type "text-start" :id "t1"}

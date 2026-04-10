@@ -382,7 +382,16 @@ export const sendAgentRequest = createAsyncThunk<
           onTextPart: function handleTextPart(part) {
             dispatch(addAgentTextDelta({ agentId, text: String(part) }));
           },
-          onToolCallPart: function handleToolCallPart(part) {
+          onToolInputStart: function handleToolInputStart(part) {
+            dispatch(
+              toolCallStart({
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                agentId,
+              }),
+            );
+          },
+          onToolInputAvailable: function handleToolInputAvailable(part) {
             dispatch(
               toolCallStart({
                 toolCallId: part.toolCallId,

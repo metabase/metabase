@@ -14,6 +14,7 @@ import type {
   MessageMetadata,
   SSEEvent,
   ToolInputAvailableEvent,
+  ToolInputStartEvent,
   ToolOutputAvailableEvent,
 } from "./sse-types";
 import { isDataEvent } from "./sse-types";
@@ -33,7 +34,8 @@ type DataPart = { type: string; data: unknown };
 export type AIStreamingConfig = {
   onTextPart?: (delta: string) => void;
   onDataPart?: (part: KnownDataPart) => void;
-  onToolCallPart?: (event: ToolInputAvailableEvent) => void;
+  onToolInputStart?: (event: ToolInputStartEvent) => void;
+  onToolInputAvailable?: (event: ToolInputAvailableEvent) => void;
   onToolResultPart?: (event: ToolOutputAvailableEvent) => void;
   onError?: (errorText: string) => void;
   onMessageMetadata?: (metadata: MessageMetadata) => void;
@@ -101,9 +103,14 @@ function processEvent(
       break;
     }
 
+    case "tool-input-start": {
+      config.onToolInputStart?.(event);
+      break;
+    }
+
     case "tool-input-available": {
       toolInputAvailableSchema.validateSync(event, { strict: false });
-      config.onToolCallPart?.(event);
+      config.onToolInputAvailable?.(event);
       result.toolCalls.push({
         toolCallId: event.toolCallId,
         toolName: event.toolName,
@@ -184,7 +191,7 @@ function processEvent(
       }
 
       // NOTE: Lifecycle events (start, start-step, finish-step, text-start,
-      // text-end, tool-input-start, tool-input-delta) are currently ignored.
+      // text-end, tool-input-delta) are currently ignored.
       break;
     }
   }

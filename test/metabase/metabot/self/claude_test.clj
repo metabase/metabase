@@ -40,8 +40,9 @@
     (testing "tool input chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
-    (testing "through full pipeline produces tool-input + usage"
+    (testing "through full pipeline produces tool-input-start + tool-input + usage"
       (is (=? [{:type :start}
+               {:type :tool-input-start :function string?}
                {:type :tool-input :arguments map?}
                {:type :usage :model string? :usage {:promptTokens pos-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
@@ -56,9 +57,10 @@
                {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available}
                {:type :usage}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
-    (testing "through full pipeline produces text + tool-input + usage"
+    (testing "through full pipeline produces text + tool-input-start + tool-input + usage"
       (is (=? [{:type :start}
                {:type :text :text string?}
+               {:type :tool-input-start :function "get-time"}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
                {:type :usage :model string? :usage {:promptTokens pos-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
@@ -68,8 +70,9 @@
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
                              :tools [(metabot.tu/get-time-tool)]})
         res        (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/lite-aisdk-xf)) raw-chunks)]
-    (testing "lite-aisdk-xf collects tool inputs"
+    (testing "lite-aisdk-xf emits eager tool-input-start then finalized tool-input"
       (is (=? [{:type :start}
+               {:type :tool-input-start :function "get-time"}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
                {:type :usage :model string? :usage {:promptTokens pos-int?}}]
               (remove #(= :text (:type %)) res))))

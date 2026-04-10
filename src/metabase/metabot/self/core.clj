@@ -180,9 +180,14 @@
          ([result chunk]
           (let [chunk-id (getid chunk)]
             (cond
-              ;; Self-contained chunk types: flush previous group, emit immediately.
-              ;; :tool-output-available shares toolCallId with preceding :tool-input-*
-              ;; chunks, so the id-based grouping below would incorrectly merge them.
+              (= :tool-input-start (:type chunk))
+              (let [result (flush! result)]
+                (vreset! current-id chunk-id)
+                (vreset! acc [chunk])
+                (rf result {:type     :tool-input-start
+                            :id       (:toolCallId chunk)
+                            :function (:toolName chunk)}))
+
               (#{:tool-output-available :start :usage :error} (:type chunk))
               (-> (flush! result)
                   (rf (aisdk-chunks->part [chunk])))
@@ -268,17 +273,18 @@
   intervening non-text part (or end of stream) closes the open block.
 
   Input types and their SSE events:
-    :start (1st)  -> {type:start, messageId:...} + {type:start-step}
-    :start (Nth)  -> {type:finish-step} + {type:start-step}
-    :text         -> [{type:text-end,id:prev}]? [{type:text-start,id}]?
-                     + {type:text-delta, id, delta}
-    :tool-input   -> {type:tool-input-start} + {type:tool-input-available}
-    :tool-output  -> {type:tool-output-available}
-    :data         -> {type:data-STATE_TYPE, id:..., data:...}
-    :error        -> {type:error, errorText:...}
-    :usage        -> (accumulated; carried out on finish.messageMetadata)
-    :finish       -> (ignored - completion arity handles final finish)
-    completion    -> {type:finish-step} + {type:finish, messageMetadata?:...} + [DONE]
+    :start (1st)      -> {type:start, messageId:...} + {type:start-step}
+    :start (Nth)      -> {type:finish-step} + {type:start-step}
+    :text             -> [{type:text-end,id:prev}]? [{type:text-start,id}]?
+                         + {type:text-delta, id, delta}
+    :tool-input-start -> {type:tool-input-start, toolCallId, toolName}
+    :tool-input       -> {type:tool-input-available, toolCallId, toolName, input}
+    :tool-output      -> {type:tool-output-available}
+    :data             -> {type:data-STATE_TYPE, id:..., data:...}
+    :error            -> {type:error, errorText:...}
+    :usage            -> (accumulated; carried out on finish.messageMetadata)
+    :finish           -> (ignored - completion arity handles final finish)
+    completion        -> {type:finish-step} + {type:finish, messageMetadata?:...} + [DONE]
 
   Non-text events implicitly close any open text block before emitting their
   own SSE events, so the wire order is always:
@@ -345,15 +351,16 @@
                        (rf (format-sse-event {:type "text-start" :id id}))
                        (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
 
+             :tool-input-start
+             (rf result (format-sse-event {:type       "tool-input-start"
+                                           :toolCallId (:id part)
+                                           :toolName   (:function part)}))
+
              :tool-input
-             (-> result
-                 (rf (format-sse-event {:type       "tool-input-start"
-                                        :toolCallId (:id part)
-                                        :toolName   (:function part)}))
-                 (rf (format-sse-event {:type       "tool-input-available"
-                                        :toolCallId (:id part)
-                                        :toolName   (:function part)
-                                        :input      (:arguments part)})))
+             (rf result (format-sse-event {:type       "tool-input-available"
+                                           :toolCallId (:id part)
+                                           :toolName   (:function part)
+                                           :input      (:arguments part)}))
 
              :tool-output
              (rf result (format-sse-event (cond-> {:type       "tool-output-available"

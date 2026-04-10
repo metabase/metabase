@@ -42,11 +42,12 @@
     (testing "tool call chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
-    (testing "through full pipeline produces tool-input(s) + usage"
+    (testing "through full pipeline produces tool-input-start + tool-input(s) + usage"
       (let [parts (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks)]
         (is (=? [{:type :start}
+                 {:type :tool-input-start :function string?}
                  {:type :tool-input :function string? :arguments map?}]
-                (take 2 parts)))
+                (take 3 parts)))
         (is (=? {:type  :usage
                  :usage {:promptTokens     pos-int?
                          :completionTokens pos-int?}}
@@ -81,9 +82,10 @@
                {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available}
                {:type :usage}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
-    (testing "through full pipeline produces text + tool-input + usage"
+    (testing "through full pipeline produces text + tool-input-start + tool-input + usage"
       (is (=? [{:type :start}
                {:type :text :text string?}
+               {:type :tool-input-start :function "get-time"}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
                {:type  :usage
                 :usage {:promptTokens     pos-int?

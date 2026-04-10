@@ -101,7 +101,7 @@
         ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
         ;; Filter out metadata parts, then convert to v2 storage format
         content    (->> parts
-                        (remove #(#{:start :usage :finish :data} (:type %)))
+                        (remove #(#{:start :usage :finish :data :tool-input-start} (:type %)))
                         metabot-persistence/internal-parts->storable)]
     (t2/with-transaction [_conn]
       (when state-part

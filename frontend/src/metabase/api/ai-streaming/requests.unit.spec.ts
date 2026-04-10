@@ -73,7 +73,7 @@ describe("ai requests", () => {
       const successCbs = {
         onTextPart: jest.fn(),
         onDataPart: jest.fn(),
-        onToolCallPart: jest.fn(),
+        onToolInputAvailable: jest.fn(),
         onToolResultPart: jest.fn(),
         onError: jest.fn(),
       };
@@ -81,7 +81,7 @@ describe("ai requests", () => {
       await aiStreamingQuery({ url: endpoint, body: {} }, successCbs);
       expect(successCbs.onTextPart).toHaveBeenCalled();
       expect(successCbs.onDataPart).toHaveBeenCalled();
-      expect(successCbs.onToolCallPart).toHaveBeenCalled();
+      expect(successCbs.onToolInputAvailable).toHaveBeenCalled();
       expect(successCbs.onToolResultPart).toHaveBeenCalled();
       expect(successCbs.onError).not.toHaveBeenCalled();
 

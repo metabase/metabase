@@ -320,6 +320,7 @@
                                                     :database_id  (mt/id)}])]
               (testing "Should successfully go through 3 iterations"
                 (is (=? [{:type :start}
+                         {:type :tool-input-start :function "search"}
                          {:type :tool-input :function "search"}
                      ;; Cumulative usage after iteration 1: 100 prompt, 20 completion
                          {:type :usage :usage {:promptTokens 100 :completionTokens 20}}
@@ -327,6 +328,7 @@
                           :function "search"
                           :result   {:structured-output {:total_count 1}}}
                          {:type :start}
+                         {:type :tool-input-start :function "construct_notebook_query"}
                          {:type :tool-input :function "construct_notebook_query"}
                      ;; Cumulative usage after iteration 2: 100+200=300 prompt, 20+30=50 completion
                          {:type :usage :usage {:promptTokens 300 :completionTokens 50}}

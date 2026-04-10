@@ -5,7 +5,8 @@ import { createMockSSEStream } from "./test-utils";
 const getMockedCallbacks = () => ({
   onTextPart: jest.fn(),
   onDataPart: jest.fn(),
-  onToolCallPart: jest.fn(),
+  onToolInputStart: jest.fn(),
+  onToolInputAvailable: jest.fn(),
   onToolResultPart: jest.fn(),
   onError: jest.fn(),
   onMessageMetadata: jest.fn(),
@@ -48,8 +49,14 @@ describe("processChatResponse", () => {
     await processChatResponse(mockSuccessStream, config);
     expect(config.onTextPart).toHaveBeenCalled();
     expect(config.onDataPart).toHaveBeenCalled();
-    expect(config.onToolCallPart).toHaveBeenCalled();
+    expect(config.onToolInputStart).toHaveBeenCalled();
+    expect(config.onToolInputAvailable).toHaveBeenCalled();
     expect(config.onToolResultPart).toHaveBeenCalled();
+    const inputStartOrder = (config.onToolInputStart as jest.Mock).mock
+      .invocationCallOrder[0];
+    const inputAvailableOrder = (config.onToolInputAvailable as jest.Mock).mock
+      .invocationCallOrder[0];
+    expect(inputStartOrder).toBeLessThan(inputAvailableOrder);
     expect(config.onError).not.toHaveBeenCalled();
 
     const mockErrorStream = getMockErrorStream();

@@ -133,6 +133,11 @@ export const metabot = createSlice({
         }>,
       ) => {
         const { toolCallId, toolName, args } = action.payload;
+        // idempotent: both tool-input-start and tool-input-available are
+        // able to signal the start of a tool call
+        if (convo.activeToolCalls.some((tc) => tc.id === toolCallId)) {
+          return;
+        }
         convo.messages.push({
           id: toolCallId,
           role: "agent",

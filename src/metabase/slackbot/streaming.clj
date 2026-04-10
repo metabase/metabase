@@ -192,10 +192,13 @@
                                    (when (and on-text (seq (:text part)))
                                      (on-text (:text part)))
 
-                                   :tool-input
+                                   :tool-input-start
                                    (when on-tool-start
                                      (on-tool-start {:id        (:id part)
                                                      :tool-name (:function part)}))
+
+                                   :tool-input
+                                   nil
 
                                    :tool-output
                                    (when on-tool-end
@@ -223,7 +226,7 @@
     (let [parts     @parts-atom
           ;; Filter metadata, convert to v2 storage format
           content   (->> parts
-                         (remove #(#{:start :usage :finish :data} (:type %)))
+                         (remove #(#{:start :usage :finish :data :tool-input-start} (:type %)))
                          metabot.persistence/internal-parts->storable)
           ;; Extract usage: take last usage per model (cumulative)
           usage-map (transduce
