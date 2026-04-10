@@ -8,11 +8,11 @@ import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dash
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 type DashboardActionMenuProps = {
   canResetFilters: boolean;

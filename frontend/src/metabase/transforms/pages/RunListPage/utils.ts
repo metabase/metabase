@@ -1,6 +1,6 @@
 import type { Location } from "history";
 
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import {
   SORT_DIRECTIONS,
   TRANSFORM_RUN_METHODS,

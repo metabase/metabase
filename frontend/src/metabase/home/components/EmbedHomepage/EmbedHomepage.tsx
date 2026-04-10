@@ -4,10 +4,10 @@ import { t } from "ttag";
 import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isEEBuild } from "metabase/lib/utils";
+import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
@@ -77,7 +77,7 @@ export const EmbedHomepage = () => {
     }
   };
 
-  const variant = isEEBuild() ? "ee" : "oss";
+  const variant = PLUGIN_IS_EE_BUILD.isEEBuild() ? "ee" : "oss";
 
   return (
     <>

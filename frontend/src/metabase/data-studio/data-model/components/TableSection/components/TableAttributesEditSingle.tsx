@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -12,6 +11,7 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Icon, Text } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type {
   Table,
   TableDataLayer,

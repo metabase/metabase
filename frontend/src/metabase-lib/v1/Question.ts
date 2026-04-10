@@ -4,13 +4,12 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-// eslint-disable-next-line no-restricted-imports
+/* eslint-disable no-restricted-imports */
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import {
   type SerializeCardOptions,
   serializeCardForUrl,
-} from "metabase/lib/card";
-import { equals } from "metabase/lib/utils";
-import { applyParameter } from "metabase/querying/parameters/utils/query";
+} from "metabase/utils/card";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -98,9 +97,9 @@ class Question {
    */
   _parameterValues: ParameterValuesMap;
 
-  private __mlv2Query: Lib.Query | undefined;
+  private __libQuery: Lib.Query | undefined;
 
-  private __mlv2MetadataProvider: Lib.MetadataProvider | undefined;
+  private __libMetadataProvider: Lib.MetadataProvider | undefined;
 
   /**
    * Question constructor
@@ -685,7 +684,7 @@ class Question {
       const originalCard = originalQuestion?._getValueForComparison();
       const currentCard = this._getValueForComparison();
 
-      if (!equals(originalCard, currentCard)) {
+      if (!_.isEqual(originalCard, currentCard)) {
         return true;
       }
 
@@ -807,30 +806,30 @@ class Question {
 
   query(): Query {
     if (InternalQuery.isDatasetQueryType(this.datasetQuery())) {
-      throw new Error("Internal query is not supported by MLv2");
+      throw new Error("Internal query is not supported by Lib");
     }
 
-    this.__mlv2Query ??= Lib.fromJsQuery(
+    this.__libQuery ??= Lib.fromJsQuery(
       this.metadataProvider(),
       this.datasetQuery(),
     );
 
     // Helpers for working with the current query from CLJS REPLs.
     if (process.env.NODE_ENV === "development") {
-      window.__MLv2_metadata = this.__mlv2MetadataProvider;
-      window.__MLv2_query = this.__mlv2Query;
+      window.__lib_metadata = this.__libMetadataProvider;
+      window.__lib_query = this.__libQuery;
       window.Lib = Lib;
     }
 
-    return this.__mlv2Query;
+    return this.__libQuery;
   }
 
   private metadataProvider(): Lib.MetadataProvider {
-    this.__mlv2MetadataProvider ??= Lib.metadataProvider(
+    this.__libMetadataProvider ??= Lib.metadataProvider(
       this.datasetQuery()?.database,
       this.metadata(),
     );
-    return this.__mlv2MetadataProvider;
+    return this.__libMetadataProvider;
   }
 
   setQuery(query: Query): Question {

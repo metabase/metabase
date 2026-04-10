@@ -161,7 +161,7 @@ export const getDocsUrlForVersion = (
     anchor = `#${anchor}`;
   }
 
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/lib/settings"
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/utils/settings"
   return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
 };
 

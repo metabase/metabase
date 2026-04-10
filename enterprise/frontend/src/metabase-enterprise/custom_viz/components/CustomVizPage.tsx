@@ -20,9 +20,9 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 type Props = {
   params?: {

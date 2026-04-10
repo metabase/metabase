@@ -1,5 +1,5 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import type { IconData } from "metabase/lib/icon";
+import type { IconData } from "metabase/utils/icon";
 
 import { HomeCard } from "../HomeCard";
 

@@ -21,7 +21,6 @@ import {
   SuggestionPaper,
 } from "metabase/documents/components/Editor/shared/SuggestionPaper";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import { useSelector } from "metabase/lib/redux";
 import {
   useMetabotName,
   useUserMetabotPermissions,
@@ -37,6 +36,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";

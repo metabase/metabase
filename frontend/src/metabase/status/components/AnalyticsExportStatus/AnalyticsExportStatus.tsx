@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   clearExport,
   getAnalyticsExport,
 } from "metabase/redux/analytics-export";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import StatusLarge from "../StatusLarge";

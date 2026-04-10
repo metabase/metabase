@@ -3,9 +3,9 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { isMac } from "metabase/lib/browser";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Tooltip } from "metabase/ui";
+import { isMac } from "metabase/utils/browser";
 
 import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
 

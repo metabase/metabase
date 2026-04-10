@@ -21,24 +21,24 @@ type MetricsViewerClickActionParams = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
 };
 
 export class MetricsViewerClickActionsMode implements ClickActionsMode {
   private definitions: MetricsViewerDefinitionEntry[];
   private tab: MetricsViewerTabState;
   private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  private cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  private cardIdToDefinitionId: Record<CardId, MetricSourceId>;
   constructor({
     definitions,
     tab,
     onTabUpdate,
-    cardIdToDimensionId,
+    cardIdToDefinitionId,
   }: MetricsViewerClickActionParams) {
     this.definitions = definitions;
     this.tab = tab;
     this.onTabUpdate = onTabUpdate;
-    this.cardIdToDimensionId = cardIdToDimensionId;
+    this.cardIdToDefinitionId = cardIdToDefinitionId;
   }
   actionsForClick(clickObject: ClickObject): ClickAction[] {
     const cardId = clickObject.cardId;
@@ -46,7 +46,7 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
       return [];
     }
     const definition = this.definitions.find(
-      (definition) => definition.id === this.cardIdToDimensionId[cardId],
+      (definition) => definition.id === this.cardIdToDefinitionId[cardId],
     );
     const params = {
       definitions: this.definitions,

@@ -6,7 +6,6 @@ import {
   useUpdateCustomVizPluginMutation,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
 import {
   ActionIcon,
   Box,
@@ -17,6 +16,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizIcon } from "./CustomVizIcon";

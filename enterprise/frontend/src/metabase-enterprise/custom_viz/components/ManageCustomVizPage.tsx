@@ -7,8 +7,8 @@ import {
   useListAllCustomVizPluginsQuery,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
 import { Box, Button, Flex, Group, Icon, Loader, Text } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizListItem } from "./CustomVizListItem";

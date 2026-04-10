@@ -9,7 +9,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { TaskRunExtended } from "metabase-types/api";
 import { createMockTaskRunExtended } from "metabase-types/api/mocks";
 

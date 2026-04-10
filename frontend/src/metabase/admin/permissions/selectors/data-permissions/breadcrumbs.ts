@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { isNotFalsy } from "metabase/lib/types";
+import { isNotFalsy } from "metabase/utils/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";

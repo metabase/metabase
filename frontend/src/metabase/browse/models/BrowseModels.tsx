@@ -8,7 +8,6 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -30,6 +29,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "../components/BrowseContainer.module.css";
 

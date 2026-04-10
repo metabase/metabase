@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
 import {
   type HelpText,
   getHelpText,
   getSupportedClauses,
 } from "metabase/querying/expressions";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
