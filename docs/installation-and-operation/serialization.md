@@ -45,20 +45,9 @@ Check out our guides for:
 
 ### What gets exported
 
-Top-level directories can include:
-
-```
-├── collections
-├── databases
-├── export.log
-├── python_libraries
-├── settings.yaml
-└── transforms
-```
-
 Metabase will only export the following entities:
 
-- Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
+- Collections (but personal collections don't get exported unless you explicitly specify them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Questions (cards)
 - Transforms (including tags and jobs)
@@ -218,9 +207,9 @@ For details on the YAML format, Entity IDs, and how items reference each other i
 
 ## How import works
 
-Metabase will read the provided YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite.
+Metabase will read the provided YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite. Import will not delete items from the target instance — it only creates or overwrites.
 
-- If the `entity_ie` doesn't exist, Metabase will create a new item.
+- If the `entity_id` doesn't exist, Metabase will create a new item.
 - If Metabase finds the `entity_id`, it will overwrite the existing item. Overwriting replaces the entire item; there's no field-level merge with local changes. If someone customizes a dashboard directly on the target instance, importing an older YAML of that dashboard will clobber those customizations.
 - If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
 - All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the imported YAMLs.
@@ -260,7 +249,7 @@ This section covers the structure of exported YAML files: what they look like, h
 
 ### Example of a serialized question
 
-Questions are stored as YAML files inside their parent collection folder. Here's an example YAML file for a question written with SQL that uses a field filter and has an area chart visualization. Here's an example YAML file for a metric saved to the Library:
+Questions are stored as YAML files inside their parent collection folder. Here's an example YAML file for a metric saved to the Library:
 
 ```yml
 name: Product count
@@ -316,6 +305,8 @@ type: metric
 ```
 
 To keep exported files compact, Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Top-level fields with `null` values are also omitted.
+
+Fields prefixed with `lib/` in the example (like `lib/type`, `lib/source`) are internal metadata that Metabase generates during export. You don't need to provide or edit them when hand-writing YAML — see the [Metabase Representation Format spec](https://github.com/metabase/representations) for which fields are required vs. informational.
 
 To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
 
@@ -388,28 +379,14 @@ Metabase serializes databases and tables in the `databases` directory. It will i
 
 Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)).
 
-For example, in the [Example of a serialized question](#example-of-a-serialized-question), there are several YAML keys that reference Sample Database:
+For example, in the [Example of a serialized question](#example-of-a-serialized-question), there are several YAML keys that reference the database by name:
 
 ```yaml
-database_id: Sample Database
+database_id: Sample PostgreSQL
 ---
 dataset_query:
-  database: Sample Database
+  database: Sample PostgreSQL
 ```
-
-In the description of the field filter (`category_filter:`) in that example, you can see the reference to the field that's used to populate the filter options:
-
-```yaml
-dimension:
-  - field
-  - {}
-  - - Sample Database
-    - PUBLIC
-    - PRODUCTS
-    - CATEGORY
-```
-
-It refers to the `CATEGORY` field in the `PRODUCTS` table in the `PUBLIC` schema in `Sample Database`. The serialized `Sample Database` in the `databases` directory will also include YAML files for this field and table.
 
 ## Serialization with CLI commands
 
@@ -456,6 +433,8 @@ export path & options
 By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collection` flag. There's no option to include all personal collections at once — you must specify each personal collection's numeric ID individually.
 
 The `--collection` flag (alias `-c`) lets you specify by ID one or more collections to include in the export. You can find the collection ID in the collection's URL, e.g., for a collection at: `your-metabase.com/collection/42-terraforming-progress`, the ID would be `42`.
+
+The `--collection` flag works the same regardless of a collection's namespace. Metabase determines the output directory (`collections/main/`, `collections/snippets/`, or `collections/transforms/`) from the collection's own namespace property, not from the ID you pass.
 
 If you want to specify multiple collections, separate the IDs with commas. E.g.,
 
