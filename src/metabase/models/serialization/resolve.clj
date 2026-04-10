@@ -5,7 +5,6 @@
   (like the checker) that don't need the database."
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s] ;; legacy usages -- do not use in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -73,15 +72,6 @@
 ;;; ============================================================
 ;;; import-mbql — depends only on protocols, lib.util.match, lib.schema.id
 ;;; ============================================================
-
-(defn- mbql-entity-reference?
-  [form]
-  (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment :measure} form))
-
-(defn- normalize [mbql]
-  (if-not (mbql-entity-reference? mbql)
-    mbql
-    (into [(keyword (first mbql))] (map normalize) (rest mbql))))
 
 (defn- mbql-fully-qualified-names->ids*
   [resolver entity]

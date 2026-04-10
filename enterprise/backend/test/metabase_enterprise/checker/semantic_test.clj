@@ -11,6 +11,7 @@
    [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.checker.test-helpers :as helpers]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -142,7 +143,7 @@
           index (serdes-format/source-index source)
           provider (provider/make-provider (store/make-store source source index))
           ;; Get the product_id field which has FK to products.id
-          fields (metabase.lib.metadata.protocols/metadatas
+          fields (lib.metadata.protocols/metadatas
                   provider {:lib/type :metadata/column})
           fk-field (first (filter #(= "product_id" (:name %)) fields))]
       (is (some? fk-field) "Should find product_id field")

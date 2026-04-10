@@ -131,9 +131,9 @@
   []
   (let [export-fk*       (memoize export-fk)
         export-fk-keyed* (memoize export-fk-keyed)
-        export-user*     (memoize (fn [this id] (export-user this id)))
+        export-user*     (memoize export-user)
         export-table-fk* (memoize export-table-fk)
-        export-field-fk* (memoize (fn [this field-id] (export-field-fk this field-id)))]
+        export-field-fk* (memoize export-field-fk)]
     (reify resolve/SerdesExportResolver
       (export-fk       [_ id model]       (export-fk* id model))
       (export-fk-keyed [_ id model field] (export-fk-keyed* id model field))
@@ -146,9 +146,9 @@
   []
   (let [import-fk*       (memoize import-fk)
         import-fk-keyed* (memoize import-fk-keyed)
-        import-user*     (memoize (fn [this email] (import-user this email)))
+        import-user*     (memoize import-user)
         import-table-fk* (memoize import-table-fk)
-        import-field-fk* (memoize (fn [this path] (import-field-fk this path)))]
+        import-field-fk* (memoize import-field-fk)]
     (reify resolve/SerdesImportResolver
       (import-fk       [_ eid model]            (import-fk* eid model))
       (import-fk-keyed [_ portable model field] (import-fk-keyed* portable model field))

@@ -138,31 +138,31 @@
 
 (deftest make-source-resolves-database-test
   (testing "SerdesSource resolves databases by name"
-    (let [source (serdes/make-source (fixtures-path))]
-      (let [db (source/resolve-database source "Test Database")]
-        (is (some? db))
-        (is (= "Test Database" (:name db)))))))
+    (let [source (serdes/make-source (fixtures-path))
+          db     (source/resolve-database source "Test Database")]
+      (is (some? db))
+      (is (= "Test Database" (:name db))))))
 
 (deftest make-source-resolves-table-test
   (testing "SerdesSource resolves tables by path"
-    (let [source (serdes/make-source (fixtures-path))]
-      (let [table (source/resolve-table source ["Test Database" "public" "orders"])]
-        (is (some? table))
-        (is (= "orders" (:name table)))))))
+    (let [source (serdes/make-source (fixtures-path))
+          table  (source/resolve-table source ["Test Database" "public" "orders"])]
+      (is (some? table))
+      (is (= "orders" (:name table))))))
 
 (deftest make-source-resolves-field-test
   (testing "SerdesSource resolves fields by path"
-    (let [source (serdes/make-source (fixtures-path))]
-      (let [field (source/resolve-field source ["Test Database" "public" "orders" "id"])]
-        (is (some? field))
-        (is (= "id" (:name field)))))))
+    (let [source (serdes/make-source (fixtures-path))
+          field  (source/resolve-field source ["Test Database" "public" "orders" "id"])]
+      (is (some? field))
+      (is (= "id" (:name field))))))
 
 (deftest make-source-resolves-card-test
   (testing "SerdesSource resolves cards by entity-id"
-    (let [source (serdes/make-source (fixtures-path))]
-      (let [card (source/resolve-card source "simple-orders")]
-        (is (some? card))
-        (is (= "Simple Orders" (:name card)))))))
+    (let [source (serdes/make-source (fixtures-path))
+          card   (source/resolve-card source "simple-orders")]
+      (is (some? card))
+      (is (= "Simple Orders" (:name card))))))
 
 (deftest make-source-returns-nil-for-unknown-test
   (testing "SerdesSource returns nil for unknown entities"
