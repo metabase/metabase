@@ -72,6 +72,21 @@ describe(
       H.main().findByText("We're a little lost...").should("be.visible");
     });
 
+    describe("main colors", () => {
+      it("shows the main color swatches", () => {
+        createThemeViaApi("Color test").then((theme) => {
+          cy.visit(`/admin/embedding/themes/${theme.id}`);
+        });
+
+        H.main().within(() => {
+          cy.findByText("Main colors").should("be.visible");
+          cy.findByText("Brand").should("be.visible");
+          cy.findByText("Background").should("be.visible");
+          cy.findByText("Primary text").should("be.visible");
+        });
+      });
+    });
+
     describe("preview panel", () => {
       it("shows enable embedding prompt when embedding is not enabled", () => {
         H.updateSetting("enable-embedding-simple", false);
