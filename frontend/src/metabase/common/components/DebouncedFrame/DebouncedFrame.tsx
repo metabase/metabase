@@ -18,7 +18,7 @@ interface DebouncedFrameInnerProps {
   width?: number;
   height?: number;
   enabled?: boolean;
-  resetKey?: string | number;
+  resetKey?: string | number | boolean;
   className?: string;
   style?: React.CSSProperties;
   children?: ReactNode;
@@ -168,7 +168,7 @@ const DebouncedFrameForwardRef = forwardRef<
 // `as any` cast needed because ExplicitSize's HOC types inject width/height as
 // number | null, which is incompatible with our props' number | undefined.
 // Can be removed if ExplicitSize is replaced with a hook-based alternative.
-export const DebouncedFrame = ExplicitSize({
+export const DebouncedFrame = ExplicitSize<DebouncedFrameInnerProps>({
   // Disable ExplicitSize's debounce/throttle since DebouncedFrame has a built-in debounce
   refreshMode: "none",
 })(DebouncedFrameForwardRef as any);
