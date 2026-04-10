@@ -1452,7 +1452,6 @@
   ->metadata-provider
   general-cached-value]
  [metabase.lib.metadata.column
-  column-unique-key
   column-with-unique-key]
  [lib.metadata.composed-provider
   composed-metadata-provider]
