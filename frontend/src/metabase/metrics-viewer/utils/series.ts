@@ -91,6 +91,8 @@ export function buildSeries({
     formulaEntities,
     definitions,
   );
+  const displayType = DISPLAY_TYPE_REGISTRY[display];
+
   let isFirstSeries = true;
   const cardIdToEntityIndex: Record<CardId, number> = {};
   const activeBreakoutColors: SourceBreakoutColorMap = {};
@@ -198,7 +200,6 @@ export function buildSeries({
     },
   );
 
-  const displayType = DISPLAY_TYPE_REGISTRY[display];
   if (series.length > 1 && displayType.combineSettings) {
     series[0].card.visualization_settings = displayType.combineSettings(
       series.map((s) => s.card.visualization_settings),
