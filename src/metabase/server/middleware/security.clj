@@ -175,8 +175,8 @@
                                  ;; Snowplow analytics
                                  (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
-                                 ;; metaplow tracking: FIXME: should be conditional
-                                 "https://product-analytics-ingestion.staging.metabase.com"
+                                 (when (analytics/anon-tracking-enabled)
+                                   (setting/get-value-of-type :string :metaplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
