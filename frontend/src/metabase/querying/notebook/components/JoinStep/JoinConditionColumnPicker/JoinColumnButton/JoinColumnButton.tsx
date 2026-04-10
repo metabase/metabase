@@ -7,9 +7,9 @@ import { t } from "ttag";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { isTouchDevice } from "metabase/lib/browser";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Text } from "metabase/ui";
+import { isTouchDevice } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 
 import S from "./JoinColumnButton.module.css";

@@ -1,5 +1,5 @@
 import { renderWithProviders } from "__support__/ui";
-import { isTouchDevice } from "metabase/lib/browser";
+import { isTouchDevice } from "metabase/utils/browser";
 
 import { JoinColumnButton } from "./JoinColumnButton";
 
