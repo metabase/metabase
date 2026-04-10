@@ -263,26 +263,45 @@
   usage was observed). No mid-stream `message-metadata` events are emitted —
   the terminal `finish` is sufficient for the typical short-lived response.
 
+  Consecutive `:text` parts that share the same `:id` are coalesced into one
+  text block — one `text-start`, many `text-delta`s, one `text-end`. Any
+  intervening non-text part (or end of stream) closes the open block.
+
   Input types and their SSE events:
     :start (1st)  -> {type:start, messageId:...} + {type:start-step}
     :start (Nth)  -> {type:finish-step} + {type:start-step}
-    :text         -> {type:text-delta, id:..., delta:...}
+    :text         -> [{type:text-end,id:prev}]? [{type:text-start,id}]?
+                     + {type:text-delta, id, delta}
     :tool-input   -> {type:tool-input-start} + {type:tool-input-available}
     :tool-output  -> {type:tool-output-available}
     :data         -> {type:data-STATE_TYPE, id:..., data:...}
     :error        -> {type:error, errorText:...}
     :usage        -> (accumulated; carried out on finish.messageMetadata)
     :finish       -> (ignored - completion arity handles final finish)
-    completion    -> {type:finish-step} + {type:finish, messageMetadata?:...} + [DONE]"
+    completion    -> {type:finish-step} + {type:finish, messageMetadata?:...} + [DONE]
+
+  Non-text events implicitly close any open text block before emitting their
+  own SSE events, so the wire order is always:
+    text-start ... text-delta* ... text-end ... <next event>"
   []
   (fn [rf]
-    (let [error?         (volatile! false)
-          started?       (volatile! false)
-          usage-by-model (volatile! {})]
+    (let [error?           (volatile! false)
+          started?         (volatile! false)
+          usage-by-model   (volatile! {})
+          ;; non-nil while a text block is open. Holds the block id so we can
+          ;; emit a matching text-end when the block closes.
+          current-text-id  (volatile! nil)
+          close-text-block (fn [result]
+                             (if-let [id @current-text-id]
+                               (do (vreset! current-text-id nil)
+                                   (rf result (format-sse-event {:type "text-end" :id id})))
+                               result))]
       (fn
         ([] (rf))
         ([result]
          (-> result
+             ;; Close any open text block before tearing down the step
+             close-text-block
              ;; Close the current step if started
              (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
              ;; Emit finish (with messageMetadata when any usage was observed) + [DONE]
@@ -293,70 +312,82 @@
              (rf "data: [DONE]\n")
              (rf)))
         ([result part]
-         (case (:type part)
-           :start
-           (if @started?
-             ;; Subsequent iteration: close previous step, open new one
-             (-> result
-                 (rf (format-sse-event {:type "finish-step"}))
-                 (rf (format-sse-event {:type "start-step"})))
-             ;; First iteration: emit message start + first step
-             (do
-               (vreset! started? true)
+         ;; Any non-text part implicitly closes the current text block before
+         ;; its own events are emitted. The :text branch below handles its own
+         ;; closing semantics (only closes when the id changes).
+         (let [result (if (= :text (:type part))
+                        result
+                        (close-text-block result))]
+           (case (:type part)
+             :start
+             (if @started?
+               ;; Subsequent iteration: close previous step, open new one
                (-> result
-                   (rf (format-sse-event {:type "start" :messageId (or (:id part) (mkid))}))
-                   (rf (format-sse-event {:type "start-step"})))))
+                   (rf (format-sse-event {:type "finish-step"}))
+                   (rf (format-sse-event {:type "start-step"})))
+               ;; First iteration: emit message start + first step
+               (do
+                 (vreset! started? true)
+                 (-> result
+                     (rf (format-sse-event {:type "start" :messageId (or (:id part) (mkid))}))
+                     (rf (format-sse-event {:type "start-step"})))))
 
-           :text
-           (let [id (or (:id part) (mkid))]
+             :text
+             (let [id (or (:id part) (mkid))]
+               (if (= id @current-text-id)
+                 ;; Same id as the open block — append a delta to it.
+                 (rf result (format-sse-event {:type "text-delta" :id id :delta (:text part)}))
+                 ;; New id (or no open block) — close any prior block, open
+                 ;; this one, then emit the first delta.
+                 (let [result (close-text-block result)]
+                   (vreset! current-text-id id)
+                   (-> result
+                       (rf (format-sse-event {:type "text-start" :id id}))
+                       (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
+
+             :tool-input
              (-> result
-                 (rf (format-sse-event {:type "text-start" :id id}))
-                 (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))
-                 (rf (format-sse-event {:type "text-end" :id id}))))
+                 (rf (format-sse-event {:type       "tool-input-start"
+                                        :toolCallId (:id part)
+                                        :toolName   (:function part)}))
+                 (rf (format-sse-event {:type       "tool-input-available"
+                                        :toolCallId (:id part)
+                                        :toolName   (:function part)
+                                        :input      (:arguments part)})))
 
-           :tool-input
-           (-> result
-               (rf (format-sse-event {:type       "tool-input-start"
-                                      :toolCallId (:id part)
-                                      :toolName   (:function part)}))
-               (rf (format-sse-event {:type       "tool-input-available"
-                                      :toolCallId (:id part)
-                                      :toolName   (:function part)
-                                      :input      (:arguments part)})))
+             :tool-output
+             (rf result (format-sse-event (cond-> {:type       "tool-output-available"
+                                                   :toolCallId (:id part)
+                                                   :toolName   (:function part)
+                                                   :output     (or (:result part) "")}
+                                            (:error part) (assoc :error (:error part)))))
 
-           :tool-output
-           (rf result (format-sse-event (cond-> {:type       "tool-output-available"
-                                                 :toolCallId (:id part)
-                                                 :toolName   (:function part)
-                                                 :output     (or (:result part) "")}
-                                          (:error part) (assoc :error (:error part)))))
+             :data
+             (rf result (format-sse-event {:type (str "data-" (or (:data-type part) "data"))
+                                           :id   (or (:id part) (mkid))
+                                           :data (:data part)}))
 
-           :data
-           (rf result (format-sse-event {:type (str "data-" (or (:data-type part) "data"))
-                                         :id   (or (:id part) (mkid))
-                                         :data (:data part)}))
+             :error
+             (do
+               (vreset! error? true)
+               (rf result (format-sse-event {:type      "error"
+                                             :errorText (or (some-> (:error part) :message)
+                                                            (str (:error part)))})))
 
-           :error
-           (do
-             (vreset! error? true)
-             (rf result (format-sse-event {:type      "error"
-                                           :errorText (or (some-> (:error part) :message)
-                                                          (str (:error part)))})))
+             :finish
+             result ;; Ignored — completion arity handles the final finish
 
-           :finish
-           result ;; Ignored — completion arity handles the final finish
+             :usage
+             ;; Accumulate cumulative-per-model snapshot. Carried out on
+             ;; finish.messageMetadata in the completion arity.
+             (do
+               (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
+               result)
 
-           :usage
-           ;; Accumulate cumulative-per-model snapshot. Carried out on
-           ;; finish.messageMetadata in the completion arity.
-           (do
-             (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
-             result)
-
-           ;; Unknown types: emit as data parts
-           (rf result (format-sse-event {:type (str "data-" (name (:type part)))
-                                         :id   (or (:id part) (mkid))
-                                         :data part}))))))))
+             ;; Unknown types: emit as data parts
+             (rf result (format-sse-event {:type (str "data-" (name (:type part)))
+                                           :id   (or (:id part) (mkid))
+                                           :data part})))))))))
 
 ;;; Tool executor
 

@@ -256,6 +256,79 @@
         (is (some? finish))
         (is (not (contains? finish :messageMetadata)))))))
 
+(deftest ^:parallel aisdk-sse-xf-text-coalesces-same-id-test
+  (testing "consecutive :text parts sharing the same id collapse into one text block"
+    ;; The upstream provider streams a single logical text block as multiple
+    ;; :text parts that share the same :id. The Vercel AI SDK v6 stream
+    ;; protocol expects one text-start, many text-deltas, one text-end per
+    ;; logical block — NOT a fresh start/end triple per delta with the id
+    ;; reopened. This test caught a bug where every :text part was wrapped
+    ;; in its own start/end triple.
+    (let [parts       [{:type :start :id "msg-1"}
+                       {:type :text :id "t1" :text "Hi"}
+                       {:type :text :id "t1" :text " Sloan!"}
+                       {:type :text :id "t1" :text " 👋"}]
+          events      (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          text-events (filter #(#{"text-start" "text-delta" "text-end"} (:type %)) events)]
+      (is (= [{:type "text-start" :id "t1"}
+              {:type "text-delta" :id "t1" :delta "Hi"}
+              {:type "text-delta" :id "t1" :delta " Sloan!"}
+              {:type "text-delta" :id "t1" :delta " 👋"}
+              {:type "text-end" :id "t1"}]
+             text-events)))))
+
+(deftest ^:parallel aisdk-sse-xf-text-different-ids-separate-blocks-test
+  (testing "consecutive :text parts with different ids produce separate blocks"
+    (let [parts       [{:type :start :id "msg-1"}
+                       {:type :text :id "t1" :text "first"}
+                       {:type :text :id "t2" :text "second"}]
+          events      (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          text-events (filter #(#{"text-start" "text-delta" "text-end"} (:type %)) events)]
+      (is (= [{:type "text-start" :id "t1"}
+              {:type "text-delta" :id "t1" :delta "first"}
+              {:type "text-end" :id "t1"}
+              {:type "text-start" :id "t2"}
+              {:type "text-delta" :id "t2" :delta "second"}
+              {:type "text-end" :id "t2"}]
+             text-events)))))
+
+(deftest ^:parallel aisdk-sse-xf-text-closed-by-non-text-event-test
+  (testing "an intervening non-text part closes the current text block before its own events"
+    (let [parts  [{:type :start :id "msg-1"}
+                  {:type :text :id "t1" :text "before tool"}
+                  {:type :tool-input :id "call-1" :function "search" :arguments {:q "x"}}
+                  {:type :text :id "t1" :text "after tool"}]
+          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          types  (mapv :type events)]
+      (is (= ["start"
+              "start-step"
+              "text-start"
+              "text-delta"
+              "text-end"
+              "tool-input-start"
+              "tool-input-available"
+              "text-start"
+              "text-delta"
+              "text-end"
+              "finish-step"
+              "finish"]
+             types)))))
+
+(deftest ^:parallel aisdk-sse-xf-text-closed-by-completion-test
+  (testing "completion arity closes any open text block before finish-step"
+    (let [parts  [{:type :start :id "msg-1"}
+                  {:type :text :id "t1" :text "trailing"}]
+          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          types  (mapv :type events)]
+      (is (= ["start"
+              "start-step"
+              "text-start"
+              "text-delta"
+              "text-end"
+              "finish-step"
+              "finish"]
+             types)))))
+
 (deftest ^:parallel aisdk-sse-xf-tee-composition-test
   (testing "composing with tee-xf upstream still passes raw :usage parts to the tee"
     ;; This safeguards the api.clj store-native-parts! → extract-usage → DB path,
