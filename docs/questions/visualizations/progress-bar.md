@@ -80,7 +80,7 @@ Note that both columns are computed fields here, one for 2024 and one for the cu
 
 Once you have a column that you want to use, set it as a goal:
 
-1. While viewing the progress bar visualization, click on the **Gear** icon in bottom left to open settings.
+1. While viewing the progress bar visualization, click the **Gear** icon in bottom left to open settings.
 2. On the display tab, select the columns you want to serve as the value and the goal.
 
 ![Set custom goal for progress bar](../images/progress-set-custom-goal.png)
@@ -101,7 +101,7 @@ To use the result of another query as the goal value for the progress bar, you'l
 
 ## Progress bar options
 
-To open the chart options, click on the gear icon at the bottom left of the screen.
+To open the chart options, click the gear icon at the bottom left of the screen.
 
 Format options will apply to both the result of the query and the goal value:
 

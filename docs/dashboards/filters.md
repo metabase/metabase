@@ -240,7 +240,7 @@ You can change the [type](#filter-types) of an existing filter (for example, fro
 To change the widget type:
 
 1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
-2. Click on the filter or parameter you want to edit. A widget editing sidebar should pop up on the right side.
+2. Click the filter or parameter you want to edit. A widget editing sidebar should pop up on the right side.
 3. In the sidebar, change the type of filter or parameter.  Changing the widget type disconnects the widget from all cards. You'll need to reconnect to the relevant columns on each card for the new type. If you've changed the widget type by mistake and want to restore the widget and its connections to cards, you can exit dashboard edit mode without saving your changes.
 
 ### Change filter operator
@@ -250,7 +250,7 @@ For some [filter types](#filter-types), you can configure the filter operator - 
 To change the operator for a dashboard filter:
 
 1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
-2. Click on the filter you want to edit. A widget editing sidebar should pop up on the right side.
+2. Click the filter you want to edit. A widget editing sidebar should pop up on the right side.
 3. In **Filter operator**, pick the filter operator. The options will depend on the filter type. Some filter types (for example, ID) don't have operator selection.
 
 ### Set filter input type
@@ -316,7 +316,7 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
 You might want to set a default filter value, like "Active," so that when people load your dashboard, they only see data for "Active" records (not "Inactive," "Canceled," and so on).
 
 1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
-2. Click on the filter you want to make required. A filter sidebar should pop up on the right side.
+2. Click the filter you want to make required. A filter sidebar should pop up on the right side.
 3. In the sidebar, scroll down and choose a value from the **Default value** input field.
 
 ### Make a filter or parameter required
@@ -331,7 +331,7 @@ You might want to require a filter value if:
 To require a value for a dashboard filter:
 
 1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
-2. Click on the filter you want to make required. A filter sidebar should pop up on the right side.
+2. Click the filter you want to make required. A filter sidebar should pop up on the right side.
 3. In the filter settings sidebar, scroll to the toggle **Always require a value**.
 4. Specify the default value for the filter.
 

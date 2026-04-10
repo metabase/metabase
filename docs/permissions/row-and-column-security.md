@@ -94,7 +94,7 @@ Examples of user attributes in play:
 2. Go to **Admin** > **Permissions**.
 3. Select the database and table that you want to secure.
 4. Find the group that you want to secure.
-5. Click on the dropdown under **View data** for that group.
+5. Click the dropdown under **View data** for that group.
 6. Select "Row and column security".
 7. Click the dropdown under **Column** and enter the column to filter the table on, such as "Plan".
 8. Click the dropdown under **User attribute** and enter the user attribute **key**, such as "Plan".
@@ -134,7 +134,7 @@ You cannot add columns.
 2. Go to **Admin** > **Permissions**.
 3. Select the database and table that you want to secure.
 4. Find the group to restrict.
-5. Click on the dropdown under **Data access** for that group.
+5. Click the dropdown under **Data access** for that group.
 6. Select "Row and column security".
 7. Select "Use a saved question to create a custom view for this table".
 8. Select your saved question. The question should be written in SQL. If the question contains parameters, those parameters must be required (they cannot be optional).

@@ -50,7 +50,7 @@ If some of your sources point to targets that point back to the same sources, Me
 
 ## Sankey data options
 
-To select which columns Metabase should use as the source, target, and values for the Sankey chart, click on the **settings** icon in the bottom right to view the **Data** tab.
+To select which columns Metabase should use as the source, target, and values for the Sankey chart, click the **settings** icon in the bottom right to view the **Data** tab.
 
 ![Sankey data options](../images/sankey-data-options.png)
 

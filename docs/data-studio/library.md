@@ -70,7 +70,7 @@ Tables published to the Library can't depend on any tables outside of the Librar
 To unpublish a table from the Library:
 
 1. Visit the table in Data Studio in the Library tab.
-2. Click on the three-dot menu next to the table's name.
+2. Click the three-dot menu next to the table's name.
 3. Click **Unpublish**.
 
 If other tables depend on the table you want to unpublish, Metabase will unpublish those tables as well. You'll get a confirmation message explaining which tables Metabase would unpublish.

@@ -259,7 +259,7 @@ Please follow these steps:
 ### Trigger the stress-test workflow manually
 
 - Go to `https://github.com/metabase/metabase/actions/workflows/e2e-stress-test-flake-fix.yml`
-- Click on _Run workflow_ trigger next to "This workflow has a workflow_dispatch event trigger."
+- Click _Run workflow_ trigger next to "This workflow has a workflow_dispatch event trigger."
 
 1. Choose your own branch in the first field "Use workflow from" (this part is crucial!)
 2. Copy and paste the relative path of the spec you want to test (e.g. `e2e/test/scenarios/onboarding/urls.cy.spec.js`) - you don't have to wrap it in quotes

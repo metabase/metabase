@@ -14,7 +14,7 @@ You can also skip to the [complete list of expressions][expression-list].
 
 ## Custom expressions to create filters, metrics, and custom columns
 
-To use the custom expression editor, create a **Custom Column** (where the custom expression is used as a Field Formula to calculate values for the new column), or click on **Filter** or **Summarize** and select **Custom Expression**.
+To use the custom expression editor, create a **Custom Column** (where the custom expression is used as a Field Formula to calculate values for the new column), or click **Filter** or **Summarize** and select **Custom Expression**.
 
 When using the query builder, you can use expressions to create new:
 
@@ -48,7 +48,7 @@ The expression editor includes a function browser to help you find the function 
 
 ![Auto-format expression](../images/auto-format.png)
 
-To format expressions, click on the auto-format button on the right side of the expression editor (the lightning bolt wrapped in braces).
+To format expressions, click the auto-format button on the right side of the expression editor (the lightning bolt wrapped in braces).
 
 ## Basic mathematical operators
 

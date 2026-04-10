@@ -10,9 +10,9 @@ This guide covers the basics for running your Metabase instance in Microsoft Azu
 
 ## Step 1: Create the resource group (resource grouping)
 
-On the Azure management console, click on the **Resource Groups** icon at the top of the page (or just search for Resource Groups). If you already have a resource group, you can go straight to [Step 2](#step-2-create-the-vnet-virtual-network).
+On the Azure management console, click the **Resource Groups** icon at the top of the page (or just search for Resource Groups). If you already have a resource group, you can go straight to [Step 2](#step-2-create-the-vnet-virtual-network).
 
-On the resource group page, click on the **+ Add** button in the top bar to create a new resource group. On the **Create a resource group** page, select your valid Azure Subscription, enter the name of your resource group, and select a region.
+On the resource group page, click the **+ Add** button in the top bar to create a new resource group. On the **Create a resource group** page, select your valid Azure Subscription, enter the name of your resource group, and select a region.
 
 ![Create a Resource Group](images/AZResource_group_Add.png)
 
@@ -22,7 +22,7 @@ When selecting the region for your Metabase, you should consider the location of
 
 ## Step 2: Create the VNET (virtual network)
 
-At the center of the page, click on the **Create resources** button. Search for **VNET**:
+At the center of the page, click the **Create resources** button. Search for **VNET**:
 
 ![VNET Marketplace](images/AZMarketPlaceVnet.png)
 
@@ -30,7 +30,7 @@ Select the VNET product from Microsoft, and click **Create**:
 
 ![VNET Product](images/AZVnet.png)
 
-Enter a name for the virtual network and select the same region you used for the resource group. Click on **Next: IP Addresses** button at the bottom.
+Enter a name for the virtual network and select the same region you used for the resource group. Click **Next: IP Addresses** button at the bottom.
 
 Here we'll create a secure network composed of a public subnet (a network that is exposed to the internet), and a private network that will contain your application database.
 
@@ -41,7 +41,7 @@ In the IPv4 address, you should have a default value of 10.0.0.0/16 (otherwise a
 
 ![Azure network configuration](images/AZNetworks.png)
 
-Click **Next** until you get to the **Review and create** page, then click on the **Create** button at the bottom to create your network.
+Click **Next** until you get to the **Review and create** page, then click the **Create** button at the bottom to create your network.
 
 ## Step 3: Create the Application Database (PostgreSQL)
 
@@ -62,17 +62,17 @@ On the next screen, select or enter the following:
 
 Then choose an admin username and password of your choice.
 
-Click **Next** until you get to the final page, then click **Create**. It'll take some time for Azure to create the database. Once the creation is complete, click on the **Go to resource** button.
+Click **Next** until you get to the final page, then click **Create**. It'll take some time for Azure to create the database. Once the creation is complete, click the **Go to resource** button.
 
 ## Step 4: Create the private endpoint connection
 
 On the properties page for the Azure for PostgreSQL database, you can manage parameters for your database. You'll create the **Private Endpoint** to the database, so all traffic from the web application is routed internally through Azure's network.
 
-On the left menu, click on **Private endpoint connection** which is situated under **Security**
+On the left menu, click **Private endpoint connection** which is situated under **Security**
 
 ![Azure Database for PostgreSQL](images/AZPostgreSQLMain.png)
 
-Now click on the button of the top bar with a plus sign that says **Private endpoint**. In the page that opens:
+Now click the button of the top bar with a plus sign that says **Private endpoint**. In the page that opens:
 
 1. Provide a name for this link (any name that describes what you are trying to do is fine, like `metabase_link`). Select the region where the database lives, click **Next**.
 2. On the **Resource** section of the configuration, ensure that **Resource type** is set to `Microsoft.DBforPostgreSQL/servers` which will enable you to select in the dropdown below the server created in the previous step, and leave **Target sub-resource** with the default value
@@ -109,15 +109,15 @@ Now go to the next step where you will select:
 
 Click **Next** until you get to the last section, then click **Create**, and wait while your application initializes.
 
-Now go to the application configuration page and click on **Settings** -> **Networking** on the left side of the page. On the next page, click on **Click here to configure** under **VNET integration**.
+Now go to the application configuration page and click **Settings** -> **Networking** on the left side of the page. On the next page, click **Click here to configure** under **VNET integration**.
 
 ![Azure VNET integration](images/AZVNETintegration.png)
 
-Now click on the huge plus sign next to **Add VNET** and select the VNET that you created, and the public subnet. Click **OK**.
+Now click the huge plus sign next to **Add VNET** and select the VNET that you created, and the public subnet. Click **OK**.
 
 ![Azure VNET public subnet](images/AZVNETPublicSubnet.png)
 
-Return to the application configuration page and click on **Settings** -> **Configuration** on the left side of the page. You should see a few Application Settings already configured.
+Return to the application configuration page and click **Settings** -> **Configuration** on the left side of the page. You should see a few Application Settings already configured.
 
 You'll need to add the [environment Variables](../configuring-metabase/environment-variables.md) for connecting Metabase to its [PostgreSQL Application Database](../installation-and-operation/configuring-application-database.md#postgresql). Make sure that you use the full **MB_DB_CONNECTION_URI**.
 
@@ -155,9 +155,9 @@ Enabling health checking in Metabase is a good practice. Go to your **web app** 
 
 ### How to upgrade
 
-Go to the Metabase web app you created and click on **Deployment** -> **Deployment Center**.
+Go to the Metabase web app you created and click **Deployment** -> **Deployment Center**.
 
-Change the version of the container to the new version in the **Full Image Name and Tag** text field under **Registry settings**, and click on **Save**. Available versions of the Metabase Docker image can be found on [Docker Hub](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated).
+Change the version of the container to the new version in the **Full Image Name and Tag** text field under **Registry settings**, and click **Save**. Available versions of the Metabase Docker image can be found on [Docker Hub](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated).
 
 **Important**: always ensure you have backed up the Metabase application database before upgrading, _especially_ when doing so between major versions. Metabase also doesn't officially support downgrading versions.
 
@@ -165,7 +165,7 @@ Change the version of the container to the new version in the **Full Image Name 
 
 Visit your web app in Azure, and navigate to **Monitoring -> Log stream**.
 
-You should be able to see the logs as well inside Metabase by going to Settings -> Admin -> Tools -> Logs.
+You should be able to see the logs as well inside Metabase by going to **Settings** > **Admin** > **Tools** > **Logs**.
 
 ### Performance tuning
 

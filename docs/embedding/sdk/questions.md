@@ -9,8 +9,8 @@ description: How to embed charts in your app with the Modular embedding SDK.
 
 There are different ways you can embed questions:
 
-- [Static question](#staticquestion). Embeds a chart. Clicking on the chart doesn't do anything.
-- [Interactive question](#interactivequestion). Create new questions or edit existing ones with the visual query builder or SQL editor. Clicking on the chart gives you the drill-through menu.
+- [Static question](#staticquestion). Embeds a chart. Clicking the chart doesn't do anything.
+- [Interactive question](#interactivequestion). Create new questions or edit existing ones with the visual query builder or SQL editor. Clicking the chart gives you the drill-through menu.
 
 ## Embedding a question
 
@@ -133,7 +133,7 @@ You can use [plugins](./plugins.md) to add custom functionality to your question
 
 ### `mapQuestionClickActions`
 
-When people click on a data point in the embedded interactive chart, Metabase shows them a menu of actions by default. The plugin `mapQuestionClickActions` allows you to customize this behavior. You can choose to:
+When people click a data point in the embedded interactive chart, Metabase shows them a menu of actions by default. The plugin `mapQuestionClickActions` allows you to customize this behavior. You can choose to:
 
 - Open the default Metabase menu.
 - Add custom actions to that click-through menu.

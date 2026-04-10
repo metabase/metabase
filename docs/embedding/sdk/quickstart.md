@@ -40,7 +40,7 @@ In Metabase, click the grid icon in the upper right and navigate to **Admin > Em
 
 ## 2. Create an API key in Metabase
 
-Still in the Admin console, go to **Settings > Authentication** and click on the **API keys** tab. [Create a new API key](../../people-and-groups/api-keys.md).
+Still in the Admin console, go to **Settings > Authentication** and click the **API keys** tab. [Create a new API key](../../people-and-groups/api-keys.md).
 
 - Key name: "Modular embedding SDK" (just to make the key easy to identify).
 - Group: select “Admin” (since this is only for local testing).

@@ -46,7 +46,7 @@ To create a new question directly in a document:
 
 Questions created this way are saved directly to the document and don't appear in your collections unless you explicitly save them there later. Deleting charts made in documents is permanent. You can't recover deleted charts from the [trash](../exploration-and-organization/delete-and-restore.md).
 
-To enter the full-screen editor for a question, click on the question's title.
+To enter the full-screen editor for a question, click the question's title.
 
 ### Adding a chart copies it to the document
 
@@ -160,14 +160,14 @@ If you never want to see a comment again:
 
 1. Resolve the comment.
 2. Find it in the Resolved tab.
-3. Click on the **three-dot** menu.
+3. Click the **three-dot** menu.
 4. Select **Delete**.
 
 This deletion is permanent.
 
 ## Printing documents
 
-To print a document, click on the **three-dot** menu and select **Print document**.
+To print a document, click the **three-dot** menu and select **Print document**.
 
 ## Sharing documents
 

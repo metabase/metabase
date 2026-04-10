@@ -33,9 +33,9 @@ _Data Studio > Jobs_
 
 Jobs run one or more transforms on schedule based on transform tags.
 
-To see all jobs, go to **Data Studio** and click on the **Jobs** at the bottom of the left sidebar.
+To see all jobs, go to **Data Studio** and click the **Jobs** at the bottom of the left sidebar.
 
-To create a new job, go to **Data Studio > Jobs**, and click on the **+ New** button in the top right.
+To create a new job, go to **Data Studio > Jobs**, and click the **+ New** button in the top right.
 
 Jobs have two components: schedule and tags.
 
@@ -56,8 +56,8 @@ You can see which transforms a job will run (and in which order) on the job's pa
 
 ![Transform runs](../images/runs.png)
 
-You can see all past and current transform runs (both manual and scheduled) by going to **Data Studio** and clicking on **Runs** at the bottom of the left sidebar. The transform run times will be given in Greenwich Mean Time (GMT).
+You can see all past and current transform runs (both manual and scheduled) by going to **Data Studio** and clicking **Runs** at the bottom of the left sidebar. The transform run times will be given in Greenwich Mean Time (GMT).
 
-You can click on any transform run to see more details about the run, like the error logs. To go to the transform definition from the transform run page, click on the icon next the transform name in the right sidebar.
+You can click any transform run to see more details about the run, like the error logs. To go to the transform definition from the transform run page, click the icon next the transform name in the right sidebar.
 
 The "Tags" column in the **Runs** table will only show the transform's specific tags. But the run might not have anything to do with those tags. Another job with different tags could have run the transform because [jobs will run _all_ dependent transforms](#jobs-will-run-all-dependent-transforms).

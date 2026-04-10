@@ -19,7 +19,7 @@ A dashboard comprises a set of cards arranged on a grid. These cards can be:
 - [Iframe cards](#iframe-cards)
 - [Link cards](#link-cards)
 
-You can add [filter widgets to dashboards](./filters.md) that filter data identically across multiple questions, and [customize what happens when people click on a chart or a table](./interactive.md).
+You can add [filter widgets to dashboards](./filters.md) that filter data identically across multiple questions, and [customize what happens when people click a chart or a table](./interactive.md).
 
 You can make as many dashboards as you want. Go nuts.
 
@@ -55,7 +55,7 @@ When creating or editing a question, you can [save the question directly to a da
 
 ### Adding a question saved to a collection
 
-To add a question saved to a collection to a dashboard, visit the question and click on the three-dot menu (**...**) at the top right and select **Add to dashboard**. You can also [browse questions from dashboard edit mode](#from-a-dashboard).
+To add a question saved to a collection to a dashboard, visit the question and click the three-dot menu (**...**) at the top right and select **Add to dashboard**. You can also [browse questions from dashboard edit mode](#from-a-dashboard).
 
 Adding a question to a dashboard does not save the question to the dashboard.
 
@@ -65,7 +65,7 @@ If a question is saved to your personal collection, you'll only be able to add t
 
 Another neat thing you can do is add heading and text cards to your dashboards. Text cards allow you to include descriptions, explanations, notes, or even images and GIFs to your dashboards. You can also use text cards to create separations between sections of charts in your dashboards, or include links to other dashboards, questions, or websites.
 
-To add a new text card, create a new dashboard (or edit an existing one) and click on the text card button, **T**, in the top-right:
+To add a new text card, create a new dashboard (or edit an existing one) and click the text card button, **T**, in the top-right:
 
 ![Text card button](images/text-card-button.png)
 
@@ -100,7 +100,7 @@ You can also make text optional by wrapping the text in double brackets, `[[` an
 
 ```
 {% raw %}
-# Orders [[from {{state}}]
+# Orders [[from {{state}}]]
 {% endraw %}
 ```
 
@@ -138,7 +138,7 @@ To provide values for the variable, you'll need to add a filter to the dashboard
 - Videos or slides for contextualizing and storytelling on dashboards
 - Live charts and visualizations from other tools
 
-To add an iframe card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon and select **Iframe**. Then paste the iframe URL. Here's an iframe for our video on how to create a dashboard:
+To add an iframe card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click the **link** icon and select **Iframe**. Then paste the iframe URL. Here's an iframe for our video on how to create a dashboard:
 
 ```html
 <iframe
@@ -175,7 +175,7 @@ You can add multiple tabs to a dashboard to keep your cards organized.
 
 ### Duplicate a tab
 
-When in dashboard edit mode, you can duplicate a tab and all its cards by clicking on the down arrow next to the tab that you want to copy.
+When in dashboard edit mode, you can duplicate a tab and all its cards by clicking the down arrow next to the tab that you want to copy.
 
 ### Moving cards between tabs
 
@@ -185,7 +185,7 @@ See [Arranging cards](#arranging-dashboard-cards).
 
 If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard.
 
-To duplicate a dashboard, click on the **...** menu in the upper right of the dashboard, and select **Duplicate**.
+To duplicate a dashboard, click the **...** menu in the upper right of the dashboard, and select **Duplicate**.
 
 By default, Metabase will create a new dashboard, with copies of the questions in the original dashboard (including the dashboard's tabs). Metabase will save the duplicated questions either to the target collection, or to the duplicated dashboard, depending on where the original questions were saved.
 
@@ -230,7 +230,7 @@ Sections include:
 
 **Large chart with KPIs to the right**
 
-![Large chart with KPIS to the right**](./images/large-chart-with-kpis-to-the-right.png)
+![Large chart with KPIs to the right](./images/large-chart-with-kpis-to-the-right.png)
 
 **KPIs with large chart below**
 
@@ -249,14 +249,14 @@ You can change the width of a dashboard by going into the three dots menu in the
 
 To edit a card's:
 
-- **Underlying query**: click on the card's title while _not_ in dashboard editing mode. If the card displays multiple questions, pick the question you want to edit from the dropdown.
+- **Underlying query**: click the card's title while _not_ in dashboard editing mode. If the card displays multiple questions, pick the question you want to edit from the dropdown.
 - **Visualization settings**, see [changing a card's visualization settings](#changing-a-cards-visualization-settings).
 
 ## Changing a card's visualization settings
 
 You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
 
-Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **pencil** icon or **palette** icon (depending on the chart type) to edit a card's visualization's settings.
+Click the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click the **pencil** icon or **palette** icon (depending on the chart type) to edit a card's visualization's settings.
 
 ![Visualization settings](images/visualization-settings.png)
 
@@ -270,7 +270,7 @@ You can also [add more data to the chart](./multiple-series.md).
 
 One neat thing to call out: if you have a question card that rarely returns results, but you still want to include that card in your dashboard because you want to know when the question _does_ return results, you can tell Metabase to hide the card unless it returns at least one row of data.
 
-When in dashboard edit mode, click on the **Visualization settings** for the card.
+When in dashboard edit mode, click the **Visualization settings** for the card.
 
 - For tables, the option is in the **Columns** tab.
 - For other charts, the option is in the **Display** tab.
@@ -303,7 +303,7 @@ To enter fullscreen mode, click the **fullscreen** icon in the top right of the 
 
 ## Auto refresh
 
-If your data updates frequently, you can set up your dashboard to refresh automatically by clicking on the **clock** icon.
+If your data updates frequently, you can set up your dashboard to refresh automatically by clicking the **clock** icon.
 
 ![Autorefresh](./images/autorefresh.png)
 
@@ -321,7 +321,7 @@ See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching
 
 ## Sharing dashboards with public links
 
-If your Metabase administrator has enabled [public sharing](../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
+If your Metabase administrator has enabled [public sharing](../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click the **sharing** icon to find its public links.
 
 ![Share icon](./images/share-icon.png)
 
@@ -373,7 +373,7 @@ Some tips:
 - **Emphasize the most important questions**. To draw people’s attention to what matters most, place the most important saved question cards near the top of the dashboard, and/or make them bigger than the other cards,
 - **Keep dashboards focused**. If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
 - **Add filters to your dashboard**. [Adding filters](./filters.md) to dashboards makes them more useful. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
-- **Make your dashboards interactive.** [Customize what happens when users click on a chart or table in your dashboard](./interactive.md).
+- **Make your dashboards interactive.** [Customize what happens when users click a chart or table in your dashboard](./interactive.md).
 
 ## Further reading
 

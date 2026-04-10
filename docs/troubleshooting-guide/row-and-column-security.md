@@ -95,7 +95,7 @@ Our docs on [Authenticating with SAML][authenticating-with-saml] and [Authentica
 
 Make sure that you're using a SQL question to apply row and column security, and that you're not including columns you should be excluding.
 
-If you build a question using the query builder (i.e., use a simple or custom question), you may unintentionally pull in additional columns. You can check exactly which columns are included by viewing the question in the Notebook Editor and clicking on the **View the SQL** button. But again: if you use SQL questions to apply row and column security, this problem goes away.
+If you build a question using the query builder (i.e., use a simple or custom question), you may unintentionally pull in additional columns. You can check exactly which columns are included by viewing the question in the Notebook Editor and clicking the **View the SQL** button. But again: if you use SQL questions to apply row and column security, this problem goes away.
 
 ## Is the person in _another_ group with a different permission level for the table?
 

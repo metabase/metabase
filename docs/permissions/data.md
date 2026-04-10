@@ -12,7 +12,7 @@ This page covers permissions for databases and tables. If you haven't already, c
 
 To set data permissions on a database, schema, or table for a group:
 
-1. Hit Cmd/Ctrl + K. Search for **Permissions** and click on the Permissions settings result. Metabase will default to the **Data** tab.
+1. Hit Cmd/Ctrl + K. Search for **Permissions** and click the Permissions settings result. Metabase will default to the **Data** tab.
 
 Or
 
@@ -20,7 +20,7 @@ Or
 
 2. Select **Admin**.
 
-3. Click on the **Permissions** tab, which defaults to the **Data** tab.
+3. Click the **Permissions** tab, which defaults to the **Data** tab.
 
 You can view permissions either by group or by database.
 

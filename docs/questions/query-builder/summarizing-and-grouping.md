@@ -58,14 +58,14 @@ Depending on the grouping column you select, Metabase will show you what it thin
 
 ![Grouping by a date column](../images/summarize-timeseries.png)
 
-When you click on a different grouping column than the one you currently have selected, the grouping will switch to use that column instead. But if you want to _add_ an additional grouping, just click the plus (+) icon on the right side of the column. To remove a grouping, click on the X icon.
+When you click a different grouping column than the one you currently have selected, the grouping will switch to use that column instead. But if you want to _add_ an additional grouping, just click the plus (+) icon on the right side of the column. To remove a grouping, click the X icon.
 
 ![Multiple groupings](../images/summarize-timeseries-breakout.png)
 
 Some grouping columns will give you the option of choosing how big or small to make the groupings:
 
-- For datetime columns, you can click on the words `by month` to change the grouping to day, week, hour, quarter, year, etc. You'll also be able to add multiple breakouts by the same datetime column with different time granularities (for example, group by week and day of the week). For information on grouping by week of year, see [Week of year](./expressions/week.md).
-- For numeric columns like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click on the current binning option to change it to a specific number of bins. Currently, you can't choose your own ranges for bins.
+- For datetime columns, you can click the words `by month` to change the grouping to day, week, hour, quarter, year, etc. You'll also be able to add multiple breakouts by the same datetime column with different time granularities (for example, group by week and day of the week). For information on grouping by week of year, see [Week of year](./expressions/week.md).
+- For numeric columns like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click the current binning option to change it to a specific number of bins. Currently, you can't choose your own ranges for bins.
 
   ![Multiple groupings](../images/histogram-bins.png)
 

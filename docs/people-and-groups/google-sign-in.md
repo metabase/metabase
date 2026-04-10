@@ -32,9 +32,9 @@ Next, you'll have to create authorization credentials and [get a Google API Clie
 
 Once you have your Google API `Client ID` (ending in `.apps.googleusercontent.com`), visit your Metabase and:
 
-1. Click on the settings **grid** icon in the upper right.
+1. Click the settings **grid** icon in the upper right.
 2. Select **Admin**.
-3. In the **Settings** tab, click on **Authentication**.
+3. In the **Settings** tab, click **Authentication**.
 4. On the **Sign in with Google** card, click **Set up**.
 5. In the **Client ID** field, paste your Google API Client ID.
 

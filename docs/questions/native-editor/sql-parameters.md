@@ -24,7 +24,7 @@ Variable types include:
 - **[Time grouping parameters](./time-grouping-parameters.md)**: allows people to change how the results are grouped by a date column: by month, week, day, etc.
 - **[Table variables](./table-variables.md)**: select which table to query. Pretty nifty when combined with [snippets](./snippets.md).
 
-You can include multiple variables in a single query, and Metabase will add multiple widgets to the question. To rearrange the order of the widgets, enter edit mode and click on any widget and drag it around.
+You can include multiple variables in a single query, and Metabase will add multiple widgets to the question. To rearrange the order of the widgets, enter edit mode and click any widget and drag it around.
 
 ### Configure your filter widget
 

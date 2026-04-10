@@ -19,7 +19,7 @@ To enable dashboard subscriptions, your administrators will need to have set up 
 
 To set up a subscription to a dashboard,
 
-1. Click on the **three dots** icon. Select **Subscriptions**.
+1. Click the **three dots** icon. Select **Subscriptions**.
 
    ![Select subscriptions from menu](./images/select-subscriptions.png)
 
@@ -106,7 +106,7 @@ You can toggle on "Send only attachments (no charts)" if you want to receive jus
 
 ## Adding multiple subscriptions
 
-You can add multiple subscriptions to a single dashboard. To add a subscription, click on the **+** icon in the dashboard subscription panel.
+You can add multiple subscriptions to a single dashboard. To add a subscription, click the **+** icon in the dashboard subscription panel.
 
 ## Deleting a subscription
 
@@ -122,7 +122,7 @@ You can view a list of all alerts and dashboard subscriptions that people have s
 
 {% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
 
-You can customize which filter values to apply to each dashboard subscription. That way you can send  an email (or Slack message) with the dashboard results to different groups of people, with different dashboard filters applied for each group. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
+You can customize which filter values to apply to each dashboard subscription. That way you can send an email (or Slack message) with the dashboard results to different groups of people, with different dashboard filters applied for each group. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
 
 ### Setting filter values
 

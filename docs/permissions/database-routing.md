@@ -90,7 +90,7 @@ To add destination databases programmatically, you'll need an [API key](../peopl
 
 Because each database engine has its own settings, we recommend that you use the Network tab in your browser's developer tools while you manually add a destination database in the UI. This way you can see the request Metabase generates.
 
-When you click **Add**, you'll see a `POST` request to `/mirror-database?check_connection_details=true`. Click on that request to get the request's headers and JSON payload.
+When you click **Add**, you'll see a `POST` request to `/mirror-database?check_connection_details=true`. Click that request to get the request's headers and JSON payload.
 
 ### Adding a new destination database: example with PostgreSQL via `curl`
 

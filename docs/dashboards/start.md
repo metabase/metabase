@@ -18,7 +18,7 @@ Add filters to dashboards to update tables and charts.
 
 ## [Interactive dashboards](./interactive.md)
 
-Customize what happens when people click on a chart in your dashboard.
+Customize what happens when people click a chart in your dashboard.
 
 ## [Charts with multiple series](./multiple-series.md)
 

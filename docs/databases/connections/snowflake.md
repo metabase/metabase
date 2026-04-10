@@ -41,7 +41,7 @@ Not all regions require the cloud platform identifier. If you're in `us-west-2`,
 
 Connect with a host name.
 
-You can get your host name by going to Admin > Accounts. The Account name will be under Accounts. Click on the account you want to use, and click on the link icon to copy the host URL: that's your host name. In the image below, Metabot is discreetly covering sensitive info. The "Copy account URL" link on the right is what you're looking for:
+You can get your host name by going to Admin > Accounts. The Account name will be under Accounts. Click the account you want to use, and click the link icon to copy the host URL: that's your host name. In the image below, Metabot is discreetly covering sensitive info. The "Copy account URL" link on the right is what you're looking for:
 
 ![Snowflake copy account URL](../images/snowflake-copy-account-url.png)
 

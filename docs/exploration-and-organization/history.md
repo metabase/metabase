@@ -14,7 +14,7 @@ On Metabase Pro and Enterprise plans, you can also version control most entities
 
 1. Go to your question, dashboard, metric, or model.
 2. Click the info icon.
-3. Click on the **History** tab.
+3. Click the **History** tab.
 4. The History tab will display the item's history of up to 15 versions.
 
 Metabase will keep track of a version each time you save, move, revert, [move to Trash](./delete-and-restore.md), or [verify](./content-verification.md) an item.
@@ -24,7 +24,7 @@ Metabase will keep track of a version each time you save, move, revert, [move to
 1. Go to your question, dashboard, or model.
 2. Click the info icon (an **i** in a circle).
 3. A sidebar will appear with up to fifteen previous versions.
-4. Click on the **back arrow** beside a version to revert your item to that point in time.
+4. Click the **back arrow** beside a version to revert your item to that point in time.
 
 ## History for transforms
 

@@ -18,7 +18,7 @@ You'll first need a [service account](https://cloud.google.com/iam/docs/service-
 
 To create the service account JSON file, follow Google's documentation on [setting up a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for your BigQuery dataset. Here's the basic flow:
 
-1. **Create service account**. From your Google Cloud Platform project console, open the main sidebar menu on the left, go to the **IAM & Admin** section, and select **Service account**. The console will list existing service accounts, if any. At the top of the screen, click on **+ CREATE SERVICE ACCOUNT**.
+1. **Create service account**. From your Google Cloud Platform project console, open the main sidebar menu on the left, go to the **IAM & Admin** section, and select **Service account**. The console will list existing service accounts, if any. At the top of the screen, click **+ CREATE SERVICE ACCOUNT**.
 
 2. **Fill out the service account details**. Name the service account, and add a description (the service account ID will populate once you add a name). Then click the **Create** button.
 
@@ -30,7 +30,7 @@ To create the service account JSON file, follow Google's documentation on [setti
 
 For more information on **roles** in BigQuery, see [Google Cloud Platform's documentation](https://cloud.google.com/bigquery/docs/access-control).
 
-4. **Create key**. Once you have assigned roles to the service account, click on the **Create Key** button, and select **JSON** for the **key type**. The JSON file will download to your computer.
+4. **Create key**. Once you have assigned roles to the service account, click the **Create Key** button, and select **JSON** for the **key type**. The JSON file will download to your computer.
 
 > **You can only download the key once**. If you delete the key, you'll need to create another service account with the same roles.
 

@@ -102,7 +102,7 @@ To create a transform:
    - **Name** (required): The name of the transform.
    - **Schema** (required): Target schema for your transform. This schema can be different from the schema of the source table(s). You create a new schema by typing its name in this field. You can only transform data _within_ a database; you can't write from one database to another.
    - **Table name** (required): Name of the target table. Metabase will write the results of the transform into this table, and then sync the table in Metabase.
-   - **Folder** (optional): The folder where the transform should live. Click on the field to pick a different folder or create a new one.
+   - **Folder** (optional): The folder where the transform should live. Click the field to pick a different folder or create a new one.
    - **Incremental transformation** (optional): see [Incremental query-based transforms](query-transforms.md#incremental-query-transforms) or [Incremental Python transforms](python-transforms.md)
 
      ![Transform settings](../images/transform-settings.png)
@@ -116,7 +116,7 @@ To create a transform:
 You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
 
 1. Go to **Data studio > Transforms**. If you want Metabot to edit an existing transform, navigate to the transform.
-2. While in Transforms view, click on the Metabot icon in top right.
+2. While in Transforms view, click the Metabot icon in top right.
 3. Describe the transform that you'd like Metabot to write.
 
    You can specify which kind of transform you want (Python or SQL) and @-mention specific data sources to help Metabot understand your request.
@@ -125,7 +125,7 @@ You can ask Metabot to generate a new SQL or Python-based transform, or edit an 
 
 4. Metabot will create a to-do list for itself that will show its thinking process, and then work through the list.
 
-5. If you asked Metabot to create a new transform, review the code that Metabot offers in the chat window and click on "Create" under the code snippet.
+5. If you asked Metabot to create a new transform, review the code that Metabot offers in the chat window and click "Create" under the code snippet.
 
    ![Create snippet](../images/create-transform.png)
 
@@ -149,7 +149,7 @@ To edit the transform's query or script:
 
 1. Make sure you have [permissions to edit transforms](../../permissions/data.md).
 2. Go to **Data Studio > Transforms**.
-3. Find the transform you'd like to edit and click on **Edit definition** above the transform definition.
+3. Find the transform you'd like to edit and click **Edit definition** above the transform definition.
 4. Edit the query or script.
 
    See [query-based transforms](query-transforms.md) and [Python transforms](python-transforms.md) for more information. You can [use Metabot](#use-metabot-to-generate-code-for-transforms) to help edit your transform.
@@ -160,7 +160,7 @@ Once you change the transform's query or script, the next transform run (manual 
 
 _Data Studio > Transforms > Settings_
 
-To edit transform's target table, i.e., the table where the query results are written, go the transforms **Settings** tab and click on **Change target**. You'll need to select whether you want to keep the old target table, or delete it. Deletion can't be undone.
+To edit transform's target table, i.e., the table where the query results are written, go the transforms **Settings** tab and click **Change target**. You'll need to select whether you want to keep the old target table, or delete it. Deletion can't be undone.
 
 **Questions built on the old target will _not_ be transferred to the new target table.** If you delete the old target table, any questions using the old transform target table will break. If you keep the old target around, the questions built on it won't break but they will _not_ use the new target table, and so will become outdated.
 

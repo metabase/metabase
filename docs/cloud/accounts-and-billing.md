@@ -20,11 +20,11 @@ If you want to stick with Pro, you'll have the chance to upgrade. Otherwise, you
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. In the **Instances** section, select your instance.
-3. Click on **Try a free 14-day trial of Pro**.
+3. Click **Try a free 14-day trial of Pro**.
 
 Once selected, the Store will display the status of your trial, along with a trial end date. We'll also send you an email with details about the trial.
 
-If you like the Pro features and want to upgrade, you'll need to upgrade your instance, either by clicking on the **Upgrade to Pro** button, or by managing your plan (see the next section).
+If you like the Pro features and want to upgrade, you'll need to upgrade your instance, either by clicking the **Upgrade to Pro** button, or by managing your plan (see the next section).
 
 ## Upgrade to Pro (or downgrade to Starter)
 
@@ -32,7 +32,7 @@ If you'd like to switch plans:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. In the **Instances** section, select the instance you want to change.
-3. Click on **Manage plan**.
+3. Click **Manage plan**.
 4. Select the plan you want.
 5. Click **Change plan**.
 
@@ -68,9 +68,9 @@ To cancel a Starter or Pro plan directly in the Metabase Store:
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Navigate to **Billing**.
-3. Click on the payment method that you want to update.
+3. Click the payment method that you want to update.
 4. Enter new credit card information.
-5. Click on **Update**.
+5. Click **Update**.
 
 If your Metabase was suspended due to a failed payment, the Store will automatically restore your Metabase upon a successful payment.
 
@@ -79,9 +79,9 @@ If your Metabase was suspended due to a failed payment, the Store will automatic
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Go to **Instances**.
 3. Navigate to the instance you want to switch to annual billing.
-4. Click on **Manage plan** next to the plan name.
+4. Click **Manage plan** next to the plan name.
 5. Confirm the plan selection and toggle on **Switch to annual billing**.
-6. Click on **Switch plan**.
+6. Click **Switch plan**.
 
 Note that you cannot switch back to monthly billing until your annual cycle has completed.
 
@@ -99,7 +99,7 @@ See Metabase's updated [W9 form](https://www.metabase.com/files/2024_W9_signed.p
 
 1. Log in to your Metabase [Store account](https://store.metabase.com).
 2. Go to **Billing**.
-3. Click on **Invoice Tax IDs**.
+3. Click **Invoice Tax IDs**.
 4. Enter your country and Tax ID.
 5. Click **Save**.
 
@@ -121,7 +121,7 @@ If you need to reset your Admin password, [contact support](https://www.metabase
 
 1. Navigate to your Metabase Store.
 2. Go to **Billing**.
-3. Click on **Billing address**.
+3. Click **Billing address**.
 4. Update your billing address.
 5. Click **Save**.
 
@@ -129,7 +129,7 @@ If you need to reset your Admin password, [contact support](https://www.metabase
 
 1. Navigate to your Metabase Store.
 2. Go to **Billing**.
-3. Click on **Shipping address**.
+3. Click **Shipping address**.
 4. Add or update your shipping address.
 5. Click **Save**.
 

@@ -34,9 +34,9 @@ Collections can have timelines, and timelines can contain events. In practice wh
 
 ### Adding events when viewing a collection
 
-When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the **calendar** icon in the upper right.
+When viewing a [collection](collections.md), you can view, add, or edit events by clicking the **calendar** icon in the upper right.
 
-![In a collection, view or add events by clicking on the calendar icon](./images/event-calendar.png)
+![In a collection, view or add events by clicking the calendar icon](./images/event-calendar.png)
 
 Once you create an event, the event will show up in charts in the collection, provided:
 
@@ -51,7 +51,7 @@ You can't add a timeline with events to the [Library](../data-studio/library.md)
 
 ## Adding events when viewing a question
 
-If your question is a time series, you can click on the **Calendar** in the bottom right of the question, and Metabase will open the timeline sidebar. Metabase will list any timelines and their events that fall in the range of your time series. You can:
+If your question is a time series, you can click the **Calendar** in the bottom right of the question, and Metabase will open the timeline sidebar. Metabase will list any timelines and their events that fall in the range of your time series. You can:
 
 - Toggle timeline visibility (including timelines from other collections)
 - Add a new event (even if you haven't saved the question yet).
@@ -59,7 +59,7 @@ If your question is a time series, you can click on the **Calendar** in the bott
 
 ## Viewing events and timelines on a chart from a different collection
 
-If you're viewing a question with a time series chart from a _different_ collection, you can temporarily apply a timeline to the chart by clicking on the **calendar** icon in the bottom right of the question and selecting the timeline and events you want to display.
+If you're viewing a question with a time series chart from a _different_ collection, you can temporarily apply a timeline to the chart by clicking the **calendar** icon in the bottom right of the question and selecting the timeline and events you want to display.
 
 These selections are temporary; if you reload the question, Metabase will drop the events from the chart.
 
@@ -67,7 +67,7 @@ These selections are temporary; if you reload the question, Metabase will drop t
 
 To temporarily hide the events from a chart:
 
-1. Click on the **calendar** icon in the bottom right.
+1. Click the **calendar** icon in the bottom right.
 2. Uncheck the timeline or event.
 
 Your selections will reset on reload.
@@ -81,7 +81,7 @@ To permanently hide the timeline and its events, you'll need to [archive the tim
 To edit an event:
 
 1. Click the calendar icon in the top right of a collection.
-2. Go to the timeline that contains the event, click on the event's three-dot menu (**...**).
+2. Go to the timeline that contains the event, click the event's three-dot menu (**...**).
 3. Select:
    - **Edit event**: its title, description, and icon.
    - **Move event**: to another timeline.
@@ -91,10 +91,10 @@ To edit an event:
 
 To archive a timeline:
 
-1. Go to the timeline's collection and click on the **calendar** icon in the top right.
-2. Select the timeline, then click on the three-dot menu (**...**). If the collection only has one timeline, click on the three-dot menu (**...**).
+1. Go to the timeline's collection and click the **calendar** icon in the top right.
+2. Select the timeline, then click the three-dot menu (**...**). If the collection only has one timeline, click the three-dot menu (**...**).
 3. Select **Edit timeline details**.
-4. Click on the red **Archive timeline and all events**.
+4. Click the red **Archive timeline and all events**.
 
 ### View archived events and timelines
 
@@ -102,12 +102,12 @@ To archive a timeline:
 
 To view (and resurrect) archived timelines and events:
 
-1. Click on the **Calendar** icon in the relevant collection.
-2. Click on the three-dot menu **...** menu.
+1. Click the **Calendar** icon in the relevant collection.
+2. Click the three-dot menu **...** menu.
 3. Select **View archived timelines**. Metabase will display archived events or timelines.
-4. If you want to unarchive an item, click on the three-dot menu **...** next to the event or timeline and select the **Unarchive** option.
+4. If you want to unarchive an item, click the three-dot menu **...** next to the event or timeline and select the **Unarchive** option.
 
-To permanently delete an archived event or timeline, click on the three-dot menu (**...**) and select **Delete**.
+To permanently delete an archived event or timeline, click the three-dot menu (**...**) and select **Delete**.
 
 Then you can delete the archived events from the **View archived events** modal, or timelines from the **View archived timelines** modal.
 

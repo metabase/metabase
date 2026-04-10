@@ -114,7 +114,7 @@ _\* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https:/
 
 To set a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **grid** icon > **Admin** > **Performance** > **Database caching**.
 
-Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
+Click the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
 
 ### Database caching policy
 
@@ -133,7 +133,7 @@ If you have databases connected to Metabase that are set to **Use default** poli
 To set a caching policy for a dashboard, you must have [curate access](../permissions/collections.md#curate-access) to the dashboard's collection.
 
 1. Go to your dashboard.
-2. Click on the **three dots** icon in the top-right corner of the dashboard and choose **Edit settings**.
+2. Click the **three dots** icon in the top-right corner of the dashboard and choose **Edit settings**.
 3. By default, each question will use the database default caching settings. Click the current caching policy to change it.
 4. Select the new [caching policy](#cache-invalidation-policies).
 5. Optional: turn on [refresh cache automatically](#refresh-cache-automatically)
@@ -147,7 +147,7 @@ To set a caching policy for a dashboard, you must have [curate access](../permis
 To set a caching policy for a question, you must have [curate access](../permissions/collections.md#curate-access) to the question's collection.
 
 1. Go to your question.
-2. Click on the three-dot menu **...** and select **Edit settings**.
+2. Click the three-dot menu **...** and select **Edit settings**.
 3. Under **Caching**, select the [caching invalidation policy](#cache-invalidation-policies).
 4. Optional: if you select a Duration or Schedule policy, you'll have the option to [refresh cache automatically](#refresh-cache-automatically).
 5. Save your changes.

@@ -36,7 +36,7 @@ In the [**native editor**](./writing-sql.md):
    - references to other snippets, like `{% raw %}{{snippet: orders}}{% endraw %}` (Metabase will detect and disallow circular references),
    - [references to saved questions or models](./referencing-saved-questions-in-queries.md), like `{% raw %}{{#123-orders-model}}{% endraw %}`.
 
-3. Right-click on the highlighted section and select **Save as snippet** to create a snippet.
+3. Right-click the highlighted section and select **Save as snippet** to create a snippet.
 
    ![Save a snippet](../images/save-snippet.png)
 
@@ -69,16 +69,16 @@ When you execute the query, behind the scenes Metabase replaces the snippet refe
 
 You can also just pick a snippet to insert from the snippet sidebar:
 
-1. Open the snippet sidebar by clicking on the **Snippets** button above the editor window.
+1. Open the snippet sidebar by clicking the **Snippets** button above the editor window.
    ![Open snippet sidebar](../images/snippet-button.png)
 2. Search for the snippet. Note that search results only include snippets that you have permissions to see.
-3. Hover over a snippet and click on the arrow to the left of snippet's name to insert it into your query.
+3. Hover over a snippet and click the arrow to the left of snippet's name to insert it into your query.
 
 If you use aliases in a snippet, you'll need to refer to those aliases in the larger query. For example, if a snippet aliases `products AS p`, code outside of the snippet will need to use the alias `p` to refer to columns in that table (as in `p.column_name`).
 
 ## Preview a query with snippets
 
-Metabase will keep the snippet as a reference and will not show you the full query - with snippet's code substituted - in the SQL editor itself. You can see the full query that Metabase will send to the database by clicking on the **Eye** icon above the editor.
+Metabase will keep the snippet as a reference and will not show you the full query - with snippet's code substituted - in the SQL editor itself. You can see the full query that Metabase will send to the database by clicking the **Eye** icon above the editor.
 
 ![Query preview](../images/query-preview.png)
 
@@ -90,7 +90,7 @@ Editing snippets is a great way to make changes to many questions at once. If, f
 
 To edit a snippet:
 
-1. Open the snippet sidebar by clicking on the **Snippet** icon above the editor window.
+1. Open the snippet sidebar by clicking the **Snippet** icon above the editor window.
 
 2. Search for the snippet. Search results only include snippets you have permission to edit.
 
@@ -110,12 +110,12 @@ When you archive a snippet, the snippet no longer populates in the snippet autoc
 
 To archive a snippet:
 
-1. Open the snippet sidebar by clicking on the **Snippet** icon above the editor window.
+1. Open the snippet sidebar by clicking the **Snippet** icon above the editor window.
 2. Search for the snippet.
 3. Click the **down arrow** to the right of the snippet name, then click **Edit**.
 4. Click **Archive**
 
-You can access an archived snippet from the snippet sidebar menu by clicking on the archived button in the bottom left of the sidebar.
+You can access an archived snippet from the snippet sidebar menu by clicking the archived button in the bottom left of the sidebar.
 
 Although there is no way to delete a snippet, you can archive and unarchive a snippet at any time.
 

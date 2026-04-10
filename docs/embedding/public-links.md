@@ -15,7 +15,7 @@ Admins can create and share public links (URLs) for questions, dashboards, and d
 
 ![Create a public link for a question](./images/create-a-public-link.png)
 
-To create a public link for a question, admins can click on the **Sharing** icon at the top right of a question and select **Create a public link**. Copy the link and test it out by viewing the link in a private/incognito browser session.
+To create a public link for a question, admins can click the **Sharing** icon at the top right of a question and select **Create a public link**. Copy the link and test it out by viewing the link in a private/incognito browser session.
 
 ## Public link to export question results in CSV, XLSX, JSON
 
@@ -23,9 +23,9 @@ This export option is only available for questions, not dashboards.
 
 To create a public link that people can use to download the results of a question:
 
-1. Click on the **Sharing** icon for the question.
+1. Click the **Sharing** icon for the question.
 2. Select **Create a public link**.
-3. Click on the file format you want (below the **Public link** URL): CSV, XLSX, or JSON.
+3. Click the file format you want (below the **Public link** URL): CSV, XLSX, or JSON.
 
 ![Public export](./images/public-export.png)
 
@@ -33,7 +33,7 @@ Open the public link in a new tab to test the download.
 
 ## Create a public link for a dashboard
 
-To share a dashboard via a public link, admins can click on the **Sharing** button in the top right menu.
+To share a dashboard via a public link, admins can click the **Sharing** button in the top right menu.
 
 ![Sharing a dashboard](./images/dashboard-sharing.png)
 
@@ -41,7 +41,7 @@ To embed a dashboard, see [guest embedding](./guest-embedding.md).
 
 ## Create a public link for a document
 
-To share a document via a public link, admins can click on the **Sharing** button in the top right menu and select **Create a public link**.
+To share a document via a public link, admins can click the **Sharing** button in the top right menu and select **Create a public link**.
 
 Public documents are read-only: viewers cannot edit the content or add comments. For charts embedded in the document, viewers can download the results in CSV, XLSX, or JSON format using the **Download results** option in the chart menu.
 
@@ -86,9 +86,9 @@ For example, if you have a primary public dashboard that displays **Invoices** d
 
 If you want to embed your question or dashboard as an iframe in a simple web page or app:
 
-1. Click on the **Sharing** icon for your question or dashboard.
+1. Click the **Sharing** icon for your question or dashboard.
 2. Click **Embed**.
-3. In the bottom of the embedding popup, click on **Get embedding code**.
+3. In the bottom of the embedding popup, click **Get embedding code**.
 4. Copy the iframe snippet Metabase generates for you.
 5. Paste the iframe snippet in your destination of choice.
 
@@ -170,7 +170,7 @@ If you disable public sharing, then re-enable public sharing, all your previousl
 ### Individual question or dashboard links and embeds
 
 1. Visit the question or dashboard.
-2. Click on **Sharing** icon.
+2. Click **Sharing** icon.
 3. Select **Public link** or **Embed**.
 4. Click **Remove public link**.
 
@@ -182,7 +182,7 @@ Admins can view and deactivate all public links for a Metabase.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
 4. Go to the **Public sharing** tab in the left sidebar.
-5. For each item you want to deactivate, click on the **X** to revoke its public link.
+5. For each item you want to deactivate, click the **X** to revoke its public link.
 
 ## See all publicly shared content
 

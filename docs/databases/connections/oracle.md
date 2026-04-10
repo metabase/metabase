@@ -58,7 +58,7 @@ If you've configured your database to require mutual TLS (mTLS), you'll need a [
 
 1. Go to your Oracle Autonomous Database.
 2. Go to the database's details.
-3. Click on **DB connection**.
+3. Click **DB connection**.
 4. Download the wallet.
 5. Create a password for the keyfile.
 6. Copy the `keystore.jks` file to wherever you store your Metabase configuration data.

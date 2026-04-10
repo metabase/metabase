@@ -63,7 +63,7 @@ If you need to set additional user properties, you can always return to this ste
 
 ## Configuring Metabase
 
-Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab and then configure in Metabase (column on the left) the values that this tab provides (column on the right).
+Next, in the Auth0 Addon: SAML2 Web App popup, click the **Usage** tab and then configure in Metabase (column on the left) the values that this tab provides (column on the right).
 
 ![Auth0 SAML usage](images/auth0samlusage.png)
 

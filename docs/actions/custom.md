@@ -13,7 +13,7 @@ Write SQL to update records in your databases.
 > You must be in a group with Native query editing access to create an action.
 
 1. First, [create a model](../data-modeling/models.md).
-2. Visit the model and click on the **info** button.
+2. Visit the model and click the **info** button.
 3. Click the **Actions** tab.
 
 In the action editor, you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table. See [Example actions](#example-custom-actions).
@@ -22,7 +22,7 @@ In the action editor, you can write your own code to create an action, like writ
 
 For each {% raw %}{{ variable }}{% endraw %} that you set in an action, you'll need to set the field type.
 
-Each of these variable field types present different options. Click on the gear icon to change options.
+Each of these variable field types present different options. Click the gear icon to change options.
 
 If you don't require a variable, you can optionally specify a default value for Metabase to use in cases where people don't fill out the field. In the SQL code, remember to enclose any optional variables and commas in brackets, like `{% raw %}[[, column = {{ optional_variable }}]] {% endraw %}`.
 
@@ -58,7 +58,7 @@ The appearance tab in the action editor modal will display a preview of the vari
 
 ## Action settings
 
-From the model detail page, click on the **three dot menu** (...) next to the action. Once in the action editor, click on the **gear** icon to bring up the action settings.
+From the model detail page, click the **three dot menu** (...) next to the action. Once in the action editor, click the **gear** icon to bring up the action settings.
 
 ### Make public
 

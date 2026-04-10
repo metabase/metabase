@@ -16,7 +16,7 @@ See [authenticating with SAML](./authenticating-with-saml.md) for general SAML i
 
 ## Turn on SAML-based SSO in Metabase
 
-In the **Admin**>**Settings** section of the Admin area, go to the **Authentication** tab and click on **Set up** under **SAML**.
+In the **Admin** > **Settings** section, go to the **Authentication** tab and click **Set up** under **SAML**.
 
 You'll see a SAML configuration form like this:
 
@@ -113,7 +113,7 @@ Once you set up your SAML app in Okta, you'll need to configure SAML in Metabase
 
 1. In Okta, go to the page for your Metabase app integration.
 2. Go to the **Sign On** tab.
-3. Click on **View SAML setup instructions**.
+3. Click **View SAML setup instructions**.
 
 Use the information from Okta SAML instructions to fill the Metabase SAML form in **Admin panel** > **Authentication** > **SAML**:
 

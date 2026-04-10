@@ -30,8 +30,8 @@ You can link a child filter to one or more parent filters. The child filter must
 
 To link a child filter on a dashboard to one or more parent filters:
 
-1. Edit the dashboard by clicking on the pencil icon in the top right of the dashboard.
-2. Edit the child filter by clicking on the gear icon in the filter.
+1. Edit the dashboard by clicking the pencil icon in the top right of the dashboard.
+2. Edit the child filter by clicking the gear icon in the filter.
 3. In the filter settings sidebar, switch to **Linked filters** tab.
 4. Select the parent filter(s).
 

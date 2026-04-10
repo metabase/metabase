@@ -22,7 +22,7 @@ To create the HAR file, follow the instructions for your web browser:
 2. In Developer tools, switch to the **Network** tab.
    The network log recording should start automatically.
 
-3. Click on the small **gear icon** in the top bar of the developer tools to open Settings. Scroll down to the **Network** section and enable **Allow to generate HAR files with sensitive data**
+3. Click the small **gear icon** in the top bar of the developer tools to open Settings. Scroll down to the **Network** section and enable **Allow to generate HAR files with sensitive data**
 
    ![Developer tools Networks settings with the option highlighted to Allow to generate HAR files with sensitive data](images/chrome-har-settings.png)
 
@@ -50,4 +50,4 @@ To create the HAR file, follow the instructions for your web browser:
 
 4. With the Network tab open and recording in progress, repeat the steps to reproduce the issue.
 
-5. Once you're finished reproducing the issue, click on **Export** in the top right of the Network tab.
+5. Once you're finished reproducing the issue, click **Export** in the top right of the Network tab.

@@ -20,7 +20,7 @@ Admins can verify items to let others know that the content is accurate and up t
 
 ## Verifying items
 
-To verify an item, an admin can click on the three-dot menu (**...**) in the upper right when viewing that item and select: **Verify this item**.
+To verify an item, an admin can click the three-dot menu (**...**) in the upper right when viewing that item and select: **Verify this item**.
 
 ![Verify this dashboard](./images/verify-this-dashboard.png)
 
@@ -29,7 +29,7 @@ To verify an item, an admin can click on the three-dot menu (**...**) in the upp
 To remove verification from an item, admins can:
 
 1. Visit the item.
-2. Click on the three-dot menu (**...**).
+2. Click the three-dot menu (**...**).
 3. Select **remove verification**.
 
 ## Changes to queries require re-verification

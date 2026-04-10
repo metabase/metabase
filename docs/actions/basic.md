@@ -12,9 +12,9 @@ If you only want to give people the option to update a subset of columns, or upd
 
 Once actions are enabled, you can create basic actions on a new or existing [model](../data-modeling/models.md) that only wraps a single database table.
 
-1. Select a model and click on the **info** button, then click on **Model detail**.
-2. On the model detail page, click on the **Actions** tab.
-3. Click on the **...** next to the **New Action** and select **Create basic actions**.
+1. Select a model and click the **info** button, then click **Model detail**.
+2. On the model detail page, click the **Actions** tab.
+3. Click the **...** next to the **New Action** and select **Create basic actions**.
 
 ### Basic action limitations
 
@@ -58,11 +58,11 @@ See [Actions in dashboards](../dashboards/actions.md).
 
 ## Archiving basic actions
 
-Because basic actions are made of magic, you cannot archive them. You can just toggle them on or off. From the model detail page, next to the **New action** button, click on the **...** menu and click **Disable basic actions**.
+Because basic actions are made of magic, you cannot archive them. You can just toggle them on or off. From the model detail page, next to the **New action** button, click the **...** menu and click **Disable basic actions**.
 
 ## Basic actions from object detail view
 
-If you have basic actions enabled for a model, you can click on an individual record to view its object detail. From that object detail modal, you can click on the ellipses (**...**) and select update or delete to modify that specific record.
+If you have basic actions enabled for a model, you can click an individual record to view its object detail. From that object detail modal, you can click the ellipses (**...**) and select update or delete to modify that specific record.
 
 ![Update record from object detail view](./images/update-record.png)
 

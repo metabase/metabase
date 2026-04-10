@@ -25,7 +25,7 @@ If you're using a [custom domain](./custom-domain.md), that region change could 
 
 ## Select a region
 
-To change regions, go to your [Metabase Store page](https://store.metabase.com/) and click on **Instances**. In the **Hosting regions** section, select the region you want to choose from:
+To change regions, go to your [Metabase Store page](https://store.metabase.com/) and click **Instances**. In the **Hosting regions** section, select the region you want to choose from:
 
 - US East (North Virginia)
 - Europe (Frankfurt)

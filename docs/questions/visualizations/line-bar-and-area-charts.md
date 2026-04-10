@@ -32,7 +32,7 @@ See [Combo charts](./combo-chart.md).
 
 ![Histogram](../images/histogram.png)
 
-By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
+By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking the area to the right of the column you're grouping by:
 
 ![Binning options](../images/histogram-bins.png)
 
@@ -171,11 +171,11 @@ You can change the color and label for each series and reorder them in [data set
 You can use the legend to:
 
 - Highlight a series, by hovering over the name of the series in the legend.
-- Hide the series, by clicking on the color circle for the series.
+- Hide the series, by clicking the color circle for the series.
 
 To permanently hide the series from the chart, use the [data settings](#data-settings).
 
-- Drill down to individual records for aggregated series, by clicking on the series name.
+- Drill down to individual records for aggregated series, by clicking the series name.
 
 Currently, you can't hide the legend or change its position on the chart.
 

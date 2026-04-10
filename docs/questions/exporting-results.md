@@ -11,7 +11,7 @@ You can export the results of a question or dashboard.
 
 ## Exporting results of a question
 
-To export the results of a question, click on the **Download** button in the lower right of a question.
+To export the results of a question, click the **Download** button in the lower right of a question.
 
 ![Exporting results of a question](./images/exporting-the-results-of-a-question.png)
 
@@ -77,7 +77,7 @@ You can download results from charts embedded in [documents](../documents/introd
 To export results from a chart in a document:
 
 1. Hover over the chart in the document.
-2. Click on the three dot menu (**...**).
+2. Click the three dot menu (**...**).
 3. Select **Download results**.
 4. Choose your format: .csv, .xlsx, or .json.
 
@@ -103,7 +103,7 @@ You can export the results of a dashboard and its cards in different ways:
 
 ### Export dashboard as PDF
 
-You can export a dashboard as a PDF. Click on the **Sharing** button, then select **Export as PDF**.
+You can export a dashboard as a PDF. Click the **Sharing** button, then select **Export as PDF**.
 
 ![Exporting a dashboard as a PDF](./images/export-dashboard-as-pdf.png)
 
@@ -111,7 +111,7 @@ The PDF will only include screenshots of the charts as they are visible on the d
 
 ### Exporting results of a dashboard card
 
-To export the results of a particular card, hover over the dashboard card, click on the three dot menu (**...**), and select **Download results**.
+To export the results of a particular card, hover over the dashboard card, click the three dot menu (**...**), and select **Download results**.
 
 ![Export results of a dashboard card](./images/download-card-results.png)
 
@@ -122,7 +122,7 @@ From here you can select:
 - .json
 - .png (if a chart)
 
-To export the raw, unformatted results, hold down the `Option` key for Macs, or `Alt` key for Windows, then click on the download file format.
+To export the raw, unformatted results, hold down the `Option` key for Macs, or `Alt` key for Windows, then click the download file format.
 
 If you don't see this option, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
 

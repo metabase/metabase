@@ -20,7 +20,7 @@ Before setting up SAML, make sure you know the password for your Metabase admin 
 
 ## Setting up SAML with your IdP in Metabase
 
-Once you've [confirmed the password to your Metabase admin account](#confirm-the-password-for-your-metabase-admin-account), head over to the **Settings** section of the Admin Panel, then click on the **Authentication** tab. Click the **Set up** button in the SAML section of the Authentication page, and you'll see this form:
+Once you've [confirmed the password to your Metabase admin account](#confirm-the-password-for-your-metabase-admin-account), head over to the **Settings** section of the Admin Panel, then click the **Authentication** tab. Click the **Set up** button in the SAML section of the Authentication page, and you'll see this form:
 
 ![SAML form](images/saml-form.png)
 

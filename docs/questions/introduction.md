@@ -13,7 +13,7 @@ Questions in Metabase are queries, their results, and their visualization. Quest
 
 ## Creating a new question
 
-You can create a new question from scratch, or build off of an existing question. To create a question from scratch click on **+ New** and select how you want to query your data:
+You can create a new question from scratch, or build off of an existing question. To create a question from scratch click **+ New** and select how you want to query your data:
 
 - **+ New > Question** to create a question using the graphical query builder. See [Query builder](../questions/query-builder/editor.md).
   ![Query builder editor](./images/editor.png)
@@ -58,7 +58,7 @@ You can move the question from a collection into a dashboard if either:
 
 ## Info about your question
 
-Once you save a question, you can click on the **info** icon in the upper right to see some metadata about your question:
+Once you save a question, you can click the **info** icon in the upper right to see some metadata about your question:
 
 ![Info sidesheet](./images/info-sidesheet.png)
 

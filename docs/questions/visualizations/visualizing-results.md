@@ -16,7 +16,7 @@ The query builder will automatically select an appropriate chart to visualize yo
 
 ### Visualizing questions in the query builder
 
-To visualize results of a question built in the [query builder](../query-builder/editor.md), click on the **Visualize** button under the last query builder step. Metabase will select a chart type most appropriate for your data, but you can [change the visualization type](#change-visualization-type). You can also toggle between the visualization and the table of results.
+To visualize results of a question built in the [query builder](../query-builder/editor.md), click the **Visualize** button under the last query builder step. Metabase will select a chart type most appropriate for your data, but you can [change the visualization type](#change-visualization-type). You can also toggle between the visualization and the table of results.
 
 You can switch between the visualization view and the query builder using the **Visualization**/**Editor** button in the top right.
 
@@ -24,7 +24,7 @@ You can switch between the visualization view and the query builder using the **
 
 ### Visualizing native questions
 
-To visualize results of a native query, click on the **Visualization** button in the bottom of the screen and select a visualization type.
+To visualize results of a native query, click the **Visualization** button in the bottom of the screen and select a visualization type.
 
 ![Visualize a native query](../images/visualize-native.png)
 
@@ -32,7 +32,7 @@ As long as the shape of the native query results is appropriate for the chart ty
 
 ## Change visualization type
 
-To change how the answer to your question is displayed, click on the **Visualization** button in the bottom-left of the screen to open the visualization sidebar.
+To change how the answer to your question is displayed, click the **Visualization** button in the bottom-left of the screen to open the visualization sidebar.
 
 ![Visualization options](../images/VisualizeChoices.png)
 
@@ -44,7 +44,7 @@ Not sure which visualization type to use? Check out [Which chart should you use?
 
 ![Options for a chart](../images/viz-options.png)
 
-Each visualization type has its own advanced options. To change the settings for a specific chart, for example a row chart, click on the **Gear** button in the bottom left.
+Each visualization type has its own advanced options. To change the settings for a specific chart, for example a row chart, click the **Gear** button in the bottom left.
 
 ## Area charts
 
@@ -172,7 +172,7 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 ![Chart formatting options](../images/chart-formatting-options.png)
 
-You can access formatting options for the columns used in a chart. Just open the visualization settings by clicking on the **Gear** icon in bottom left.
+You can access formatting options for the columns used in a chart. Just open the visualization settings by clicking the **Gear** icon in bottom left.
 
 Options differ depending on the chart, and can include settings for the chart's data, its display, and its axes.
 

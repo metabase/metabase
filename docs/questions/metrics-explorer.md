@@ -29,7 +29,7 @@ To open a **metric** in the Metrics Explorer:
 
 1. Navigate to the metric's home page.
 
-   To get to the metric's home page, you can click on a metric from its collection, from the [metrics browser](../data-modeling/metrics.md#see-all-metrics), or from search.
+   To get to the metric's home page, you can click a metric from its collection, from the [metrics browser](../data-modeling/metrics.md#see-all-metrics), or from search.
 
 2. Click **Explore** in the top right corner to open the metrics explorer
 
@@ -51,7 +51,7 @@ Metabase will automatically detect shared dimensions and offer them for comparis
 
 If your metrics/measures don't have shared dimensions, you'll need to select a dimension for comparison:
 
-1. Click on the **+** under the search bar to select a dimension for the first metric/measure.
+1. Click the **+** under the search bar to select a dimension for the first metric/measure.
 
    ![Pick first dimension](./images/pick-first-dimension.png)
 
@@ -67,14 +67,14 @@ You can also break out each metric by additional dimensions. For example, you mi
 
 To break out a metric or measure by additional dimensions:
 
-1. Right-click on the metric's card in the search bar.
+1. Right-click the metric's card in the search bar.
 2. Select **Break out**
    ![Break out by](./images/break-out-metric.png)
 3. Choose the breakout dimension.
 
 ![Break out](./images/breakout-chart-explorer.png)
 
-To remove the breakout, right-click on the measure/metric card again and select **Remove breakout**
+To remove the breakout, right-click the measure/metric card again and select **Remove breakout**
 
 ## Filter metrics and measures
 

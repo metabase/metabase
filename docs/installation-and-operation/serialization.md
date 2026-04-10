@@ -265,7 +265,7 @@ Metabase assigns a unique Entity ID to every Metabase item (a dashboard, questio
 To get an item's Entity ID in Metabase:
 
 1. Visit the item in Metabase.
-2. Click on the info button.
+2. Click the info button.
 3. In the overview tab, copy the Entity ID.
 
 You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:

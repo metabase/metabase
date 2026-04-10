@@ -9,8 +9,8 @@ redirect_from:
 
 People all around the world use Metabase, and everyone has different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase lets you customize these formatting options at three different levels:
 
-1. **Global**. Set global defaults in Admin -> Settings -> [Localization](../configuring-metabase/localization.md).
-2. **Field**. Set field (column) defaults in Admin -> Table Metadata. Field defaults override global defaults.
+1. **Global**. Set global defaults in **Admin** > **Settings** > [Localization](../configuring-metabase/localization.md).
+2. **Field**. Set field (column) defaults in **Admin** > **Table Metadata**. Field defaults override global defaults.
 3. **Question**. Set formatting defaults for individual questions in the visualization settings of that question. Question defaults override global and field defaults.
 
 ## Field formatting
@@ -47,7 +47,7 @@ If you have text, like an image URL, you may need to change the semantic type be
 https://www.google.com/search?q={% raw %}{{adjective}}{% endraw %}
 ```
 
-When someone clicks on the value "askew" in the "Adjective" column, they'll be taken to the Google search URL:
+When someone clicks the value "askew" in the "Adjective" column, they'll be taken to the Google search URL:
 
 ```
 https://www.google.com/search?q=askew
@@ -170,7 +170,7 @@ See [Currency formatting options](../questions/visualizations/table.md#currency-
 
 ## Question-level formatting
 
-You can also override all formatting settings in any specific saved question or dashboard card by clicking on the gear to open the visualization options. To reset any overridden setting to the default, just click on the rotating arrow icon next to the setting's label. This will reset the setting to the field-level setting if there is one; otherwise it will be reset to the global default.
+You can also override all formatting settings in any specific saved question or dashboard card by clicking the gear to open the visualization options. To reset any overridden setting to the default, just click the rotating arrow icon next to the setting's label. This will reset the setting to the field-level setting if there is one; otherwise it will be reset to the global default.
 
 Formatting options vary depending on the type of visualization:
 

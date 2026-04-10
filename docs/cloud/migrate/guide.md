@@ -34,7 +34,7 @@ You'll kick off the migration process in your self-hosted Metabase, and finish u
 
 In your Metabase, go to **Admin** > **Settings** > **Cloud**.
 
-In the **Migrate to Metabase Cloud** section, click on the **Get started** button.
+In the **Migrate to Metabase Cloud** section, click the **Get started** button.
 
 ![Migrate to Metabase Cloud button](../images/migrate-button.png)
 
@@ -50,7 +50,7 @@ Once the snapshot upload completes:
 
 ### Set up your account and choose your plan and deployment
 
-While Metabase is prepping the migration, click on the **Go to Metabase Store** button to sign in to or set up your account.
+While Metabase is prepping the migration, click the **Go to Metabase Store** button to sign in to or set up your account.
 
 Choose your plan: [Starter](https://www.metabase.com/product/starter) or [Pro](https://www.metabase.com/product/pro). You can choose monthly or annual billing (annual will save you 10%).
 

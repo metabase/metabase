@@ -39,7 +39,7 @@ You'll also have the option to **Use a secure connection (SSL)**. Enable SSL and
 
 ### Using a connection string
 
-If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/), click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
+If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/), click **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
 
 Metabase currently does NOT support the following connection string parameters:
 
@@ -47,7 +47,7 @@ Metabase currently does NOT support the following connection string parameters:
 - `tlsCertificateKeyFilePassword`
 - `tlsCAFile`
 
-If you need to use a certificate, connect via the [default method](#using-metabase-fields) and enable **Use a secure connection(SSL)**.
+If you need to use a certificate, connect via the [default method](#using-metabase-fields) and enable **Use a secure connection (SSL)**.
 
 ### Settings common to both connection options
 
@@ -82,9 +82,9 @@ If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP add
 
    ![Connect screengrab](../images/connection-string.png)
 
-5. In Metabase, go to Admin -> Databases, and click the **Add database** button.
+5. In Metabase, go to **Admin** > **Databases**, and click the **Add database** button.
 6. Select MongoDB from the dropdown, and enter a **Display name** for this database.
-7. Click on **"Paste the connection string"** and paste your connection string.
+7. Click **"Paste the connection string"** and paste your connection string.
 8. Edit the connection string to include the name of the database after `/`:
 
    ```

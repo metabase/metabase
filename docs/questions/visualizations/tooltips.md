@@ -24,7 +24,7 @@ You can display the summarizations like so, with both the count and average on t
 
 Or you could display one of the metrics on the chart, and include the other metric(s) in the tooltip. To do this, remove one of the metrics from the chart by going to the **Data** tab in the visualization settings and clicking the X on the metric(s) you want to remove.
 
-Removing a metric will give you the option to add it as an additional metric to the tooltip. In the visualization settings, click on the **Display** tab, and add **Additional tooltip metrics**. Only metrics included in the summarization step of the question are available to add to the tooltip.
+Removing a metric will give you the option to add it as an additional metric to the tooltip. In the visualization settings, click the **Display** tab, and add **Additional tooltip metrics**. Only metrics included in the summarization step of the question are available to add to the tooltip.
 
 ![Add additional tooltip metrics from the display tab. Only available when your chart has multiple metrics](../images/metrics-in-tooltip.png)
 

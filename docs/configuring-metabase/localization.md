@@ -12,7 +12,7 @@ Admins can update the localization settings for the instance:
 
 1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
-3. In the **Settings** tab, click on **Localization** in the left sidebar.
+3. In the **Settings** tab, click **Localization** in the left sidebar.
 
 These localization settings allow you to set global language and formatting defaults for dates, times, numbers, and currencies.
 

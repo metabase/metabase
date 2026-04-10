@@ -34,7 +34,7 @@ To find items in Trash, you can use [advanced search](./exploration.md) with a "
 To move an item (question, dashboard, model, or collection) to Trash:
 
 1. Go to the question you want to delete;
-2. Click on the three dots menu;
+2. Click the three dots menu;
 3. Select "Move to trash".
 
 When a collection is moved to the trash, Metabase moves all items in the collection to the trash as well.
@@ -51,7 +51,7 @@ To restore an item:
 
 1. Go to Trash;
 2. Find the item you'd like to delete. You can sort deleted items to make it easier to find the item, or [search for your question in Trash](#search-in-trash);
-3. Click on the checkbox next to the item to select it;
+3. Click the checkbox next to the item to select it;
 4. Select "Restore".
 
 > Restoring a collection will also restore all the items from that collection.
@@ -115,7 +115,7 @@ To permanently delete an item:
 
 1. Go to Trash;
 2. Find the item you'd like to delete;
-3. Click on the checkbox next to the item to select it;
+3. Click the checkbox next to the item to select it;
 4. Select "Permanently delete". If you click this button, you won't be able to recover the item. It'll be lost to the void.
 
 > You can't permanently delete collections.

@@ -77,13 +77,13 @@ You can configure Metabase to automatically assign people to Metabase groups bas
 
 In your Keycloak client:
 
-1. Click on **Client Scopes** tab
-2. Click on the **metabase-dedicated** client scope that has been created already.
-3. Click on **Add Mapper > "By Configuration**.
+1. Click **Client Scopes** tab
+2. Click the **metabase-dedicated** client scope that has been created already.
+3. Click **Add Mapper > "By Configuration**.
 4. Select **Group list**.
 5. Change the name of the attribute to `member_of`.
 6. Deselect the option to use the "Full group path" (so it's easier to configure in Metabase later).
-7. Click on **Save**.
+7. Click **Save**.
 
 ### Set up group mapping in Metabase
 

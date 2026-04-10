@@ -12,7 +12,7 @@ If your work in Metabase is crashing, missing, or not being saved, you might hav
 
 1. Go to the [Metabase GitHub issues page](https://github.com/metabase/metabase/issues).
 
-2. Click on the **Label** dropdown and select `Type: Bug`.
+2. Click the **Label** dropdown and select `Type: Bug`.
 
    > If you're encountering problems after your Metabase version was recently upgraded, you can add the label `.Regression`.
 
@@ -32,7 +32,7 @@ If the functionality you're looking for simply doesn't exist (i.e., it hasn't su
 
 1. Go to the [Metabase GitHub issues page](https://github.com/metabase/metabase/issues).
 
-2. Click on the **Label** dropdown and select `Type: New Feature`.
+2. Click the **Label** dropdown and select `Type: New Feature`.
 
 3. Choose at least one value in the **Label** dropdown that matches the feature you're looking for.
 

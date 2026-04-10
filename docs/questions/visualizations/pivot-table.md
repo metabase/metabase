@@ -36,9 +36,9 @@ To create a pivot table, you'll need to use the query builder. Currently, you ca
 
    ![Pivot table notebook](../images/pivot-table-notebook.png)
 
-2. Click on **Visualize**.
-3. To change the visualization to the pivot table, click on the **Visualization** icon in the bottom left and select **Pivot table** in the sidebar.
-4. To configure fields displayed as rows and columns in the pivot table, click on the **gear** icon and assign fields to one of three "buckets": **rows**, **columns** or **measures**.
+2. Click **Visualize**.
+3. To change the visualization to the pivot table, click the **Visualization** icon in the bottom left and select **Pivot table** in the sidebar.
+4. To configure fields displayed as rows and columns in the pivot table, click the **gear** icon and assign fields to one of three "buckets": **rows**, **columns** or **measures**.
 
    - **Rows** and **Columns** should contain the dimensions, or breakouts - in other words, the fields you're grouping by, like `Category` or `Created at`.
    - **Measures** should contain your summaries, or metrics - things like `Count` or `Average of Total`.
@@ -55,9 +55,9 @@ Where it makes sense, Metabase will automatically include subtotals for grouped 
 
 ![Pivot table options](../images/pivot-table-options.png)
 
-For example, as in the image above, because we've grouped our rows first by `Source`, then by `Plan`, Metabase will list each plan for each `Source`, and then aggregate the metric(s) for that source..
+For example, as in the image above, because we've grouped our rows first by `Source`, then by `Plan`, Metabase will list each plan for each `Source`, and then aggregate the metric(s) for that source.
 
-To collapse a group on a pivot table, you can click on the minus (–) button next to the group's heading (or the plus (+) button to expand it). When you save a pivot table, Metabase will remember which groups were expanded and which were collapsed.
+To collapse a group on a pivot table, you can click the minus (–) button next to the group's heading (or the plus (+) button to expand it). When you save a pivot table, Metabase will remember which groups were expanded and which were collapsed.
 
 You can ask Metabase to hide the totals by going to pivot table settings (**gear** icon) and toggling off "Show row/column totals".
 

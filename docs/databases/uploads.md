@@ -46,7 +46,7 @@ For more, check out:
 
 If Metabase is connected to a database using a database user account with write access, Admins can enable uploads by:
 
-- Clicking on the **grid** icon in the upper right on the home page and navigating to **Admin** > **Settings** > **Uploads**.
+- Clicking the **grid** icon in the upper right on the home page and navigating to **Admin** > **Settings** > **Uploads**.
 - Selecting the database Metabase should use to store the data.
 
 When people upload a CSV to a collection, Metabase will:

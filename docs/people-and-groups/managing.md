@@ -14,7 +14,7 @@ People can have [accounts](#creating-an-account) in Metabase, and those accounts
 
 To start managing people and groups:
 
-Hit Cmd/Ctrl + K to bring up the command palette and search for "People". Click on the **People** settings result.
+Hit Cmd/Ctrl + K to bring up the command palette and search for "People". Click the **People** settings result.
 
 Or
 
@@ -24,11 +24,11 @@ Click the **grid** icon > **Admin** > **People**. You'll see a list of all the p
 
 ## Creating an account
 
-Admins can add people to their Metabase. To add a new person manually, click on the grid icon and select **Admin**. Under the **People** tab, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
+Admins can add people to their Metabase. To add a new person manually, click the grid icon and select **Admin**. Under the **People** tab, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
 
 Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](../cloud/how-billing-works.md)).
 
-If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
+If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet set up email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
 
 To create accounts with SSO, check out [authentication options](./start.md#authentication).
 
@@ -61,13 +61,13 @@ You can also employ user attributes to specify what database role Metabase shoul
 
 ## Deactivating an account
 
-To deactivate someone's account, click on the three dots icon on the right of a person’s row and select **Deactivate** from the dropdown. Deactivating an account will mark it as inactive and prevent the user from logging in - but it _won’t_ delete that person's saved questions or dashboards.
+To deactivate someone's account, click the three dots icon on the right of a person’s row and select **Deactivate** from the dropdown. Deactivating an account will mark it as inactive and prevent the user from logging in - but it _won’t_ delete that person's saved questions or dashboards.
 
 If you're using SSO, you should deactivate the account in Metabase as well as your IdP (that is, deactivation doesn't get applied from Metabase to your IdP, and vice versa).
 
 ![Remove a user](images/RemoveUser.png)
 
-To reactivate a deactivated account, click the **Deactivated** radio button at the top of the people list to see the list of deactivated accounts. Click on the icon on the far right to reactivate that account, allowing them to log in to Metabase again.
+To reactivate a deactivated account, click the **Deactivated** radio button at the top of the people list to see the list of deactivated accounts. Click the icon on the far right to reactivate that account, allowing them to log in to Metabase again.
 
 ## Deleting an account
 
@@ -162,7 +162,7 @@ To determine [who has access to what](../permissions/start.md), you’ll need to
 - Then add people to those groups.
 - (Optional) promote people to [group managers](#group-managers).
 
-To view and manage your groups, go to the **Admin Panel** > **People** tab, and then click on **Groups** from the side menu.
+To view and manage your groups, go to the **Admin Panel** > **People** tab, and then click **Groups** from the side menu.
 
 ![Groups](images/groups.png)
 
@@ -208,7 +208,7 @@ To remove a group, click the X icon to the right of a group in the list to remov
 
 To add people to that group, click into a group and then click **Add members**.
 
-To remove someone from that group, click on the **X** to the right of the group member.
+To remove someone from that group, click the **X** to the right of the group member.
 
 You can also add or remove people from groups from the **People** list using the dropdown in the **Groups** column.
 
@@ -233,7 +233,7 @@ To promote someone to become a group manager:
 
 1. At the top right of the screen, click the **grid** icon > **Admin** > **People** > **Groups**.
 2. Select the group you want the person to manage. If the person isn't already in the group, you'll need to add that person to the group.
-3. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click on the down arrow.
+3. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click the down arrow.
 
 ## Further reading
 

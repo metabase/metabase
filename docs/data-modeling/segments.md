@@ -31,7 +31,7 @@ Once you’re done, click **Save changes**. Now your new segment will appear in 
 
 ![Finished segment](images/FinishedSegment.png)
 
-If you exit the Admin Panel and try asking a new question, then click on the button to add a filter, you’ll see your segment at the top of the list.
+If you exit the Admin Panel and try asking a new question, then click the button to add a filter, you’ll see your segment at the top of the list.
 
 ![Segment in dropdown](images/Segment.png)
 

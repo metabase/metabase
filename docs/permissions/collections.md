@@ -58,11 +58,11 @@ In general, it's easier to manage permissions when keeping all of a dashboard's 
 
 ## Setting permissions for collections
 
-You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
+You can set permissions on collections by clicking the lock icon in the top-right of the screen while viewing the collection and clicking **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
 
 ![Permissions](./images/collection-permissions.png)
 
-If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says **See all collection permissions**, which takes you to the Admin Panel. You'll see a list of your collections down along the left, and clicking on any of those will bring up a list of each group's permission settings for that collection.
+If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says **See all collection permissions**, which takes you to the Admin Panel. You'll see a list of your collections down along the left, and clicking any of those will bring up a list of each group's permission settings for that collection.
 
 ![Collection Permissions](./images/admin-panel-collections.png)
 
@@ -100,7 +100,7 @@ See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 Each person has a personal collection where they're always allowed to save things, even if they don't have Curate permissions for any other collections.
 
-Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking on the **Other users' personal collections** link at the bottom of the sidebar when viewing "Our analytics".
+Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking the **Other users' personal collections** link at the bottom of the sidebar when viewing "Our analytics".
 
 A personal collection works just like any other collection except that its permissions are fixed and cannot be changed. If a sub-collection within a personal collection is moved to a different collection, the sub-collection will inherit the permissions of its new parent collection.
 

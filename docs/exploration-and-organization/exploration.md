@@ -55,7 +55,7 @@ The left sidebar lists your databases, [models](../data-modeling/models.md), and
 
 [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to filter for [verified models and metrics](./content-verification.md).
 
-The database browser will list all the databases connected to your Metabase. Hover over a table and click on the **bolt** icon to [X-ray](x-rays.md) the table, or click on the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
+The database browser will list all the databases connected to your Metabase. Hover over a table and click the **bolt** icon to [X-ray](x-rays.md) the table, or click the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
 
 To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
 
@@ -78,11 +78,11 @@ Collections have a list of any other items that are saved within them, and you c
 
 [Dashboards][dashboards] are a set of questions and text cards that you want to be able to refer to regularly.
 
-If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see the **Action menu**, with actions you can take to dive deeper into that result, branch off from it in a different direction, or see automatic insights to [X-ray](x-rays.md) the data.
+If you click a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see the **Action menu**, with actions you can take to dive deeper into that result, branch off from it in a different direction, or see automatic insights to [X-ray](x-rays.md) the data.
 
 ![Drill-through menu](images/automatic-insights.png)
 
-In this example of orders by product category per month, clicking on a data point on this line chart gives us the ability to:
+In this example of orders by product category per month, clicking a data point on this line chart gives us the ability to:
 
 - **See these Orders**: See a list of the orders for a particular month.
 - **See this month by week**.
@@ -92,19 +92,19 @@ In this example of orders by product category per month, clicking on a data poin
 
 > Note that while charts created with SQL currently only have [limited drill-through menu](../questions/native-editor/writing-sql.md#drill-through-in-sql-questions), you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering).
 
-Clicking on a table cell will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click on a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
+Clicking a table cell will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
 
 ![Comparison operator filters](images/comparison-operator-filters.png)
 
-Lastly, clicking on the ID of an item in a table gives you the option to go to a [detail view](#view-details-of-a-record) for that single record. For example, you can click on a customer's ID to see the profile view for that customer.
+Lastly, clicking the ID of an item in a table gives you the option to go to a [detail view](#view-details-of-a-record) for that single record. For example, you can click a customer's ID to see the profile view for that customer.
 
 ![Detail view](images/detail-view.png)
 
-When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default drill-through menu, you can add a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) or [update a filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering). Check out [interactive dashboards](../dashboards/interactive.md).
+When you add questions to a dashboard, you can have even more control over what happens when people click your chart. In addition to the default drill-through menu, you can add a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) or [update a filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering). Check out [interactive dashboards](../dashboards/interactive.md).
 
 ## View details of a record
 
-To see the details of an individual record when viewing unaggregated tables, click on a record and select "View details."
+To see the details of an individual record when viewing unaggregated tables, click a record and select "View details."
 
 To expand the details sidebar to a full page, click "Open in full page". Every record has a dedicated details page which you can link to.
 
@@ -123,7 +123,7 @@ To bookmark an item, look for the **ribbon** icon in the upper right corner of t
 - Dashboards
 - Collections
 
-To add or remove a bookmark from an item, click on the three-dot menu (**...**) next to the item in the collection.
+To add or remove a bookmark from an item, click the three-dot menu (**...**) next to the item in the collection.
 
 Some things to remember with bookmarks:
 

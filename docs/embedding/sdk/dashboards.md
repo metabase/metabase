@@ -70,7 +70,7 @@ By default, dashboard components take full page height (100vh). You can override
 
 ## Customizing drill-through question layout
 
-When drilling through or clicking on a question card in the dashboard, you will be taken to the question view. By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
+When drilling through or clicking a question card in the dashboard, you will be taken to the question view. By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
 
 To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component, with the custom view as the child component.
 
@@ -132,7 +132,7 @@ If you want to replace the existing menu with your own component, you can do so 
 
 ### `mapQuestionClickActions`
 
-You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](./questions.md#mapquestionclickactions).
+You can customize what happens when people click a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](./questions.md#mapquestionclickactions).
 
 ## Creating dashboards
 

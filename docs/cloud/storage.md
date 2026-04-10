@@ -58,7 +58,7 @@ To increase the number of rows you can store:
 
 1. Log in to your [Metabase Store account](https://store.metabase.com/)
 2. In the **Instances** tab, navigate to the relevant instance.
-3. Click on **Manage storage**.
+3. Click **Manage storage**.
 4. Click **Edit**.
 5. Click **Add storage**.
 

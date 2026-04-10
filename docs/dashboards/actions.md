@@ -17,7 +17,7 @@ To add an action button to a dashboard, you'll first need to create an action on
 Once you [created an action](../actions/introduction.md), you can add a button to a dashboard to perform that action:
 
 1. Visit a dashboard page and click the **pencil** icon to start editing the dashboard.
-2. Click on the **box with a mouse pointer** to add an action.
+2. Click the **box with a mouse pointer** to add an action.
 
    Metabase will add an action button to the dashboard grid, and open a sidebar with button settings:
 
@@ -45,7 +45,7 @@ To connect an action field to a filter on a dashboard:
 1. On a dashboard with an action button, click the **pencil icon** to edit the dashboard.
 2. [Add a filter](./filters.md) to a dashboard, connect the filter to one or more cards, and click **Done** in the bottom of the sidebar.
 3. [Add an action button to the dashboard](#add-an-action-button-to-a-dashboard) (if you haven't already).
-4. Hover over the action button and click on the **gear** icon, and select **Change action**.
+4. Hover over the action button and click the **gear** icon, and select **Change action**.
 5. Click the field's dropdown to select where the action should get its value, and pick a filter to connect to (filters will be referenced in the dropdown by their name):
 
    ![Wiring up an action button to a dashboard filter](./images/id-value.png)

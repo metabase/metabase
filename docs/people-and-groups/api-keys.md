@@ -19,7 +19,7 @@ To create an API key:
 1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
-4. Click on the **Authentication** tab on the left menu.
+4. Click the **Authentication** tab on the left menu.
 5. Scroll to **API Keys** and click **Manage**.
 6. Click the **Create API Key** button.
 7. Enter a **Key name**. You can have multiple API keys, so give it a name that will help you remember what you're using the key for.
@@ -38,12 +38,12 @@ To view and manage existing API keys:
 1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
-4. Click on the **Authentication** tab on the left menu.
+4. Click the **Authentication** tab on the left menu.
 5. Scroll to **API Keys** and click **Manage**.
 
 ### Editing API keys
 
-To edit an API key, scroll to the key you want to edit and click on the **pencil** icon. Metabase will pop up an **Edit API Key** modal where you can edit:
+To edit an API key, scroll to the key you want to edit and click the **pencil** icon. Metabase will pop up an **Edit API Key** modal where you can edit:
 
 - The key's name
 - Which group the key belongs to.
@@ -58,7 +58,7 @@ To delete an API Key:
 1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Go to the **Settings** tab.
-4. Click on the **Authentication** tab on the left menu.
+4. Click the **Authentication** tab on the left menu.
 5. Scroll to **API Keys** and click **Manage**.
 6. Select the key you want to delete and click the **trash** icon.
 7. Metabase will pop up a **Delete API Key** modal. Click the **Delete API Key** button.

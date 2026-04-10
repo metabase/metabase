@@ -21,7 +21,7 @@ The data reference includes:
 You can open the data reference from:
 
 - The left sidebar > **Data** > **Databases** > **Learn about our data** (in the upper right).
-- Hovering over a table in the data browser and clicking on the book icon.
+- Hovering over a table in the data browser and clicking the book icon.
 - The native/SQL editor > **Book** icon.
 
 You can also visit `https://[your metabase here]/reference`.
@@ -37,7 +37,7 @@ The data reference is a collection of pages organized by database, then schemas 
 When you click into a database, you'll see:
 
 - **Details tab**: Contains metadata about the database, including general description, why this database is interesting, and things to be aware of.
-- **Tables tab**: Displays table names and descriptions. Click on a table to view its details and fields.
+- **Tables tab**: Displays table names and descriptions. Click a table to view its details and fields.
 
 For each table, you can view:
 
@@ -47,7 +47,7 @@ For each table, you can view:
 - Questions about this table (if you have permission to view them)
 - Option to create an X-ray of the table
 
-Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metabadata in the [Admin](../data-modeling/metadata-editing.md).
+Admins can edit the metadata in this reference by clicking the **Edit** button in the upper right. Admins can also edit metadata in the [Admin](../data-modeling/metadata-editing.md).
 
 ## Glossary
 
@@ -65,7 +65,7 @@ If your admins have created any [segments](../data-modeling/segments.md), you ca
 
 Sometimes when you're writing a query, you might forget the exact names of different tables or columns, or which table contains what. That’s where the **Data reference** comes in handy.
 
-To bring up the data reference panel in the native/SQL editor, click on the open book icon.
+To bring up the data reference panel in the native/SQL editor, click the open book icon.
 
 This panel lists all the databases you have access to, and the [models](../data-modeling/models.md) and tables, and the fields inside of them.
 
@@ -73,7 +73,7 @@ This panel lists all the databases you have access to, and the [models](../data-
 
 Click the model or table to see a description of it and a list of all the columns it has. Each table or column will only contain a description if your admin wrote something in the table metadata section of the admin panel.
 
-If you click on a column you’re interested in, you’ll see a description of its contents, as well as a list of sample values for columns that don't have a huge number of distinct values.
+If you click a column you’re interested in, you’ll see a description of its contents, as well as a list of sample values for columns that don't have a huge number of distinct values.
 
 ### Connections
 

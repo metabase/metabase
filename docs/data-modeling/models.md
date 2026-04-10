@@ -42,8 +42,8 @@ Models you create are automatically [pinned to the current collection](../explor
 
 ### Create a model from scratch
 
-- Navigate to the Models tab in the sidebar. You might have to open it using the button in the top left, then scroll down to the section labeled **Data**, and pick **Models**. Then click on the **+** button in the top right.
-- Or open the [command palette](https://www.metabase.com/docs/latest/exploration-and-organization/exploration#command-palette) and type "model." Then click on the **New model** action.
+- Navigate to the Models tab in the sidebar. You might have to open it using the button in the top left, then scroll down to the section labeled **Data**, and pick **Models**. Then click the **+** button in the top right.
+- Or open the [command palette](https://www.metabase.com/docs/latest/exploration-and-organization/exploration#command-palette) and type "model." Then click the **New model** action.
 
 Now choose either the query builder or a native query (if you want to use SQL). The advantage of using the query builder is that Metabase will be able to fill out some of the metadata for you; if you use SQL, you'll have to fill out that metadata manually.
 
@@ -55,13 +55,13 @@ Models you create are automatically [pinned to the current collection](../explor
 
 1. [Ask a question][question] using either the query builder or the SQL editor, or select an existing saved question that you want to convert to a model.
 2. Save the question.
-3. Click on the **...** > **Turn this into a model**.
+3. Click the **...** > **Turn this into a model**.
 
 ![Turn a saved question into a model](./images/turn-into-a-model.png)
 
 ## Model details
 
-To view a model's details, visit the model and click on the **info** button in the upper right. Here you'll see several tabs:
+To view a model's details, visit the model and click the **info** button in the upper right. Here you'll see several tabs:
 
 - **Overview**: Includes the description, Creator and Last Editor, and the list of fields included in the model. As well as the model's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items).
 - **History**: Lists changes to the model, and by whom.
@@ -95,7 +95,7 @@ If your model is based on a SQL query and you want people to be able to explore 
 
 ### This column should appear in...
 
-You can specify whether a column should appear in the table view, or just in a detail view (when you click on the entity/primary key for the row).
+You can specify whether a column should appear in the table view, or just in a detail view (when you click the entity/primary key for the row).
 
 - Table and detail views
 - Detail views only
@@ -109,7 +109,7 @@ You can specify whether a column should appear in the table view, or just in a d
 
 For string fields in records with integer entity keys, Metabase will give you the option make the values in that field show up when people search your Metabase. Essentially, Metabase will index these values and make them available to Metabase's search engine. This option is handy when people often want to jump straight to an individual record in your model.
 
-For example, if you have a model with accounts, you could turn on this option for a column listing the account's name or email so that people can quickly search for specific accounts in the model from anywhere in your Metabase. When people click on a record in the search results, Metabase will jump straight to the model and the object detail for that record.
+For example, if you have a model with accounts, you could turn on this option for a column listing the account's name or email so that people can quickly search for specific accounts in the model from anywhere in your Metabase. When people click a record in the search results, Metabase will jump straight to the model and the object detail for that record.
 
 There are some limitations to this indexing:
 
@@ -119,7 +119,7 @@ There are some limitations to this indexing:
 
 ## Edit a model's query
 
-You can edit a model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
+You can edit a model's query by clicking the down arrow next to the model's name and clicking **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
 
 ### Checking for breaking changes
 
@@ -164,7 +164,7 @@ You can:
 - **Search for columns** using the "Find a column..." search box.
 - **Drag columns** from the available list into either the left column or right columns areas.
 - **Reorder columns** by dragging them within their respective areas.
-- **Remove columns** by clicking on the X on the column.
+- **Remove columns** by clicking the X on the column.
 
 You can see a preview on the bottom with sample data from your model.
 
@@ -196,7 +196,7 @@ FROM model;
 
 Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title.
 
-You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
+You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click the **book** icon.
 
 ## Model version history
 

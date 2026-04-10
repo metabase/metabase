@@ -16,7 +16,7 @@ Open up the settings for your table visualization and you'll see the Columns tab
 
 To manage these columns, including columns from linked tables, just click **add or remove columns**. Check the boxes next to the columns you want to show in the **visible section**, or uncheck to hide them.
 
-When viewing tables, you can click on the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
+When viewing tables, you can click the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
 
 ![Adding or removing columns](../images/column-selection.png)
 
@@ -24,7 +24,7 @@ Admins (and people in groups with access to table metadata) can hide columns acr
 
 > **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder.
 
-To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
+To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click a column's heading in the table and drag the column to another position in the table.
 
 ## Custom columns
 
@@ -39,7 +39,7 @@ For more complicated calculations, you can use the editor to [add a custom colum
 
 ## Add row numbers to a table
 
-To number the rows of a table, click on the **gear** icon in bottom left to bring up the table formatting sidebar. In the **Columns** tab, and toggle on **Show row index**. Metabase will add a column to the left of the table displaying a number for each row.
+To number the rows of a table, click the **gear** icon in bottom left to bring up the table formatting sidebar. In the **Columns** tab, and toggle on **Show row index**. Metabase will add a column to the left of the table displaying a number for each row.
 
 ![Add row numbers to a table](../images/show-row-index.png)
 
@@ -64,7 +64,7 @@ To freeze rows or columns when viewing a table:
 
 ![Column actions](../images/column-actions.png)
 
-Click on a column heading and Metabase will present quick options for filtering and summarizing the data. The options for the column depend on the column's data type (ID, Text, Number, Date).
+Click a column heading and Metabase will present quick options for filtering and summarizing the data. The options for the column depend on the column's data type (ID, Text, Number, Date).
 
 ### Filter by this column
 
@@ -87,7 +87,7 @@ Number filters:
 
 ### Distribution
 
-Clicking on Distribution will summarize the data by counting the rows and grouping the counts by the values in the column.
+Clicking Distribution will summarize the data by counting the rows and grouping the counts by the values in the column.
 
 ### Distinct values
 
@@ -127,19 +127,19 @@ Add up all the values and group by a time period, generally by month.
 
 ## Table cell click options
 
-![Clicking on a table cell gives you different options depending on the column's data type](../images/cell-action-string.png)
+![Clicking a table cell gives you different options depending on the column's data type](../images/cell-action-string.png)
 
-Clicking on a table cell will give you different options based on the data type and its values.
+Clicking a table cell will give you different options based on the data type and its values.
 
 ## Detail views
 
 ![Detail view](../images/detail-view.png)
 
-To make records easier to read, you can click on an entity key column (either a primary or foreign key) to bring up a detail view. For example, clicking on an order `ID` will bring up details from that order.
+To make records easier to read, you can click an entity key column (either a primary or foreign key) to bring up a detail view. For example, clicking an order `ID` will bring up details from that order.
 
 ## Column formatting options
 
-To format the display of any column in a table, click on the column heading and choose the `Formatting` option (you can also get there by clicking on the gear on any column when in the `Columns` tab of the visualization settings).
+To format the display of any column in a table, click the column heading and choose the `Formatting` option (you can also get there by clicking the gear on any column when in the `Columns` tab of the visualization settings).
 
 ![Column formatting](../images/column-header-formatting.png)
 
@@ -291,7 +291,7 @@ Lets you toggle between showing the currency label in the column heading or in e
 
 ## Conditional table formatting
 
-Sometimes it's helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
+Sometimes it's helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking the **Conditional Formatting** tab.
 
 ![Conditional formatting](../images/conditional-formatting.png)
 
@@ -300,7 +300,7 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 - **Single color**. Pick single color if you want to highlight cells in the column if they're greater, less than, or equal to a specific number, or if they match or contain a certain word or phrase. You can optionally highlight the whole row of a cell that matches the condition you pick so that it's easier to spot as you scroll down your table.
 - **Color range**. Choose color range if you want to tint all the cells in the column from smallest to largest or vice versa. This option is only available for numeric columns.
 
-You can set as many rules on a table as you want, and change the order in which those rules are applied. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
+You can set as many rules on a table as you want, and change the order in which those rules are applied. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click a rule to edit it.
 
 ## Adding tables to dashboards
 
@@ -310,7 +310,7 @@ When you add a table to a dashboard, you can add [custom destinations](../../das
 
 When you add a table to a dashboard, the table will be scrollable by default. You can paginate the rows by:
 
-1. Clicking on the **Pencil** icon to edit the dashboard.
+1. Clicking the **Pencil** icon to edit the dashboard.
 2. Hovering over the dashcard containing the table, and clicking the **Visualization** icon.
 3. In the **Columns** tab, toggle on **Paginate results**.
 

@@ -48,7 +48,7 @@ If you want to embed charts with additional interactive features, like [drill-do
 To create a static embed:
 
 1. Go to the question or dashboard that you want to embed in your website.
-2. Click on the **sharing icon**.
+2. Click the **sharing icon**.
 3. Select **Embed**.
 4. Select **Static embedding**.
 5. Optional: [customize the appearance of the embed](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed)
@@ -126,7 +126,7 @@ If you change the [parameters](./static-embedding-parameters.md) of your embedde
 You can find a list of all static embeds of questions and dashboards from **Admin settings** > **Embedding** > **Static**.
 
 1. Visit the embeddable question or dashboard.
-2. Click on the **sharing icon** (square with an arrow pointing to the top right).
+2. Click the **sharing icon** (square with an arrow pointing to the top right).
 3. Select **Embed**.
 4. Select **Static embedding**
 5. Click **Unpublish**.

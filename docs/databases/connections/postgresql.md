@@ -70,9 +70,9 @@ Only for self-hosted Pro and Enterprise plans.
 
 To use Azure Managed Identity, you'll need to input your [client ID](https://learn.microsoft.com/en-us/previous-versions/azure/postgresql/single-server/how-to-connect-with-managed-identity#retrieving-the-access-token-from-azure-instance-metadata-service).
 
-#### Oauth
+#### OAuth
 
-To use Oauth as a provider, you'll need to input your:
+To use OAuth as a provider, you'll need to input your:
 
 - Auth token URL
 - Auth token request headers (a JSON map)

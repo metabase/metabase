@@ -12,7 +12,7 @@ If you want to move from using Metabase just for testing to something that is re
 
 ## Create a database
 
-In AWS, enter RDS in the search box or select RDS from the dropdown button on the top left of the page. Once inside RDS, click on the **Create database** button.
+In AWS, enter RDS in the search box or select RDS from the dropdown button on the top left of the page. Once inside RDS, click the **Create database** button.
 
 Select PostgreSQL as the engine type. We'll choose the latest version available in AWS at the time of writing (12.4-R1).
 
@@ -43,15 +43,15 @@ Additional configuration:
 
 ![RDS Initial Database](images/RDSInitialDatabase.png)
 
-When you've completed all these configurations, click on the **Create database** button on the lower right part of the page and wait for the database to be created (which can take several minutes).
+When you've completed all these configurations, click the **Create database** button on the lower right part of the page and wait for the database to be created (which can take several minutes).
 
 ## Set up security
 
-Once the database status is `Available`, you need to click on the DB identifier:
+Once the database status is `Available`, you need to click the DB identifier:
 
 ![RDS DB Identifier](images/RDSDBIdentifier.png)
 
-On the page that appears after you click on the database identifier, you will see on the center of the page the **Connectivity & Security** section. This section will provide you with the **Endpoint** that Metabase needs to connect to the application database we just created.
+On the page that appears after you click the database identifier, you will see on the center of the page the **Connectivity & Security** section. This section will provide you with the **Endpoint** that Metabase needs to connect to the application database we just created.
 
 ![RDS Connection Data](images/RDSConnectionData.png)
 
@@ -59,11 +59,11 @@ In the **Security group rules** section, you'll see the Security Group that was 
 
 ![RDS Security Group Rules](images/RDSSecurityGroupRules.png)
 
-To configure the rule for the database, select the **CIDR/IP - Inbound** rule, then click on the **Inbound rules** tab on the lower part of the page.
+To configure the rule for the database, select the **CIDR/IP - Inbound** rule, then click the **Inbound rules** tab on the lower part of the page.
 
 ![RDS Security Group Rules](images/RDSInboundRule.png)
 
-When you click on Inbound Rules, you need to click on **Edit Inbound Rules** button that appears on the right side of the section.
+When you click Inbound Rules, you need to click **Edit Inbound Rules** button that appears on the right side of the section.
 
 ![RDS Edit Inbound Rule](images/RDSEditInboundRule.png)
 

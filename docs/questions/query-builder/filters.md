@@ -14,7 +14,7 @@ You can add subsequent filter steps after each summarize step. This lets you do 
 
 Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
 
-If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
+If you want to edit your filter, just click the little purple filter at the top of the screen. If you click the X, you'll remove your filter. You can add as many filters as you need.
 
 ## Filter types
 
@@ -31,7 +31,7 @@ Depending on the data type of the column, Metabase will present different filter
 One important thing to understand when filtering on a date column is the difference between specific and relative dates:
 
 - **Specific dates** are things like November 1, 2010, or June 3 – July 12, 2017; they always refer to the same date(s).
-- **Relative dates** are things like "the previous 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click on the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
+- **Relative dates** are things like "the previous 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
 
 ## Filter with custom expressions
 

@@ -69,15 +69,15 @@ To see percentage comparison with the _previous_ step (instead of the first), ho
 
 ## Funnel chart settings
 
-To open chart settings, click on the **Gear** icon in the bottom left.
+To open chart settings, click the **Gear** icon in the bottom left.
 
 ![Funnel chart settings](../images/funnel-settings.png)
 
 If you have more than two columns in your query results, you can select which columns should be used for the funnel steps and the measure in the **Data** tab.
 
-You can reorder funnel steps by dragging and dropping, or hide a step by clicking on the **Eye** icon on the step card.
+You can reorder funnel steps by dragging and dropping, or hide a step by clicking the **Eye** icon on the step card.
 
-To edit the formatting of the metric, click on **Three dots** next to the metric. The formatting will only apply to the _metric itself_, but _not_ to the percentage values that compare each step's metric to the first step (which currently you can't format).
+To edit the formatting of the metric, click **Three dots** next to the metric. The formatting will only apply to the _metric itself_, but _not_ to the percentage values that compare each step's metric to the first step (which currently you can't format).
 
 ## Limitations and alternatives
 

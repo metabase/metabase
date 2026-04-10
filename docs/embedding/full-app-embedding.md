@@ -20,7 +20,7 @@ redirect_from:
 
 To get a feel for what you can do with full app embedding, check out our [Full app embedding demo](https://www.metabase.com/embedding-demo).
 
-To see the query builder in action, click on **Reports** > **+ New** > **Question**.
+To see the query builder in action, click **Reports** > **+ New** > **Question**.
 
 ## Quick start
 
@@ -75,7 +75,7 @@ To embed a specific Metabase dashboard, you'll want to use the dashboard's Entit
 src="https://metabase.yourcompany.com/dashboard/entity/[Entity ID]"
 ```
 
-To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**. Then set your iframe's `src` attribute to:
+To get a dashboard's Entity ID, visit the dashboard and click the **info** button. In the **Overview** tab, copy the **Entity ID**. Then set your iframe's `src` attribute to:
 
 ```
 src=https://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b
@@ -89,7 +89,7 @@ src=https://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b?tab=
 
 You _can_ use a dashboard's sequential ID, but you should prefer the Entity ID, as Entity IDs are stable across different Metabase environments (e.g., if you're testing on a staging environment, the Entity IDs will remain the same when [exporting the data and importing it](../installation-and-operation/serialization.md) into a production environment).
 
-If you want to point to a question, collection, or model, visit the item, click on its info, grab the item's Entity ID and follow the url structure: `/[Item type]/entity/[Entity-Id]`. Examples:
+If you want to point to a question, collection, or model, visit the item, click its info, grab the item's Entity ID and follow the url structure: `/[Item type]/entity/[Entity-Id]`. Examples:
 
 - `/collection/entity/[Entity ID]`
 - `/model/entity/[Entity ID]`

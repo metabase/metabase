@@ -24,7 +24,7 @@ By default, Trends will display increases as green (i.e., "good") and decreases 
 
 ![Add comparison to a trend chart](../images/add-comparison.png)
 
-To add a comparison, click on the **gear** icon in the lower left (next to Visualization). In the **Data** tab in the left sidebar, click **Add comparison**. You can select from:
+To add a comparison, click the **gear** icon in the lower left (next to Visualization). In the **Data** tab in the left sidebar, click **Add comparison**. You can select from:
 
 - **Previous time period**
 - **Previous value**. If there is no previous value, Metabase will ignore the value so the chart doesn't show a comparison with a null value.

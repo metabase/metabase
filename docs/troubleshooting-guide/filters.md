@@ -18,7 +18,7 @@ If a dashboard filter is giving you no results or the wrong results:
 2. Click the **gear** icon beside your filter widget.
 3. Make sure you've selected a column for your filter under **Column to filter on**.
 4. If you can't find the right **Column to filter on**, or you're getting "No Results" when you apply the filter:
-   - Exit edit mode and click on a dashboard card to go to the _original question_.
+   - Exit edit mode and click a dashboard card to go to the _original question_.
    - Follow the troubleshooting steps under [Question filters](#question-filters).
 
 ## Question filters

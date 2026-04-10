@@ -24,8 +24,8 @@ You can create a Snippet folder from the **Snippets** menu in the [SQL editor](.
 
 ![Create new snippet folder](./images/snippet-folder.png)
 
-1. Click on the **Snippets** menu icon (the snippet icon looks like a block of text or code with three uneven horizontal lines).
-2. Click on the **+** icon and select **New folder**.
+1. Click the **Snippets** menu icon (the snippet icon looks like a block of text or code with three uneven horizontal lines).
+2. Click the **+** icon and select **New folder**.
 3. Give your folder a name, and optionally **Add a description** and/or place the folder in an existing folder (the **Folder this should be in** option).
 
 ![Create new folder modal](./images/create-new-folder-modal.png)
@@ -46,9 +46,9 @@ Administrators (and only administrators) can set snippet visibility and editabil
 
 ### Changing permissions on a folder
 
-Administrators can set the permissions on a folder by clicking on the ellipsis (**...**) next to a folder, and selecting **Change permissions**.
+Administrators can set the permissions on a folder by clicking the ellipsis (**...**) next to a folder, and selecting **Change permissions**.
 
-You can additionally change the currently selected folder by mousing over to the top of the Snippets sidebar, clicking on the ellipsis (**...**) to the left of the **+**, and selecting **Change permissions**. When at the **SQL snippets** root, selecting the **...** at the top of the sidebar will give Administrators the option to set permissions for all snippets, folders, and sub-folders.
+You can additionally change the currently selected folder by mousing over to the top of the Snippets sidebar, clicking the ellipsis (**...**) to the left of the **+**, and selecting **Change permissions**. When at the **SQL snippets** root, selecting the **...** at the top of the sidebar will give Administrators the option to set permissions for all snippets, folders, and sub-folders.
 
 When changing permissions on a folder that has sub-folders, you have an option to extend those permissions to that folder's sub-folders by toggling the **Also change sub-folders** setting.
 

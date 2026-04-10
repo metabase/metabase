@@ -36,7 +36,7 @@ To execute Python transforms, you'll need a _Python runner_ - a dedicated enviro
 Once you've [set up the Python runner](#set-up-a-python-runner):
 
 1. Go to **Data studio > Transforms**.
-2. Click on **+ New** and select **Python script**.
+2. Click **+ New** and select **Python script**.
 
 3. Select a database that has the data you want to transform. See [Databases that support transforms](transforms-overview.md#databases-that-support-transforms).
 
@@ -94,7 +94,7 @@ If you have functions or classes you'd like to reuse across multiple transforms,
 To add things to the common Python library:
 
 1. Go to **Data studio > Transforms**.
-2. Scroll to the very bottom of the transforms list and click on **Python library**.
+2. Scroll to the very bottom of the transforms list and click **Python library**.
 
 3. Add a Python function or class.
 
@@ -102,7 +102,7 @@ To add things to the common Python library:
 
 To use functions or classes from your Python library:
 
-1. Metabase will automatically add `import common` to your transform's code. The `common` here refers to the Python library. You can click on `common` in the editor to navigate to the library.
+1. Metabase will automatically add `import common` to your transform's code. The `common` here refers to the Python library. You can click `common` in the editor to navigate to the library.
 
 2. You can reference functions or classes from the common library in your code like `common.manifest_kittens()`.
 

@@ -52,7 +52,7 @@ To create a metric:
 
 1. Bring up the command palette with cmd/ctrl + k (that’s cmd + k for Macs, or ctrl + k for Windows PCs) and search for **New metric**
 
-   You can also create a new metric by going to **Browse > Metrics** in the navigation sidebar and clicking on **+**.
+   You can also create a new metric by going to **Browse > Metrics** in the navigation sidebar and clicking **+**.
 
    If you're creating a [Library metric](../data-studio/library.md#metrics), you can also [navigate to the Library](../data-studio/library.md) and click **+ New > Metric**.
 

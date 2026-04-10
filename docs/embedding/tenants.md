@@ -105,7 +105,7 @@ You can create and manage your tenants exclusively through Metabase UI, or, if t
 ![Edit tenant strategy](./images/edit-tenant-strategy.png)
 
 1. Go to **Admin settings > People**.
-2. Click on the **gear** icon above the list of people.
+2. Click the **gear** icon above the list of people.
 3. Choose **Multi-tenant strategy**.
 
 Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collections, and you get some additional admin settings in the People and Permissions tabs.
@@ -172,9 +172,9 @@ Shared collections contain dashboards and charts that are shared between all ten
 To create a shared collection:
 
 1. [Enable multi-tenant strategy](#enable-multi-tenant-strategy), if you haven't yet.
-2. Open Metabase navigation sidebar by clicking on the **three lines** in the top left (that's regular Metabase, not Admin settings).
+2. Open Metabase navigation sidebar by clicking the **three lines** in the top left (that's regular Metabase, not Admin settings).
 3. You should see "External collections" in the sidebar. If you don't, make sure you have enabled multi-tenant strategy.
-4. Click on the **+** next to "External collections" to create a shared collection.
+4. Click the **+** next to "External collections" to create a shared collection.
 
 You can have multiple shared collections and nested shared collections. You can also [sync shared collections to GitHub](#sync-shared-collections-to-github).
 
@@ -196,7 +196,7 @@ To create a tenant attribute manually using the Metabase UI:
 
 1. Go to **Admin settings > People**
 2. Select **Tenants** on the left sidebar.
-3. Click on **three dots** next to the tenant.
+3. Click **three dots** next to the tenant.
 4. Input the attribute key and value.
 
 You can also assign tenant attributes automatically through JWT claims, see [Setting tenant attributes using tenant claims](#setting-tenant-attributes-using-tenant-claims) below.
@@ -380,7 +380,7 @@ To deactivate a tenant:
 
 1. Go to **Admin settings > People**.
 2. Select **Tenants** on the left sidebar.
-3. Click on **three dots** next to the tenant.
+3. Click **three dots** next to the tenant.
 4. Choose **Deactivate tenant**.
 
 All tenant users will be deactivated and won't be able to sign in anymore. Tenant users will not be permanently deleted (Metabase does not delete users, only deactivates), so even though the tenant users will be deactivated, you won't be able to create new users with the same email.

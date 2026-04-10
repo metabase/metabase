@@ -45,7 +45,7 @@ You can layer multiple questions on a single dashboard card. You can even layer 
 
 ![Edit visualization](./images/edit-visualization.png)
 
-4. **Add more data**. In the Manage data sidebar on the left, click on **Add more data**.
+4. **Add more data**. In the Manage data sidebar on the left, click **Add more data**.
 
 ![Manage data sidebar](./images/add-data.png)
 
@@ -65,7 +65,7 @@ If you need to compare single numbers to get a sense of how they differ, Metabas
 
 1. **Add a number chart to a dashboard.**
 
-2. **Visualize as a funnel chart**. (Yes, we know you're going for a bar chart, bear with us, you're going to switch the funnel's type to a bar chart.) In dashboard edit mode, hover over the card and click on **Visualize another way**. Metabase will change the visualization to a funnel chart.
+2. **Visualize as a funnel chart**. (Yes, we know you're going for a bar chart, bear with us, you're going to switch the funnel's type to a bar chart.) In dashboard edit mode, hover over the card and click **Visualize another way**. Metabase will change the visualization to a funnel chart.
 
 ![Visualize another way](./images/visualize-another-way.png)
 

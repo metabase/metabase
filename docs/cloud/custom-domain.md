@@ -20,7 +20,7 @@ By default, Metabase will automatically provision a domain name for your Metabas
 
 1. Log in to your [Metabase Store account](https://store.metabase.com/).
 
-2. Find the Metabase instance that you want to add the custom domain to, and select **Manage** on the bottom right of the instance's card. Then click on the **Domains** tab.
+2. Find the Metabase instance that you want to add the custom domain to, and select **Manage** on the bottom right of the instance's card. Then click the **Domains** tab.
 
    You'll see something like this:
 

@@ -17,7 +17,7 @@ redirect_from:
 
 The examples below use the Sample database included with Metabase. Here's the basic setup:
 
-1. **Block permissions for the All users group**: Hit cmd/ctrl + k to bring up the command palette and search for "Permissions". In the **Permissions** > **Data** tab. Click on the **All users** group. For the Sample database, set the All User's [View data](./data.md#view-data-permissions) permission to "Blocked".
+1. **Block permissions for the All users group**: Hit cmd/ctrl + k to bring up the command palette and search for "Permissions". In the **Permissions** > **Data** tab. Click the **All users** group. For the Sample database, set the All User's [View data](./data.md#view-data-permissions) permission to "Blocked".
 
 2. **Create a group called Customers**. Hit cmd/ctrl + k and search for the People settings. [Create a group called "Customers".
 
@@ -35,7 +35,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 In this example, we’ll secure our `Orders` table so that anyone in our Customers group will only be able to see rows in the Orders table where the `User ID` column matches the person's `user_id` attribute.
 
-1. **Go to the Admin > Permissions > data**. Click on the "Customers" group.
+1. **Go to the Admin > Permissions > data**. Click the "Customers" group.
 
 2. **Set View data to Granular**. For the Sample Database, set the Customer group's [View data](./data.md#view-data-permissions) to "Granular". Setting to "Granular" will allow us to set up permissions on individual tables for the Customer group.
 
@@ -57,7 +57,7 @@ To test out Mr. Beer's view of the world, we’ll open up a new incognito/privat
 
 1. Log in as Cloyd Beer.
 2. Click **Browse** > **Databases**.
-3. Click on the **Orders** table.
+3. Click the **Orders** table.
 4. Confirm that Metabase displays only the orders that Mr. Beer placed, that is, orders associated with the User ID of `2499`.
 
 If Mr. Beer views any charts, dashboards, or even automated [X-ray explorations](../exploration-and-organization/x-rays.md) that include the secured `Orders` data, Metabase will also filter those results to show only the data Mr. Beer is permitted to see. When Mr. Beer uses the query builder to ask new questions, his results will be limited to the filtered data.

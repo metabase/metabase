@@ -56,17 +56,17 @@ You don't need to include the percentages in your query. Metabase will automatic
 
 ## Pie and sunburst chart settings
 
-To open the chart options, click on the gear icon at the bottom left of the screen. This will open a settings sidebar with **Data** and **Display** tabs.
+To open the chart options, click the gear icon at the bottom left of the screen. This will open a settings sidebar with **Data** and **Display** tabs.
 
 ### Data settings
 
-You can rename, reorder, or remove slices from the inner ring of a sunburst or pie chart. To reorder the pie slices, drag the cards with the slice names. To rename the slices, click on three dots next to the series name and enter a new name.
+You can rename, reorder, or remove slices from the inner ring of a sunburst or pie chart. To reorder the pie slices, drag the cards with the slice names. To rename the slices, click three dots next to the series name and enter a new name.
 
-To change the color of the pie slices, click on the color circle next to the slice's name. In sunburst charts, you can only change the color of the slices in the _inner_ ring (the slices in the outer rings inherit the colors of their parent slices).
+To change the color of the pie slices, click the color circle next to the slice's name. In sunburst charts, you can only change the color of the slices in the _inner_ ring (the slices in the outer rings inherit the colors of their parent slices).
 
 If your query has multiple metrics (columns), you can pick the column that should be depicted on the chart in the **Measure** dropdown.
 
-To format the total displayed in the middle of the chart, click on the three dots next to the metric name in the **Measure** setting. The measure format options — including the "number of decimal places" option — will only apply to the total, and not to the percentage values or labels. To configure the display of the percentage values and labels, go to the [display settings](#display-settings) tab.
+To format the total displayed in the middle of the chart, click the three dots next to the metric name in the **Measure** setting. The measure format options — including the "number of decimal places" option — will only apply to the total, and not to the percentage values or labels. To configure the display of the percentage values and labels, go to the [display settings](#display-settings) tab.
 
 ![format sunburst](../images/sunburst-metric-options.png)
 

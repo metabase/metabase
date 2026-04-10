@@ -23,11 +23,11 @@ Once the queries are done running, you can view and edit the synced metadata fro
 
 By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, you might want to choose when syncs and scans happen.
 
-1. Click on the **grid icon**.
+1. Click the **grid icon**.
 2. Select **Admin**.
 3. Go to **Databases**.
 4. Select your database.
-5. In the **Connection and sync** section, click on **Edit connection details**.
+5. In the **Connection and sync** section, click **Edit connection details**.
 6. Expand **Show advanced options**.
 7. Toggle **Choose when syncs and scans happen**.
 
@@ -83,7 +83,7 @@ To clear the [scanned field values for a table](#syncing-and-scanning-databases)
 3. Click the **gear icon** in the upper right.
 4. Click **Discard cached field values**.
 
-You can also tell Metabase to forget the cached values for individual fields by clicking the **gear** icon on a field and clicking on **Discard cached field values**.
+You can also tell Metabase to forget the cached values for individual fields by clicking the **gear** icon on a field and clicking **Discard cached field values**.
 
 ## Disabling syncing and scanning for specific tables
 
@@ -184,7 +184,7 @@ By default, Metabase only runs [fingerprinting](#how-database-fingerprinting-wor
 Turn this setting on if you want Metabase to use larger samples of column values when making suggestions in the UI:
 
 1. Go to **Admin** > **Databases** > your database.
-2. Click on **Edit connection details**.
+2. Click **Edit connection details**.
 3. Expand **Show advanced options**.
 4. Turn on **Periodically refingerprint tables**.
 

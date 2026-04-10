@@ -24,7 +24,7 @@ Assuming your site is localhost serving on port 3000:
 
 ## Set up JWT authentication
 
-Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab.
+Navigate to the **Admin** > **Settings** section of the Admin area, then click the **Authentication > JWT** tab.
 
 ![JWT form](images/JWT-auth-form.png)
 

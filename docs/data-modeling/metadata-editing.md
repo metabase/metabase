@@ -59,11 +59,11 @@ You can sort the fields in a table in different ways:
 
 ### Table visibility
 
-You can toggle the visibility of a table by clicking on the **eye** icon next to the table name in the left sidebar navigation tree in the Table metadata tab.
+You can toggle the visibility of a table by clicking the **eye** icon next to the table name in the left sidebar navigation tree in the Table metadata tab.
 
 **Hidden tables** won't show up in the [query builder](../questions/query-builder/editor.md) or [data reference](../exploration-and-organization/data-model-reference.md). **But this is not a permissions feature**: hidden tables can still be used in SQL questions if someone knows the name of the table. For example, `SELECT * FROM table_name` from the [SQL editor](../questions/native-editor/writing-sql.md) would return results. To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
 
-To hide **all of the tables in a database** (say, if you've migrated to a new database), click on the **eye** icon next to the database name in the sidebar.
+To hide **all of the tables in a database** (say, if you've migrated to a new database), click the **eye** icon next to the database name in the sidebar.
 
 ## Field settings
 
@@ -73,7 +73,7 @@ Fields are also known as Columns (see the [difference between fields and columns
 
 ## Field name and description
 
-To change the _global_ display name of a column in Metabase, click on the name of the column. For example, you could display "auth.user" as "User" to make the column more readable. People can also use [models](./models.md) to give columns a display name that's local to the model.
+To change the _global_ display name of a column in Metabase, click the name of the column. For example, you could display "auth.user" as "User" to make the column more readable. People can also use [models](./models.md) to give columns a display name that's local to the model.
 
 To add a description, click into the box below the column name. Descriptions are displayed in the [data reference](../exploration-and-organization/data-model-reference.md) to help people interpret the column's values. You should consider adding a description if your column contains:
 
@@ -95,7 +95,7 @@ Click the preview button to see sample data from that field.
 
 _Admin > Table Metadata > Database > Table > Field_
 
-To scan or discard field values for a specific field, click on the **Field values** button. Metabase uses these values to populate dropdown menus in filter widgets. (Values aren't dropped from your database.)
+To scan or discard field values for a specific field, click the **Field values** button. Metabase uses these values to populate dropdown menus in filter widgets. (Values aren't dropped from your database.)
 
 ## Field data
 

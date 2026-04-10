@@ -40,7 +40,7 @@ To create a pin map:
 2. Select **Visualization**, and pick **Map**;
 3. If your query results have columns whose field type is set to latitude/longitude in [table metadata](../../data-modeling/metadata-editing.md#semantic-type), Metabase should build a pin map automatically.
 
-   Otherwise, click on the **Gear** icon to go to visualization settings, choose **Map type: Pin map**, and pick columns that contain latitude and longitude coordinates.
+   Otherwise, click the **Gear** icon to go to visualization settings, choose **Map type: Pin map**, and pick columns that contain latitude and longitude coordinates.
 
 ### Choose pin type
 
@@ -48,13 +48,13 @@ Metabase can display individual data points on a map as markers or tiles (small 
 
 ![Pin types](../images/pin-type.png)
 
-Maps default to markers for results fewer then 1,000 rows, and to tiles for results with 1,000 rows or more.
+Maps default to markers for results fewer than 1,000 rows, and to tiles for results with 1,000 rows or more.
 
 To change the pin type:
 
 1. While viewing the map, click the **gear** icon in the bottom left.
 2. In the visualization settings, choose the pin type in the **Pin type** dropdown.
-   - **Markers**. Maps display up to 1,000 markers. If you choose the marker pin type for results with more than 1,000 rows, Metabase will still only display 1,000 markers. Maps default to markers for results fewer then 1,000 rows.
+   - **Markers**. Maps display up to 1,000 markers. If you choose the marker pin type for results with more than 1,000 rows, Metabase will still only display 1,000 markers. Maps default to markers for results fewer than 1,000 rows.
    - **Tiles**. Maps display up to 2,000 tiles. Maps default to tiles for results greater than 1,000 rows. Tooltips will not be displayed for tiles.
 
 By default, maps can't display more than 2,000 individual unaggregated data points, regardless of the pin type. This limit is the same for every chart displaying unaggregated data in Metabase. To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browser.
@@ -85,7 +85,7 @@ To create a grid map:
 2. Select **Visualization**, and pick **Map**;
 3. If your query results have columns whose field type is set to latitude/longitude in [table metadata](../../data-modeling/metadata-editing.md#semantic-type), Metabase should build a grid map automatically.
 
-   Otherwise, click on the **Gear** icon to go to visualization settings, choose **Map type: grid map**, and pick columns that contain latitude and longitude coordinates.
+   Otherwise, click the **Gear** icon to go to visualization settings, choose **Map type: grid map**, and pick columns that contain latitude and longitude coordinates.
 
 4. If your query contains several metrics, you can pick the one you want to display in visualization settings.
 
@@ -168,13 +168,13 @@ If you want to connect the region column in a custom region map to a dashboard f
 
 ### Drill-through
 
-- **Pin map**: If the pin is linked to other tables, or there's too much information to fit in the tooltip, clicking on the pin will take you to a details page that displays a list of fields, as well as a list of connected tables.
-- **Grid map**: If you click on a grid cell, you'll get an option to zoom in further into a cell.
+- **Pin map**: If the pin is linked to other tables, or there's too much information to fit in the tooltip, clicking the pin will take you to a details page that displays a list of fields, as well as a list of connected tables.
+- **Grid map**: If you click a grid cell, you'll get an option to zoom in further into a cell.
 - **World region map and US states region maps**: If your unaggregated data also contains latitude/longitude coordinates for each data point (in addition to the region name), then you'll get an option to zoom into a specific region, which will create a grid map of data points in that region binned by latitude/longitude. This only applies to the built-in region maps, not custom region maps.
 
 ### Set as default view
 
-On pin and grid maps, the map resets to the default view every time the page is refreshed. To control what is displayed when someone opens a map (e.g. center around a specific point, with a specific level of zoom), adjusted your map orientation. This will be the new default view that the map returns to after a page refresh.
+On pin and grid maps, the map resets to the default view every time the page is refreshed. To control what is displayed when someone opens a map (e.g. center around a specific point, with a specific level of zoom), adjust your map orientation. This will be the new default view that the map returns to after a page refresh.
 
 ### Draw box to filter
 

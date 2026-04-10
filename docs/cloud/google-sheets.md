@@ -40,7 +40,7 @@ Here's how to set it up:
 
 **If you synced a Single sheet**, Metabase will create tables for all tabs in the sheet.
 
-You can find your synced Google Sheets in Metabase by clicking on **Databases** in the left nav sidebar and navigating to the Metabase Cloud Storage database.
+You can find your synced Google Sheets in Metabase by clicking **Databases** in the left nav sidebar and navigating to the Metabase Cloud Storage database.
 
 ## Disconnecting from a Google Drive folder or sheet
 
@@ -49,8 +49,8 @@ You can find your synced Google Sheets in Metabase by clicking on **Databases** 
 To disconnect your Google Drive connection to a folder or sheet:
 
 1. Go to **Databases** in the left nav sidebar.
-2. Click on Metabase Cloud Storage.
-3. Click on **Disconnect**.
+2. Click Metabase Cloud Storage.
+3. Click **Disconnect**.
 4. Confirm the disconnection.
 
 Disconnecting won't delete your existing tables. An admin will need to manually delete tables in [Uploads settings](../exploration-and-organization/uploads.md#deleting-tables-created-by-uploads).
@@ -93,7 +93,7 @@ To check how much storage you're using:
 1. Log in to your Metabase.
 2. Click the **grid** icon in the upper right.
 3. Select **Admin**.
-4. In the **Settings** tab, click on **License and billing**.
+4. In the **Settings** tab, click **License and billing**.
 5. Check:
    - Currently stored rows
    - Maximum stored rows

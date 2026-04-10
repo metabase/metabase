@@ -23,7 +23,7 @@ For Metabase to post to your Slack channels, you’ll need to create a Slack App
 5. Pick a workspace to develop your app.
 6. You may get a warning that says **This app is created from a 3rd party manifest. Always verify URLs and permissions below.**
 
-   This warning is expected (Metabase is the third party here). You can click on **Edit configurations** to see the app manifest Metabase sent along in the URL. Here is the manifest in YAML format:
+   This warning is expected (Metabase is the third party here). You can click **Edit configurations** to see the app manifest Metabase sent along in the URL. Here is the manifest in YAML format:
 
    ```yml
    _metadata:
@@ -56,7 +56,7 @@ For Metabase to post to your Slack channels, you’ll need to create a Slack App
 ## Install your app to your workspace
 
 1. On the Slack site for your newly created app, go to **Settings** > **Basic Information** tab
-2. Under **Install your app**, click on **Install to workspace**.
+2. Under **Install your app**, click **Install to workspace**.
 3. On the next screen, click **Allow** to give Metabase access to your Slack workspace.
 
 ## Configure your app in Metabase
@@ -102,7 +102,7 @@ In order for Metabase to see private channels, the app must have the `groups:rea
 To check or edit your OAuth settings:
 
 1. [Visit the app settings in slack](https://api.slack.com/apps/):
-2. Click on the Metabase app in the list of apps.
+2. Click the Metabase app in the list of apps.
 3. Go to **OAuth & Permissions** in the sidebar.
 4. Under **Scopes**, add the `groups:read` scope if it's not added already.
 5. Reinstall the app by clicking the **Reinstall** button under **OAuth Tokens**.

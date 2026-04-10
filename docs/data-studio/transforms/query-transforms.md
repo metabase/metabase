@@ -44,7 +44,7 @@ On Metabase Cloud, you need the **Transforms** add-on to create query-based tran
    - **Name** (required): The name of the transform.
    - **Schema** (required): Target schema for your transform. This schema can be different from the schema of the source table(s). You create a new schema by typing its name in this field. You can only transform data _within_ a database; you can't write from one database to another.
    - **Table name** (required): Name of the target table. Metabase will write the results of the transform into this table, and then sync the table in Metabase.
-   - **Folder** (optional): The folder where the transform should live. Click on the field to pick a different folder or create a new one.
+   - **Folder** (optional): The folder where the transform should live. Click the field to pick a different folder or create a new one.
    - **Incremental transformation** (optional): see [Incremental query transforms](#incremental-query-transforms)
 
 6. Optionally, assign tags to your transforms. Tags are used by [jobs](jobs-and-runs.md) to run transforms on schedule.
@@ -85,7 +85,7 @@ Parameters in transforms must either:
 
 The reason transform variables must have a default value (or be optional) is that transforms run on a schedule, so there's no way to pass a value to the variable when the job runs the transform.
 
-The incremental `{%raw%}[[WHERE id > {{checkpoint}}]]{% endraw %}` pattern shown in [Incremental query transforms](#incremental-query-transforms) is an example of this an optional variable in practice. See also [optional variables](../../questions/native-editor/optional-variables.md).
+The incremental `{%raw%}[[WHERE id > {{checkpoint}}]]{% endraw %}` pattern shown in [Incremental query transforms](#incremental-query-transforms) is an example of this optional variable in practice. See also [optional variables](../../questions/native-editor/optional-variables.md).
 
 ## Run a query transform
 

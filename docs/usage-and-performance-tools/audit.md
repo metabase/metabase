@@ -12,7 +12,7 @@ redirect_from:
 
 As an administrator of Metabase, you already know the importance of using data to understand how people interact with your products or services. With the Audit tool, you can use Metabase to understand how people in your organization use Metabase. It's, well, meta!
 
-To view the audit logs, go to the top right of the screen and click on the **gear** icon > **Admin settings** > **Audit**. There's a lot of data available, not only about your people, but also about your questions, dashboards, databases and more! We'll walk you through each of the sections below.
+To view the audit logs, go to the top right of the screen and click the **gear** icon > **Admin settings** > **Audit**. There's a lot of data available, not only about your people, but also about your questions, dashboards, databases and more! We'll walk you through each of the sections below.
 
 ## People
 
@@ -64,7 +64,7 @@ A list of all of your questions is available as well, and you can see various da
 - Collection
 - Public Link
 
-You can also click on any question to drill into a more detailed profile showing:
+You can also click any question to drill into a more detailed profile showing:
 
 - View activity
 - Revision History
@@ -104,7 +104,7 @@ Here admins can get an overview of all of the [dashboard subscriptions][dashboar
 - Created At
 - Filters
 
-Admins can add and remove people from a subscription or alert by clicking on the item's **Recipients** number. Admins can also delete the subscription or alert entirely by clicking on the **X** on the relevant line.
+Admins can add and remove people from a subscription or alert by clicking the item's **Recipients** number. Admins can also delete the subscription or alert entirely by clicking the **X** on the relevant line.
 
 Everyone can view all of their subscriptions and alerts by clicking the **profile or grid icon** in the upper right, then clicking their **profile name and email** to open **Account settings**, and navigating to **Notifications**.
 

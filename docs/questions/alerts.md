@@ -29,16 +29,16 @@ Only admins and people with [settings access](../permissions/application.md#sett
 To create an alert:
 
 1. Save your question.
-2. Click on the **three dots** in the top-right of the screen.
+2. Click the **three dots** in the top-right of the screen.
 3. Select **Create an alert**.
 4. Select what you want to be alerted about (options depend on the question type):
     - [When a question returns a result](#results-alerts) - for any question.
     - [When a time series crosses a goal line](#goal-line-alerts) - for a line, bar, or area chart displaying a time series.
     - [When a progress bar reaches or goes below its goal](#progress-bar-alerts) - for progress bars.
-6. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
-7. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md) (only admins and people with [settings access](../permissions/application.md#settings-access) can create and send to webhooks).
-8. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
-9. Click **Done**.
+5. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md) (only admins and people with [settings access](../permissions/application.md#settings-access) can create and send to webhooks).
+7. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
+8. Click **Done**.
 
 ## Send a one-time alert
 
@@ -103,7 +103,7 @@ You'll see the options for when you want to get alerts about this progress bar:
 
 ## Editing, deleting, and unsubscribing from alerts
 
-To edit or delete alerts on a question, click on the **three dots** icon in the top right corner and select **Edit alerts**. What you can edit depends on whether you're an admin.
+To edit or delete alerts on a question, click the **three dots** icon in the top right corner and select **Edit alerts**. What you can edit depends on whether you're an admin.
 
 Everyone:
 

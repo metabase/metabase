@@ -115,7 +115,7 @@ Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to co
 
 **Steps to take:**
 
-1.  Right-click on the Metabase JAR file (_not_ the app database file).
+1.  Right-click the Metabase JAR file (_not_ the app database file).
 2.  Select "Properties".
 3.  Select "Unblock."
 

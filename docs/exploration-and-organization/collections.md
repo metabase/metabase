@@ -12,9 +12,9 @@ Collections are the main way to organize [questions](../questions/introduction.m
 
 ![Our analytics](./images/create-new-collection.png)
 
-To create a collection, click on the **+** button in the left nav sidebar at the top of the **Collections** section.
+To create a collection, click the **+** button in the left nav sidebar at the top of the **Collections** section.
 
-You can also create a new collection from any collection page by clicking on the folder icon with the plus sign in the top right of the collection page.
+You can also create a new collection from any collection page by clicking the folder icon with the plus sign in the top right of the collection page.
 
 ## Collection types
 
@@ -36,7 +36,7 @@ Metabase admins can designate collections as "official" with the following effec
 
 Pairing Official badges with [verified items](./content-verification.md) can help everyone in your Metabase sort out which questions people can trust.
 
-To add an Official badge to a collection, an admin can visit the collection and click on the three-dot menu (**...**) and select **Make collection official**. Admins can also remove an Official badge in the same menu. Admins can also mark a collection as Official or not when they first create the collection.
+To add an Official badge to a collection, an admin can visit the collection and click the three-dot menu (**...**) and select **Make collection official**. Admins can also remove an Official badge in the same menu. Admins can also mark a collection as Official or not when they first create the collection.
 
 ### Library
 
@@ -86,7 +86,7 @@ Pinned items will appear pinned for all people looking at the collection. If you
 To move a collection:
 
 1. Visit the collection's page.
-2. Click on the three-dot menu in the page.
+2. Click the three-dot menu in the page.
 3. Select **Move**.
 4. Select a new collection to move to. To make the collection a top-level collection, select the **Our Analytics** collection.
 
@@ -110,7 +110,7 @@ You must have Curate permission for the collection that you're moving a question
 
 ## Moving questions into dashboards
 
-You can move any question from a collection to a dashboard (and vice versa). Visit a question, click on the three-dot menu (**...**) and select **Move**. Pick a destination and your question will enjoy its new home.
+You can move any question from a collection to a dashboard (and vice versa). Visit a question, click the three-dot menu (**...**) and select **Move**. Pick a destination and your question will enjoy its new home.
 
 ### Bulk-moving questions into dashboards
 
@@ -119,7 +119,7 @@ If a collection has questions that have been added to dashboards in that collect
 To bulk-move questions into their dashboards:
 
 1. Visit a collection page
-2. Click on the three-dot menu (**...**)
+2. Click the three-dot menu (**...**)
 3. Select **Move questions into their dashboards**
 
 A modal will appear explaining what will happen:
@@ -137,7 +137,7 @@ In general, you want to save questions to dashboards unless you know people will
 
 It's possible to ask too many questions. Fortunately, you can clean up collections by [trashing items](./delete-and-restore.md) that people haven't even looked at for a period of time. Cleaning up old questions and dashboards can keep your Metabase from getting too cluttered, and you can always resurrect items from the trash if you need to.
 
-On a collection page, click on the three-dot menu (**...**) and select **Clear out unused items**. Metabase will pull up a modal where you can select unused items to move to the trash. You can set how long items need to go unnoticed before they're culled by setting **Not used in over**, which you can set to trash items from one month ago to over two years ago. There's also a toggle to include/exclude items in sub-collections.
+On a collection page, click the three-dot menu (**...**) and select **Clear out unused items**. Metabase will pull up a modal where you can select unused items to move to the trash. You can set how long items need to go unnoticed before they're culled by setting **Not used in over**, which you can set to trash items from one month ago to over two years ago. There's also a toggle to include/exclude items in sub-collections.
 
 ## Events and timelines
 

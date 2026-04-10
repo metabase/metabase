@@ -22,7 +22,7 @@ If you're looking for date, time, number, or currency formatting, see [Formattin
 
 ## Changing Metabase's appearance
 
-Hit cmd/ctrl + k to bring up the command palette and search for "Branding" and click on Settings -> Branding.
+Hit cmd/ctrl + k to bring up the command palette and search for "Branding" and click **Settings** > **Branding**.
 
 You can also click the **grid** icon at the bottom of the navigation sidebar and click through **Admin** > **Settings** > **Appearance**.
 

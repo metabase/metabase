@@ -108,9 +108,9 @@ To see all segments on a table, select the table in **Data Structure** and switc
 
 1. Select the table in **Data structure**.
 2. Scroll down and switch to **Segments**.
-3. Click on **+New Segment**. You'll see an abridged version of Metabase's query builder.
+3. Click **+New Segment**. You'll see an abridged version of Metabase's query builder.
 4. Add the filters describing the segment (e.g. `Active = true`) and name the segment.
-5. To preview the records in the segment, click on the **three dots** icon next to the segment's name and select **Preview**.
+5. To preview the records in the segment, click the **three dots** icon next to the segment's name and select **Preview**.
 6. Save.
 
 ### Use a segment in the query builder
@@ -123,7 +123,7 @@ Deleting a segment will not break questions using it. The questions that use the
 
 1. Select the table in **Data structure**.
 2. Scroll down and switch to **Segments** and choose your segment.
-3. On the segment's page, click on the **three dots** icon next to the segment's name and select **Remove segment**.
+3. On the segment's page, click the **three dots** icon next to the segment's name and select **Remove segment**.
 
 ## Measures
 
@@ -137,9 +137,9 @@ To see all measures on a table, select the table in **Data structure** and switc
 
 1. Select the table in **Data structure**.
 2. Scroll down and switch to **Measures**.
-3. Click on **+New measure**. You'll see an abridged version of Metabase's query builder that focuses on aggregation.
+3. Click **+New measure**. You'll see an abridged version of Metabase's query builder that focuses on aggregation.
 4. Add your aggregation. For more complex aggregations, check out [custom expressions](../questions/query-builder/expressions.md).
-5. To preview the results of the measure, click on the **three dots** icon next to the measure's name and select **Preview**.
+5. To preview the results of the measure, click the **three dots** icon next to the measure's name and select **Preview**.
 
 ### Use a measure in the query builder
 
@@ -151,7 +151,7 @@ Deleting a measure will not break questions using it. The questions that use the
 
 1. Select the table in **Data structure**.
 2. Scroll down and switch to **Measures** and choose your measure.
-3. On the measure's page, click on the **three dots** icon next to the measure's name and select **Remove measure**.
+3. On the measure's page, click the **three dots** icon next to the measure's name and select **Remove measure**.
 
 ### Explore a measure
 

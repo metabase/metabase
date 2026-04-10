@@ -39,9 +39,9 @@ If your Metabase has the [Library collection](../../data-studio/library.md), the
 
 ![library data picker](../images/library-data-picker.png)
 
-Once you select the data source, you can preview the data, or view the data in a new browser tab by Cmd/Ctrl+Clicking on the data source's name.
+Once you select the data source, you can preview the data, or view the data in a new browser tab by Cmd/Ctrl+Clicking the data source's name.
 
-To choose which columns to include in your query, click on the arrow next to the data source. If you uncheck a column, you'll still be able to use the column while building a query (for example, in filters) but Metabase won't display the column in results.
+To choose which columns to include in your query, click the arrow next to the data source. If you uncheck a column, you'll still be able to use the column while building a query (for example, in filters) but Metabase won't display the column in results.
 
 You can [hide columns](../visualizations/table.md#rearranging-adding-and-hiding-columns) from the table views.
 
@@ -134,4 +134,4 @@ The drill-through menu will present different options depending on what you clic
 
 ### Column heading drill-through
 
-When viewing a [table](../visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+When viewing a [table](../visualizations/table.md), clicking the heading of a column gives you different options, depending on the columns data type. See [table](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).

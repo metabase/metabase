@@ -31,7 +31,7 @@ You'll first need a dashboard to embed. If you don't have one yet, you can use t
 
 Visit that dashboard and make a note of its URL, e.g. `/dashboard/1-e-commerce-insights`. You'll need to put this relative URL in your app, as you'll use the dashboard as the first page that logged-in people will see when they visit the analytics section in your app. It's enough to include the ID only and omit the rest of the URL, e.g. `/dashboard/1`.
 
-You could also use the dashboard's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items). On the dashboard, click on the **info** button. On the **Overview** tab, look for the dashboard's **Entity ID**. Copy that Entity ID. You'll use that Entity ID in the iframe's `src` URL: (e.g., `src=/dashboard/entity/[Entity ID]`).
+You could also use the dashboard's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items). On the dashboard, click the **info** button. On the **Overview** tab, look for the dashboard's **Entity ID**. Copy that Entity ID. You'll use that Entity ID in the iframe's `src` URL: (e.g., `src=/dashboard/entity/[Entity ID]`).
 
 ### Enable full app embedding
 
@@ -47,7 +47,7 @@ If you're embedding Metabase in a different domain, you may need to [set the ses
 
 #### Enable authentication with JWT
 
-While still in the **Embedding settings** section, scroll down and click on **Authentication** under **Related settings**.
+While still in the **Embedding settings** section, scroll down and click **Authentication** under **Related settings**.
 
 On the card that says **JWT**, click the **Setup** button (you may have to scroll down to view the JWT card).
 
@@ -59,7 +59,7 @@ In your app, you'll create a route for SSO at `/sso/metabase`. In the **JWT IDEN
 
 #### Generate a JWT signing key
 
-Click on the **Generate key** button to generate a signing key. Keep this key a secret. You'll use it on your server. If you generate another key, you'll overwrite the existing key, so you'll need to update the key in your app as well.
+Click the **Generate key** button to generate a signing key. Keep this key a secret. You'll use it on your server. If you generate another key, you'll overwrite the existing key, so you'll need to update the key in your app as well.
 
 Copy this key, as you'll need it in the next section.
 
@@ -129,7 +129,7 @@ Metabase creates an account for first-time sign-ins.
 
 ### CHECKPOINT: sign in to your Metabase using SSO
 
-Make sure you are signed out of your Metabase. From the Metabase sign-in page, click on "Sign in with SSO". You should be redirected to your app.
+Make sure you are signed out of your Metabase. From the Metabase sign-in page, click "Sign in with SSO". You should be redirected to your app.
 
 Log in to your app. Your app should redirect you to your Metabase welcome page. If the person doesn't yet have a Metabase account, Metabase should create an account for them.
 
@@ -207,7 +207,7 @@ To reset permissions for the All users group, click the **grid** icon and go to 
 
 ### Allow view access to the automatically generated dashboards collection
 
-Still in the **Permissions** tab, click on the **Collections** sub-tab, then on the **Automatically generated dashboards** collection, and set the **Collection access** permissions for the **All Users** group to **View**.
+Still in the **Permissions** tab, click the **Collections** sub-tab, then on the **Automatically generated dashboards** collection, and set the **Collection access** permissions for the **All Users** group to **View**.
 
 Click **Save changes**, then **Yes**.
 
@@ -227,7 +227,7 @@ Note that to persist the user attribute in Metabase, you'll need to log in. Log 
 
 ### Set row-level permissions
 
-In Metabase, go to **Admin** > **Permissions**. Under the **Data** tab on the left, click on a group. For "Sample Database", change its **Data access** column to **Granular**.
+In Metabase, go to **Admin** > **Permissions**. Under the **Data** tab on the left, click a group. For "Sample Database", change its **Data access** column to **Granular**.
 
 Metabase will display a list of the tables in the database. Next, change **View data access** for the "Invoices" table to **Row and column security**.
 
@@ -245,7 +245,7 @@ Metabase will ask if you're sure you want to do this. You _are_ sure.
 
 Make sure you've logged out of your previous session.
 
-Log in to your app, navigate to `/analytics`. The dashboard will now present different information, since only a subset of the data is visible to this person. Click on **Browse Data** at the bottom of the left nav. View your secured **Invoices** table, and you should only see rows in that table that are associated with the person's account.
+Log in to your app, navigate to `/analytics`. The dashboard will now present different information, since only a subset of the data is visible to this person. Click **Browse Data** at the bottom of the left nav. View your secured **Invoices** table, and you should only see rows in that table that are associated with the person's account.
 
 ## Hiding Metabase elements
 
