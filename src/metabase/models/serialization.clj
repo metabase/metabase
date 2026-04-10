@@ -1087,7 +1087,8 @@
 ;;; ## Tables
 
 (defn- batch-load-tables
-  "Loads the table with `id` plus FK-connected tables, up to `max-batch` total."
+  "Loads the table with `id` plus FK-connected tables, up to `max-batch` total.
+   A database may have millions of tables due to partitioning, so we must respect the limit."
   [id max-batch]
   (let [target       (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema] :id id)
         remaining    (- max-batch (count target))
@@ -1204,7 +1205,8 @@
 
 (defn- batch-load-fields
   "Loads the requested field, its parent_id chain (via recursive CTE), and additional
-   fields from the same table and FK-connected tables, up to `max-batch` total."
+   fields from the same table and FK-connected tables, up to `max-batch` total.
+   A table may have millions of fields due to JSON unfolding, so we must respect the limit."
   [field-id max-batch]
   (let [required  (load-field-hierarchy field-id)
         remaining (- max-batch (count required))]
