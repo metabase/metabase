@@ -122,7 +122,7 @@ export function AggregationPicker({
     useState<DefinedClauseName | null>(null);
 
   // For really simple inline expressions like Average([Price]),
-  // MLv2 can figure out that "Average" operator is used.
+  // Lib can figure out that "Average" operator is used.
   // We don't want that though, so we don't break navigation inside the picker
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
     isEditingExpression ? null : initialOperator,

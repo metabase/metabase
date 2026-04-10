@@ -2,7 +2,10 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import {
+  CHART_STYLE,
+  getSplitPanelGap,
+} from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
   ChartDataset,
@@ -835,6 +838,7 @@ export const getChartLayout = (
     outerHeight: height,
     axisEnabledSetting,
     stackedBarTicksRotation,
+    panelGap: 0,
   };
 };
 
@@ -903,10 +907,17 @@ const computeSplitPanelLayout = (
     ticksDimensions.yTicksWidthLeft -
     ticksDimensions.yTicksWidthRight;
 
-  const panelGap = CHART_STYLE.splitPanel.gap;
+  const { gapRatio, maxGap } = CHART_STYLE.splitPanel;
   const availableHeight = height - padding.top - padding.bottom;
-  const panelHeight =
-    (availableHeight - (panelCount - 1) * panelGap) / panelCount;
+
+  let panelHeight =
+    availableHeight / (panelCount + (panelCount - 1) / gapRatio);
+  let panelGap = getSplitPanelGap(panelHeight);
+
+  if (panelGap >= maxGap) {
+    panelGap = maxGap;
+    panelHeight = (availableHeight - (panelCount - 1) * maxGap) / panelCount;
+  }
 
   return {
     ticksDimensions,
@@ -916,5 +927,6 @@ const computeSplitPanelLayout = (
     outerHeight: height,
     axisEnabledSetting,
     panelHeight,
+    panelGap,
   };
 };

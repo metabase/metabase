@@ -8,7 +8,12 @@ import type {
   ProjectionClause,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
+import type {
+  CardId,
+  Dataset,
+  MetricBreakoutValuesResponse,
+  SingleSeries,
+} from "metabase-types/api";
 
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
@@ -16,6 +21,7 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   SelectedMetric,
+  SourceBreakoutColorMap,
   SourceColorMap,
 } from "../types/viewer-state";
 import {
@@ -35,7 +41,11 @@ import type {
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
 import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
-import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
+import {
+  buildRawSeriesFromDefinitions,
+  computeSourceBreakoutColors,
+  getSelectedMetricsInfo,
+} from "../utils/series";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -64,6 +74,9 @@ export interface UseMetricsViewerResult {
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   isExecuting: (id: MetricSourceId) => boolean;
 
+  series: SingleSeries[];
+  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
+  activeBreakoutColors: SourceBreakoutColorMap;
   sourceColors: SourceColorMap;
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
   selectedMetrics: SelectedMetric[];
@@ -215,9 +228,46 @@ export function useMetricsViewer({
     [state.definitions, loadingIds],
   );
 
-  const sourceColors = useMemo(
-    () => computeSourceColors(state.definitions, breakoutValuesBySourceId),
+  const sourceBreakoutColors = useMemo(
+    () =>
+      computeSourceBreakoutColors(state.definitions, breakoutValuesBySourceId),
     [state.definitions, breakoutValuesBySourceId],
+  );
+
+  const { series, cardIdToDefinitionId, activeBreakoutColors } = useMemo(() => {
+    if (!activeTab) {
+      return { series: [], cardIdToDefinitionId: {}, activeBreakoutColors: {} };
+    }
+    return buildRawSeriesFromDefinitions(
+      state.definitions,
+      activeTab.dimensionMapping,
+      activeTab.display,
+      resultsByDefinitionId,
+      modifiedDefinitions,
+      sourceBreakoutColors,
+      activeTab.visualizationSettings,
+    );
+  }, [
+    state.definitions,
+    activeTab,
+    resultsByDefinitionId,
+    modifiedDefinitions,
+    sourceBreakoutColors,
+  ]);
+
+  const sourceColors = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(activeBreakoutColors).map(([sourceId, colors]) => [
+          sourceId,
+          colors === undefined
+            ? []
+            : typeof colors === "string"
+              ? [colors]
+              : Array.from(colors.values()),
+        ]),
+      ),
+    [activeBreakoutColors],
   );
 
   const definitionsBySourceId = useMemo(
@@ -377,6 +427,9 @@ export function useMetricsViewer({
     modifiedDefinitions,
     isExecuting,
 
+    series,
+    cardIdToDefinitionId,
+    activeBreakoutColors,
     sourceColors,
     breakoutValuesBySourceId,
     selectedMetrics,

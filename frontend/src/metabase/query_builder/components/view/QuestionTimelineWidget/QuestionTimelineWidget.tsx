@@ -8,8 +8,9 @@ import {
   onOpenTimelines,
 } from "metabase/redux/query-builder";
 import { Indicator } from "metabase/ui";
-import { trackSimpleEvent } from "metabase/utils/analytics";
 import { useDispatch, useSelector } from "metabase/utils/redux";
+
+import { trackEventsClicked } from "./analytics";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;
@@ -26,10 +27,7 @@ function QuestionTimelineAcknowledgement({
         <Indicator disabled={hasSeen} size={6} offset={4}>
           {children({
             ack: () => {
-              trackSimpleEvent({
-                event: "events_clicked",
-                triggered_from: "chart",
-              });
+              trackEventsClicked();
               if (!hasSeen) {
                 ack();
               }

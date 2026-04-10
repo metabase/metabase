@@ -25,7 +25,7 @@
   - None
 
   A `:zoom` drill is a 'View details' drill when you click on the value of a PK column in a Table that has EXACTLY ONE
-  PK column. In MLv2, it is a no-op; in the frontend it changes the URL to take you to the 'object details' view for
+  PK column. In Lib, it is a no-op; in the frontend it changes the URL to take you to the 'object details' view for
   the row in question. For Tables with multiple PK columns, a [[metabase.lib.drill-thru.pk]] drill is returned
   instead.
 

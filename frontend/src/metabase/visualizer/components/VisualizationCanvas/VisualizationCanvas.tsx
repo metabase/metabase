@@ -16,7 +16,6 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { trackSimpleEvent } from "metabase/utils/analytics";
 import { useSelector } from "metabase/utils/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -29,6 +28,7 @@ import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
 import { useVisualizerUi } from "../VisualizerUiContext";
+import { trackVisualizerViewAsTableClicked } from "../analytics";
 
 import S from "./VisualizationCanvas.module.css";
 import { HorizontalWell } from "./wells/HorizontalWell";
@@ -124,10 +124,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
             <ActionIcon
               data-testid="visualizer-view-as-table-button"
               onClick={() => {
-                trackSimpleEvent({
-                  event: "visualizer_view_as_table_clicked",
-                  triggered_from: "visualizer-modal",
-                });
+                trackVisualizerViewAsTableClicked();
 
                 setTabularPreviewOpen(true);
               }}

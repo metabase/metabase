@@ -3,11 +3,11 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link/Link";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { Indicator, Tooltip } from "metabase/ui";
-import { trackSimpleEvent } from "metabase/utils/analytics";
 import * as Urls from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
+import { trackEventsClicked } from "./analytics";
 
 interface CollectionTimelineProps {
   collection: Collection;
@@ -24,10 +24,7 @@ function CollectionTimelineAcknowledgement({
         <Indicator disabled={hasSeen} size={6} offset={6}>
           {children({
             ack: () => {
-              trackSimpleEvent({
-                event: "events_clicked",
-                triggered_from: "collection",
-              });
+              trackEventsClicked();
               if (!hasSeen) {
                 ack();
               }

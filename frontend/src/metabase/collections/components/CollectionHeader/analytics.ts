@@ -11,3 +11,9 @@ export const trackCSVFileUploadClicked = () =>
     event: "csv_upload_clicked",
     triggered_from: "collection",
   });
+
+export const trackEventsClicked = () =>
+  trackSimpleEvent({
+    event: "events_clicked",
+    triggered_from: "collection",
+  });

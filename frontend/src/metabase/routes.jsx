@@ -67,8 +67,8 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
-import { trackPageView } from "metabase/utils/analytics";
 
+import { trackPageView } from "./analytics";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,

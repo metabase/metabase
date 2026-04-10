@@ -1,56 +1,38 @@
 import {
   type ReactNode,
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
 import { useMedia } from "react-use";
-import { noop } from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import type {
-  ColorScheme,
-  ResolvedColorScheme,
-} from "metabase/utils/color-scheme";
+import {
+  ColorSchemeContext,
+  type ColorSchemeContextType,
+  colorSchemeContextDefaultValue,
+} from "metabase/ui/components/theme/ColorSchemeProvider";
 
-interface ColorSchemeContextType {
-  colorScheme: ColorScheme;
-  resolvedColorScheme: ResolvedColorScheme;
-  systemColorScheme: ResolvedColorScheme;
-  setColorScheme: (scheme: ColorScheme) => void;
-  toggleColorScheme: () => void;
-}
+import type { ColorScheme } from "./utils/color-scheme";
 
-const defaultValue: ColorSchemeContextType = {
-  colorScheme: "light",
-  resolvedColorScheme: "light",
-  systemColorScheme: "light",
-  setColorScheme: noop,
-  toggleColorScheme: noop,
-};
-
-const ColorSchemeContext = createContext<ColorSchemeContextType>(defaultValue);
-
-interface ColorSchemeProviderProps {
+interface AppColorSchemeProviderProps {
   children: ReactNode;
   defaultColorScheme?: ColorScheme;
-  forceColorScheme?: ResolvedColorScheme | null;
+  forceColorScheme?: "light" | "dark" | null;
   onUpdateColorScheme?: (scheme: ColorScheme) => void;
 }
 
-const getNextScheme = (scheme: ResolvedColorScheme) =>
+const getNextScheme = (scheme: "light" | "dark") =>
   scheme === "dark" ? "light" : "dark";
 
-export function ColorSchemeProvider({
+export function AppColorSchemeProvider({
   children,
   defaultColorScheme = "auto",
   forceColorScheme,
   onUpdateColorScheme,
-}: ColorSchemeProviderProps) {
+}: AppColorSchemeProviderProps) {
   const systemColorScheme = useMedia("(prefers-color-scheme: dark)")
     ? "dark"
     : "light";
@@ -67,8 +49,6 @@ export function ColorSchemeProvider({
     //
     // If such new preferences specify a different color scheme, we then
     // react to those changes.
-    //
-    // See: `ThemeProvider.tsx:181`
     setColorScheme(defaultColorScheme);
   }, [defaultColorScheme]);
 
@@ -91,7 +71,7 @@ export function ColorSchemeProvider({
   );
 
   const value: ColorSchemeContextType = isEmbeddingSdk()
-    ? defaultValue
+    ? colorSchemeContextDefaultValue
     : {
         colorScheme,
         resolvedColorScheme,
@@ -110,12 +90,4 @@ export function ColorSchemeProvider({
       {children}
     </ColorSchemeContext.Provider>
   );
-}
-
-export function useColorScheme(): ColorSchemeContextType {
-  const context = useContext(ColorSchemeContext);
-  if (!context) {
-    throw new Error("useColorScheme must be used within a ColorSchemeProvider");
-  }
-  return context;
 }

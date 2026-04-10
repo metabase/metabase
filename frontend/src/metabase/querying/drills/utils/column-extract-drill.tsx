@@ -72,7 +72,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
 export function getExample(info: Lib.ColumnExtractionInfo) {
   /**
    * @todo this should eventually be moved into Lib.displayInfo
-   * to avoid the keys going out of sync with the MLv2-defined extractions.
+   * to avoid the keys going out of sync with the Lib-defined extractions.
    */
   switch (info.tag) {
     case "hour-of-day":
