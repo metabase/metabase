@@ -1,4 +1,4 @@
-You are the orchestrator for the reprobot workflow. ReproBot attempts to reproduce a reported bug against the locally running server, classifies the result, and optionally writes a failing test. For an isolated worktree version, use `/reprobot-workmux` instead.
+You are the orchestrator for the reprobot workflow. ReproBot attempts to reproduce a reported bug against the locally running server, classifies the result, and optionally writes a failing test. For an isolated worktree version, use `/workmux <branch> /reprobot <args>` instead.
 
 ## Steps
 

@@ -1,30 +1,10 @@
 (ns mage.fixbot.session
+  "Fixbot-specific utilities (sandbox settings, dashboard)."
   (:require
-   [mage.bot.session :as bot]
    [mage.color :as c]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private prefix "fixbot")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Public API — delegates to shared bot.session
-
-(defn pause!
-  "Pause a fixbot session."
-  [{:keys [arguments]}]
-  (bot/pause-sessions! prefix (first arguments)))
-
-(defn list-sessions!
-  "List all fixbot sessions with status."
-  [_parsed]
-  (bot/list-sessions! prefix "Fixbot"))
-
-(defn quit!
-  "Tear down and remove a fixbot worktree session."
-  [{:keys [arguments]}]
-  (bot/quit-session! prefix (first arguments)))
 
 (defn write-sandbox-settings!
   "Copy the sandbox-specific settings.local.json into the current worktree's .claude/ directory."
@@ -42,7 +22,7 @@
 (defn dashboard!
   "Open the workmux TUI dashboard."
   []
-  (let [pb (ProcessBuilder. ^java.util.List ["workmux" "dashboard" "fixbot"])]
+  (let [pb (ProcessBuilder. ^java.util.List ["workmux" "dashboard"])]
     (.inheritIO pb)
     (.directory pb (java.io.File. ^String u/project-root-directory))
     (let [proc (.start pb)]

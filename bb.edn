@@ -652,18 +652,6 @@
    :arg-schema [:? [:string {:name "file-path"}]]
    :task (task! (status/run! parsed))}
 
-  fixbot-go
-  {:doc "Launch auto-fix workflow for a Linear issue"
-   :examples [["./bin/mage fixbot-go MB-12345 --app-db postgres --prompt-file /tmp/prompt.md --branch 'username/mb-12345-fix-thing'"
-               "Launch workmux session"]]
-   :requires [[mage.fixbot.go :as fixbot-go]]
-   :arg-schema [:tuple [:string {:name "issue-id"}]]
-   :options [[nil "--app-db DB" "App database" :default "postgres"]
-             [nil "--prompt-file FILE" "Path to agent prompt file"]
-             [nil "--branch BRANCH" "Branch name from Linear"]
-             [nil "--base BASE" "Base branch/commit to branch from"]]
-   :task (task! (fixbot-go/run! parsed))}
-
   -bot-generate-prompt
   {:doc "Fill a template with placeholders and write an agent prompt"
    :examples [["./bin/mage -bot-generate-prompt --template dev/bot/fixbot/fixbot-agent.md --output .fixbot/prompt.md --set ISSUE_ID=MB-123 --set APP_DB=Postgres"
@@ -713,26 +701,6 @@
    :arg-schema [:tuple [:string {:name "issue-id"}]]
    :task (task! (linear/print-issue! parsed))}
 
-  -fixbot-pause
-  {:doc "Pause a fixbot session (stop containers, close tmux, keep worktree)"
-   :examples [["./bin/mage -fixbot-pause mb-12345" "Pause session"]]
-   :requires [[mage.fixbot.session :as session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (session/pause! parsed))}
-
-  -fixbot-list
-  {:doc "List fixbot sessions with status"
-   :examples [["./bin/mage -fixbot-list" "List all sessions"]]
-   :requires [[mage.fixbot.session :as session]]
-   :task (task! (session/list-sessions! parsed))}
-
-  -fixbot-quit
-  {:doc "Tear down and remove a fixbot worktree session"
-   :examples [["./bin/mage -fixbot-quit mb-12345" "Remove session and worktree"]]
-   :requires [[mage.fixbot.session :as session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (session/quit! parsed))}
-
   -fixbot-write-sandbox-settings
   {:doc "Write container-compatible settings.local.json for sandbox"
    :examples [["./bin/mage -fixbot-write-sandbox-settings" "Write sandbox settings"]]
@@ -745,91 +713,43 @@
    :requires [[mage.fixbot.session :as session]]
    :task (task! (session/dashboard!))}
 
-  ;;; UXBot tasks
+  ;;; Unified workmux session management
 
-  uxbot-go
-  {:doc "Launch UX testing session for a branch"
-   :examples [["./bin/mage uxbot-go my-feature-branch --prompt-file .uxbot/prompt.md"
-               "Launch uxbot session"]]
-   :requires [[mage.uxbot.go :as uxbot-go]]
+  workmux-go
+  {:doc "Launch a bot in a workmux session with its own worktree, backend, and frontend"
+   :examples [["./bin/mage workmux-go master --bot qabot --command /qabot"
+               "Launch qabot in workmux"]
+              ["./bin/mage workmux-go my-branch --bot fixbot --command '/fixbot MB-12345' --app-db mysql"
+               "Launch fixbot with MySQL"]]
+   :requires [[mage.bot.workmux :as workmux]]
    :arg-schema [:tuple [:string {:name "branch-name"}]]
-   :options [[nil "--app-db DB" "App database" :default "postgres"]
-             [nil "--prompt-file FILE" "Path to agent prompt file"]
+   :options [[nil "--bot BOT" "Bot name (qabot, fixbot, uxbot, reprobot, cibot)"]
+             [nil "--command CMD" "Inner command to run (e.g., /qabot, '/fixbot MB-12345')"]
+             [nil "--app-db DB" "App database" :default "postgres"]
              [nil "--base BASE" "Base branch/commit to branch from"]]
-   :task (task! (uxbot-go/run! parsed))}
+   :task (task! (workmux/run! parsed))}
 
-  -uxbot-stop
-  {:doc "Stop a uxbot session (kill tmux + dev env, keep worktree)"
-   :examples [["./bin/mage -uxbot-stop my-branch" "Stop session"]]
-   :requires [[mage.uxbot.session :as uxbot-session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (uxbot-session/stop! parsed))}
+  -workmux-stop
+  {:doc "Stop a workmux session (kill tmux + dev env, keep worktree). No args = stop current session."
+   :examples [["./bin/mage -workmux-stop qabot-master" "Stop named session"]
+              ["./bin/mage -workmux-stop" "Stop current session (from inside workmux)"]]
+   :requires [[mage.bot.workmux :as workmux]]
+   :arg-schema [:? [:string {:name "name-or-id"}]]
+   :task (task! (workmux/stop! parsed))}
 
-  ;;; CIBot tasks
+  -workmux-list
+  {:doc "List all workmux sessions with status"
+   :examples [["./bin/mage -workmux-list" "List all sessions"]]
+   :requires [[mage.bot.workmux :as workmux]]
+   :task (task! (workmux/list-all! parsed))}
 
-  cibot-go
-  {:doc "Launch CI monitoring session for a branch"
-   :examples [["./bin/mage cibot-go my-feature-branch --prompt-file .cibot/prompt.md"
-               "Launch cibot session"]]
-   :requires [[mage.cibot.go :as cibot-go]]
-   :arg-schema [:tuple [:string {:name "branch-name"}]]
-   :options [[nil "--app-db DB" "App database" :default "postgres"]
-             [nil "--prompt-file FILE" "Path to agent prompt file"]
-             [nil "--base BASE" "Base branch/commit to branch from"]]
-   :task (task! (cibot-go/run! parsed))}
-
-  -cibot-stop
-  {:doc "Stop a cibot session (kill tmux + dev env, keep worktree)"
-   :examples [["./bin/mage -cibot-stop my-branch" "Stop session"]]
-   :requires [[mage.cibot.session :as cibot-session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (cibot-session/stop! parsed))}
-
-  -cibot-list
-  {:doc "List cibot sessions with status"
-   :examples [["./bin/mage -cibot-list" "List all sessions"]]
-   :requires [[mage.cibot.session :as cibot-session]]
-   :task (task! (cibot-session/list-sessions! parsed))}
-
-  -cibot-quit
-  {:doc "Tear down and remove a cibot worktree session"
-   :examples [["./bin/mage -cibot-quit my-branch" "Remove session"]]
-   :requires [[mage.cibot.session :as cibot-session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (cibot-session/quit! parsed))}
-
-  ;;; ReproBot tasks
-
-  reprobot-go
-  {:doc "Launch bug reproduction session for a branch"
-   :examples [["./bin/mage reprobot-go my-feature-branch --prompt-file .reprobot/prompt.md"
-               "Launch reprobot session"]]
-   :requires [[mage.reprobot.go :as reprobot-go]]
-   :arg-schema [:tuple [:string {:name "branch-name"}]]
-   :options [[nil "--app-db DB" "App database" :default "postgres"]
-             [nil "--prompt-file FILE" "Path to agent prompt file"]
-             [nil "--base BASE" "Base branch/commit to branch from"]]
-   :task (task! (reprobot-go/run! parsed))}
-
-  -reprobot-stop
-  {:doc "Stop a reprobot session (kill tmux + dev env, keep worktree)"
-   :examples [["./bin/mage -reprobot-stop my-branch" "Stop session"]]
-   :requires [[mage.reprobot.session :as reprobot-session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (reprobot-session/stop! parsed))}
-
-  -reprobot-list
-  {:doc "List reprobot sessions with status"
-   :examples [["./bin/mage -reprobot-list" "List all sessions"]]
-   :requires [[mage.reprobot.session :as reprobot-session]]
-   :task (task! (reprobot-session/list-sessions! parsed))}
-
-  -reprobot-quit
-  {:doc "Tear down and remove a reprobot worktree session"
-   :examples [["./bin/mage -reprobot-quit my-branch" "Remove session"]]
-   :requires [[mage.reprobot.session :as reprobot-session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (reprobot-session/quit! parsed))}
+  -workmux-quit
+  {:doc "Tear down and remove a workmux session. No args = remove current session."
+   :examples [["./bin/mage -workmux-quit qabot-master" "Remove named session"]
+              ["./bin/mage -workmux-quit" "Remove current session (from inside workmux)"]]
+   :requires [[mage.bot.workmux :as workmux]]
+   :arg-schema [:? [:string {:name "name-or-id"}]]
+   :task (task! (workmux/quit! parsed))}
 
   ;;; Shared bot tasks
 
@@ -867,37 +787,4 @@
               ["./bin/mage -bot-git-readonly gh pr list" "List open PRs"]]
    :requires [[mage.bot.git-readonly :as git-readonly]]
    ;; Bypass task! macro — args are passed through raw to git/gh, not parsed by tools.cli
-   :task (git-readonly/git-readonly! {:arguments (vec *command-line-args*)})}
-
-  ;;; QABot tasks
-
-  qabot-go
-  {:doc "Launch QA testing session for a branch"
-   :examples [["./bin/mage qabot-go my-feature-branch --prompt-file .qabot/prompt.md"
-               "Launch qabot session"]]
-   :requires [[mage.qabot.go :as qabot-go]]
-   :arg-schema [:tuple [:string {:name "branch-name"}]]
-   :options [[nil "--app-db DB" "App database" :default "postgres"]
-             [nil "--prompt-file FILE" "Path to agent prompt file"]
-             [nil "--base BASE" "Base branch/commit to branch from"]]
-   :task (task! (qabot-go/run! parsed))}
-
-  -qabot-stop
-  {:doc "Stop a qabot session (kill tmux + dev env, keep worktree)"
-   :examples [["./bin/mage -qabot-stop my-branch" "Stop session"]]
-   :requires [[mage.qabot.session :as qabot-session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (qabot-session/stop! parsed))}
-
-  -qabot-list
-  {:doc "List qabot sessions with status"
-   :examples [["./bin/mage -qabot-list" "List all sessions"]]
-   :requires [[mage.qabot.session :as qabot-session]]
-   :task (task! (qabot-session/list-sessions! parsed))}
-
-  -qabot-quit
-  {:doc "Tear down and remove a qabot worktree session"
-   :examples [["./bin/mage -qabot-quit my-branch" "Remove session and worktree"]]
-   :requires [[mage.qabot.session :as qabot-session]]
-   :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (qabot-session/quit! parsed))}}}
+   :task (git-readonly/git-readonly! {:arguments (vec *command-line-args*)})}}}

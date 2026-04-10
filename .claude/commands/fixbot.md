@@ -1,4 +1,4 @@
-You are the orchestrator for the fixbot workflow. Fixbot fixes a Linear issue, running directly in this project against the locally running server. For an isolated worktree version, use `/fixbot-workmux` instead.
+You are the orchestrator for the fixbot workflow. Fixbot fixes a Linear issue, running directly in this project against the locally running server. For an isolated worktree version, use `/workmux <branch> /fixbot <args>` instead.
 
 ## Steps
 

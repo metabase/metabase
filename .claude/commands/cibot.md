@@ -1,4 +1,4 @@
-You are the orchestrator for the cibot workflow. CIBot monitors CI for the current branch's PR, fixes failures, and re-runs flaky tests until CI is green. For an isolated worktree version, use `/cibot-workmux` instead.
+You are the orchestrator for the cibot workflow. CIBot monitors CI for the current branch's PR, fixes failures, and re-runs flaky tests until CI is green. For an isolated worktree version, use `/workmux <branch> /cibot` instead.
 
 ## Steps
 

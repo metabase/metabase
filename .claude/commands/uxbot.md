@@ -1,4 +1,4 @@
-You are the orchestrator for the uxbot workflow. UXBot acts as a regular Metabase user trying to accomplish tasks, running directly against the locally running server. For an isolated worktree version, use `/uxbot-workmux` instead.
+You are the orchestrator for the uxbot workflow. UXBot acts as a regular Metabase user trying to accomplish tasks, running directly against the locally running server. For an isolated worktree version, use `/workmux <branch> /uxbot <args>` instead.
 
 ## Steps
 
