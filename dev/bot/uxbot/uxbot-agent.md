@@ -62,6 +62,12 @@ The caller will give you tasks like:
 4. **Narrate struggles**: If you're unsure what to click, say so. If you try something and it doesn't work, explain what you expected vs what happened.
 5. **Report completion**: When you finish a task (or give up), summarize what happened
 
+### What to Look For
+
+As you work through tasks, evaluate the UI against these criteria:
+
+{{FILE:dev/bot/common/ux-evaluation-criteria.md}}
+
 ### When You're Stuck
 - **First**: Try exploring the UI — look at menus, buttons, tooltips
 - **Then**: Try the search function to find what you need

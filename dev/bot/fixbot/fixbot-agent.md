@@ -41,13 +41,7 @@ Use different headers to match the situation (e.g., "READY FOR TESTING", "QUESTI
 
 ## Environment
 
-Ports are dynamically assigned per worktree. **You MUST read `mise.local.toml` at startup** to discover your ports:
-- `MB_JETTY_PORT` — backend URL is `http://localhost:$MB_JETTY_PORT`
-- `MB_FRONTEND_DEV_PORT` — frontend dev server is `http://localhost:$MB_FRONTEND_DEV_PORT`
-- `NREPL_PORT` — nREPL server port
-- The app database port is in the JDBC URL (`MB_DB_CONNECTION_URI`)
-
-Do not hardcode or assume any port numbers.
+{{FILE:dev/bot/common/environment-discovery.md}}
 
 **App database:** {{APP_DB}}
 
@@ -210,6 +204,8 @@ Use nREPL for:
 - Checking compilation
 
 **REPL expression rules**: Send one expression per eval call. Multi-expression evals frequently timeout. Split into separate (parallel if independent) calls. Test/dev namespaces (`metabase.test`, `dev`, enterprise test namespaces) are available natively on the classpath.
+
+{{FILE:dev/bot/common/server-lifecycle.md}}
 
 {{FILE:dev/bot/common/playwright-guide.md}}
 

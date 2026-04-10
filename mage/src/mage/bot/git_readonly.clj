@@ -49,11 +49,13 @@
     (= subcommand "branch")
     (not (some #(re-matches #"-[dDmMcC]|--delete|--move|--copy|--set-upstream.*" %) args))
 
-    ;; tag: read-only if listing (no args or only flags that aren't -d/--delete)
+    ;; tag: read-only if listing (no args, -l flag, or only flags that aren't -d/--delete/-f/--force)
     (= subcommand "tag")
-    (and (not (some #(re-matches #"-d|--delete|-f|--force" %) args))
-         (or (empty? args)
-             (every? #(str/starts-with? % "-") args)))
+    (boolean
+     (and (not (some #(re-matches #"-d|--delete|-f|--force" %) args))
+          (or (empty? args)
+              (some #(re-matches #"-l|--list" %) args)
+              (every? #(str/starts-with? % "-") args))))
 
     ;; stash: "list" and "show" are read-only, everything else writes
     (= subcommand "stash")

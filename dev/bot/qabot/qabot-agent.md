@@ -272,14 +272,9 @@ Now act as a **QA engineer and UX expert**. You have access to the source code A
 3. Look for related pages/APIs that should be consistent with the changes
 
 ### Browser-based UX review (Playwright)
-Navigate to the affected areas and evaluate:
-- **Visual quality**: Does the layout look correct? Spacing, alignment, typography?
-- **Interactive behavior**: Do buttons, dropdowns, modals work smoothly? Any jank?
-- **Loading states**: Is there a spinner/skeleton while data loads? Or a flash of empty content?
-- **Error states**: What happens when something goes wrong? Is the error message helpful?
-- **Empty states**: What does the page look like with no data?
-- **Keyboard navigation**: Can you tab through interactive elements? Does focus management work?
-- **Responsive behavior**: Does it work at different viewport sizes? (resize the browser)
+Navigate to the affected areas and evaluate using the shared UX checklist:
+
+{{FILE:dev/bot/common/ux-evaluation-criteria.md}}
 
 ### API usability review (`./bin/mage -bot-api-call`)
 For changed or new API endpoints:
