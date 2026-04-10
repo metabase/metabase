@@ -1073,8 +1073,8 @@
   "Given a numeric database ID and a fn that resolves it to a database entity,
    return its name as a portable reference."
   [id db-fn]
-  (when id
-    (:name (db-fn id))))
+  (when-let [db (and id (db-fn id))]
+    (:name db)))
 
 (defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
@@ -1112,9 +1112,8 @@
   "Given a numeric table ID, a fn that resolves it to a table entity, and a fn
    that resolves a database ID to a database entity, return `[db-name schema table-name]`."
   [id table-fn db-fn]
-  (when id
-    (let [table (table-fn id)]
-      [(export-database-fk (:db_id table) db-fn) (:schema table) (:name table)])))
+  (when-let [table (and id (table-fn id))]
+    [(export-database-fk (:db_id table) db-fn) (:schema table) (:name table)]))
 
 (mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
@@ -1184,9 +1183,8 @@
   "Given a numeric field ID and lookup fns for fields, tables, and databases,
    return `[db-name schema table-name & field-names]`."
   [field-id field-fn table-fn db-fn]
-  (when field-id
-    (let [field (field-fn field-id)
-          table-ref (export-table-fk (:table_id field) table-fn db-fn)
+  (when-let [field (and field-id (field-fn field-id))]
+    (let [table-ref (export-table-fk (:table_id field) table-fn db-fn)
           field-names (field-name-chain field-id field-fn)]
       (into table-ref field-names))))
 
