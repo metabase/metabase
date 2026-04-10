@@ -482,6 +482,30 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti combine-pivot-queries
+  "Given a sequence of compiled pivot subqueries with alignment metadata and a canonical column
+  layout, combine them into a single native query (e.g. using `UNION ALL`). Returns a compiled
+  query map `{:query sql-string, :params [params...]}`, or `nil` if the driver does not support
+  combined execution.
+
+  `compiled-pivot-queries` is a sequence of maps, each with:
+
+    :compiled            -- {:query sql-string, :params [...]}
+    :column-aliases      -- vec of column alias strings produced by this subquery
+    :breakout-indexes    -- which canonical breakout indexes are present
+    :group-bitmask       -- integer bitmask for the pivot-grouping column
+
+  `canonical-columns` describes the target column layout:
+
+    :breakout-aliases    -- ordered vec of ALL breakout column aliases
+    :breakout-db-types   -- ordered vec of database type strings for each breakout
+    :agg-aliases         -- ordered vec of aggregation column aliases"
+  {:added "0.60.0", :arglists '([driver compiled-pivot-queries canonical-columns])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod combine-pivot-queries ::driver [_ _ _] nil)
+
 (defmulti query-result-metadata
   "Optional. Efficiently calculate metadata about the columns that would be returned if we were to run a
   `query` (hopefully without actually running), for example:

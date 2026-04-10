@@ -6,6 +6,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -854,20 +855,62 @@
               (str "Detail count sum (" detail-count-sum ") should equal grand total ("
                    grand-total-count ") because pivot uses its own higher limit")))))))
 
-(deftest ^:parallel pivot-query-short-circuits-when-master-hits-limit-test
+(deftest pivot-query-short-circuits-when-master-hits-limit-test
   (testing "When the master pivot query hits the row limit, remaining sub-queries are skipped and truncation is signaled"
     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-      ;; Use the standard pivot-query but override the pivot limit to be very small.
-      ;; The master query (state × source × category) produces ~200+ rows.
-      ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
-      (binding [qp.pivot/*pivot-max-result-rows* 20]
-        (let [query   (qp.pivot.test-util/pivot-query)
-              results (qp.pivot/run-pivot-query query)
-              rows    (mt/rows results)]
-          (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
-            ;; All rows should be pivot-grouping=0 (the master query's group)
-            (is (every? #(zero? (nth % 3)) rows)
-                "All rows should be from the master query (pivot-grouping=0)"))
-          (testing "The result includes pivot_rows_truncated flag"
-            (is (= 10 (get-in results [:data :pivot_rows_truncated]))
-                "Should signal truncation with the row count")))))))
+      ;; Force sequential execution since this tests sequential-specific truncation behavior.
+      (with-redefs [driver/combine-pivot-queries (constantly nil)]
+        ;; Use the standard pivot-query but override the pivot limit to be very small.
+        ;; The master query (state × source × category) produces ~200+ rows.
+        ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
+        (binding [qp.pivot/*pivot-max-result-rows* 20]
+          (let [query   (qp.pivot.test-util/pivot-query)
+                results (qp.pivot/run-pivot-query query)
+                rows    (mt/rows results)]
+            (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
+              ;; All rows should be pivot-grouping=0 (the master query's group)
+              (is (every? #(zero? (nth % 3)) rows)
+                  "All rows should be from the master query (pivot-grouping=0)"))
+            (testing "The result includes pivot_rows_truncated flag"
+              (is (= 10 (get-in results [:data :pivot_rows_truncated]))
+                  "Should signal truncation with the row count"))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         UNION ALL Pivot Tests                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest union-all-pivot-results-match-test
+  (testing "UNION ALL pivot produces the same results as sequential pivot"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [query (qp.pivot.test-util/pivot-query)
+            union-results (qp.pivot/run-pivot-query query)
+            union-rows    (sort (mt/rows union-results))
+            seq-rows      (sort
+                           (mt/rows
+                            (with-redefs [driver/combine-pivot-queries (constantly nil)]
+                              (qp.pivot/run-pivot-query query))))]
+        (testing "Both paths return the same number of rows"
+          (is (= (count seq-rows) (count union-rows))))
+        (testing "Both paths return the same data"
+          (is (= seq-rows union-rows)))))))
+
+(deftest ^:parallel union-all-pivot-column-structure-test
+  (testing "UNION ALL pivot has correct column structure"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [results (qp.pivot/run-pivot-query (qp.pivot.test-util/pivot-query))
+            cols    (mt/cols results)]
+        (testing "pivot-grouping column is present"
+          (is (some #(= "pivot-grouping" (:name %)) cols)))
+        (testing "pivot-grouping is after breakouts and before aggregations"
+          (let [col-names (mapv :name cols)
+                pg-idx    (.indexOf col-names "pivot-grouping")]
+            (is (pos? pg-idx) "pivot-grouping should not be first")
+            (is (< pg-idx (dec (count col-names))) "pivot-grouping should not be last"))))))
+
+  (testing "UNION ALL pivot with filters"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [results (qp.pivot/run-pivot-query (qp.pivot.test-util/filters-query))
+            rows    (mt/rows results)]
+        (is (pos? (count rows)))
+        (testing "all rows have valid pivot-grouping values"
+          (is (every? #(integer? (nth % 2)) rows)))))))

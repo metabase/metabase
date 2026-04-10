@@ -1,17 +1,15 @@
 (ns metabase.query-processor.pivot
-  "Pivot table query processor. Determines a bunch of different subqueries to run, then runs them one by one on the data
-  warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
-  dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
-  instead of running like 10 separate queries? -- Cam
+  "Pivot table query processor. Generates a series of subqueries (one per breakout combination) and
+  executes them. For SQL drivers that support it, all subqueries are combined into a single
+  `UNION ALL` query and executed once. Otherwise, falls back to running them sequentially and
+  concatenating results.
 
-  Note that this namespace is mostly responsible for generating the series of different queries to run and doing QP
-  magic to combine the results together.
-
-  Post-processing middleware to add the `pivot-grouping` column to results and to massage result rows into a standard
-  shape lives in [[metabase.query-processor.pivot.middleware]]."
+  Post-processing middleware to add the `pivot-grouping` column to results and to massage result
+  rows into a standard shape lives in [[metabase.query-processor.pivot.middleware]]."
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
@@ -20,12 +18,14 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
@@ -297,23 +297,126 @@
      :execute  (append-queries-execute-fn more-queries)
      :reduce   (append-queries-reduce-fn info more-queries vrf pivot-limit)}))
 
-(mu/defn- process-multiple-queries
-  "Allows the query processor to handle multiple queries, stitched together to appear as one"
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          UNION ALL Pivot Execution                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- compile-pivot-subquery
+  "Preprocess and compile a single pivot subquery. Returns a map suitable for passing to
+  [[metabase.driver/combine-pivot-queries]]."
+  [subquery]
+  (let [breakout-indexes     (:qp.pivot/unremapped-breakout-combination subquery)
+        num-breakouts        (:qp.pivot/num-unremapped-breakouts subquery)
+        group-bitmask        (pivot.common/group-bitmask num-breakouts breakout-indexes)
+        subquery             (update subquery :constraints dissoc :max-results)
+        preprocessed         (qp.preprocess/preprocess subquery)
+        compiled             (qp.compile/compile-preprocessed preprocessed)
+        returned-cols        (lib/returned-columns preprocessed)
+        breakout-cols        (filterv :lib/breakout? returned-cols)
+        agg-cols             (filterv #(= :source/aggregations (:lib/source %)) returned-cols)]
+    {:compiled          compiled
+     :breakout-indexes  (vec breakout-indexes)
+     :breakout-aliases  (mapv :lib/desired-column-alias breakout-cols)
+     :breakout-db-types (mapv #(or (:database-type %) "TEXT") breakout-cols)
+     :agg-aliases       (mapv :lib/desired-column-alias agg-cols)
+     :group-bitmask     group-bitmask}))
+
+(defn- build-canonical-columns
+  "Build the canonical column layout from the first (full) compiled subquery. The first subquery
+  has ALL breakouts and serves as the reference for column alignment."
+  [first-compiled]
+  {:breakout-aliases  (:breakout-aliases first-compiled)
+   :breakout-db-types (:breakout-db-types first-compiled)
+   :agg-aliases       (:agg-aliases first-compiled)})
+
+(defn- build-union-result-metadata
+  "Build rich result metadata for the combined UNION ALL query by computing expected columns from
+  the first (full) subquery and splicing in the pivot-grouping column between breakouts and aggs."
+  [first-query breakout-count]
+  (let [clean-query   (dissoc first-query
+                              :qp.pivot/unremapped-breakout-combination
+                              :qp.pivot/remapped-breakout-combination
+                              :qp.pivot/num-remapped-cols
+                              :qp.pivot/num-unremapped-breakouts
+                              :qp.pivot/num-remapped-breakouts
+                              :qp.pivot/remapped-indexes)
+        expected-cols (qp.preprocess/query->expected-cols clean-query)
+        pivot-col     {:name                     "pivot-grouping"
+                       :display_name             "pivot-grouping"
+                       :lib/desired-column-alias "pivot-grouping"
+                       :base_type                :type/Integer
+                       :effective_type           :type/Integer}]
+    (vec (concat (take breakout-count expected-cols)
+                 [pivot-col]
+                 (drop breakout-count expected-cols)))))
+
+(defn- union-all-rff
+  "Wrap `rff` to inject our pre-computed rich result metadata, discarding the JDBC metadata that
+  the native query execution would normally produce."
+  [rich-cols rff]
+  (fn [_metadata]
+    (rff {:cols rich-cols})))
+
+(defn- process-multiple-queries-union-all
+  "Execute all pivot subqueries as a single UNION ALL query. Returns the result, or `nil` if UNION
+  ALL is not supported (e.g. the driver returned nil from [[metabase.driver/combine-pivot-queries]])."
+  [all-queries rff pivot-limit]
+  (when (empty? (:qp.pivot/remapped-indexes (first all-queries)))
+    (try
+      (let [compiled-subqueries (mapv compile-pivot-subquery all-queries)
+            first-compiled      (first compiled-subqueries)
+            canonical           (build-canonical-columns first-compiled)
+            combined            (driver/combine-pivot-queries driver/*driver*
+                                                              compiled-subqueries
+                                                              canonical)]
+        (when combined
+          (log/debugf "Running pivot UNION ALL query with %d subqueries" (count all-queries))
+          (let [first-query    (first all-queries)
+                breakout-count (count (:breakout-aliases first-compiled))
+                rich-cols      (build-union-result-metadata first-query breakout-count)
+                info           (-> (:info first-query)
+                                   (dissoc :pivot/result-metadata)
+                                   (assoc :pivot/original-query first-query))
+                native-query   (cond-> {:database (:database first-query)
+                                        :type     :native
+                                        :native   combined
+                                        :info     info}
+                                 (seq info) (qp/userland-query)
+                                 pivot-limit (assoc-in [:constraints :max-results] pivot-limit))
+                rff            (union-all-rff rich-cols rff)]
+            (qp/process-query native-query rff))))
+      (catch Throwable e
+        (log/warnf e "UNION ALL pivot execution failed, falling back to sequential")
+        nil))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Legacy Sequential Execution                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(mu/defn- process-multiple-queries-sequential
+  "Legacy path: execute pivot subqueries sequentially and stitch together results."
   [[{:keys [info], :as first-query} & more-queries] :- [:sequential ::lib.schema/query]
    rff                                              :- ::qp.schema/rff
    pivot-limit                                      :- [:maybe nat-int?]]
   (if (empty? more-queries)
-    ;; Single query - use normal QP pipeline to preserve userland metadata
     (qp/process-query (cond-> first-query
                         (seq info) qp/userland-query)
                       rff)
-    ;; Multiple queries - use custom pivot pipeline
     (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries pivot-limit)
           first-query                  (cond-> first-query
                                          (seq info) qp/userland-query)]
       (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
                 qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
         (qp/process-query first-query rff)))))
+
+(mu/defn- process-multiple-queries
+  "Execute pivot subqueries. Tries UNION ALL first for SQL drivers, falls back to sequential."
+  [all-queries :- [:sequential ::lib.schema/query]
+   rff         :- ::qp.schema/rff
+   pivot-limit :- [:maybe nat-int?]]
+  (or (when (next all-queries)
+        (process-multiple-queries-union-all all-queries rff pivot-limit))
+      (process-multiple-queries-sequential all-queries rff pivot-limit)))
 
 (mu/defn- column-name-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
