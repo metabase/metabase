@@ -1,4 +1,3 @@
-import cx from "classnames";
 import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,16 +6,8 @@ import NoResults from "assets/img/no_results.svg";
 import { Card } from "metabase/common/components/Card";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Label } from "metabase/common/components/type/Label";
-import CS from "metabase/css/core/index.css";
-import { Text } from "metabase/ui";
+import { Box, Flex, Text, rem } from "metabase/ui";
 import type { UserLoginHistoryItem } from "metabase-types/api";
-
-import {
-  LoginActiveLabel,
-  LoginGroup,
-  LoginItemContent,
-  LoginItemInfo,
-} from "./LoginHistory.styled";
 
 interface FormattedLoginItem extends UserLoginHistoryItem {
   date: string;
@@ -24,26 +15,27 @@ interface FormattedLoginItem extends UserLoginHistoryItem {
 }
 
 const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
-  <Card
-    className={cx(CS.my2, CS.py1)}
-    style={{ paddingLeft: 20, paddingRight: 20 }}
-  >
-    <LoginItemContent>
-      <div>
-        <Label>
-          {item.location} -{" "}
-          <span className={CS.textMedium}>{item.ip_address}</span>
-        </Label>
-        <Text style={{ marginTop: -8 }}>{item.device_description}</Text>
-      </div>
-      <LoginItemInfo>
-        {item.active && (
-          <LoginActiveLabel className={CS.pr2}>{t`Active`}</LoginActiveLabel>
-        )}
-        <Label>{item.time}</Label>
-      </LoginItemInfo>
-    </LoginItemContent>
-  </Card>
+  <Box my="sm">
+    <Card>
+      <Flex align="center" py="xs" px={rem(20)}>
+        <Box>
+          <Label>
+            {item.location} -{" "}
+            <Text component="span" c="text-secondary">
+              {item.ip_address}
+            </Text>
+          </Label>
+          <Text mt={-8}>{item.device_description}</Text>
+        </Box>
+        <Flex ml="auto">
+          {item.active && (
+            <Label c="summarize" pr="sm">{t`Active`}</Label>
+          )}
+          <Label>{item.time}</Label>
+        </Flex>
+      </Flex>
+    </Card>
+  </Box>
 );
 
 const LoginHistoryGroup = ({
@@ -53,14 +45,14 @@ const LoginHistoryGroup = ({
   items: FormattedLoginItem[];
   date: string;
 }) => (
-  <LoginGroup>
+  <Box py="md">
     <Label>{date}</Label>
     <div>
       {items.map((item) => (
         <LoginHistoryItem key={item.timestamp} item={item} />
       ))}
     </div>
-  </LoginGroup>
+  </Box>
 );
 
 const formatItems = (items: UserLoginHistoryItem[]): FormattedLoginItem[] =>
@@ -81,7 +73,7 @@ function LoginHistoryList({
   const items = formatItems(loginHistory);
   const groups = _.groupBy(items, (item) => item.date);
 
-  if (!items || !items.length) {
+  if (!items.length) {
     return (
       <EmptyState
         title={t`No logins`}
