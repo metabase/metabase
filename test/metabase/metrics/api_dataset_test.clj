@@ -1256,3 +1256,27 @@
           (is (= "completed" (:status response)))
           (is (= 49 (:row_count response))
               "should have 49 months of order data, same as table-based metric"))))))
+
+(deftest dataset-source-card-expression-dimension-projection-test
+  (testing "POST /api/metric/dataset with source-card metric, projecting on a custom column dimension"
+    (mt/with-temp [:model/Card model  {:name          "Orders Model with Expression"
+                                       :type          :model
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:expressions {"Discount Plus One"
+                                                                       [:+ $discount 1]}})}
+                   :model/Card metric {:name          "Model Count Metric"
+                                       :type          :metric
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (str "card__" (:id model))
+                                                                  :aggregation  [[:count]]}}}]
+      (let [hydrated  (hydrate-metric (:id metric))
+            expr-dim  (find-dimension-by-name hydrated "Discount Plus One")]
+        (is (some? expr-dim) "Expression dimension should exist for model-based metric")
+        (when expr-dim
+          (let [response (dataset-request
+                          {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                           :projections [{:type :metric :id (:id metric) :lib/uuid "a"
+                                          :projection [[:dimension {} (:id expr-dim)]]}]})]
+            (is (= "completed" (:status response)))
+            (is (< 1 (:row_count response)))))))))
