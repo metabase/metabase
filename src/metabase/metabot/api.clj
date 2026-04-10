@@ -191,8 +191,7 @@
                                :metabot-id    metabot-id
                                :profile-id    (keyword profile-id)
                                :context       enriched-context
-                               :tracking-opts {:session-id          conversation-id
-                                               :track-user-intent?  true}}
+                               :tracking-opts {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))

@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
-   [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
@@ -13,7 +12,6 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self :as self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -165,8 +163,7 @@
   [:map
    [:session-id          {:optional true} [:maybe ms/UUIDString]]
    [:source              {:optional true} [:maybe :string]]
-   [:tag                 {:optional true} [:maybe :string]]
-   [:track-user-intent?  {:optional true} [:maybe :boolean]]])
+   [:tag                 {:optional true} [:maybe :string]]])
 
 ;;; Iteration control
 
@@ -565,9 +562,7 @@
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
-        labels             {:profile-id (name profile-id)}
-        track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
-                                (some-> opts :tracking-opts :track-user-intent?))]
+        labels             {:profile-id (name profile-id)}]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot.agent/run-agent-loop
@@ -578,10 +573,6 @@
             (binding [*debug-log* (when debug? (atom []))]
               (try
                 (let [agent              (init-agent opts)
-                      _                  (when track-user-intent?
-                                           (agent-analytics/classify-and-track-user-intent-async!
-                                            (:messages opts)
-                                            (:tracking-opts agent)))
                       {result    :result
                        iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
                                                   (iterate loop-step)
