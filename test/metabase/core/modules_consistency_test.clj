@@ -71,12 +71,16 @@
     (assert v (str ns-sym "/" sym " not found"))
     v))
 
+(def ^:private babashka-available
+  (delay
+    (try
+      (zero? (:exit (shell/sh "bb" "--version")))
+      (catch java.io.IOException _
+        false))))
+
 (defn- babashka-available?
   []
-  (try
-    (zero? (:exit (shell/sh "bb" "--version")))
-    (catch java.io.IOException _
-      false)))
+  (force babashka-available))
 
 (defn- bb-mage-file->module [modules-config filename]
   (let [expr               (str "(do "

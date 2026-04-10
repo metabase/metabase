@@ -151,6 +151,11 @@
 (def ^:private test-source-file-extensions
   [".clj" ".cljc" ".cljs" ".bb"])
 
+(defn- ns-prefix->test-path-fragment [ns-prefix]
+  (->> (str/split ns-prefix #"\.")
+       (map #(str/replace % #"-" "_"))
+       (str/join "/")))
+
 (defn- module->test-path-prefix
   [modules-config module]
   (let [ns-prefix   (module-ns-prefix modules-config module)
@@ -161,9 +166,7 @@
           ["test/metabase/"
            (subs ns-prefix (count "metabase."))])]
     (str parent-dir
-         (-> ns-fragment
-             (str/replace #"\." "/")
-             (str/replace #"-" "_")))))
+         (ns-prefix->test-path-fragment ns-fragment))))
 
 (defn- module->test-paths
   [modules-config module]
