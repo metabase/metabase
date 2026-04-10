@@ -47,18 +47,9 @@
                         (fn [& args]
                           (swap! qp-calls inc)
                           (apply original args)))]
-          (let [start   (System/nanoTime)
-                result  (sync.field-values/update-field-values-for-table! table)
-                elapsed (/ (- (System/nanoTime) start) 1e6)]
+          (let [result (sync.field-values/update-field-values-for-table! table)]
             (testing "Should process all 100 fields without errors"
               (is (zero? (:errors result))))
-            (println (format "\n=== Field Values Sync Performance ==="))
-            (println (format "Fields:        100"))
-            (println (format "QP queries:    %d" @qp-calls))
-            (println (format "Time:          %.0f ms" elapsed))
-            (println (format "Avg per field: %.1f ms" (/ elapsed 100)))
-            (println (format "Result:        %s" result))
-            (println (format "=====================================\n"))
             (testing "Bulk scan should use exactly 1 query"
               (is (= 1 @qp-calls)))))))))
 

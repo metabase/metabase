@@ -571,7 +571,7 @@
    created/updated/deleted as a result of this call.
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
-  [field & {:keys [field-values human-readable-values]}]
+  [field & {:keys [field-values]}]
   (if (field-should-have-field-values? field)
     (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
           {unwrapped-values :values
