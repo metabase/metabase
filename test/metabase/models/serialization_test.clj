@@ -260,7 +260,6 @@
                    :model/Field    {f-id :id}        {:name "f" :table_id t-id :base_type :type/Integer
                                                       :fk_target_field_id nil}
                    :model/Field    {target-id :id}   {:name "target" :table_id t-id :base_type :type/Integer}]
-      ;; create a valid FK reference, then delete the target to simulate an orphaned reference
       (t2/update! :model/Field f-id {:fk_target_field_id target-id})
       (t2/delete! :model/Field :id target-id)
       (binding [serdes/*batch-cache-max-size* 2]
