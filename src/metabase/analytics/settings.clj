@@ -59,6 +59,27 @@
   :visibility :public
   :doc        false)
 
+(defsetting metaplow-tracking-enabled
+  (deferred-tru
+   (str "Boolean indicating whether analytics events are being sent to Snowplow. "
+        "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
+  :type       :boolean
+  :setter     :none
+  :getter     (fn [] (anon-tracking-enabled))
+  :visibility :public
+  :doc        false)
+
+(defsetting metaplow-url
+  (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
+  :encryption :no
+  :default    (if config/is-prod?
+                "https://product-analytics-ingestion.staging.metabase.com/api/send"
+                ;; how to do in local dev?
+                "http://localhost:9091")
+  :visibility :public
+  :audit      :never
+  :doc        false)
+
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
   :encryption :no
