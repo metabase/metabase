@@ -13,14 +13,20 @@
     (resolve-field    [_ field-path] (get fields field-path))))
 
 (defn make-assets-source
-  "Create an in-memory AssetsSource from maps of cards, snippets, transforms, and segments."
-  [{:keys [cards snippets transforms segments]}]
+  "Create an in-memory AssetsSource from maps of entities.
+   Supports :cards, :snippets, :transforms, :segments, :dashboards,
+   :collections, :documents, :measures."
+  [{:keys [cards snippets transforms segments dashboards collections documents measures]}]
   (reify
     source/AssetsSource
-    (resolve-card      [_ entity-id] (get cards entity-id))
-    (resolve-snippet   [_ entity-id] (get snippets entity-id))
-    (resolve-transform [_ entity-id] (get transforms entity-id))
-    (resolve-segment   [_ entity-id] (get segments entity-id))))
+    (resolve-card       [_ entity-id] (get cards entity-id))
+    (resolve-snippet    [_ entity-id] (get snippets entity-id))
+    (resolve-transform  [_ entity-id] (get transforms entity-id))
+    (resolve-segment    [_ entity-id] (get segments entity-id))
+    (resolve-dashboard  [_ entity-id] (get dashboards entity-id))
+    (resolve-collection [_ entity-id] (get collections entity-id))
+    (resolve-document   [_ entity-id] (get documents entity-id))
+    (resolve-measure    [_ entity-id] (get measures entity-id))))
 
 (defn make-schema-index
   "Create a file index for an in-memory schema source.
@@ -33,16 +39,18 @@
 (defn make-assets-index
   "Create a file index for an in-memory assets source.
    Values are :memory since resolution goes through the source, not files."
-  [{:keys [cards snippets transforms segments]}]
+  [{:keys [cards snippets transforms segments dashboards collections documents measures]}]
   (cond-> {:card (zipmap (keys cards) (repeat :memory))}
-    snippets   (assoc :snippet   (zipmap (keys snippets) (repeat :memory)))
-    transforms (assoc :transform (zipmap (keys transforms) (repeat :memory)))
-    segments   (assoc :segment   (zipmap (keys segments) (repeat :memory)))))
+    snippets    (assoc :snippet    (zipmap (keys snippets) (repeat :memory)))
+    transforms  (assoc :transform  (zipmap (keys transforms) (repeat :memory)))
+    segments    (assoc :segment    (zipmap (keys segments) (repeat :memory)))
+    dashboards  (assoc :dashboard  (zipmap (keys dashboards) (repeat :memory)))
+    collections (assoc :collection (zipmap (keys collections) (repeat :memory)))
+    documents   (assoc :document   (zipmap (keys documents) (repeat :memory)))
+    measures    (assoc :measure    (zipmap (keys measures) (repeat :memory)))))
 
 (defn make-sources-and-index
   "Convenience: split an entities map into schema-source, assets-source, and merged index.
-   `entities` has :databases, :tables, :fields, :cards, and optionally
-   :snippets, :transforms, :segments.
    Returns [schema-source assets-source index]."
   [entities]
   [(make-schema-source entities)

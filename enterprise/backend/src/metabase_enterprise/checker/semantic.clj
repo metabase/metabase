@@ -34,6 +34,19 @@
 ;;;   {:type :table :path ["DB" "schema" "table"]}
 ;;;   {:type :database :name "DB"}
 ;;; ===========================================================================
+;;; Entity loading by kind
+;;; ===========================================================================
+
+(def ^:private kind->load-fn
+  {:dashboard  store/load-dashboard!
+   :collection store/load-collection!
+   :document   store/load-document!
+   :transform  store/load-transform!
+   :segment    store/load-segment!
+   :measure    store/load-measure!
+   :snippet    store/load-snippet!})
+
+;;; ===========================================================================
 ;;; Common entity checks — apply to any entity type
 ;;;
 ;;; These validations run on every entity (cards, dashboards, collections,
@@ -114,19 +127,17 @@
   [store data]
   (when-let [container-id (or (:dashboard_id data) (:document_id data))]
     (let [container-kind (if (:dashboard_id data) :dashboard :document)
-          container-file (store/index-file store container-kind container-id)]
-      (when container-file
-        (try
-          (let [container-data (serdes/load-yaml container-file)
-                container-coll (:collection_id container-data)
-                card-coll      (:collection_id data)]
-            (when (and card-coll container-coll
-                       (not= card-coll container-coll))
-              {:type :container-collection-mismatch
-               :message (str "card collection_id " card-coll
-                             " doesn't match its " (name container-kind)
-                             "'s collection_id " container-coll)}))
-          (catch Exception _ nil))))))
+          load-fn        (kind->load-fn container-kind)
+          container-data (when load-fn (load-fn store container-id))]
+      (when container-data
+        (let [container-coll (:collection_id container-data)
+              card-coll      (:collection_id data)]
+          (when (and card-coll container-coll
+                     (not= card-coll container-coll))
+            {:type :container-collection-mismatch
+             :message (str "card collection_id " card-coll
+                           " doesn't match its " (name container-kind)
+                           "'s collection_id " container-coll)}))))))
 
 (defn- check-common
   "Run checks that apply to any entity (card, dashboard, metric, etc.).
@@ -158,7 +169,7 @@
    Virtual cards (headings, text) have null card_id — that's fine."
   [store dashcard]
   (let [card-id (:card_id dashcard)]
-    (when (and card-id (not (store/in-index? store :card card-id)))
+    (when (and card-id (not (store/exists? store :card card-id)))
       {:type :dashcard-card-ref
        :dashcard-entity-id (:entity_id dashcard)
        :entity-id card-id
@@ -272,14 +283,14 @@
           cat
           [;; Check card embeds
            (keep (fn [card-eid]
-                   (when-not (store/in-index? store :card card-eid)
+                   (when-not (store/exists? store :card card-eid)
                      {:type :document-card-ref
                       :entity-id card-eid
                       :message (str "document embeds card " card-eid " which is not in the export")}))
                  card-eids)
            ;; Check entity links in href attributes
            (keep (fn [{:keys [kind entity-id]}]
-                   (when-not (store/in-index? store kind entity-id)
+                   (when-not (store/exists? store kind entity-id)
                      {:type :document-link
                       :entity-id entity-id
                       :message (str "document links to " (name kind) " " entity-id " which is not in the export")}))
@@ -341,7 +352,7 @@
             transform-id (:id data)
             sql          (get-in data [:source :query :stages 0 :native])]
         ;; Check database ref
-        (when (and db-name (not (store/in-index? store :database db-name)))
+        (when (and db-name (not (store/exists? store :database db-name)))
           (swap! unresolved conj {:type :database :name db-name
                                   :message (str "transform references database " db-name " which is not in the schema")}))
         ;; Resolution failures from converting transform metadata
@@ -362,67 +373,6 @@
 
 ;;; ===========================================================================
 ;;; Non-card entity checking — load from files, run common + type-specific checks
-;;; ===========================================================================
-
-(defn- load-entity-data
-  "Load entity data for a non-card entity. Uses the source for entity types that
-   support it (transforms, segments, snippets), falls back to YAML file for others."
-  [store kind entity-id]
-  (case kind
-    :transform (store/load-transform! store entity-id)
-    :segment   (store/load-segment! store entity-id)
-    :snippet   (store/load-snippet! store entity-id)
-    (when-let [file (store/index-file store kind entity-id)]
-      (serdes/load-yaml file))))
-
-(defn- check-entity-from-index
-  "Load a non-card entity and run checks.
-   Runs common checks on all entities, plus type-specific checks.
-   Returns [entity-id result-map] or nil if all checks pass."
-  [store provider kind entity-id]
-  (when (store/in-index? store kind entity-id)
-    (try
-      (let [data           (load-entity-data store kind entity-id)
-            common         (check-common store data)
-            type-specific  (case kind
-                             :dashboard  {:unresolved (check-dashboard store data)}
-                             :document   {:unresolved (check-document store data)}
-                             :transform  (check-transform store provider entity-id)
-                             {})
-            all-unresolved (into common (:unresolved type-specific))
-            result         {:name          (or (:name data) entity-id)
-                            :entity-id     entity-id
-                            :kind          kind
-                            :unresolved    all-unresolved
-                            :native-errors (:native-errors type-specific)
-                            :bad-refs      (:bad-refs type-specific)
-                            :error         (:error type-specific)
-                            :sql           (:sql type-specific)}]
-        [entity-id result])
-      (catch Exception e
-        [entity-id {:name       entity-id
-                    :entity-id  entity-id
-                    :kind       kind
-                    :error      (.getMessage e)}]))))
-
-(defn- check-non-card-entities
-  "Run checks on indexed dashboards, collections, documents, measures, segments,
-   and transforms. Cards are checked inline in check-card since their data is
-   already loaded via the MetadataSource.
-   Returns a map of entity-id → result for entities with failures."
-  [store provider]
-  (into {}
-        (keep identity)
-        (concat
-         (map #(check-entity-from-index store provider :dashboard %) (store/all-refs store :dashboard))
-         (map #(check-entity-from-index store provider :collection %) (store/all-refs store :collection))
-         (map #(check-entity-from-index store provider :document %) (store/all-refs store :document))
-         (map #(check-entity-from-index store provider :measure %) (store/all-refs store :measure))
-         (map #(check-entity-from-index store provider :segment %) (store/all-refs store :segment))
-         (map #(check-entity-from-index store provider :transform %) (store/all-refs store :transform)))))
-
-;;; ===========================================================================
-;;; Card validation
 ;;; ===========================================================================
 
 (defn- id->path
@@ -518,58 +468,82 @@
      (or stages []))))
 
 ;;; ===========================================================================
-;;; Card checking — common checks + query checks
+;;; Type-specific checks
 ;;; ===========================================================================
 
-(defn check-card
-  "Check a single card: common checks (collection_id) + query validation via deps.analysis."
-  [store provider entity-id]
+(defn- check-card-specific
+  "Card-specific checks: query validation via deps.analysis + ref extraction."
+  [store provider data]
+  (let [card-id         (:id data)
+        card-meta       (provider/card-metadata store data)
+        resolution-failures (:provider/resolution-failures card-meta)
+        errors          (when-not (:provider/missing-database card-meta)
+                          (try
+                            (deps.analysis/check-entity provider :card card-id)
+                            (catch Exception e
+                              #{{:type :validation-exception-error :message (.getMessage e)}})))
+        {:keys [bad-refs native-errors]} (partition-errors errors)
+        native-errors   (humanize-errors store native-errors)
+        bad-refs        (mapv #(humanize-source-entity store %) bad-refs)
+        query-refs      (try
+                          (let [card  (lib.metadata/card provider card-id)
+                                query (lib/query provider (:dataset-query card))]
+                            (extract-refs-from-query store query provider #{card-id}))
+                          (catch Exception _ nil))
+        entity-refs     (extract-entity-refs-from-raw-data data)
+        refs            (when query-refs
+                          (cond-> query-refs
+                            (seq (:snippets entity-refs))  (assoc :snippets (vec (distinct (:snippets entity-refs))))
+                            (seq (:measures entity-refs))  (assoc :measures (vec (:measures entity-refs)))
+                            (seq (:metrics entity-refs))   (assoc :metrics (vec (:metrics entity-refs)))
+                            (seq (:segments entity-refs))  (assoc :segments (vec (:segments entity-refs)))))]
+    {:card-id         card-id
+     :unresolved      (into (or resolution-failures [])
+                            (when (:provider/missing-database card-meta)
+                              [{:type :database :name (:provider/missing-database card-meta)}]))
+     :refs            refs
+     :bad-refs        bad-refs
+     :native-errors   native-errors
+     :error           (when (:provider/missing-database card-meta)
+                        (str "Unknown database: " (:provider/missing-database card-meta)))}))
+
+;;; ===========================================================================
+;;; Unified entity checking
+;;; ===========================================================================
+
+(defn- check-entity
+  "Check a single entity by kind. Runs common checks on all entities,
+   plus type-specific checks (query validation for cards/transforms,
+   structural checks for dashboards/documents).
+   Returns [entity-id result-map]."
+  [store provider kind entity-id]
   (try
-    (let [data            (store/load-card! store entity-id)
-          card-id         (:id data)
-          common-failures (check-common store data)
-          ;; Resolution failures from converting the card to lib metadata
-          card-meta       (provider/card-metadata store data)
-          resolution-failures (:provider/resolution-failures card-meta)
-          ;; Use deps.analysis for query validation (bad refs + native SQL)
-          errors          (when-not (:provider/missing-database card-meta)
-                            (try
-                              (deps.analysis/check-entity provider :card card-id)
-                              (catch Exception e
-                                #{{:type :validation-exception-error :message (.getMessage e)}})))
-          {:keys [bad-refs native-errors]} (partition-errors errors)
-          native-errors   (humanize-errors store native-errors)
-          bad-refs        (mapv #(humanize-source-entity store %) bad-refs)
-          ;; Extract refs for display
-          query-refs      (try
-                            (let [card  (lib.metadata/card provider card-id)
-                                  query (lib/query provider (:dataset-query card))]
-                              (extract-refs-from-query store query provider #{card-id}))
-                            (catch Exception _ nil))
-          entity-refs     (extract-entity-refs-from-raw-data data)
-          refs            (when query-refs
-                            (cond-> query-refs
-                              (seq (:snippets entity-refs))  (assoc :snippets (vec (distinct (:snippets entity-refs))))
-                              (seq (:measures entity-refs))  (assoc :measures (vec (:measures entity-refs)))
-                              (seq (:metrics entity-refs))   (assoc :metrics (vec (:metrics entity-refs)))
-                              (seq (:segments entity-refs))  (assoc :segments (vec (:segments entity-refs)))))
-          all-unresolved  (into (vec (concat resolution-failures
-                                             (when (:provider/missing-database card-meta)
-                                               [{:type :database :name (:provider/missing-database card-meta)}])))
-                                common-failures)]
-      (cond-> {:card-id    card-id
-               :name       (:name data)
-               :entity-id  entity-id}
-        (seq all-unresolved)   (assoc :unresolved all-unresolved)
-        refs                   (assoc :refs refs)
-        (seq bad-refs)         (assoc :bad-refs bad-refs)
-        (seq native-errors)    (assoc :native-errors native-errors)
-        (:provider/missing-database card-meta) (assoc :error (str "Unknown database: " (:provider/missing-database card-meta)))))
+    (let [load-fn        (or (kind->load-fn kind) store/load-card!)
+          data           (load-fn store entity-id)
+          common         (check-common store data)
+          type-specific  (case kind
+                           :card       (check-card-specific store provider data)
+                           :dashboard  {:unresolved (check-dashboard store data)}
+                           :document   {:unresolved (check-document store data)}
+                           :transform  (check-transform store provider entity-id)
+                           {})
+          all-unresolved (into common (:unresolved type-specific))
+          result         (cond-> {:name          (or (:name data) entity-id)
+                                  :entity-id     entity-id
+                                  :unresolved    all-unresolved
+                                  :native-errors (:native-errors type-specific)
+                                  :bad-refs      (:bad-refs type-specific)
+                                  :error         (:error type-specific)
+                                  :sql           (:sql type-specific)}
+                           (:card-id type-specific) (assoc :card-id (:card-id type-specific))
+                           (:refs type-specific)    (assoc :refs (:refs type-specific))
+                           (not= kind :card)        (assoc :kind kind))]
+      [entity-id result])
     (catch Exception e
-      (let [data (try (store/load-card! store entity-id) (catch Exception _ nil))]
-        {:entity-id entity-id
-         :name      (:name data)
-         :error     (.getMessage e)}))))
+      [entity-id {:name       entity-id
+                  :entity-id  entity-id
+                  :kind       (when (not= kind :card) kind)
+                  :error      (.getMessage e)}])))
 
 (defn- check-duplicate-entity-ids
   "Check for duplicate entity_ids in the index. Returns a map of
@@ -585,6 +559,10 @@
               :error      (str "entity_id " ref " appears in " (count files) " files: "
                                (str/join ", " files))}]))))
 
+(def ^:private checked-kinds
+  "Entity kinds that the checker validates, in processing order."
+  [:card :dashboard :collection :document :measure :segment :transform])
+
 (defn check-entities
   "Check all entities: cards, dashboards, collections, documents, transforms, etc.
    Returns `{entity-id result-map}`. See the Results processing section for the
@@ -592,22 +570,28 @@
 
    `schema-source` — a SchemaSource for resolving databases/tables/fields
    `assets-source` — an AssetsSource for resolving cards/snippets/transforms/segments
-   `index`         — a file index: `{kind {ref file-path}}` (see store/make-store)
-   `card-ids`      — seq of card entity-ids to check (cards need special handling
-                     via MetadataProvider; other entity types are checked from files)"
-  [schema-source assets-source index card-ids]
-  (binding [mu.fn/*enforce* false
-            ;; Skip QP middleware that requires the app DB (impersonation, permissions)
-            ;; since the checker runs without a database connection.
-            qp.i/*skip-middleware-because-app-db-access* true]
-    (let [store         (store/make-store schema-source assets-source index)
-          provider      (provider/make-provider store)
-          card-results  (into {}
-                              (for [eid card-ids]
-                                [eid (check-card store provider eid)]))
-          other-results (check-non-card-entities store provider)
-          dupe-results  (check-duplicate-entity-ids index)]
-      (merge card-results other-results dupe-results))))
+   `index`         — a file index (see store/make-store)
+   `entity-ids`    — optional seq of entity-ids to check (defaults to all entities)"
+  ([schema-source assets-source index]
+   (check-entities schema-source assets-source index nil))
+  ([schema-source assets-source index entity-ids]
+   (binding [mu.fn/*enforce* false
+             qp.i/*skip-middleware-because-app-db-access* true]
+     (let [store    (store/make-store schema-source assets-source index)
+           provider (provider/make-provider store)
+           results  (if entity-ids
+                      ;; Check specific entities — look up their kind
+                      (into {}
+                            (for [eid entity-ids
+                                  :let [kind (or (store/index-kind-of store eid) :card)]]
+                              (check-entity store provider kind eid)))
+                      ;; Check all entities by kind
+                      (into {}
+                            (for [kind checked-kinds
+                                  eid  (store/all-refs store kind)]
+                              (check-entity store provider kind eid))))
+           dupes    (check-duplicate-entity-ids index)]
+       (merge results dupes)))))
 
 ;;; ===========================================================================
 ;;; Results processing — pure functions on result data
@@ -742,14 +726,13 @@
 
    `export-dir`  — directory containing serdes-exported entities (collections/)
    `schema-dir`  — directory containing serdes-exported database schemas
-   `entity-ids`  — optional seq of card entity-ids to check (defaults to all cards)
+   `entity-ids`  — optional seq of entity-ids to check (defaults to all entities)
 
    Returns `{:results results-map}` where results-map is `{entity-id result-map}`.
    See the Results processing section above for the result-map and summary-map shapes."
   ([export-dir schema-dir]
-   (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)
-         card-ids (serdes/all-card-ids assets-source)]
-     {:results (check-entities schema-source assets-source index card-ids)}))
+   (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)]
+     {:results (check-entities schema-source assets-source index)}))
   ([export-dir schema-dir entity-ids]
    (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)]
      {:results (check-entities schema-source assets-source index entity-ids)})))
@@ -770,11 +753,13 @@
     {:store store :provider provider :index index}))
 
 (defn check-one
-  "Check a single card by entity-id using a pre-built context from [[setup]].
-   Returns the result map. With :verbose true, also prints formatted output. Not "
+  "Check a single entity by entity-id using a pre-built context from [[setup]].
+   Looks up the entity's kind from the store. Returns the result map.
+   With :verbose true, also prints formatted output."
   [{:keys [store provider]} entity-id & {:keys [verbose]}]
   (binding [mu.fn/*enforce* false]
-    (let [result (check-card store provider entity-id)]
+    (let [kind   (or (store/index-kind-of store entity-id) :card)
+          [_ result] (check-entity store provider kind entity-id)]
       (when verbose
         #_{:clj-kondo/ignore [:discouraged-var]}
         (println (format-result [entity-id result])))

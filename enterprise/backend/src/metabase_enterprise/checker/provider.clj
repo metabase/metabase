@@ -17,9 +17,6 @@
    - `(card-metadata store data)` — convert a card, collecting resolution failures
    - `(transform-metadata store data)` — convert a transform, collecting resolution failures"
   (:require
-   [clojure.string :as str]
-   [medley.core :as m]
-   [metabase-enterprise.checker.source :as source]
    [metabase-enterprise.checker.store :as store]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -42,23 +39,24 @@
   [store kind ref !failures failure-info & {:keys [sentinel?]}]
   (when ref
     (or (store/ref->id store kind ref)
-        (case kind
-          (:field :table :database)
-          (let [resolve-fn (case kind
-                             :field    source/resolve-field
-                             :table    source/resolve-table
-                             :database source/resolve-database)]
-            (when (resolve-fn (store/schema-source store) ref)
-              (store/get-or-assign! store kind ref)))
-          :card
-          (when (source/resolve-card (store/assets-source store) ref)
-            (store/get-or-assign! store kind ref))
-          ;; measures, segments, snippets — check the index
-          (when (store/in-index? store kind ref)
-            (store/get-or-assign! store kind ref)))
-        (do (when !failures (swap! !failures conj failure-info))
-            (when sentinel?
-              (store/get-or-assign! store kind ref))))))
+        (let [load-fn (case kind
+                        :database   store/load-database!
+                        :table      store/load-table!
+                        :field      store/load-field!
+                        :card       store/load-card!
+                        :snippet    store/load-snippet!
+                        :transform  store/load-transform!
+                        :segment    store/load-segment!
+                        :dashboard  store/load-dashboard!
+                        :collection store/load-collection!
+                        :document   store/load-document!
+                        :measure    store/load-measure!)
+              found? (some? (load-fn store ref))]
+          (if found?
+            (store/get-or-assign! store kind ref)
+            (do (when !failures (swap! !failures conj failure-info))
+                (when sentinel?
+                  (store/get-or-assign! store kind ref))))))))
 
 (defn- resolve-field-path
   ([store !failures field-path]
@@ -131,7 +129,7 @@
    :visibility-type (some-> (:visibility_type data) keyword)})
 
 (defn- ->field-metadata
-  [store !failures data]
+  [resolver data]
   (cond-> {:lib/type        :metadata/column
            :id              (:id data)
            :table-id        (:table_id data)
@@ -145,94 +143,56 @@
            :active          (if (contains? data :active) (:active data) true)
            :visibility-type (some-> (:visibility_type data) keyword)
            :position        (:position data)}
-    (vector? (:fk_target_field_id data))
-    (as-> m (if-let [fk-id (resolve-field-path store !failures (:fk_target_field_id data))]
+    (and resolver (vector? (:fk_target_field_id data)))
+    (as-> m (if-let [fk-id (resolve/import-field-fk resolver (:fk_target_field_id data))]
               (assoc m :fk-target-field-id fk-id)
               m))))
 
-(defn- field-ref-has-nil? [ref]
-  (and (vector? ref) (= :field (first ref)) (nil? (second ref))))
-
-(defn- convert-result-metadata-column [resolver store !failures col]
-  (binding [resolve/*import-resolver* resolver]
-    (cond-> col
-      (vector? (:id col))
-      (as-> c (if-let [id (resolve-field-path store !failures (:id col))]
-                (assoc c :id id) (dissoc c :id)))
-      (vector? (:table_id col))
-      (as-> c (if-let [id (resolve-table-path store !failures (:table_id col))]
-                (assoc c :table_id id) (dissoc c :table_id)))
-      (vector? (:fk_target_field_id col))
-      (as-> c (if-let [id (resolve-field-path store !failures (:fk_target_field_id col))]
-                (assoc c :fk_target_field_id id) (dissoc c :fk_target_field_id)))
-      (:field_ref col)
-      (as-> c (let [ref (resolve/import-mbql (:field_ref col))]
-                (if (field-ref-has-nil? ref) (dissoc c :field_ref) (assoc c :field_ref ref)))))))
-
-;;; ---------------------------------------------------------------------------
-;;; MBQL normalization — YAML strings → keywords
-;;; ---------------------------------------------------------------------------
-
-(defn- mbql-operator?
-  [^String s]
-  (and (not (str/blank? s))
-       (not (str/includes? s " "))
-       (let [c (.charAt s 0)]
-         (not (Character/isUpperCase c)))))
-
-(def ^:private temporal-unit-strings
-  #{"day" "day-of-month" "day-of-week" "day-of-year" "default"
-    "hour" "hour-of-day" "millisecond" "minute" "minute-of-hour"
-    "month" "month-of-year" "quarter" "quarter-of-year"
-    "second" "second-of-minute" "week" "week-of-year" "year" "year-of-era"
-    "iso" "us" "instance"
-    "current"})
-
-(defn- maybe-keywordize-arg [form]
-  (if (and (string? form) (contains? temporal-unit-strings form))
-    (keyword form)
-    form))
-
-(defn- keywordize-mbql-operators
-  [form]
-  (cond
-    (and (vector? form) (seq form) (string? (first form)) (mbql-operator? (first form)))
-    (into [(keyword (first form))] (map #(-> % keywordize-mbql-operators maybe-keywordize-arg)) (rest form))
-
-    (vector? form)
-    (mapv keywordize-mbql-operators form)
-
-    (map? form)
-    (reduce-kv (fn [m k v] (assoc m k (keywordize-mbql-operators v))) {} form)
-
-    (sequential? form)
-    (map keywordize-mbql-operators form)
-
-    :else form))
+(defn- convert-result-metadata-column
+  "Resolve portable refs in a result_metadata column map.
+   Portable refs appear as path vectors in :id, :table_id, :fk_target_field_id,
+   and as MBQL field refs in :field_ref."
+  [resolver col]
+  (let [resolve-or-drop (fn [col k resolve-fn]
+                          (let [v (get col k)]
+                            (if-not (vector? v)
+                              col
+                              (if-let [id (resolve-fn resolver v)]
+                                (assoc col k id)
+                                (dissoc col k)))))]
+    (-> col
+        (resolve-or-drop :id resolve/import-field-fk)
+        (resolve-or-drop :table_id resolve/import-table-fk)
+        (resolve-or-drop :fk_target_field_id resolve/import-field-fk)
+        (cond-> (:field_ref col)
+          (update :field_ref (fn [ref]
+                               (let [resolved (resolve/import-mbql resolver ref)]
+                                 (if (and (vector? resolved) (= :field (first resolved)) (nil? (second resolved)))
+                                   ::drop
+                                   resolved)))))
+        (as-> c (if (= ::drop (:field_ref c)) (dissoc c :field_ref) c)))))
 
 (defn- convert-dataset-query
-  "Convert a dataset query from serdes format, resolving paths to IDs."
-  [store !failures query]
+  "Convert a dataset query from serdes format, resolving paths to IDs.
+
+   Pipeline:
+   1. lib/normalize — convert YAML strings to keywords (operators, types, etc.)
+   2. resolve/import-mbql — resolve portable refs (path vectors) to integer IDs
+      Uses a sentinel resolver so unresolved refs get IDs for better error reporting."
+  [resolver query]
   (when query
     (try
-      (let [query   (update query :stages
-                            (fn [stages]
-                              (mapv (fn [stage]
-                                      (-> stage
-                                          (m/update-existing :native keywordize-mbql-operators)
-                                          (cond-> (not (:native stage))
-                                            (keywordize-mbql-operators))))
-                                    (or stages []))))
-            db-name (:database query)
-            db-id   (when (string? db-name) (resolve-db-name store !failures db-name))
-            query   (cond-> query db-id (assoc :database db-id))
-            resolver (make-import-resolver store !failures :sentinel? true)
-            query   (binding [resolve/*import-resolver* resolver]
-                      (resolve/import-mbql query))]
+      (let [query    (lib/normalize nil query)
+            db-name  (:database query)
+            db-id    (when (string? db-name)
+                       (resolve/import-fk-keyed resolver db-name :model/Database :name))
+            query    (cond-> query db-id (assoc :database db-id))
+            query    (resolve/import-mbql resolver query)]
         query)
       (catch Exception _
         (let [db-name (:database query)
-              db-id   (when (string? db-name) (resolve-db-name store !failures db-name))]
+              db-id   (when (string? db-name)
+                        (resolve/import-fk-keyed resolver db-name :model/Database :name))]
           (cond-> query db-id (assoc :database db-id)))))))
 
 ;;; ---------------------------------------------------------------------------
@@ -245,18 +205,24 @@
   "Convert a cached card entity to lib metadata. Returns the metadata map with
    `:provider/resolution-failures` and `:provider/missing-database` keys when resolution fails."
   [store data]
-  (let [!failures (atom [])
-        resolver   (make-import-resolver store !failures)
-        table-id   (when-let [t (:table_id data)]
-                     (if (vector? t)
-                       (resolve-table-path store !failures t)
-                       t))
-        db-name    (get-in data [:dataset_query :database])
-        db-id      (when (string? db-name) (resolve-db-name store !failures db-name))
-        dataset-query   (convert-dataset-query store !failures (:dataset_query data))
+  (let [!failures       (atom [])
+        ;; Sentinel resolver: unresolved refs get fake integer IDs so queries can still be constructed and
+        ;; lib/find-bad-refs reports issues with context. We use the same resolver for both the query and metadata
+        ;; (table_id, FK targets, result_metadata). If we ever need to distinguish "soft failure" (metadata)
+        ;; from "must-build" (query), create a second resolver with :sentinel? false and use it for the metadata
+        ;; resolution calls below.
+        resolver        (make-import-resolver store !failures :sentinel? true)
+        table-id        (when-let [t (:table_id data)]
+                          (if (vector? t)
+                            (resolve/import-table-fk resolver t)
+                            t))
+        db-name         (get-in data [:dataset_query :database])
+        db-id           (when (string? db-name)
+                          (resolve/import-fk-keyed resolver db-name :model/Database :name))
+        dataset-query   (convert-dataset-query resolver (:dataset_query data))
         result-metadata (if-let [cols (seq (:result_metadata data))]
                           (->> cols
-                               (map (partial convert-result-metadata-column resolver store !failures))
+                               (map (partial convert-result-metadata-column resolver))
                                (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))
                           (when (and dataset-query db-id)
                             (compute-result-metadata store dataset-query)))]
@@ -276,7 +242,8 @@
   "Convert a cached transform entity to lib metadata with its source query resolved."
   [store data]
   (let [!failures (atom [])
-        query     (convert-dataset-query store !failures (get-in data [:source :query]))]
+        resolver  (make-import-resolver store !failures :sentinel? true)
+        query     (convert-dataset-query resolver (get-in data [:source :query]))]
     (cond-> {:lib/type :metadata/transform
              :id       (:id data)
              :name     (:name data)
@@ -285,8 +252,9 @@
 
 (defn- ->segment-metadata
   [store data]
-  (let [!failures   (atom [])
-        definition  (convert-dataset-query store !failures (:definition data))]
+  (let [!failures  (atom [])
+        resolver   (make-import-resolver store !failures :sentinel? true)
+        definition (convert-dataset-query resolver (:definition data))]
     (cond-> {:lib/type   :metadata/segment
              :id         (:id data)
              :name       (:name data)
@@ -297,7 +265,11 @@
 ;;; MetadataProvider
 ;;; ===========================================================================
 
-(deftype SourceMetadataProvider [store]
+(deftype SourceMetadataProvider
+  ;; The store knows what entities exist, loads raw YAML data, assigns integer IDs, and caches.
+  ;; The provider adapts the store into the MetadataProvider interface that lib/query expects,
+  ;; converting raw YAML maps to lib metadata format along the way.
+  [store]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     (when-let [db-name (first (store/all-database-names store))]
@@ -329,7 +301,7 @@
                :when path
                :let [data (store/load-field! store path)]
                :when data]
-           (->field-metadata store nil data))
+           (->field-metadata (make-import-resolver store nil) data))
 
          table-id
          (let [table-path (store/id->ref store :table table-id)]
@@ -337,13 +309,13 @@
              (for [fpath (store/fields-for-table store table-path)
                    :let [data (store/load-field! store fpath)]
                    :when data]
-               (->field-metadata store nil data))))
+               (->field-metadata (make-import-resolver store nil) data))))
 
          :else
          (for [path (store/all-field-paths store)
                :let [data (store/load-field! store path)]
                :when data]
-           (->field-metadata store nil data))))
+           (->field-metadata (make-import-resolver store nil) data))))
 
       :metadata/card
       (vec
@@ -426,10 +398,12 @@
   (has-cache? [_this] true)
   (clear-cache! [_this] nil))
 
+(declare make-provider)
+
 (defn- compute-result-metadata
   [store dataset-query]
   (try
-    (let [provider (->SourceMetadataProvider store)
+    (let [provider (make-provider store)
           query    (lib/query provider dataset-query)]
       (mapv #(select-keys % [:name :base-type :effective-type :semantic-type :display-name])
             (lib/returned-columns query)))

@@ -62,8 +62,8 @@
   [store kind]
   (keys (get-in @store [:index kind])))
 
-(defn in-index?
-  "Is `ref` known in the file index under `kind`?"
+(defn exists?
+  "Is `ref` of `kind` known to the store?"
   [store kind ref]
   (contains? (get-in @store [:index kind]) ref))
 
@@ -71,14 +71,14 @@
   "Return the kind of an entity-id in the index, or nil if not found."
   [store entity-id]
   (cond
-    (in-index? store :collection entity-id) :collection
-    (in-index? store :card entity-id)       :card
-    (in-index? store :dashboard entity-id)  :dashboard
-    (in-index? store :document entity-id)   :document
-    (in-index? store :measure entity-id)    :measure
-    (in-index? store :segment entity-id)    :segment
-    (in-index? store :snippet entity-id)    :snippet
-    (in-index? store :transform entity-id)  :transform
+    (exists? store :collection entity-id) :collection
+    (exists? store :card entity-id)       :card
+    (exists? store :dashboard entity-id)  :dashboard
+    (exists? store :document entity-id)   :document
+    (exists? store :measure entity-id)    :measure
+    (exists? store :segment entity-id)    :segment
+    (exists? store :snippet entity-id)    :snippet
+    (exists? store :transform entity-id)  :transform
     :else nil))
 
 (defn index-file
@@ -143,14 +143,10 @@
 ;;; Entity loading — lazy load from source, cache with assigned IDs
 ;;; ===========================================================================
 
-(defn schema-source
-  "Get the SchemaSource from the store."
-  [store]
+(defn- schema-source [store]
   (:schema-source @store))
 
-(defn assets-source
-  "Get the AssetsSource from the store."
-  [store]
+(defn- assets-source [store]
   (:assets-source @store))
 
 (defn cached-entity
@@ -225,3 +221,35 @@
       (when-let [data (source/resolve-segment (assets-source store) entity-id)]
         (let [id (get-or-assign! store :segment entity-id)]
           (cache-entity! store :segment entity-id (assoc data :id id))))))
+
+(defn load-dashboard!
+  "Load and cache a dashboard, assigning it an integer ID."
+  [store entity-id]
+  (or (cached-entity store :dashboard entity-id)
+      (when-let [data (source/resolve-dashboard (assets-source store) entity-id)]
+        (let [id (get-or-assign! store :dashboard entity-id)]
+          (cache-entity! store :dashboard entity-id (assoc data :id id))))))
+
+(defn load-collection!
+  "Load and cache a collection, assigning it an integer ID."
+  [store entity-id]
+  (or (cached-entity store :collection entity-id)
+      (when-let [data (source/resolve-collection (assets-source store) entity-id)]
+        (let [id (get-or-assign! store :collection entity-id)]
+          (cache-entity! store :collection entity-id (assoc data :id id))))))
+
+(defn load-document!
+  "Load and cache a document, assigning it an integer ID."
+  [store entity-id]
+  (or (cached-entity store :document entity-id)
+      (when-let [data (source/resolve-document (assets-source store) entity-id)]
+        (let [id (get-or-assign! store :document entity-id)]
+          (cache-entity! store :document entity-id (assoc data :id id))))))
+
+(defn load-measure!
+  "Load and cache a measure, assigning it an integer ID."
+  [store entity-id]
+  (or (cached-entity store :measure entity-id)
+      (when-let [data (source/resolve-measure (assets-source store) entity-id)]
+        (let [id (get-or-assign! store :measure entity-id)]
+          (cache-entity! store :measure entity-id (assoc data :id id))))))

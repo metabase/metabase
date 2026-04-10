@@ -34,10 +34,10 @@
   (serdes-format/make-source (fixtures-path)))
 
 (defn- check-all [source]
-  (checker/check-entities source source (serdes-format/source-index source) (serdes-format/all-card-ids source)))
+  (checker/check-entities source source (serdes-format/source-index source)))
 
-(defn- check-specific [source card-ids]
-  (checker/check-entities source source (serdes-format/source-index source) card-ids))
+(defn- check-specific [source entity-ids]
+  (checker/check-entities source source (serdes-format/source-index source) entity-ids))
 
 ;;; ===========================================================================
 ;;; Tests Using Real YAML Files
@@ -165,6 +165,40 @@
 ;;; ===========================================================================
 ;;; Tests Using In-Memory Source for Edge Cases
 ;;;
+;;; ===========================================================================
+;;; MBQL normalization tests
+;;; ===========================================================================
+
+(deftest template-tag-default-not-keywordized-test
+  (testing "Template tag :default values are not incorrectly keywordized as MBQL operators"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables    {["DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields    {["DB" "PUBLIC" "ORDERS" "CREATED_AT"]
+                                {:name "CREATED_AT" :base_type "type/DateTimeWithLocalTZ"
+                                 :database_type "TIMESTAMP WITH TIME ZONE"}}
+                    :cards     {"tMpLtAgDeFaUlT00card1"
+                                {:name "Field Filter Card"
+                                 :entity_id "tMpLtAgDeFaUlT00card1"
+                                 :dataset_query
+                                 {:database "DB"
+                                  :stages [{:native "SELECT * FROM ORDERS WHERE {{date_filter}}"
+                                            :template-tags
+                                            {"date_filter"
+                                             {:type "dimension"
+                                              :dimension ["field" {} ["DB" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                              :default "past30days"
+                                              :display-name "Date Filter"
+                                              :name "date_filter"
+                                              :widget-type "date/all-options"}}
+                                            "lib/type" "mbql.stage/native"}]
+                                  "lib/type" "mbql/query"}}}}
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["tMpLtAgDeFaUlT00card1"])
+          result  (get results "tMpLtAgDeFaUlT00card1")]
+      (is (nil? (:error result))
+          (str "Should not error: " (:error result))))))
+
+;;; ===========================================================================
 ;;; Create a simple in-memory source to test unresolved references
 ;;; without needing temp files.
 ;;; ===========================================================================
@@ -538,9 +572,10 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]
-                                                              :aggregation [["measure" "mSrAvgProdPrice00008x"]]}}}}}
+                                                              :aggregation [["measure" "mSrAvgProdPrice00008x"]]}}}}
+                    :measures {"mSrAvgProdPrice00008x" {:name "Avg Product Price"
+                                                         :entity_id "mSrAvgProdPrice00008x"}}}
           [schema assets index] (helpers/make-sources-and-index entities)
-          index (assoc index :measure {"mSrAvgProdPrice00008x" :memory})
           results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)) (str "Should not error: " (:error result)))
@@ -574,9 +609,10 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]
-                                                              :filter ["segment" "aB3kLmN9pQrStUvWxYz1a"]}}}}}
+                                                              :filter ["segment" "aB3kLmN9pQrStUvWxYz1a"]}}}}
+                    :segments {"aB3kLmN9pQrStUvWxYz1a" {:name "Known Segment"
+                                                          :entity_id "aB3kLmN9pQrStUvWxYz1a"}}}
           [schema assets index] (helpers/make-sources-and-index entities)
-          index (assoc index :segment {"aB3kLmN9pQrStUvWxYz1a" :memory})
           results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)) (str "Should not error: " (:error result)))
@@ -842,76 +878,54 @@
           "Error should mention it points to a card"))))
 
 (deftest dashboard-bad-collection-id-test
-  (testing "Dashboard with invalid collection_id is flagged via file-based check"
-    (let [dir (java.io.File/createTempFile "dash-coll-test" "")]
-      (.delete dir)
-      (.mkdirs dir)
-      (try
-        ;; Write a dashboard YAML file
-        (let [dash-file (io/file dir "dashboard.yaml")]
-          (spit dash-file "name: My Dashboard\nentity_id: dash-1\ncollection_id: nonexistent\n")
-          ;; Create a minimal source (no cards, no databases — we only care about collection_id)
-          (let [empty-entities {:databases {} :tables {} :fields {} :cards {}}
-                [schema assets _] (helpers/make-sources-and-index empty-entities)
-                index {:dashboard {"dash-1" (.getPath dash-file)}
-                       :collection {}}
-                results (checker/check-entities schema assets index [])]
-            ;; The dashboard should appear in results with an unresolved collection ref
-            (is (contains? results "dash-1") "Dashboard should be in results")
-            (let [result (get results "dash-1")]
-              (is (seq (:unresolved result)) "Dashboard with bad collection_id should be flagged")
-              (is (some #(= :collection (:type %)) (:unresolved result))))))
-        (finally
-          (doseq [f (reverse (file-seq dir))]
-            (.delete ^java.io.File f)))))))
+  (testing "Dashboard with invalid collection_id is flagged"
+    (let [entities {:databases {} :tables {} :fields {} :cards {}
+                    :dashboards {"dash-1" {:name "My Dashboard"
+                                            :entity_id "dash-1"
+                                            :collection_id "nonexistent"}}}
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index)]
+      (is (contains? results "dash-1") "Dashboard should be in results")
+      (let [result (get results "dash-1")]
+        (is (seq (:unresolved result)) "Dashboard with bad collection_id should be flagged")
+        (is (some #(= :collection (:type %)) (:unresolved result)))))))
 
 (deftest dashboard-valid-collection-id-not-flagged-test
-  (testing "Dashboard with valid collection_id is not in results"
-    (let [dir (java.io.File/createTempFile "dash-coll-ok" "")]
-      (.delete dir)
-      (.mkdirs dir)
-      (try
-        (let [dash-file (io/file dir "dashboard.yaml")]
-          (spit dash-file "name: Good Dashboard\nentity_id: dash-1\ncollection_id: coll-1\n")
-          (let [empty-entities {:databases {} :tables {} :fields {} :cards {}}
-                [schema assets _] (helpers/make-sources-and-index empty-entities)
-                index {:dashboard {"dash-1" (.getPath dash-file)}
-                       :collection {"coll-1" :memory}}
-                results (checker/check-entities schema assets index [])]
-            (is (= :ok (checker/result-status (get results "dash-1")))
-                "Dashboard with valid collection_id should be OK")))
-        (finally
-          (doseq [f (reverse (file-seq dir))]
-            (.delete ^java.io.File f)))))))
+  (testing "Dashboard with valid collection_id passes"
+    (let [entities {:databases {} :tables {} :fields {} :cards {}
+                    :dashboards {"dash-1" {:name "Good Dashboard"
+                                            :entity_id "dash-1"
+                                            :collection_id "coll-1"}}
+                    :collections {"coll-1" {:name "My Collection"
+                                             :entity_id "coll-1"}}}
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index)]
+      (is (= :ok (checker/result-status (get results "dash-1")))
+          "Dashboard with valid collection_id should be OK"))))
 
 ;;; ===========================================================================
 ;;; Dashboard semantic validation tests
 ;;; ===========================================================================
 
 (defn- with-temp-dashboard
-  "Write a dashboard YAML to a temp file and run checks.
-   `dashboard-data` is a map that will be written as YAML.
+  "Run checks with a dashboard entity provided via in-memory source.
+   `dashboard-data` is a map representing the dashboard.
    `extra-index` is merged into the index (e.g. to add cards).
    Calls `(f results)` with the check results."
   [dashboard-data extra-index f]
-  (let [dir (java.io.File/createTempFile "dash-test" "")]
-    (.delete dir)
-    (.mkdirs dir)
-    (try
-      (let [dash-file (io/file dir "dashboard.yaml")
-            entity-id (:entity_id dashboard-data)]
-        (spit dash-file (yaml/generate-string dashboard-data))
-        (let [empty-entities {:databases {} :tables {} :fields {} :cards {}}
-              [schema assets _] (helpers/make-sources-and-index empty-entities)
-              index  (merge {:dashboard {entity-id (.getPath dash-file)}
-                             :collection {}
-                             :card {}}
-                            extra-index)
-              results (checker/check-entities schema assets index [])]
-          (f results)))
-      (finally
-        (doseq [fl (reverse (file-seq dir))]
-          (.delete ^java.io.File fl))))))
+  (let [entity-id  (:entity_id dashboard-data)
+        entities   {:databases  {}
+                    :tables     {}
+                    :fields     {}
+                    :cards      {}
+                    :dashboards {entity-id dashboard-data}}
+        [schema assets base-index] (helpers/make-sources-and-index entities)
+        index      (merge base-index
+                          {:collection {}
+                           :card {}}
+                          extra-index)
+        results    (checker/check-entities schema assets index)]
+    (f results)))
 
 (deftest dashboard-card-ref-valid-test
   (testing "Dashboard with valid card_id refs passes"
@@ -1046,7 +1060,7 @@
                          {:collection {}
                           :card {}}
                          (dissoc extra-index :_databases :_tables :_fields))
-        results   (checker/check-entities schema assets index [])]
+        results   (checker/check-entities schema assets index)]
     (f results)))
 
 (deftest transform-bad-native-sql-test

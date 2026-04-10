@@ -44,4 +44,16 @@
     "Resolve transform by entity-id. Returns map with :name, :source, etc. or nil.")
 
   (resolve-segment [this entity-id]
-    "Resolve segment by entity-id. Returns map with :name, :definition, etc. or nil."))
+    "Resolve segment by entity-id. Returns map with :name, :definition, etc. or nil.")
+
+  (resolve-dashboard [this entity-id]
+    "Resolve dashboard by entity-id. Returns map with :name, :dashcards, :tabs, etc. or nil.")
+
+  (resolve-collection [this entity-id]
+    "Resolve collection by entity-id. Returns map with :name, :parent_id, etc. or nil.")
+
+  (resolve-document [this entity-id]
+    "Resolve document by entity-id. Returns map with :name, :document, etc. or nil.")
+
+  (resolve-measure [this entity-id]
+    "Resolve measure by entity-id. Returns map with :name, :definition, etc. or nil."))

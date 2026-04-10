@@ -37,16 +37,16 @@
       (is (= 2 (count (store/all-table-paths store))))
       (is (= 4 (count (store/all-field-paths store)))))))
 
-(deftest in-index?-test
+(deftest exists?-test
   (let [store (make-test-store)]
     (testing "known refs return true"
-      (is (store/in-index? store :database "DB"))
-      (is (store/in-index? store :table ["DB" "PUBLIC" "ORDERS"]))
-      (is (store/in-index? store :card "card-1")))
+      (is (store/exists? store :database "DB"))
+      (is (store/exists? store :table ["DB" "PUBLIC" "ORDERS"]))
+      (is (store/exists? store :card "card-1")))
     (testing "unknown refs return false"
-      (is (not (store/in-index? store :database "Nonexistent")))
-      (is (not (store/in-index? store :table ["DB" "PUBLIC" "MISSING"])))
-      (is (not (store/in-index? store :card "no-such-card"))))))
+      (is (not (store/exists? store :database "Nonexistent")))
+      (is (not (store/exists? store :table ["DB" "PUBLIC" "MISSING"])))
+      (is (not (store/exists? store :card "no-such-card"))))))
 
 (deftest index-kind-of-test
   (let [store (make-test-store)]
@@ -209,15 +209,3 @@
       (store/load-field! store ["DB" "PUBLIC" "ORDERS" "ID"])
       (is (some? (store/ref->id store :table ["DB" "PUBLIC" "ORDERS"]))
           "Table should have an assigned ID after loading a field"))))
-
-(deftest schema-source-accessor-test
-  (let [[schema assets index] (helpers/make-sources-and-index test-entities)
-        store (store/make-store schema assets index)]
-    (testing "schema-source returns the SchemaSource from the store"
-      (is (identical? schema (store/schema-source store))))))
-
-(deftest assets-source-accessor-test
-  (let [[schema assets index] (helpers/make-sources-and-index test-entities)
-        store (store/make-store schema assets index)]
-    (testing "assets-source returns the AssetsSource from the store"
-      (is (identical? assets (store/assets-source store))))))

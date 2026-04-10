@@ -263,6 +263,22 @@
 
   (resolve-segment [_ entity-id]
     (when-let [file (get-in index [:segment entity-id])]
+      (load-yaml file)))
+
+  (resolve-dashboard [_ entity-id]
+    (when-let [file (get-in index [:dashboard entity-id])]
+      (load-yaml file)))
+
+  (resolve-collection [_ entity-id]
+    (when-let [file (get-in index [:collection entity-id])]
+      (load-yaml file)))
+
+  (resolve-document [_ entity-id]
+    (when-let [file (get-in index [:document entity-id])]
+      (load-yaml file)))
+
+  (resolve-measure [_ entity-id]
+    (when-let [file (get-in index [:measure entity-id])]
       (load-yaml file))))
 
 (defn make-source
