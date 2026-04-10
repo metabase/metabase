@@ -16,7 +16,7 @@ dataset_query:
     - - max
       - {}
       - - field
-        - {inherited-temporal-unit: default, base-type: type/DateTimeWithLocalTZ, temporal-unit: minute, original-temporal-unit: month, lib/uuid: 07740e07-ba4b-4727-aa76-981a20eca6eb}
+        - {base-type: type/DateTimeWithLocalTZ, inherited-temporal-unit: default, original-temporal-unit: month, temporal-unit: minute, lib/uuid: 07740e07-ba4b-4727-aa76-981a20eca6eb}
         - timestamp
     breakout:
     - - field
@@ -47,7 +47,7 @@ result_metadata:
   lib/card-id: 120
   lib/deduplicated-name: entity_qualified_id
   lib/desired-column-alias: entity_qualified_id
-  lib/external-remap: {field-id: 1489, id: 36, name: Entity Qualified ID, lib/type: metadata.column.remapping/external}
+  lib/external-remap: {field-id: 1508, id: 36, name: Entity Qualified ID, lib/type: metadata.column.remapping/external}
   lib/from-model?: true
   lib/original-display-name: Entity Qualified ID
   lib/original-name: entity_qualified_id

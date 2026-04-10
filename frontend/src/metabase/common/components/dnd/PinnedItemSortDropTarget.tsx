@@ -1,22 +1,34 @@
-import PropTypes from "prop-types";
+import type { DropTargetMonitor } from "react-dnd";
 import { DropTarget } from "react-dnd";
 
 import { isItemPinned } from "metabase/collections/utils";
+import type { CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";
 
 import { PinnableDragTypes } from ".";
 
+interface PinnedItemSortDropTargetOwnProps {
+  isFrontTarget: boolean;
+  isBackTarget: boolean;
+  itemModel: string;
+  pinIndex: number;
+  noDrop: boolean;
+}
+
 export const PinnedItemSortDropTarget = DropTarget(
   PinnableDragTypes,
   {
-    drop(props, monitor, component) {
+    drop(props: PinnedItemSortDropTargetOwnProps) {
       if (!props.noDrop) {
         return { pinIndex: props.pinIndex };
       }
     },
-    canDrop(props, monitor) {
-      const { item } = monitor.getItem();
+    canDrop(
+      props: PinnedItemSortDropTargetOwnProps,
+      monitor: DropTargetMonitor,
+    ) {
+      const { item } = monitor.getItem() as { item: CollectionItem };
       const { isFrontTarget, isBackTarget, itemModel, pinIndex } = props;
 
       // NOTE: not necessary to check collection permission here since we
@@ -30,10 +42,16 @@ export const PinnedItemSortDropTarget = DropTarget(
       }
 
       if (isFrontTarget) {
-        const isInFrontOfItem = pinIndex < item.collection_position;
+        const isInFrontOfItem =
+          pinIndex != null &&
+          item.collection_position != null &&
+          pinIndex < item.collection_position;
         return isInFrontOfItem;
       } else if (isBackTarget) {
-        const isBehindItem = pinIndex > item.collection_position;
+        const isBehindItem =
+          pinIndex != null &&
+          item.collection_position != null &&
+          pinIndex > item.collection_position;
         return isBehindItem;
       }
 
@@ -45,11 +63,5 @@ export const PinnedItemSortDropTarget = DropTarget(
     hovered: monitor.isOver() && monitor.canDrop(),
     connectDropTarget: connect.dropTarget(),
   }),
-)(DropArea);
-
-PinnedItemSortDropTarget.propTypes = {
-  isFrontTarget: PropTypes.bool,
-  isBackTarget: PropTypes.bool,
-  itemModel: PropTypes.string,
-  pinIndex: PropTypes.number,
-};
+  // react-dnd v7 HOC types can't express the own/collected props split
+)(DropArea as any);
