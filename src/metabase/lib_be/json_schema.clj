@@ -34,9 +34,10 @@
     schema))
 
 (defn- update-properties [properties]
-  (zipmap (map u/qualified-name (keys properties)) (vals properties)))
+  (zipmap (map u/qualified-name (keys properties))
+          (vals properties)))
 
-(defn- update-items [m]
+(defn- dissoc-false-items [m]
   (if (false? (:items m))
     (dissoc m :items)
     m))
@@ -48,7 +49,7 @@
       (collapse-branches :anyOf)
       (collapse-branches :oneOf)
       (m/update-existing :properties update-properties)
-      (update-items)
+      (dissoc-false-items)
       (m/update-existing :type keyword)))
 
 (defn- walk [node]
@@ -57,15 +58,20 @@
         (sequential? node) (mp/mapv walk node)
         :else node))
 
-(mu/defn make-schema :- :metabase.api.open-api/parameter.schema
+(mu/defn make-schema :- map? ; :metabase.api.open-api/parameter.schema
   "Generate a schema from Malli and apply fixes."
   []
   (mp/prewalk walk (mjs/transform ::schema/query
-                                  {::mjs/definitions-path "#/components/schemas/"})))
+                                  ;; TODO: this makes the validator hate it, but
+                                  ;; it's required for the malli schema above to
+                                  ;; validate; what gives?
+                                  #_{::mjs/definitions-path "#/components/schemas/"})))
 
-(defn -main
-  "Print JSON Schema for MBQL5 queries."
-  []
-  (-> (make-schema)
-      (json-util/encode {:pretty true})
-      (println)))
+(defn print-schema
+  "Print JSON Schema for MBQL5 queries, or write to a file if given."
+  [{:keys [file]}]
+  (let [json (json-util/encode (make-schema) {:pretty true})]
+    (if file
+      (spit file json)
+      #_{:clj-kondo/ignore [:discouraged-var]} ; the point is to print! not to log
+      (println json))))
