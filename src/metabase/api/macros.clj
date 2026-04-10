@@ -827,9 +827,11 @@
        (resolve-handler))))
 
   ([nmspace & middleware :- [:sequential {:min 1} ::middleware]]
-   (apply-middleware
-    (ns-handler nmspace)
-    middleware)))
+   (let [handler (ns-handler nmspace)]
+     (open-api/handler-with-open-api-spec
+      (apply-middleware handler middleware)
+      (fn [prefix]
+        (open-api/open-api-spec handler prefix))))))
 
 (extend-protocol open-api/OpenAPISpec
   clojure.lang.Namespace
