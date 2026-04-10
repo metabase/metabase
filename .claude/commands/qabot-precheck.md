@@ -1,16 +1,11 @@
 Run a precheck to verify the environment is correctly configured for `/qabot` to work — both inline and autobot mode. Report what's ready and what needs fixing.
 
+**Common check definitions are in [shared/bot-precheck-common.md](shared/bot-precheck-common.md).** Read that file first, then run each referenced check as described there.
+
 ## Checks
 
 ### 1. Playwright MCP configuration
-
-Read `.mcp.json` in the project root.
-
-**Check:** Does it exist?
-**Check:** Does it contain a `playwright` entry in `mcpServers`?
-**Check:** Is it configured with `--headless`, `--browser chrome`, `--viewport-size 1440x900`, `--snapshot-mode full`, `--isolated`?
-
-If `.mcp.json` is missing or doesn't have playwright, tell the user to run `./bin/mage -bot-setup` to regenerate it.
+Run the **Playwright MCP configuration** check from the shared file, using bot name `qabot`.
 
 ### 2. Claude permissions
 
@@ -35,14 +30,10 @@ Read `.claude/settings.local.json` if it exists. Check that the permissions incl
 Report which permissions are present, which are missing, and suggest the additions.
 
 ### 3. Worktree setup hook
-
-Check if `.husky/local/post-checkout` exists and is executable.
-
-**Check:** Does the file exist? If yes, PASS. If missing, WARN — autobot-based qabot runs need this hook to correctly set up worktrees (copy config files, .env, etc.). Suggest creating it.
+Run the **Worktree setup hook** check from the shared file.
 
 ### 4. clj-nrepl-eval installed
-
-Run `clj-nrepl-eval --help` (standalone) and verify it succeeds. If the command is not found, report FAIL — `clj-nrepl-eval` is required for REPL-based dynamic verification during qabot runs.
+Run the **clj-nrepl-eval installed** check from the shared file. This is **required** for qabot.
 
 ### 5. PDF generation
 
@@ -51,14 +42,7 @@ Run `npx -y md-to-pdf --version` to verify the PDF generator is available via np
 **IMPORTANT:** Run this as a standalone command — do not append `; echo ...` or other shell constructs, as this may not match the user's permission globs.
 
 ### 6. Server info and environment
-
-Run `./bin/mage -bot-server-info` (standalone, no shell chaining) and check the output for:
-
-**Required:**
-- **Config file**: The output should reference a config file (e.g., `local/config.yml`) that defines at least one user and at least one API key. If the config section is missing or has no users/api-keys, report as a failure — qabot needs pre-configured users and API keys to authenticate.
-
-**Optional:**
-- **LINEAR_API_KEY**: Check if it appears in the output. If not set, warn that Linear context won't be available but qabot can still run.
+Run the **Server info and environment** check from the shared file. Also check for **LINEAR_API_KEY** (optional, warn if missing).
 
 ## Report format
 

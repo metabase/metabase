@@ -12,16 +12,17 @@
 ;; Session naming
 
 (defn branch-to-session-name
-  "Convert a branch name to a bot session name.
-   e.g., (branch-to-session-name \"qabot\" \"feature/my-branch\") -> \"qabot-my-branch\""
-  [bot-prefix branch-name]
+  "Convert a branch name to a session name (just the branch slug, no bot prefix).
+   Replaces slashes and other non-alphanumeric chars with dashes.
+   e.g., (branch-to-session-name \"qabot\" \"feature/my-branch\") -> \"feature-my-branch\"
+         (branch-to-session-name \"qabot\" \"stream-fingerprinting\") -> \"stream-fingerprinting\""
+  [_bot-prefix branch-name]
   (let [slug (-> branch-name
-                 (str/replace #".+/" "")
                  (str/lower-case)
                  (str/replace #"[^a-z0-9-]" "-")
                  (str/replace #"-+" "-")
                  (str/replace #"^-|-$" ""))]
-    (str bot-prefix "-" (subs slug 0 (min (count slug) 40)))))
+    (subs slug 0 (min (count slug) 40))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Helpers

@@ -25,13 +25,13 @@
 (defn launch-workmux-session!
   "Launch a new workmux session (creates worktree from branch).
    Options:
-     :session-name   — tmux/workmux session name (e.g., \"fixbot-uxw-3330\")
-     :branch-name    — git branch to create/use
+     :session-name   — tmux/workmux session name (e.g., \"stream-fingerprinting\")
+     :branch-name    — git branch to create/use (local or origin/remote-branch)
+     :base-branch    — base branch for new worktrees (default: \"origin/master\")
      :prompt-file    — path to the agent prompt file (relative to main repo)
      :workmux-config — rendered .workmux.yaml content (string)
-     :base-branch    — base branch to create worktree from (default: \"origin/master\")
      :display-info   — map of {\"label\" value} pairs to print"
-  [{:keys [session-name branch-name prompt-file workmux-config base-branch display-info]}]
+  [{:keys [session-name branch-name base-branch prompt-file workmux-config display-info]}]
   (let [workmux-path (str u/project-root-directory "/.workmux.yaml")
         backup-path  (str workmux-path ".bak")
         had-backup?  (.exists (java.io.File. workmux-path))

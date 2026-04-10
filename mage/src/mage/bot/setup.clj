@@ -65,20 +65,6 @@
     (spit status-path "Starting up")
     (println (c/green "  Created bot directories and status file"))))
 
-(defn- deploy-commands!
-  "Copy bot commands from dev/bot/<bot>/commands/ into .claude/commands/."
-  [bot-name wt-path]
-  (let [commands-dir (str wt-path "/.claude/commands")
-        bot-commands (str wt-path "/dev/bot/" bot-name "/commands")]
-    (when (fs/exists? bot-commands)
-      ;; Remove old bot commands
-      (doseq [f (fs/glob commands-dir (str bot-name "*.md"))]
-        (fs/delete f))
-      ;; Copy fresh ones
-      (doseq [f (fs/glob bot-commands "*.md")]
-        (fs/copy f (str commands-dir "/" (fs/file-name f)) {:replace-existing true}))
-      (println (c/green "  Deployed bot commands")))))
-
 (defn- write-hooks!
   "Write workmux-status hooks.json for Claude Code status reporting."
   [wt-path]
@@ -135,7 +121,6 @@
   (println)
   (generate-settings! bot-name wt-path)
   (create-bot-dirs! bot-name wt-path)
-  (deploy-commands! bot-name wt-path)
   (write-hooks! wt-path)
   (run-dev-env! bot-name wt-path (or app-db "postgres"))
   (trust-mise! wt-path)

@@ -257,11 +257,11 @@
   (let [patch-file (str main-path "/bot.patch")]
     (if (fs/exists? patch-file)
       (let [{:keys [exit]} (shell/sh* {:quiet? true :dir worktree-root}
-                                      "git" "apply" "--stat" patch-file)]
+                                      "git" "apply" "--check" patch-file)]
         (if (zero? exit)
           (do
             (println (c/yellow "Applying bot.patch..."))
-            (shell/sh {:dir worktree-root} "git" "apply" patch-file)
+            (shell/sh* {:dir worktree-root} "git" "apply" patch-file)
             (println (c/green "Applied bot.patch")))
           (println (c/yellow "Skipping bot.patch (does not apply cleanly to this branch)"))))
       (println (c/yellow "No bot.patch found, skipping")))))

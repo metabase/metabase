@@ -5,6 +5,10 @@ files:
     - node_modules
 
 post_create:
+  # Run the main repo's post-checkout worktree setup (bot.patch, symlinks, caches, etc.)
+  # Uses the main repo's bin/mage since the worktree branch may not have this code yet.
+  # Idempotent — skips if post-checkout hook already ran.
+  - bash -c 'MAIN=$(git rev-parse --git-common-dir | sed "s|/\\.git$||"); if [ ! -L "$PWD/bin/bb" ]; then "$MAIN/bin/mage" -nvoxland-setup-worktree --worktree "$PWD"; fi'
   - ./bin/mage -bot-setup --bot {{BOT_NAME}} --app-db {{APP_DB}}
 
 pre_remove:
