@@ -499,15 +499,15 @@
 (deftest route-surface-test
   (testing "route-surface returns the correct surface for known prefixes"
     (are [uri expected]
-         (= expected (sdk/route-surface uri))
+         (= expected (sdk/embedding-route uri))
       "/api/public/something"         "public"
       "/api/embed/something"          "guest-embed"
       "/api/preview_embed/something"  "guest-embed"
       "/api/metabot/something"        "metabot"
       "/api/agent/something"          "agent-api"))
   (testing "route-surface returns nil for non-matching URIs"
-    (is (nil? (sdk/route-surface "/api/card/1")))
-    (is (nil? (sdk/route-surface nil)))))
+    (is (nil? (sdk/embedding-route "/api/card/1")))
+    (is (nil? (sdk/embedding-route nil)))))
 
 (defn- ->bool
   "Coerce a value to boolean. MySQL JDBC returns Integer 1/0 for TRUE/FALSE

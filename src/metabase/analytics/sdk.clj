@@ -123,7 +123,7 @@
   (or (= client embedding-sdk-client)
       (= client embedding-iframe-client)))
 
-(def ^:private route-surface-mapping
+(def ^:private embedding-route-mapping
   [["/api/public/"        "public"]
    ["/api/embed/"         "guest-embed"]
    ;; preview_embed is guest-embed; the "-preview" suffix is appended separately
@@ -132,12 +132,12 @@
    ["/api/metabot/"       "metabot"]
    ["/api/agent/"         "agent-api"]])
 
-(defn route-surface
+(defn embedding-route
   "Returns the route surface string for a URI, or nil if no route matches."
   [uri]
   (first (keep (fn [[prefix surface]]
                  (when (str/starts-with? (or uri "") prefix) surface))
-               route-surface-mapping)))
+               embedding-route-mapping)))
 
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
@@ -147,7 +147,7 @@
     (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
-          route (route-surface (:uri request))
+          route (embedding-route (:uri request))
           ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
           client (cond-> metabase-client-header
                    preview? (some-> (str "-preview")))]
