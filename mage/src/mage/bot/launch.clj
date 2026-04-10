@@ -1,5 +1,5 @@
 (ns mage.bot.launch
-  "Shared workmux session launch logic for fixbot, uxbot, and other bot types."
+  "Shared autobot session launch logic for fixbot, uxbot, and other bot types."
   (:require
    [clojure.string :as str]
    [mage.bot.setup :as bot-setup]

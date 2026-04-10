@@ -1,5 +1,5 @@
 (ns mage.bot.session
-  "Shared workmux session management for fixbot, uxbot, and other bot types."
+  "Shared autobot session management for fixbot, uxbot, and other bot types."
   (:require
    [clojure.string :as str]
    [mage.color :as c]
@@ -46,7 +46,7 @@
         :else (last (str/split path #"/"))))))
 
 (defn find-session
-  "Find a workmux session matching the given name or ID (case-insensitive substring match).
+  "Find a autobot session matching the given name or ID (case-insensitive substring match).
    Returns the worktree name (suitable for workmux commands) or nil."
   [name-or-id]
   (let [needle (str/lower-case (str/trim name-or-id))
@@ -59,7 +59,7 @@
          first)))
 
 (defn print-available-sessions!
-  "Print the list of available workmux sessions."
+  "Print the list of available autobot sessions."
   []
   (let [sessions (workmux-list-raw)]
     (if (seq sessions)
@@ -80,7 +80,7 @@
          vec)))
 
 (defn worktree-path
-  "Get the filesystem path for a workmux session."
+  "Get the filesystem path for a autobot session."
   [session]
   (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "path" session)]
     (when (zero? exit)
@@ -120,7 +120,7 @@
     (println (c/yellow "Worktree preserved. Run /uxbot again to restart."))))
 
 (defn quit-session!
-  "Tear down and remove a workmux session by name or ID match.
+  "Tear down and remove a autobot session by name or ID match.
    `bot-prefix` is used for usage messages (e.g., \"fixbot\", \"uxbot\")."
   [bot-prefix name-or-id]
   (when (str/blank? name-or-id)

@@ -1,4 +1,4 @@
-Launch a bot command in an isolated workmux session with its own worktree, backend, and frontend.
+Launch a bot command in an isolated autobot session with its own worktree, backend, and frontend.
 
 The user provided: `$ARGUMENTS`
 
@@ -14,10 +14,10 @@ Parse as: `<branch-name> <inner-command> [inner-args...] [--app-db postgres|mysq
 - `--app-db`: optional database type (default: `postgres`)
 
 Examples:
-- `/workmux master /qabot` → branch=master, command="/qabot", app-db=postgres
-- `/workmux my-branch /fixbot MB-12345` → branch=my-branch, command="/fixbot MB-12345"
-- `/workmux master /uxbot test the dashboard` → branch=master, command="/uxbot test the dashboard"
-- `/workmux master /reprobot MB-12345 --app-db mysql` → branch=master, command="/reprobot MB-12345", app-db=mysql
+- `/autobot master /qabot` → branch=master, command="/qabot", app-db=postgres
+- `/autobot my-branch /fixbot MB-12345` → branch=my-branch, command="/fixbot MB-12345"
+- `/autobot master /uxbot test the dashboard` → branch=master, command="/uxbot test the dashboard"
+- `/autobot master /reprobot MB-12345 --app-db mysql` → branch=master, command="/reprobot MB-12345", app-db=mysql
 
 Extract the bot name from the inner command by stripping the leading `/` (e.g., `/qabot` → `qabot`).
 
@@ -29,11 +29,11 @@ Verify these are available (stop if any fail):
 - Check `MB_PREMIUM_EMBEDDING_TOKEN` env var is set
 - Check `node_modules/` exists in the project root (run `bun install` if not)
 
-### 3. Launch the workmux session
+### 3. Launch the autobot session
 
 Run:
 ```
-./bin/mage workmux-go <BRANCH_NAME> --bot <BOT_NAME> --app-db <APP_DB> --command "<INNER_COMMAND> <INNER_ARGS>"
+./bin/mage autobot-go <BRANCH_NAME> --bot <BOT_NAME> --app-db <APP_DB> --command "<INNER_COMMAND> <INNER_ARGS>"
 ```
 
 This will:
@@ -49,6 +49,6 @@ If a session already exists for this bot+branch, it will tell you to stop it fir
 Tell the user:
 - The session has been launched
 - How to attach: `tmux attach -t <bot-name>-<branch-slug>`
-- How to stop: `/workmux-stop <session-name>` (or `/workmux-stop` from inside the session)
-- How to list all sessions: `/workmux-list`
-- How to remove: `/workmux-quit <session-name>`
+- How to stop: `/autobot-stop <session-name>` (or `/autobot-stop` from inside the session)
+- How to list all sessions: `/autobot-list`
+- How to remove: `/autobot-quit <session-name>`

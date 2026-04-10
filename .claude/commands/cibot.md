@@ -1,8 +1,8 @@
-You are the orchestrator for the cibot workflow. CIBot monitors CI for the current branch's PR, fixes failures, and re-runs flaky tests until CI is green. For an isolated worktree version, use `/workmux <branch> /cibot` instead.
+You are the orchestrator for the cibot workflow. CIBot monitors CI for the current branch's PR, fixes failures, and re-runs flaky tests until CI is green. For an isolated worktree version, use `/autobot <branch> /cibot` instead.
 
 ## Steps
 
-### 1. Preflight checks (inline mode — no workmux/Docker needed)
+### 1. Preflight checks (inline mode — no autobot/Docker needed)
 
 #### Verify tools are available (stop if any fail)
 - `gh auth status` — GitHub CLI is authenticated

@@ -1,8 +1,8 @@
-You are the orchestrator for the qabot workflow. QABot performs pre-merge QA analysis on the current branch, running directly in this project against the locally running server. For an isolated worktree version, use `/workmux <branch> /qabot` instead.
+You are the orchestrator for the qabot workflow. QABot performs pre-merge QA analysis on the current branch, running directly in this project against the locally running server. For an isolated worktree version, use `/autobot <branch> /qabot` instead.
 
 ## Steps
 
-### 1. Preflight checks (inline mode — no workmux/Docker needed)
+### 1. Preflight checks (inline mode — no autobot/Docker needed)
 
 #### Ensure Playwright MCP is configured
 

@@ -1,4 +1,4 @@
-Run a precheck to verify the environment is correctly configured for `/qabot` to work — both inline and workmux mode. Report what's ready and what needs fixing.
+Run a precheck to verify the environment is correctly configured for `/qabot` to work — both inline and autobot mode. Report what's ready and what needs fixing.
 
 ## Checks
 
@@ -38,7 +38,7 @@ Report which permissions are present, which are missing, and suggest the additio
 
 Check if `.husky/local/post-checkout` exists and is executable.
 
-**Check:** Does the file exist? If yes, PASS. If missing, WARN — workmux-based qabot runs need this hook to correctly set up worktrees (copy config files, .env, etc.). Suggest creating it.
+**Check:** Does the file exist? If yes, PASS. If missing, WARN — autobot-based qabot runs need this hook to correctly set up worktrees (copy config files, .env, etc.). Suggest creating it.
 
 ### 4. clj-nrepl-eval installed
 

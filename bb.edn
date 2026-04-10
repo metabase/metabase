@@ -713,43 +713,43 @@
    :requires [[mage.fixbot.session :as session]]
    :task (task! (session/dashboard!))}
 
-  ;;; Unified workmux session management
+  ;;; Unified autobot session management
 
-  workmux-go
-  {:doc "Launch a bot in a workmux session with its own worktree, backend, and frontend"
-   :examples [["./bin/mage workmux-go master --bot qabot --command /qabot"
-               "Launch qabot in workmux"]
-              ["./bin/mage workmux-go my-branch --bot fixbot --command '/fixbot MB-12345' --app-db mysql"
+  autobot-go
+  {:doc "Launch a bot in a autobot session with its own worktree, backend, and frontend"
+   :examples [["./bin/mage autobot-go master --bot qabot --command /qabot"
+               "Launch qabot in a autobot session"]
+              ["./bin/mage autobot-go my-branch --bot fixbot --command '/fixbot MB-12345' --app-db mysql"
                "Launch fixbot with MySQL"]]
-   :requires [[mage.bot.workmux :as workmux]]
+   :requires [[mage.bot.autobot :as autobot]]
    :arg-schema [:tuple [:string {:name "branch-name"}]]
    :options [[nil "--bot BOT" "Bot name (qabot, fixbot, uxbot, reprobot, cibot)"]
              [nil "--command CMD" "Inner command to run (e.g., /qabot, '/fixbot MB-12345')"]
              [nil "--app-db DB" "App database" :default "postgres"]
              [nil "--base BASE" "Base branch/commit to branch from"]]
-   :task (task! (workmux/run! parsed))}
+   :task (task! (autobot/run! parsed))}
 
-  -workmux-stop
-  {:doc "Stop a workmux session (kill tmux + dev env, keep worktree). No args = stop current session."
-   :examples [["./bin/mage -workmux-stop qabot-master" "Stop named session"]
-              ["./bin/mage -workmux-stop" "Stop current session (from inside workmux)"]]
-   :requires [[mage.bot.workmux :as workmux]]
+  -autobot-stop
+  {:doc "Stop a autobot session (kill tmux + dev env, keep worktree). No args = stop current session."
+   :examples [["./bin/mage -autobot-stop qabot-master" "Stop named session"]
+              ["./bin/mage -autobot-stop" "Stop current session (from inside a autobot session)"]]
+   :requires [[mage.bot.autobot :as autobot]]
    :arg-schema [:? [:string {:name "name-or-id"}]]
-   :task (task! (workmux/stop! parsed))}
+   :task (task! (autobot/stop! parsed))}
 
-  -workmux-list
-  {:doc "List all workmux sessions with status"
-   :examples [["./bin/mage -workmux-list" "List all sessions"]]
-   :requires [[mage.bot.workmux :as workmux]]
-   :task (task! (workmux/list-all! parsed))}
+  -autobot-list
+  {:doc "List all autobot sessions with status"
+   :examples [["./bin/mage -autobot-list" "List all sessions"]]
+   :requires [[mage.bot.autobot :as autobot]]
+   :task (task! (autobot/list-all! parsed))}
 
-  -workmux-quit
-  {:doc "Tear down and remove a workmux session. No args = remove current session."
-   :examples [["./bin/mage -workmux-quit qabot-master" "Remove named session"]
-              ["./bin/mage -workmux-quit" "Remove current session (from inside workmux)"]]
-   :requires [[mage.bot.workmux :as workmux]]
+  -autobot-quit
+  {:doc "Tear down and remove a autobot session. No args = remove current session."
+   :examples [["./bin/mage -autobot-quit qabot-master" "Remove named session"]
+              ["./bin/mage -autobot-quit" "Remove current session (from inside a autobot session)"]]
+   :requires [[mage.bot.autobot :as autobot]]
    :arg-schema [:? [:string {:name "name-or-id"}]]
-   :task (task! (workmux/quit! parsed))}
+   :task (task! (autobot/quit! parsed))}
 
   ;;; Shared bot tasks
 

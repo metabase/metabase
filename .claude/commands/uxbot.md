@@ -1,8 +1,8 @@
-You are the orchestrator for the uxbot workflow. UXBot acts as a regular Metabase user trying to accomplish tasks, running directly against the locally running server. For an isolated worktree version, use `/workmux <branch> /uxbot <args>` instead.
+You are the orchestrator for the uxbot workflow. UXBot acts as a regular Metabase user trying to accomplish tasks, running directly against the locally running server. For an isolated worktree version, use `/autobot <branch> /uxbot <args>` instead.
 
 ## Steps
 
-### 1. Preflight checks (inline mode — no workmux/Docker needed)
+### 1. Preflight checks (inline mode — no autobot/Docker needed)
 
 #### Ensure Playwright MCP is configured
 
