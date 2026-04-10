@@ -600,6 +600,82 @@
           "Should have unresolved segment ref"))))
 
 ;;; ===========================================================================
+;;; Transitive entity ref tests
+;;; ===========================================================================
+
+(deftest transitive-snippet-refs-test
+  (testing "Card sourcing from another card that uses a snippet surfaces that snippet transitively"
+    ;; Entity-ids must be 21-char NanoIDs to pass portable-id? checks
+    (let [inner-eid "tRaNsInNeRsNiPpEt0001"
+          outer-eid "tRaNsOuTeRsNiPpEt0001"
+          snip-eid  "tRaNsSnIpPeTiD0000001"
+          entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables    {["DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields    {["DB" "PUBLIC" "ORDERS" "ID"] {:name "ID" :base_type "type/BigInteger"
+                                                                :database_type "BIGINT"}}
+                    :cards     {inner-eid {:name "Inner Card"
+                                           :entity_id inner-eid
+                                           :dataset_query {:database "DB"
+                                                           :stages [{:native "SELECT * FROM ORDERS WHERE {{snippet: My Filter}}"
+                                                                     :template-tags {"snippet: My Filter"
+                                                                                     {:type "snippet"
+                                                                                      :snippet-name "My Filter"
+                                                                                      :snippet-id snip-eid}}
+                                                                     "lib/type" "mbql.stage/native"}]
+                                                           "lib/type" "mbql/query"}
+                                           :result_metadata [{:name "ID" :base_type "type/BigInteger"}]}
+                                outer-eid {:name "Outer Card"
+                                           :entity_id outer-eid
+                                           :dataset_query {:database "DB"
+                                                           :stages [{:source-card inner-eid
+                                                                     "lib/type" "mbql.stage/mbql"}]
+                                                           "lib/type" "mbql/query"}}}
+                    :snippets  {snip-eid {:name "My Filter" :content "1=1"}}}
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index [outer-eid inner-eid])
+          outer   (get results outer-eid)]
+      (is (= ["Inner Card"] (get-in outer [:refs :source-cards]))
+          "Should list inner card as source")
+      (is (= ["My Filter"] (get-in outer [:refs :snippets]))
+          "Should transitively surface the inner card's snippet"))))
+
+(deftest transitive-measure-refs-test
+  (testing "Card sourcing from another card that uses measures/segments surfaces them transitively"
+    (let [inner-eid "tRaNsInNeRmEaSuRe0001"
+          outer-eid "tRaNsOuTeRmEaSuRe0001"
+          msr-eid   "tRaNsMeAsUrEiD0000001"
+          seg-eid   "tRaNsSeGmEnTiD0000001"
+          entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables    {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields    {}
+                    :cards     {inner-eid {:name "Inner Metrics"
+                                           :entity_id inner-eid
+                                           :dataset_query {:database "DB"
+                                                           :stages [{:source-table ["DB" "PUBLIC" "T"]
+                                                                     :aggregation [["measure" msr-eid]]
+                                                                     :filters [["segment" seg-eid]]
+                                                                     "lib/type" "mbql.stage/mbql"}]
+                                                           "lib/type" "mbql/query"}
+                                           :result_metadata [{:name "count" :base_type "type/Integer"}]}
+                                outer-eid {:name "Outer Query"
+                                           :entity_id outer-eid
+                                           :dataset_query {:database "DB"
+                                                           :stages [{:source-card inner-eid
+                                                                     "lib/type" "mbql.stage/mbql"}]
+                                                           "lib/type" "mbql/query"}}}}
+          [schema assets index] (helpers/make-sources-and-index entities)
+          index   (assoc index
+                         :measure {msr-eid :memory}
+                         :segment {seg-eid :memory})
+          results (checker/check-entities schema assets index [outer-eid inner-eid])
+          outer   (get results outer-eid)]
+      (is (= ["Inner Metrics"] (get-in outer [:refs :source-cards])))
+      (is (= [msr-eid] (get-in outer [:refs :measures]))
+          "Should transitively surface the inner card's measure")
+      (is (= [seg-eid] (get-in outer [:refs :segments]))
+          "Should transitively surface the inner card's segment"))))
+
+;;; ===========================================================================
 ;;; Collection reference tests
 ;;; ===========================================================================
 
@@ -801,8 +877,8 @@
                 index {:dashboard {"dash-1" (.getPath dash-file)}
                        :collection {"coll-1" :memory}}
                 results (checker/check-entities schema assets index [])]
-            ;; Valid dashboard should not appear (no errors)
-            (is (not (contains? results "dash-1")) "Dashboard with valid collection_id should not be in results")))
+            (is (= :ok (checker/result-status (get results "dash-1")))
+                "Dashboard with valid collection_id should be OK")))
         (finally
           (doseq [f (reverse (file-seq dir))]
             (.delete ^java.io.File f)))))))
@@ -848,8 +924,8 @@
                     :row 0 :col 0 :size_x 12 :size_y 6}]}
       {:card {"card-1" :memory}}
       (fn [results]
-        (is (not (contains? results "dash-1"))
-            "Dashboard with valid refs should not appear in results")))))
+        (is (= :ok (checker/result-status (get results "dash-1")))
+            "Dashboard with valid refs should be OK")))))
 
 (deftest dashboard-card-ref-missing-test
   (testing "Dashboard with card_id pointing to unknown card is flagged"
@@ -880,7 +956,7 @@
                     :row 0 :col 0 :size_x 24 :size_y 1}]}
       {}
       (fn [results]
-        (is (not (contains? results "dash-1"))
+        (is (= :ok (checker/result-status (get results "dash-1")))
             "Virtual card with null card_id should be fine")))))
 
 (deftest dashboard-tab-ref-invalid-test
@@ -945,7 +1021,7 @@
                     :row 0 :col 0 :size_x 24 :size_y 1}]}
       {}
       (fn [results]
-        (is (not (contains? results "dash-1"))
+        (is (= :ok (checker/result-status (get results "dash-1")))
             "Full-width card should be valid")))))
 
 ;;; ===========================================================================
@@ -1020,8 +1096,8 @@
                      :table_id ["Test DB" "PUBLIC" "ORDERS"]}}
        :database   {"Test DB" :memory}}
       (fn [results]
-        (is (not (contains? results "tx-1"))
-            "Transform with valid SQL should not appear in results")))))
+        (is (= :ok (checker/result-status (get results "tx-1")))
+            "Transform with valid SQL should be OK")))))
 
 (deftest transform-mbql-unresolved-table-test
   (testing "Transform with MBQL referencing nonexistent table is flagged"

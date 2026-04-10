@@ -398,9 +398,7 @@
                             :bad-refs      (:bad-refs type-specific)
                             :error         (:error type-specific)
                             :sql           (:sql type-specific)}]
-        (when (or (:error result) (seq (:unresolved result))
-                  (seq (:native-errors result)) (seq (:bad-refs result)))
-          [entity-id result]))
+        [entity-id result])
       (catch Exception e
         [entity-id {:name       entity-id
                     :entity-id  entity-id
@@ -440,6 +438,20 @@
 
 (declare extract-refs-from-card)
 
+(defn- merge-refs
+  "Merge multiple ref maps, concatenating and deduplicating each key."
+  [& ref-maps]
+  (reduce (fn [acc m]
+            (reduce-kv (fn [a k v]
+                         (if (seq v)
+                           (update a k (fn [existing]
+                                         (vec (distinct (into (or existing []) v)))))
+                           a))
+                       acc m))
+          {} ref-maps))
+
+(declare extract-entity-refs-from-raw-data)
+
 (defn- extract-refs-from-query
   ([store query] (extract-refs-from-query store query nil #{}))
   ([store query provider visited]
@@ -452,19 +464,58 @@
          transitive (when provider
                       (for [cid card-ids :when (not (visited cid))]
                         (extract-refs-from-card store provider cid (conj visited cid))))
-         all-tables (into (vec (remove nil? tables)) (mapcat :tables transitive))
-         all-fields (into (vec (remove nil? fields)) (mapcat :fields transitive))
-         all-cards  (into (vec (remove nil? cards))  (mapcat :source-cards transitive))]
-     {:tables       (vec (distinct all-tables))
-      :fields       (vec (distinct all-fields))
-      :source-cards (vec (distinct all-cards))})))
+         direct     {:tables       (vec (remove nil? tables))
+                     :fields       (vec (remove nil? fields))
+                     :source-cards (vec (remove nil? cards))}]
+     (apply merge-refs direct transitive))))
 
 (defn- extract-refs-from-card [store provider card-id visited]
   (try
     (when-let [card (lib.metadata/card provider card-id)]
-      (when-let [dq (:dataset-query card)]
-        (extract-refs-from-query store (lib/query provider dq) provider visited)))
-    (catch Exception _ {:tables [] :fields [] :source-cards []})))
+      (let [;; Get the raw card data from the store for entity ref extraction
+            eid         (store/id->ref store :card card-id)
+            raw-data    (when eid (store/cached-entity store :card eid))
+            entity-refs (when raw-data (extract-entity-refs-from-raw-data raw-data))
+            query-refs  (when-let [dq (:dataset-query card)]
+                          (extract-refs-from-query store (lib/query provider dq) provider visited))]
+        (merge-refs (or query-refs {}) entity-refs)))
+    (catch Exception _ {})))
+
+(defn- extract-entity-refs-from-raw-data
+  "Extract snippet, measure, metric, and segment references from raw card data.
+   These are extracted from the YAML structure before resolution, since the
+   resolved lib query normalizes them away."
+  [data]
+  (let [stages (get-in data [:dataset_query :stages])]
+    (reduce
+     (fn [acc stage]
+       (let [;; Snippets from template-tags
+             snippets (->> (vals (:template-tags stage))
+                           (filter #(= "snippet" (get % :type)))
+                           (keep :snippet-name))
+             ;; Measures and metrics from aggregation clauses
+             agg-refs (->> (:aggregation stage)
+                           (filter vector?)
+                           (keep (fn [clause]
+                                   (let [tag (first clause)]
+                                     (case (str tag)
+                                       "measure" {:kind :measures  :ref (last clause)}
+                                       "metric"  {:kind :metrics   :ref (last clause)}
+                                       nil)))))
+             ;; Segments from filter clauses
+             seg-refs (->> (:filters stage)
+                           (filter vector?)
+                           (keep (fn [clause]
+                                   (when (= "segment" (str (first clause)))
+                                     {:kind :segments :ref (last clause)}))))]
+         (cond-> acc
+           (seq snippets) (update :snippets into snippets)
+           (seq agg-refs) (as-> a (reduce (fn [m {:keys [kind ref]}]
+                                            (update m kind (fnil conj []) ref))
+                                          a agg-refs))
+           (seq seg-refs) (update :segments into (map :ref seg-refs)))))
+     {}
+     (or stages []))))
 
 ;;; ===========================================================================
 ;;; Card checking — common checks + query checks
@@ -490,11 +541,18 @@
           native-errors   (humanize-errors store native-errors)
           bad-refs        (mapv #(humanize-source-entity store %) bad-refs)
           ;; Extract refs for display
-          refs            (try
+          query-refs      (try
                             (let [card  (lib.metadata/card provider card-id)
                                   query (lib/query provider (:dataset-query card))]
                               (extract-refs-from-query store query provider #{card-id}))
                             (catch Exception _ nil))
+          entity-refs     (extract-entity-refs-from-raw-data data)
+          refs            (when query-refs
+                            (cond-> query-refs
+                              (seq (:snippets entity-refs))  (assoc :snippets (vec (distinct (:snippets entity-refs))))
+                              (seq (:measures entity-refs))  (assoc :measures (vec (:measures entity-refs)))
+                              (seq (:metrics entity-refs))   (assoc :metrics (vec (:metrics entity-refs)))
+                              (seq (:segments entity-refs))  (assoc :segments (vec (:segments entity-refs)))))
           all-unresolved  (into (vec (concat resolution-failures
                                              (when (:provider/missing-database card-meta)
                                                [{:type :database :name (:provider/missing-database card-meta)}])))
