@@ -23,6 +23,7 @@ export interface ChartTypeOption {
 
 interface DisplayTypeDefinition {
   supportsMultipleSeries: boolean;
+  supportsStacking: boolean;
   getSettings: (
     def: MetricDefinition,
     dimension: DimensionMetadata,
@@ -221,21 +222,40 @@ export const DISPLAY_TYPE_REGISTRY: Record<
 > = {
   line: {
     supportsMultipleSeries: true,
+    supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
   area: {
     supportsMultipleSeries: true,
+    supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
   bar: {
     supportsMultipleSeries: true,
+    supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
-  row: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  scatter: { supportsMultipleSeries: true, getSettings: getScatterSettings },
-  map: { supportsMultipleSeries: false, getSettings: getMapSettings },
-  pie: { supportsMultipleSeries: false, getSettings: getPieSettings },
+  row: {
+    supportsMultipleSeries: true,
+    supportsStacking: false,
+    getSettings: getChartSettings,
+  },
+  scatter: {
+    supportsMultipleSeries: true,
+    supportsStacking: false,
+    getSettings: getScatterSettings,
+  },
+  map: {
+    supportsMultipleSeries: false,
+    supportsStacking: false,
+    getSettings: getMapSettings,
+  },
+  pie: {
+    supportsMultipleSeries: false,
+    supportsStacking: false,
+    getSettings: getPieSettings,
+  },
 };
