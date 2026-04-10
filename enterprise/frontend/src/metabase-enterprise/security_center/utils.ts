@@ -1,4 +1,4 @@
-import { compareVersions } from "metabase/lib/utils";
+import { compareVersions } from "metabase/utils/version";
 import type { Advisory, AdvisorySeverity } from "metabase-types/api";
 
 import type { AdvisoryFilter } from "./types";
