@@ -1216,26 +1216,21 @@
   [field-id max-batch]
   (let [required  (load-field-hierarchy field-id)
         remaining (- max-batch (count required))]
-    (if-not (pos? remaining)
+    (if (or (empty? required) (not (pos? remaining)))
       required
       (let [table-id      (:table_id (get required field-id))
-            fk-field-ids  (when table-id
-                            (t2/select-fn-set :fk_target_field_id :model/Field
-                                              :table_id table-id
-                                              :fk_target_field_id [:not= nil]))
+            fk-field-ids  (t2/select-fn-set :fk_target_field_id :model/Field
+                                            :table_id table-id
+                                            :fk_target_field_id [:not= nil])
             fk-table-ids  (when (seq fk-field-ids)
                             (t2/select-fn-set :table_id :model/Field
-                                              :id [:in fk-field-ids]
-                                              :table_id [:not= nil]))
-            all-table-ids (cond-> #{}
-                            table-id           (conj table-id)
-                            (seq fk-table-ids) (into fk-table-ids))
+                                              :id [:in fk-field-ids]))
+            all-table-ids (into (if table-id #{table-id} #{}) fk-table-ids)
             required-ids  (set (keys required))
-            extras        (when (and (seq all-table-ids) (seq required-ids))
-                            (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
-                                              :id [:not-in required-ids]
-                                              :table_id [:in all-table-ids]
-                                              {:limit remaining}))]
+            extras        (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
+                                            :id [:not-in required-ids]
+                                            :table_id [:in all-table-ids]
+                                            {:limit remaining})]
         (merge required extras)))))
 
 (defn recursively-find-field-q
