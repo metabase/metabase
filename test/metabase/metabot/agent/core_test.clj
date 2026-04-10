@@ -186,6 +186,23 @@
                             (map? (:data %)))
                       result))))))))
 
+(deftest run-agent-loop-respects-disabled-data-parts-during-post-processing-test
+  (mt/as-admin
+    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (with-redefs [self/call-llm (fn [& _]
+                                    [{:type     :tool-output
+                                      :id       "t1"
+                                      :function "navigate_user"
+                                      :result   {:reactions [{:type :metabot.reaction/redirect
+                                                              :url  "/question#abc"}]}}])]
+        (let [result (into [] (agent/run-agent-loop
+                               {:messages   [{:role :user :content "Open that question"}]
+                                :state      {}
+                                :profile-id :document
+                                :context    {:disabled_data_parts ["navigate_to"]}}))]
+          (is (some #(= :tool-output (:type %)) result))
+          (is (not-any? #(= "navigate_to" (:data-type %)) result)))))))
+
 ;;; Query and Chart extraction tests
 
 (deftest extract-queries-test
@@ -310,6 +327,8 @@
                    :id        "call-construct-1"
                    :function  "construct_notebook_query"
                    :arguments {:reasoning     "User wants to see orders"
+                               :name          "Orders sample query"
+                               :description   "Top 10 rows from the orders table"
                                :query         {:query_type "raw"
                                                :source     {:table_id orders-table-id}
                                                :filters    []
@@ -849,7 +868,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))
         (is (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
-      (testing "document-generate-content profile"
+      (testing "document profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-                              (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :no})))
-        (is (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :yes}))))))
+                              (check! :document {:permission/metabot :yes :permission/metabot-other-tools :no})))
+        (is (check! :document {:permission/metabot :yes :permission/metabot-other-tools :yes}))))))

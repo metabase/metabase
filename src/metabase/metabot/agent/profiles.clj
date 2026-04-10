@@ -142,17 +142,15 @@
                     #'tools/edit-chart-tool]})
 
 (register-profile!
- {:name            :document-generate-content
-  :prompt-template "document-generate-content.selmer"
+ {:name            :document
+  :prompt-template "document.selmer"
   :max-iterations  10
   :temperature     0.3
-  :required-tool-call? true
-  :tools           [#'tools/list-available-data-sources-tool
-                    #'tools/list-available-fields-tool
-                    #'tools/get-field-values-tool
-                    #'tools/document-schema-collect-tool
-                    #'tools/document-construct-model-chart-tool
-                    #'tools/document-construct-sql-chart-tool]})
+  :tools           [#'tools/search-tool
+                    #'tools/read-resource-tool
+                    #'tools/create-sql-query-tool
+                    #'tools/construct-notebook-query-tool
+                    #'tools/create-chart-tool]})
 
 (register-profile!
  {:name            :slackbot

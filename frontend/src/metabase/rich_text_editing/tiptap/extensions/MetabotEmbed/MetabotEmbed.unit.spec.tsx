@@ -1,13 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import {
-  createMockTokenFeatures,
-  createMockUserMetabotPermissions,
-} from "metabase-types/api/mocks";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotComponent } from "./MetabotEmbed";
@@ -17,25 +13,33 @@ import {
   createMockProseMirrorNode,
 } from "./__support__/node-view-mocks";
 
+jest.mock("metabase/metabot/hooks", () => {
+  const actual = jest.requireActual("metabase/metabot/hooks");
+  return {
+    ...actual,
+    useMetabotAgent: () => ({
+      submitInput: jest.fn(),
+      resetConversation: jest.fn(),
+      setProfileOverride: jest.fn(),
+      errorMessages: [],
+      cancelRequest: jest.fn(),
+      isDoingScience: false,
+      messages: [],
+    }),
+  };
+});
+
 describe("MetabotEmbed", () => {
   const defaultProps = createMockNodeViewProps({
     node: createMockProseMirrorNode({
       textContent: "Test prompt",
       content: { content: [] },
     }),
-    extension: createMockExtension({
-      options: {
-        serializePrompt: jest.fn(),
-      },
-    }),
+    extension: createMockExtension(),
   });
 
   beforeEach(() => {
     jest.clearAllMocks();
-    fetchMock.get(
-      "path:/api/metabot/permissions/user-permissions",
-      createMockUserMetabotPermissions(),
-    );
     mockSettings({
       "token-features": createMockTokenFeatures({ ai_controls: true }),
     });

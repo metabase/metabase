@@ -15,7 +15,7 @@ import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
 } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { createMetabotMentionSuggestionNew } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestionNew";
+import { createMetabotMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
@@ -78,7 +78,7 @@ export const MetabotPromptInput = forwardRef<
       MetabotMentionExtension.configure({
         suggestion: {
           render: createBareSuggestionRenderer(
-            createMetabotMentionSuggestionNew({
+            createMetabotMentionSuggestion({
               searchModels: suggestionConfig.suggestionModels,
               onlyDatabaseId: suggestionConfig.onlyDatabaseId,
             }),

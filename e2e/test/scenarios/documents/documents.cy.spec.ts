@@ -746,7 +746,6 @@ describe("documents", () => {
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
-        H.activateToken("bleeding-edge");
         H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
         H.visitDocument("@documentId");
 
@@ -801,12 +800,10 @@ describe("documents", () => {
         H.commandSuggestionItem(/Ask Metabot/).click();
         H.addToDocument("@", false);
 
+        cy.realPress("{downarrow}");
         assertOnlyOneOptionActive(/QA Postgres/, "metabot");
         cy.realPress("{downarrow}");
         assertOnlyOneOptionActive(/Sample/, "metabot");
-
-        H.documentMetabotSuggestionItem(/QA Postgres/).realHover();
-        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
       it("should support adding cards and updating viz settings", () => {
@@ -1881,12 +1878,14 @@ const assertOnlyOneOptionActive = (
         ? H.documentMentionDialog
         : H.documentMetabotDialog;
 
+  const option = dialog === "metabot" ? "menuitem" : "option";
+
   dialogContainer()
-    .findByRole("option", { name })
+    .findByRole(option, { name })
     .should("have.attr", "aria-selected", "true");
 
   dialogContainer()
-    .findAllByRole("option")
+    .findAllByRole(option)
     .filter("[aria-selected=true]")
     .should("have.length", 1);
 };
