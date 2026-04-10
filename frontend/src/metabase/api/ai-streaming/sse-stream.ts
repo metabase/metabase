@@ -10,7 +10,13 @@ export async function* parseSSEStream(
   stream: ReadableStream<Uint8Array>,
 ): AsyncGenerator<SSEEvent> {
   const eventStream = stream
-    .pipeThrough(new TextDecoderStream())
+    // TypeScript v5.9 issue - cast works around TS Uint8Array generic variance issue: https://github.com/microsoft/TypeScript/issues/62240
+    .pipeThrough(
+      new TextDecoderStream() as unknown as ReadableWritablePair<
+        string,
+        Uint8Array<ArrayBufferLike>
+      >,
+    )
     .pipeThrough(new EventSourceParserStream());
 
   const reader = eventStream.getReader();
