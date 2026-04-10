@@ -1039,7 +1039,7 @@
    When the cache exceeds `*batch-cache-max-size*`, the oldest half is dropped."
   [load-fn]
   (let [cache (atom {})
-        order (atom (clojure.lang.PersistentQueue/EMPTY))]
+        order (atom clojure.lang.PersistentQueue/EMPTY)]
     (fn [id]
       (let [v (get @cache id ::not-found)]
         (if-not (identical? v ::not-found)
@@ -1049,7 +1049,7 @@
             (swap! order into (keys new-batch))
             (when (> (count @cache) *batch-cache-max-size*)
               (let [to-drop (quot (count @cache) 2)]
-                (swap! order #(into (clojure.lang.PersistentQueue/EMPTY) (drop to-drop) %))
+                (swap! order #(into clojure.lang.PersistentQueue/EMPTY (drop to-drop) %))
                 (swap! cache #(select-keys % @order))))
             (get new-batch id)))))))
 
