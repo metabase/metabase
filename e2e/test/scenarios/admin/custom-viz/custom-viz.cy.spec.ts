@@ -147,89 +147,295 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@pluginCreateWithToken");
     });
-  });
 
-  describe("updating a plugin", () => {
-    beforeEach(() => {
-      H.activateToken("bleeding-edge");
-    });
+    describe("updating a plugin", () => {
+      beforeEach(() => {
+        H.activateToken("bleeding-edge");
+      });
 
-    it("should update commit after refetch", () => {
-      H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
-        const initialCommit = plugin.resolved_commit;
-        if (initialCommit == null) {
-          throw new Error("expected plugin.resolved_commit to be set");
-        }
-
-        // Make a new commit in the repo
-        H.updateFixtureAndCommit(() => {
-          cy.writeFile(
-            `${H.CUSTOM_VIZ_REPO_PATH}/dist/dummy.txt`,
-            "trigger new commit",
-          );
-        }, "Second commit");
-
-        H.visitCustomVizSettings();
-
-        // Verify initial commit is shown
-        cy.get("main")
-          .findByText(new RegExp(`Commit: ${initialCommit.slice(0, 8)}`))
-          .should("be.visible");
-
-        // Refetch
-        H.interceptPluginRefresh();
-        cy.findByRole("button", { name: /ellipsis/i }).click();
-        H.popover().findByText("Re-fetch").click();
-        cy.wait("@pluginRefresh").then(({ response }) => {
-          const newCommit: string | null | undefined =
-            response?.body?.resolved_commit;
-          expect(newCommit).to.not.equal(initialCommit);
-          if (newCommit == null) {
-            throw new Error(
-              "expected refreshed plugin.resolved_commit to be set",
-            );
+      it("should update commit after refetch", () => {
+        H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
+          const initialCommit = plugin.resolved_commit;
+          if (initialCommit == null) {
+            throw new Error("expected plugin.resolved_commit to be set");
           }
 
-          // Verify updated commit is shown
+          // Make a new commit in the repo
+          H.updateFixtureAndCommit(() => {
+            cy.writeFile(
+              `${H.CUSTOM_VIZ_REPO_PATH}/dist/dummy.txt`,
+              "trigger new commit",
+            );
+          }, "Second commit");
+
+          H.visitCustomVizSettings();
+
+          // Verify initial commit is shown
           cy.get("main")
-            .findByText(new RegExp(`Commit: ${newCommit.slice(0, 8)}`))
+            .findByText(new RegExp(`Commit: ${initialCommit.slice(0, 8)}`))
             .should("be.visible");
+
+          // Refetch (the actions menu is only visible on row hover)
+          H.interceptPluginRefresh();
+          cy.get("main").findByText("demo-viz").realHover();
+          cy.findByRole("button", { name: "Plugin actions" }).click();
+          H.popover().findByText("Re-fetch").click();
+          cy.wait("@pluginRefresh").then(({ response }) => {
+            const newCommit: string | null | undefined =
+              response?.body?.resolved_commit;
+            expect(newCommit).to.not.equal(initialCommit);
+            if (newCommit == null) {
+              throw new Error(
+                "expected refreshed plugin.resolved_commit to be set",
+              );
+            }
+
+            // Verify updated commit is shown
+            cy.get("main")
+              .findByText(new RegExp(`Commit: ${newCommit.slice(0, 8)}`))
+              .should("be.visible");
+          });
+        });
+      });
+
+      it("should update pinned version via edit form", () => {
+        H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
+          H.visitCustomVizEditForm(plugin.id);
+
+          cy.findByLabelText(/Pinned version/)
+            .clear()
+            .type("main");
+          cy.findByLabelText(/I understand/).click();
+
+          cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
+            "pluginUpdate",
+          );
+          cy.findByRole("button", { name: /Save/ }).click();
+
+          cy.wait("@pluginUpdate").then(({ request }) => {
+            expect(request.body.pinned_version).to.equal("main");
+          });
         });
       });
     });
 
-    it("should update pinned version via edit form", () => {
-      H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
-        H.visitCustomVizEditForm(plugin.id);
+    describe("disabling a plugin", () => {
+      beforeEach(() => {
+        H.activateToken("bleeding-edge");
+      });
 
-        cy.findByLabelText(/Pinned version/)
-          .clear()
-          .type("main");
-        cy.findByLabelText(/I understand/).click();
+      it("disabled plugin should fall back to default display and hide from chart type selector", () => {
+        H.setupCustomVizPlugin().then(() => {
+          // Create a single-value question (Count of Orders) — demo-viz
+          // requires exactly one row with one numeric column
+          cy.request("POST", "/api/card", {
+            name: "Custom Viz Disable Test",
+            dataset_query: {
+              type: "query",
+              query: { "source-table": 1, aggregation: [["count"]] },
+              database: 1,
+            },
+            display: H.CUSTOM_VIZ_DISPLAY,
+            visualization_settings: {},
+          }).then(({ body: card }) => {
+            // Verify custom viz renders properly
+            H.visitQuestion(card.id);
+            cy.get("main")
+              .findByText("Custom viz rendered successfully")
+              .should("be.visible");
 
-        cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
-          "pluginUpdate",
-        );
-        cy.findByRole("button", { name: /Save/ }).click();
+            H.visitCustomVizSettings();
+            // Actions menu is only visible on row hover
+            cy.get("main").findByText("demo-viz").realHover();
+            cy.findByRole("button", { name: "Plugin actions" }).click();
+            H.popover().findByText("Disable").click();
 
-        cy.wait("@pluginUpdate").then(({ request }) => {
-          expect(request.body.pinned_version).to.equal("main");
+            // Menu should now show "Enable" instead of "Disable"
+            cy.get("main").findByText("demo-viz").realHover();
+            cy.findByRole("button", { name: "Plugin actions" }).click();
+            H.popover().findByText("Enable").should("be.visible");
+
+            // Reload the question — plugin is disabled, should fall back
+            H.visitQuestion(card.id);
+            cy.findByTestId("table-root").should("be.visible");
+
+            // Custom viz section should not appear in chart type selector
+            cy.findByTestId("viz-type-button").click();
+            cy.findByText("Custom visualizations").should("not.exist");
+          });
+        });
+      });
+    });
+
+    describe("deleting a plugin", () => {
+      beforeEach(() => {
+        H.activateToken("bleeding-edge");
+      });
+
+      it("question should fall back when plugin is deleted", () => {
+        H.setupCustomVizPlugin().then(() => {
+          // Create a single-value question with custom viz display
+          cy.request("POST", "/api/card", {
+            name: "Custom Viz Delete Test",
+            dataset_query: {
+              type: "query",
+              query: { "source-table": 1, aggregation: [["count"]] },
+              database: 1,
+            },
+            display: H.CUSTOM_VIZ_DISPLAY,
+            visualization_settings: {},
+          }).then(({ body: card }) => {
+            H.visitCustomVizSettings();
+
+            // Delete the plugin (actions menu is only visible on row hover)
+            cy.get("main").findByText("demo-viz").realHover();
+            cy.findByRole("button", { name: "Plugin actions" }).click();
+            H.popover().findByText("Remove").click();
+
+            cy.get("main")
+              .findByText("You don't have any custom visualizations.")
+              .should("be.visible");
+
+            // Visit the question — should fall back to table
+            H.visitQuestion(card.id);
+            cy.findByTestId("table-root").should("be.visible");
+
+            // Custom viz section should not appear in chart type selector
+            cy.findByTestId("viz-type-button").click();
+            cy.findByText("Custom visualizations").should("not.exist");
+          });
         });
       });
     });
   });
 
-  describe("disabling a plugin", () => {
-    beforeEach(() => {
-      H.activateToken("bleeding-edge");
+  describe("using a plugin — question", () => {
+    before(() => {
+      // Filesystem-only; runs once. Outer beforeEach restores the app DB
+      // before each test but leaves the repo under e2e/tmp intact.
+      H.setupCustomVizRepo();
     });
 
-    it("disabled plugin should fall back to default display and hide from chart type selector", () => {
-      H.setupCustomVizPlugin().then(() => {
-        // Create a single-value question (Count of Orders) — demo-viz
-        // requires exactly one row with one numeric column
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
+
+      // ChartTypeSidebar.tsx eagerly loads all registered custom viz bundles
+      // on mount and only adds them to the viz picker once the fetch resolves.
+      // Auto-load (useAutoLoadCustomVizPlugin) also fires this when opening
+      // a card whose display is already "custom:…" (persistence + error tests).
+      H.interceptPluginBundle();
+
+      // Default-view (table) Count-of-Orders card — demo-viz requires
+      // exactly one row with one numeric column.
+      cy.request("POST", "/api/card", {
+        name: "Custom Viz Question Test",
+        dataset_query: {
+          type: "query",
+          query: { "source-table": 1, aggregation: [["count"]] },
+          database: 1,
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: card }) => {
+        cy.wrap(card.id).as("questionId");
+      });
+    });
+
+    function visitTestQuestion() {
+      cy.get("@questionId").then((id) => H.visitQuestion(Number(id)));
+    }
+
+    function openVizTypePicker() {
+      cy.findByTestId("viz-type-button").click();
+      // Sidebar eagerly fetches every custom-viz bundle before the picker
+      // shows the "Custom visualizations" section.
+      cy.wait("@pluginBundle");
+    }
+
+    function switchToDemoViz() {
+      openVizTypePicker();
+      cy.findByTestId("custom-viz-plugins-toggle").click();
+      cy.findByTestId("demo-viz-button").click();
+      // Close the picker so the viz is visible for interaction
+      cy.findByTestId("viz-type-button").click();
+    }
+
+    it("renders the selected custom viz for the question", () => {
+      visitTestQuestion();
+      switchToDemoViz();
+
+      cy.get("main")
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+      cy.get("main")
+        .findByText(/Value: \d+/)
+        .should("be.visible");
+      // Default threshold from getDefault
+      cy.get("main").findByText("Threshold: 0").should("be.visible");
+    });
+
+    it("exposes plugin settings and applies changes to the viz", () => {
+      visitTestQuestion();
+      switchToDemoViz();
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByPlaceholderText("Set threshold")
+        .clear()
+        .type("42")
+        .blur();
+
+      cy.get("main").findByText("Threshold: 42").should("be.visible");
+    });
+
+    it("persists the selected custom viz across reloads", () => {
+      visitTestQuestion();
+      switchToDemoViz();
+      H.saveSavedQuestion();
+
+      // After reload, useAutoLoadCustomVizPlugin re-fetches the bundle because
+      // the saved card now has a custom-viz display. Re-intercept since the
+      // previous @pluginBundle alias was consumed by switchToDemoViz().
+      H.interceptPluginBundle();
+      cy.reload();
+      cy.wait("@pluginBundle");
+
+      cy.get("main")
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+    });
+
+    describe("errors", () => {
+      it("renders errors thrown by the plugin component", () => {
+        // Multi-column question — checkRenderable throws
+        // "Query results should only have 1 column".
         cy.request("POST", "/api/card", {
-          name: "Custom Viz Disable Test",
+          name: "Custom Viz Error — Multi Column",
+          dataset_query: {
+            type: "query",
+            query: { "source-table": 1, limit: 5 },
+            database: 1,
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+          visualization_settings: {},
+        }).then(({ body: card }) => {
+          H.visitQuestion(card.id);
+
+          cy.findByText(/Query results should only have 1 column/).should(
+            "be.visible",
+          );
+        });
+      });
+
+      it("shows an error state when the plugin bundle fails to load", () => {
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+
+        cy.request("POST", "/api/card", {
+          name: "Custom Viz — Failing Bundle",
           dataset_query: {
             type: "query",
             query: { "source-table": 1, aggregation: [["count"]] },
@@ -238,68 +444,88 @@ describe("admin > custom visualizations", () => {
           display: H.CUSTOM_VIZ_DISPLAY,
           visualization_settings: {},
         }).then(({ body: card }) => {
-          // Verify custom viz renders properly
           H.visitQuestion(card.id);
-          cy.get("main")
-            .findByText("Custom viz rendered successfully")
-            .should("be.visible");
+          cy.wait("@failedBundle");
 
-          H.visitCustomVizSettings();
-          cy.findByRole("button", { name: /ellipsis/i }).click();
-          H.popover().findByText("Disable").click();
-
-          // Menu should now show "Enable" instead of "Disable"
-          cy.findByRole("button", { name: /ellipsis/i }).click();
-          H.popover().findByText("Enable").should("be.visible");
-
-          // Reload the question — plugin is disabled, should fall back
-          H.visitQuestion(card.id);
-          cy.findByTestId("table-root").should("be.visible");
-
-          // Custom viz section should not appear in chart type selector
-          cy.findByTestId("viz-type-button").click();
-          cy.findByText("Custom visualizations").should("not.exist");
+          cy.findByText(/Couldn't load .*demo-viz.* plugin bundle/).should(
+            "be.visible",
+          );
         });
       });
     });
-  });
 
-  describe("deleting a plugin", () => {
-    beforeEach(() => {
-      H.activateToken("bleeding-edge");
+    it("calls onClick when the viz fires a click", () => {
+      visitTestQuestion();
+      switchToDemoViz();
+
+      cy.findByTestId("demo-viz-last-click").should(
+        "have.text",
+        "Last clicked: none",
+      );
+
+      // Read the rendered value so the test doesn't hardcode sample count.
+      cy.get("main")
+        .findByText(/Value: (\d+)/)
+        .invoke("text")
+        .then((text) => {
+          const match = text.match(/Value: (\d+)/);
+          if (!match) {
+            throw new Error(`Could not extract value from "${text}"`);
+          }
+          const expectedValue = match[1];
+
+          cy.findByTestId("demo-viz-click-target").click();
+
+          cy.findByTestId("demo-viz-last-click").should(
+            "have.text",
+            `Last clicked: ${expectedValue}`,
+          );
+        });
     });
 
-    it("question should fall back when plugin is deleted", () => {
-      H.setupCustomVizPlugin().then(() => {
-        // Create a single-value question with custom viz display
-        cy.request("POST", "/api/card", {
-          name: "Custom Viz Delete Test",
-          dataset_query: {
-            type: "query",
-            query: { "source-table": 1, aggregation: [["count"]] },
-            database: 1,
-          },
-          display: H.CUSTOM_VIZ_DISPLAY,
-          visualization_settings: {},
-        }).then(({ body: card }) => {
-          H.visitCustomVizSettings();
+    it("calls onHover and renders a tooltip", () => {
+      visitTestQuestion();
+      switchToDemoViz();
 
-          // Delete the plugin
-          cy.findByRole("button", { name: /ellipsis/i }).click();
-          H.popover().findByText("Remove").click();
+      cy.findByTestId("demo-viz-last-hover").should(
+        "have.text",
+        "Last hovered: none",
+      );
 
-          cy.get("main")
-            .findByText("You don't have any custom visualizations.")
-            .should("be.visible");
+      cy.get("main")
+        .findByText(/Value: (\d+)/)
+        .invoke("text")
+        .then((text) => {
+          const match = text.match(/Value: (\d+)/);
+          if (!match) {
+            throw new Error(`Could not extract value from "${text}"`);
+          }
+          const expectedValue = match[1];
 
-          // Visit the question — should fall back to table
-          H.visitQuestion(card.id);
-          cy.findByTestId("table-root").should("be.visible");
+          cy.findByTestId("demo-viz-hover-target").realHover();
 
-          // Custom viz section should not appear in chart type selector
-          cy.findByTestId("viz-type-button").click();
-          cy.findByText("Custom visualizations").should("not.exist");
+          cy.findByTestId("demo-viz-last-hover").should(
+            "have.text",
+            `Last hovered: ${expectedValue}`,
+          );
+          cy.findByRole("tooltip").should("be.visible");
         });
+    });
+
+    it("renders a pinned custom-viz question in the collection view", () => {
+      visitTestQuestion();
+      switchToDemoViz();
+      H.saveSavedQuestion();
+
+      cy.get("@questionId").then((id) => {
+        cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+      });
+
+      cy.visit("/collection/root");
+
+      H.getPinnedSection().within(() => {
+        cy.findByText("Custom Viz Question Test").should("be.visible");
+        cy.findByText("Custom viz rendered successfully").should("be.visible");
       });
     });
   });

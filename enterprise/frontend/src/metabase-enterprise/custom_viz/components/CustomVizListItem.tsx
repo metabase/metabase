@@ -119,7 +119,11 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
       >
         <Menu>
           <Menu.Target>
-            <ActionIcon variant="subtle" loading={isRefreshing || isDeleting}>
+            <ActionIcon
+              aria-label={t`Plugin actions`}
+              variant="subtle"
+              loading={isRefreshing || isDeleting}
+            >
               <Icon name="ellipsis" />
             </ActionIcon>
           </Menu.Target>

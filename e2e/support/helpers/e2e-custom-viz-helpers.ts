@@ -85,7 +85,7 @@ export function setupCustomVizPlugin(): Cypress.Chainable<CustomVizPlugin> {
 // -- Intercept helpers --
 
 export function interceptPluginBundle() {
-  cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle").as("pluginBundle");
+  cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*").as("pluginBundle");
 }
 
 export function interceptPluginList() {
@@ -142,5 +142,5 @@ export function visitCustomVizEditForm(id: number) {
 // -- UI helpers --
 
 export function getAddVisualizationLink() {
-  return cy.findByRole("link", { name: /Add visualization/ });
+  return cy.findByRole("link", { name: /Add$/ });
 }
