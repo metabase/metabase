@@ -1101,8 +1101,7 @@
                                          :table_id id
                                          :fk_target_field_id [:not= nil]))
         fk-table-ids (when (seq fk-field-ids)
-                       (t2/select-fn-set :table_id :model/Field
-                                         :id [:in fk-field-ids]))
+                       (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
         fk-tables    (when (seq fk-table-ids)
                        (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema]
                                          :id [:in fk-table-ids]
@@ -1222,8 +1221,7 @@
                                             :table_id table-id
                                             :fk_target_field_id [:not= nil])
             fk-table-ids  (when (seq fk-field-ids)
-                            (t2/select-fn-set :table_id :model/Field
-                                              :id [:in fk-field-ids]))
+                            (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
             all-table-ids (into #{table-id} fk-table-ids)
             extras        (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
                                             :id [:not-in (set (keys required))]
