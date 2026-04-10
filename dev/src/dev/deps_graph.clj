@@ -735,6 +735,7 @@
     (sorted-set)
     (comp (map file->namespace)
           (map module)
+          (remove nil?)
           (distinct)
           (mapcat #(module->dependents deps %))
           (mapcat module->test-files))
