@@ -288,6 +288,19 @@
   (t2/delete! :model/SecurityAdvisory)
   (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/token-features"
+  "Add token features for E2E tests. Alter-var-roots `*token-features*` to return
+   the union of the real token features and the provided ones."
+  [_route-params
+   _query-params
+   {:keys [features]} :- [:map [:features [:sequential ms/NonBlankString]]]]
+  (let [extra (set features)]
+    (alter-var-root (resolve 'metabase.premium-features.token-check/*token-features*)
+                    (fn [original-fn]
+                      (fn [] (into (original-fn) extra)))))
+  {:status "ok"})
+
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
   [_route-params

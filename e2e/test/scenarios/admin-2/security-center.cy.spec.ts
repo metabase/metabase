@@ -54,9 +54,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.mockSessionPropertiesTokenFeatures({
-      admin_security_center: true,
-    });
+    H.addTokenFeatures("admin-security-center");
   });
 
   describe("feature gating", () => {
@@ -110,6 +108,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
+      H.addTokenFeatures("admin-security-center");
       cy.visit("/admin/security-center");
       securityCenterContent().within(() => {
         cy.findByText(/up to date/).should("be.visible");

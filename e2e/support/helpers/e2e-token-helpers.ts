@@ -50,6 +50,10 @@ export const activateToken = (
   });
 };
 
+export const addTokenFeatures = (...features: string[]) => {
+  return cy.request("POST", "/api/testing/token-features", { features });
+};
+
 export const deleteToken = () => {
   throwIfNotEnterprise();
 
