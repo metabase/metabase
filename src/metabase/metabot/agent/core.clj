@@ -435,7 +435,7 @@
    :usage-atom usage-atom})
 
 (defn- final-state-part [memory]
-  {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
+  {:type :data, :data-type "state", :data (memory/get-state memory)})
 
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
@@ -541,7 +541,6 @@
   (write-debug-log-file! debug-log)
   {:type      :data
    :data-type "debug_log"
-   :version   1
    :data      debug-log})
 
 (def ^:private profile-id->required-permission
