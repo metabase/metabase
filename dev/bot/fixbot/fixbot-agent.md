@@ -77,6 +77,9 @@ Read `.fixbot/llm-status.txt` and `mise.local.toml` using the `Read` tool before
 9. **Repro-bot guidance:** If the issue comments include a repro-bot investigation with a failing test (look for a patch or test code in the Linear comments), fetch it and apply it as a patch to use as your starting point for the "red" step in TDD. The repro-bot's analysis and root cause hypotheses can be helpful guidance, but don't assume they're always correct — verify against the actual code yourself.
 
 #### Phase 2: Fix
+
+{{FILE:dev/bot/common/test-strategy.md}}
+
 1. ALWAYS use red/green TDD:
    - Backend: Write a failing Clojure test first (`./bin/test-agent`), then implement until it passes
    - Frontend: Write a failing test first (Jest unit test or Cypress E2E), then implement until it passes

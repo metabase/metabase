@@ -765,6 +765,39 @@
    :arg-schema [:tuple [:string {:name "name-or-id"}]]
    :task (task! (uxbot-session/stop! parsed))}
 
+  ;;; ReproBot tasks
+
+  reprobot-go
+  {:doc "Launch bug reproduction session for a branch"
+   :examples [["./bin/mage reprobot-go my-feature-branch --prompt-file .reprobot/prompt.md"
+               "Launch reprobot session"]]
+   :requires [[mage.reprobot.go :as reprobot-go]]
+   :arg-schema [:tuple [:string {:name "branch-name"}]]
+   :options [[nil "--app-db DB" "App database" :default "postgres"]
+             [nil "--prompt-file FILE" "Path to agent prompt file"]
+             [nil "--base BASE" "Base branch/commit to branch from"]]
+   :task (task! (reprobot-go/run! parsed))}
+
+  -reprobot-stop
+  {:doc "Stop a reprobot session (kill tmux + dev env, keep worktree)"
+   :examples [["./bin/mage -reprobot-stop my-branch" "Stop session"]]
+   :requires [[mage.reprobot.session :as reprobot-session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (reprobot-session/stop! parsed))}
+
+  -reprobot-list
+  {:doc "List reprobot sessions with status"
+   :examples [["./bin/mage -reprobot-list" "List all sessions"]]
+   :requires [[mage.reprobot.session :as reprobot-session]]
+   :task (task! (reprobot-session/list-sessions! parsed))}
+
+  -reprobot-quit
+  {:doc "Tear down and remove a reprobot worktree session"
+   :examples [["./bin/mage -reprobot-quit my-branch" "Remove session"]]
+   :requires [[mage.reprobot.session :as reprobot-session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (reprobot-session/quit! parsed))}
+
   ;;; Shared bot tasks
 
   -bot-fetch-issue

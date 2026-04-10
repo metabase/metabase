@@ -1,6 +1,12 @@
 ## Server Lifecycle (via REPL)
 
-Use `clj-nrepl-eval -p {{NREPL_PORT}}` for all REPL operations below.
+### REPL Expression Rules
+
+Send **one expression per eval call**. Multi-expression evals frequently timeout. Split into separate (parallel if independent) calls.
+
+### REPL connection
+
+Discover your nREPL port dynamically via `clj-nrepl-eval --discover-ports`. Use the discovered port for all operations below.
 
 ### Restart the server (without killing the JVM)
 

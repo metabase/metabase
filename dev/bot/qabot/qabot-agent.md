@@ -193,12 +193,9 @@ For each finding from Phase 2 with confidence MEDIUM or above. Also, spend extra
 
 ### Choose the fastest verification path
 
-Before reproducing each finding, pick the fastest tool:
-- **API endpoint bug** → `./bin/mage -bot-api-call` (fast, direct)
-- **Internal function logic** → `clj-nrepl-eval -p $NREPL_PORT` REPL (fastest for verifying edge cases, type coercions, nil handling)
-- **UI interaction bug** → Playwright (slowest — use only when the finding genuinely requires browser interaction)
+{{FILE:dev/bot/common/reproduction-strategies.md}}
 
-Start with the fastest tool. Only escalate to Playwright for findings that require visual verification or multi-step UI interaction sequences.
+{{FILE:dev/bot/common/metabase-patterns.md}}
 
 ### UI Issues (use Playwright MCP)
 1. Navigate to the affected page

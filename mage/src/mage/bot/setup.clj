@@ -16,9 +16,10 @@
 
 (def ^:private bot-dirs
   "Bot-specific directories to create in the worktree."
-  {"fixbot" [".fixbot/playwright/sessions" ".fixbot/playwright/sockets"]
-   "qabot"  [".qabot"]
-   "uxbot"  [".uxbot/screenshots"]})
+  {"fixbot"   [".fixbot/playwright/sessions" ".fixbot/playwright/sockets"]
+   "qabot"    [".qabot"]
+   "reprobot" [".reprobot"]
+   "uxbot"    [".uxbot/screenshots"]})
 
 (def ^:private playwright-mcp-version "0.0.68")
 
