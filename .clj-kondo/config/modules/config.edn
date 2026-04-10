@@ -1728,6 +1728,7 @@
            legacy-mbql
            lib
            lib-be
+           logger
            model-persistence
            models
            parameters
