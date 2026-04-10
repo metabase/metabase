@@ -1176,8 +1176,8 @@
   (when field-id
     (let [field (field-fn field-id)
           table-ref (export-table-fk (:table_id field) table-fn db-fn)
-          names (field-name-chain field-id field-fn)]
-      (into table-ref names))))
+          field-names (field-name-chain field-id field-fn)]
+      (into table-ref field-names))))
 
 (defn- batch-load-fields
   "Loads all fields for the same table as `field-id`, plus all fields in
@@ -2018,7 +2018,7 @@
                          [fq-sym `(memoize ~fq-sym)]))
        ~@body)))
 
-(defn- with-batch-cache
+(defn with-batch-cache
   "Runs `thunk` with the batch cache bound to the export functions."
   [thunk]
   (let [db-cache    (make-batch-cache batch-load-databases)
