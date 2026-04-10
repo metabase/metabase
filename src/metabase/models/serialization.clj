@@ -1028,8 +1028,6 @@
 
 ;;; ## Databases
 
-(def ^:private cache-miss (Object.))
-
 (def ^:private ^:dynamic *batch-cache-max-size*
   "Maximum number of entries in a batch cache before old entries are dropped."
   50000)
@@ -1043,8 +1041,8 @@
   (let [cache (atom {})
         order (atom (clojure.lang.PersistentQueue/EMPTY))]
     (fn [id]
-      (let [v (get @cache id cache-miss)]
-        (if-not (identical? v cache-miss)
+      (let [v (get @cache id ::not-found)]
+        (if-not (identical? v ::not-found)
           v
           (let [new-batch (load-fn id)]
             (swap! cache merge new-batch)
