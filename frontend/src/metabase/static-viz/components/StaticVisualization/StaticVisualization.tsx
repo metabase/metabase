@@ -72,7 +72,6 @@ export const StaticVisualization = ({
         <StaticVisualizationComponent
           series={rawSeries}
           renderingContext={renderingContext}
-          colorScheme={renderingContext.colorScheme ?? "light"}
           settings={settings}
           isStorybook={isStorybook}
           hasDevWatermark={hasDevWatermark}
