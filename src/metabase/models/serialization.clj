@@ -1033,10 +1033,11 @@
   50000)
 
 (defn- make-batch-cache
-  "Returns a fn `(f id) -> entity`. On miss, calls `(load-fn id)` which must
-   return a map of `{id entity, ...}`. All returned entries are merged into
-   the cache so sibling lookups become hits.
-   When the cache exceeds `*batch-cache-max-size*`, the oldest half is dropped."
+  "Returns a fn `(f id) -> entity`. On miss, calls `(load-fn id max-batch)` which must
+   return a map of `{id entity, ...}`. `max-batch` is the maximum number of entries to return.
+   All returned entries are merged into the cache so sibling lookups become hits.
+   When the cache exceeds `*batch-cache-max-size*`, enough old entries are dropped to make room,
+   dropping at least half the cache."
   [load-fn]
   (let [cache (atom {})
         order (atom clojure.lang.PersistentQueue/EMPTY)]
@@ -1044,19 +1045,25 @@
       (let [v (get @cache id ::not-found)]
         (if-not (identical? v ::not-found)
           v
-          (let [new-batch (load-fn id)]
+          (let [new-batch (load-fn id *batch-cache-max-size*)]
             (swap! cache merge new-batch)
             (swap! order into (keys new-batch))
             (when (> (count @cache) *batch-cache-max-size*)
-              (let [to-drop (quot (count @cache) 2)]
+              (let [to-drop (max (quot (count @cache) 2)
+                                 (- (count @cache) *batch-cache-max-size*))]
                 (swap! order #(into clojure.lang.PersistentQueue/EMPTY (drop to-drop) %))
                 (swap! cache #(select-keys % @order))))
             (get new-batch id)))))))
 
 (defn- batch-load-databases
-  "Loads all databases as a map of `{id entity}`."
-  [_id]
-  (t2/select-pk->fn identity [:model/Database :id :name]))
+  "Loads the requested database plus other databases up to `max-batch`."
+  [id max-batch]
+  (let [target (t2/select-pk->fn identity [:model/Database :id :name] :id id)
+        others (when (> max-batch 1)
+                 (t2/select-pk->fn identity [:model/Database :id :name]
+                                   :id [:not= id]
+                                   {:limit (dec max-batch)}))]
+    (merge target others)))
 
 (defn- export-database-fk
   "Given a numeric database ID and a fn that resolves it to a database entity,
@@ -1080,20 +1087,21 @@
 ;;; ## Tables
 
 (defn- batch-load-tables
-  "Loads the table with `id` plus all tables referenced via FK target fields,
-   returned as a map of `{id entity}`."
-  [id]
-  (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema]
-                    {:where [:or
-                             [:= :id id]
-                             [:in :id {:select [[:mf2.table_id]]
-                                       :from   [[:metabase_field :mf2]]
-                                       :where  [:in :mf2.id
-                                                {:select [[:mf.fk_target_field_id]]
-                                                 :from   [[:metabase_field :mf]]
-                                                 :where  [:and
-                                                          [:= :mf.table_id id]
-                                                          [:!= :mf.fk_target_field_id nil]]}]}]]}))
+  "Loads the table with `id` plus FK-connected tables, up to `max-batch` total."
+  [id max-batch]
+  (let [target       (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema] :id id)
+        remaining    (- max-batch (count target))
+        fk-field-ids (when (pos? remaining)
+                       (t2/select-fn-set :fk_target_field_id :model/Field
+                                         :table_id id
+                                         :fk_target_field_id [:not= nil]))
+        fk-table-ids (when (seq fk-field-ids)
+                       (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
+        fk-tables    (when (seq fk-table-ids)
+                       (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema]
+                                         :id [:in fk-table-ids]
+                                         {:limit remaining}))]
+    (merge target fk-tables)))
 
 (defn- export-table-fk
   "Given a numeric table ID, a fn that resolves it to a table entity, and a fn
@@ -1177,23 +1185,43 @@
           field-names (field-name-chain field-id field-fn)]
       (into table-ref field-names))))
 
+(defn- load-field-hierarchy
+  "Loads the field with `id` and all its ancestors (via parent_id) in a single
+   recursive CTE query. Returns a map of `{id entity}`."
+  [id]
+  (into {}
+        (map (juxt :id identity))
+        (t2/select :model/Field
+                   {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
+                                      {:union-all [{:from   [[:metabase_field :mf]]
+                                                    :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
+                                                    :where  [:= :id id]}
+                                                   {:from   [[:metabase_field :pf]]
+                                                    :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
+                                                    :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
+                    :from           [:parents]
+                    :select         [:id :name :parent_id :table_id]})))
+
 (defn- batch-load-fields
-  "Loads all fields for the same table as `field-id`, plus all fields in
-   FK-connected tables, returned as a map of `{id entity}`."
-  [field-id]
-  (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
-                    {:where [:in :table_id
-                             {:select [:table_id]
-                              :from   [:metabase_field]
-                              :where  [:or
-                                       [:= :id field-id]
-                                       [:in :id {:select [:fk_target_field_id]
-                                                 :from   [:metabase_field]
-                                                 :where  [:and
-                                                          [:= :table_id {:select [:table_id]
-                                                                         :from   [:metabase_field]
-                                                                         :where  [:= :id field-id]}]
-                                                          [:!= :fk_target_field_id nil]]}]]}]}))
+  "Loads the requested field, its parent_id chain (via recursive CTE), and additional
+   fields from the same table and FK-connected tables, up to `max-batch` total."
+  [field-id max-batch]
+  (let [required  (load-field-hierarchy field-id)
+        remaining (- max-batch (count required))]
+    (if-not (pos? remaining)
+      required
+      (let [table-id      (:table_id (get required field-id))
+            fk-field-ids  (t2/select-fn-set :fk_target_field_id :model/Field
+                                            :table_id table-id
+                                            :fk_target_field_id [:not= nil])
+            fk-table-ids  (when (seq fk-field-ids)
+                            (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
+            all-table-ids (cond-> #{table-id} (seq fk-table-ids) (into fk-table-ids))
+            extras        (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
+                                            :id [:not-in (set (keys required))]
+                                            :table_id [:in all-table-ids]
+                                            {:limit remaining})]
+        (merge required extras)))))
 
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
