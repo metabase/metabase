@@ -26,7 +26,7 @@ export const UpsellCustomViz = ({ location }: { location: string }) => {
       location={location}
       onClick={triggerUpsellFlow}
     >
-      {t`Create custom chart types tailored to your data using the Custom visualizations SDK. Use them with any question in your Metabase instance.`}
+      {t`Create custom chart types tailored to your data using the Custom visualizations SDK.`}
     </UpsellBanner>
   );
 };
