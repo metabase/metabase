@@ -627,6 +627,28 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
     });
 
+    it("should stack series into panels when the stack series button is toggled", () => {
+      addMetric("Count of products");
+      cy.wait("@dataset");
+
+      cy.log("line chart with multiple series should show chart layout picker");
+      H.MetricsViewer.assertVizType("Line");
+      cy.findByTestId("chart-layout-picker").should("be.visible");
+      cy.findByLabelText("Stack layout").click();
+
+      cy.log("should split the chart into separate panels");
+      H.splitPanelAxisLines().should("have.length", 2);
+
+      cy.log("toggling off should return to unified view");
+      cy.findByLabelText("Default layout").click();
+      H.splitPanelAxisLines().should("have.length", 0);
+
+      cy.log("button should not be visible for non-line/area/bar charts");
+      switchToTab("State");
+      H.MetricsViewer.assertVizType("Map");
+      cy.findByTestId("chart-layout-picker").should("not.exist");
+    });
+
     it("should automatically split for display types that do not support multiple series", () => {
       cy.log("with a single series, map shows one visualization");
       switchToTab("State");

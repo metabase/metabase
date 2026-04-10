@@ -13,10 +13,10 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { generatePassword } from "metabase/lib/security";
-import MetabaseSettings from "metabase/lib/settings";
 import { Button, Flex, Modal, Text, TextInput } from "metabase/ui";
+import { generatePassword } from "metabase/utils/password";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword, storeTemporaryPassword } from "../people";

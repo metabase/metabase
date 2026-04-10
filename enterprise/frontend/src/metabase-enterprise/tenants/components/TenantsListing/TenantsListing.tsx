@@ -11,7 +11,6 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import {
   Box,
   Button,
@@ -22,6 +21,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
 import * as Urls from "metabase-enterprise/urls";
 import type { Tenant } from "metabase-types/api";

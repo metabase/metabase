@@ -622,6 +622,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       H.moveDnDKitElementByAlias("@dragElement", {
         horizontal,
         vertical,
+        useMouseEvents: true,
       });
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("notebook-cell-item")
@@ -662,6 +663,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         H.moveDnDKitElementByAlias("@dragElement", {
           horizontal,
           vertical,
+          useMouseEvents: true,
         });
       });
       // eslint-disable-next-line metabase/no-unsafe-element-filtering

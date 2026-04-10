@@ -1,9 +1,9 @@
+import { RevisionsApi } from "metabase/services";
 import {
   combineReducers,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
-import { RevisionsApi } from "metabase/services";
+} from "metabase/utils/redux";
 import type { Revision, RevisionId } from "metabase-types/api";
 
 export const FETCH_REVISIONS = "metabase/admin/datamodel/FETCH_REVISIONS";

@@ -3,9 +3,6 @@ import { replace } from "react-router-redux";
 
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
-import { deserializeCard, parseHash } from "metabase/lib/card";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -16,6 +13,9 @@ import { addFields } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
+import { deserializeCard, parseHash } from "metabase/utils/card";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

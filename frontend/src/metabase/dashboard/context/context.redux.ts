@@ -50,7 +50,6 @@ import {
   renameTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
-import { connect } from "metabase/lib/redux";
 import {
   initialize,
   reset,
@@ -62,6 +61,7 @@ import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 
 import {

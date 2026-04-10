@@ -127,7 +127,7 @@ module.exports = (env) => {
         "ee-overrides":
           process.env.MB_EDITION === "ee"
             ? ENTERPRISE_SRC_PATH + "/static-viz-overrides"
-            : SRC_PATH + "/lib/noop",
+            : SRC_PATH + "/utils/noop",
       },
       fallback: {
         crypto: require.resolve("crypto-browserify"),

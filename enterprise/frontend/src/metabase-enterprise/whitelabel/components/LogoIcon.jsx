@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { parseDataUri, removeAllChildren } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
+import { parseDataUri } from "metabase/utils/data-url";
+import { connect } from "metabase/utils/redux";
 import {
   getIsDefaultMetabaseLogo,
   getLogoUrl,
@@ -58,7 +58,7 @@ class LogoIcon extends Component {
       this.abortController.abort();
     }
 
-    removeAllChildren(this._container);
+    this._container.replaceChildren();
 
     const parsed = parseDataUri(url);
     if (parsed) {
@@ -95,7 +95,7 @@ class LogoIcon extends Component {
           svg.setAttribute("fill", "currentcolor");
           this.updateSize(svg);
 
-          removeAllChildren(this._container);
+          this._container.replaceChildren();
           this._container.appendChild(svg);
         } else {
           this.loadImageFallback(url);
@@ -109,7 +109,7 @@ class LogoIcon extends Component {
   }
 
   loadImageFallback(url) {
-    removeAllChildren(this._container);
+    this._container.replaceChildren();
 
     const img = document.createElement("img");
     img.src = url;

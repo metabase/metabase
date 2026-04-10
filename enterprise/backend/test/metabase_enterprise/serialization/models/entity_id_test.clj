@@ -52,6 +52,7 @@
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
+    :model/DependencyStatus
     :model/DocumentBookmark
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
@@ -117,6 +118,7 @@
     :model/ViewLog
     :model/Sandbox
     :model/ConnectionImpersonation
+    :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
     :model/CommentReaction

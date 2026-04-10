@@ -5,9 +5,9 @@ import { t } from "ttag";
 import { CheckBox as Checkbox } from "metabase/common/components/CheckBox/CheckBox";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import Settings from "metabase/lib/settings";
 import type { IconName } from "metabase/ui";
+import { formatDateTimeWithUnit } from "metabase/utils/formatting";
+import Settings from "metabase/utils/settings";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {

@@ -1,5 +1,5 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
 import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import { updateMetadata } from "metabase/utils/redux/metadata";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,

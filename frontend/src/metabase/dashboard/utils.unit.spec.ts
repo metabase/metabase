@@ -15,8 +15,8 @@ import {
   setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { checkNotNull } from "metabase/lib/types";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import {

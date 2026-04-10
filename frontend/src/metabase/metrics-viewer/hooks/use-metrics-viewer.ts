@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
-import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -245,6 +245,7 @@ export function useMetricsViewer({
       resultsByDefinitionId,
       modifiedDefinitions,
       sourceBreakoutColors,
+      activeTab.visualizationSettings,
     );
   }, [
     state.definitions,
