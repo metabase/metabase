@@ -36,7 +36,7 @@
 (def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
 
 (defmacro with-auth-method! "Binds [[*auth-method*]] for the duration of `body`."
-  [[value] & body]
+  [value & body]
   `(binding [*auth-method* ~value]
      ~@body))
 

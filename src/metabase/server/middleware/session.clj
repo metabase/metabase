@@ -241,16 +241,23 @@
           (-> user-info
               (dissoc :api-key)))))))
 
+(defn- auth-method
+  [session-info api-key-info embedding-route]
+  (or (cond session-info (or (:auth-provider session-info) "session")
+            api-key-info "api-key")
+      ({"guest-embed" "guest"} embedding-route)
+      embedding-route))
+
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
         api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
-        auth-method  (cond session-info (or (:auth-provider session-info) "session")
-                           api-key-info "api-key")]
+        embedding-route (analytics/get-route)
+        auth-method (auth-method session-info api-key-info embedding-route)]
     (merge
      request
      (dissoc (or session-info api-key-info) :auth-provider)
-     (when auth-method {:auth-method auth-method})
+     (when auth-method {:embedding/auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
        {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))
@@ -262,7 +269,8 @@
   (fn [request respond raise]
     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
                      (merge-current-user-info request))]
-      (handler request' respond raise))))
+      (analytics/with-auth-method! (:embedding/auth-method request)
+        (handler request' respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |
@@ -286,11 +294,8 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (analytics/with-auth-method! [(or (:auth-method request)
-                                      ({"guest-embed" "guest"} (analytics/get-route))
-                                      (analytics/get-route))]
-      (with-current-user-for-request request
-        (handler request respond raise)))))
+    (with-current-user-for-request request
+      (handler request respond raise))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         session activity tracking                                              |
