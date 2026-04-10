@@ -27,7 +27,7 @@ This can be one of three formats:
 **If the input is a GitHub issue number or URL:**
 1. Fetch the GitHub issue with `gh issue view <NUMBER> --repo metabase/metabase --json body,comments,title`
 2. Search the issue body and comments for a Linear issue link (pattern: `https://linear.app/metabase/issue/[A-Z]+-[0-9]+`). Extract the Linear issue ID.
-3. If no Linear link found, search Linear directly: run `./bin/mage -fixbot-fetch-issue` with a search term derived from the GitHub issue title.
+3. If no Linear link found, search Linear directly: run `./bin/mage -bot-fetch-issue` with a search term derived from the GitHub issue title.
 4. Tell the user which Linear issue you resolved to.
 
 **Validation:** Confirm the issue ID looks like `[A-Z]+-[0-9]+`. If not, tell the user the expected format and stop.

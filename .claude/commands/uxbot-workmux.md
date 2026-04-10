@@ -44,7 +44,7 @@ Run:
 
 **Shell escaping:** The `--set` values are passed as shell arguments. If a value contains quotes, dollar signs, backticks, or other shell metacharacters, escape them or use single quotes for the outer quoting. For example: `--set 'INITIAL_TASK=## Your First Task
 
-Show me the "orders" dashboard'`. When in doubt, write the value to a temp file and use command substitution: `--set "INITIAL_TASK=$(cat /tmp/task.txt)"`.
+Show me the "orders" dashboard'`. When in doubt, write the value to a temp file and use command substitution: `--set "INITIAL_TASK=$(cat .uxbot/tmp/task.txt)"`.
 
 ### 4. Launch the workmux session
 

@@ -124,7 +124,7 @@ Before asking the user to test, review your own changes thoroughly:
 When the user says they're happy (e.g., "looks good", "ship it", "done", "open the pr", "commit it"):
 1. Stage and commit all fix-related changes:
    - **NEVER commit changes under `.claude/`** — the worktree setup copies fixbot commands there, and those must not be committed
-   - **NEVER commit changes under `.fixbot/` or `.beads/` or `mage/`** — these are copied or generated files
+   - **NEVER commit changes under `.fixbot/` or `mage/`** — these are copied or generated files
    - Stage files individually by name (`git add path/to/file.clj`) — do NOT use `git add .` or `git add -A`
    - Only stage files that are part of the actual fix
    - Do not include yourself as a co-author in the commit message
@@ -153,7 +153,7 @@ When the user says they're happy (e.g., "looks good", "ship it", "done", "open t
 
 #### Phase 6: Monitor PR
 After submitting the pull request, monitor the pull request until it passes. NOTE: this may take a while and several attempts.
-1. Run `/fixbot-ci` to monitor CI results and handle failures
+1. Run `/cibot` to monitor CI results and handle failures
 2. **Ignore** the "Decide whether to backport or not" check failure — that's a label requirement handled by the user/reviewer, not something you can fix
 3. **Small PRs:** For frontend-only changes (no backend files touched), the relevant CI checks are `frontend-tests/*` and `e2e-tests/*`. If those pass and only unrelated checks (SDK, driver tests, etc.) fail, re-run the failed jobs immediately rather than waiting for the full suite to complete.
 
@@ -170,27 +170,6 @@ Write to `.fixbot/llm-status.txt` (overwrite the whole file each time) when some
 - Keep it to **1-3 lines** — the pane is small and other info is displayed above your status
 - Only update when the visible state meaningfully changes — don't spam updates
 - Keep each line short and scannable
-
-### Task Tracking with Beads
-
-`bd` (beads) is installed and initialized in stealth mode for structured task tracking. Use it to break down complex work, track dependencies, and maintain context across phases.
-
-**Key commands:**
-- `bd create "Task title" -p 0` — create a task (lower priority number = higher priority)
-- `bd ready` — list tasks that have no blockers and are ready to work on
-- `bd update <id> --claim` — assign a task to yourself and mark it in-progress
-- `bd update <id> --close` — mark a task as done
-- `bd show <id>` — view task details and history
-- `bd list` — list all tasks
-
-**When to use:**
-- When breaking a fix into multiple subtasks
-- To track what's been done vs what remains
-- To note blockers or dependencies between tasks
-
-**Rules:**
-- Beads is in stealth mode — it will not modify git state
-- Don't overthink it — simple issues may not need task tracking at all
 
 ### nREPL
 

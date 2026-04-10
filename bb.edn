@@ -765,6 +765,39 @@
    :arg-schema [:tuple [:string {:name "name-or-id"}]]
    :task (task! (uxbot-session/stop! parsed))}
 
+  ;;; CIBot tasks
+
+  cibot-go
+  {:doc "Launch CI monitoring session for a branch"
+   :examples [["./bin/mage cibot-go my-feature-branch --prompt-file .cibot/prompt.md"
+               "Launch cibot session"]]
+   :requires [[mage.cibot.go :as cibot-go]]
+   :arg-schema [:tuple [:string {:name "branch-name"}]]
+   :options [[nil "--app-db DB" "App database" :default "postgres"]
+             [nil "--prompt-file FILE" "Path to agent prompt file"]
+             [nil "--base BASE" "Base branch/commit to branch from"]]
+   :task (task! (cibot-go/run! parsed))}
+
+  -cibot-stop
+  {:doc "Stop a cibot session (kill tmux + dev env, keep worktree)"
+   :examples [["./bin/mage -cibot-stop my-branch" "Stop session"]]
+   :requires [[mage.cibot.session :as cibot-session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (cibot-session/stop! parsed))}
+
+  -cibot-list
+  {:doc "List cibot sessions with status"
+   :examples [["./bin/mage -cibot-list" "List all sessions"]]
+   :requires [[mage.cibot.session :as cibot-session]]
+   :task (task! (cibot-session/list-sessions! parsed))}
+
+  -cibot-quit
+  {:doc "Tear down and remove a cibot worktree session"
+   :examples [["./bin/mage -cibot-quit my-branch" "Remove session"]]
+   :requires [[mage.cibot.session :as cibot-session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (cibot-session/quit! parsed))}
+
   ;;; ReproBot tasks
 
   reprobot-go

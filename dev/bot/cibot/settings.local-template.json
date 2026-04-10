@@ -11,15 +11,15 @@
     "network": {
       "allowLocalBinding": true,
       "allowAllUnixSockets": true,
-      "allowedDomains": ["github.com", "api.github.com", "api.linear.app"]
+      "allowedDomains": ["github.com", "api.github.com", "*.blob.core.windows.net", "api.linear.app"]
     }
   },
   "permissions": {
     "allow": [
       "Read",
       "Edit",
-      "Grep",
       "Glob",
+      "Grep",
       "Write",
       "Skill",
       "Bash(*)",

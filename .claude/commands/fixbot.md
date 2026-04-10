@@ -44,9 +44,9 @@ Run:
 Read the output to extract issue details and branch name.
 
 Also determine the app database from the issue description/comments:
-- If the issue mentions **MySQL** problems, MySQL-specific SQL syntax, or MySQL error messages → `Mysql`
-- If the issue mentions **MariaDB** specifically → `Mariadb`
-- Otherwise → `Postgres` (the default)
+- If the issue mentions **MySQL** problems, MySQL-specific SQL syntax, or MySQL error messages → `mysql`
+- If the issue mentions **MariaDB** specifically → `mariadb`
+- Otherwise → `postgres` (the default)
 
 ### 4. Generate agent prompt
 
@@ -57,7 +57,7 @@ Run:
   --output .fixbot/fixbot-prompt.md \
   --set ISSUE_ID=<ISSUE_ID> \
   --set "BRANCH_NAME=$(git branch --show-current)" \
-  --set "APP_DB=<Postgres|Mysql|Mariadb>"
+  --set "APP_DB=<postgres|mysql|mariadb>"
 ```
 
 ### 5. Execute

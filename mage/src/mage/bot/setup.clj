@@ -16,7 +16,8 @@
 
 (def ^:private bot-dirs
   "Bot-specific directories to create in the worktree."
-  {"fixbot"   [".fixbot/playwright/sessions" ".fixbot/playwright/sockets"]
+  {"cibot"    [".cibot"]
+   "fixbot"   [".fixbot/playwright/sessions" ".fixbot/playwright/sockets"]
    "qabot"    [".qabot"]
    "reprobot" [".reprobot"]
    "uxbot"    [".uxbot/screenshots"]})

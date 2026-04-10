@@ -28,14 +28,30 @@ If no Linear issue ID is provided, try to detect from the branch name (pattern: 
 
 Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — construct it directly from the current date/time you already know.
 
+Before generating the prompt, gather context the same way the inline qabot does:
+- Run `./bin/mage -bot-server-info` and capture as SERVER_INFO
+- If a Linear issue ID was resolved, run `./bin/mage -bot-fetch-issue <ISSUE_ID>` and capture as LINEAR_CONTEXT
+- Try `./bin/mage -bot-git-readonly gh pr view --json title,body` for PR_CONTEXT (empty if no PR)
+- Create the output directory: write `.gitkeep` to `.qabot/<BRANCH_NAME>/<TIMESTAMP>/output/.gitkeep`
+
+Write multi-line values to temp files under `.qabot/tmp/` using the Write tool, then reference them with `$(cat .qabot/tmp/server-info.txt)`.
+
 Run:
 ```
 ./bin/mage -bot-generate-prompt \
   --template dev/bot/qabot/qabot-agent.md \
   --output .qabot/qabot-prompt.md \
   --set "BRANCH_NAME=<branch>" \
-  --set "LINEAR_ISSUE_ID=<id-or-empty>"
+  --set "TIMESTAMP=<timestamp>" \
+  --set "OUTPUT_DIR=.qabot/<branch>/<timestamp>" \
+  --set "NREPL_PORT=" \
+  --set "LINEAR_ISSUE_ID=<id-or-empty>" \
+  --set "SERVER_INFO=$(cat .qabot/tmp/server-info.txt)" \
+  --set "LINEAR_CONTEXT=$(cat .qabot/tmp/linear-context.txt)" \
+  --set "PR_CONTEXT=$(cat .qabot/tmp/pr-context.txt)"
 ```
+
+Note: `NREPL_PORT` is set empty — the workmux agent discovers it dynamically via `clj-nrepl-eval --discover-ports` at runtime.
 
 ### 4. Launch the workmux session
 
