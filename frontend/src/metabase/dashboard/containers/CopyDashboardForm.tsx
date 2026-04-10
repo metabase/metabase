@@ -138,6 +138,7 @@ function CopyDashboardForm({
 
         {!hideShallowCopy && (
           <FormCheckbox
+            mt="1rem"
             name="is_shallow_copy"
             label={
               <Group align="center" gap="xs">
@@ -153,7 +154,7 @@ function CopyDashboardForm({
           />
         )}
 
-        <FormFooter>
+        <FormFooter mt="1.5rem">
           <FormErrorMessage inline />
           {!!onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
