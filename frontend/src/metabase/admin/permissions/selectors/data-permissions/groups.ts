@@ -2,13 +2,13 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { Groups } from "metabase/entities/groups";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getGroupSortOrder,
   isAdminGroup,
   isDataAnalystGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { PLUGIN_TENANTS } from "metabase/plugins";
+} from "metabase/utils/groups";
 import type { Group } from "metabase-types/api";
 
 const isPinnedGroup = (group: Group) =>

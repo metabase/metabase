@@ -4,7 +4,6 @@ import { PermissionHelpDescription } from "metabase/admin/permissions/components
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -18,6 +17,7 @@ import {
   Title,
   rem,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 

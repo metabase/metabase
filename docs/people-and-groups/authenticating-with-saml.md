@@ -140,7 +140,7 @@ Note that your certificate text may include header and footer comments that look
 
 ### Settings for signing SSO requests (optional)
 
-To sign request so that they can't be tampered with, you'll need to provide additional settings.
+To sign requests so that they can't be tampered with, you'll need to provide additional settings.
 
 If your IdP encrypts SAML responses, you'll need to ensure this section is filled out.
 

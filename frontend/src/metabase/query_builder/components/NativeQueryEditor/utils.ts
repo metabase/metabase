@@ -1,6 +1,6 @@
 import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
 
-import { getEngineNativeType } from "metabase/lib/engine";
+import { getEngineNativeType } from "metabase/databases/utils/engine";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";

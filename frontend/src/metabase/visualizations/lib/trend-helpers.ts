@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { isEmpty } from "metabase/lib/validate";
+import { isEmpty } from "metabase/utils/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import { formatPreviousPeriodOptionName } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { RowValues } from "metabase-types/api";

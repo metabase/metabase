@@ -4,12 +4,12 @@ import _ from "underscore";
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getAllowedIframeAttributes } from "metabase/dashboard/visualizations/IFrameViz/utils";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import {
   isActionDashCard,
   isQuestionDashCard,
   isVirtualDashCard,
-} from "metabase/lib/dashboard";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
+} from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";

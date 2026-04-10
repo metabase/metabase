@@ -1100,6 +1100,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       cy.findAllByTestId("formatting-rule-preview").eq(2).as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         vertical: -300,
+        useMouseEvents: true,
       });
 
       cy.findAllByTestId("formatting-rule-preview")
@@ -1222,6 +1223,32 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
 
     // And you should find the result
     cy.findByRole("gridcell", { name: "6:34:00.000 PM" });
+  });
+
+  it("should preserve DOM elements for visible rows during scrolling", () => {
+    H.openOrdersTable();
+
+    const targetDatasetIndex = 15;
+
+    H.tableInteractiveBody()
+      .find(`[role=row][data-dataset-index="${targetDatasetIndex}"]`)
+      .then(($row) => {
+        const originalElement = $row[0];
+
+        H.tableInteractiveScrollContainer().then(($container) => {
+          const currentScroll = $container[0].scrollTop;
+          $container[0].scrollTop =
+            currentScroll + 36 * (targetDatasetIndex - 1);
+        });
+
+        H.tableInteractiveBody()
+          .find(`[role=row][data-dataset-index="${targetDatasetIndex}"]`)
+          .should("exist")
+          .then(($rowAfterScroll) => {
+            // Row has always been visible so it should use the same html node
+            expect($rowAfterScroll[0]).to.equal(originalElement);
+          });
+      });
   });
 });
 

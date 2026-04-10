@@ -1837,3 +1837,11 @@
   {:added "0.59.0" :arglists '([driver database test-table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti validate-impersonated-query
+  "Validates a query for impersonation. Returns the query if it is valid and throws otherwise."
+  {:added "0.60.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod validate-impersonated-query :default [_driver query] query)

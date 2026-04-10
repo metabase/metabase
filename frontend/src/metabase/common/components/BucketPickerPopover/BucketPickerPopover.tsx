@@ -1,5 +1,12 @@
 import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type TouchEvent,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { SelectList } from "metabase/common/components/SelectList";
@@ -51,7 +58,7 @@ export function BucketPickerPopover({
 
   const [isExpanded, setIsExpanded] = useState(shouldBeExpanded);
 
-  const handleExpand = useCallback((event: React.MouseEvent) => {
+  const handleExpand = useCallback((event: MouseEvent) => {
     event.stopPropagation();
     setIsExpanded(true);
   }, []);
@@ -108,14 +115,20 @@ export function BucketPickerPopover({
           )}
         </Button>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown
+        // Prevent scroll from leaking to the parent on touch devices
+        style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}
+        onTouchStart={(e: TouchEvent) => e.stopPropagation()}
+        onTouchMove={(e: TouchEvent) => e.stopPropagation()}
+      >
         <SelectList
           p="sm"
           miw="10rem"
           style={
             {
               "--bucket-picker-active-color": activeColor,
-            } as React.CSSProperties
+              overscrollBehavior: "contain",
+            } as CSSProperties
           }
         >
           {visibleItems.map((item) => (

@@ -7,7 +7,7 @@ import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type {
   AutocompleteMatchStyle,
   AutocompleteSuggestion,

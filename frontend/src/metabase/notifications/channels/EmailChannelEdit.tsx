@@ -1,5 +1,5 @@
-import type { RecipientPickerValue } from "metabase/lib/pulse";
-import { isNotNull } from "metabase/lib/types";
+import type { RecipientPickerValue } from "metabase/utils/pulse";
+import { isNotNull } from "metabase/utils/types";
 import type {
   NotificationHandlerEmail,
   NotificationRecipient,
@@ -11,11 +11,13 @@ import { RecipientPicker } from "./RecipientPicker";
 export const EmailChannelEdit = ({
   channel,
   users,
+  autoFocus,
   invalidRecipientText,
   onChange,
 }: {
   channel: NotificationHandlerEmail;
   users: User[];
+  autoFocus?: boolean;
   invalidRecipientText: (domains: string) => string;
   onChange: (newConfig: NotificationHandlerEmail) => void;
 }) => {
@@ -76,6 +78,7 @@ export const EmailChannelEdit = ({
     <RecipientPicker
       recipients={mappedUsers}
       users={users}
+      autoFocus={autoFocus}
       onRecipientsChange={handleRecipientsChange}
       invalidRecipientText={invalidRecipientText}
     />

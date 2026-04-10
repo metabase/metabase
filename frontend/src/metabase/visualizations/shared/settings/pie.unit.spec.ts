@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { RawSeries } from "metabase-types/api";
 import {

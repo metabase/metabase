@@ -12,16 +12,6 @@ import {
 import { ActionButton } from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import {
-  alertIsValid,
-  getAlertTriggerOptions,
-} from "metabase/lib/notifications";
-import {
-  getHasConfiguredAnyChannel,
-  getHasConfiguredEmailOrSlackChannel,
-} from "metabase/lib/pulse";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import {
@@ -41,6 +31,16 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
+import {
+  alertIsValid,
+  getAlertTriggerOptions,
+} from "metabase/utils/notifications";
+import {
+  getHasConfiguredAnyChannel,
+  getHasConfiguredEmailOrSlackChannel,
+} from "metabase/utils/pulse";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CreateAlertNotificationRequest,
@@ -60,29 +60,27 @@ import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/Al
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
-const ALERT_TRIGGER_OPTIONS_MAP: Record<
-  NotificationCardSendCondition,
-  NotificationTriggerOption
-> = {
-  has_result: {
-    value: "has_result" as const,
-    get label() {
-      return t`When this question has results`;
+function getAlertTriggerOptionsMap(
+  question: Question | undefined,
+): Record<NotificationCardSendCondition, NotificationTriggerOption> {
+  const isMetric = question?.type() === "metric";
+  return {
+    has_result: {
+      value: "has_result" as const,
+      label: isMetric
+        ? t`When this metric has results`
+        : t`When this question has results`,
     },
-  },
-  goal_above: {
-    value: "goal_above" as const,
-    get label() {
-      return t`When results go above the goal`;
+    goal_above: {
+      value: "goal_above" as const,
+      label: t`When results go above the goal`,
     },
-  },
-  goal_below: {
-    value: "goal_below" as const,
-    get label() {
-      return t`When results go below the goal`;
+    goal_below: {
+      value: "goal_below" as const,
+      label: t`When results go below the goal`,
     },
-  },
-};
+  };
+}
 
 const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "every_n_minutes",
@@ -174,14 +172,13 @@ export const CreateOrEditQuestionAlertModal = ({
   const hasConfiguredEmailOrSlackChannel =
     getHasConfiguredEmailOrSlackChannel(channelSpec);
 
-  const triggerOptions = useMemo(
-    () =>
-      getAlertTriggerOptions({
-        question,
-        visualizationSettings,
-      }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
-    [question, visualizationSettings],
-  );
+  const triggerOptions = useMemo(() => {
+    const optionsMap = getAlertTriggerOptionsMap(question);
+    return getAlertTriggerOptions({
+      question,
+      visualizationSettings,
+    }).map((trigger) => optionsMap[trigger]);
+  }, [question, visualizationSettings]);
 
   const hasSingleTriggerOption = triggerOptions.length === 1;
 

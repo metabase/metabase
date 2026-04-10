@@ -19,13 +19,13 @@ import {
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { UploadInput } from "metabase/common/components/upload";
-import { useDispatch } from "metabase/lib/redux";
 import {
   MAX_UPLOAD_SIZE,
   MAX_UPLOAD_STRING,
   uploadFile,
 } from "metabase/redux/uploads";
 import { Box, Button, Center, Group, Icon, Stack, Text } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import { UploadMode } from "metabase-types/store/upload";
 
 import S from "../AddDataModal.module.css";

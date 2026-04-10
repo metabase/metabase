@@ -48,6 +48,7 @@ Check out our guides for:
 Metabase will only export the following entities:
 
 - Collections (but personal collections don't get exported unless you explicitly specify them through [export options](#customize-what-gets-exported))
+- Collections (but personal collections don't get exported unless you explicitly specify them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Questions (cards)
 - Transforms (including tags and jobs)

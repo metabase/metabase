@@ -9,11 +9,16 @@ import {
   useGetFieldQuery,
   useGetFieldValuesQuery,
 } from "metabase/api";
+import { FieldSchema } from "metabase/schema";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 import {
   createEntity,
   entityCompatibleQuery,
   notify,
-} from "metabase/lib/entities";
+} from "metabase/utils/entities";
 import {
   compose,
   createAction,
@@ -23,12 +28,7 @@ import {
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
-} from "metabase/lib/redux";
-import { FieldSchema } from "metabase/schema";
-import {
-  getMetadata,
-  getMetadataUnfiltered,
-} from "metabase/selectors/metadata";
+} from "metabase/utils/redux";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
 

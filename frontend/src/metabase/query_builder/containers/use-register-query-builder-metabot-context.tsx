@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
 import {
   getChartImagePngDataUri,
@@ -259,7 +259,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
 
   useRegisterMetabotContextProvider(
     async (state) => {

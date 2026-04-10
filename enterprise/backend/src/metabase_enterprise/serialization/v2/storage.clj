@@ -17,7 +17,7 @@
 (def ^:private max-label-length 100)
 (def ^:private max-label-bytes 200) ;; 255 is a limit in ext4
 
-(defn- slugify-name
+(defn slugify-name
   "Slugify a name for use as a file or directory name: lowercase, replace special chars with underscores,
   preserve dots and unicode, escape slashes. Truncated for filesystem safety."
   [^String s]
@@ -32,23 +32,23 @@
 
 (defn- resolve-path
   "Given a storage path (vector of `{:label ... :key ...}` maps), resolves to a vector of strings
-  with deduplication per folder. Uses `unique-name-fns` atom `{parent-key -> unique-name-fn}` where
-  each fn is a `lib/non-truncating-unique-name-generator`."
+  with deduplication per folder. Uses `unique-name-fns` atom `{resolved-parent-path -> unique-name-fn}` where
+  each fn is a `lib/non-truncating-unique-name-generator`.
+  Keyed on the full resolved parent path to avoid cross-contamination between unrelated directories
+  (e.g. `collections/transforms/` vs `databases/.../schemas/transforms/`)."
   [unique-name-fns path]
-  (loop [remaining  path
-         parent-key nil
-         resolved   []]
+  (loop [remaining    path
+         resolved     []]
     (if (empty? remaining)
       resolved
       (let [{:keys [label key]} (first remaining)
             slug (slugify-name label)
-            gen  (or (get @unique-name-fns parent-key)
+            gen  (or (get @unique-name-fns resolved)
                      (let [g (lib/non-truncating-unique-name-generator)]
-                       (swap! unique-name-fns assoc parent-key g)
+                       (swap! unique-name-fns assoc resolved g)
                        g))
             unique-name (gen key slug)]
         (recur (rest remaining)
-               key
                (conj resolved unique-name))))))
 
 (defn resolve-storage-path

@@ -4,9 +4,7 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
 import { createEmptyTenantDraft } from "metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/utils";
-import { slugify } from "metabase/lib/formatting";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
   Button,
@@ -18,7 +16,8 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
+import { slugify } from "metabase/utils/formatting";
+import type { DataSegregationStrategy, FieldId } from "metabase-types/api";
 
 import { useCreateTenantMutation } from "../../../api/tenants";
 

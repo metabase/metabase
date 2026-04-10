@@ -19,6 +19,7 @@ import type { TextInputProps } from "metabase/ui";
 import { Box, Icon, Text, isValidIconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
+import { isTouchDevice } from "metabase/utils/browser";
 
 import styles from "./AccordionListCell.module.css";
 import {
@@ -322,7 +323,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     borderBottom = true;
     content = (
       <ListSearchField
-        autoFocus
+        autoFocus={!isTouchDevice()}
         onChange={(e) => onChangeSearchText(e.target.value)}
         onResetClick={() => onChangeSearchText("")}
         value={searchText}

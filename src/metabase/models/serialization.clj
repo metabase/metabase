@@ -35,7 +35,7 @@
 
   ## Existing transformations
 
-  - `(serdes/fk :model/Card)` or `(serdes/fk :model/Database :name)` - export foreign key in a portable way
+  - `(serdes/fk :model/Card)` or `(serdes/fk :model/Database)` - export foreign key in a portable way
   - `(serdes/nested :model/DashboardCard :dashboard_id opts)` - include some entities in your entity export
   - `(serdes/parent-ref)` - symmetrical call for `serdes/nested` to handle parent ids (you'd use it on `:dashboard_id`
     in that case)
@@ -65,6 +65,7 @@
    ;; legacy usages -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
@@ -956,6 +957,7 @@
   `(try
      ~@body
      (catch clojure.lang.ExceptionInfo e#
+       (log/debugf e# "Caught error in fk-elide")
        (when-not (= (::type (ex-data e#)) :target-not-found)
          (throw e#))
        nil)))
@@ -1026,11 +1028,59 @@
 
 ;;; ## Databases
 
-(defn ^:dynamic ^::cache *export-database-fk*
+(def ^:dynamic *batch-cache-max-size*
+  "Maximum number of entries in a batch cache before old entries are dropped."
+  50000)
+
+(defn- make-batch-cache
+  "Returns a fn `(f id) -> entity`. On miss, calls `(load-fn id max-batch)` which must
+   return a map of `{id entity, ...}`. `max-batch` is the maximum number of entries to return.
+   All returned entries are merged into the cache so sibling lookups become hits.
+   When old entries plus new batch exceed `*batch-cache-max-size*`, old entries are dropped.
+   New batch entries are never evicted, so the cache may temporarily exceed the limit
+   (e.g. a field parent_id chain longer than the limit)."
+  [load-fn]
+  (let [cache (atom {})
+        order (atom clojure.lang.PersistentQueue/EMPTY)]
+    (fn [id]
+      (let [v (get @cache id ::not-found)]
+        (if-not (identical? v ::not-found)
+          v
+          (let [new-batch  (load-fn id *batch-cache-max-size*)
+                new-keys   (set (keys new-batch))
+                ;; drop old entries to make room, but never drop new-batch entries
+                old-count  (- (count @cache) (count (filter new-keys (keys @cache))))
+                keep-old   (max 0 (- *batch-cache-max-size* (count new-batch)))]
+            (when (> old-count keep-old)
+              (let [to-drop (- old-count keep-old)]
+                (swap! order #(into clojure.lang.PersistentQueue/EMPTY (drop to-drop) %))
+                (swap! cache #(select-keys % (into new-keys @order)))))
+            (swap! cache merge new-batch)
+            (swap! order into (keys new-batch))
+            (get new-batch id)))))))
+
+(defn- batch-load-databases
+  "Loads the requested database plus other databases up to `max-batch`."
+  [id max-batch]
+  (let [target (t2/select-pk->fn identity [:model/Database :id :name] :id id)
+        others (when (> max-batch 1)
+                 (t2/select-pk->fn identity [:model/Database :id :name]
+                                   :id [:not= id]
+                                   {:limit (dec max-batch)}))]
+    (merge target others)))
+
+(defn- export-database-fk
+  "Given a numeric database ID and a fn that resolves it to a database entity,
+   return its name as a portable reference."
+  [id db-fn]
+  (when id
+    (:name (db-fn id))))
+
+(defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
   [id]
-  (*export-fk-keyed* id :model/Database :name))
+  (export-database-fk id #(t2/select-one [:model/Database :id :name] :id %)))
 
 (defn ^:dynamic ^::cache *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
@@ -1040,16 +1090,41 @@
 
 ;;; ## Tables
 
-(mu/defn ^:dynamic ^::cache *export-table-fk*
+(defn- batch-load-tables
+  "Loads the table with `id` plus FK-connected tables, up to `max-batch` total.
+   A database may have millions of tables due to partitioning, so we must respect the limit."
+  [id max-batch]
+  (let [target       (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema] :id id)
+        remaining    (- max-batch (count target))
+        fk-field-ids (when (pos? remaining)
+                       (t2/select-fn-set :fk_target_field_id :model/Field
+                                         :table_id id
+                                         :fk_target_field_id [:not= nil]))
+        fk-table-ids (when (seq fk-field-ids)
+                       (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
+        fk-tables    (when (seq fk-table-ids)
+                       (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema]
+                                         :id [:in fk-table-ids]
+                                         {:limit remaining}))]
+    (merge target fk-tables)))
+
+(defn- export-table-fk
+  "Given a numeric table ID, a fn that resolves it to a table entity, and a fn
+   that resolves a database ID to a database entity, return `[db-name schema table-name]`."
+  [id table-fn db-fn]
+  (when id
+    (let [table (table-fn id)]
+      [(export-database-fk (:db_id table) db-fn) (:schema table) (:name table)])))
+
+(mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
   [[import-table-fk]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
-          db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
-      [db-name schema name])))
+  (export-table-fk table-id
+                   #(t2/select-one [:model/Table :id :db_id :name :schema] :id %)
+                   #(t2/select-one [:model/Database :id :name] :id %)))
 
 (mu/defn ^:dynamic ^::cache *import-table-fk*
   "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
@@ -1094,18 +1169,65 @@
 
 ;;; ## Fields
 
-(defn- field-hierarchy [id]
-  (reverse
-   (t2/select :model/Field
-              {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
-                                 {:union-all [{:from   [[:metabase_field :mf]]
-                                               :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                               :where  [:= :id id]}
-                                              {:from   [[:metabase_field :pf]]
-                                               :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
-                                               :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
-               :from           [:parents]
-               :select         [:name :table_id]})))
+(defn- field-name-chain
+  "Walks parent_id chain in memory using `field-fn` to resolve each field.
+   Returns a seq of field names from root parent to the given field."
+  [field-id field-fn]
+  (loop [id field-id
+         names ()]
+    (let [field (field-fn id)]
+      (if-let [pid (:parent_id field)]
+        (recur pid (cons (:name field) names))
+        (cons (:name field) names)))))
+
+(defn- export-field-fk
+  "Given a numeric field ID and lookup fns for fields, tables, and databases,
+   return `[db-name schema table-name & field-names]`."
+  [field-id field-fn table-fn db-fn]
+  (when field-id
+    (let [field (field-fn field-id)
+          table-ref (export-table-fk (:table_id field) table-fn db-fn)
+          field-names (field-name-chain field-id field-fn)]
+      (into table-ref field-names))))
+
+(defn- load-field-hierarchy
+  "Loads the field with `id` and all its ancestors (via parent_id) in a single
+   recursive CTE query. Returns a map of `{id entity}`."
+  [id]
+  (into {}
+        (map (juxt :id identity))
+        (t2/select :model/Field
+                   {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
+                                      {:union-all [{:from   [[:metabase_field :mf]]
+                                                    :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
+                                                    :where  [:= :id id]}
+                                                   {:from   [[:metabase_field :pf]]
+                                                    :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
+                                                    :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
+                    :from           [:parents]
+                    :select         [:id :name :parent_id :table_id]})))
+
+(defn- batch-load-fields
+  "Loads the requested field, its parent_id chain (via recursive CTE), and additional
+   fields from the same table and FK-connected tables, up to `max-batch` total.
+   A table may have millions of fields due to JSON unfolding, so we must respect the limit."
+  [field-id max-batch]
+  (let [required  (load-field-hierarchy field-id)
+        remaining (- max-batch (count required))]
+    (if-not (pos? remaining)
+      required
+      (let [table-id      (:table_id (get required field-id))
+            fk-field-ids  (t2/select-fn-set :fk_target_field_id :model/Field
+                                            :table_id table-id
+                                            :fk_target_field_id [:not= nil])
+            fk-table-ids  (when (seq fk-field-ids)
+                            (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
+            all-table-ids (cond-> #{table-id} (seq fk-table-ids) (into fk-table-ids))
+            extras        (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
+                                            :id [:not-in (set (keys required))]
+                                            :table_id [:in all-table-ids]
+                                            {:limit remaining})]
+        (merge required extras)))))
 
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
@@ -1120,15 +1242,15 @@
               [:= :name field]
               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
-(mu/defn ^:dynamic ^::cache *export-field-fk*
+(mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (when field-id
-    (let [fields                      (field-hierarchy field-id)
-          [db-name schema field-name] (*export-table-fk* (:table_id (first fields)))]
-      (into [db-name schema field-name] (map :name fields)))))
+  (export-field-fk field-id
+                   #(t2/select-one [:model/Field :id :name :table_id :parent_id] :id %)
+                   #(t2/select-one [:model/Table :id :db_id :name :schema] :id %)
+                   #(t2/select-one [:model/Database :id :name] :id %)))
 
 (mu/defn ^:dynamic ^::cache *import-field-fk* :- [:maybe pos-int?]
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
@@ -1149,16 +1271,24 @@
 
 ;;; ## MBQL Fields
 
-(mu/defn- mbql-clause-tag :- [:maybe [:enum :field :dimension :metric :segment :measure]]
+(mu/defn- mbql-ref? :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
   [form]
   (when (and (vector? form)
-             (#{:field :dimension :metric :segment :measure} (keyword (first form))))
+             (#{:field :field-id :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
 
-(defn- normalize [mbql]
-  (let [tag    (mbql-clause-tag mbql)
+(mr/def ::mbql-3-field-id-ref
+  "Ultra-legacy MBQL 3 `:field-id` ref; which (allegedly) can show up in viz settings; this schema is only here so we
+  can use Lib normalization in [[normalize-mbql-ref]]."
+  [:tuple
+   [:= {:decode/normalize lib.schema.common/normalize-keyword} :field-id]
+   pos-int?])
+
+(defn- normalize-mbql-ref [mbql]
+  (let [tag    (mbql-ref? mbql)
         schema (case tag
+                 :field-id  ::mbql-3-field-id-ref
                  :field     [:multi
                              {:dispatch #(and (vector? %)
                                               (map? (second %)))}
@@ -1172,71 +1302,81 @@
     (cond->> mbql
       schema (lib/normalize schema mbql))))
 
-(defn- mbql-id->fully-qualified-name
+(def ^:private ^:dynamic *required-lib-uuids-for-export* nil)
+
+(mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
+  [x]
+  (set
+   (lib.util.match/match-many x
+     [:aggregation (_opts :guard map?) (uuid :guard string?)]
+     uuid)))
+
+(declare export-mbql)
+
+(defn- export-mbql-map [m]
+  (reduce-kv
+   (fn [m k v]
+     (case k
+       :lib/metadata                 (dissoc m k)
+       :database                     (update m k *export-database-fk*)
+       (:card_id :card-id)           (update m k *export-fk* :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
+       (:source_table :source-table) (cond-> m
+                                       (pos-int? v)
+                                       (update k *export-table-fk*))
+       (:source_card :source-card)   (cond-> m
+                                       (pos-int? v)
+                                       (update k *export-fk* :model/Card))
+       :source-field                 (cond-> m
+                                       (pos-int? v)
+                                       (update k *export-field-fk*))
+       ::mb.viz/param-mapping-source (update m k *export-field-fk*)
+       :segment                      (update m k *export-fk* :model/Segment)
+       :snippet-id                   (update m k *export-fk* :model/NativeQuerySnippet)
+       :lib/uuid                     (cond-> m
+                                       (not (contains? *required-lib-uuids-for-export* v))
+                                       (dissoc :lib/uuid))
+       #_else                        (update m k export-mbql)))
+   m
+   m))
+
+(defn- export-mbql-ref
   [mbql]
-  (lib.util.match/replace-lite (normalize mbql)
+  (lib.util.match/replace-lite (normalize-mbql-ref mbql)
     ;; `pos-int?` guard is here to make the operation idempotent
     [:field (opts :guard map?) (id :guard pos-int?)]
-    [:field (mbql-id->fully-qualified-name opts) (*export-field-fk* id)]
+    [:field (export-mbql-map opts) (*export-field-fk* id)]
 
     ;; legacy (MBQL 4) field refs are still supported in parameter targets and in result metadata `field_ref`...
     [:field (id :guard pos-int?) (opts :guard (some-fn map? nil?))]
-    [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
+    [:field (*export-field-fk* id) (export-mbql-map opts)]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
     [(tag :guard #{:field :field-id}) (id :guard pos-int?)]
     [tag (*export-field-fk* id)]
 
-    {:source-table (id :guard pos-int?)}
-    (assoc &match :source-table (*export-table-fk* id))
-
-    ;; source-field is also used within parameter mapping dimensions
-    ;; example relevant clause - [:field 2 {:source-field 1}]
-    {:source-field (id :guard pos-int?)}
-    (assoc &match :source-field (*export-field-fk* id))
-
     [:dimension (dim :guard vector?)]
-    [:dimension (mbql-id->fully-qualified-name dim)]
+    [:dimension (export-mbql-ref dim)]
 
     [:metric opts (id :guard pos-int?)]
-    [:metric (mbql-id->fully-qualified-name opts) (*export-fk* id 'Card)]
+    [:metric (export-mbql-map opts) (*export-fk* id 'Card)]
 
     [:segment opts (id :guard pos-int?)]
-    [:segment (mbql-id->fully-qualified-name opts) (*export-fk* id 'Segment)]
+    [:segment (export-mbql-map opts) (*export-fk* id 'Segment)]
 
     [:measure opts (id :guard pos-int?)]
-    [:measure (mbql-id->fully-qualified-name opts) (*export-fk* id 'Measure)]))
+    [:measure (export-mbql-map opts) (*export-fk* id 'Measure)]))
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
-  [entity]
-  (lib.util.match/replace-lite entity
-    (_ :guard mbql-clause-tag)
-    (mbql-id->fully-qualified-name &match)
-
-    (_ :guard sequential?)
-    (mapv export-mbql &match)
-
-    (_ :guard map?)
-    (reduce-kv
-     (fn [entity k _v]
-       (let [f (case k
-                 :database                     (fn [db-id]
-                                                 (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
-                                                   "database/__virtual"
-                                                   (t2/select-one-fn :name :model/Database :id db-id)))
-                 (:card_id :card-id)           #(*export-fk* % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
-                 (:source_table :source-table) *export-table-fk*
-                 (:source_card :source-card)   #(*export-fk* % :model/Card)
-                 ::mb.viz/param-mapping-source *export-field-fk*
-                 :segment                      #(*export-fk* % :model/Segment)
-                 :snippet-id                   #(*export-fk* % :model/NativeQuerySnippet)
-                 :lib/metadata                 (constantly nil)
-                 #_else                        export-mbql)]
-         (update entity k f)))
-     &match
-     &match)))
+  [x]
+  ;; if required UUIDs are already calculated don't recalculate when we recurse.
+  (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
+    (cond
+      (mbql-ref? x)   (export-mbql-ref x)
+      (sequential? x) (mapv export-mbql x)
+      (map? x)        (export-mbql-map x)
+      :else           x)))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."
@@ -1245,45 +1385,58 @@
        (or (entity-id? s)
            (identity-hash? s))))
 
-(defn- mbql-fully-qualified-names->ids*
+(declare import-mbql*)
+
+(defn- import-mbql-map [m]
+  (reduce-kv
+   (fn [m k v]
+     (case k
+       :database                     (cond-> m
+                                       (string? v)
+                                       (update k (if (= v "database/__virtual")
+                                                   (constantly lib.schema.id/saved-questions-virtual-database-id)
+                                                   *import-database-fk*)))
+       (:source-table :source_table) (cond-> m
+                                       (vector? v)      (update k *import-table-fk*)
+                                       (portable-id? v) (assoc :source-table (str "card__" (*import-fk* v 'Card))))
+       :source-field                 (cond-> m
+                                       (vector? v)
+                                       (update k *import-field-fk*))
+       :source-card                  (cond-> m
+                                       (portable-id? v)
+                                       (update k *import-fk* 'Card))
+       :card-id                      (cond-> m
+                                       (portable-id? v)
+                                       (update k *import-fk* 'Card))
+       :snippet-id                   (cond-> m
+                                       (portable-id? v)
+                                       (update k *import-fk* 'NativeQuerySnippet))
+       #_else                        (update m k import-mbql*)))
+   m
+   m))
+
+(defn- import-mbql-update-refs
   [entity]
   (lib.util.match/replace-lite entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
-    [:field (mbql-fully-qualified-names->ids* opts) (*import-field-fk* fully-qualified-name)]
+    [:field (import-mbql-map opts) (*import-field-fk* fully-qualified-name)]
 
     ;; legacy field refs, still used in parameters and result metadata `field_ref`
     [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (some-fn map? nil))]
-    [:field (*import-field-fk* fully-qualified-name) (some-> opts mbql-fully-qualified-names->ids*)]
+    [:field (*import-field-fk* fully-qualified-name) (some-> opts import-mbql-update-refs)]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
     [(tag :guard #{:field :field-id "field" "field-id"}) (id :guard vector?)]
     [:field (*import-field-fk* id) nil]
 
-    ;; source-field is also used within parameter mapping dimensions
-    ;; example relevant clause - [:field 2 {:source-field 1}]
-    {:source-field (fully-qualified-name :guard vector?)}
-    (assoc &match :source-field (*import-field-fk* fully-qualified-name))
-
-    {:database (fully-qualified-name :guard string?)}
-    (-> &match
-        (assoc :database (if (= fully-qualified-name "database/__virtual")
-                           lib.schema.id/saved-questions-virtual-database-id
-                           (t2/select-one-pk :model/Database :name fully-qualified-name)))
-        mbql-fully-qualified-names->ids*) ; Process other keys
-
-    {:card-id (entity-id :guard portable-id?)}
-    (-> &match
-        (assoc :card-id (*import-fk* entity-id 'Card))
-        mbql-fully-qualified-names->ids*) ; Process other keys
-
     [#{:metric "metric"} opts (entity-id :guard portable-id?)]
-    [:metric (mbql-fully-qualified-names->ids* opts) (*import-fk* entity-id 'Card)]
+    [:metric (import-mbql-map opts) (*import-fk* entity-id 'Card)]
 
     [#{:segment "segment"} opts (entity-id :guard portable-id?)]
-    [:segment (mbql-fully-qualified-names->ids* opts) (*import-fk* entity-id 'Segment)]
+    [:segment (import-mbql-map opts) (*import-fk* entity-id 'Segment)]
 
     [#{:measure "measure"} opts (entity-id :guard portable-id?)]
-    [:measure (mbql-fully-qualified-names->ids* opts) (*import-fk* entity-id 'Measure)]
+    [:measure (import-mbql-map opts) (*import-fk* entity-id 'Measure)]
 
     ;; support legacy MBQL 4 refs for things like the serialized Audit v2 queries
     [#{:metric "metric"} (entity-id :guard portable-id?)]
@@ -1293,42 +1446,35 @@
     [:segment (*import-fk* entity-id 'Segment)]
 
     [#{:measure "measure"} (entity-id :guard portable-id?)]
-    [:measure (*import-fk* entity-id 'Measure)]
+    [:measure (*import-fk* entity-id 'Measure)]))
 
-    {:source-table (_ :guard vector?)}
-    (-> &match
-        (update :source-table *import-table-fk*)
-        mbql-fully-qualified-names->ids*)
+(defn- import-mbql-update-maps [x]
+  (lib.util.match/replace-lite x
+    (m :guard map?)
+    (import-mbql-map m)))
 
-    {:source_table (_ :guard vector?)}
-    (-> &match
-        (update :source_table *import-table-fk*)
-        mbql-fully-qualified-names->ids*)
+(defn- normalize-imported [x]
+  (when x
+    (try
+      (if (mbql-ref? x)
+        (normalize-mbql-ref x)
+        (lib/normalize x))
+      (catch Throwable e
+        (log/warn e "Error normalizing imported MBQL")
+        x))))
 
-    ;; support legacy MBQL 4 for the Audit v2 queries
-    {:source-table (id :guard portable-id?)}
-    (-> &match
-        (assoc :source-table (str "card__" (*import-fk* id 'Card)))
-        mbql-fully-qualified-names->ids*)
-
-    {:source-card (id :guard portable-id?)}
-    (-> &match
-        (assoc :source-card (*import-fk* id 'Card))
-        mbql-fully-qualified-names->ids*)
-
-    {:snippet-id (id :guard portable-id?)}
-    (-> &match
-        (assoc :snippet-id (*import-fk* id 'NativeQuerySnippet))
-        mbql-fully-qualified-names->ids*)))
-
-(defn- mbql-fully-qualified-names->ids
-  [entity]
-  (mbql-fully-qualified-names->ids* entity))
+(defn- import-mbql*
+  [x]
+  (-> x
+      import-mbql-update-refs
+      import-mbql-update-maps))
 
 (defn import-mbql
   "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs."
-  [exported]
-  (mbql-fully-qualified-names->ids exported))
+  [x]
+  (-> x
+      import-mbql*
+      normalize-imported))
 
 (declare ^:private mbql-deps-map)
 
@@ -1404,15 +1550,15 @@
   (`[db schema table field]`) back into raw IDs."
   [mappings]
   (->> mappings
-       (map mbql-fully-qualified-names->ids)
+       (map import-mbql)
        (map #(m/update-existing % :card_id *import-fk* 'Card))))
 
-(defn export-parameters
+(mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
   Parameters are sorted by `:id` for stable serialization output. A `:position` field is added
   to preserve display order through the sort."
-  [parameters]
+  [parameters :- [:maybe [:sequential :map]]]
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)
@@ -1425,7 +1571,7 @@
   [parameters]
   (let [params (for [param parameters]
                  (-> param
-                     mbql-fully-qualified-names->ids
+                     import-mbql
                      (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card)))]
     (if (every? :position params)
       (sort-by :position params)
@@ -1468,7 +1614,9 @@
             {:id (case model
                    "table"    (*export-table-fk* id)
                    "database" (*export-database-fk* id)
-                   (*export-fk* id (link-card-model->toucan-model model)))}))))
+                   (if-let [model (link-card-model->toucan-model model)]
+                     (*export-fk* id model)
+                     id))}))))
 
 (defn- json-export-mbql
   "Converts IDs to fully qualified names inside a JSON string.
@@ -1479,20 +1627,24 @@
       export-mbql
       json/encode))
 
-(defn- json-mbql-fully-qualified-names->ids
+(defn- json-import-mbql
   "Converts fully qualified names to IDs in MBQL embedded inside a JSON string.
   Returns a new JSON string with the IDs converted inside."
   [json-str]
   (-> json-str
       json/decode+kw
-      mbql-fully-qualified-names->ids
+      import-mbql
       json/encode))
 
 (defn- export-viz-click-behavior-link
   [{:keys [linkType type] :as click-behavior}]
   (fk-elide
    (cond-> click-behavior
-     (= type "link") (-> (update :targetId *export-fk* (link-card-model->toucan-model linkType))
+     (= type "link") (-> (u/update-some :targetId
+                                        (fn [id]
+                                          (if-let [model (link-card-model->toucan-model linkType)]
+                                            (*export-fk* id model)
+                                            id)))
                          (u/update-some :tabId *export-fk* :model/DashboardTab)))))
 
 (defn- import-viz-click-behavior-link
@@ -1511,24 +1663,27 @@
 
 (defn- import-viz-click-behavior-mapping [mapping]
   (-> mapping
-      (m/update-existing    :id                  json-mbql-fully-qualified-names->ids)
-      (m/update-existing-in [:target :id]        json-mbql-fully-qualified-names->ids)
-      (m/update-existing-in [:target :dimension] mbql-fully-qualified-names->ids)))
+      (m/update-existing    :id                  json-import-mbql)
+      (m/update-existing-in [:target :id]        json-import-mbql)
+      (m/update-existing-in [:target :dimension] import-mbql)))
 
 (defn- export-viz-click-behavior-mappings
   "The `:parameterMapping` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
   been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
   ported by [[export-viz-click-behavior-mapping]]."
   [mappings]
-  (into {} (for [[kw-key mapping] mappings
-                 ;; Mapping keyword shouldn't been a keyword in the first place, it's just how it's processed after
-                 ;; being selected from db. In an ideal world we'd either have different data layout for
-                 ;; click_behavior or not convert it's keys to a keywords. We need its full content here.
-                 :let [k (u/qualified-name kw-key)]]
-             (if (mb.viz/dimension-param-mapping? mapping)
-               [(json-export-mbql k)
-                (export-viz-click-behavior-mapping mapping)]
-               [k mapping]))))
+  (into {}
+        (comp (map (fn [[k v]]
+                     ;; Mapping keyword shouldn't been a keyword in the first place, it's just how it's processed
+                     ;; after being selected from db. In an ideal world we'd either have different data layout for
+                     ;; click_behavior or not convert it's keys to a keywords. We need its full content here.
+                     [(u/qualified-name k) v]))
+              (map (fn [[k mapping]]
+                     (if (mb.viz/dimension-param-mapping? mapping)
+                       [(json-export-mbql k)
+                        (export-viz-click-behavior-mapping mapping)]
+                       [k mapping]))))
+        mappings))
 
 (defn- import-viz-click-behavior-mappings
   "The exported form of `:parameterMapping` on a `:click_behavior` viz settings is a map of JSON strings which contain
@@ -1537,7 +1692,7 @@
   [mappings]
   (into {} (for [[json-key mapping] mappings]
              (if (mb.viz/dimension-param-mapping? mapping)
-               [(keyword (json-mbql-fully-qualified-names->ids json-key))
+               [(json-import-mbql json-key)
                 (import-viz-click-behavior-mapping mapping)]
                [json-key mapping]))))
 
@@ -1558,23 +1713,8 @@
 
 (defn- import-pivot-table [settings]
   (some-> settings
-          (m/update-existing-in [:pivot_table.column_split :rows] mbql-fully-qualified-names->ids)
-          (m/update-existing-in [:pivot_table.column_split :columns] mbql-fully-qualified-names->ids)))
-
-(defn- export-visualizations [entity]
-  (lib.util.match/replace-lite entity
-    [#{"field" :field}       (opts :guard map?) (id :guard pos-int?)] [:field    (export-visualizations opts) (*export-field-fk* id)]
-    ;; legacy refs (MBQL 4)
-    [#{"field" :field}       (id :guard pos-int?) opts]               [:field    (*export-field-fk* id) (export-visualizations opts)]
-    ;; super-legacy refs (MBQL 3)... not sure these can even still show up IRL
-    [#{"field-id" :field-id} (id :guard pos-int?)]                    [:field-id (*export-field-fk* id)]
-    [#{"field-id" :field-id} (id :guard pos-int?) opts]               [:field-id (*export-field-fk* id) (export-visualizations opts)]
-
-    (_ :guard map?)
-    (m/map-vals export-visualizations &match)
-
-    (_ :guard vector?)
-    (mapv export-visualizations &match)))
+          (m/update-existing-in [:pivot_table.column_split :rows] import-mbql)
+          (m/update-existing-in [:pivot_table.column_split :columns] import-mbql)))
 
 (defn- export-column-settings
   "Column settings use a JSON-encoded string as a map key, and it contains field numbers.
@@ -1582,7 +1722,7 @@
   [settings]
   (when settings
     (-> settings
-        (update-keys #(-> % json/decode export-visualizations json/encode))
+        (update-keys #(-> % json/decode export-mbql json/encode))
         (update-vals export-viz-click-behavior))))
 
 (defn- export-card-dimension-ref
@@ -1624,7 +1764,7 @@
   [settings]
   (when settings
     (-> settings
-        export-visualizations
+        export-mbql
         export-viz-link-card
         export-viz-click-behavior
         export-visualizer-settings
@@ -1641,7 +1781,9 @@
             {:id (case model
                    "table"    (*import-table-fk* id)
                    "database" (*import-database-fk* id)
-                   (*import-fk* id (link-card-model->toucan-model model)))}))))
+                   (if-let [model (link-card-model->toucan-model model)]
+                     (*import-fk* id model)
+                     id))}))))
 
 (defn- import-visualizations [entity]
   (lib.util.match/replace-lite entity
@@ -1897,7 +2039,7 @@
 
 ;;; ## Memoizing appdb lookups
 
-(defmacro with-cache
+(defmacro with-memoize-cache
   "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
   [& body]
   (let [ns* 'metabase.models.serialization]
@@ -1907,3 +2049,20 @@
                              :let [fq-sym (symbol (name ns*) (name var-sym))]]
                          [fq-sym `(memoize ~fq-sym)]))
        ~@body)))
+
+(defn with-batch-cache
+  "Runs `thunk` with the batch cache bound to the export functions."
+  [thunk]
+  (let [db-cache    (make-batch-cache batch-load-databases)
+        table-cache (make-batch-cache batch-load-tables)
+        field-cache (make-batch-cache batch-load-fields)]
+    (binding [*export-database-fk* #(export-database-fk % db-cache)
+              *export-table-fk*    #(export-table-fk % table-cache db-cache)
+              *export-field-fk*    #(export-field-fk % field-cache table-cache db-cache)]
+      (thunk))))
+
+(defmacro with-cache
+  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance,
+   and with database/table lookups backed by batch-loading caches."
+  [& body]
+  `(with-batch-cache (fn [] (with-memoize-cache ~@body))))

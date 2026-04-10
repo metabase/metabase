@@ -14,7 +14,6 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { useSelector } from "metabase/lib/redux";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
@@ -27,6 +26,7 @@ import {
 } from "metabase/querying/expressions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
@@ -122,7 +122,7 @@ export function AggregationPicker({
     useState<DefinedClauseName | null>(null);
 
   // For really simple inline expressions like Average([Price]),
-  // MLv2 can figure out that "Average" operator is used.
+  // Lib can figure out that "Average" operator is used.
   // We don't want that though, so we don't break navigation inside the picker
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
     isEditingExpression ? null : initialOperator,

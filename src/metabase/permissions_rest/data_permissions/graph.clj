@@ -9,7 +9,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
@@ -46,7 +45,7 @@
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.impersonation.model
+  metabase-enterprise.impersonation.models
   [graph & [_opts]]
   graph)
 
@@ -266,7 +265,7 @@
 (defenterprise delete-impersonations-if-needed-after-permissions-change!
   "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
   EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
-  metabase-enterprise.impersonation.model
+  metabase-enterprise.impersonation.models
   [_])
 
 (defn ee-permissions-exception
@@ -485,14 +484,13 @@
   impersonations and sandboxes are consistent if necessary."
   ([graph-updates :- ::permissions-rest.schema/data-permissions-graph]
    (when (seq graph-updates)
-     (cluster-lock/with-cluster-lock ::update-data-perms-graph
+     (perms/with-global-permissions-lock
        (let [group-updates (:groups graph-updates)]
          (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
-         (t2/with-transaction [_conn]
-           (update-data-perms-graph!* group-updates)
-           (delete-impersonations-if-needed-after-permissions-change! group-updates)
-           (delete-gtaps-if-needed-after-permissions-change! group-updates))))))
+         (update-data-perms-graph!* group-updates)
+         (delete-impersonations-if-needed-after-permissions-change! group-updates)
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

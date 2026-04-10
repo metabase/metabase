@@ -13,8 +13,6 @@ import {
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { isQuestionDashCard } from "metabase/lib/dashboard";
-import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   type NewParameterOpts,
   createParameter,
@@ -26,6 +24,8 @@ import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { createAction, createThunkAction } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {

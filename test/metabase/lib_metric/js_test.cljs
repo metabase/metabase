@@ -74,7 +74,7 @@
 (deftest ^:parallel toJsMetricDefinition-with-filters-and-projections-test
   (let [inst-filter {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
                      :filter   [:= {} [:dimension {} "uuid-1"] "Electronics"]}
-        typed-proj  {:type :metric :id 42 :projection [[:dimension {} "uuid-2"]]}
+        typed-proj  {:type :metric :id 42 :lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :projection [[:dimension {} "uuid-2"]]}
         definition  {:lib/type          :metric/definition
                      :expression        [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
                      :filters           [inst-filter]
@@ -198,7 +198,7 @@
   (testing "definition with filters/projections round-trips correctly"
     (let [inst-filter {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
                        :filter   [:= {} [:dimension {} "dimension-uuid"] "value"]}
-          typed-proj  {:type :metric :id 42 :projection [[:dimension {} "uuid-2"]]}
+          typed-proj  {:type :metric :id 42 :lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :projection [[:dimension {} "uuid-2"]]}
           original    {:lib/type          :metric/definition
                        :expression        [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
                        :filters           [inst-filter]
@@ -208,7 +208,8 @@
           round-trip  (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
       ;; After round-trip, check structure is preserved
       (is (= 1 (count (:filters round-trip))))
-      (is (= 1 (count (:projections round-trip)))))))
+      (is (= 1 (count (:projections round-trip))))
+      (is (= "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" (:lib/uuid (first (:projections round-trip))))))))
 
 ;;; -------------------------------------------------- MetadataProviderable Tests --------------------------------------------------
 

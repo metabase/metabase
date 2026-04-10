@@ -1,8 +1,13 @@
+import { useEffect } from "react";
+import { replace } from "react-router-redux";
+
+import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
-import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
 import { MetricPageShell } from "../../components/MetricPageShell";
@@ -17,7 +22,26 @@ export function MetricOverviewPage({
   showDataStudioLink = true,
 }: MetricPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
-  const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
+  const dispatch = useDispatch();
+  const {
+    card,
+    isLoading: isCardLoading,
+    error,
+  } = useLoadCardWithMetadata(cardId);
+  const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
+    cardId!,
+    { skip: cardId == null },
+  );
+
+  const isLoading = isCardLoading || isMetricLoading;
+  const hasDimensions =
+    metric?.dimensions != null && metric.dimensions.length > 0;
+
+  useEffect(() => {
+    if (!isLoading && card != null && !hasDimensions) {
+      dispatch(replace(urls.about(card.id)));
+    }
+  }, [isLoading, card, hasDimensions, dispatch, urls]);
 
   if (isLoading || error != null || card == null) {
     return (
@@ -25,6 +49,10 @@ export function MetricOverviewPage({
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
     );
+  }
+
+  if (!hasDimensions) {
+    return null;
   }
 
   return (

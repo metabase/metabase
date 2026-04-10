@@ -1,5 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import type { DependencyEntitySelected } from "metabase-types/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import type { CollectionId, ConcreteTableId } from "metabase-types/api";
 
 export const trackDataStudioLibraryCreated = (id: CollectionId) => {
@@ -130,7 +129,12 @@ export const trackDependencyEntitySelected = ({
 }: {
   entityId: number;
   eventDetail?: string;
-  triggeredFrom: DependencyEntitySelected["triggered_from"];
+  triggeredFrom:
+    | "dependency-graph"
+    | "diagnostics-broken-list"
+    | "diagnostics-unreferenced-list"
+    | "data-structure"
+    | "transform-run-list";
 }) => {
   trackSimpleEvent({
     event: "dependency_entity_selected",

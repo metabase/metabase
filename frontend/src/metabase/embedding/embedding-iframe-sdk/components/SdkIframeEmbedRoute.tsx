@@ -21,11 +21,11 @@ import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/qu
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
-import { createTracker } from "metabase/lib/analytics-untyped";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Stack } from "metabase/ui";
+import { createTracker } from "metabase/utils/analytics-untyped";
+import { useSelector } from "metabase/utils/redux";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
@@ -52,6 +52,7 @@ createTracker(store);
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({
     onSettingsChanged,
+    store,
   });
 
   const adjustedTheme = useMemo(
@@ -94,6 +95,7 @@ export const SdkIframeEmbedRoute = () => {
     isGuest: embedSettings.isGuest,
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
+    guestEmbedProviderUri: embedSettings.guestEmbedProviderUri,
   } as MetabaseAuthConfig;
 
   return (
@@ -165,6 +167,15 @@ const SdkIframeEmbedView = ({
           componentName: "metabase-dashboard",
           token: P.nonNullable,
         },
+        /**
+         * Need for initial token flow with JWT provider when the provider returns errors.
+         * Without this, the InteractiveDashboard component will be rendered because
+         * there is no `token`, so it won't match this pattern.
+         */
+        {
+          componentName: "metabase-dashboard",
+          guestEmbedProviderUri: P.nonNullable,
+        },
         (settings) => {
           const entityProps: SdkDashboardEntityPublicProps = settings.token
             ? {
@@ -213,6 +224,14 @@ const SdkIframeEmbedView = ({
           />
         ),
       )
+      // Exists solely to discriminate type from the pattern below when matching `guestEmbedProviderUri: P.nonNullable`
+      .with(
+        {
+          componentName: "metabase-question",
+          template: "exploration",
+        },
+        () => null,
+      )
       .with(
         // Embedding based on a questionId (Metabase Account auth type) with disabled drills
         {
@@ -228,6 +247,15 @@ const SdkIframeEmbedView = ({
         {
           componentName: "metabase-question",
           token: P.nonNullable,
+        },
+        /**
+         * Need for initial token flow with JWT provider when the provider returns errors.
+         * Without this, nothing will be rendered because
+         * there is no `token`, so it won't match this pattern.
+         */
+        {
+          componentName: "metabase-question",
+          guestEmbedProviderUri: P.nonNullable,
         },
         (settings) => {
           const entityProps: SdkQuestionEntityPublicProps = settings.token
