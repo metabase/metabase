@@ -2110,16 +2110,6 @@
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
 
-(defn ^:export measure-metadata
-  "Get metadata for the Measure with `measure-id`, if it can be found.
-
-  `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
-  will be a query.
-
-  > **Code health:** Healthy."
-  [metadata-providerable measure-id]
-  (lib.metadata/measure metadata-providerable measure-id))
-
 (defn ^:export available-measures
   "Returns a JS array of opaque Measures metadata objects, that could be used as aggregations for `a-query`.
 
