@@ -21,9 +21,9 @@ import { SnippetCollectionName } from "metabase/common/components/SnippetCollect
 import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Collections } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Icon, Input } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {

@@ -7,7 +7,6 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
@@ -16,7 +15,6 @@
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -168,8 +166,7 @@
   [:map
    [:session-id          {:optional true} [:maybe ms/UUIDString]]
    [:source              {:optional true} [:maybe :string]]
-   [:tag                 {:optional true} [:maybe :string]]
-   [:track-user-intent?  {:optional true} [:maybe :boolean]]])
+   [:tag                 {:optional true} [:maybe :string]]])
 
 ;;; Iteration control
 
@@ -590,8 +587,6 @@
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}
-        track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
-                                (some-> opts :tracking-opts :track-user-intent?))
         perms              (or scope/*current-user-metabot-permissions*
                                (if api/*is-superuser?*
                                  scope/all-yes-permissions
@@ -612,10 +607,6 @@
                       scope/*current-user-metabot-permissions* perms]
               (try
                 (let [agent              (init-agent opts)
-                      _                  (when track-user-intent?
-                                           (agent-analytics/classify-and-track-user-intent-async!
-                                            (:messages opts)
-                                            (:tracking-opts agent)))
                       {result    :result
                        iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
                                                   (iterate loop-step)

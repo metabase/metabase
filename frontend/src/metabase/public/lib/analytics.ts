@@ -1,5 +1,5 @@
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent } from "metabase/utils/analytics";
 
 import type {
   DisplayTheme,

@@ -4,26 +4,29 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text, Textarea } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";
-import type { SystemPromptSettingKey } from "./hooks/useSystemPromptInput";
-import { useSystemPromptInput } from "./hooks/useSystemPromptInput";
 
-interface SystemPromptPageProps {
+type SystemPromptSettingKey =
+  | "metabot-chat-system-prompt"
+  | "metabot-nlq-system-prompt"
+  | "metabot-sql-system-prompt";
+
+type SystemPromptPageProps = {
   title: string;
   description: string;
   settingKey: SystemPromptSettingKey;
-}
+};
 
-function SystemPromptPage({
-  title,
-  description,
-  settingKey,
-}: SystemPromptPageProps) {
-  const { inputText, onInputChange } = useSystemPromptInput(settingKey);
+function SystemPromptPage(props: SystemPromptPageProps) {
+  const { title, description, settingKey } = props;
+  const { handleInputChange, inputValue } = useAdminSettingWithDebouncedInput<
+    string | null
+  >(settingKey);
 
   return (
     <SettingsPageWrapper title={title} mt="sm">
@@ -34,9 +37,9 @@ function SystemPromptPage({
         <Textarea
           aria-label={title}
           className={S.textareaWrapper}
-          onChange={onInputChange}
+          onChange={(e) => handleInputChange(e.target.value)}
           placeholder={getPlaceholder()}
-          value={inputText}
+          value={inputValue || ""}
         />
       </SettingsSection>
     </SettingsPageWrapper>

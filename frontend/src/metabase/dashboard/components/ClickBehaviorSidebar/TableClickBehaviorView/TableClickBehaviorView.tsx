@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { hasActionsMenu } from "metabase/lib/click-behavior";
+import { hasActionsMenu } from "metabase/utils/click-behavior";
 import type {
   ClickBehavior,
   ClickBehaviorType,

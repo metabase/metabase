@@ -6,10 +6,10 @@ import { Component } from "react";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { Questions } from "metabase/entities/questions";
-import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 import { SegmentQuestions } from "metabase/reference/segments/SegmentQuestions";
+import { connect } from "metabase/utils/redux";
 
 import {
   getDatabaseId,

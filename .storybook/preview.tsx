@@ -2,19 +2,19 @@ import React, { useEffect, useMemo } from "react";
 
 import { ThemeProvider } from "metabase/ui";
 
-// @ts-expect-error: See metabase/lib/delay
+// @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 
 require("metabase/css/core/index.css");
 require("metabase/css/vendor.css");
 require("metabase/css/index.module.css");
-require("metabase/lib/dayjs");
+require("metabase/utils/dayjs");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 
 import { Global, css, useTheme } from "@emotion/react";
@@ -85,15 +85,31 @@ const globalStyles = css`
   ${baseStyle}
 `;
 
+const getResolvedColorScheme = (
+  displayTheme: string | undefined,
+): "light" | "dark" => {
+  switch (displayTheme) {
+    case "night":
+    case "dark":
+      return "dark";
+    default:
+      return "light";
+  }
+};
+
 const decorators = [
   (Story, { args = {}, globals }) => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }
 
+    const resolvedColorScheme = getResolvedColorScheme(
+      args.theme ?? globals.theme,
+    );
+
     return (
       <EmotionCacheProvider>
-        <ThemeProvider displayTheme={args.theme ?? globals.theme}>
+        <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
           <Global styles={globalStyles} />
           <CssVariables />
           <Story />

@@ -1,4 +1,4 @@
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 
 import { isRouteInSync } from "./is-route-in-sync";
 

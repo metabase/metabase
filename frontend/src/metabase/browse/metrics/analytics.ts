@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 
 export const trackNewMetricInitiated = () =>
   trackSimpleEvent({
@@ -11,5 +11,12 @@ export const trackMetricBookmarked = () => {
     event: "bookmark_added",
     event_detail: "metric",
     triggered_from: "browse_metrics",
+  });
+};
+
+export const trackMetricPageShowMoreClicked = (metricId: number) => {
+  trackSimpleEvent({
+    event: "metric_page_show_more_clicked",
+    target_id: metricId,
   });
 };
