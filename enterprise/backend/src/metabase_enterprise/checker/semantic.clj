@@ -520,6 +520,7 @@
   (try
     (let [load-fn        (or (kind->load-fn kind) store/load-card!)
           data           (load-fn store entity-id)
+          _              (provider/set-database! provider (provider/database-name-for-entity store kind data))
           common         (check-common store data)
           type-specific  (case kind
                            :card       (check-card-specific store provider data)
@@ -543,7 +544,9 @@
       [entity-id {:name       entity-id
                   :entity-id  entity-id
                   :kind       (when (not= kind :card) kind)
-                  :error      (.getMessage e)}])))
+                  :error      (.getMessage e)}])
+    (finally
+      (provider/clear-database! provider))))
 
 (defn- check-duplicate-entity-ids
   "Check for duplicate entity_ids in the index. Returns a map of
@@ -757,7 +760,8 @@
    Looks up the entity's kind from the store. Returns the result map.
    With :verbose true, also prints formatted output."
   [{:keys [store provider]} entity-id & {:keys [verbose]}]
-  (binding [mu.fn/*enforce* false]
+  (binding [mu.fn/*enforce* false
+            qp.i/*skip-middleware-because-app-db-access* true]
     (let [kind   (or (store/index-kind-of store entity-id) :card)
           [_ result] (check-entity store provider kind entity-id)]
       (when verbose
@@ -767,8 +771,8 @@
 
 (comment
   ;; REPL workflow:
-  (def ctx (setup "/Users/dan/projects/work/representations/examples/v1"
-                  "/Users/dan/Downloads/metadata/.metadata/databases"))
+  (def ctx (setup "test_resources/serialization_baseline/"
+                  "test_resources/serialization_baseline/databases"))
   (check-one ctx "HiBFSt0BNx5s5MxVDLLKB" :verbose true)  ; snippet card
   (check-one ctx "2u10n8GV6u0LFYrq8yV5p" :verbose true)  ; variables card
   (check-one ctx "dShCrdNatveOrders0005" :verbose true)    ; native orders

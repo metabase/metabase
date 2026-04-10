@@ -11,8 +11,7 @@
    [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.checker.test-helpers :as helpers]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.util.yaml :as yaml]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (set! *warn-on-reflection* true)
 
@@ -574,7 +573,7 @@
                                                       :query {:source-table ["DB" "PUBLIC" "T"]
                                                               :aggregation [["measure" "mSrAvgProdPrice00008x"]]}}}}
                     :measures {"mSrAvgProdPrice00008x" {:name "Avg Product Price"
-                                                         :entity_id "mSrAvgProdPrice00008x"}}}
+                                                        :entity_id "mSrAvgProdPrice00008x"}}}
           [schema assets index] (helpers/make-sources-and-index entities)
           results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
@@ -611,7 +610,7 @@
                                                       :query {:source-table ["DB" "PUBLIC" "T"]
                                                               :filter ["segment" "aB3kLmN9pQrStUvWxYz1a"]}}}}
                     :segments {"aB3kLmN9pQrStUvWxYz1a" {:name "Known Segment"
-                                                          :entity_id "aB3kLmN9pQrStUvWxYz1a"}}}
+                                                        :entity_id "aB3kLmN9pQrStUvWxYz1a"}}}
           [schema assets index] (helpers/make-sources-and-index entities)
           results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
@@ -881,8 +880,8 @@
   (testing "Dashboard with invalid collection_id is flagged"
     (let [entities {:databases {} :tables {} :fields {} :cards {}
                     :dashboards {"dash-1" {:name "My Dashboard"
-                                            :entity_id "dash-1"
-                                            :collection_id "nonexistent"}}}
+                                           :entity_id "dash-1"
+                                           :collection_id "nonexistent"}}}
           [schema assets index] (helpers/make-sources-and-index entities)
           results (checker/check-entities schema assets index)]
       (is (contains? results "dash-1") "Dashboard should be in results")
@@ -894,10 +893,10 @@
   (testing "Dashboard with valid collection_id passes"
     (let [entities {:databases {} :tables {} :fields {} :cards {}
                     :dashboards {"dash-1" {:name "Good Dashboard"
-                                            :entity_id "dash-1"
-                                            :collection_id "coll-1"}}
+                                           :entity_id "dash-1"
+                                           :collection_id "coll-1"}}
                     :collections {"coll-1" {:name "My Collection"
-                                             :entity_id "coll-1"}}}
+                                            :entity_id "coll-1"}}}
           [schema assets index] (helpers/make-sources-and-index entities)
           results (checker/check-entities schema assets index)]
       (is (= :ok (checker/result-status (get results "dash-1")))
@@ -1155,6 +1154,52 @@
         (let [result (get results "tx-1")]
           (is (some #(= :database (:type %)) (:unresolved result))
               "Should flag missing database"))))))
+
+;;; ===========================================================================
+;;; Multi-database tests
+;;;
+;;; The provider's `(database)` method must return the correct database for the
+;;; entity being checked, not just the first database in the store.
+;;; ===========================================================================
+
+(deftest multi-database-cards-test
+  (testing "Cards from different databases each get the correct database metadata"
+    (let [entities {:databases {"H2 DB"     {:name "H2 DB" :engine "h2"}
+                                "Postgres DB" {:name "Postgres DB" :engine "postgres"}}
+                    :tables    {["H2 DB" "PUBLIC" "ORDERS"]
+                                {:name "ORDERS" :schema "PUBLIC"}
+                                ["Postgres DB" "public" "customers"]
+                                {:name "customers" :schema "public"}}
+                    :fields    {["H2 DB" "PUBLIC" "ORDERS" "ID"]
+                                {:name "ID" :base_type "type/BigInteger"
+                                 :database_type "BIGINT"
+                                 :table_id ["H2 DB" "PUBLIC" "ORDERS"]}
+                                ["Postgres DB" "public" "customers" "id"]
+                                {:name "id" :base_type "type/BigInteger"
+                                 :database_type "bigint"
+                                 :table_id ["Postgres DB" "public" "customers"]}}
+                    :cards     {"h2-card"       {:name "H2 Card"
+                                                 :entity_id "h2-card"
+                                                 :type "question"
+                                                 :dataset_query {:database "H2 DB"
+                                                                 :type "query"
+                                                                 :query {:source-table ["H2 DB" "PUBLIC" "ORDERS"]}}}
+                                "postgres-card" {:name "Postgres Card"
+                                                 :entity_id "postgres-card"
+                                                 :type "question"
+                                                 :dataset_query {:database "Postgres DB"
+                                                                 :type "query"
+                                                                 :query {:source-table ["Postgres DB" "public" "customers"]}}}}}
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["h2-card" "postgres-card"])
+          h2-result (get results "h2-card")
+          pg-result (get results "postgres-card")]
+      (is (some? h2-result) "H2 card should be checked")
+      (is (some? pg-result) "Postgres card should be checked")
+      (is (nil? (:error h2-result)) (str "H2 card should not error: " (:error h2-result)))
+      (is (nil? (:error pg-result)) (str "Postgres card should not error: " (:error pg-result)))
+      (is (empty? (:bad-refs h2-result)) "H2 card should have no bad refs")
+      (is (empty? (:bad-refs pg-result)) "Postgres card should have no bad refs"))))
 
 ;;; ===========================================================================
 ;;; REPL Helpers

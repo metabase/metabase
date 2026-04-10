@@ -21,9 +21,21 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization.resolve :as resolve]))
+   [metabase.models.serialization.resolve :as resolve]
+   [potemkin.types :as p.types]))
 
 (set! *warn-on-reflection* true)
+
+;;; ===========================================================================
+;;; Settable database protocol
+;;; ===========================================================================
+
+(p.types/defprotocol+ ISettableDatabase
+  "Protocol for providers that can switch which database they report."
+  (set-database! [this db-name]
+    "Set the database name (string) this provider should return from `(database)`.")
+  (clear-database! [this]
+    "Clear the current database. `(database)` will return nil until `set-database!` is called again."))
 
 ;;; ===========================================================================
 ;;; Reference resolution
@@ -269,10 +281,21 @@
   ;; The store knows what entities exist, loads raw YAML data, assigns integer IDs, and caches.
   ;; The provider adapts the store into the MetadataProvider interface that lib/query expects,
   ;; converting raw YAML maps to lib metadata format along the way.
-  [store]
+  ;;
+  ;; `current-db` is an atom holding the database name (string) to return from `(database)`.
+  ;; Must be set via `set-database!` before each entity check and unset afterward.
+         [store current-db]
+  ISettableDatabase
+  (set-database! [_this db-name]
+    (reset! current-db db-name))
+  (clear-database! [_this]
+    (reset! current-db nil))
+
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (when-let [db-name (first (store/all-database-names store))]
+    (let [db-name @current-db]
+      (when (nil? db-name)
+        (throw (ex-info "No current database set on provider. Call set-database! before querying." {})))
       (when-let [data (store/load-database! store db-name)]
         (->database-metadata data))))
 
@@ -404,9 +427,13 @@
   [store dataset-query]
   (try
     (let [provider (make-provider store)
-          query    (lib/query provider dataset-query)]
-      (mapv #(select-keys % [:name :base-type :effective-type :semantic-type :display-name])
-            (lib/returned-columns query)))
+          db-id    (:database dataset-query)
+          db-name  (when (integer? db-id) (store/id->ref store :database db-id))]
+      (when db-name
+        (set-database! provider db-name))
+      (let [query (lib/query provider dataset-query)]
+        (mapv #(select-keys % [:name :base-type :effective-type :semantic-type :display-name])
+              (lib/returned-columns query))))
     (catch Exception _ nil)))
 
 ;;; ===========================================================================
@@ -418,4 +445,18 @@
    The store holds sources, index, ID registry, and entity caches —
    see `checker.store/make-store`."
   [store]
-  (->SourceMetadataProvider store))
+  (->SourceMetadataProvider store (atom nil)))
+
+(defn database-name-for-entity
+  "Determine the database name for an entity from its raw YAML data.
+   Cards have it in dataset_query.database, transforms in source.query.database."
+  [store kind data]
+  (let [db-ref (case kind
+                 :card      (get-in data [:dataset_query :database])
+                 :transform (or (get-in data [:source :query :database])
+                                (:source_database_id data))
+                 nil)]
+    (cond
+      (string? db-ref)  db-ref
+      (integer? db-ref) (store/id->ref store :database db-ref)
+      :else             nil)))
