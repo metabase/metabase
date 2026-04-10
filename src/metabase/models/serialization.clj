@@ -35,7 +35,7 @@
 
   ## Existing transformations
 
-  - `(serdes/fk :model/Card)` or `(serdes/fk :model/Database :name)` - export foreign key in a portable way
+  - `(serdes/fk :model/Card)` or `(serdes/fk :model/Database)` - export foreign key in a portable way
   - `(serdes/nested :model/DashboardCard :dashboard_id opts)` - include some entities in your entity export
   - `(serdes/parent-ref)` - symmetrical call for `serdes/nested` to handle parent ids (you'd use it on `:dashboard_id`
     in that case)
