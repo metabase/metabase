@@ -22,6 +22,7 @@ describe("api", () => {
         method: "GET" as const,
         url: "/api/test",
         options: { hasBody: false, json: true },
+        data: {},
       };
 
       const result =
@@ -35,6 +36,7 @@ describe("api", () => {
         method: "POST" as const,
         url: "/api/test",
         options: { hasBody: true, json: true, headers: { "X-Test": "value" } },
+        data: {},
       };
 
       // Mock a handler that returns void
@@ -58,6 +60,7 @@ describe("api", () => {
         method: "GET" as const,
         url: "/api/original",
         options: { hasBody: false, json: true },
+        data: {},
       };
 
       const expectedUrl = "/api/modified";
@@ -89,6 +92,7 @@ describe("api", () => {
         method: "GET" as const,
         url: "/api/original",
         options: { hasBody: false, json: true },
+        data: {},
       };
 
       const modifications = {
@@ -117,6 +121,7 @@ describe("api", () => {
           headers: { "X-Original": "value" },
           retry: true,
         },
+        data: {},
       };
 
       const newHeaders = { "X-Modified": "new-value" };
@@ -152,6 +157,7 @@ describe("api", () => {
         method: "GET" as const,
         url: "/api/start",
         options: { hasBody: false, counter: 0 },
+        data: {},
       };
 
       const executionOrder: number[] = [];
@@ -233,6 +239,7 @@ describe("api", () => {
         method: "POST" as const,
         url: "/api/async",
         options: { hasBody: true, json: true },
+        data: {},
       };
 
       const asyncHandler = jest.fn(async (data: OnBeforeRequestHandlerData) => {
@@ -262,6 +269,7 @@ describe("api", () => {
         method: "GET" as const,
         url: "/api/test",
         options: { hasBody: false },
+        data: {},
       };
 
       jest
@@ -299,6 +307,7 @@ describe("api", () => {
         method: "POST" as const,
         url: "/api/complex",
         options: complexOptions,
+        data: {},
       };
 
       jest

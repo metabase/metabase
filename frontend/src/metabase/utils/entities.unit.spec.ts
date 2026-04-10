@@ -1,16 +1,14 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
-import requestsReducer from "metabase/redux/requests";
+import { requestsReducer } from "metabase/redux/requests";
 import { combineEntities, createEntity } from "metabase/utils/entities";
-
-type AnyEntity = any;
 
 function getObject(id: number) {
   return { id: id, name: `object${id}` };
 }
 
 function setup() {
-  const widgets: AnyEntity = createEntity({
+  const widgets = createEntity({
     name: "widgets",
     api: {
       get: jest
@@ -23,13 +21,10 @@ function setup() {
   const entities = combineEntities([widgets]);
 
   const reducer = combineReducers({
-    entities: entities.reducer as (
-      state: Record<string, unknown> | undefined,
-      action: unknown,
-    ) => Record<string, unknown>,
+    entities: entities.reducer,
     requests: (
       state: Record<string, unknown> | undefined,
-      action: { type: string },
+      action: { type: string; payload: Record<string, unknown> | undefined },
     ) => requestsReducer(entities.requestsReducer(state, action), action),
   });
 
@@ -45,8 +40,7 @@ function setup() {
   const store = configureStore({
     reducer,
     preloadedState: initialState,
-
-    middleware: (getDefaultMiddleware: any) =>
+    middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: false,

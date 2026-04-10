@@ -497,21 +497,9 @@ export class Api extends EventEmitter {
   }
 
   async apiRequestManipulationMiddleware(
-    // Widened from OnBeforeRequestHandlerConfig to accept test fixtures that omit the
-    // implicit `Record<string, unknown>` index signature on `options`.
-    requestConfig: {
-      method: OnBeforeRequestHandlerConfig["method"];
-      url: OnBeforeRequestHandlerConfig["url"];
-      options: {
-        headers?: Record<string, string>;
-        hasBody: boolean;
-        [key: string]: unknown;
-      };
-      data?: Record<string, unknown>;
-    },
+    requestConfig: OnBeforeRequestHandlerConfig,
   ): Promise<OnBeforeRequestHandlerConfig> {
-    let { method, url, options, data } =
-      requestConfig as OnBeforeRequestHandlerConfig;
+    let { method, url, options, data } = requestConfig;
 
     /**
      * Handlers order is important.

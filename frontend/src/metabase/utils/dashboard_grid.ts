@@ -72,3 +72,24 @@ function intersects(a: CardPosition, b: CardPosition): boolean {
     b.row + b.size_y <= a.row
   );
 }
+
+// for debugging
+/*eslint-disable */
+function printGrid(cards: CardPosition[], width: number) {
+  let grid: number[][] = [];
+  for (let card of cards) {
+    for (let col = card.col; col < card.col + card.size_x; col++) {
+      for (let row = card.row; row < card.row + card.size_y; row++) {
+        grid[row] =
+          grid[row] ||
+          Array(width)
+            .join(".")
+            .split(".")
+            .map(() => 0);
+        grid[row][col]++;
+      }
+    }
+  }
+  console.log("\n" + grid.map((row) => row.join(".")).join("\n") + "\n");
+}
+/*eslint-enable */

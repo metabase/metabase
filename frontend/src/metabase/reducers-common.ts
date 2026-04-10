@@ -13,7 +13,7 @@ import { reducer as downloads } from "metabase/redux/downloads";
 import { embed } from "metabase/redux/embed";
 import { reducer as embeddingDataPicker } from "metabase/redux/embedding-data-picker";
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
-import requests from "metabase/redux/requests";
+import { requestsReducer } from "metabase/redux/requests";
 import { settings } from "metabase/redux/settings";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
@@ -29,7 +29,7 @@ export const commonReducers = {
   embeddingDataPicker,
   currentUser,
   // "entities" framework needs control over "requests" state
-  requests: enhanceRequestsReducer(requests),
+  requests: enhanceRequestsReducer(requestsReducer),
   settings,
   undo,
   entities,

@@ -1,8 +1,7 @@
 import type { Reducer, UnknownAction } from "@reduxjs/toolkit";
 import { compose } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
-import type { Schema } from "normalizr";
-import { normalize } from "normalizr";
+import { type Schema, normalize } from "normalizr";
 import _ from "underscore";
 
 import {
@@ -13,6 +12,7 @@ import {
   setRequestUnloaded,
 } from "metabase/redux/requests";
 import { delay } from "metabase/utils/promise";
+import type { Dispatch, State } from "metabase-types/store";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
@@ -27,14 +27,9 @@ export const resourceListToMap = <T extends { id: string | number }>(
     {} as Record<string | number, T>,
   );
 
-type AnyDispatch = (action: any) => any;
-// Broad enough for both `() => Record<string, unknown>` and `() => object` in tests
-
-type AnyGetState = () => any;
-
-type FetchDataArgs = {
-  dispatch: AnyDispatch;
-  getState: AnyGetState;
+export type FetchDataArgs = {
+  dispatch: Dispatch;
+  getState: () => State;
   requestStatePath: string[];
   existingStatePath: string[];
   queryKey?: string;
@@ -101,8 +96,8 @@ export const fetchData = async ({
 };
 
 type UpdateDataArgs = {
-  dispatch: AnyDispatch;
-  getState: AnyGetState;
+  dispatch: Dispatch;
+  getState: () => State;
   requestStatePath: string[];
   existingStatePath?: string[];
   queryKey?: string;
@@ -189,8 +184,8 @@ export function handleEntities(
 // THUNK DECORATORS
 
 type Thunk<R = unknown> = (
-  dispatch: AnyDispatch,
-  getState: AnyGetState,
+  dispatch: Dispatch,
+  getState: () => State,
 ) => Promise<R> | R;
 
 type ThunkCreator<TArgs extends unknown[], R = unknown> = (
@@ -210,7 +205,7 @@ export function withAction<TArgs extends unknown[]>(actionType: string) {
       const payloadOrThunk = payloadOrThunkCreator(...args);
       if (typeof payloadOrThunk === "function") {
         // thunk, return a new thunk
-        return async (dispatch: AnyDispatch, getState: AnyGetState) => {
+        return async (dispatch: Dispatch, getState: () => State) => {
           try {
             const payload = await (payloadOrThunk as Thunk)(dispatch, getState);
             const dispatchValue = { type: actionType, payload: payload };
@@ -244,7 +239,7 @@ export function withRequestState<TArgs extends unknown[]>(
     // thunk creator:
     (...args: TArgs) =>
     // thunk:
-    async (dispatch: AnyDispatch, getState: AnyGetState) => {
+    async (dispatch: Dispatch, getState: () => State) => {
       const statePath = getRequestStatePath(...args);
       const queryKey = getQueryKey && getQueryKey(...args);
       try {
@@ -316,8 +311,8 @@ function withCachedData<TArgs extends unknown[]>(
     (...args: TArgs) =>
       // thunk:
       async function thunk(
-        dispatch: AnyDispatch,
-        getState: AnyGetState,
+        dispatch: Dispatch,
+        getState: () => State,
       ): Promise<unknown> {
         const options = (args[args.length - 1] as CachedOptions) || {};
         const { useCachedForbiddenError, reload, properties } = options;
@@ -382,6 +377,6 @@ function withCachedData<TArgs extends unknown[]>(
 export function withNormalize<TArgs extends unknown[]>(schema: Schema) {
   return (thunkCreator: ThunkCreator<TArgs>) =>
     (...args: TArgs) =>
-    async (dispatch: AnyDispatch, getState: AnyGetState) =>
+    async (dispatch: Dispatch, getState: () => State) =>
       normalize(await thunkCreator(...args)(dispatch, getState), schema);
 }

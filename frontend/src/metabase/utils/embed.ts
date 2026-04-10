@@ -22,8 +22,9 @@ export function initializeEmbedding(store: EnhancedStore<State>): void {
         sendMessage({
           type: "location",
           // extract just the string properties from window.location
-          location: Object.fromEntries(
-            Object.entries(location).filter(([, v]) => typeof v === "string"),
+          location: _.pick(
+            location,
+            (v: unknown) => typeof v === "string",
           ) as Record<string, string>,
         });
         currentHref = location.href;
@@ -40,15 +41,10 @@ export function initializeEmbedding(store: EnhancedStore<State>): void {
     window.addEventListener("message", (e: MessageEvent) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
-          // push() from react-router-redux returns RouterAction which pre-dates UnknownAction;
-          // cast to satisfy the store's typed dispatch
-          store.dispatch(
-            push(e.data.metabase.location) as unknown as UnknownAction,
-          );
+          store.dispatch(push(e.data.metabase.location) as UnknownAction);
         }
       }
     });
-    // setInitialUrlOptions is an async thunk; store.dispatch accepts thunks at runtime
     store.dispatch(
       setInitialUrlOptions(window.location) as unknown as UnknownAction,
     );

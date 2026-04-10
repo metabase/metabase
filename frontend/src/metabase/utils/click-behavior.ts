@@ -17,12 +17,6 @@ type LinkTargetClickBehavior = {
   targetId?: number;
 };
 
-type LinkedEntityQuery = {
-  entity: typeof Questions | typeof Dashboards;
-  entityType: "question" | "dashboard";
-  entityId: number | undefined;
-};
-
 export function getClickBehaviorDescription(dashcard: DashboardCard): string {
   const noBehaviorMessage = hasActionsMenu(dashcard)
     ? t`Open the drill-through menu`
@@ -83,7 +77,7 @@ export function isTableDisplay(dashcard: DashboardCard): boolean {
 
 export function getLinkTargets(
   settings: Record<string, unknown> | null | undefined,
-): LinkedEntityQuery[] {
+) {
   const { click_behavior, column_settings = {} } = (settings ?? {}) as {
     click_behavior?: ClickBehavior;
     column_settings?: Record<string, ColumnSettings>;
@@ -108,9 +102,7 @@ function hasLinkedQuestionOrDashboard(
   return false;
 }
 
-function mapLinkedEntityToEntityQuery(
-  behavior: LinkTargetClickBehavior,
-): LinkedEntityQuery {
+function mapLinkedEntityToEntityQuery(behavior: LinkTargetClickBehavior) {
   return {
     entity: behavior.linkType === "question" ? Questions : Dashboards,
     entityType: behavior.linkType,

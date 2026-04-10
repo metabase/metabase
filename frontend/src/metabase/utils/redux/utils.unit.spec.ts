@@ -1,4 +1,8 @@
 import { delay } from "__support__/utils";
+import type { Dispatch, State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockRequestsState } from "metabase-types/store/mocks/requests";
+import type { RequestState } from "metabase-types/store/requests";
 
 import { fetchData, mergeEntities, updateData } from "./utils";
 
@@ -7,30 +11,44 @@ describe("Metadata", () => {
     overrides: {
       existingData?: string;
       newData?: string;
-      requestState?: object | null;
-      requestStateLoading?: object;
-      requestStateLoaded?: object;
-      requestStateError?: object;
+      requestState?: RequestState;
+      requestStateLoading?: RequestState;
+      requestStateLoaded?: RequestState;
+      requestStateError?: RequestState;
       statePath?: string[];
       statePathFetch?: string[];
       statePathUpdate?: string[];
       requestStatePath?: string[];
       existingStatePath?: string[];
-      getState?: () => object;
-      dispatch?: jest.Mock;
+      getState?: () => State;
+      dispatch?: Dispatch;
       getData?: () => Promise<unknown>;
       putData?: () => Promise<unknown>;
     } = {},
   ) => {
     const existingData = overrides.existingData ?? "data";
     const newData = overrides.newData ?? "new data";
-    const requestState = overrides.requestState ?? null;
+    const requestState = overrides.requestState;
     const requestStateLoading = overrides.requestStateLoading ?? {
       loading: true,
+      loaded: false,
+      fetched: false,
+      error: null,
+      _isRequestState: true as const,
     };
-    const requestStateLoaded = overrides.requestStateLoaded ?? { loaded: true };
+    const requestStateLoaded = overrides.requestStateLoaded ?? {
+      loading: false,
+      loaded: true,
+      fetched: true,
+      error: null,
+      _isRequestState: true as const,
+    };
     const requestStateError = overrides.requestStateError ?? {
+      loading: false,
+      loaded: false,
+      fetched: false,
       error: new Error("error"),
+      _isRequestState: true as const,
     };
     const statePath = overrides.statePath ?? ["test", "path"];
     const statePathFetch =
@@ -42,9 +60,16 @@ describe("Metadata", () => {
     const getState =
       overrides.getState ??
       (() => ({
-        requests: {
-          test: { path: { fetch: requestState, update: requestState } },
-        },
+        ...createMockState(),
+        requests: createMockRequestsState({
+          entities: {
+            test: {
+              path: requestState
+                ? { fetch: requestState, update: requestState }
+                : {},
+            },
+          },
+        }),
         test: { path: existingData },
       }));
     const dispatch = overrides.dispatch ?? jest.fn();
