@@ -1,8 +1,8 @@
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 
-import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,

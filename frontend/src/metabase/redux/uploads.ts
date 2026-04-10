@@ -3,13 +3,13 @@ import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
-import { entityCompatibleQuery } from "metabase/lib/entities";
+import { MetabaseApi } from "metabase/services";
+import { entityCompatibleQuery } from "metabase/utils/entities";
 import {
   createAction,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
-import { MetabaseApi } from "metabase/services";
+} from "metabase/utils/redux";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type { FileUploadState } from "metabase-types/store/upload";

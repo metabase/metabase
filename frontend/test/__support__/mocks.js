@@ -26,7 +26,7 @@ global.window.ResizeObserver = class ResizeObserver {
   disconnect() {}
 };
 
-jest.mock("metabase/lib/analytics");
+jest.mock("metabase/utils/analytics");
 
 jest.mock("@uiw/react-codemirror", () => {
   const { forwardRef } = jest.requireActual("react");

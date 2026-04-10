@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { UserInfo } from "metabase-types/store";
 
 import { submitUser } from "../../actions";

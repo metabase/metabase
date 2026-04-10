@@ -1,8 +1,8 @@
 import type { CSSProperties, ImgHTMLAttributes } from "react";
 
-import type { IconData } from "metabase/lib/icon";
 import { Icon, type IconProps, useMantineTheme } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
+import type { IconData } from "metabase/utils/icon";
 
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];

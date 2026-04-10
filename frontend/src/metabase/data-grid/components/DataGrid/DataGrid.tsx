@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
-import { getScrollBarSize } from "metabase/lib/dom";
+import { getScrollBarSize } from "metabase/utils/dom";
 
 import {
   ADD_COLUMN_BUTTON_WIDTH,

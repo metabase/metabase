@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Field, FieldId, FieldReference } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";

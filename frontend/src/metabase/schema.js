@@ -2,7 +2,7 @@
 
 import { schema } from "normalizr";
 
-import { entityTypeForObject } from "metabase/lib/schema";
+import { entityTypeForObject } from "metabase/entities/utils";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";

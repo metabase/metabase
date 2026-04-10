@@ -9,7 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { GdrivePayload } from "metabase-types/api";
 import {

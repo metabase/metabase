@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import type { DatasetData } from "metabase-types/api";
 
 import {
@@ -14,6 +13,7 @@ import type {
   TableEditingActionScope,
 } from "../api/types";
 
+import { trackDataRecordModified } from "./analytics";
 import { useTableEditingToastController } from "./toasts/use-table-editing-toast-controller";
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 
@@ -86,8 +86,7 @@ export const useTableCRUD = ({
             response.data.outputs.map((output) => output.row),
           );
 
-          trackSimpleEvent({
-            event: "edit_data_record_modified",
+          trackDataRecordModified({
             event_detail: "update",
             target_id: Number(scope["table-id"]),
             triggered_from: shouldPerformOptimisticUpdate ? "inline" : "modal",
@@ -96,8 +95,7 @@ export const useTableCRUD = ({
 
           toastController.showSuccessToast(t`Successfully updated`);
         } else {
-          trackSimpleEvent({
-            event: "edit_data_record_modified",
+          trackDataRecordModified({
             event_detail: "update",
             target_id: Number(scope["table-id"]),
             triggered_from: shouldPerformOptimisticUpdate ? "inline" : "modal",
@@ -140,8 +138,7 @@ export const useTableCRUD = ({
           response.data.outputs.map((output) => output.row),
         );
 
-        trackSimpleEvent({
-          event: "edit_data_record_modified",
+        trackDataRecordModified({
           event_detail: "create",
           target_id: Number(scope["table-id"]),
           triggered_from: "modal",
@@ -150,8 +147,7 @@ export const useTableCRUD = ({
 
         toastController.showSuccessToast(t`Record successfully created`);
       } else {
-        trackSimpleEvent({
-          event: "edit_data_record_modified",
+        trackDataRecordModified({
           event_detail: "create",
           target_id: Number(scope["table-id"]),
           triggered_from: "modal",
@@ -190,8 +186,7 @@ export const useTableCRUD = ({
           response.data.outputs.map((output) => output.row),
         );
 
-        trackSimpleEvent({
-          event: "edit_data_record_modified",
+        trackDataRecordModified({
           event_detail: "delete",
           target_id: Number(scope["table-id"]),
           triggered_from: "modal",
@@ -202,8 +197,7 @@ export const useTableCRUD = ({
       }
 
       if (response.error) {
-        trackSimpleEvent({
-          event: "edit_data_record_modified",
+        trackDataRecordModified({
           event_detail: "delete",
           target_id: Number(scope["table-id"]),
           triggered_from: "modal",

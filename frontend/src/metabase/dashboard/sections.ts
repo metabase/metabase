@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import type {
   DashboardCardLayoutAttrs,
   VirtualCard,

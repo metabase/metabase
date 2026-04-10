@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent } from "metabase/utils/analytics";
 import type { DashboardId } from "metabase-types/api";
 
 export const trackCardSetToHideWhenNoResults = (dashboardId: DashboardId) => {

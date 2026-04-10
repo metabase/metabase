@@ -2,9 +2,9 @@ import type { LocationDescriptorObject } from "history";
 import { Component } from "react";
 import type * as tippy from "tippy.js";
 
-import { getEventTarget } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
+import { getEventTarget } from "metabase/utils/dom";
+import { connect } from "metabase/utils/redux";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
   ClickObject,

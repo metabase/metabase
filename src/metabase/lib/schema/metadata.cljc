@@ -32,7 +32,7 @@
 ;;; to implement column remapping, e.g. the GUI might display values of `categories.name` when it presents filter
 ;;; options for `venues.category_id` -- you can remap a meaningless integer FK column to something more helpful.
 ;;; 'Human readable values' like these can also be entered manually from the GUI, for example for enum columns. How
-;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
+;;; will this affect what Lib needs to know or does? Not clear at this point, but we'll probably want to abstract
 ;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
 
 (mr/def ::column.source
@@ -80,9 +80,9 @@
 (def column-has-field-values-options
   "Possible options for column metadata `:has-field-values`. This is used to determine whether we keep FieldValues for a
   Field (during sync), and which type of widget should be used to pick values of this Field when filtering by it in
-  the Query Builder. Not otherwise used by MLv2 (except for [[metabase.lib.field/field-values-search-info]], which is
+  the Query Builder. Not otherwise used by Lib (except for [[metabase.lib.field/field-values-search-info]], which is
   a frontend convenience) or QP at the time of this writing. For column remapping purposes in the Query Processor and
-  MLv2 we just ignore `has_field_values` and only look for FieldValues/Dimension."
+  Lib we just ignore `has_field_values` and only look for FieldValues/Dimension."
   ;; AUTOMATICALLY-SET VALUES, SET DURING SYNC
   ;;
   ;; `nil` -- means infer which widget to use based on logic in [[metabase.lib.field/infer-has-field-values]]; this

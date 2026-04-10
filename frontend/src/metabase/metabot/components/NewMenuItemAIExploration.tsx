@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
 import { Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { CollectionId } from "metabase-types/api";
 
 export function getNewMenuItemAIExploration(

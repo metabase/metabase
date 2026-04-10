@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type { User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

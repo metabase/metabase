@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql]
@@ -276,7 +277,8 @@
 (defmethod default-column-sql :default [_ expr]
   (format "DEFAULT (%s)" expr))
 
-(defn- field-definition-sql
+(defn field-definition-sql
+  "Generate the fragment of a `CREATE TABLE` DDL statement for a specific column."
   [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
   (let [field-name      (format-and-quote-field-name driver field-name)
         field-type      (or (cond
@@ -343,12 +345,11 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defn- get-tabledef
-  [dbdef table-name]
-  (->> dbdef
-       :table-definitions
-       (filter #(= (:table-name %) table-name))
-       first))
+(defn get-tabledef
+  "Find the first table definition with `table-name`."
+  [{:keys [table-definitions], :as _dbdef} table-name]
+  (m/find-first #(= (:table-name %) table-name)
+                table-definitions))
 
 (defmethod add-fk-sql :sql/test-extensions
   [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
