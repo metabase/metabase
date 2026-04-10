@@ -54,6 +54,9 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.mockSessionPropertiesTokenFeatures({
+      admin_security_center: true,
+    });
   });
 
   describe("feature gating", () => {
