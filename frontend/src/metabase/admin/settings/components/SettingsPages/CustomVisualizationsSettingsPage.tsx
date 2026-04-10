@@ -29,7 +29,7 @@ export function CustomVisualizationsFormPage({
   if (!hasCustomViz) {
     return (
       <SettingsPageWrapper title={t`Custom visualizations`}>
-        <UpsellCustomViz location="settings-custom-viz" />;
+        <UpsellCustomViz location="settings-custom-viz" />
       </SettingsPageWrapper>
     );
   }
@@ -43,7 +43,7 @@ export function CustomVisualizationsDevelopmentPage() {
   if (!hasCustomViz) {
     return (
       <SettingsPageWrapper title={t`Custom visualizations`}>
-        <UpsellCustomViz location="settings-custom-viz" />;
+        <UpsellCustomViz location="settings-custom-viz" />
       </SettingsPageWrapper>
     );
   }
