@@ -2021,17 +2021,6 @@
   [a-query]
   (template-tags-cljs->js (lib.core/template-tags a-query)))
 
-(defn ^:export required-native-extras
-  "Returns a JS array of the extra keys that are required for this database's native queries.
-
-  For example `:collection` name is needed for MongoDB queries.
-
-  > **Code health:** Single use. This is only intended to be called from the native query editor."
-  [database-id metadata]
-  (to-array
-   (map u/qualified-name
-        (lib.core/required-native-extras (metadataProvider database-id metadata)))))
-
 (defn ^:export has-write-permission
   "Returns whether the database targeted by `a-query` has native write permissions.
 
