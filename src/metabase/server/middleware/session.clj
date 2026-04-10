@@ -243,10 +243,9 @@
 
 (defn- auth-method
   [session-info api-key-info embedding-route]
-  (or (cond session-info (or (:auth-provider session-info) "session")
-            api-key-info "api-key")
-      ({"guest-embed" "guest"} embedding-route)
-      embedding-route))
+  (or ({"guest-embed" "guest"} embedding-route embedding-route)
+      (cond session-info (or (:auth-provider session-info) "session")
+            api-key-info "api-key")))
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
