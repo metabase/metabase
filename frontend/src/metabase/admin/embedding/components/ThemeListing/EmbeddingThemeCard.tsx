@@ -60,11 +60,22 @@ const EmbeddingThemeActionMenu = ({
       </Menu.Target>
 
       <Menu.Dropdown>
-        <Menu.Item onClick={() => onDuplicate(theme.id)}>
+        <Menu.Item
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onDuplicate(theme.id);
+          }}
+        >
           {t`Duplicate`}
         </Menu.Item>
 
-        <Menu.Item c="error" onClick={() => onDelete(theme.id)}>
+        <Menu.Item
+          c="error"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onDelete(theme.id);
+          }}
+        >
           {t`Delete`}
         </Menu.Item>
       </Menu.Dropdown>

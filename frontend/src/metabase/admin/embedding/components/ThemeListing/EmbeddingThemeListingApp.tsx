@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks";
@@ -11,6 +12,7 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { useToast } from "metabase/common/hooks";
+import { useDispatch } from "metabase/lib/redux";
 import {
   Button,
   Flex,
@@ -26,6 +28,7 @@ import {
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 
 export function EmbeddingThemeListingApp() {
+  const dispatch = useDispatch();
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [createTheme] = useCreateEmbeddingThemeMutation();
   const [duplicateTheme] = useCopyEmbeddingThemeMutation();
@@ -37,12 +40,12 @@ export function EmbeddingThemeListingApp() {
 
   const handleCreateTheme = async () => {
     try {
-      await createTheme({
+      const newTheme = await createTheme({
         name: t`Untitled theme`,
         settings: defaultThemeSettings,
       }).unwrap();
 
-      // TODO(EMB-946): Navigate to the theme editor to edit the newly created theme.
+      dispatch(push(`/admin/embedding/themes/${newTheme.id}`));
     } catch (error) {
       console.error("Failed to create theme:", error);
       sendToast({ message: t`Failed to create theme`, icon: "warning" });
@@ -107,8 +110,9 @@ export function EmbeddingThemeListingApp() {
             <EmbeddingThemeCard
               key={theme.id}
               theme={theme}
-              // TODO(EMB-946): navigate to visual editor
-              onEdit={() => {}}
+              onEdit={() =>
+                dispatch(push(`/admin/embedding/themes/${theme.id}`))
+              }
               onDuplicate={() => handleDuplicateTheme(theme.id)}
               onDelete={() => setThemeToDelete(theme.id)}
             />

@@ -9,6 +9,9 @@ const SIDEBAR_HIDDEN_PATHS = new Set([
   "/admin/embedding/setup-guide/sso",
 ]);
 
+const SIDEBAR_HIDDEN_PATH_PREFIXES = ["/admin/embedding/themes/"];
+const FULL_WIDTH_PATH_PREFIXES = ["/admin/embedding/themes/"];
+
 export const AdminEmbeddingApp = ({
   location,
   children,
@@ -16,11 +19,20 @@ export const AdminEmbeddingApp = ({
   location: Location;
   children: React.ReactNode;
 }) => {
-  const shouldHideSidebar = SIDEBAR_HIDDEN_PATHS.has(location.pathname);
+  const shouldHideSidebar =
+    SIDEBAR_HIDDEN_PATHS.has(location.pathname) ||
+    SIDEBAR_HIDDEN_PATH_PREFIXES.some((prefix) =>
+      location.pathname.startsWith(prefix),
+    );
+
+  const isFullWidth = FULL_WIDTH_PATH_PREFIXES.some((prefix) =>
+    location.pathname.startsWith(prefix),
+  );
 
   return (
     <AdminSettingsLayout
       sidebar={shouldHideSidebar ? undefined : <EmbeddingNav />}
+      fullWidth={isFullWidth}
     >
       {children}
     </AdminSettingsLayout>
