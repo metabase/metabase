@@ -2837,7 +2837,6 @@
            api
            app-db
            collections
-           config
            documents
            driver
            events
@@ -2862,8 +2861,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardCardSeries
                     :model/Document
                     :model/Field
                     :model/Measure
