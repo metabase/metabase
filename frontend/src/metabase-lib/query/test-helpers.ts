@@ -93,24 +93,6 @@ export const queryDrillThru = (
   return drill ?? null;
 };
 
-interface PivotCellClickObjectOpts {
-  aggregation: Lib.ClickObjectDimension;
-  breakouts: Lib.ClickObjectDimension[];
-}
-
-export function createPivotCellClickObject({
-  aggregation,
-  breakouts,
-}: PivotCellClickObjectOpts): Lib.ClickObject {
-  const data = [...breakouts, aggregation].map(({ column, value }) => ({
-    key: column.name,
-    col: column,
-    value,
-  }));
-
-  return { value: aggregation.value, data, dimensions: breakouts };
-}
-
 export function createLegendItemClickObject(
   dimension: Lib.ClickObjectDimension,
 ) {
