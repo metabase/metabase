@@ -245,9 +245,17 @@ The checker computes forward edges per entity (what it depends on). The next
 step is building a bidirectional dependency graph using
 `metabase.graph.core/InMemoryGraph`.
 
-The `dependencies` module already has `upstream-deps:card`, `upstream-deps:transform`,
-etc. in `calculation.clj` — these extract forward edges from resolved lib queries,
-which is exactly what our provider produces. The plan:
+The `dependencies` module already has the right pieces:
+
+- **`calculation.clj`** — `upstream-deps:card`, `upstream-deps:transform`, etc.
+  extract forward edges from resolved lib queries. These just call
+  `lib/all-source-table-ids` etc., which work fine against our provider.
+- **`analysis.clj`** — `check-entity` validates individual entities. The checker
+  already uses this.
+- **`metabase.graph.core`** — generic `Graph` protocol with `InMemoryGraph`,
+  `transitive`, `find-cycle`, etc.
+
+The plan:
 
 1. Call `calculation.clj`'s `upstream-deps:*` functions against the checker's
    resolved entities (or align our `extract-refs-from-query` output to match)
@@ -257,6 +265,24 @@ which is exactly what our provider produces. The plan:
 
 This enables "who uses this snippet?", "what breaks if I rename this table?",
 cycle detection via `graph/find-cycle`, and full impact analysis — all offline.
+
+### Decouple dependencies module from app DB
+
+`deps.analysis` and `deps.calculation` are clean — they operate on
+MetadataProviders and lib queries with no toucan2 dependency. But
+`deps.core` and `deps.models.dependency` are tightly coupled to the app DB
+(toucan2, `:model/Dependency` table, etc.).
+
+Currently the checker imports `deps.analysis` directly, avoiding the toucan2
+dependency chain. For the graph work, we'll also need `deps.calculation`
+(also clean) and `metabase.graph.core` (also clean).
+
+The goal is that the "pure analysis" side of the dependencies module
+(`analysis.clj`, `calculation.clj`) stays usable without an app DB connection,
+while the "storage" side (`models/dependency.clj`, `events.clj`) stays in leaf
+namespaces that the checker never touches. This mirrors the pattern in
+`models.serialization` where we separated the resolve protocols from the
+DB-backed implementations.
 
 ### Merge native errors into bad-refs
 

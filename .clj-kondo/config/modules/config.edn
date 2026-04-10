@@ -1290,7 +1290,6 @@
            metabase.models.resolution
            metabase.models.serialization
            metabase.models.serialization.resolve
-           metabase.models.transforms.transform
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -2743,7 +2742,8 @@
            query-processor
            sql-tools
            util
-           enterprise/dependencies}}
+           enterprise/dependencies}
+   :model-imports #{:model/Database}}
 
   enterprise/cloud-add-ons
   {:team "Cloud"
@@ -2841,6 +2841,7 @@
   enterprise/dependencies
   {:team "Graphy"
    :api  #{metabase-enterprise.dependencies.api
+           metabase-enterprise.dependencies.analysis
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
