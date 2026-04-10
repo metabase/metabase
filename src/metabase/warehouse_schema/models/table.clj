@@ -651,7 +651,7 @@
     (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
+  (let [db-name (serdes/*export-database-fk* (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -679,7 +679,7 @@
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database :name)
+               :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
                :transform_id   (serdes/fk :model/Transform)}
    :defaults {:is_defective_duplicate  false
