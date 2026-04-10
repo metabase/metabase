@@ -1,8 +1,17 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
+import type { ConnectDropTarget } from "react-dnd";
 
 import CS from "metabase/css/core/index.css";
+
+interface DropTargetBackgroundAndBorderProps {
+  highlighted: boolean;
+  margin?: number;
+  marginLeft?: number;
+  marginRight?: number;
+  marginTop?: number;
+  marginBottom?: number;
+}
 
 const DropTargetBackgroundAndBorder = ({
   highlighted,
@@ -11,7 +20,7 @@ const DropTargetBackgroundAndBorder = ({
   marginRight = margin,
   marginTop = margin,
   marginBottom = margin,
-}) => (
+}: DropTargetBackgroundAndBorderProps) => (
   <div
     className={cx(CS.absolute, CS.rounded, {
       [CS.pointerEventsNone]: !highlighted,
@@ -27,15 +36,37 @@ const DropTargetBackgroundAndBorder = ({
   />
 );
 
-export class DropArea extends Component {
-  constructor(props) {
+interface DropAreaProps {
+  connectDropTarget: ConnectDropTarget;
+  highlighted: boolean;
+  hovered: boolean;
+  hideUntilDrag?: boolean;
+  children:
+    | React.ReactNode
+    | ((props: Record<string, unknown>) => React.ReactNode);
+  className?: string;
+  style?: React.CSSProperties;
+  enableDropTargetBackground?: boolean;
+  margin: number;
+  marginLeft: number;
+  marginRight: number;
+  marginTop: number;
+  marginBottom: number;
+}
+
+interface DropAreaState {
+  show: boolean;
+}
+
+export class DropArea extends Component<DropAreaProps, DropAreaState> {
+  constructor(props: DropAreaProps) {
     super(props);
     this.state = {
       show: this._shouldShow(props),
     };
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: DropAreaProps) {
     // need to delay showing/hiding due to Chrome bug where "dragend" is triggered
     // immediately if the content shifts during "dragstart"
     // https://github.com/react-dnd/react-dnd/issues/477
@@ -44,7 +75,7 @@ export class DropArea extends Component {
     }
   }
 
-  _shouldShow(props) {
+  _shouldShow(props: DropAreaProps) {
     return !props.hideUntilDrag || props.highlighted;
   }
 
