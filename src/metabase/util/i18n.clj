@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.config.core :as config]
    [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.json :as json]
@@ -62,13 +63,37 @@
   ^Locale []
   (locale (user-locale-string)))
 
-(defn available-locales-with-names
-  "Returns all locale abbreviations and their full names"
+(def ^:private test-only-locales
+  "Locales that should only be visible in language pickers during development, unit tests, and E2E runs — never in
+  production. Currently just the `en_ZZ` pseudo-locale. See UXW-3460."
+  #{"en_ZZ"})
+
+(def ^:private locale-display-name-overrides
+  "Custom display names for locales whose JVM default is confusing. The JVM renders `en_ZZ` as
+  \"English (Unknown Region)\" because it has no CLDR data for the user-assigned region code `ZZ`. We override it to
+  \"English (ZZ)\" which is clearer for developers choosing it in the language picker."
+  {"en_ZZ" "English (ZZ)"})
+
+(defn- show-test-locales?
+  "Whether test-only pseudo-locales like `en_ZZ` should appear in language pickers. True for local dev, unit tests, and
+  anywhere the `MB_ENABLE_TEST_LOCALES` env var is explicitly set to `\"true\"` (e.g. by the Cypress runner)."
   []
-  (for [locale-name (i18n.impl/available-locale-names)]
-    ;; Abbreviation must be normalized or the language picker will show incorrect saved value
-    ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
-    [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
+  (or config/is-dev?
+      config/is-test?
+      (= "true" (System/getenv "MB_ENABLE_TEST_LOCALES"))))
+
+(defn available-locales-with-names
+  "Returns all locale abbreviations and their full names. Test-only pseudo-locales are hidden unless we're in dev/test
+  mode or `MB_ENABLE_TEST_LOCALES=true`."
+  []
+  (let [show-test? (show-test-locales?)]
+    (for [locale-name (i18n.impl/available-locale-names)
+          ;; Abbreviation must be normalized or the language picker will show incorrect saved value
+          ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
+          :let  [normalized (normalized-locale-string locale-name)]
+          :when (or show-test?
+                    (not (contains? test-only-locales normalized)))]
+      [normalized (get locale-display-name-overrides normalized (.getDisplayName (locale locale-name)))])))
 
 (def ^:private included-locales
   (delay (set (map normalized-locale-string (i18n.impl/available-locale-names)))))

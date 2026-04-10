@@ -79,6 +79,7 @@ const FilterDropdownInner = ({
               step === null ? (filters.length === 0 ? "picker" : "list") : null,
             )
           }
+          data-testid="filter-dropdown-button"
         />
       </MultiStepPopover.Target>
 

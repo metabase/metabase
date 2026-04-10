@@ -406,18 +406,20 @@ describe("issue 23076", () => {
     cy.signInAsAdmin();
 
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
-      locale: "de",
+      locale: "en-ZZ",
     });
 
     H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
-    cy.findAllByText(/^Summen für/, { timeout: 10000 })
+    // "Totals for" comes from metabase.pivot.core.cljc, rendered browser-side → [zz] prefix
+    // dayjs has no en-ZZ locale, so month names fall back to English ("May")
+    cy.findAllByText(/^\[zz\] Totals for/, { timeout: 10000 })
       .should("be.visible")
       .eq(1)
       .invoke("text")
-      .should("eq", "Summen für Mai 2023");
+      .should("eq", "[zz] Totals for May 2023");
   });
 });
 

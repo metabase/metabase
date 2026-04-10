@@ -321,34 +321,36 @@ describe("scenarios > setup", () => {
       .should("have.value", "English")
       .click();
 
-    H.popover().findByText("Dutch").should("be.visible").click();
+    H.popover().findByText("English (ZZ)").should("be.visible").click();
 
     cy.log("Changing a language should be applied immediately");
     cy.findByTestId("setup-forms").within(() => {
       const password = "12341234";
       cy.findByDisplayValue("John").should("exist");
-      cy.findByLabelText("Maak een wachtwoord").type(password);
-      cy.findByLabelText("Bevestig je wachtwoord").type(password);
-      cy.button("Volgende").click();
+      cy.findByLabelText("[zz] Create a password").type(password);
+      cy.findByLabelText("[zz] Confirm your password").type(password);
+      cy.button("[zz] Next").click();
     });
 
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
+      cy.findByLabelText("[zz] Hi, John. Nice to meet you!").should(
         "be.visible",
       );
 
       if (IS_ENTERPRISE) {
-        cy.button("Ik activeer later").click();
+        cy.button("[zz] I'll activate later").click();
       }
 
-      cy.findByText("Voltooi").click();
-      cy.findByText("Breng me naar Metabase").click();
+      cy.findByText("[zz] Finish").click();
+      cy.findByText("[zz] Take me to Metabase").click();
     });
 
     cy.log("Locale is preserved upon succesful setup");
     cy.location("pathname").should("eq", "/");
     H.main()
-      .findByText("Aan de slag met het opnemen van Metabase in uw app")
+      .findByText("[zz] Get started with Embedding Metabase in your app", {
+        timeout: 10000,
+      })
       .should("be.visible");
   });
 
@@ -359,14 +361,14 @@ describe("scenarios > setup", () => {
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
 
-    cy.log("Change language to Dutch before user creation");
+    cy.log("Change language to English (ZZ) before user creation");
     cy.get("header")
       .should("be.visible")
       .findByLabelText("Select a language")
       .should("have.value", "English")
       .click();
 
-    H.popover().findByText("Dutch").should("be.visible").click();
+    H.popover().findByText("English (ZZ)").should("be.visible").click();
 
     cy.log("Verify site locale does not get updated before a user is created");
     cy.get("@updateSiteLocale.all").should("have.length", 0);
@@ -375,41 +377,45 @@ describe("scenarios > setup", () => {
       const password = "12341234";
 
       cy.findByDisplayValue("John").should("exist");
-      cy.findByLabelText("Maak een wachtwoord").type(password);
-      cy.findByLabelText("Bevestig je wachtwoord").type(password);
-      cy.button("Volgende").click();
+      cy.findByLabelText("[zz] Create a password").type(password);
+      cy.findByLabelText("[zz] Confirm your password").type(password);
+      cy.button("[zz] Next").click();
 
-      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
-        "be.visible",
-      );
+      cy.findByLabelText("[zz] Hi, John. Nice to meet you!")
+        .scrollIntoView()
+        .should("be.visible");
     });
 
-    cy.log("After user creation, change language to German");
+    cy.log("After user creation, switch the language back to English");
     cy.get("header")
       .should("be.visible")
-      .findByLabelText("Selecteer een taal")
-      .should("have.value", "Dutch")
+      .findByLabelText("[zz] Select a language")
+      .should("have.value", "English (ZZ)")
       .click();
 
+    // `exact: true` is required so we don't also match "English (ZZ)".
     H.popover()
-      .findByText("German")
+      .findByRole("option", { name: "English", exact: true })
       .scrollIntoView()
       .should("be.visible")
       .click();
 
+    cy.log("The PUT /api/setting/site-locale endpoint should fire");
+    cy.wait("@updateSiteLocale");
+
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByText("Ich aktiviere später").click();
-      cy.findByText("Beenden").click();
-      cy.findByText("Führe mich zu Metabase").click();
+      if (IS_ENTERPRISE) {
+        cy.findByText("I'll activate later").click();
+      }
+      cy.findByText("Finish").click();
+      cy.findByText("Take me to Metabase").click();
     });
 
     cy.location("pathname").should("eq", "/");
 
-    cy.log("Verify final language (German) is preserved");
+    cy.log("Verify the final language (English) is preserved");
     H.main()
-      .findByText(
-        "Erste Schritte mit der Einbettung der Metabase in Ihre Anwendung",
-      )
+      .findByText("Get started with Embedding Metabase in your app")
       .should("be.visible");
   });
 

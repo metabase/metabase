@@ -26,6 +26,7 @@ export function UpdateFilterButton(props: UpdateButtonProps) {
       disabled={isDisabled || !isValid}
       variant="filled"
       aria-label={label}
+      data-testid="update-filter-button"
     >
       {label}
     </Button>

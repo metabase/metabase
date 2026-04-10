@@ -120,8 +120,10 @@ describe("scenarios > embedding > sdk iframe embedding > content-translations", 
           .findByText("Testfrage")
           .should("be.visible");
 
+        // Use the stable test id rather than the German "New dashboard" label,
+        // which would change whenever Crowdin updates the German translation.
         H.getSimpleEmbedIframeContent()
-          .findByText("Neues Dashboard")
+          .findByTestId("new-dashboard-button")
           .should("be.visible")
           .click();
 

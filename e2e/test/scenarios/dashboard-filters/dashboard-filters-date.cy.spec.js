@@ -168,26 +168,25 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.popover().icon("calendar").click(); // "Time" -> "All Options"
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sélectionner...").click(); // "Select…"
+    // Use the stable mapper-button testid instead of the French "Sélectionner…" label.
+    cy.findByTestId("parameter-mapper-button").click();
     H.popover().contains("Created At").first().click();
 
-    H.saveDashboard({
-      buttonLabel: "Sauvegarder",
-      editBarText: "Vous êtes en train d'éditer ce tableau de bord.",
-    });
+    H.saveDashboard();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Date").click(); // "Date" - it's the same word in English and in French
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclure...").click(); // "Exclude…"
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mois de l'année...").click(); // "Months of the year…"
+    // Use the stable type testid instead of the French "Exclure…" label.
+    cy.findByTestId("date-picker-type-exclude").click();
+    // Use the stable unit testid instead of the French "Mois de l'année…" label.
+    cy.findByTestId("exclude-unit-month-of-year").click();
+    // Dayjs French month name. This is the actual thing we're verifying — the
+    // serializer must turn `janvier` into `Jan` in the URL.
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("janvier").click(); // "January"
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ajouter un filtre").click(); // "Add filter"
+    // Use the stable update-filter-button testid instead of "Ajouter un filtre".
+    cy.findByTestId("update-filter-button").click();
 
     cy.url().should("match", /\/dashboard\/\d+\?date=exclude-months-Jan/);
   });

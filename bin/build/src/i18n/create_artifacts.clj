@@ -4,6 +4,7 @@
    [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.frontend :as frontend]
+   [i18n.pseudo-locale :as pseudo-locale]
    [metabuild-common.core :as u]))
 
 (defn- locales-dot-edn []
@@ -41,6 +42,9 @@
 
   ([_options]
    (u/step "Create i18n artifacts"
+     ;; Generate the `en-ZZ` pseudo-locale .po file before enumerating locales so it's included in both
+     ;; `resources/locales.clj` and the per-locale artifact generation. See UXW-3460.
+     (pseudo-locale/generate-pseudo-locale-po!)
      (generate-locales-dot-edn!)
      (create-artifacts-for-all-locales!)
      (u/announce "Translation resources built successfully."))))
