@@ -3,8 +3,8 @@ import { isTouchDevice } from "metabase/utils/browser";
 
 import { JoinColumnButton } from "./JoinColumnButton";
 
-jest.mock("metabase/lib/browser", () => ({
-  ...jest.requireActual("metabase/lib/browser"),
+jest.mock("metabase/utils/browser", () => ({
+  ...jest.requireActual("metabase/utils/browser"),
   isTouchDevice: jest.fn(() => false),
 }));
 
