@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -77,7 +77,7 @@ export const DashboardChartSettings = ({
     transformedSeries,
     handleChangeSettings,
     isDashboard: true,
-    extra: { dashboardId: dashboard?.id },
+    extra: useMemo(() => ({ dashboardId: dashboard?.id }), [dashboard?.id]),
   });
 
   return (
