@@ -650,8 +650,6 @@
       (create-bot-dirs! bot-name))
     ;; Write mise.local.toml (incremental update)
     (generate-mise-local! slot full-config)
-    ;; Trust mise config
-    (shell/sh* {:quiet? true :dir (root)} "mise" "trust" "mise.local.toml")
     ;; Update IntelliJ data source config (personal mode only)
     (when-not bot-mode?
       (update-idea-datasources! (:app-db config)))
