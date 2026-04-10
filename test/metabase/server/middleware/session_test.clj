@@ -117,21 +117,21 @@
       (let [req {:headers {"x-api-key" "mb_foobar123"}}]
         (testing "No premium features, do not include :is-group-manager?"
           (mt/with-premium-features #{}
-            (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
-                               :is-superuser?     false
-                               :is-data-analyst?  false
-                               :user-locale       nil
-                               :auth-method       "api-key"})
+            (is (= (merge req {:metabase-user-id        (mt/user->id :lucky)
+                               :is-superuser?           false
+                               :is-data-analyst?        false
+                               :user-locale             nil
+                               :embedding/auth-method   "api-key"})
                    (#'mw.session/merge-current-user-info req)))))
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
           (when config/ee-available?
             (mt/with-premium-features #{:advanced-permissions}
-              (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
-                                 :is-superuser?     false
-                                 :is-data-analyst?  false
-                                 :is-group-manager? false
-                                 :user-locale       nil
-                                 :auth-method       "api-key"})
+              (is (= (merge req {:metabase-user-id        (mt/user->id :lucky)
+                                 :is-superuser?           false
+                                 :is-data-analyst?        false
+                                 :is-group-manager?       false
+                                 :user-locale             nil
+                                 :embedding/auth-method   "api-key"})
                      (#'mw.session/merge-current-user-info req))))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
