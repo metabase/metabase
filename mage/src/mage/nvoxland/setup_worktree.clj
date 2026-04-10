@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [babashka.pods :as pods]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
    [mage.nvoxland.dev-env :as dev-env]
@@ -184,7 +185,7 @@
   "After copying .idea/, replace absolute paths from the main worktree with the new
   worktree path in workspace.xml (Copilot persistence, last opened file, TS lib path, etc.)."
   [main-path worktree-root]
-  (let [workspace (clojure.java.io/file worktree-root ".idea/workspace.xml")]
+  (let [workspace (io/file worktree-root ".idea/workspace.xml")]
     (when (.exists workspace)
       (let [content (slurp workspace)
             updated (str/replace content main-path worktree-root)]
@@ -241,7 +242,7 @@
         (fs/copy iml dest {:replace-existing true})
         (println (c/green "Copied " old-name " -> " new-name))))
     ;; Update modules.xml to reference the renamed .iml file
-    (let [modules-xml (clojure.java.io/file worktree-root ".idea/modules.xml")]
+    (let [modules-xml (io/file worktree-root ".idea/modules.xml")]
       (when (.exists modules-xml)
         (let [content (slurp modules-xml)
               updated (str/replace content (str main-name ".iml") (str wt-name ".iml"))]

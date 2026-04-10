@@ -54,5 +54,4 @@
     (when (str/blank? bot)
       (println (c/red "Usage: ./bin/mage -bot-setup --bot <name>"))
       (u/exit 1))
-    (setup-bot-worktree! {:bot-name bot
-                          :wt-path  wt-path})))
+    (setup-bot-worktree! {:wt-path wt-path})))

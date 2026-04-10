@@ -3,6 +3,7 @@
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
    [mage.nvoxland.env :as bot-env]
@@ -350,8 +351,8 @@
   to match the current dev-env postgres configuration."
   [app-db]
   (when (= app-db :postgres)
-    (let [sources-xml (clojure.java.io/file (root) ".idea/dataSources.xml")
-          local-xml   (clojure.java.io/file (root) ".idea/dataSources.local.xml")]
+    (let [sources-xml (io/file (root) ".idea/dataSources.xml")
+          local-xml   (io/file (root) ".idea/dataSources.local.xml")]
       (when (.exists sources-xml)
         (let [content (slurp sources-xml)
               updated (str/replace content

@@ -274,7 +274,7 @@
         (u/exit 1))
 
       ;; Write the prompt to a temp file — passed to workmux -P for the agent's initial prompt
-      (let [prompt-file (str "/tmp/.autobot-prompt-" session-name ".md")]
+      (let [prompt-file (str (System/getProperty "java.io.tmpdir") "/.autobot-prompt-" session-name ".md")]
         (spit prompt-file command)
 
         ;; Check for existing worktree -> relaunch, otherwise fresh launch

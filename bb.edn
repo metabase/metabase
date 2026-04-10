@@ -655,7 +655,7 @@
 
   -bot-generate-prompt
   {:doc "Fill a template with placeholders and write an agent prompt"
-   :examples [["./bin/mage -bot-generate-prompt --template dev/bot/fixbot/fixbot-agent.md --output .fixbot/prompt.md --set ISSUE_ID=MB-123 --set APP_DB=Postgres"
+   :examples [["./bin/mage -bot-generate-prompt --template dev/bot/fixbot-agent.md --output .bot/fixbot/20260410/prompt.md --set ISSUE_ID=MB-123"
                "Generate fixbot prompt"]]
    :requires [[mage.bot.prompt :as bot-prompt]]
    :options [[nil "--template FILE" "Template file path"]
