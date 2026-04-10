@@ -24,10 +24,6 @@ jest.mock("metabase/common/hooks/use-palette", () => ({
   }),
 }));
 
-jest.mock("../SchemaViewerContext", () => ({
-  useIsCompactMode: () => false,
-}));
-
 const createEdgeProps = (
   overrides?: Partial<SchemaViewerEdgeProps>,
 ): SchemaViewerEdgeProps => ({

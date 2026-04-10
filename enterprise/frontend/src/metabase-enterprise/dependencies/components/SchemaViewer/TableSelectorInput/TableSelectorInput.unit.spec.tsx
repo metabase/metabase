@@ -14,15 +14,7 @@ const renderWithProvider = (component: React.ReactElement) => {
 jest.mock("@xyflow/react", () => ({
   useReactFlow: () => ({
     fitView: jest.fn(),
-    getNodes: jest.fn(() => []),
-    getEdges: jest.fn(() => []),
-    setNodes: jest.fn(),
   }),
-}));
-
-// Mock SchemaViewerContext
-jest.mock("../SchemaViewerContext", () => ({
-  useIsCompactMode: () => false,
 }));
 
 const createTable = (id: number, name: string, displayName?: string): Table => ({

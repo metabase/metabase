@@ -7,7 +7,6 @@ import { memo, useMemo } from "react";
 
 import { usePalette } from "metabase/common/hooks/use-palette";
 
-import { useIsCompactMode } from "../SchemaViewerContext";
 import type { SchemaViewerEdgeData, SchemaViewerFlowEdge } from "../types";
 
 // Crow's foot geometry constants
@@ -153,16 +152,18 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
 ) {
   const palette = usePalette();
   const isInitialized = useNodesInitialized();
-  const isCompactMode = useIsCompactMode();
   const isSelfRef = props.source === props.target;
   const isHidden = !isInitialized;
   const animationClass = "schema-viewer-edge-march";
+  const selected = props.selected ?? false;
 
   const relationship = props.data?.relationship ?? "many-to-one";
   const symbols = useMemo(() => getSymbolTypes(relationship), [relationship]);
-  const stroke = palette["border"] ?? "currentColor";
-  const strokeWidth = isCompactMode ? 3 : 1.5;
-  const scale = isCompactMode ? 2 : 1;
+  const stroke = selected
+    ? (palette["brand"] ?? "var(--mb-color-brand)")
+    : (palette["border"] ?? "currentColor");
+  const strokeWidth = selected ? 2.5 : 1.5;
+  const scale = 1;
 
   const style = useMemo(
     () => ({
@@ -203,6 +204,15 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
 
   return (
     <>
+      {/* Invisible wide hit-area path so clicks on thin edges are easy */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        style={isHidden ? { visibility: "hidden" as const } : undefined}
+        className="react-flow__edge-interaction"
+      />
       <path
         data-testid="schema-viewer-edge-path"
         d={edgePath}

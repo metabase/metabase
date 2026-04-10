@@ -21,3 +21,23 @@
   border: none;
   opacity: 0;
 }
+
+/* Indicator on expandable FK fields — signals the target table can be fetched.
+   Positioned so the circle's center sits on the table node's right border,
+   with half inside and half outside the card. Requires .card (in
+   SchemaViewerTableNode.module.css) to use the default overflow: visible.
+   Uses --node-border-color (declared on .card) so it automatically picks up
+   the focal brand color when the card is focal. */
+.expandIndicator {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--mb-color-white);
+  border: 1.5px solid var(--node-border-color, var(--mb-color-text-medium));
+  pointer-events: none;
+  z-index: 1;
+}

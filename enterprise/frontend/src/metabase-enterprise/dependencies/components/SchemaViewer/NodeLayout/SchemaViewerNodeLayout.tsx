@@ -1,7 +1,6 @@
 import { useNodesInitialized, useReactFlow } from "@xyflow/react";
 import { useLayoutEffect, useRef } from "react";
 
-import { useIsCompactMode } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../types";
 import { getNodesWithPositions } from "../utils";
 
@@ -28,41 +27,33 @@ export function SchemaViewerNodeLayout() {
   const { getNodes, getEdges, setNodes, fitView } =
     useReactFlow<SchemaViewerFlowNode>();
   const isInitialized = useNodesInitialized();
-  const isCompactMode = useIsCompactMode();
   const prevNodeSetKeyRef = useRef<string | null>(null);
-  const prevCompactModeRef = useRef(isCompactMode);
 
-  // Layout when nodes are initialized or when the set of nodes changes
+  // Layout when nodes are initialized or when unpositioned nodes appear.
+  // Incremental updates that arrive already-positioned (e.g. the merge path
+  // used on FK expansion in SchemaViewer) are skipped here — we neither
+  // re-run Dagre nor shift the viewport, so the user's existing layout and
+  // camera position stay put.
   useLayoutEffect(() => {
-    if (isInitialized) {
-      const nodes = getNodes();
-      const currentNodeSetKey = getNodeSetKey(nodes);
-
-      // Run layout if this is a new node state, or if nodes are not yet positioned/revealed.
-      if (
-        prevNodeSetKeyRef.current !== currentNodeSetKey ||
-        hasUnpositionedNodes(nodes)
-      ) {
-        prevNodeSetKeyRef.current = currentNodeSetKey;
-        prevCompactModeRef.current = isCompactMode;
-        const edges = getEdges();
-        const newNodes = getNodesWithPositions(nodes, edges, isCompactMode);
-        setNodes(newNodes);
-        fitView({ nodes: newNodes });
-      }
+    if (!isInitialized) {
+      return;
     }
-  }, [isInitialized, getNodes, getEdges, setNodes, fitView, isCompactMode]);
 
-  // Relayout when switching between compact and regular mode (no fitView to avoid feedback loop)
-  useLayoutEffect(() => {
-    if (isInitialized && prevCompactModeRef.current !== isCompactMode) {
-      prevCompactModeRef.current = isCompactMode;
-      const nodes = getNodes();
+    const nodes = getNodes();
+    const currentNodeSetKey = getNodeSetKey(nodes);
+
+    if (hasUnpositionedNodes(nodes)) {
+      prevNodeSetKeyRef.current = currentNodeSetKey;
       const edges = getEdges();
-      const newNodes = getNodesWithPositions(nodes, edges, isCompactMode);
+      const newNodes = getNodesWithPositions(nodes, edges);
       setNodes(newNodes);
+      fitView({ nodes: newNodes });
+    } else if (prevNodeSetKeyRef.current !== currentNodeSetKey) {
+      // Node set changed but everything is already positioned — just sync
+      // the key so we don't re-detect this as a "new state" next time.
+      prevNodeSetKeyRef.current = currentNodeSetKey;
     }
-  }, [isCompactMode, isInitialized, getNodes, getEdges, setNodes]);
+  }, [isInitialized, getNodes, getEdges, setNodes, fitView]);
 
   return null;
 }

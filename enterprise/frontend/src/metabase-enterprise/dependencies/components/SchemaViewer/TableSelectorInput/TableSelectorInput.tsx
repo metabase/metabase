@@ -1,4 +1,3 @@
-import { useReactFlow } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -19,10 +18,8 @@ import {
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
-import { COMPACT_ZOOM_THRESHOLD } from "../constants";
-import { useIsCompactMode } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../types";
-import { getNodesWithPositions } from "../utils";
+import { useZoomToNodes } from "../useZoomToNodes";
 
 import S from "./TableSelectorInput.module.css";
 
@@ -41,9 +38,7 @@ export function TableSelectorInput({
   isUserModified,
   onSelectionChange,
 }: TableSelectorInputProps) {
-  const { fitView, getNodes, getEdges, setNodes } =
-    useReactFlow<SchemaViewerFlowNode>();
-  const isCompactMode = useIsCompactMode();
+  const zoomToNodes = useZoomToNodes();
   const [opened, setOpened] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -164,27 +159,9 @@ export function TableSelectorInput({
       if (!node) {
         return;
       }
-
-      if (isCompactMode) {
-        // Recalculate layout for regular mode first, then fit view
-        const currentNodes = getNodes();
-        const edges = getEdges();
-        const newNodes = getNodesWithPositions(currentNodes, edges, false);
-        setNodes(newNodes);
-        const targetNode = newNodes.find((n) => n.id === node.id);
-        if (targetNode) {
-          fitView({
-            nodes: [targetNode],
-            duration: 300,
-            padding: 0.5,
-            minZoom: COMPACT_ZOOM_THRESHOLD,
-          });
-        }
-      } else {
-        fitView({ nodes: [node], duration: 300, padding: 0.5 });
-      }
+      zoomToNodes([node.id], { duration: 300 });
     },
-    [nodesByTableId, fitView, isCompactMode, getNodes, getEdges, setNodes],
+    [nodesByTableId, zoomToNodes],
   );
 
   const handleToggle = useCallback(

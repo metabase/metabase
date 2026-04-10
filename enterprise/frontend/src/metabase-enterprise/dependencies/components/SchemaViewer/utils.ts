@@ -11,7 +11,6 @@ import type {
 } from "metabase-types/api";
 
 import {
-  COMPACT_NODE_HEIGHT,
   DAGRE_NODE_SEP,
   DAGRE_RANK_SEP,
   HEADER_HEIGHT,
@@ -19,6 +18,13 @@ import {
   ROW_HEIGHT,
 } from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
+
+// Minimum visual gap to leave between a newly-placed node and any existing one
+const COLLISION_PADDING = 20;
+// Vertical step used when walking to find a free slot for an incoming node
+const COLLISION_Y_STEP = 100;
+// Maximum number of Y steps to try before giving up on a given column
+const MAX_COLLISION_Y_STEPS = 40;
 
 function sortFields(fields: ErdField[]): ErdField[] {
   return [...fields].sort((a, b) => {
@@ -143,13 +149,7 @@ export function toFlowGraph(data: ErdResponse): {
   return memoizedToFlowGraph(data);
 }
 
-function getLayoutNodeHeight(
-  node: SchemaViewerFlowNode,
-  isCompactMode: boolean,
-): number {
-  if (isCompactMode) {
-    return COMPACT_NODE_HEIGHT;
-  }
+function getLayoutNodeHeight(node: SchemaViewerFlowNode): number {
   const fieldCount = node.data.fields?.length ?? 0;
   return HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
 }
@@ -157,7 +157,6 @@ function getLayoutNodeHeight(
 export function getNodesWithPositions(
   nodes: SchemaViewerFlowNode[],
   edges: { source: string; target: string }[],
-  isCompactMode: boolean,
 ): SchemaViewerFlowNode[] {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setGraph({
@@ -168,7 +167,7 @@ export function getNodesWithPositions(
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   nodes.forEach((node) => {
-    const height = getLayoutNodeHeight(node, isCompactMode);
+    const height = getLayoutNodeHeight(node);
     dagreGraph.setNode(node.id, {
       width: NODE_WIDTH,
       height,
@@ -198,4 +197,213 @@ export function getNodesWithPositions(
       },
     };
   });
+}
+
+/**
+ * Merge incoming graph nodes with currently-positioned nodes, preserving the
+ * positions of tables that were already on the canvas and placing genuinely
+ * new tables next to a connected existing neighbor without overlapping any
+ * other node. Returns null if the incoming graph can't be merged
+ * incrementally (first load, schema switch, node removal, or an isolated
+ * new node with no connected neighbor) — in which case the caller should
+ * fall back to the fresh `incoming` nodes and let the normal Dagre layout
+ * path handle them.
+ */
+export function mergeWithExistingPositions(
+  incoming: SchemaViewerFlowNode[],
+  current: SchemaViewerFlowNode[],
+  edges: { source: string; target: string }[],
+): SchemaViewerFlowNode[] | null {
+  // No existing state → nothing to preserve, fresh layout handles it.
+  if (current.length === 0) {
+    return null;
+  }
+
+  const currentById = new Map(current.map((n) => [n.id, n]));
+  const incomingIds = new Set(incoming.map((n) => n.id));
+
+  // If any existing node was removed, this isn't a pure add — fall back.
+  if (current.some((n) => !incomingIds.has(n.id))) {
+    return null;
+  }
+
+  // Track which IDs are already positioned (existing tables, plus any new
+  // tables that have been placed in the iteration below).
+  const placedById = new Map<string, SchemaViewerFlowNode>();
+  for (const node of incoming) {
+    const existing = currentById.get(node.id);
+    if (existing != null) {
+      // Preserve position, style (keeps opacity: 1, measured width/height),
+      // and the existing `is_focal` flag — the backend may re-rank focal
+      // tables when the selection grows, but we don't want tables that were
+      // already on the canvas to suddenly light up as a side effect of the
+      // user clicking a FK somewhere else.
+      placedById.set(node.id, {
+        ...node,
+        position: existing.position,
+        style: existing.style,
+        data: { ...node.data, is_focal: existing.data.is_focal },
+      });
+    }
+  }
+
+  // Remaining = new tables still to position.
+  let remaining = incoming.filter((n) => !currentById.has(n.id));
+
+  // Iterate in passes: a new node is placeable once at least one of its
+  // connected neighbors has been placed (either originally existing or
+  // positioned in an earlier pass).
+  let progressed = true;
+  while (remaining.length > 0 && progressed) {
+    progressed = false;
+    const stillRemaining: SchemaViewerFlowNode[] = [];
+    for (const node of remaining) {
+      const connectingEdge = edges.find(
+        (e) =>
+          (e.source === node.id && placedById.has(e.target)) ||
+          (e.target === node.id && placedById.has(e.source)),
+      );
+      if (connectingEdge == null) {
+        stillRemaining.push(node);
+        continue;
+      }
+      const neighborId =
+        connectingEdge.source === node.id
+          ? connectingEdge.target
+          : connectingEdge.source;
+      const neighbor = placedById.get(neighborId)!;
+      // rankdir: LR — target sits to the right of source.
+      const prefersRight = connectingEdge.target === node.id;
+      const position = findNonCollidingPosition(
+        node,
+        neighbor,
+        prefersRight,
+        placedById,
+      );
+      placedById.set(node.id, {
+        ...node,
+        position,
+        // Tables added via expansion (FK click) shouldn't inherit the
+        // backend's focal highlighting — the user reached them by exploring,
+        // they aren't "the important ones" in any special sense.
+        data: { ...node.data, is_focal: false },
+        style: {
+          ...node.style,
+          opacity: 1, // Visible immediately; no Dagre pass needed.
+        },
+      });
+      progressed = true;
+    }
+    remaining = stillRemaining;
+  }
+
+  // If any new node has no reachable neighbor in the current graph,
+  // give up and let Dagre handle it.
+  if (remaining.length > 0) {
+    return null;
+  }
+
+  // Return nodes in the incoming order so edge ordering stays stable.
+  return incoming.map((n) => placedById.get(n.id)!);
+}
+
+/**
+ * Find a position for a new node next to a connected neighbor such that the
+ * resulting bounding box doesn't overlap any already-placed node. Strategy:
+ * walk outward from the neighbor's (x, y), preferring positions that are
+ * close to the neighbor — interleaving the "preferred" side (the Dagre
+ * rankdir convention) with the "alternate" side at each Y step so that
+ * same-row placement on either side wins over a far-away Y on the preferred
+ * column. Falls back to a fresh column to the right of all existing
+ * content if nothing fits within the search window.
+ */
+function findNonCollidingPosition(
+  newNode: SchemaViewerFlowNode,
+  neighbor: SchemaViewerFlowNode,
+  prefersRight: boolean,
+  placed: Map<string, SchemaViewerFlowNode>,
+): { x: number; y: number } {
+  const nodeWidth = getStyleDimension(newNode, "width") ?? NODE_WIDTH;
+  const nodeHeight =
+    getStyleDimension(newNode, "height") ?? HEADER_HEIGHT;
+  const xOffset = NODE_WIDTH + DAGRE_RANK_SEP;
+  const preferredX = prefersRight
+    ? neighbor.position.x + xOffset
+    : neighbor.position.x - xOffset;
+  const alternateX = prefersRight
+    ? neighbor.position.x - xOffset
+    : neighbor.position.x + xOffset;
+  const baseY = neighbor.position.y;
+
+  const fits = (x: number, y: number) =>
+    !collidesWithAny(x, y, nodeWidth, nodeHeight, placed);
+
+  // Try increasing Y offsets, checking both columns at each step. Within a
+  // given Y step, preferred side is checked before alternate. For i > 0 we
+  // try the +Y direction before the -Y direction (downward bias matches the
+  // Dagre layout's tendency to grow downward on relayouts).
+  for (let i = 0; i <= MAX_COLLISION_Y_STEPS; i++) {
+    if (i === 0) {
+      if (fits(preferredX, baseY)) {
+        return { x: preferredX, y: baseY };
+      }
+      if (fits(alternateX, baseY)) {
+        return { x: alternateX, y: baseY };
+      }
+      continue;
+    }
+    const dy = i * COLLISION_Y_STEP;
+    if (fits(preferredX, baseY + dy)) {
+      return { x: preferredX, y: baseY + dy };
+    }
+    if (fits(alternateX, baseY + dy)) {
+      return { x: alternateX, y: baseY + dy };
+    }
+    if (fits(preferredX, baseY - dy)) {
+      return { x: preferredX, y: baseY - dy };
+    }
+    if (fits(alternateX, baseY - dy)) {
+      return { x: alternateX, y: baseY - dy };
+    }
+  }
+
+  // Last resort: fresh column to the right of everything.
+  let maxRight = 0;
+  for (const n of placed.values()) {
+    const w = getStyleDimension(n, "width") ?? NODE_WIDTH;
+    maxRight = Math.max(maxRight, n.position.x + w);
+  }
+  return { x: maxRight + DAGRE_RANK_SEP, y: baseY };
+}
+
+function collidesWithAny(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  placed: Map<string, SchemaViewerFlowNode>,
+): boolean {
+  for (const node of placed.values()) {
+    const nx = node.position.x;
+    const ny = node.position.y;
+    const nw = getStyleDimension(node, "width") ?? NODE_WIDTH;
+    const nh = getStyleDimension(node, "height") ?? 0;
+    if (
+      x < nx + nw + COLLISION_PADDING &&
+      x + width + COLLISION_PADDING > nx &&
+      y < ny + nh + COLLISION_PADDING &&
+      y + height + COLLISION_PADDING > ny
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getStyleDimension(
+  node: SchemaViewerFlowNode,
+  key: "width" | "height",
+): number | null {
+  const value = node.style?.[key];
+  return typeof value === "number" ? value : null;
 }

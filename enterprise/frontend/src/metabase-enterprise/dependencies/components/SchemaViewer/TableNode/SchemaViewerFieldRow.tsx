@@ -1,11 +1,13 @@
-import { Handle, Position, useNodes, useReactFlow } from "@xyflow/react";
+import { Handle, Position, useReactFlow } from "@xyflow/react";
 
 import { Box, Group } from "metabase/ui";
-import type { ConcreteTableId, ErdField, TableId } from "metabase-types/api";
+import type { ConcreteTableId, ErdField } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../SchemaViewerContext";
-import { COMPACT_ZOOM_THRESHOLD, ROW_HEIGHT } from "../constants";
+import { ROW_HEIGHT } from "../constants";
+import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 import { getNodeId } from "../utils";
+import { useZoomToNodes } from "../useZoomToNodes";
 
 import S from "./SchemaViewerFieldRow.module.css";
 
@@ -21,8 +23,11 @@ export function SchemaViewerFieldRow({
   hasSelfRefTarget,
 }: SchemaViewerFieldRowProps) {
   const { visibleTableIds, onExpandToTable } = useSchemaViewerContext();
-  const { fitView } = useReactFlow();
-  const nodes = useNodes();
+  const zoomToNodes = useZoomToNodes();
+  const { setEdges } = useReactFlow<
+    SchemaViewerFlowNode,
+    SchemaViewerFlowEdge
+  >();
 
   const isPK =
     field.semantic_type === "type/PK" || field.semantic_type === "PK";
@@ -33,30 +38,61 @@ export function SchemaViewerFieldRow({
   const canExpand =
     isFK &&
     field.fk_target_table_id != null &&
-    !visibleTableIds.has(field.fk_target_table_id);
+    !visibleTableIds.has(field.fk_target_table_id as ConcreteTableId);
 
   // FK field that has a target table already on the canvas
   const canZoomTo =
     isFK &&
     field.fk_target_table_id != null &&
-    visibleTableIds.has(field.fk_target_table_id);
+    visibleTableIds.has(field.fk_target_table_id as ConcreteTableId);
 
   const handleClick = () => {
     if (canExpand && field.fk_target_table_id != null) {
-      onExpandToTable(field.fk_target_table_id as ConcreteTableId);
-    } else if (canZoomTo && field.fk_target_table_id != null) {
-      const node = nodes.find(
-        (n) =>
-          n.id === getNodeId({ table_id: field.fk_target_table_id as TableId }),
+      // Pre-compute the edge IDs that will connect the FK field to its
+      // target field after expansion, so SchemaViewer can auto-highlight
+      // that edge once the new graph data arrives. We pass both possible
+      // orderings because the backend may put either field first in the
+      // edge identifier.
+      const candidateEdgeIds =
+        field.fk_target_field_id != null
+          ? [
+              `edge-${field.id}-${field.fk_target_field_id}`,
+              `edge-${field.fk_target_field_id}-${field.id}`,
+            ]
+          : undefined;
+      onExpandToTable(
+        field.fk_target_table_id as ConcreteTableId,
+        candidateEdgeIds,
       );
-      if (node) {
-        fitView({
-          nodes: [node],
-          duration: 300,
-          padding: 0.5,
-          minZoom: COMPACT_ZOOM_THRESHOLD,
-          interpolate: "linear",
-        });
+    } else if (canZoomTo && field.fk_target_table_id != null) {
+      const targetNodeId = getNodeId({
+        table_id: field.fk_target_table_id,
+      });
+      zoomToNodes([targetNodeId], { duration: 300 });
+
+      // Also highlight the connecting edge — the same visual treatment
+      // the user would get from clicking the edge directly. We try both
+      // possible edge ID orderings (the backend's source/target convention
+      // for edge IDs isn't fixed) and select whichever exists.
+      if (field.fk_target_field_id != null) {
+        const candidateEdgeIds = new Set([
+          `edge-${field.id}-${field.fk_target_field_id}`,
+          `edge-${field.fk_target_field_id}-${field.id}`,
+        ]);
+        setEdges((edges) =>
+          edges.map((edge) => {
+            const shouldSelect = candidateEdgeIds.has(edge.id);
+            // Only allocate a new object if the selection state actually
+            // changes for this edge — avoids unnecessary re-renders.
+            if (shouldSelect && !edge.selected) {
+              return { ...edge, selected: true };
+            }
+            if (!shouldSelect && edge.selected) {
+              return { ...edge, selected: false };
+            }
+            return edge;
+          }),
+        );
       }
     }
   };
@@ -86,6 +122,7 @@ export function SchemaViewerFieldRow({
       <Box fz="sm" c="text-tertiary" style={{ flexShrink: 0 }}>
         {field.database_type.toLowerCase()}
       </Box>
+      {canExpand && <Box className={S.expandIndicator} />}
       {/* These handles are invisible in our design, but they're required for proper edge drawing */}
       {isFK && isConnected && (
         <Handle

@@ -40,12 +40,33 @@ export function SchemaPickerInput({
   const [opened, { open, close, toggle }] = useDisclosure(databaseId == null);
   const [selectedDatabaseId, setSelectedDatabaseId] =
     useState<DatabaseId | null>(null);
+  // Set when the user clicks "Back" from the auto-opened schema list, so
+  // we stop deriving "show schema list for current DB" and let them see
+  // the DB list instead. Cleared when the popover fully closes.
+  const [hasNavigatedBackToDbs, setHasNavigatedBackToDbs] = useState(false);
 
   const { data: databasesResponse, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
 
-  const schemaQueryDatabaseId =
+  // Which database's schemas the popover should currently be listing.
+  // - `selectedDatabaseId` is set when the user has clicked a DB row in the
+  //   picker to drill into its schemas.
+  // - When the popover is opened while a schema is already selected, we
+  //   skip the DB list and show the schema list for the current DB so the
+  //   user lands directly on (and can re-pick) their current schema —
+  //   unless they've explicitly backed out to the DB list.
+  const popoverSchemaListDbId =
     selectedDatabaseId ??
+    (opened &&
+    !hasNavigatedBackToDbs &&
+    schema != null &&
+    schema.length > 0 &&
+    databaseId != null
+      ? databaseId
+      : null);
+
+  const schemaQueryDatabaseId =
+    popoverSchemaListDbId ??
     (databaseId != null && schema == null ? databaseId : null);
 
   // Single top-level schema query shared by picker flow and button label fallback.
@@ -67,7 +88,10 @@ export function SchemaPickerInput({
     return databasesResponse?.data?.filter((db) => !db.is_saved_questions);
   }, [databasesResponse]);
 
-  // Auto-select when database has a single schema
+  // Auto-select when database has a single schema. Gated on
+  // `selectedDatabaseId` (not `popoverSchemaListDbId`) so this only fires
+  // when the user has explicitly clicked a DB row in the picker — not
+  // when we pre-populate the schema list for the currently-viewed DB.
   useEffect(() => {
     if (selectedDatabaseId != null && schemas != null) {
       if (schemas.length === 1) {
@@ -94,23 +118,32 @@ export function SchemaPickerInput({
 
   const handleSchemaClick = useCallback(
     (schemaName: SchemaName) => {
-      if (selectedDatabaseId != null) {
-        const url = Urls.dataStudioErdSchema(selectedDatabaseId, schemaName);
+      // Use the derived id so this works both when the user drilled in via
+      // a DB-row click and when we opened directly into the current DB's
+      // schema list.
+      const dbIdForNavigation = popoverSchemaListDbId;
+      if (dbIdForNavigation != null) {
+        const url = Urls.dataStudioErdSchema(dbIdForNavigation, schemaName);
         onChange?.();
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
       }
     },
-    [selectedDatabaseId, onChange, dispatch, close],
+    [popoverSchemaListDbId, onChange, dispatch, close],
   );
 
   const handleBack = useCallback(() => {
     setSelectedDatabaseId(null);
+    // Also break out of the "auto-opened schema list" mode — the user
+    // explicitly asked to go back to the DB list, so derived DB should
+    // not kick us back into the schema list on the next render.
+    setHasNavigatedBackToDbs(true);
   }, []);
 
   const handleClose = useCallback(() => {
     setSelectedDatabaseId(null);
+    setHasNavigatedBackToDbs(false);
     close();
   }, [close]);
 
@@ -142,8 +175,10 @@ export function SchemaPickerInput({
               data-testid="schema-picker-button"
               onClick={toggle}
             >
-              {databases?.find((db) => db.id === databaseId)?.name ??
-                t`Database`}
+              {schema != null && schema.length > 0
+                ? schema
+                : (databases?.find((db) => db.id === databaseId)?.name ??
+                  t`Database`)}
             </Button>
           ) : (
             <Button
@@ -164,7 +199,7 @@ export function SchemaPickerInput({
         </Popover.Target>
 
         <Popover.Dropdown p="sm">
-          {selectedDatabaseId != null ? (
+          {popoverSchemaListDbId != null ? (
             isLoadingSchemas ? (
               <Stack align="center" justify="center" py="md">
                 <Loader size="sm" />
@@ -173,7 +208,11 @@ export function SchemaPickerInput({
               <SchemaList
                 schemas={schemas}
                 databaseName={
-                  databases?.find((db) => db.id === selectedDatabaseId)?.name
+                  databases?.find((db) => db.id === popoverSchemaListDbId)
+                    ?.name
+                }
+                currentSchema={
+                  popoverSchemaListDbId === databaseId ? schema : undefined
                 }
                 onSelect={handleSchemaClick}
                 onBack={handleBack}
@@ -257,6 +296,12 @@ function DatabaseListItem({ database, onSelect }: DatabaseListItemProps) {
 interface SchemaListProps {
   schemas: SchemaName[];
   databaseName?: string;
+  /**
+   * Name of the schema currently displayed on the canvas. When set, the
+   * matching row in the dropdown is marked as the current selection so the
+   * user can see which schema they're on without mental lookup.
+   */
+  currentSchema?: string;
   onSelect: (schema: SchemaName) => void;
   onBack: () => void;
 }
@@ -264,6 +309,7 @@ interface SchemaListProps {
 function SchemaList({
   schemas,
   databaseName,
+  currentSchema,
   onSelect,
   onBack,
 }: SchemaListProps) {
@@ -282,19 +328,31 @@ function SchemaList({
         </Group>
       </UnstyledButton>
       <Box className={S.divider} />
-      {schemas.map((schemaName) => (
-        <UnstyledButton
-          key={schemaName}
-          className={S.listItem}
-          onClick={() => onSelect(schemaName)}
-          aria-label={schemaName}
-        >
-          <Group gap="sm" wrap="nowrap">
-            <FixedSizeIcon name="folder" c="text-secondary" />
-            <Text truncate>{schemaName}</Text>
-          </Group>
-        </UnstyledButton>
-      ))}
+      {schemas.map((schemaName) => {
+        const isCurrent = schemaName === currentSchema;
+        return (
+          <UnstyledButton
+            key={schemaName}
+            className={S.listItem}
+            onClick={() => onSelect(schemaName)}
+            aria-label={schemaName}
+            aria-current={isCurrent ? "true" : undefined}
+            autoFocus={isCurrent}
+          >
+            <Group gap="sm" wrap="nowrap" justify="space-between">
+              <Group gap="sm" wrap="nowrap" style={{ overflow: "hidden" }}>
+                <FixedSizeIcon name="folder" c="text-secondary" />
+                <Text truncate fw={isCurrent ? 700 : undefined}>
+                  {schemaName}
+                </Text>
+              </Group>
+              {isCurrent && (
+                <FixedSizeIcon name="check" c="brand" />
+              )}
+            </Group>
+          </UnstyledButton>
+        );
+      })}
     </Stack>
   );
 }

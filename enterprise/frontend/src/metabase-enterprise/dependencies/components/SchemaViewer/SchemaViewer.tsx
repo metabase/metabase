@@ -1,13 +1,12 @@
 import { useClipboard } from "@mantine/hooks";
 import {
   Background,
-  ControlButton,
-  Controls,
+  MiniMap,
   Panel,
   ReactFlow,
   useEdgesState,
   useNodesState,
-  useReactFlow,
+  useViewport,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
@@ -35,22 +34,17 @@ import type {
 } from "metabase-types/api";
 
 import { SchemaViewerEdge } from "./Edge";
-import { HopsInput } from "./HopsInput";
 import { SchemaViewerNodeLayout } from "./NodeLayout";
 import { SchemaPickerInput } from "./SchemaPickerInput";
 import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
 import { SchemaViewerTableNode } from "./TableNode";
 import { TableSelectorInput } from "./TableSelectorInput";
-import {
-  AUTO_COMPACT_NODE_THRESHOLD,
-  COMPACT_ZOOM_THRESHOLD,
-  MAX_ZOOM,
-  MIN_ZOOM,
-} from "./constants";
+import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
-import { toFlowGraph } from "./utils";
+import { useZoomToNodes } from "./useZoomToNodes";
+import { mergeWithExistingPositions, toFlowGraph } from "./utils";
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -64,38 +58,47 @@ const PRO_OPTIONS = {
   hideAttribution: true,
 };
 
-const DEFAULT_HOPS = 2;
+const DEFAULT_ZOOM = 0.3;
+const FIT_VIEW_OPTIONS = { minZoom: DEFAULT_ZOOM, maxZoom: DEFAULT_ZOOM };
 
-interface CompactModeToggleProps {
-  isCompactMode: boolean;
-  onToggle: () => void;
+const DEFAULT_HOPS = 1;
+
+function ZoomIndicator() {
+  const { zoom } = useViewport();
+  return (
+    <Text fw={700} c="text-secondary" fz="sm">
+      {Math.round(zoom * 100)}%
+    </Text>
+  );
 }
 
-function CompactModeToggle({
-  isCompactMode,
-  onToggle,
-}: CompactModeToggleProps) {
-  const { fitView } = useReactFlow();
+interface FitToNewNodesProps {
+  nodeIds: readonly string[] | null;
+  onDone: () => void;
+}
 
-  const handleClick = useCallback(() => {
-    onToggle();
-    // When switching to compact mode, fit the view to show whole schema
-    if (!isCompactMode) {
-      // Use setTimeout to allow layout to update before fitting view
-      setTimeout(() => {
-        fitView();
-      }, 0);
+/**
+ * When `nodeIds` is set to a non-empty list (e.g. by SchemaViewer when
+ * tables have been added via FK expansion, or when an edge has been
+ * double-clicked), pan/zoom the camera to the given nodes using the shared
+ * {@link useZoomToNodes} rules (≥0.5 zoom, header in viewport). Calls
+ * `onDone` once the zoom has been scheduled to clear the pending state.
+ */
+function FitToNewNodes({ nodeIds, onDone }: FitToNewNodesProps) {
+  const zoomToNodes = useZoomToNodes();
+  useEffect(() => {
+    if (nodeIds == null || nodeIds.length === 0) {
+      return;
     }
-  }, [isCompactMode, onToggle, fitView]);
-
-  return (
-    <ControlButton
-      onClick={handleClick}
-      title={isCompactMode ? t`Switch to full mode` : t`Switch to compact mode`}
-    >
-      <Icon name={isCompactMode ? "expand" : "contract"} />
-    </ControlButton>
-  );
+    // requestAnimationFrame to let React Flow commit any pending node
+    // additions (and their measured dimensions) before we compute bounds.
+    const handle = requestAnimationFrame(() => {
+      zoomToNodes(nodeIds);
+      onDone();
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [nodeIds, zoomToNodes, onDone]);
+  return null;
 }
 
 interface SchemaViewerProps {
@@ -151,9 +154,26 @@ export function SchemaViewer({
   initialHops,
 }: SchemaViewerProps) {
   const [hops, setHops] = useState(initialHops ?? DEFAULT_HOPS);
-  const [isCompactMode, setIsCompactMode] = useState(false);
-  // Track if user explicitly set full mode via toggle button (not double-click)
-  const [explicitFullMode, setExplicitFullMode] = useState(false);
+  // IDs of tables the camera should fit/zoom to next. Populated in two
+  // places: (1) the graph-sync effect when FK expansion adds new tables,
+  // (2) the onEdgeDoubleClick handler to zoom to an edge's source/target.
+  const [pendingFitNodeIds, setPendingFitNodeIds] = useState<
+    readonly string[] | null
+  >(null);
+  const clearPendingFitNodeIds = useCallback(
+    () => setPendingFitNodeIds(null),
+    [],
+  );
+  // Per-edge memory of which endpoint the camera last zoomed to, so
+  // successive double-clicks on the same edge alternate source → target.
+  const lastEdgeZoomSideRef = useRef<Map<string, "source" | "target">>(
+    new Map(),
+  );
+  // When the user expands a new table via FK click, these candidate IDs
+  // hold the edge that should be auto-selected once the new graph arrives.
+  // Stored as a ref (not state) so setting it doesn't trigger an extra
+  // render — the sync effect just reads it on the next ERD response.
+  const pendingEdgeIdsToSelectRef = useRef<readonly string[] | null>(null);
 
   // Persist table selection + hops per database:schema
   const prefsKey = databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
@@ -230,14 +250,10 @@ export function SchemaViewer({
   // Using an effect for this causes a race: the prefs restoration effect fires
   // before the cleanup effect and applies stale savedPrefs to the new context.
   const appliedPrefsRef = useRef(false);
-  const compactModeInitializedRef = useRef<string | null>(null);
-  const prevNodeCountRef = useRef<number | null>(null);
   if (prevPrefsKeyRef.current !== prefsKey) {
     prevPrefsKeyRef.current = prefsKey;
     appliedPrefsRef.current = false;
     initializedContextRef.current = null;
-    compactModeInitializedRef.current = null;
-    prevNodeCountRef.current = null;
   }
 
   // Fetch all tables in the database/schema for the dropdown
@@ -248,21 +264,24 @@ export function SchemaViewer({
         : skipToken,
     );
 
-  // Wait for saved prefs (and table validation) before firing the initial ERD query
-  // to avoid a wasted fetch that would be immediately replaced by restored prefs
+  // Wait for saved prefs AND allTables before firing the initial ERD query.
+  // Defers the fetch until selection has been initialized (from saved prefs or
+  // from allTables as "select all") to avoid a wasted fetch that would be
+  // immediately replaced once the selection lands.
   const hasPendingPrefsToApply =
     !appliedPrefsRef.current &&
     savedPrefs != null &&
     typeof savedPrefs === "object" &&
     savedPrefs.table_ids != null;
 
-  const shouldWaitForPrefs =
-    initialTableIds == null &&
+  const shouldWaitForInitialLoad =
     databaseId != null &&
-    (isLoadingPrefs || (hasPendingPrefsToApply && isFetchingTables));
+    initialTableIds == null &&
+    effectiveSelectedTableIds === null &&
+    (isLoadingPrefs || isFetchingTables);
 
   const { data, isFetching, error } = useGetErdQuery(
-    shouldWaitForPrefs
+    shouldWaitForInitialLoad
       ? skipToken
       : getErdQueryParams({
           databaseId,
@@ -281,32 +300,6 @@ export function SchemaViewer({
     }
     return new Set(allTables.map((t) => t.id as ConcreteTableId));
   }, [allTables]);
-
-  // Restore compact mode preference early (don't wait for table validation)
-  useEffect(() => {
-    if (
-      !appliedPrefsRef.current &&
-      !isLoadingPrefs &&
-      savedPrefs != null &&
-      typeof savedPrefs === "object" &&
-      typeof savedPrefs.is_compact_mode === "boolean" &&
-      initialTableIds == null &&
-      databaseId != null
-    ) {
-      setIsCompactMode(savedPrefs.is_compact_mode);
-      // Restore explicit full mode preference
-      if (typeof savedPrefs.explicit_full_mode === "boolean") {
-        setExplicitFullMode(savedPrefs.explicit_full_mode);
-      }
-      compactModeInitializedRef.current = currentContextKey;
-    }
-  }, [
-    isLoadingPrefs,
-    savedPrefs,
-    initialTableIds,
-    databaseId,
-    currentContextKey,
-  ]);
 
   // Restore saved prefs once loaded (one-time per schema context)
   // Wait for allTables to validate that saved table IDs still exist
@@ -352,36 +345,36 @@ export function SchemaViewer({
     currentContextKey,
   ]);
 
-  // Initialize selected table IDs from initial ERD response (focal tables)
-  // Only run when data is fresh (not fetching) to avoid using cached data from previous context
+  // Initialize selection to ALL tables in the schema on first visit
+  // (when there are no URL params and no saved prefs to restore)
   useEffect(() => {
     if (
-      data != null &&
-      !isFetching &&
+      allTables != null &&
+      !isFetchingTables &&
       databaseId != null &&
       initializedContextRef.current !== currentContextKey &&
-      effectiveSelectedTableIds === null
+      effectiveSelectedTableIds === null &&
+      !hasPendingPrefsToApply
     ) {
-      const focalTableIds = data.nodes
-        .filter((node) => node.is_focal)
-        .map((node) => node.table_id as ConcreteTableId);
-      if (focalTableIds.length > 0) {
+      const allTableIds = allTables.map((t) => t.id as ConcreteTableId);
+      if (allTableIds.length > 0) {
         setTableSelection({
-          tableIds: focalTableIds,
+          tableIds: allTableIds,
           forDatabaseId: databaseId,
           forSchema: schema,
-          isUserModified: false, // Auto-initialized from backend
+          isUserModified: true, // Treat as user-specified so ERD query sends table-ids
         });
         initializedContextRef.current = currentContextKey;
       }
     }
   }, [
-    data,
-    isFetching,
+    allTables,
+    isFetchingTables,
     databaseId,
     schema,
     currentContextKey,
     effectiveSelectedTableIds,
+    hasPendingPrefsToApply,
   ]);
 
   const handleTableSelectionChange = useCallback(
@@ -396,12 +389,10 @@ export function SchemaViewer({
         setSavedPrefs({
           table_ids: tableIds,
           hops,
-          is_compact_mode: isCompactMode,
-          explicit_full_mode: explicitFullMode,
         });
       }
     },
-    [databaseId, schema, hops, isCompactMode, explicitFullMode, setSavedPrefs],
+    [databaseId, schema, hops, setSavedPrefs],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
@@ -415,34 +406,16 @@ export function SchemaViewer({
 
   // Set of currently visible table IDs on the canvas
   const visibleTableIds = useMemo(
-    () => new Set(nodes.map((n) => n.data.table_id)),
+    () => new Set(nodes.map((n) => n.data.table_id as ConcreteTableId)),
     [nodes],
-  );
-
-  const handleHopsChange = useCallback(
-    (newHops: number) => {
-      setHops(newHops);
-      if (isUserModified && effectiveSelectedTableIds != null) {
-        setSavedPrefs({
-          table_ids: effectiveSelectedTableIds,
-          hops: newHops,
-          is_compact_mode: isCompactMode,
-          explicit_full_mode: explicitFullMode,
-        });
-      }
-    },
-    [
-      isUserModified,
-      effectiveSelectedTableIds,
-      isCompactMode,
-      explicitFullMode,
-      setSavedPrefs,
-    ],
   );
 
   // Handler for expanding to a related table via FK click
   const handleExpandToTable = useCallback(
-    (tableId: ConcreteTableId) => {
+    (
+      tableId: ConcreteTableId,
+      candidateEdgeIdsToSelect?: readonly string[],
+    ) => {
       if (effectiveSelectedTableIds != null && databaseId != null) {
         const newTableIds = [...effectiveSelectedTableIds, tableId];
         setTableSelection({
@@ -454,20 +427,18 @@ export function SchemaViewer({
         setSavedPrefs({
           table_ids: newTableIds,
           hops,
-          is_compact_mode: isCompactMode,
-          explicit_full_mode: explicitFullMode,
         });
+        // Stash the candidate edge IDs so the next graph-sync run can find
+        // the FK edge that triggered this expansion and auto-select it.
+        if (
+          candidateEdgeIdsToSelect != null &&
+          candidateEdgeIdsToSelect.length > 0
+        ) {
+          pendingEdgeIdsToSelectRef.current = candidateEdgeIdsToSelect;
+        }
       }
     },
-    [
-      effectiveSelectedTableIds,
-      databaseId,
-      schema,
-      hops,
-      isCompactMode,
-      explicitFullMode,
-      setSavedPrefs,
-    ],
+    [effectiveSelectedTableIds, databaseId, schema, hops, setSavedPrefs],
   );
 
   const shareUrl = useSchemaViewerShareUrl({
@@ -489,60 +460,28 @@ export function SchemaViewer({
     setEdges([]);
   }, [setNodes, setEdges]);
 
-  const handleToggleCompactMode = useCallback(
-    (explicit = true) => {
-      setIsCompactMode((prev) => {
-        const newMode = !prev;
-        let newExplicitFullMode = explicitFullMode;
-
-        // Track if user explicitly set full mode via button (not double-click)
-        if (explicit) {
-          newExplicitFullMode = newMode === false; // false = full mode
-          setExplicitFullMode(newExplicitFullMode);
-        }
-
-        // Save preference - always save mode state for persistence
-        if (effectiveSelectedTableIds != null) {
-          setSavedPrefs({
-            table_ids: effectiveSelectedTableIds,
-            hops,
-            is_compact_mode: newMode,
-            explicit_full_mode: newExplicitFullMode,
-          });
-        } else if (prefsKey != null) {
-          // If no table selection yet, save just the compact mode preference
-          setSavedPrefs({
-            is_compact_mode: newMode,
-            explicit_full_mode: newExplicitFullMode,
-          });
-        }
-        return newMode;
-      });
+  // Double-click on an edge: alternate between zooming to the source node
+  // (first double-click, or any time the previous was "target") and the
+  // target node (when the previous was "source"). The edge stays selected
+  // — fitView doesn't touch React Flow's selection state.
+  const handleEdgeDoubleClick = useCallback(
+    (_event: React.MouseEvent, edge: SchemaViewerFlowEdge) => {
+      const previousSide = lastEdgeZoomSideRef.current.get(edge.id);
+      const nextSide: "source" | "target" =
+        previousSide === "source" ? "target" : "source";
+      lastEdgeZoomSideRef.current.set(edge.id, nextSide);
+      const targetNodeId = nextSide === "source" ? edge.source : edge.target;
+      setPendingFitNodeIds([targetNodeId]);
     },
-    [
-      effectiveSelectedTableIds,
-      explicitFullMode,
-      hops,
-      prefsKey,
-      setSavedPrefs,
-    ],
+    [],
   );
 
   const schemaViewerContextValue = useMemo(
     () => ({
       visibleTableIds,
       onExpandToTable: handleExpandToTable,
-      isCompactMode,
-      onToggleCompactMode: handleToggleCompactMode,
-      explicitFullMode,
     }),
-    [
-      visibleTableIds,
-      handleExpandToTable,
-      isCompactMode,
-      handleToggleCompactMode,
-      explicitFullMode,
-    ],
+    [visibleTableIds, handleExpandToTable],
   );
 
   const graph = useMemo(() => {
@@ -552,56 +491,29 @@ export function SchemaViewer({
     return toFlowGraph(data);
   }, [data]);
 
-  // Determine initial compact mode when data first loads for a schema
-  useEffect(() => {
-    if (
-      data != null &&
-      compactModeInitializedRef.current !== currentContextKey
-    ) {
-      compactModeInitializedRef.current = currentContextKey;
-      const shouldStartCompact =
-        data.nodes.length > AUTO_COMPACT_NODE_THRESHOLD;
-      setIsCompactMode(shouldStartCompact);
+  // Lift selected edges above unselected ones so the highlighted edge
+  // always renders on top of any edges that cross through it. We do this
+  // by reordering the array (selected edges last) rather than setting a
+  // high `zIndex` — high zIndex would promote the edge above the node
+  // layer in React Flow, which makes it overlap node cards. Reordering
+  // keeps the selected edge in the regular edges layer (below nodes) and
+  // simply places it later in the SVG, which is sufficient because SVG
+  // z-order is determined by DOM order.
+  const edgesForRender = useMemo(() => {
+    if (!edges.some((e) => e.selected)) {
+      return edges;
     }
-  }, [data, currentContextKey]);
-
-  // Auto-switch to compact mode when node count increases
-  // Only switch detailed -> compact, never compact -> detailed
-  // Don't switch if user explicitly set detailed mode via toggle button
-  useEffect(() => {
-    // Skip if no nodes or first render (initial load handled by above effect)
-    if (nodes.length === 0 || prevNodeCountRef.current === null) {
-      prevNodeCountRef.current = nodes.length;
-      return;
-    }
-
-    // If node count increased and we're in detailed mode and user didn't explicitly set it
-    if (
-      nodes.length > prevNodeCountRef.current &&
-      !isCompactMode &&
-      !explicitFullMode
-    ) {
-      setIsCompactMode(true);
-      // Save preference
-      if (effectiveSelectedTableIds != null) {
-        setSavedPrefs({
-          table_ids: effectiveSelectedTableIds,
-          hops,
-          is_compact_mode: true,
-          explicit_full_mode: explicitFullMode,
-        });
+    const unselected: SchemaViewerFlowEdge[] = [];
+    const selected: SchemaViewerFlowEdge[] = [];
+    for (const edge of edges) {
+      if (edge.selected) {
+        selected.push(edge);
+      } else {
+        unselected.push(edge);
       }
     }
-
-    prevNodeCountRef.current = nodes.length;
-  }, [
-    nodes.length,
-    isCompactMode,
-    explicitFullMode,
-    effectiveSelectedTableIds,
-    hops,
-    setSavedPrefs,
-  ]);
+    return [...unselected, ...selected];
+  }, [edges]);
 
   // User explicitly cleared all tables - show empty canvas
   const isExplicitlyEmpty =
@@ -609,14 +521,101 @@ export function SchemaViewer({
     effectiveSelectedTableIds != null &&
     effectiveSelectedTableIds.length === 0;
 
+  // Latest nodes held in a ref so the sync effect below can read current
+  // state without adding `nodes` to its dependency array (which would cause
+  // the effect to re-run on every internal React Flow node change — like
+  // drags or position tweaks — and incorrectly re-merge against the result
+  // of its own previous run).
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
   useEffect(() => {
     // Clear everything when there's no entry selected or user cleared all tables
     if (!hasEntry || error != null || isExplicitlyEmpty) {
       setNodes([]);
       setEdges([]);
-    } else if (!isFetching && graph != null) {
-      setNodes(graph.nodes);
-      setEdges(graph.edges);
+      return;
+    }
+    if (isFetching || graph == null) {
+      return;
+    }
+
+    // If we expanded via FK click and a matching edge has now arrived in
+    // the new graph, mark it as selected — the existing edge-selection
+    // plumbing (stroke color, node `.selected` class, z-index lift) will
+    // light up the connecting edge AND both connected nodes automatically.
+    let nextEdges: SchemaViewerFlowEdge[] = graph.edges;
+    const pendingEdgeIds = pendingEdgeIdsToSelectRef.current;
+    if (pendingEdgeIds != null) {
+      const matchedId = pendingEdgeIds.find((candidate) =>
+        graph.edges.some((e) => e.id === candidate),
+      );
+      if (matchedId != null) {
+        nextEdges = graph.edges.map((e) =>
+          e.id === matchedId ? { ...e, selected: true } : e,
+        );
+        pendingEdgeIdsToSelectRef.current = null;
+      }
+    }
+    setEdges(nextEdges);
+
+    // Merge incoming nodes with current positions so an incremental expansion
+    // (e.g. clicking an FK to fetch a related table) doesn't blank the canvas
+    // by replacing every node with a fresh opacity-0 copy. Falls back to the
+    // fresh graph for first loads, schema switches, removals, or disconnected
+    // new nodes — those still go through the normal Dagre relayout path.
+    const currentNodes = nodesRef.current;
+    const currentById = new Map(currentNodes.map((n) => [n.id, n]));
+    const merged = mergeWithExistingPositions(
+      graph.nodes,
+      currentNodes,
+      graph.edges,
+    );
+
+    let nextNodes: SchemaViewerFlowNode[];
+    if (merged != null) {
+      nextNodes = merged;
+    } else if (currentNodes.length === 0) {
+      // First load — fresh layout path, nothing to preserve.
+      nextNodes = graph.nodes;
+    } else {
+      const hasOverlap = graph.nodes.some((n) => currentById.has(n.id));
+      if (!hasOverlap) {
+        // Schema switch — fresh layout path.
+        nextNodes = graph.nodes;
+      } else {
+        // Incremental change that the merge couldn't handle. For each
+        // incoming node: if it was already on the canvas, preserve its
+        // previous `is_focal` (the backend may re-rank focal tables when the
+        // selection grows, and we don't want existing nodes to light up as a
+        // side effect of the user clicking a FK somewhere else); if it's a
+        // brand-new table reached by exploring, strip `is_focal` so it
+        // doesn't get the highlighted border either.
+        nextNodes = graph.nodes.map((node) => {
+          const existing = currentById.get(node.id);
+          if (existing != null) {
+            return {
+              ...node,
+              data: { ...node.data, is_focal: existing.data.is_focal },
+            };
+          }
+          return { ...node, data: { ...node.data, is_focal: false } };
+        });
+      }
+    }
+
+    setNodes(nextNodes);
+
+    // If this was an incremental add (there was a current canvas and some of
+    // it carried over), queue up a fitView on the newly-added tables so the
+    // camera pans to wherever they landed.
+    if (currentNodes.length > 0) {
+      const addedIds = nextNodes
+        .filter((n) => !currentById.has(n.id))
+        .map((n) => n.id);
+      if (addedIds.length > 0) {
+        setPendingFitNodeIds(addedIds);
+      }
     }
   }, [
     hasEntry,
@@ -633,7 +632,7 @@ export function SchemaViewer({
       <ReactFlow
         className={S.reactFlow}
         nodes={nodes}
-        edges={edges}
+        edges={edgesForRender}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         proOptions={PRO_OPTIONS}
@@ -641,18 +640,21 @@ export function SchemaViewer({
         maxZoom={MAX_ZOOM}
         colorMode={colorScheme === "dark" ? "dark" : "light"}
         fitView
+        fitViewOptions={FIT_VIEW_OPTIONS}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onEdgeDoubleClick={handleEdgeDoubleClick}
       >
         <Background />
-        <Controls showInteractive={false}>
-          <CompactModeToggle
-            isCompactMode={isCompactMode}
-            onToggle={handleToggleCompactMode}
-          />
-        </Controls>
+        <MiniMap position="bottom-right" pannable zoomable />
+        {/* <Controls showInteractive={false} /> */}
+        <FitToNewNodes
+          nodeIds={pendingFitNodeIds}
+          onDone={clearPendingFitNodeIds}
+        />
         <Panel position="top-right">
           <Group gap="sm">
+            <ZoomIndicator />
             {shareUrl != null && (
               <Tooltip
                 label={
@@ -691,11 +693,6 @@ export function SchemaViewer({
                 onSelectionChange={handleTableSelectionChange}
               />
             )}
-            {!isFetchingTables &&
-              effectiveSelectedTableIds != null &&
-              effectiveSelectedTableIds.length > 0 && (
-                <HopsInput value={hops} onChange={handleHopsChange} />
-              )}
           </Group>
         </Panel>
         {isFetching && (

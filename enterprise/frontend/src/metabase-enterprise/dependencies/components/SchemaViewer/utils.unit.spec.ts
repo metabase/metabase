@@ -1,11 +1,6 @@
 import type { ErdEdge, ErdField, ErdNode, ErdResponse } from "metabase-types/api";
 
-import {
-  COMPACT_NODE_HEIGHT,
-  HEADER_HEIGHT,
-  NODE_WIDTH,
-  ROW_HEIGHT,
-} from "./constants";
+import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { getNodeId, getNodesWithPositions, toFlowGraph } from "./utils";
 
@@ -379,28 +374,7 @@ describe("SchemaViewer utils", () => {
   });
 
   describe("getLayoutNodeHeight", () => {
-    it("should return COMPACT_NODE_HEIGHT in compact mode", () => {
-      const node: SchemaViewerFlowNode = {
-        id: "table-1",
-        type: "schemaViewerTable",
-        position: { x: 0, y: 0 },
-        data: {
-          table_id: 1,
-          table_name: "users",
-          schema: "PUBLIC",
-          fields: Array.from({ length: 30 }, (_, i) =>
-            createField(i, `field${i}`),
-          ),
-          is_focal: false,
-          connectedFieldIds: new Set(),
-        },
-      };
-
-      const positionedNodes = getNodesWithPositions([node], [], true);
-      expect(positionedNodes[0].style?.height).toBe(COMPACT_NODE_HEIGHT);
-    });
-
-    it("should calculate full height in non-compact mode", () => {
+    it("should calculate full height from field count", () => {
       const fields = Array.from({ length: 10 }, (_, i) =>
         createField(i, `field${i}`),
       );
@@ -418,12 +392,12 @@ describe("SchemaViewer utils", () => {
         },
       };
 
-      const positionedNodes = getNodesWithPositions([node], [], false);
+      const positionedNodes = getNodesWithPositions([node], []);
       const expectedHeight = HEADER_HEIGHT + 10 * ROW_HEIGHT;
       expect(positionedNodes[0].style?.height).toBe(expectedHeight);
     });
 
-    it("should show all fields for large tables in non-compact mode", () => {
+    it("should show all fields for large tables", () => {
       const fields = Array.from({ length: 25 }, (_, i) =>
         createField(i, `field${i}`),
       );
@@ -441,7 +415,7 @@ describe("SchemaViewer utils", () => {
         },
       };
 
-      const positionedNodes = getNodesWithPositions([node], [], false);
+      const positionedNodes = getNodesWithPositions([node], []);
       // All fields are shown without collapsing
       const expectedHeight = HEADER_HEIGHT + 25 * ROW_HEIGHT;
       expect(positionedNodes[0].style?.height).toBe(expectedHeight);
@@ -480,7 +454,7 @@ describe("SchemaViewer utils", () => {
       ];
 
       const edges = [{ source: "table-1", target: "table-2" }];
-      const positionedNodes = getNodesWithPositions(nodes, edges, false);
+      const positionedNodes = getNodesWithPositions(nodes, edges);
 
       // All nodes should have non-zero positions (dagre layout)
       positionedNodes.forEach((node) => {
@@ -509,7 +483,7 @@ describe("SchemaViewer utils", () => {
         },
       };
 
-      const positionedNodes = getNodesWithPositions([node], [], false);
+      const positionedNodes = getNodesWithPositions([node], []);
       const positioned = positionedNodes[0];
 
       // Dagre returns center point, should be offset by width/2 and height/2
@@ -536,7 +510,7 @@ describe("SchemaViewer utils", () => {
         },
       };
 
-      const positionedNodes = getNodesWithPositions([node], [], false);
+      const positionedNodes = getNodesWithPositions([node], []);
       const positioned = positionedNodes[0];
 
       expect(positioned.style?.width).toBe(NODE_WIDTH);
@@ -591,7 +565,7 @@ describe("SchemaViewer utils", () => {
         { source: "table-2", target: "table-3" },
       ];
 
-      const positionedNodes = getNodesWithPositions(nodes, edges, false);
+      const positionedNodes = getNodesWithPositions(nodes, edges);
 
       // All 3 nodes should have unique positions
       expect(positionedNodes).toHaveLength(3);
@@ -600,31 +574,5 @@ describe("SchemaViewer utils", () => {
       expect(uniquePositions.size).toBe(3);
     });
 
-    it("should use different heights in compact vs full mode", () => {
-      const fields = Array.from({ length: 10 }, (_, i) =>
-        createField(i, `field${i}`),
-      );
-      const node: SchemaViewerFlowNode = {
-        id: "table-1",
-        type: "schemaViewerTable",
-        position: { x: 0, y: 0 },
-        data: {
-          table_id: 1,
-          table_name: "users",
-          schema: "PUBLIC",
-          fields,
-          is_focal: false,
-          connectedFieldIds: new Set(),
-        },
-      };
-
-      const compactNodes = getNodesWithPositions([node], [], true);
-      const fullNodes = getNodesWithPositions([node], [], false);
-
-      expect(compactNodes[0].style?.height).toBe(COMPACT_NODE_HEIGHT);
-      expect(fullNodes[0].style?.height).toBe(
-        HEADER_HEIGHT + 10 * ROW_HEIGHT,
-      );
-    });
   });
 });
