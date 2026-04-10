@@ -364,7 +364,7 @@
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
-               :source_database_id (serdes/fk :model/Database :name)
+               :source_database_id (serdes/fk :model/Database)
                :source             {:export (fn [source]
                                               (-> source
                                                   (m/update-existing :query serdes/export-mbql)
