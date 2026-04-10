@@ -1,5 +1,4 @@
-import { getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import type {
   ComputedVisualizationSettings,
@@ -46,7 +45,7 @@ const getBubbleSizeDomain = (
     return null;
   }
 
-  const bubbleSizeMaxValues = getObjectValues(
+  const bubbleSizeMaxValues = Object.values(
     getDatasetExtents(bubbleSizeDataKeys, dataset),
   ).map((extent) => extent[1]);
   const bubbleSizeDomainMax = Math.max(...bubbleSizeMaxValues);

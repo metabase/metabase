@@ -2,8 +2,8 @@ import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import _ from "underscore";
 
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { isNotNull } from "metabase/lib/types";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { isNotNull } from "metabase/utils/types";
 import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   multipleTimezoneWarning,

@@ -19,7 +19,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { METAKEY } from "metabase/lib/browser";
+import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type {

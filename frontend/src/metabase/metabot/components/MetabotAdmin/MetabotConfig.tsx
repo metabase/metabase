@@ -18,8 +18,6 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { getIcon } from "metabase/lib/icon";
-import { useDispatch } from "metabase/lib/redux";
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
@@ -39,6 +37,8 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
+import { useDispatch } from "metabase/utils/redux";
 import type {
   Collection,
   CollectionEssentials,

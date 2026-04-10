@@ -3,8 +3,8 @@ import type { Route } from "react-router";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
-import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataModelMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";

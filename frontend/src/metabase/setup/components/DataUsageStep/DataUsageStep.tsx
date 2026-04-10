@@ -5,7 +5,7 @@ import { jt, t } from "ttag";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { goToNextStep, updateTracking } from "../../actions";
 import { getIsTrackingAllowed } from "../../selectors";

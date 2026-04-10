@@ -11,14 +11,14 @@ import {
   DataPermissionType,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
+import { GTAPApi } from "metabase/services";
 import {
   combineReducers,
   createAction,
   createThunkAction,
   handleActions,
   withRequestState,
-} from "metabase/lib/redux";
-import { GTAPApi } from "metabase/services";
+} from "metabase/utils/redux";
 
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";
 

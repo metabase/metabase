@@ -2,10 +2,10 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { useSelector } from "metabase/lib/redux";
 import { ChannelCard } from "metabase/notifications/pulse/components/ChannelCard";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Stack, Text, Title } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 interface NewPulseSidebarProps {
   emailConfigured: boolean;

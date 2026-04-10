@@ -6,7 +6,6 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
-import * as Urls from "metabase/lib/urls";
 import {
   FieldEmptyState,
   FieldSection,
@@ -26,6 +25,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { trackMetadataChange } from "../../analytics";
 import { TableHeader } from "../../components/TableHeader";

@@ -1,9 +1,9 @@
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
 import { RESET_ROW_ZOOM } from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
+import { createThunkAction } from "metabase/utils/redux";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

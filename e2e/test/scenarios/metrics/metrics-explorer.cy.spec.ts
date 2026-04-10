@@ -1,3 +1,5 @@
+import Color from "color";
+
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -625,6 +627,28 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
     });
 
+    it("should stack series into panels when the stack series button is toggled", () => {
+      addMetric("Count of products");
+      cy.wait("@dataset");
+
+      cy.log("line chart with multiple series should show chart layout picker");
+      H.MetricsViewer.assertVizType("Line");
+      cy.findByTestId("chart-layout-picker").should("be.visible");
+      cy.findByLabelText("Stack layout").click();
+
+      cy.log("should split the chart into separate panels");
+      H.splitPanelAxisLines().should("have.length", 2);
+
+      cy.log("toggling off should return to unified view");
+      cy.findByLabelText("Default layout").click();
+      H.splitPanelAxisLines().should("have.length", 0);
+
+      cy.log("button should not be visible for non-line/area/bar charts");
+      switchToTab("State");
+      H.MetricsViewer.assertVizType("Map");
+      cy.findByTestId("chart-layout-picker").should("not.exist");
+    });
+
     it("should automatically split for display types that do not support multiple series", () => {
       cy.log("with a single series, map shows one visualization");
       switchToTab("State");
@@ -906,6 +930,79 @@ describe("scenarios > metrics > explorer", () => {
         event: "metrics_viewer_filter_removed",
         triggered_from: "dimension_filter",
       });
+    });
+
+    it("should preserve breakout colors when a dimension filter hides some values", () => {
+      selectBreakout("Count of orders", "Quantity");
+      cy.wait("@dataset");
+
+      const colorsBefore: Record<string, string> = {};
+
+      H.MetricsViewer.breakoutLegend()
+        .findAllByTestId("breakout-legend-dot")
+        .each(($dot) => {
+          const color = $dot.css("background-color");
+          const label = $dot.next().text();
+          colorsBefore[label] = color;
+        })
+        .then(() => {
+          expect(Object.keys(colorsBefore).length).to.be.greaterThan(0);
+        });
+
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /All time/i })
+        .click();
+      H.popover()
+        .findByText(/Fixed date/)
+        .click();
+      H.popover().within(() => {
+        cy.findByRole("textbox", { name: "Start date" })
+          .clear()
+          .type("February 1, 2024");
+        cy.findByRole("textbox", { name: "End date" })
+          .clear()
+          .type("February 7, 2024");
+        cy.button("Add filter").click();
+      });
+
+      cy.wait("@dataset");
+
+      H.MetricsViewer.breakoutLegend()
+        .findAllByTestId("breakout-legend-dot")
+        .then(($dots) => {
+          expect($dots.length).to.be.lessThan(
+            Object.keys(colorsBefore).length,
+            "Filtering should reduce the number of legend items",
+          );
+
+          const legendHexColors: string[] = [];
+
+          $dots.each((_i, dot) => {
+            const $dot = Cypress.$(dot);
+            const color = $dot.css("background-color");
+            const label = $dot.next().text();
+            expect(colorsBefore[label]).to.equal(
+              color,
+              `Color for "${label}" should be stable after filtering`,
+            );
+            legendHexColors.push(Color(color).hex());
+          });
+
+          cy.log("Chart series colors should match legend colors");
+          for (const hex of legendHexColors) {
+            H.echartsContainer().find(`path[stroke="${hex}"]`).should("exist");
+          }
+
+          cy.log("Search pill color indicator should match legend count");
+          H.MetricsViewer.searchBarPills()
+            .contains(
+              "[data-testid=metrics-viewer-search-pill]",
+              "Count of orders",
+            )
+            .findByTestId("color-indicator-container")
+            .children()
+            .should("have.length", legendHexColors.length);
+        });
     });
   });
 

@@ -8,9 +8,9 @@ import {
 import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export function PeopleNav() {
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;

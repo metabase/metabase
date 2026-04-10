@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useStep } from "metabase/setup/useStep";
 import { Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { submitLicenseToken } from "../../actions";
 import { ActiveStep } from "../ActiveStep";
