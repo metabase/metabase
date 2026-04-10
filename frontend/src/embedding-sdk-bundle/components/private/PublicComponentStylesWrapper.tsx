@@ -6,8 +6,6 @@ import cx from "classnames";
 import type React from "react";
 import { forwardRef } from "react";
 
-import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
-
 import S from "./PublicComponentStylesWrapper.style.css";
 
 /**
@@ -17,7 +15,6 @@ import S from "./PublicComponentStylesWrapper.style.css";
  */
 const PublicComponentStylesWrapperInner = styled.div`
   font-size: ${({ theme }) => theme.other.fontSize};
-  ${saveDomImageStyles}
 `;
 
 export const PublicComponentStylesWrapper = forwardRef<

@@ -13,7 +13,6 @@ import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-va
 import { useMantineTheme } from "metabase/ui";
 import { getSitePath } from "metabase/utils/dom";
 import { useSelector } from "metabase/utils/redux";
-import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import { getFont, getFontFiles } from "../../selectors";
 
@@ -50,7 +49,6 @@ export const GlobalStyles = (): JSX.Element => {
           }
         `,
       )}
-    ${saveDomImageStyles}
     body {
         font-size: 0.875em;
         ${isStaticEmbedding() || isPublicEmbedding()

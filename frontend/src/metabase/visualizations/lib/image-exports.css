@@ -1,0 +1,29 @@
+.saving-dom-image .saving-dom-image-hidden {
+  visibility: hidden;
+}
+
+.saving-dom-image .saving-dom-image-display-none {
+  display: none;
+}
+
+.saving-dom-image .saving-dom-image-overflow-visible {
+  overflow: visible;
+}
+
+.saving-dom-image .Dashboard-Parameters-List legend {
+  top: -9px;
+}
+
+.saving-dom-image [data-testid="dashcard-container"] [data-testid="dashcard"] {
+  /* the renderer we use for saving to image/pdf doesn't support box-shadow
+     so we replace it with a border */
+  box-shadow: none;
+  border: 1px solid var(--mb-color-border);
+}
+
+/* the renderer for saving to image/pdf does not support text overflow
+   with line height in custom themes in the embedding sdk.
+   this is a workaround to make sure the text is not clipped vertically */
+.saving-dom-image.saving-dom-image-sdk [data-testid="dashcard-container"] [data-testid="dashcard"] * {
+  overflow: visible !important;
+}

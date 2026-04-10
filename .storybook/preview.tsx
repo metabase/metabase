@@ -21,7 +21,7 @@ import { Global, css, useTheme } from "@emotion/react";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
-import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import "metabase/visualizations/lib/image-exports.css";
 
 import { initialize, mswLoader } from "msw-storybook-addon";
 
@@ -81,7 +81,6 @@ const globalStyles = css`
     ${rootStyle}
   }
 
-  ${saveDomImageStyles}
   ${baseStyle}
 `;
 
