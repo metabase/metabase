@@ -1,6 +1,7 @@
 (ns mage.nvoxland.dev-env
   (:require
    [babashka.process :as p]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [mage.bot.dev-env-core :as core]
    [mage.bot.env :as bot-env]
@@ -11,9 +12,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private *root* (atom nil))
+(def ^:private root-override (atom nil))
 
-(defn- root [] (or @*root* u/project-root-directory))
+(defn- root [] (or @root-override u/project-root-directory))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Token env var mapping
@@ -518,7 +519,7 @@
   "Top-level dispatcher for dev-env command."
   [{:keys [options]}]
   (when (:worktree options)
-    (reset! *root* (:worktree options)))
+    (reset! root-override (:worktree options)))
   (let [{:keys [down status]} options]
     (cond
       down   (tear-down!)

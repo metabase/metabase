@@ -275,7 +275,7 @@
         main-path     (main-worktree-path)]
     (println (c/bold (c/green "Setting up worktree: ") (c/cyan (worktree-name worktree-root))))
     (println)
-    (println (c/cyan "Main rep: ") main-path)
+    (println (c/cyan "Main repo: ") main-path)
     (println)
     (apply-bot-patch! main-path worktree-root)
     (symlink-bb! main-path worktree-root)

@@ -16,10 +16,12 @@
   },
   "permissions": {
     "allow": [
+      "Read",
       "Edit",
+      "Glob",
+      "Grep",
       "Write",
       "Skill",
-      "Grep",
       "Bash(*)",
       "mcp__playwright__*",
       "WebFetch(domain:linear.app)",

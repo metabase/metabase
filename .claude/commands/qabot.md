@@ -6,13 +6,10 @@ You are the orchestrator for the qabot workflow. QABot performs pre-merge QA ana
 
 #### Ensure Playwright MCP is configured
 
-Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user add it to their primary repo and restart:
-```bash
-echo '{"mcpServers":{"playwright":{"command":"npx","args":["-y","@playwright/mcp@0.0.68","--headless","--browser","chrome","--viewport-size","1440x900","--snapshot-mode","full","--block-service-workers","--isolated","--timeout-action","10000"]}}}' > .mcp.json
-```
+Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user run `./bin/mage -bot-setup --bot qabot` to generate it, then restart.
 
 #### Verify tools are available (stop if any fail)
-- Playwright MCP: `npx -y @playwright/mcp@0.0.68 --version` — available via npx
+- Playwright MCP: `npx -y @playwright/mcp --version` — available via npx
 - Backend health: `./bin/mage -bot-api-call /api/health` — must succeed and return `{"status":"ok"}`
 - REPL: Run `clj-nrepl-eval --discover-ports` to find nREPL servers. Pick the port that belongs to the server running in the current project directory (the output indicates which directory each server is in). Store it as NREPL_PORT. Do NOT rely on the `NREPL_PORT` env var — always discover dynamically. **If no matching port is found, STOP** — REPL testing is required for qabot.
 

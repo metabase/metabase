@@ -11,7 +11,7 @@
     "network": {
       "allowLocalBinding": true,
       "allowAllUnixSockets": true,
-      "allowedDomains": ["api.linear.app"]
+      "allowedDomains": ["github.com", "api.github.com", "api.linear.app"]
     }
   },
   "permissions": {

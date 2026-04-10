@@ -3,6 +3,7 @@
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.string :as str]
+   [mage.bot.env :as bot-env]
    [mage.color :as c]
    [mage.shell :as shell])
   (:import

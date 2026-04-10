@@ -15,3 +15,8 @@
   "Stop a uxbot session (kill tmux + dev env, keep worktree)."
   [{:keys [arguments]}]
   (bot/stop-session! prefix (first arguments)))
+
+(defn quit!
+  "Tear down and remove a uxbot worktree session."
+  [{:keys [arguments]}]
+  (bot/quit-session! prefix (first arguments)))

@@ -11,7 +11,8 @@
     "excludedCommands": ["docker"],
     "network": {
       "allowLocalBinding": true,
-      "allowAllUnixSockets": true
+      "allowAllUnixSockets": true,
+      "allowedDomains": ["metabase.com"]
     }
   },
   "permissions": {

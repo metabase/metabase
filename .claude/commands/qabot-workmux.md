@@ -26,7 +26,7 @@ If no Linear issue ID is provided, try to detect from the branch name (pattern: 
 
 ### 3. Generate the agent prompt
 
-Generate a timestamp: `date +%Y%m%d-%H%M%S`
+Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — construct it directly from the current date/time you already know.
 
 Run:
 ```

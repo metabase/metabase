@@ -646,8 +646,8 @@
    :requires [[mage.fixbot.preflight :as preflight]]
    :task (task! (preflight/preflight!))}
 
-  -fixbot-status
-  {:doc "Watch and display fixbot status"
+  -bot-status
+  {:doc "Watch and display bot status"
    :requires [[mage.fixbot.status :as status]]
    :arg-schema [:? [:string {:name "file-path"}]]
    :task (task! (status/run! parsed))}

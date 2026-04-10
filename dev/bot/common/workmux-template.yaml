@@ -21,6 +21,6 @@ panes:
   - command: mise x -- bun run build-hot 2>&1 | tee .{{BOT_NAME}}/frontend-$(date +%Y%m%d-%H%M%S).log
     split: vertical
 
-  - command: mise x -- ./bin/mage -fixbot-status .{{BOT_NAME}}/llm-status.txt
+  - command: mise x -- ./bin/mage -bot-status .{{BOT_NAME}}/llm-status.txt
     split: vertical
     size: 7
