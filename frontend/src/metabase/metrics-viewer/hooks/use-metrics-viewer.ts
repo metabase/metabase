@@ -245,6 +245,7 @@ export function useMetricsViewer({
       resultsByDefinitionId,
       modifiedDefinitions,
       sourceBreakoutColors,
+      activeTab.visualizationSettings,
     );
   }, [
     state.definitions,

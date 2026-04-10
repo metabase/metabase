@@ -241,6 +241,7 @@ export function buildRawSeriesFromDefinitions(
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceBreakoutColors: SourceBreakoutColorMap,
+  extraVizSettings?: Partial<VisualizationSettings>,
 ): {
   series: SingleSeries[];
   cardIdToDefinitionId: Record<CardId, MetricSourceId>;
@@ -321,6 +322,7 @@ export function buildRawSeriesFromDefinitions(
           seriesKey,
           color,
         }),
+        ...extraVizSettings,
       }),
       data: result.data,
     };
