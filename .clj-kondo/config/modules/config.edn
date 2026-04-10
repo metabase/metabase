@@ -2954,14 +2954,16 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{}
-   :friends #{slackbot
+   :api     #{metabase-enterprise.metabot.api}
+   :friends #{enterprise/agent-api
+              slackbot
               mcp
               metabot}
    :uses    #{api
               lib-be
               metabot
               models
+              permissions
               premium-features
               util
               enterprise/dependencies
