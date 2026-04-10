@@ -14,8 +14,8 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { isEventOverElement } from "metabase/lib/dom";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { isEventOverElement } from "metabase/utils/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 

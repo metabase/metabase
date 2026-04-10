@@ -21,13 +21,13 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 
 import { Dashboard } from "../Dashboard";

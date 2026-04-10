@@ -11,7 +11,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import {
   createMockCollection,
   createMockDatabase,

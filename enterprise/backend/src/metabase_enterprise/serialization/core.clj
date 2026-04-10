@@ -33,5 +33,6 @@
  [metabase-enterprise.serialization.v2.load
   load-metabase!]
  [metabase-enterprise.serialization.v2.storage
-  store!
-  resolve-storage-path])
+  resolve-storage-path
+  slugify-name
+  store!])

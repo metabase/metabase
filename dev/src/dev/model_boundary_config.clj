@@ -13,6 +13,7 @@
   (:require
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
+   [rewrite-clj.node :as r.node]
    [rewrite-clj.parser :as r.parser]
    [rewrite-clj.zip :as z]))
 
@@ -124,15 +125,34 @@
            (reduce
             (fn [root config-key]
               (let [mod-cfg  (some-> (find-module-config root module-sym) z/right)
-                    val-zloc (when mod-cfg (find-key-value mod-cfg config-key))]
-                ;; Only update keys that already exist and are sets (skip :bypass, :any, etc.)
-                (if (and val-zloc (set? (z/sexpr val-zloc)))
-                  (let [computed (get-in boundaries [config-key module-sym] #{})]
-                    (if (seq computed)
-                      (z/root (z/replace val-zloc (r.parser/parse-string (model-set-str computed))))
-                      ;; Empty — remove the key-value pair
-                      (-> val-zloc z/remove z/remove z/root)))
-                  root)))
+                    val-zloc (when mod-cfg (find-key-value mod-cfg config-key))
+                    computed (get-in boundaries [config-key module-sym] #{})]
+                (cond
+                  ;; Key exists with a non-set value (e.g. :bypass, :any) — leave it alone.
+                  (and val-zloc (not (set? (z/sexpr val-zloc))))
+                  root
+
+                  ;; Key exists with a set value — replace or remove.
+                  val-zloc
+                  (if (seq computed)
+                    (z/root (z/replace val-zloc (r.parser/parse-string (model-set-str computed))))
+                    (-> val-zloc z/remove z/remove z/root))
+
+                  ;; Key missing and nothing to add.
+                  (empty? computed)
+                  root
+
+                  ;; Key missing — append `<newline><indent>:key <set>` to the module config map,
+                  ;; splicing new children directly to avoid the separator spaces `append-child` inserts.
+                  :else
+                  (let [m-node       (z/node mod-cfg)
+                        new-children (concat (r.node/children m-node)
+                                             [(r.node/newlines 1)
+                                              (r.node/spaces 3)
+                                              (r.node/keyword-node config-key)
+                                              (r.node/spaces 1)
+                                              (r.parser/parse-string (model-set-str computed))])]
+                    (z/root (z/replace mod-cfg (r.node/replace-children m-node new-children)))))))
             root
             [:model-exports :model-imports]))
          (z/root root-zloc)

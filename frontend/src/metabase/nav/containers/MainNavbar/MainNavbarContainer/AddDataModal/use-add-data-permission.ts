@@ -1,7 +1,7 @@
 import { useListDatabasesQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 
 export function useAddDataPermissions() {
   const { data: databasesResponse } = useListDatabasesQuery();

@@ -12,8 +12,8 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { formatNumber } from "metabase/lib/formatting";
-import { checkNotNull } from "metabase/lib/types";
+import { formatNumber } from "metabase/utils/formatting";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";

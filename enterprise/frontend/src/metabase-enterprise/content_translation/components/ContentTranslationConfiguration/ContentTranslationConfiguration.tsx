@@ -24,7 +24,6 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { openSaveDialog } from "metabase/lib/dom";
 import {
   Button,
   Group,
@@ -35,6 +34,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { openSaveDialog } from "metabase/utils/dom";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
 import { contentTranslationEndpoints } from "../../constants";

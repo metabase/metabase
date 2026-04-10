@@ -9,7 +9,7 @@ import {
   useListPublicDashboardsQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type {
   GetPublicAction,
   GetPublicCard,

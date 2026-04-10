@@ -10,7 +10,7 @@ import type { EmbedFlowEvent } from "./embed-flow";
 import type { EmbedShareEvent } from "./embed-share";
 import type { EmbeddedAnalyticsJsEvent } from "./embedded-analytics-js";
 import type { EmbeddingHomepageEvent } from "./embedding-homepage";
-import type { SimpleEvent } from "./event";
+import type { SimpleEventSchema } from "./event";
 import type { InviteEvent } from "./invite";
 import type { ModelEvent } from "./model";
 import type { QuestionEvent } from "./question";
@@ -34,7 +34,7 @@ export type SchemaEventMap = {
   embed_share: EmbedShareEvent;
   embedded_analytics_js: EmbeddedAnalyticsJsEvent;
   embedding_homepage: EmbeddingHomepageEvent;
-  simple_event: SimpleEvent;
+  simple_event: SimpleEventSchema;
   invite: InviteEvent;
   model: ModelEvent;
   question: QuestionEvent;

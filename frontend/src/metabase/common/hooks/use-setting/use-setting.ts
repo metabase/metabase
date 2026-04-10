@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { EnterpriseSettingKey, UserSettings } from "metabase-types/api";
 
 export const useSetting = <SettingName extends EnterpriseSettingKey>(

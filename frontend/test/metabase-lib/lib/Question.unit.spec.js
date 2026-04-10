@@ -3,7 +3,7 @@ import { parse } from "url";
 import { assoc, dissoc } from "icepick";
 
 import { createMockMetadata } from "__support__/metadata";
-import { deserializeCardFromUrl } from "metabase/lib/card";
+import { deserializeCardFromUrl } from "metabase/utils/card";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";

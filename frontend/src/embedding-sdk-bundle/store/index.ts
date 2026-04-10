@@ -1,16 +1,16 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
-import {
-  MetabaseReduxContext,
-  useDispatch,
-  useStore,
-} from "metabase/lib/redux";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
 import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getStore } from "metabase/store";
+import {
+  MetabaseReduxContext,
+  useDispatch,
+  useStore,
+} from "metabase/utils/redux";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 import { sdk } from "./reducer";

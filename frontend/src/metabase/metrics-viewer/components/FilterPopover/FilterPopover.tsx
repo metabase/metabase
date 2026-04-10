@@ -4,6 +4,7 @@ import { Box, Popover } from "metabase/ui";
 import type { FilterClause, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
+import { trackMetricsViewerFilterAdded } from "../../analytics";
 import type { MetricSourceId, SourceColorMap } from "../../types/viewer-state";
 
 import S from "./FilterPopover.module.css";
@@ -41,6 +42,7 @@ export function FilterPopover({
       }
       const newDefinition = LibMetric.filter(source.definition, filter);
       onUpdateDefinition(sourceId, newDefinition);
+      trackMetricsViewerFilterAdded("metric_filter");
       setIsOpen(false);
       setContentKey((key) => key + 1);
     },

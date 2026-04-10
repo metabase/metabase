@@ -172,6 +172,7 @@
    [:company       {:optional true} [:string {:min 1}]]
    [:store-users   {:optional true} [:maybe [:sequential [:map
                                                           [:email :string]]]]]
+   [:meters        {:optional true} :map]
    [:quotas        {:optional true} [:sequential [:map]]]])
 
 (defn- http-fetch
@@ -621,6 +622,14 @@
           (check-token)
           :quotas))
 
+(mu/defn meters :- [:maybe :map]
+  "Returns a map of current metered usage for the subscription."
+  []
+  (clear-cache!)
+  (some-> (premium-features.settings/premium-embedding-token)
+          (check-token)
+          :meters))
+
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
@@ -657,6 +666,12 @@
    feature-name :- [:or string? mu/localized-string-schema]]
   (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
+
+(defn is-trial?
+  "True if the current premium token is a trial subscription.
+   Returns false if there is no token or the status cannot be fetched."
+  []
+  (-> (-token-status) :trial boolean))
 
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."

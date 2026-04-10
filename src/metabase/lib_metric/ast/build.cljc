@@ -10,8 +10,8 @@
 
 ;;; -------------------- Helper Functions --------------------
 
-(defn- ensure-pmbql
-  "Ensure query is in pMBQL format. Converts legacy MBQL if needed."
+(defn- ensure-mbql5
+  "Ensure query is in MBQL 5 format. Converts legacy MBQL if needed."
   [metadata-provider mbql-query]
   (lib/query metadata-provider mbql-query))
 
@@ -288,35 +288,35 @@
    :clause    mbql-clause})
 
 (defn- extract-source-filters
-  "Extract filters from pMBQL query and convert to AST filter node.
+  "Extract filters from MBQL 5 query and convert to AST filter node.
    Returns nil if no filters, a single filter/mbql node if one filter,
    or a filter/and node containing filter/mbql nodes if multiple."
-  [pmbql-query]
-  (when-let [filters (lib/filters pmbql-query 0)]
+  [mbql5-query]
+  (when-let [filters (lib/filters mbql5-query 0)]
     (if (= 1 (count filters))
       (mbql-clause->filter-mbql-node (first filters))
       {:node/type :filter/and
        :children  (perf/mapv mbql-clause->filter-mbql-node filters)})))
 
 (defn- extract-source-joins
-  "Extract joins from pMBQL query and convert to AST join nodes."
-  [pmbql-query]
-  (when-let [joins (lib/joins pmbql-query 0)]
+  "Extract joins from MBQL 5 query and convert to AST join nodes."
+  [mbql5-query]
+  (when-let [joins (lib/joins mbql5-query 0)]
     (perf/mapv (fn [join]
                  {:node/type :ast/join
                   :mbql-join join})
                joins)))
 
-(defn- pmbql-query->source-node
-  "Parse pMBQL query into source node structure using lib functions.
+(defn- mbql5-query->source-node
+  "Parse MBQL 5 query into source node structure using lib functions.
    For source-card queries (metrics based on models or saved questions),
    falls back to the table-id from the entity metadata."
-  [source-type id metadata pmbql-query]
-  (let [table-id      (or (lib.util/source-table-id pmbql-query)
+  [source-type id metadata mbql5-query]
+  (let [table-id      (or (lib.util/source-table-id mbql5-query)
                           (:table-id metadata))
-        aggregation   (first (lib/aggregations pmbql-query 0))
-        source-filter (extract-source-filters pmbql-query)
-        source-joins  (extract-source-joins pmbql-query)]
+        aggregation   (first (lib/aggregations mbql5-query 0))
+        source-filter (extract-source-filters mbql5-query)
+        source-joins  (extract-source-joins mbql5-query)]
     (cond-> {:node/type   source-type
              :id          id
              :name        (:name metadata)
@@ -356,7 +356,7 @@
 
 (defn from-definition
   "Create complete AST from MetricDefinition.
-   Converts legacy MBQL to pMBQL before processing.
+   Converts legacy MBQL to MBQL 5 before processing.
 
    Metadata is loaded from the provider using the expression leaf's type and ID.
    Dimensions and dimension-mappings are loaded from the fetched metadata."
@@ -380,7 +380,7 @@
         raw-query          (case leaf-type
                              :metric  (:dataset-query metadata)
                              :measure (:definition metadata))
-        pmbql-query        (ensure-pmbql metadata-provider raw-query)
+        mbql5-query        (ensure-mbql5 metadata-provider raw-query)
         ;; Extract flat filters for this leaf's UUID
         leaf-filters       (into []
                                  (comp (filter #(= leaf-uuid (:lib/uuid %)))
@@ -394,7 +394,7 @@
         ast-filter         (when (seq leaf-filters) (mbql-filters->ast-filter leaf-filters))
         ast-group-by       (when (seq leaf-projections) (perf/mapv dimension-ref->ast-dimension-ref leaf-projections))]
     {:node/type         :ast/root
-     :source            (pmbql-query->source-node source-type leaf-id metadata pmbql-query)
+     :source            (mbql5-query->source-node source-type leaf-id metadata mbql5-query)
      :dimensions        (perf/mapv dimension-node (or dimensions []))
      :mappings          (perf/mapv dimension-mapping-node (or dimension-mappings []))
      :filter            ast-filter

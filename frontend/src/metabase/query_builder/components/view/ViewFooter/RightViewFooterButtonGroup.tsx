@@ -1,7 +1,6 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
   getFirstQueryResult,
@@ -9,6 +8,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsObjectDetail } from "metabase/query_builder/selectors/mode";
 import { Group } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { ExecutionTime } from "../ExecutionTime";
 import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated";

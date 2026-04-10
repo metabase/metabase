@@ -1,5 +1,5 @@
-import MetabaseSettings from "metabase/lib/settings";
 import { mutateColors } from "metabase/ui/colors/colors";
+import MetabaseSettings from "metabase/utils/settings";
 
 export function updateColors() {
   const scheme = MetabaseSettings.get("application-colors") || {};

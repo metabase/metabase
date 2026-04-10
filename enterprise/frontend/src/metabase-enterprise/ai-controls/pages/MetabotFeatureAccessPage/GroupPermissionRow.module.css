@@ -1,8 +1,9 @@
 .Cell {
-  vertical-align: middle;
   background: var(--mb-color-background-primary);
   box-sizing: border-box;
   padding: 0.5rem 1rem;
+  text-align: center;
+  vertical-align: middle;
 
   &.CenterText {
     text-align: center;
@@ -24,4 +25,13 @@
 
 .InputBody {
   justify-content: center;
+}
+
+.CellContent {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.375rem;
+  justify-content: center;
+  overflow: visible;
+  position: relative;
 }
