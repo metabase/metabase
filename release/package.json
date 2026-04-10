@@ -41,7 +41,7 @@
     "prettier": "^3.0.2"
   },
   "resolutions": {
-    "axios": "^1.13.5",
+    "axios": "1.15.0",
     "form-data": "^4.0.4"
   }
 }
