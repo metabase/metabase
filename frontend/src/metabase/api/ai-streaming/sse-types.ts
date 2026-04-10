@@ -1,8 +1,28 @@
+export type TokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+};
+
+export type MessageMetadata = {
+  usage?: TokenUsage;
+  usageByModel?: Record<string, TokenUsage>;
+};
+
 // lifecycle events
 export type StartEvent = { type: "start"; messageId: string };
 export type StartStepEvent = { type: "start-step" };
 export type FinishStepEvent = { type: "finish-step" };
-export type FinishEvent = { type: "finish" };
+export type FinishEvent = {
+  type: "finish";
+  messageMetadata?: MessageMetadata;
+};
+
+// usage events
+export type MessageMetadataEvent = {
+  type: "message-metadata";
+  messageMetadata: MessageMetadata;
+};
 
 // text events
 export type TextStartEvent = { type: "text-start"; id: string };
@@ -49,6 +69,7 @@ export type SSEEvent =
   | StartStepEvent
   | FinishStepEvent
   | FinishEvent
+  | MessageMetadataEvent
   | TextStartEvent
   | TextDeltaEvent
   | TextEndEvent

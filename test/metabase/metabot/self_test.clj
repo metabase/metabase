@@ -10,6 +10,7 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as test-util]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [ring.adapter.jetty :as jetty]))
 
@@ -179,6 +180,95 @@
                :error       nil
                :duration-ms 1234}]
              (into [] (self.core/lite-aisdk-xf) chunks))))))
+
+;;; aisdk-sse-xf
+
+(defn- sse-event-payloads
+  "Drop the `data: ` prefix and the trailing `\\n`, then JSON-decode each SSE
+  line into a map. Skips the `[DONE]` terminator. Used to make assertions
+  against `aisdk-sse-xf` output cleaner."
+  [lines]
+  (->> lines
+       (remove #(= "data: [DONE]\n" %))
+       (map (fn [^String s]
+              ;; lines look like: "data: {...}\n"
+              (json/decode+kw (subs s 6 (dec (count s))))))))
+
+(deftest ^:parallel aisdk-sse-xf-usage-single-model-test
+  (testing "single :usage part is carried out on the terminal finish event only"
+    (let [parts  [{:type :start :id "msg-1"}
+                  {:type :text :id "t1" :text "hi"}
+                  {:type :usage :model "model-a"
+                   :usage {:promptTokens 10 :completionTokens 20}}]
+          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          finish (->> events (filter #(= "finish" (:type %))) first)]
+      (testing "no mid-stream message-metadata events are emitted"
+        (is (empty? (filter #(= "message-metadata" (:type %)) events))))
+      (testing "terminal finish carries the v6-shaped messageMetadata"
+        (is (some? (:messageMetadata finish)))
+        (is (= {:inputTokens 10 :outputTokens 20 :totalTokens 30}
+               (-> finish :messageMetadata :usage)))
+        (is (= {:model-a {:inputTokens 10 :outputTokens 20 :totalTokens 30}}
+               (-> finish :messageMetadata :usageByModel)))
+        (is (= (+ (-> finish :messageMetadata :usage :inputTokens)
+                  (-> finish :messageMetadata :usage :outputTokens))
+               (-> finish :messageMetadata :usage :totalTokens)))))))
+
+(deftest ^:parallel aisdk-sse-xf-usage-cumulative-same-model-test
+  (testing "cumulative :usage parts for the same model — finish reflects the latest, not a sum"
+    ;; The agent loop emits cumulative-per-model snapshots (see
+    ;; metabase.metabot.agent.core/accumulate-usage-xf), so the transducer
+    ;; should `assoc` the latest value, not add.
+    (let [parts  [{:type :start :id "msg-1"}
+                  {:type :usage :model "model-a"
+                   :usage {:promptTokens 10 :completionTokens 20}}
+                  {:type :usage :model "model-a"
+                   :usage {:promptTokens 35 :completionTokens 60}}]
+          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          finish (->> events (filter #(= "finish" (:type %))) first)]
+      (is (= {:inputTokens 35 :outputTokens 60 :totalTokens 95}
+             (-> finish :messageMetadata :usage))))))
+
+(deftest ^:parallel aisdk-sse-xf-usage-multi-model-test
+  (testing "two :usage parts for different models — usageByModel has both, flat usage is the sum"
+    (let [parts  [{:type :start :id "msg-1"}
+                  {:type :usage :model "model-a"
+                   :usage {:promptTokens 100 :completionTokens 50}}
+                  {:type :usage :model "model-b"
+                   :usage {:promptTokens 200 :completionTokens 75}}]
+          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          finish (->> events (filter #(= "finish" (:type %))) first)
+          meta   (:messageMetadata finish)]
+      (is (= {:inputTokens 300 :outputTokens 125 :totalTokens 425}
+             (:usage meta)))
+      (is (= {:model-a {:inputTokens 100 :outputTokens 50 :totalTokens 150}
+              :model-b {:inputTokens 200 :outputTokens 75 :totalTokens 275}}
+             (:usageByModel meta))))))
+
+(deftest ^:parallel aisdk-sse-xf-no-usage-test
+  (testing "zero :usage parts — no messageMetadata key on finish"
+    (let [parts  [{:type :start :id "msg-1"}
+                  {:type :text :id "t1" :text "hi"}]
+          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          finish (->> events (filter #(= "finish" (:type %))) first)]
+      (is (empty? (filter #(= "message-metadata" (:type %)) events)))
+      (testing "messageMetadata key is absent from finish (not nil, not {})"
+        (is (some? finish))
+        (is (not (contains? finish :messageMetadata)))))))
+
+(deftest ^:parallel aisdk-sse-xf-tee-composition-test
+  (testing "composing with tee-xf upstream still passes raw :usage parts to the tee"
+    ;; This safeguards the api.clj store-native-parts! → extract-usage → DB path,
+    ;; which depends on raw :usage parts landing in parts-atom unchanged.
+    (let [parts-atom (atom [])
+          parts      [{:type :start :id "msg-1"}
+                      {:type :text :id "t1" :text "hi"}
+                      {:type :usage :model "model-a"
+                       :usage {:promptTokens 10 :completionTokens 20}}]
+          xf         (comp (u/tee-xf parts-atom) (self.core/aisdk-sse-xf))
+          _          (into [] xf parts)]
+      (is (= parts @parts-atom)
+          ":usage parts must reach the tee'd atom unchanged"))))
 
 ;;; tool executor
 

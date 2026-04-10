@@ -8,6 +8,7 @@ const getMockedCallbacks = () => ({
   onToolCallPart: jest.fn(),
   onToolResultPart: jest.fn(),
   onError: jest.fn(),
+  onMessageMetadata: jest.fn(),
 });
 
 const expectNoStreamedError = {
@@ -161,6 +162,91 @@ describe("processChatResponse", () => {
     expect(config.onTextPart).toHaveBeenCalled();
     expect(config.onDataPart).toHaveBeenCalled();
     expect(config.onError).not.toHaveBeenCalled();
+  });
+
+  describe("messageMetadata", () => {
+    it("captures messageMetadata from a terminal finish event (last-wins over mid-stream)", async () => {
+      const midStreamMeta = {
+        usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+        usageByModel: {
+          "openrouter/anthropic/claude-haiku-4-5": {
+            inputTokens: 10,
+            outputTokens: 20,
+            totalTokens: 30,
+          },
+        },
+      };
+      const finalMeta = {
+        usage: { inputTokens: 35, outputTokens: 60, totalTokens: 95 },
+        usageByModel: {
+          "openrouter/anthropic/claude-haiku-4-5": {
+            inputTokens: 35,
+            outputTokens: 60,
+            totalTokens: 95,
+          },
+        },
+      };
+      const mockStream = createMockSSEStream([
+        { type: "start", messageId: "m1" },
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "hi" },
+        { type: "text-end", id: "t1" },
+        { type: "message-metadata", messageMetadata: midStreamMeta },
+        { type: "finish", messageMetadata: finalMeta },
+      ]);
+      const config = getMockedCallbacks();
+
+      const result = await processChatResponse(mockStream, config);
+
+      expect(result.messageMetadata).toEqual(finalMeta);
+      expect(config.onMessageMetadata).toHaveBeenCalledTimes(2);
+      expect(config.onMessageMetadata).toHaveBeenNthCalledWith(
+        1,
+        midStreamMeta,
+      );
+      expect(config.onMessageMetadata).toHaveBeenNthCalledWith(2, finalMeta);
+    });
+
+    it("captures messageMetadata when only the terminal finish carries it", async () => {
+      const finalMeta = {
+        usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+        usageByModel: {
+          "openai/gpt-5": {
+            inputTokens: 100,
+            outputTokens: 50,
+            totalTokens: 150,
+          },
+        },
+      };
+      const mockStream = createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "hi" },
+        { type: "text-end", id: "t1" },
+        { type: "finish", messageMetadata: finalMeta },
+      ]);
+      const config = getMockedCallbacks();
+
+      const result = await processChatResponse(mockStream, config);
+
+      expect(result.messageMetadata).toEqual(finalMeta);
+      expect(config.onMessageMetadata).toHaveBeenCalledTimes(1);
+      expect(config.onMessageMetadata).toHaveBeenCalledWith(finalMeta);
+    });
+
+    it("leaves messageMetadata undefined when finish carries no metadata", async () => {
+      const mockStream = createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "hi" },
+        { type: "text-end", id: "t1" },
+        { type: "finish" },
+      ]);
+      const config = getMockedCallbacks();
+
+      const result = await processChatResponse(mockStream, config);
+
+      expect(result.messageMetadata).toBeUndefined();
+      expect(config.onMessageMetadata).not.toHaveBeenCalled();
+    });
   });
 
   it("should throw error if stream errors for another reason", async () => {

@@ -216,6 +216,37 @@
   [payload]
   (str "data: " (json/encode payload) "\n"))
 
+(defn- ->message-metadata
+  "Translate internal per-model usage into v6 `messageMetadata` shape.
+
+  Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}` — the
+  internal agent-loop shape (see `accumulate-usage-xf` in metabot.agent.core).
+
+  Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N}
+            :usageByModel {\"provider/model\" {:inputTokens N :outputTokens N
+                                                :totalTokens N}}}`
+  matching Vercel AI SDK v5/v6 field names. Returns `nil` if no usage observed.
+
+  `reasoningTokens` and `cachedInputTokens` are intentionally omitted — our
+  provider adapters don't surface them yet."
+  [usage-by-model]
+  (when (seq usage-by-model)
+    (let [by-model (update-vals usage-by-model
+                                (fn [{:keys [promptTokens completionTokens]
+                                      :or   {promptTokens 0 completionTokens 0}}]
+                                  {:inputTokens  promptTokens
+                                   :outputTokens completionTokens
+                                   :totalTokens  (+ promptTokens completionTokens)}))
+          totals   (reduce (fn [acc {:keys [inputTokens outputTokens totalTokens]}]
+                             (-> acc
+                                 (update :inputTokens  + inputTokens)
+                                 (update :outputTokens + outputTokens)
+                                 (update :totalTokens  + totalTokens)))
+                           {:inputTokens 0 :outputTokens 0 :totalTokens 0}
+                           (vals by-model))]
+      {:usage        totals
+       :usageByModel by-model})))
+
 (defn aisdk-sse-xf
   "Transducer that converts internal parts to SSE protocol format.
   Returns strings ready to be written to the output stream. Each string is one
@@ -226,6 +257,12 @@
   expects a single `start` for the whole message. Subsequent :start parts are
   treated as step boundaries (finish-step + start-step).
 
+  Token usage is surfaced via Vercel's AI SDK v5/v6 `messageMetadata` mechanism:
+  `:usage` parts are accumulated cumulatively per model and the final snapshot
+  is attached to the terminal `finish` event as `messageMetadata` (when any
+  usage was observed). No mid-stream `message-metadata` events are emitted —
+  the terminal `finish` is sufficient for the typical short-lived response.
+
   Input types and their SSE events:
     :start (1st)  -> {type:start, messageId:...} + {type:start-step}
     :start (Nth)  -> {type:finish-step} + {type:start-step}
@@ -234,21 +271,25 @@
     :tool-output  -> {type:tool-output-available}
     :data         -> {type:data-STATE_TYPE, id:..., data:...}
     :error        -> {type:error, errorText:...}
-    :usage        -> (skipped - internal metadata)
+    :usage        -> (accumulated; carried out on finish.messageMetadata)
     :finish       -> (ignored - completion arity handles final finish)
-    completion    -> {type:finish-step} + {type:finish} + [DONE]"
+    completion    -> {type:finish-step} + {type:finish, messageMetadata?:...} + [DONE]"
   []
   (fn [rf]
-    (let [error?   (volatile! false)
-          started? (volatile! false)]
+    (let [error?         (volatile! false)
+          started?       (volatile! false)
+          usage-by-model (volatile! {})]
       (fn
         ([] (rf))
         ([result]
          (-> result
              ;; Close the current step if started
              (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
-             ;; Emit finish + [DONE]
-             (rf (format-sse-event {:type "finish"}))
+             ;; Emit finish (with messageMetadata when any usage was observed) + [DONE]
+             (rf (format-sse-event
+                  (cond-> {:type "finish"}
+                    (seq @usage-by-model)
+                    (assoc :messageMetadata (->message-metadata @usage-by-model)))))
              (rf "data: [DONE]\n")
              (rf)))
         ([result part]
@@ -306,7 +347,11 @@
            result ;; Ignored — completion arity handles the final finish
 
            :usage
-           result ;; Skip - internal metadata, not streamed
+           ;; Accumulate cumulative-per-model snapshot. Carried out on
+           ;; finish.messageMetadata in the completion arity.
+           (do
+             (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
+             result)
 
            ;; Unknown types: emit as data parts
            (rf result (format-sse-event {:type (str "data-" (name (:type part)))

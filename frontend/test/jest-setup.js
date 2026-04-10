@@ -50,7 +50,7 @@ Object.defineProperty(globalThis, "crypto", {
 global.TextEncoder = JSDOMTextEncoder;
 global.TextDecoder = TextDecoder;
 
-// jsdom doesn't provide web stream globals
+// jsdom doesn't provide stream globals that match browser's behavoir
 global.ReadableStream = ReadableStream;
 global.TransformStream = TransformStream;
 global.TextDecoderStream = TextDecoderStream;

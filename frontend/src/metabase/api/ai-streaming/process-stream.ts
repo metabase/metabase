@@ -11,6 +11,7 @@ import {
 } from "./schemas";
 import { parseSSEStream } from "./sse-stream";
 import type {
+  MessageMetadata,
   SSEEvent,
   ToolInputAvailableEvent,
   ToolOutputAvailableEvent,
@@ -35,6 +36,7 @@ export type AIStreamingConfig = {
   onToolCallPart?: (event: ToolInputAvailableEvent) => void;
   onToolResultPart?: (event: ToolOutputAvailableEvent) => void;
   onError?: (errorText: string) => void;
+  onMessageMetadata?: (metadata: MessageMetadata) => void;
 };
 
 export interface ProcessedChatResponse {
@@ -42,6 +44,7 @@ export interface ProcessedChatResponse {
   toolCalls: ToolCall[];
   history: MetabotHistory;
   data: DataPart[];
+  messageMetadata?: MessageMetadata;
 }
 
 /**
@@ -152,6 +155,21 @@ function processEvent(
       break;
     }
 
+    case "message-metadata": {
+      result.messageMetadata = event.messageMetadata;
+      config.onMessageMetadata?.(event.messageMetadata);
+      break;
+    }
+
+    case "finish": {
+      // finish chunk's usage supersedes any prior mid-stream message-metadata snapshot
+      if (event.messageMetadata) {
+        result.messageMetadata = event.messageMetadata;
+        config.onMessageMetadata?.(event.messageMetadata);
+      }
+      break;
+    }
+
     default: {
       // "data-*" event type
       if (isDataEvent(event)) {
@@ -166,7 +184,7 @@ function processEvent(
       }
 
       // NOTE: Lifecycle events (start, start-step, finish-step, text-start,
-      // text-end, tool-input-start, tool-input-delta, finish) are currently ignored.
+      // text-end, tool-input-start, tool-input-delta) are currently ignored.
       break;
     }
   }

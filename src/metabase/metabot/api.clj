@@ -91,10 +91,8 @@
 (defn- store-native-parts!
   "Store assistant response parts directly to the database in v2 storage format.
 
-  Takes internal agent loop parts (after aisdk-xf combining) and converts them to
-  v2 storage format via `internal-parts->storable` before persisting.
-
-  Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
+  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format
+  (via `internal-parts->storable`), avoiding the intermediate 'aisdk messages' format. "
   [conversation-id profile-id parts]
   (let [state-part (u/seek #(and (= :data (:type %))
                                  (= "state" (:data-type %)))
@@ -162,7 +160,7 @@
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
-  Streams SSE protocol to the client in real-time while simultaneously
+  Streams AI SDK v6 protocol to the client in real-time while simultaneously
   collecting parts for database storage. Text parts are combined before storage
   to consolidate streaming chunks into single text parts.
 
