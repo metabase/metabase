@@ -19,7 +19,7 @@ import {
 } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
-import { MultiAutocomplete } from "metabase/common/components/MultiAutocomplete";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import {
   TokenField,
   parseStringValue,
@@ -454,7 +454,7 @@ export const FieldValuesWidgetInner = forwardRef<
             checkedColor={checkedColor}
           />
         ) : multi ? (
-          <MultiAutocomplete
+          <MultiAutocompleteWithTranslation
             value={value.filter(isNotNull).map((value) => String(value))}
             data={options
               .filter((option) => getValue(option) != null)

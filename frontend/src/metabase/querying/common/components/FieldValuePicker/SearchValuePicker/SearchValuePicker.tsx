@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { MultiAutocomplete } from "metabase/common/components/MultiAutocomplete";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import {
   getFieldOption,
   getFieldOptions,
@@ -97,7 +97,7 @@ export function SearchValuePicker({
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
-    <MultiAutocomplete
+    <MultiAutocompleteWithTranslation
       value={selectedValues}
       data={searchOptions}
       placeholder={placeholder}

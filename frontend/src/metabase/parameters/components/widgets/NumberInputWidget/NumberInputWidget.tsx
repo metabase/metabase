@@ -2,7 +2,7 @@ import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { MultiAutocomplete } from "metabase/common/components/MultiAutocomplete";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { NumericInput } from "metabase/common/components/NumericInput";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
@@ -103,7 +103,7 @@ export function NumberInputWidget({
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" || options.length > 0 ? (
         <TokenFieldWrapper>
-          <MultiAutocomplete
+          <MultiAutocompleteWithTranslation
             value={filteredUnsavedArrayValue.map((value) => value?.toString())}
             data={options}
             placeholder={placeholder}

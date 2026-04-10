@@ -1,1 +1,1 @@
-export { MultiAutocomplete } from "./MultiAutocomplete";
+export { MultiAutocompleteWithTranslation } from "./MultiAutocomplete";

@@ -7,7 +7,9 @@ import {
   type MultiAutocompleteProps,
 } from "metabase/ui";
 
-export function MultiAutocomplete(props: MultiAutocompleteProps) {
+export function MultiAutocompleteWithTranslation(
+  props: MultiAutocompleteProps,
+) {
   const tc = useTranslateContent();
   const sortByTranslation =
     PLUGIN_CONTENT_TRANSLATION.useSortByContentTranslation();
