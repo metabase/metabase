@@ -146,6 +146,7 @@ export const createMockTokenFeatures = (
   tenants: false,
   workspaces: false,
   writable_connection: false,
+  admin_security_center: false,
   ...opts,
 });
 
@@ -380,6 +381,8 @@ export const createMockSettings = (
   "slack-app-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",
+  "security-center-email-recipients": null,
+  "security-center-slack-channel": null,
   "store-url": "https://store.staging.metabase.com",
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
