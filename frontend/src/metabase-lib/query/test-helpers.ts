@@ -98,16 +98,6 @@ export const queryDrillThru = (
   return drill ?? null;
 };
 
-interface ColumnClickObjectOpts {
-  column: DatasetColumn;
-}
-
-export function createColumnClickObject({
-  column,
-}: ColumnClickObjectOpts): Lib.ClickObject {
-  return { column };
-}
-
 interface RawCellClickObjectOpts {
   column: DatasetColumn;
   value: RowValue;
