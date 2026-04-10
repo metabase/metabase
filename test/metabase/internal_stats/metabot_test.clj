@@ -64,7 +64,8 @@
           conv-3       (str (random-uuid))
           conv-4       (str (random-uuid))
           conv-5       (str (random-uuid))
-          all-convs    [conv-1 conv-2 conv-3 conv-4 conv-5]
+          conv-6       (str (random-uuid))
+          all-convs    [conv-1 conv-2 conv-3 conv-4 conv-5 conv-6]
           ;; OpenRouter returns model names like "anthropic/claude-haiku-4-5" in its API.
           ;; This is the bare model name that flows from the SSE adapter → extract-usage → DB.
           model        "anthropic/claude-haiku-4-5"]
@@ -85,9 +86,13 @@
             (send-message! conv-3 "Old question" model 999 999)
             (backdate-messages! conv-3 two-days-ago)
 
-            ;; conv-4: today — out of window
+            ;; conv-4: today — in rolling window
             (send-message! conv-4 "Today's question" model 888 888)
-            (backdate-messages! conv-4 today))
+            (backdate-messages! conv-4 today)
+
+            ;; conv-6: today, same model — exercises rolling aggregation
+            (send-message! conv-6 "Another today question" model 100 100)
+            (backdate-messages! conv-6 today))
 
           ;; -- BYOK conversation (no metabase/ prefix) --
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
@@ -132,16 +137,46 @@
               (is (= 1 (:metabot-users stats))))
 
             (testing ":metabot-usage-date is yesterday's date"
-              (is (= "2026-03-31" (:metabot-usage-date stats)))))
+              (is (= "2026-03-31" (:metabot-usage-date stats))))
+
+            (testing ":metabot-rolling-usage aggregates today's combined tokens by model"
+              (is (= {"openrouter:anthropic/claude-haiku-4-5:tokens" 1976}
+                     (:metabot-rolling-usage stats))))
+
+            (testing ":metabot-rolling-usage-date is today's date"
+              (is (= "2026-04-01" (:metabot-rolling-usage-date stats)))))
 
           ;; -- BYOK-only scenario --
-          (cleanup! conv-1 conv-2 conv-3 conv-4)
+          (cleanup! conv-1 conv-2 conv-3 conv-4 conv-6)
 
           (testing "returns nil when only BYOK (non-proxied) messages exist yesterday"
             (is (nil? (sut/metabot-stats))))
 
           (finally
             (apply cleanup! all-convs)))))))
+
+(deftest metabot-stats-rolling-only-test
+  (search.tu/with-index-disabled
+    (let [clock   (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          today   (t/offset-date-time 2026 4 1 9 0 0 0 (t/zone-offset "+00"))
+          conv-id (str (random-uuid))]
+      (t/with-clock clock
+        (try
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/anthropic/claude-sonnet-4-6"]
+            (send-message! conv-id "Hello" "claude-sonnet-4-6" 500 100)
+            (backdate-messages! conv-id today))
+          (let [stats (sut/metabot-stats)]
+            (testing "returns rolling keys when only today has data"
+              (is (= {"anthropic:claude-sonnet-4-6:tokens" 600}
+                     (:metabot-rolling-usage stats)))
+              (is (= "2026-04-01" (:metabot-rolling-usage-date stats))))
+            (testing "yesterday keys are absent when no yesterday data"
+              (is (nil? (:metabot-tokens stats)))
+              (is (nil? (:metabot-usage stats)))
+              (is (nil? (:metabot-usage-date stats)))))
+          (finally
+            (cleanup! conv-id)))))))
 
 (deftest metabot-usage-anthropic-provider-test
   (search.tu/with-index-disabled
