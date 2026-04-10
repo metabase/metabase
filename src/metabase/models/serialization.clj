@@ -1028,7 +1028,7 @@
 
 ;;; ## Databases
 
-(def ^:private ^:dynamic *batch-cache-max-size*
+(def ^:dynamic *batch-cache-max-size*
   "Maximum number of entries in a batch cache before old entries are dropped."
   50000)
 
@@ -1036,8 +1036,9 @@
   "Returns a fn `(f id) -> entity`. On miss, calls `(load-fn id max-batch)` which must
    return a map of `{id entity, ...}`. `max-batch` is the maximum number of entries to return.
    All returned entries are merged into the cache so sibling lookups become hits.
-   When the cache exceeds `*batch-cache-max-size*`, enough old entries are dropped to make room,
-   dropping at least half the cache."
+   When old entries plus new batch exceed `*batch-cache-max-size*`, old entries are dropped.
+   New batch entries are never evicted, so the cache may temporarily exceed the limit
+   (e.g. a field parent_id chain longer than the limit)."
   [load-fn]
   (let [cache (atom {})
         order (atom clojure.lang.PersistentQueue/EMPTY)]
@@ -1045,14 +1046,17 @@
       (let [v (get @cache id ::not-found)]
         (if-not (identical? v ::not-found)
           v
-          (let [new-batch (load-fn id *batch-cache-max-size*)]
+          (let [new-batch  (load-fn id *batch-cache-max-size*)
+                new-keys   (set (keys new-batch))
+                ;; drop old entries to make room, but never drop new-batch entries
+                old-count  (- (count @cache) (count (filter new-keys (keys @cache))))
+                keep-old   (max 0 (- *batch-cache-max-size* (count new-batch)))]
+            (when (> old-count keep-old)
+              (let [to-drop (- old-count keep-old)]
+                (swap! order #(into clojure.lang.PersistentQueue/EMPTY (drop to-drop) %))
+                (swap! cache #(select-keys % (into new-keys @order)))))
             (swap! cache merge new-batch)
             (swap! order into (keys new-batch))
-            (when (> (count @cache) *batch-cache-max-size*)
-              (let [to-drop (max (quot (count @cache) 2)
-                                 (- (count @cache) *batch-cache-max-size*))]
-                (swap! order #(into clojure.lang.PersistentQueue/EMPTY (drop to-drop) %))
-                (swap! cache #(select-keys % @order))))
             (get new-batch id)))))))
 
 (defn- batch-load-databases
