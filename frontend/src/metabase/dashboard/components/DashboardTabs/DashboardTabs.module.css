@@ -8,7 +8,6 @@
     position: absolute;
     bottom: 0;
     width: 100%;
-    transition: var(--transition-theme-change);
   }
 }
 
