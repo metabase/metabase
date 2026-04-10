@@ -47,12 +47,12 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
           cy.findByText("You don't have access to this collection").should(
             "be.visible",
           );
-          cy.findByText("New exploration").should("not.exist");
+          cy.findByText("New question").should("not.exist");
         });
       });
     });
 
-    it("should not show New exploration button when user has no curate permissions on initial-collection", () => {
+    it("should not show New question button when user has no curate permissions on initial-collection", () => {
       H.prepareSdkIframeEmbedTest({
         withToken: "bleeding-edge",
         signOut: false,
@@ -87,8 +87,8 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
           // User can see the collection contents (they have read access)
           cy.findByText("Test Question").should("be.visible");
 
-          // But New exploration button should be hidden since they can't save
-          cy.findByText("New exploration").should("not.exist");
+          // But New question button should be hidden since they can't save
+          cy.findByText("New question").should("not.exist");
         });
       });
     });
@@ -147,7 +147,7 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
     });
   });
 
-  it("should reset `Exploration` editor state when clicking 'new exploration' breadcrumb after selecting a filter", () => {
+  it("should reset `New question` editor state when clicking 'New question' breadcrumb after selecting a filter", () => {
     H.prepareSdkIframeEmbedTest({
       withToken: "bleeding-edge",
       signOut: false,
@@ -161,7 +161,7 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       `);
 
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("New exploration").click();
+      cy.findByText("New question").click();
 
       cy.findByText("Pick your starting data").should("be.visible");
 
@@ -175,7 +175,7 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       cy.wait("@datasetMetadata");
       cy.findByTestId("data-step-cell").should("have.text", "Orders");
 
-      cy.findByTestId("sdk-breadcrumbs").findByText("New exploration").click();
+      cy.findByTestId("sdk-breadcrumbs").findByText("New question").click();
 
       cy.findByText("Pick your starting data").should("be.visible");
       cy.findByText("Orders").should("not.exist");
