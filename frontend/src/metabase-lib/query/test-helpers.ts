@@ -3,12 +3,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  DatabaseId,
-  DatasetColumn,
-  RowValue,
-  TestQuerySpec,
-} from "metabase-types/api";
+import type { DatabaseId, TestQuerySpec } from "metabase-types/api";
 import {
   ORDERS_ID,
   createSampleDatabase,
@@ -97,20 +92,6 @@ export const queryDrillThru = (
 
   return drill ?? null;
 };
-
-interface RawCellClickObjectOpts {
-  column: DatasetColumn;
-  value: RowValue;
-  data?: Lib.ClickObjectDataRow[];
-}
-
-export function createRawCellClickObject({
-  column,
-  value,
-  data = [{ col: column, value }],
-}: RawCellClickObjectOpts): Lib.ClickObject {
-  return { column, value, data };
-}
 
 interface AggregatedCellClickObjectOpts {
   aggregation: Lib.ClickObjectDimension;
