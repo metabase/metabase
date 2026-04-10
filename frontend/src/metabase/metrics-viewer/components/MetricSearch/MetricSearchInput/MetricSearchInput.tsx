@@ -1,13 +1,10 @@
-import { history, isolateHistory, redo, undo } from "@codemirror/commands";
-import { EditorSelection } from "@codemirror/state";
-import { keymap, placeholder } from "@codemirror/view";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { Button, Flex, Icon, Popover } from "metabase/ui";
-import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
+import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
   MetricDefinitionEntry,
@@ -18,41 +15,19 @@ import type {
   SourceColorMap,
 } from "../../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
-import { getDefinitionName } from "../../../utils/definition-builder";
 import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
-import { computeMetricSlots } from "../../../utils/metric-slots";
 import {
   createMeasureSourceId,
   createMetricSourceId,
-  createSourceId,
 } from "../../../utils/source-ids";
 import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
-import {
-  type MetricNameMap,
-  applyTrackedDefinitions,
-  buildFullText,
-  cleanupParens,
-  findInvalidRanges,
-  getWordAtCursor,
-  parseFullText,
-  removeUnmatchedParens,
-} from "../utils";
 
 import S from "./MetricSearchInput.module.css";
-import { errorHighlight, setErrorDecoration } from "./errorHighlight";
-import {
-  buildMetricIdentities,
-  metricTokenHighlight,
-  readMetricIdentities,
-  setMetricIdentities,
-  setMetricNames,
-} from "./metricTokenHighlight";
-import { operatorHighlight } from "./operatorHighlight";
-
-// Metrics in the expression input can be used multiple times, so nothing is filtered out
-const EMPTY_SET = new Set<number>();
+import { buildEditorExtensions } from "./editorExtensions";
+import { useFormulaEditor } from "./useFormulaEditor";
+import { useMetricNameTracking } from "./useMetricNameTracking";
 
 type MetricSearchInputProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
@@ -83,579 +58,61 @@ export function MetricSearchInput({
   onSwapMetric,
   onSetBreakout,
 }: MetricSearchInputProps) {
-  // editText is the full expression as plain text — only meaningful while focused
-  const [editText, setEditText] = useState("");
-  // currentWord is the word under the cursor, used as the dropdown search query
-  const [currentWord, setCurrentWord] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const isOpenRef = useRef(isOpen);
-  isOpenRef.current = isOpen;
-  const [isFocused, setIsFocused] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  // Pixel position (viewport-relative) of the current word's left edge and
-  // line bottom — used to anchor the search dropdown at the cursor word.
-  const [anchorRect, setAnchorRect] = useState<{ left: number; top: number }>({
-    left: 0,
-    top: 0,
-  });
-
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
-  const pendingFocusRef = useRef(false);
-  // Refs for reading latest values in callbacks without stale closures
-  const editTextRef = useRef(editText);
-  editTextRef.current = editText;
-  const formulaEntitiesRef = useRef(formulaEntities);
-  formulaEntitiesRef.current = formulaEntities;
-  const definitionsRef = useRef(definitions);
-  definitionsRef.current = definitions;
-  // Tracks whether an editing session is active. Set to true only once
-  // handleInputFocus initializes the session; set back to false in commitAndCollapse.
-  // Used to prevent autoFocus / view.focus() re-entrancy from reinitializing text.
-  const isEditingSessionActiveRef = useRef(false);
-  // Tracks whether the dropdown has a keyboard-highlighted item.
-  // When true, Enter should select from the dropdown, not run the expression.
-  const dropdownHasSelectionRef = useRef(false);
 
-  const handleRunRef = useRef<() => void>(() => {});
-  // Text captured at focus time — used to detect whether the user actually
-  // changed the expression and therefore needs to click "Run" to commit.
-  const [textAtFocus, setTextAtFocus] = useState("");
-  const textAtFocusRef = useRef(textAtFocus);
-  textAtFocusRef.current = textAtFocus;
-  // Explicitly tracks whether the expression was modified during this editing
-  // session (metric selected from dropdown, or text typed). Avoids timing
-  // issues with comparing editText vs textAtFocus across async state updates.
-  const [isExpressionDirty, setIsExpressionDirty] = useState(false);
-
-  const [localMetricNames, setLocalMetricNames] = useState<MetricNameMap>({});
-  const metricNames: MetricNameMap = useMemo(
-    () => ({
-      ...localMetricNames,
-      ...Object.fromEntries(
-        Object.values(definitions)
-          .filter(
-            (e): e is { id: MetricSourceId; definition: MetricDefinition } =>
-              e.definition !== null,
-          )
-          .map((e) => [e.id, getDefinitionName(e.definition)])
-          .filter(([, name]) => name !== null),
-      ),
-    }),
-    [localMetricNames, definitions],
-  );
-
-  const metricNamesRef = useRef<MetricNameMap>(metricNames);
-  metricNamesRef.current = metricNames;
-
-  const handleAddMetric = useCallback(
-    (metric: SelectedMetric) => {
-      onAddMetric(metric);
-      if (metric.name != null) {
-        setLocalMetricNames((prev) => ({
-          ...prev,
-          [createSourceId(metric.id, metric.sourceType)]: metric.name!,
-        }));
-      }
-    },
-    [onAddMetric],
-  );
-
-  const handleRemoveMetric = useCallback(
-    (metricId: number, sourceType: "metric" | "measure") => {
-      onRemoveMetric(metricId, sourceType);
-      const sourceId = createSourceId(metricId, sourceType);
-      setLocalMetricNames((prev) => {
-        const next = { ...prev };
-        delete next[sourceId];
-        return next;
-      });
-    },
-    [onRemoveMetric],
-  );
-
-  const handleSwapMetric = useCallback(
-    (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
-      onSwapMetric(oldMetric, newMetric);
-      setLocalMetricNames((prev) => {
-        const next = { ...prev };
-        delete next[createSourceId(oldMetric.id, oldMetric.sourceType)];
-        if (newMetric.name != null) {
-          next[createSourceId(newMetric.id, newMetric.sourceType)] =
-            newMetric.name;
-        }
-        return next;
-      });
-    },
-    [onSwapMetric],
-  );
-
-  // Clean up parens per expression entry (only when not actively editing)
-  useEffect(() => {
-    if (isFocused) {
-      return;
-    }
-    let changed = false;
-    const cleaned = formulaEntities.map((entry) => {
-      if (!isExpressionEntry(entry)) {
-        return entry;
-      }
-      const cleanedTokens = cleanupParens(removeUnmatchedParens(entry.tokens));
-      if (cleanedTokens !== entry.tokens) {
-        changed = true;
-        return { ...entry, tokens: cleanedTokens };
-      }
-      return entry;
+  const { metricNames, metricNamesRef, ...metricHandlers } =
+    useMetricNameTracking({
+      definitions,
+      onAddMetric,
+      onRemoveMetric,
+      onSwapMetric,
     });
-    if (changed) {
-      onFormulaEntitiesChange(cleaned);
-    }
-  }, [isFocused, formulaEntities, onFormulaEntitiesChange]);
 
-  // Focus the editor after transitioning from collapsed → expanded mode
-  useEffect(() => {
-    if (isFocused && pendingFocusRef.current) {
-      pendingFocusRef.current = false;
-      editorRef.current?.view?.focus();
-    }
-  }, [isFocused]);
+  const {
+    editText,
+    isFocused,
+    isOpen,
+    setIsOpen,
+    currentWord,
+    validationError,
+    anchorRect,
+    isExpressionDirty,
+    pendingFocusRef,
+    handleInputFocus,
+    handleInputBlur,
+    handleChange,
+    handleSelect,
+    handleRemoveItem,
+    handleContainerClick,
+    handleEditorClick,
+    handleEditorKeyDown,
+    handleDropdownHasSelectionChange,
+    handleRun,
+    handleRunRef,
+    isOpenRef,
+    dropdownHasSelectionRef,
+  } = useFormulaEditor({
+    formulaEntities,
+    onFormulaEntitiesChange,
+    selectedMetrics,
+    definitions,
+    metricNames,
+    metricNamesRef,
+    handleAddMetric: metricHandlers.handleAddMetric,
+    handleRemoveMetric: metricHandlers.handleRemoveMetric,
+    editorRef,
+    containerRef,
+  });
 
-  const handleInputFocus = useCallback(() => {
-    // If an editing session is already active (e.g. focus returning from a
-    // dropdown item click via view.focus()), do not reset the text or the
-    // committed baseline.
-    if (isEditingSessionActiveRef.current) {
-      return;
-    }
-    isEditingSessionActiveRef.current = true;
-    const fullText = buildFullText(
-      formulaEntitiesRef.current,
-      metricNamesRef.current,
-    );
-    setTextAtFocus(fullText);
-    setIsFocused(true);
-    setEditText(fullText);
-    setValidationError(null);
-    setIsExpressionDirty(false);
-    // After CodeMirror renders the initial text, position the caret and
-    // create an undo boundary. The @uiw/react-codemirror value sync adds
-    // to the undo history, so without isolateHistory("before"), a quick
-    // Cmd+Z after deleting a metric token would undo both the deletion
-    // AND the initial text insertion (they'd be grouped together).
-    setTimeout(() => {
-      const view = editorRef.current?.view;
-      if (view) {
-        const endPos = view.state.doc.length;
-        const identities = buildMetricIdentities(
-          fullText,
-          metricNamesRef.current,
-          formulaEntitiesRef.current,
-        );
-        view.dispatch({
-          selection: EditorSelection.cursor(endPos),
-          effects: [
-            setMetricNames.of(metricNamesRef.current),
-            setMetricIdentities.of(identities),
-          ],
-          annotations: isolateHistory.of("full"),
-        });
-        const coords = view.coordsAtPos(endPos);
-        if (coords) {
-          setAnchorRect({ left: coords.left, top: coords.bottom });
-        }
-      }
-    }, 0);
-  }, []);
-
-  /** Commits the current text: parses formula entities, removes unreferenced metrics, and collapses. */
-  const commitAndCollapse = useCallback(() => {
-    const newText = editTextRef.current;
-    const parsedEntities = parseFullText(newText, metricNamesRef.current);
-
-    // Read tracked identities from the CodeMirror StateField —
-    // positions are already mapped through all edits automatically.
-    const view = editorRef.current?.view;
-    const trackedIdentities = view ? readMetricIdentities(view) : [];
-
-    const { entities: reconciledEntities, slotMapping } =
-      applyTrackedDefinitions(
-        parsedEntities,
-        trackedIdentities,
-        newText,
-        metricNamesRef.current,
-      );
-
-    // Find which metric sourceIds are referenced in the parsed entities
-    const referencedSourceIds = new Set<MetricSourceId>();
-    for (const entry of reconciledEntities) {
-      if (isMetricEntry(entry)) {
-        referencedSourceIds.add(entry.id);
-      } else if (isExpressionEntry(entry)) {
-        for (const token of entry.tokens) {
-          if (token.type === "metric") {
-            referencedSourceIds.add(token.sourceId);
-          }
-        }
-      }
-    }
-
-    // Remove unreferenced metrics from definitions
-    for (const entry of Object.values(definitionsRef.current)) {
-      if (!referencedSourceIds.has(entry.id)) {
-        const metricId = selectedMetrics.find((m) => {
-          const sid =
-            m.sourceType === "metric"
-              ? createMetricSourceId(m.id)
-              : createMeasureSourceId(m.id);
-          return sid === entry.id;
-        });
-        if (metricId) {
-          handleRemoveMetric(metricId.id, metricId.sourceType);
-        }
-      }
-    }
-
-    onFormulaEntitiesChange(reconciledEntities, slotMapping);
-    isEditingSessionActiveRef.current = false;
-    setIsFocused(false);
-    setIsOpen(false);
-    setCurrentWord("");
-    setEditText("");
-    setValidationError(null);
-    setIsExpressionDirty(false);
-  }, [handleRemoveMetric, onFormulaEntitiesChange, selectedMetrics]);
-
-  const handleInputBlur = useCallback(() => {
-    // If the text hasn't changed since focus, collapse back to pills view
-    // without requiring the user to click "Run".
-    if (
-      editTextRef.current === textAtFocusRef.current &&
-      !dropdownHasSelectionRef.current
-    ) {
-      isEditingSessionActiveRef.current = false;
-      setIsFocused(false);
-      setIsOpen(false);
-      setCurrentWord("");
-      setEditText("");
-      setValidationError(null);
-      setIsExpressionDirty(false);
-      return;
-    }
-
-    // Text was modified — validate on blur but do NOT commit.
-    // The expression is only executed when the user explicitly clicks "Run".
-    const invalidRanges = findInvalidRanges(
-      editTextRef.current,
-      metricNamesRef.current,
-    );
-    if (invalidRanges.length > 0) {
-      setValidationError(invalidRanges[0].message);
-      return;
-    }
-
-    setValidationError(null);
-  }, []);
-
-  const handleChange = useCallback((newText: string) => {
-    setEditText(newText);
-    setValidationError(null);
-    if (newText !== textAtFocusRef.current) {
-      setIsExpressionDirty(true);
-    }
-
-    // Extract the word at the cursor for the dropdown search
-    const view = editorRef.current?.view;
-    const cursorPos = view?.state.selection.main.head ?? newText.length;
-    const { word, start: wordStart } = getWordAtCursor(
-      newText,
-      cursorPos,
-      metricNamesRef.current,
-    );
-    // Anchor the dropdown at the word's left edge / line bottom in the viewport
-    if (view) {
-      const coords = view.coordsAtPos(wordStart);
-      if (coords) {
-        setAnchorRect({ left: coords.left, top: coords.bottom });
-      }
-    }
-    setCurrentWord(word);
-    setIsOpen(true);
-  }, []);
-
-  const handleSelect = useCallback(
-    (metric: SelectedMetric) => {
-      const view = editorRef.current?.view;
-      if (!view) {
-        return;
-      }
-      const docText = view.state.doc.toString();
-      const cursorPos = view.state.selection.main.head;
-      const { start, end } = getWordAtCursor(
-        docText,
-        cursorPos,
-        metricNamesRef.current,
-      );
-
-      const metricName = metric.name ?? "";
-
-      // Check if we need to auto-insert a separator before this metric.
-      const textBeforeWord = docText.slice(0, start).trimEnd();
-      const lastChar = textBeforeWord[textBeforeWord.length - 1];
-      const NO_COMMA_CHARS = new Set(["+", "-", "*", "/", "(", ","]);
-      const needsComma =
-        textBeforeWord.length > 0 && !NO_COMMA_CHARS.has(lastChar);
-
-      // Dispatch through the view (not setEditText) — the value-prop sync
-      // in @uiw/react-codemirror does a full doc replacement that destroys
-      // all RangeSet-tracked identities.
-      let insertText: string;
-      let replaceFrom: number;
-      let newCursorPos: number;
-      if (needsComma) {
-        insertText = ", " + metricName;
-        replaceFrom = textBeforeWord.length;
-        newCursorPos = replaceFrom + insertText.length;
-      } else {
-        insertText = metricName;
-        replaceFrom = start;
-        newCursorPos = start + metricName.length;
-      }
-
-      view.dispatch({
-        changes: { from: replaceFrom, to: end, insert: insertText },
-        selection: EditorSelection.cursor(newCursorPos),
-      });
-
-      setIsExpressionDirty(true);
-      handleAddMetric(metric);
-
-      setCurrentWord("");
-      setIsOpen(false);
-      dropdownHasSelectionRef.current = false;
-
-      // Return focus to the editor after dropdown closes
-      setTimeout(() => {
-        editorRef.current?.view?.focus();
-      }, 0);
-    },
-    [handleAddMetric],
-  );
-
-  // Remove one formula entity by index
-  const handleRemoveItem = useCallback(
-    (itemIndex: number) => {
-      const removedEntry = formulaEntities[itemIndex];
-      const newFormulaEntities = formulaEntities.filter(
-        (_, i) => i !== itemIndex,
-      );
-
-      // Find sourceIds that were only referenced by the removed entry
-      const removedSourceIds = new Set<MetricSourceId>();
-      if (isMetricEntry(removedEntry)) {
-        removedSourceIds.add(removedEntry.id);
-      } else if (isExpressionEntry(removedEntry)) {
-        for (const token of removedEntry.tokens) {
-          if (token.type === "metric") {
-            removedSourceIds.add(token.sourceId);
-          }
-        }
-      }
-
-      // Check if any of those sourceIds are still referenced
-      const stillReferenced = new Set<MetricSourceId>();
-      for (const entry of newFormulaEntities) {
-        if (isMetricEntry(entry)) {
-          stillReferenced.add(entry.id);
-        } else if (isExpressionEntry(entry)) {
-          for (const token of entry.tokens) {
-            if (token.type === "metric") {
-              stillReferenced.add(token.sourceId);
-            }
-          }
-        }
-      }
-
-      // Remove unreferenced metrics from definitions
-      for (const sourceId of removedSourceIds) {
-        if (!stillReferenced.has(sourceId)) {
-          const metric = selectedMetrics.find((m) => {
-            const sid =
-              m.sourceType === "metric"
-                ? createMetricSourceId(m.id)
-                : createMeasureSourceId(m.id);
-            return sid === sourceId;
-          });
-          if (metric) {
-            handleRemoveMetric(metric.id, metric.sourceType);
-          }
-        }
-      }
-
-      // Build slot mapping for the removal: surviving old slots map to their
-      // new (shifted) indices.  Slots from the removed entity are absent.
-      const oldSlots = computeMetricSlots(formulaEntities);
-      const slotMapping = new Map<number, number>();
-      let newIdx = 0;
-      for (const slot of oldSlots) {
-        if (slot.entityIndex === itemIndex) {
-          continue; // removed
-        }
-        slotMapping.set(slot.slotIndex, newIdx++);
-      }
-
-      onFormulaEntitiesChange(newFormulaEntities, slotMapping);
-    },
-    [
-      formulaEntities,
-      selectedMetrics,
-      handleRemoveMetric,
-      onFormulaEntitiesChange,
-    ],
-  );
-
-  const handleContainerClick = useCallback((e: React.MouseEvent) => {
-    // Ignore clicks originating from portal-rendered content (e.g. context
-    // menus, breakout pickers).  These fire "click outside" on the container
-    // but should not switch the input into text-editing mode.
-    if (
-      containerRef.current &&
-      e.target instanceof Node &&
-      !containerRef.current.contains(e.target)
-    ) {
-      return;
-    }
-    const view = editorRef.current?.view;
-    if (view) {
-      view.focus();
-    } else {
-      // Editor not rendered yet (collapsed mode) — transition to expanded
-      pendingFocusRef.current = true;
-      setIsFocused(true);
-    }
-  }, []);
-
-  const handleEditorClick = useCallback(() => {
-    const view = editorRef.current?.view;
-    if (!view) {
-      return;
-    }
-    // Re-extract word at the new cursor position after a click
-    const cursorPos = view.state.selection.main.head;
-    const text = view.state.doc.toString();
-    const { word, start: wordStart } = getWordAtCursor(
-      text,
-      cursorPos,
-      metricNamesRef.current,
-    );
-    // Update the anchor position so the dropdown is correctly placed
-    const coords = view.coordsAtPos(wordStart);
-    if (coords) {
-      setAnchorRect({ left: coords.left, top: coords.bottom });
-    }
-    setCurrentWord(word);
-    setIsOpen(true);
-  }, []);
-
-  const handleEditorKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      setIsOpen(false);
-    }
-  }, []);
-
-  const handleDropdownHasSelectionChange = useCallback(
-    (hasSelection: boolean) => {
-      dropdownHasSelectionRef.current = hasSelection;
-    },
-    [],
-  );
-
-  /** Validate the expression and either show an error or commit + run the query. */
-  const handleRun = useCallback(() => {
-    // Check for unknown / invalid tokens in the raw text first, before
-    // parseFullText strips them.  This catches trailing junk like "!!!"
-    // that would otherwise be silently dropped.
-    const invalidRanges = findInvalidRanges(
-      editTextRef.current,
-      metricNamesRef.current,
-    );
-    if (invalidRanges.length > 0) {
-      setValidationError(invalidRanges[0].message);
-      return;
-    }
-
-    setValidationError(null);
-    commitAndCollapse();
-  }, [commitAndCollapse]);
-  handleRunRef.current = handleRun;
-
-  // Sync validation error into the CodeMirror decoration field
-  useEffect(() => {
-    const view = editorRef.current?.view;
-    if (!view) {
-      return;
-    }
-    const ranges =
-      validationError !== null
-        ? findInvalidRanges(editTextRef.current, metricNamesRef.current)
-        : [];
-    view.dispatch({ effects: setErrorDecoration.of(ranges) });
-  }, [validationError]);
-
-  // Sync metric entries into the CodeMirror state for atomic token ranges
-  useEffect(() => {
-    const view = editorRef.current?.view;
-    if (!view || !isFocused) {
-      return;
-    }
-    view.dispatch({ effects: setMetricNames.of(metricNames) });
-  }, [metricNames, isFocused]);
-
-  // CodeMirror extensions for the formula editor.
-  // basicSetup is disabled, so we add history() explicitly for undo/redo.
   const editorExtensions = useMemo(
-    () => [
-      history(),
-      operatorHighlight,
-      errorHighlight,
-      metricTokenHighlight,
-      placeholder(formulaEntities.length === 0 ? t`Search for metrics...` : ""),
-      // Prevent Enter from creating newlines; trigger run when dirty.
-      // If the dropdown has a keyboard-highlighted item, skip running —
-      // let the dropdown's Enter handler select the item instead.
-      keymap.of([
-        { key: "Mod-z", run: undo, preventDefault: true },
-        { key: "Mod-Shift-z", run: redo, preventDefault: true },
-        {
-          key: "Enter",
-          run: () => {
-            if (!dropdownHasSelectionRef.current) {
-              handleRunRef.current();
-            }
-            return true;
-          },
-        },
-        // don't move the cursor when using the arrow keys to navigate the dropdown
-        {
-          key: "ArrowDown",
-          run: () => {
-            if (isOpenRef.current) {
-              return true;
-            }
-            return false;
-          },
-        },
-        {
-          key: "ArrowUp",
-          run: () => {
-            if (isOpenRef.current) {
-              return true;
-            }
-            return false;
-          },
-        },
-      ]),
-    ],
-    [formulaEntities.length],
+    () =>
+      buildEditorExtensions(formulaEntities.length, {
+        dropdownHasSelectionRef,
+        handleRunRef,
+        isOpenRef,
+      }),
+    [formulaEntities.length, dropdownHasSelectionRef, handleRunRef, isOpenRef],
   );
 
   const isCollapsed = !isFocused && formulaEntities.length > 0;
@@ -699,7 +156,7 @@ export function MetricSearchInput({
                       metric={metric}
                       colors={metricColors[entryIndex]}
                       definitionEntry={definition}
-                      onSwap={handleSwapMetric}
+                      onSwap={metricHandlers.handleSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
                       }
@@ -724,8 +181,7 @@ export function MetricSearchInput({
                       colors={expressionColors}
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
-                        pendingFocusRef.current = true;
-                        setIsFocused(true);
+                        handleContainerClick(e);
                       }}
                       onRemove={() => handleRemoveItem(entryIndex)}
                     />
@@ -787,8 +243,6 @@ export function MetricSearchInput({
               >
                 {isOpen && (
                   <MetricSearchDropdown
-                    selectedMetricIds={EMPTY_SET}
-                    selectedMeasureIds={EMPTY_SET}
                     onSelect={handleSelect}
                     externalSearchText={currentWord}
                     onHasSelectionChange={handleDropdownHasSelectionChange}

@@ -30,6 +30,20 @@ export function isMathOperator(key: string): key is MathOperator {
   return (MATH_OPERATORS as readonly string[]).includes(key);
 }
 
+export const MATH_EXPRESSION_OPERATORS = [
+  ...MATH_OPERATORS,
+  "(",
+  ")",
+  ",",
+] as const;
+export type MathExpressionOperator = (typeof MATH_OPERATORS)[number];
+
+export function isMathExpressionOperator(
+  key: string,
+): key is MathExpressionOperator {
+  return (MATH_EXPRESSION_OPERATORS as readonly string[]).includes(key);
+}
+
 export type JsExpressionRef =
   | ["metric", { "lib/uuid": string }, number]
   | ["measure", { "lib/uuid": string }, number];

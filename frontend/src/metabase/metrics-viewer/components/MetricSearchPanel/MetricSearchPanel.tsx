@@ -94,7 +94,7 @@ export function MetricSearchPanel({
           <FilterPopover
             definitionSources={definitionSources}
             metricColors={metricColors}
-            handleSourceDefinitionChange={handleSourceDefinitionChange}
+            onSourceDefinitionChange={handleSourceDefinitionChange}
           >
             <Button.Group>
               <Button

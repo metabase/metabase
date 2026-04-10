@@ -15,8 +15,8 @@ import { type ExcludeMetric, filterSearchResults } from "../utils";
 import S from "./MetricSearchDropdown.module.css";
 
 type MetricSearchDropdownProps = {
-  selectedMetricIds: Set<number>;
-  selectedMeasureIds: Set<number>;
+  selectedMetricIds?: Set<number>;
+  selectedMeasureIds?: Set<number>;
   onSelect: (metric: SelectedMetric) => void;
   onClose?: () => void;
   excludeMetric?: ExcludeMetric;

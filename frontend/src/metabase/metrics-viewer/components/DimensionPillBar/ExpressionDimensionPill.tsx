@@ -141,15 +141,17 @@ export function ExpressionDimensionPill({
 
 // ── Single metric: flat dimension list ──
 
+interface SingleMetricContentProps {
+  source: ExpressionMetricSource;
+  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
+  onClose: () => void;
+}
+
 function SingleMetricContent({
   source,
   onDimensionChange,
   onClose,
-}: {
-  source: ExpressionMetricSource;
-  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
-  onClose: () => void;
-}) {
+}: SingleMetricContentProps) {
   const sections = useMemo(
     () => groupIntoSections(source.availableOptions),
     [source.availableOptions],
@@ -180,19 +182,21 @@ function SingleMetricContent({
 
 // ── Multiple metrics: accordion sections ──
 
+interface MultiMetricContentProps {
+  sources: ExpressionMetricSource[];
+  expandedSlots: number[];
+  onToggleExpanded: (slotIndex: number) => void;
+  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
+  onClose: () => void;
+}
+
 function MultiMetricContent({
   sources,
   expandedSlots,
   onToggleExpanded,
   onDimensionChange,
   onClose,
-}: {
-  sources: ExpressionMetricSource[];
-  expandedSlots: number[];
-  onToggleExpanded: (slotIndex: number) => void;
-  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
-  onClose: () => void;
-}) {
+}: MultiMetricContentProps) {
   return (
     <Box>
       {sources.map((source) => {
@@ -216,6 +220,15 @@ function MultiMetricContent({
   );
 }
 
+interface MetricAccordionItemProps {
+  source: ExpressionMetricSource;
+  isExpanded: boolean;
+  showDimensions: boolean;
+  onToggle: () => void;
+  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
+  onClose: () => void;
+}
+
 function MetricAccordionItem({
   source,
   isExpanded,
@@ -223,14 +236,7 @@ function MetricAccordionItem({
   onToggle,
   onDimensionChange,
   onClose,
-}: {
-  source: ExpressionMetricSource;
-  isExpanded: boolean;
-  showDimensions: boolean;
-  onToggle: () => void;
-  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
-  onClose: () => void;
-}) {
+}: MetricAccordionItemProps) {
   const sections: Section<DimensionOption>[] = useMemo(
     () => groupIntoSections(source.availableOptions),
     [source.availableOptions],

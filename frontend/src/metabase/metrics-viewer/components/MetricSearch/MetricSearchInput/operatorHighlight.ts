@@ -7,6 +7,8 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 
+import { isMathExpressionOperator } from "metabase-types/api";
+
 import S from "./MetricSearchInput.module.css";
 
 const operatorMark = Decoration.mark({ class: S.cmOperator });
@@ -15,7 +17,7 @@ function buildDecorations(view: EditorView): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const text = view.state.doc.toString();
   for (let i = 0; i < text.length; i++) {
-    if ("+-*/,()".includes(text[i])) {
+    if (isMathExpressionOperator(text[i])) {
       builder.add(i, i + 1, operatorMark);
     }
   }

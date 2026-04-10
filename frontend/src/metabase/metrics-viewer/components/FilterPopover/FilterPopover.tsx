@@ -15,7 +15,7 @@ const POPOVER_MAX_HEIGHT = "37.5rem";
 interface FilterPopoverProps {
   definitionSources: DefinitionSource[];
   metricColors: SourceColorMap;
-  handleSourceDefinitionChange: (
+  onSourceDefinitionChange: (
     source: DefinitionSource,
     newDefinition: MetricDefinition,
   ) => void;
@@ -25,7 +25,7 @@ interface FilterPopoverProps {
 export function FilterPopover({
   definitionSources,
   metricColors,
-  handleSourceDefinitionChange,
+  onSourceDefinitionChange,
   children,
 }: FilterPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,7 +54,7 @@ export function FilterPopover({
             key={contentKey}
             definitionSources={definitionSources}
             metricColors={metricColors}
-            handleSourceDefinitionChange={handleSourceDefinitionChange}
+            onSourceDefinitionChange={onSourceDefinitionChange}
             onFilterApplied={handleFilterApplied}
           />
         )}

@@ -44,7 +44,7 @@ type NavigationState =
 interface FilterPopoverContentProps {
   definitionSources: DefinitionSource[];
   metricColors: SourceColorMap;
-  handleSourceDefinitionChange: (
+  onSourceDefinitionChange: (
     source: DefinitionSource,
     newDefinition: MetricDefinition,
   ) => void;
@@ -54,7 +54,7 @@ interface FilterPopoverContentProps {
 export function FilterPopoverContent({
   definitionSources,
   metricColors,
-  handleSourceDefinitionChange,
+  onSourceDefinitionChange,
   onFilterApplied,
 }: FilterPopoverContentProps) {
   const [navState, setNavState] = useState<NavigationState>({ view: "list" });
@@ -89,16 +89,11 @@ export function FilterPopoverContent({
       }
       const selected = definitionSources[navState.definitionIndex];
       const newDefinition = LibMetric.filter(selected.definition, filter);
-      handleSourceDefinitionChange(selected, newDefinition);
+      onSourceDefinitionChange(selected, newDefinition);
       onFilterApplied();
       setNavState({ view: "list" });
     },
-    [
-      navState,
-      definitionSources,
-      onFilterApplied,
-      handleSourceDefinitionChange,
-    ],
+    [navState, definitionSources, onFilterApplied, onSourceDefinitionChange],
   );
 
   const toggleExpanded = useCallback((id: number) => {

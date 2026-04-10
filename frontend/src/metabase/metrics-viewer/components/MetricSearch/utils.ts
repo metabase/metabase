@@ -857,15 +857,15 @@ export function findInvalidRanges(
 
 export function filterSearchResults<T extends SearchResultLike>(
   results: T[],
-  selectedMetricIds: Set<number>,
-  selectedMeasureIds: Set<number>,
+  selectedMetricIds?: Set<number>,
+  selectedMeasureIds?: Set<number>,
   excludeMetric?: ExcludeMetric,
 ): T[] {
   return results.filter((result) => {
     const isAlreadySelected =
       result.model === "metric"
-        ? selectedMetricIds.has(result.id)
-        : selectedMeasureIds.has(result.id);
+        ? selectedMetricIds?.has(result.id)
+        : selectedMeasureIds?.has(result.id);
     const isExcluded =
       excludeMetric &&
       result.id === excludeMetric.id &&
