@@ -3,6 +3,7 @@ import type {
   RowValues,
 } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockDatasetData } from "metabase-types/api/mocks/dataset";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 
@@ -18,6 +19,9 @@ import {
   setupMeasureDefinition,
 } from "./__tests__/test-helpers";
 import {
+  buildCartesianVizSettings,
+  computeBreakoutColorSettings,
+  computeColorVizSettings,
   computeSourceBreakoutColors,
   getSelectedMetricsInfo,
   splitByBreakout,
@@ -408,6 +412,177 @@ describe("computeSourceBreakoutColors", () => {
     );
 
     expect(typeof result["metric:1"]).toBe("string");
+  });
+});
+
+describe("buildCartesianVizSettings", () => {
+  describe("without breakout", () => {
+    const data = createMockDatasetData({
+      cols: [dimensionCol, metricCol],
+      rows: [
+        ["2024-01", 10],
+        ["2024-02", 20],
+      ],
+    });
+
+    it("sets single dimension and metric from data columns", () => {
+      const result = buildCartesianVizSettings(data, false, false, "Revenue");
+
+      expect(result["graph.dimensions"]).toEqual(["CREATED_AT"]);
+      expect(result["graph.metrics"]).toEqual(["COUNT"]);
+    });
+
+    it("disables axis labels", () => {
+      const result = buildCartesianVizSettings(data, false, false, "Revenue");
+
+      expect(result["graph.x_axis.labels_enabled"]).toBe(false);
+      expect(result["graph.y_axis.labels_enabled"]).toBe(false);
+    });
+  });
+
+  describe("with breakout", () => {
+    const data = createMockDatasetData({
+      cols: [dimensionCol, breakoutCol, metricCol],
+      rows: [
+        ["2024-01", "Gadgets", 10],
+        ["2024-01", "Widgets", 20],
+        ["2024-02", "Gadgets", 30],
+        ["2024-02", "Widgets", 40],
+      ],
+    });
+
+    it("includes breakout column in graph.dimensions", () => {
+      const result = buildCartesianVizSettings(data, true, false, "Revenue");
+
+      expect(result["graph.dimensions"]).toEqual(["CREATED_AT", "CATEGORY"]);
+      expect(result["graph.metrics"]).toEqual(["COUNT"]);
+    });
+
+    it("sets series_settings colors from breakout color map", () => {
+      const result = buildCartesianVizSettings(
+        data,
+        true,
+        false,
+        "Revenue",
+        makeColorMap(["Gadgets", "Widgets"]),
+      );
+
+      expect(result.series_settings).toEqual({
+        Gadgets: { color: "#509EE3" },
+        Widgets: { color: "#88BF4D" },
+      });
+    });
+
+    it("prefixes color keys with card name when hasMultipleCards is true", () => {
+      const result = buildCartesianVizSettings(
+        data,
+        true,
+        true,
+        "Revenue",
+        makeColorMap(["Gadgets", "Widgets"]),
+      );
+
+      expect(result.series_settings).toEqual({
+        "Revenue: Gadgets": { color: "#509EE3" },
+        "Revenue: Widgets": { color: "#88BF4D" },
+      });
+    });
+
+    it("preserves breakout colors regardless of data row order", () => {
+      const reorderedData = createMockDatasetData({
+        cols: [dimensionCol, breakoutCol, metricCol],
+        rows: [
+          ["2024-01", "Widgets", 20],
+          ["2024-01", "Gadgets", 10],
+        ],
+      });
+
+      const result = buildCartesianVizSettings(
+        reorderedData,
+        true,
+        false,
+        "Revenue",
+        makeColorMap(["Gadgets", "Widgets"]),
+      );
+
+      expect(result.series_settings).toEqual({
+        Gadgets: { color: "#509EE3" },
+        Widgets: { color: "#88BF4D" },
+      });
+    });
+  });
+});
+
+describe("computeBreakoutColorSettings", () => {
+  it("maps breakout values to series_settings keyed by formatted name", () => {
+    const colorMap = makeColorMap(["Gadgets", "Widgets"]);
+    const result = computeBreakoutColorSettings(
+      colorMap,
+      breakoutCol,
+      false,
+      "Revenue",
+    );
+
+    expect(result).toEqual({
+      series_settings: {
+        Gadgets: { color: "#509EE3" },
+        Widgets: { color: "#88BF4D" },
+      },
+    });
+  });
+
+  it("prefixes series names with card name when hasMultipleCards is true", () => {
+    const colorMap = makeColorMap(["Gadgets", "Widgets"]);
+    const result = computeBreakoutColorSettings(
+      colorMap,
+      breakoutCol,
+      true,
+      "Revenue",
+    );
+
+    expect(result).toEqual({
+      series_settings: {
+        "Revenue: Gadgets": { color: "#509EE3" },
+        "Revenue: Widgets": { color: "#88BF4D" },
+      },
+    });
+  });
+});
+
+describe("computeColorVizSettings", () => {
+  it("returns empty object when color is undefined", () => {
+    expect(
+      computeColorVizSettings({
+        displayType: "line",
+        seriesKey: "COUNT",
+        color: undefined,
+      }),
+    ).toEqual({});
+  });
+
+  it("returns series_settings for non-map display types", () => {
+    expect(
+      computeColorVizSettings({
+        displayType: "line",
+        seriesKey: "COUNT",
+        color: "#509EE3",
+      }),
+    ).toEqual({
+      series_settings: {
+        COUNT: { color: "#509EE3" },
+      },
+    });
+  });
+
+  it("returns map.colors for map display type", () => {
+    const result = computeColorVizSettings({
+      displayType: "map",
+      seriesKey: "COUNT",
+      color: "#509EE3",
+    });
+
+    expect(result).toHaveProperty(["map.colors"]);
+    expect(result).not.toHaveProperty("series_settings");
   });
 });
 
