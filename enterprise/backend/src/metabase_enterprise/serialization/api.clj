@@ -26,7 +26,7 @@
    [metabase.util.random :as u.random]
    [ring.core.protocols :as ring.protocols])
   (:import
-   (java.io ByteArrayOutputStream File)))
+   (java.io ByteArrayOutputStream File OutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,6 +65,26 @@
                                    data))]
         (callback)
         res))))
+
+;;; Keep-alive for streaming export
+;; An empty gzip member (RFC 1952): decompresses to zero bytes. Multiple gzip members can be concatenated,
+;; so prepending these to the actual .tar.gz keeps the HTTP connection alive without affecting the payload.
+(def ^:private ^"[B" empty-gzip-member
+  (byte-array [0x1f 0x8b  ; magic number
+               0x08       ; compression method (deflate)
+               0x00       ; flags
+               0x00 0x00 0x00 0x00  ; modification time
+               0x00       ; extra flags
+               0xff       ; OS (unknown)
+               0x03 0x00  ; empty deflate block
+               0x00 0x00 0x00 0x00  ; CRC32 of empty input
+               0x00 0x00 0x00 0x00  ; uncompressed size (0)
+               ]))
+
+(def ^:private keep-alive-interval-ms
+  "Interval between keep-alive writes during serialization export. Must be shorter than any intermediate proxy's
+  idle-connection timeout (e.g. nginx proxy_read_timeout). 30 seconds is a safe default."
+  30000)
 
 ;;; Logic
 
@@ -247,25 +267,38 @@
     (sr/streaming-response {:content-type "application/gzip" :status 200} [os cancel-chan]
       (a/<!!
        (a/go
-         (case (a/alt! cancel-chan :cancel finished-chan :done)
-           :cancel (do
-                     (future-cancel archive-thread)
-                     (when-let [cb (:callback @result)]
-                       (cb))
-                     (.close os))
-           :done (let [{:keys [archive status log-file callback]} @result]
-                   (try
-                     (if archive
-                       (do
-                         (sr/set-header! "Content-Disposition"
-                                         (format "attachment; filename=\"%s\"" (.getName ^File archive)))
-                         (io/copy archive os))
-                       (do
-                         (sr/set-status! (or status 500))
-                         (sr/set-content-type! "text/plain")
-                         (io/copy log-file os)))
-                     (finally
-                       (callback))))))))))
+         (loop []
+           (let [timeout-ch (a/timeout keep-alive-interval-ms)
+                 [_ port]   (a/alts! [cancel-chan finished-chan timeout-ch])]
+             (condp = port
+               cancel-chan
+               (do
+                 (future-cancel archive-thread)
+                 (when-let [cb (:callback @result)]
+                   (cb))
+                 (.close os))
+
+               finished-chan
+               (let [{:keys [archive status log-file callback]} @result]
+                 (try
+                   (if archive
+                     (do
+                       (sr/set-header! "Content-Disposition"
+                                       (format "attachment; filename=\"%s\"" (.getName ^File archive)))
+                       (io/copy archive os))
+                     (do
+                       (sr/set-status! (or status 500))
+                       (sr/set-content-type! "text/plain")
+                       (io/copy log-file os)))
+                   (finally
+                     (callback))))
+
+               ;; timeout — write an empty gzip member to keep the connection alive
+               (do
+                 (log/debug "Serialization export: writing keep-alive to prevent proxy timeout")
+                 (.write ^OutputStream os empty-gzip-member)
+                 (.flush ^OutputStream os)
+                 (recur))))))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
