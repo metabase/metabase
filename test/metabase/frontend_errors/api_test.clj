@@ -60,7 +60,7 @@
                 count-after-throttling    (mt/metric-value system :metabase-frontend/errors {:type "component-crash"})]
             (is (< initial-count count-after-first-request))
             (is (= count-after-first-request count-after-throttling))
-            (is (=? throttled-response resp)))))))
+            (is (=? throttled-response resp))))))
 
     (testing "POST /api/frontend-errors throttles requests from the same IP even if the browser ID changes"
       (mt/with-prometheus-system! [_ system]
