@@ -73,7 +73,8 @@
 (defn- build-graph-context
   "Build all shared intermediate data structures needed by both per-module and repo-level metrics."
   [deps config]
-  (let [modules'                 (modules deps config)
+  (let [prefix->mod              (deps-graph/build-prefix->module config)
+        modules'                 (modules deps config)
         direct-deps-graph        (merge (zipmap modules' (repeat (sorted-set)))
                                         (deps-graph/module-dependencies deps))
         module->paths            (into (sorted-map)
@@ -95,8 +96,9 @@
         module->sources          (merge (zipmap modules' (repeat (sorted-set)))
                                         (module->source-files deps))
         all-source-files         (into (sorted-set) (comp (filter :module) (map :filename)) deps)
-        all-test-files           (deps-graph/source-filenames->relevant-test-filenames deps all-source-files)]
-    {:modules                  modules'
+        all-test-files           (deps-graph/source-filenames->relevant-test-filenames deps config prefix->mod all-source-files)]
+    {:prefix->mod              prefix->mod
+     :modules                  modules'
      :direct-deps-graph        direct-deps-graph
      :module->paths            module->paths
      :transitive-deps-graph    transitive-deps-graph
@@ -109,7 +111,7 @@
      :all-test-files           all-test-files}))
 
 (defn- metrics*
-  [deps config {:keys [modules direct-deps-graph module->paths transitive-deps-graph
+  [deps config {:keys [prefix->mod modules direct-deps-graph module->paths transitive-deps-graph
                        direct-dependents-graph transitive-dependents circular-deps-graph
                        module->nses module->sources all-source-files all-test-files]}]
   (into []
@@ -125,7 +127,7 @@
                                                      (mapcat #(get module->sources %))
                                                      downstream-modules)
                      affected-source-files     (into source-files downstream-source-files)
-                     affected-test-files       (deps-graph/source-filenames->relevant-test-filenames deps source-files)
+                     affected-test-files       (deps-graph/source-filenames->relevant-test-filenames deps config prefix->mod source-files)
                      derived-api-namespaces    (deps-graph/externally-used-namespaces-ignoring-friends deps config module)
                      declared-api              (declared-api-namespaces config module)
                      unexpected-api-namespaces (set/difference derived-api-namespaces
@@ -172,19 +174,21 @@
 
 (defn metrics
   ([]
-   (metrics (deps-graph/dependencies) (deps-graph/kondo-config)))
+   (let [config (deps-graph/kondo-config)]
+     (metrics (deps-graph/dependencies (deps-graph/build-prefix->module config)) config)))
   ([deps config]
    (metrics* deps config (build-graph-context deps config))))
 
 (defn repo-metrics
   ([]
-   (repo-metrics (deps-graph/dependencies) (deps-graph/kondo-config)))
+   (let [config (deps-graph/kondo-config)]
+     (repo-metrics (deps-graph/dependencies (deps-graph/build-prefix->module config)) config)))
   ([deps config]
    (let [ctx                         (build-graph-context deps config)
          module-metrics              (metrics* deps config ctx)
          source-file->module         (into {} (map (juxt :filename :module)) deps)
          source-file-test-counts     (sort (map (fn [source-file]
-                                                  (count (deps-graph/source-filenames->relevant-test-filenames deps [source-file])))
+                                                  (count (deps-graph/source-filenames->relevant-test-filenames deps config (:prefix->mod ctx) [source-file])))
                                                 (:all-source-files ctx)))
          source-file-downstream-mods (sort (map (fn [source-file]
                                                   (count (get (:transitive-dependents ctx)
@@ -218,7 +222,8 @@
 
 (defn csv
   ([]
-   (csv (deps-graph/dependencies) (deps-graph/kondo-config)))
+   (let [config (deps-graph/kondo-config)]
+     (csv (deps-graph/dependencies (deps-graph/build-prefix->module config)) config)))
   ([deps config]
    (let [ks [:module
              :num-direct-deps
@@ -259,11 +264,14 @@
                                      row)))))]
      (csv/write-csv *out* rows))))
 
-(defn deps []
-  (deps-graph/dependencies))
-
 (defn config []
   (deps-graph/kondo-config))
+
+(defn deps
+  ([]
+   (deps (config)))
+  ([config]
+   (deps-graph/dependencies (deps-graph/build-prefix->module config))))
 
 (comment
   (metrics (deps) (config))
