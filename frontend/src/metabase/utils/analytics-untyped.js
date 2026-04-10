@@ -1,6 +1,7 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
 import { getUserId } from "metabase/selectors/user";
+import { trackMetaplowPageView } from "metabase/utils/metaplow";
 import Settings from "metabase/utils/settings";
 
 export const trackPageView = (url) => {
@@ -8,10 +9,17 @@ export const trackPageView = (url) => {
     return;
   }
 
+  const sanitizedUrl = getSanitizedUrl(url);
+
   if (Settings.snowplowEnabled()) {
-    trackSnowplowPageView(getSanitizedUrl(url));
+    trackSnowplowPageView(sanitizedUrl);
+  }
+
+  if (Settings.get("metaplow-tracking-enabled")) {
+    trackMetaplowPageView(sanitizedUrl);
   }
 };
+
 export const createTracker = (store) => {
   if (Settings.snowplowEnabled()) {
     createSnowplowTracker(store);

@@ -536,6 +536,8 @@ interface PublicSettings {
   "allowed-iframe-hosts": string;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
+  "metaplow-tracking-enabled": boolean;
+  "metaplow-url": string;
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
