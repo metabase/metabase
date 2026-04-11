@@ -6,17 +6,9 @@
 
 (defn store!
   "Consume the entity `stream` and store each entity via the given `backend`.
-  `backend-or-dir` can be a StorageBackend instance or a path (for backward compatibility
-  with tests and CLI — creates a files backend automatically).
   Returns a report map with `:seen` and `:errors` vectors."
-  [stream backend-or-dir]
-  (let [backend  (if (satisfies? protocols/StorageBackend backend-or-dir)
-                   backend-or-dir
-                   ;; backward compat: treat as directory path, create files backend
-                   (do (require 'metabase-enterprise.serialization.v2.storage.files)
-                       ((resolve 'metabase-enterprise.serialization.v2.storage.files/make-backend)
-                        backend-or-dir)))
-        settings (atom [])
+  [stream backend]
+  (let [settings (atom [])
         report   (atom {:seen [] :errors []})]
     (doseq [entity stream]
       (cond
