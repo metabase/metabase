@@ -20,14 +20,16 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
       "role": "assistant",
       "tool_calls": [
         {
-          "arguments": "",
+          "arguments": "{"query":"test"}",
           "id": "x",
           "name": "x",
         },
       ],
     },
     {
-      "content": "",
+      "content": {
+        "result": "ok",
+      },
       "role": "tool",
       "tool_call_id": "x",
     },
@@ -37,7 +39,9 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
       "state": "result",
       "toolCallId": "x",
       "toolName": "x",
-      "value": "",
+      "value": {
+        "result": "ok",
+      },
     },
   ],
 }

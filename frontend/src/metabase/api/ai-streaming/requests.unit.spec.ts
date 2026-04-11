@@ -59,12 +59,12 @@ describe("ai requests", () => {
             type: "tool-input-available",
             toolCallId: "x",
             toolName: "x",
-            input: "",
+            input: { query: "test" },
           },
           {
             type: "tool-output-available",
             toolCallId: "x",
-            output: "",
+            output: { result: "ok" },
           },
         ],
       });

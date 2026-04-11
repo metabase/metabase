@@ -26,24 +26,24 @@ describe("metabot > tool calls", () => {
             type: "tool-input-available",
             toolCallId: "x",
             toolName: "analyze_data",
-            input: "",
+            input: { query: "test" },
           };
           yield {
             type: "tool-output-available",
             toolCallId: "x",
-            output: "",
+            output: { result: "ok" },
           };
           await pause1.promise;
           yield {
             type: "tool-input-available",
             toolCallId: "y",
             toolName: "analyze_chart",
-            input: "",
+            input: { query: "test" },
           };
           yield {
             type: "tool-output-available",
             toolCallId: "y",
-            output: "",
+            output: { result: "ok" },
           };
           await pause2.promise;
           yield { type: "finish" };
@@ -89,12 +89,12 @@ describe("metabot > tool calls", () => {
             type: "tool-input-available",
             toolCallId: "x",
             toolName: "analyze_data",
-            input: "",
+            input: { query: "test" },
           };
           yield {
             type: "tool-output-available",
             toolCallId: "x",
-            output: "",
+            output: { result: "ok" },
           };
           await pause1.promise;
           yield { type: "text-start", id: "t1" };
@@ -105,12 +105,12 @@ describe("metabot > tool calls", () => {
             type: "tool-input-available",
             toolCallId: "y",
             toolName: "analyze_chart",
-            input: "",
+            input: { query: "test" },
           };
           yield {
             type: "tool-output-available",
             toolCallId: "y",
-            output: "",
+            output: { result: "ok" },
           };
           await pause3.promise;
           yield { type: "finish" };
@@ -167,12 +167,12 @@ describe("metabot > tool calls", () => {
           type: "tool-input-available",
           toolCallId: "x",
           toolName: "x",
-          input: "",
+          input: { query: "test" },
         },
         {
           type: "tool-output-available",
           toolCallId: "x",
-          output: "",
+          output: { result: "ok" },
         },
         { type: "text-start", id: "t2" },
         { type: "text-delta", id: "t2", delta: "Response 2" },

@@ -20,16 +20,18 @@ const expectNoStreamedError = {
 };
 
 const mockSuccessStreamEvents: SSEEvent[] = [
-  { type: "start", messageId: "m1" },
-  { type: "start-step" },
   { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
   { type: "text-end", id: "t1" },
   { type: "data-state", id: "d1", data: { queries: {} } },
   { type: "tool-input-start", toolCallId: "x", toolName: "x" },
-  { type: "tool-input-available", toolCallId: "x", toolName: "x", input: "" },
-  { type: "tool-output-available", toolCallId: "x", output: "" },
-  { type: "finish-step" },
+  {
+    type: "tool-input-available",
+    toolCallId: "x",
+    toolName: "x",
+    input: { query: "test" },
+  },
+  { type: "tool-output-available", toolCallId: "x", output: { result: "ok" } },
 ];
 const getMockSuccessStream = () => createMockSSEStream(mockSuccessStreamEvents);
 
@@ -96,7 +98,7 @@ describe("processChatResponse", () => {
       {
         type: "tool-output-available",
         toolCallId: "x",
-        output: "",
+        output: { result: "ok" },
       },
     ]);
     await expect(
@@ -248,7 +250,6 @@ describe("processChatResponse", () => {
         },
       };
       const mockStream = createMockSSEStream([
-        { type: "start", messageId: "m1" },
         { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "hi" },
         { type: "text-end", id: "t1" },
@@ -299,7 +300,6 @@ describe("processChatResponse", () => {
         { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "hi" },
         { type: "text-end", id: "t1" },
-        { type: "finish" },
       ]);
       const config = getMockedCallbacks();
 

@@ -135,13 +135,10 @@ export const lastReqBody = async (
 
 // Common mock response fixtures
 export const whoIsYourFavoriteResponse: SSEEvent[] = [
-  { type: "start", messageId: "m1" },
-  { type: "start-step" },
   { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
   { type: "text-end", id: "t1" },
   { type: "data-state", id: "d1", data: { queries: {} } },
-  { type: "finish-step" },
 ];
 
 export const erroredResponse: SSEEvent[] = [

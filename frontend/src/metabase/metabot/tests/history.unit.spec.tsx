@@ -181,7 +181,7 @@ describe("metabot > history", () => {
             type: "tool-input-available",
             toolCallId: "test",
             toolName: "test",
-            input: "",
+            input: { query: "test" },
           };
           await pause1.promise;
         })(),
@@ -196,7 +196,9 @@ describe("metabot > history", () => {
       { content: "hi", role: "user" },
       {
         role: "assistant",
-        tool_calls: [{ arguments: "", id: "test", name: "test" }],
+        tool_calls: [
+          { arguments: '{"query":"test"}', id: "test", name: "test" },
+        ],
       },
       {
         content: "Tool execution interrupted by user",

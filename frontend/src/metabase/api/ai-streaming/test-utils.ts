@@ -7,14 +7,40 @@ export function createPauses<Count extends number>(count: Count) {
   return pauses as ReturnType<typeof defer>[] & { length: Count };
 }
 
+function lifecycleStartFor(events: SSEEvent[]): SSEEvent[] {
+  const firstType = events[0]?.type;
+  if (firstType === "start" || firstType === "start-step") {
+    return [];
+  }
+  return [{ type: "start", messageId: "mock-message" }, { type: "start-step" }];
+}
+
+function lifecycleFinishFor(events: SSEEvent[]): (SSEEvent | string)[] {
+  const lastType = events[events.length - 1]?.type;
+  const tail: (SSEEvent | string)[] = [];
+  if (lastType !== "finish-step" && lastType !== "finish") {
+    tail.push({ type: "finish-step" });
+  }
+  if (lastType !== "finish") {
+    tail.push({ type: "finish" });
+  }
+  tail.push("[DONE]");
+  return tail;
+}
+
 /**
  * Create a mock SSE stream from an array of event objects.
  * Each event is encoded as `data: {JSON}\n\n`. String entries (like "[DONE]")
  * are encoded as `data: {string}\n\n`.
  *
- * For array inputs, `finish` and `[DONE]` events are automatically appended
- * (matching real server behavior). For async generator inputs, the generator
- * controls its own lifecycle — no events are auto-appended.
+ * For array inputs, the full BE lifecycle is wrapped around the provided
+ * events to match real server output:
+ *   `start` → `start-step` → ...events... → `finish-step` → `finish` → `[DONE]`
+ * Any lifecycle event the caller already supplies at the head or tail is
+ * preserved and not duplicated, so tests can pass a custom `start`
+ * (with a specific `messageId`) or `finish` (with `messageMetadata`) and have
+ * it flow through unchanged. For async generator inputs, the generator
+ * controls its own lifecycle — nothing is auto-added.
  */
 export function createMockSSEStream(
   events: SSEEvent[] | AsyncGenerator<SSEEvent | string, void, unknown>,
@@ -23,7 +49,7 @@ export function createMockSSEStream(
   },
 ): ReadableStream<Uint8Array> {
   const source = Array.isArray(events)
-    ? [...events, { type: "finish" }, "[DONE]"]
+    ? [...lifecycleStartFor(events), ...events, ...lifecycleFinishFor(events)]
     : events;
 
   return new ReadableStream<Uint8Array>({
