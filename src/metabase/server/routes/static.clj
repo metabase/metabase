@@ -42,8 +42,8 @@
 (defn- static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
   [request options]
-  (let [root (:root options)
-        request-path (:* (:route-params request))
+  (let [{root :root} options
+        {{request-path :*} :route-params} request
         resource-path (str root "/" request-path)]
     (or (compressed-resource request resource-path "br")
         (compressed-resource request resource-path "gz")
