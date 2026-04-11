@@ -179,11 +179,14 @@
 (def ^:private non-storable-part-types
   "Transient parts that are not persisted in message history.
 
-  `:start`/`:finish`/`:usage` are stream lifecycle/metadata;
-  `:data` is surfaced via a separate column; `:tool-input-start` is
-  the eager signal whose content is fully contained in the final
-  `:tool-input` part."
-  #{:start :usage :finish :data :tool-input-start})
+  stream lifecycle and step boundaries (`:start`, `:finish`, `:start-step`,
+  `:finish-step`, `:abort`) are control-flow signals with no history value.
+  `:usage` and `:message-metadata` carry token/metadata that live in the
+  dedicated `usage` column instead. `:tool-input-start` is the eager signal
+  whose content is fully contained in the final `:tool-input` part.
+  `:data` parts are not persisted yet — they will be stored in a future
+  change, but today they are dropped."
+  #{:start :start-step :finish :finish-step :abort :usage :message-metadata :data :tool-input-start})
 
 (defn parts->storable-content
   "Drop transient/lifecycle parts and convert what remains to v2 storage format."
