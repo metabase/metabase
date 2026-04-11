@@ -78,3 +78,23 @@
     (testing "Doesn't mark state columns (#2735)"
       (doseq [column-name ["state" "order_state" "state_of_order"]]
         (is (not= :type/State (infer column-name)))))))
+
+(deftest ^:parallel infer-visibility-type-test
+  (let [infer (fn infer [column-name]
+                (classifiers.name/infer-visibility-type-by-name
+                 {:name column-name, :base_type :type/Text}))]
+    (testing "sensitive names"
+      (are [column-name] (= :sensitive (infer column-name))
+        "password"
+        "PASSWORD"
+        "my_password"
+        "api_token"
+        "token_id"
+        "tenant_secret"
+        "password_salt"))
+    (testing "non-sensitive names"
+      (are [column-name] (nil? (infer column-name))
+        "id"
+        "name"
+        "description"
+        "email"))))
