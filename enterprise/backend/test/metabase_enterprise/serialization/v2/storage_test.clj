@@ -9,6 +9,8 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
@@ -265,7 +267,7 @@
                 "collections form a tree, with same-named files")))))))
 
 (deftest ^:parallel resolve-path-test
-  (let [resolve-path @#'storage/resolve-path]
+  (let [resolve-path @#'storage.util/resolve-path]
     (testing "basic slugification"
       (let [fns (atom {})]
         (is (= ["my_collection" "some_card"]
