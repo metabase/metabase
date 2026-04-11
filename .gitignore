@@ -62,6 +62,8 @@ cypress.env.json
 /plugins
 /process.yml
 /reset-password-artifacts
+/resources/frontend_client/app/**/*.br
+/resources/frontend_client/app/**/*.gz
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
 /resources/frontend_client/app/embed.js
