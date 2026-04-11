@@ -40,8 +40,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- store-aiservice-messages!
-  "Store messages that are going from ai-service"
+(defn- store-user-message!
+  "Persist the incoming user message and upsert the conversation row."
   [conversation-id profile-id messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
@@ -89,11 +89,11 @@
    {}
    parts))
 
-(defn- store-native-parts!
-  "Store assistant response parts directly to the database in v2 storage format.
+(defn- store-agent-response!
+  "Persist the assistant's response parts to the database in v2 storage format.
 
-  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format
-  (via `parts->storable-content`), avoiding the intermediate 'aisdk messages' format. "
+  Takes AI SDK parts (after aisdk-xf combining) and stores them via
+  `parts->storable-content`."
   [conversation-id profile-id parts]
   (let [state-part (u/seek #(and (= :data (:type %))
                                  (= "state" (:data-type %)))
@@ -188,7 +188,7 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (store-agent-response! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
@@ -199,7 +199,7 @@
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
-    (store-aiservice-messages! conversation_id profile-id [message])
+    (store-user-message! conversation_id profile-id [message])
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request

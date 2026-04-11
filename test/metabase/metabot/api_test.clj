@@ -158,7 +158,7 @@
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
                             metabot.context/create-context           identity
-                            api/store-native-parts!                  (fn [_conv-id _prof-id parts]
+                            api/store-agent-response!                (fn [_conv-id _prof-id parts]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -569,13 +569,13 @@
                  [{:type :text, :text "solo"}])))))
 
 (defn- store-and-check!
-  "Helper: call store-native-parts! with the given provider setting, return the stored message."
+  "Helper: call store-agent-response! with the given provider setting, return the stored message."
   [provider]
   (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
     (let [conv-id (str (random-uuid))]
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
-          (#'api/store-native-parts!
+          (#'api/store-agent-response!
            conv-id "internal"
            [{:type :start :id "msg-1"}
             {:type :text :text "Hello"}
@@ -588,7 +588,7 @@
           (t2/delete! :model/MetabotMessage :conversation_id conv-id)
           (t2/delete! :model/MetabotConversation :id conv-id))))))
 
-(deftest store-native-parts-ai-proxy-test
+(deftest store-agent-response-ai-proxy-test
   (testing "metabase/ provider prefix sets ai_proxied true and stores bare model names"
     (let [msg (store-and-check! "metabase/anthropic/claude-sonnet-4-6")]
       (is (true? (:ai_proxied msg)))
@@ -679,7 +679,7 @@
     (let [captured-args (atom nil)
           test-metabot-id metabot.config/embedded-metabot-id]
       (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                    api/store-aiservice-messages!         (constantly nil)
+                    api/store-user-message!               (constantly nil)
                     api/native-agent-streaming-request    (fn [args]
                                                             (reset! captured-args args)
                                                             ;; Return a minimal streaming response

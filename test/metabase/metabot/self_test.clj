@@ -334,7 +334,7 @@
 
 (deftest ^:parallel parts->aisdk-sse-xf-tee-composition-test
   (testing "composing with tee-xf upstream still passes raw :usage parts to the tee"
-    ;; This safeguards the api.clj store-native-parts! → extract-usage → DB path,
+    ;; This safeguards the api.clj store-agent-response! → extract-usage → DB path,
     ;; which depends on raw :usage parts landing in parts-atom unchanged.
     (let [parts-atom (atom [])
           parts      [{:type :start :id "msg-1"}

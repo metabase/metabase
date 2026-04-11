@@ -190,8 +190,14 @@ function processEvent(
         }
       }
 
-      // NOTE: Lifecycle events (start, start-step, finish-step, text-start,
-      // text-end, tool-input-delta) are currently ignored.
+      // NOTE: allowed events not yet handled
+      //   lifecycle:  start, start-step, finish-step, abort
+      //   text:       text-start, text-end
+      //   tool:       tool-input-delta, tool-input-error, tool-approval-request,
+      //               tool-output-error, tool-output-denied
+      //   reasoning:  reasoning-start, reasoning-delta, reasoning-end, reasoning-file
+      //   sources:    source-url, source-document
+      //   files:      file
       break;
     }
   }
