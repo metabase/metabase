@@ -68,7 +68,8 @@
                                        (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))
-                 :ai_proxied      (boolean ai-proxy?)})))
+                 :ai_proxied      (boolean ai-proxy?)
+                 :data_version    2})))
 
 (defn- extract-usage
   "Extract usage from parts, taking the last `:usage` per model.

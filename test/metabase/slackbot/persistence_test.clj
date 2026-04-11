@@ -21,7 +21,8 @@
                    :role            "user"
                    :profile_id      "test"
                    :total_tokens    0
-                   :data            [{:type "text" :text "what is 2+2?"}]})
+                   :data            [{:type "text" :text "what is 2+2?"}]
+                   :data_version    2})
       ;; Assistant message with tool calls
       (t2/insert! :model/MetabotMessage
                   {:conversation_id conv-id
@@ -35,7 +36,8 @@
                                       :toolName   "search"
                                       :state      "output-available"
                                       :input      {}
-                                      :output     "y"}]})
+                                      :output     "y"}]
+                   :data_version    2})
 
       (testing "only TOOL_CALL and TOOL_RESULT are included, TEXT is filtered out"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000002"})]
@@ -64,6 +66,7 @@
                                              :state      "output-available"
                                              :input      {}
                                              :output     "result"}]
+                       :data_version       2
                        :deleted_at         (java.time.OffsetDateTime/now)
                        :deleted_by_user_id (mt/user->id :rasta)})
           (is (empty? (slackbot.persistence/message-history conv-id #{deleted-ts})))
@@ -85,7 +88,8 @@
                      :role            "assistant"
                      :profile_id      "test"
                      :total_tokens    5
-                     :data            []})
+                     :data            []
+                     :data_version    2})
         (testing "returns true when a message is soft-deleted"
           (is (true? (slackbot.persistence/soft-delete-response! channel-id slack-ts user-id))))
         (let [msg (t2/select-one :model/MetabotMessage
@@ -120,7 +124,8 @@
                      :user_id         requester-id
                      :profile_id      "test"
                      :total_tokens    5
-                     :data            []})
+                     :data            []
+                     :data_version    2})
         (testing "returns the requester, not the (potentially overwritten) conversation owner"
           (is (= requester-id (slackbot.persistence/response-owner-user-id channel-id slack-ts))))
         (testing "returns nil for an untracked message ts"
@@ -138,6 +143,7 @@
                          :user_id         later-user-id
                          :profile_id      "test"
                          :total_tokens    5
-                         :data            []})
+                         :data            []
+                         :data_version    2})
             (is (= requester-id  (slackbot.persistence/response-owner-user-id channel-id slack-ts)))
             (is (= later-user-id (slackbot.persistence/response-owner-user-id channel-id second-slack-ts)))))))))

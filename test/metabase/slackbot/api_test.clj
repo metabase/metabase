@@ -865,13 +865,15 @@
                      :role            "user"
                      :profile_id      "slackbot"
                      :total_tokens    0
-                     :data            [{:_type "TEXT" :role "user" :content "What is revenue?"}]})
+                     :data            [{:_type "TEXT" :role "user" :content "What is revenue?"}]
+                     :data_version    2})
         (t2/insert! :model/MetabotMessage
                     {:conversation_id conv-id
                      :role            "assistant"
                      :profile_id      "slackbot"
                      :total_tokens    10
-                     :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]})
+                     :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]
+                     :data_version    2})
         (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
                                                                  (swap! harbormaster-calls conj feedback)
                                                                  true)]

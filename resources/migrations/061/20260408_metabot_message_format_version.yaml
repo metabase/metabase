@@ -16,3 +16,6 @@ databaseChangeLog:
                   defaultValueNumeric: 1
                   constraints:
                     nullable: false
+        - dropDefaultValue:
+            tableName: metabot_message
+            columnName: data_version
