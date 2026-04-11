@@ -22,8 +22,6 @@ When you need user input, are reporting a blocker, or presenting the final repor
 
 APP_DB: postgres
 
-{{FILE:dev/bot/common/environment-setup.md}}
-
 {{FILE:dev/bot/common/environment-discovery.md}}
 
 ### Linear Context

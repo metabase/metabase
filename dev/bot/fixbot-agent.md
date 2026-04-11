@@ -43,8 +43,6 @@ Any time you need user input, are asking a question, stopping for a decision, or
 
 Use different headers to match the situation (e.g., "READY FOR TESTING", "QUESTION", "STOPPING — HUMAN DECISION NEEDED", "PR OPENED"). Be creative with the banners — vary them so they stay noticeable.
 
-{{FILE:dev/bot/common/environment-setup.md}}
-
 {{FILE:dev/bot/common/environment-discovery.md}}
 
 **IMPORTANT**: The dev environment always runs the **Enterprise Edition (EE)**. Even if the issue mentions the OSS version, develop and test against EE. If the fix specifically requires running the OSS edition (e.g., testing OSS-only behavior that differs from EE), STOP and tell the user — do not attempt an OSS-only fix.

@@ -89,8 +89,6 @@ As you work through tasks, evaluate the UI against these criteria:
 
 APP_DB: postgres
 
-{{FILE:dev/bot/common/environment-setup.md}}
-
 {{FILE:dev/bot/common/environment-discovery.md}}
 
 Unless the task specifies otherwise, log in as the **regular user** (this simulates a typical non-admin experience).

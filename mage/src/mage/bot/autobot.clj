@@ -84,7 +84,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Self-detection (for running stop/quit from inside a session)
 
-(defn detect-current-session
+(defn- detect-current-session
   "Detect the current session name when running inside a worktree.
    Returns the session name or nil if not inside a session."
   []
@@ -92,17 +92,6 @@
     (when (zero? exit)
       (let [name (str/trim (str/join "" out))]
         (when (seq name) name)))))
-
-(defn status!
-  "Print whether we are currently inside an autobot/workmux session."
-  [& _]
-  (if-let [session (detect-current-session)]
-    (do
-      (println "autobot: true")
-      (println (str "session: " session)))
-    (do
-      (println "autobot: false")
-      (println "session: none"))))
 
 (defn- resolve-session-name
   "Resolve a session name from arguments, or detect current session if no args."
@@ -125,9 +114,10 @@
 
 (defn- generate-workmux-config
   "Generate the .workmux.yaml content from the common template for a given bot."
-  [bot-name]
+  [bot-name app-db]
   (-> (slurp (str u/project-root-directory "/dev/bot/workmux-template.yaml"))
-      (str/replace "{{BOT_NAME}}" bot-name)))
+      (str/replace "{{BOT_NAME}}" bot-name)
+      (str/replace "{{APP_DB}}" app-db)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Fresh launch (workmux add — creates new worktree)
@@ -262,9 +252,10 @@
     (let [branch-name  (str/trim branch-name)
           bot-name     (:bot options)
           command      (:command options)
+          app-db       (or (:app-db options) "postgres")
           base-branch  (or (:base options) "origin/master")
           session-name (branch-to-session-name branch-name)
-          config       (generate-workmux-config (or bot-name "autobot"))]
+          config       (generate-workmux-config (or bot-name "autobot") app-db)]
       (when (str/blank? bot-name)
         (println (c/red "--bot is required"))
         (u/exit 1))
@@ -304,7 +295,7 @@
               :base-branch    base-branch
               :prompt-file    prompt-file
               :workmux-config config
-              :display-info   {"Bot" bot-name "Command" command}})))))))
+              :display-info   {"Bot" bot-name "App DB" app-db "Command" command}})))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Session management

@@ -1,6 +1,8 @@
 agent: claude
 
 post_create:
+  # Dev environment (DB, mise.local.toml, bot dirs)
+  - ./bin/mage -nvoxland-dev-env --app-db {{APP_DB}} --bot {{BOT_NAME}}
   # Bot hooks (workmux-status hooks.json)
   - ./bin/mage -bot-setup --bot {{BOT_NAME}}
 

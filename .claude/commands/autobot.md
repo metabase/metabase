@@ -34,28 +34,39 @@ If a `/<bot-name>-precheck` skill exists (e.g., `/qabot-precheck` for `/qabot`),
 
 If no precheck skill exists for the inner bot, skip this step.
 
-### 3. Launch the autobot session
+### 3. Discover context
+
+Run the `/<bot-name>-discover` skill, passing the inner-args as its arguments. For example, if the command is `/fixbot MB-12345`, run `/fixbot-discover MB-12345`.
+
+This will:
+- Gather external context (Linear issues, PR descriptions, etc.)
+- Determine the correct app database
+- Write results to `.bot/<bot-name>/discover/result.env`
+
+After the discover skill completes, read `.bot/<bot-name>/discover/result.env` and extract the `APP_DB` value. If the file doesn't exist or APP_DB is missing, default to `postgres`.
+
+### 4. Launch the autobot session
 
 Run:
 ```
-./bin/mage -autobot-go <BRANCH_NAME> --bot <BOT_NAME> --base <BASE_BRANCH> --command "<INNER_COMMAND> <INNER_ARGS>"
+./bin/mage -autobot-go <BRANCH_NAME> --bot <BOT_NAME> --app-db <APP_DB> --base <BASE_BRANCH> --command "<INNER_COMMAND> <INNER_ARGS>"
 ```
 
 Pass the base branch (default `origin/master`, or whatever was parsed from `from <base>`).
 
 This will:
 - Create a worktree based on the branch (or reuse an existing one)
-- Set up the bot environment (Docker DB, settings, Playwright, etc.)
+- Set up the dev environment with the correct database
 - Start backend + frontend dev servers in tmux panes
 - Launch Claude with the inner command as its prompt
 
 If a session already exists for this bot+branch, it will tell you to stop it first.
 
-### 4. Report
+### 5. Report
 
 Tell the user:
 - The session has been launched
-- How to attach: `tmux attach -t <bot-name>-<branch-slug>`
+- How to attach: `tmux attach -t <session-name>`
 - How to stop: `/autobot-stop <session-name>` (or `/autobot-stop` from inside the session)
 - How to list all sessions: `/autobot-list`
 - How to remove: `/autobot-quit <session-name>`

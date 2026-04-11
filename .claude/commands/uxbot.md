@@ -34,6 +34,6 @@ Run:
 
 **Shell escaping:** If the task description contains quotes or special characters, write it to a temp file using the `Write` tool first: write to `.bot/uxbot/tmp/task.txt`, then use `--set "INITIAL_TASK=$(cat .bot/uxbot/tmp/task.txt)"`.
 
-### 4. Execute
+### 3. Execute
 
 Read the generated `.bot/uxbot/<TIMESTAMP>/prompt.md` and follow its instructions. Act as a regular user navigating the browser. Execute tasks as they come — the first task (if any) is embedded in the prompt.

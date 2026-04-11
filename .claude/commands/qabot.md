@@ -4,35 +4,16 @@ You are the orchestrator for the qabot workflow. QABot performs pre-merge QA ana
 
 ### 1. Gather context
 
-#### Timestamp
-- Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — instead, use the current date/time you already know to construct it directly (e.g., `20260409-143022`).
+If `.bot/qabot/discover/result.env` does NOT exist, run `/qabot-discover $ARGUMENTS` first.
 
-#### Linear issue
-The user provided: `$ARGUMENTS`
-
-Parse as: `[linear-issue-id]`
-
-- If a Linear issue ID is provided (e.g., `MB-12345`), validate it looks like `[A-Z]+-[0-9]+`.
-- If not provided, try to detect from the current branch name:
-  - Pattern: `*/mb-NNNNN-*` or `*/MB-NNNNN-*` → extract `MB-NNNNN`
-  - Also try the GitHub PR for this branch: `./bin/mage -bot-git-readonly gh pr view --json title,url,body` and look for Linear links in the body
-- If still not found, ask the user: "I couldn't determine a Linear issue from the branch name. Do you have one? (Reply 'no' to skip)"
-- "No issue" is a valid answer — proceed without Linear context.
-
-If a Linear issue ID was resolved, fetch the issue details:
-```
-./bin/mage -bot-fetch-issue <ISSUE_ID>
-```
-Capture the output as LINEAR_CONTEXT.
-
-#### PR description
-Try to fetch the PR description for the current branch:
-```
-./bin/mage -bot-git-readonly gh pr view --json title,body
-```
-If a PR exists, capture the title and body as PR_CONTEXT. This is often the best source of intended behavior to test against. If no PR exists, set PR_CONTEXT to empty.
+Then read:
+- `.bot/qabot/discover/result.env` — extract `LINEAR_ISSUE_ID`, `TIMESTAMP`
+- `.bot/qabot/discover/linear-context.txt` — Linear issue content (may not exist if no issue found)
+- `.bot/qabot/discover/pr-context.txt` — PR title and body (may not exist if no PR)
 
 ### 2. Generate agent prompt
+
+Save multi-line context values to temp files under `.bot/qabot/<timestamp>/tmp/` using the `Write` tool, then reference them with `$(cat ...)`.
 
 Run:
 ```
@@ -42,11 +23,11 @@ Run:
   --set "TIMESTAMP=<timestamp>" \
   --set "OUTPUT_DIR=.bot/qabot/<timestamp>" \
   --set "LINEAR_ISSUE_ID=<resolved-id-or-empty>" \
-  --set "LINEAR_CONTEXT=<output from -bot-fetch-issue, or empty>" \
-  --set "PR_CONTEXT=<PR title and body, or empty>"
+  --set "LINEAR_CONTEXT=$(cat .bot/qabot/<timestamp>/tmp/linear-context.txt)" \
+  --set "PR_CONTEXT=$(cat .bot/qabot/<timestamp>/tmp/pr-context.txt)"
 ```
 
-**Shell escaping:** The `--set` values may contain quotes, newlines, and special characters. Use the `Write` tool to save multi-line values to temp files under `.bot/qabot/<timestamp>/tmp/` (e.g., `.bot/qabot/<timestamp>/tmp/linear-context.txt`), then reference them with command substitution: `--set "LINEAR_CONTEXT=$(cat .bot/qabot/<timestamp>/tmp/linear-context.txt)"`. Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions. Do NOT write to `/tmp` — use `.bot/qabot/<timestamp>/tmp/` so everything stays within the project directory and matches the `Write(./**)` permission.
+**Shell escaping:** Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions. Do NOT write to `/tmp` — use `.bot/qabot/<timestamp>/tmp/` so everything stays within the project directory and matches the `Write(./**)` permission.
 
 ### 3. Execute
 

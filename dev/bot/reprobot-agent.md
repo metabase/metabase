@@ -64,8 +64,6 @@ Write a brief issue summary to `{{OUTPUT_DIR}}/issue-summary.md`.
 
 Use the determined database type for the APP_DB when applicable
 
-{{FILE:dev/bot/common/environment-setup.md}}
-
 {{FILE:dev/bot/common/environment-discovery.md}}
 
 ---
