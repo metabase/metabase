@@ -38,10 +38,10 @@
   (zipmap (map u/qualified-name (keys properties))
           (vals properties)))
 
-(defn- dissoc-false-items [m]
-  (if (false? (:items m))
-    (dissoc m :items)
-    m))
+(defn- dissoc-falsy [m k]
+  (if (k m)
+    m
+    (dissoc m k)))
 
 (defn- update-required [required]
   (if (map? required)
@@ -56,8 +56,10 @@
         (collapse-branches :anyOf)
         (collapse-branches :oneOf)
         (m/update-existing :properties update-properties)
-        (dissoc-false-items)
-        (m/update-existing :type keyword))
+        (dissoc-falsy :items)
+        ;; :metabase.api.open-api/parameter.schema wants this, but jv doesn't
+        ;; (m/update-existing :type keyword)
+        )
     node))
 
 (mu/defn make-schema :- map? ; :metabase.api.open-api/parameter.schema

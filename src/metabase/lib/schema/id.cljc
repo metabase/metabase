@@ -7,7 +7,7 @@
 
 (mr/def ::database
   "Valid Database ID"
-  pos-int?)
+  [:or pos-int? string?])
 
 (def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
@@ -35,7 +35,6 @@
   "Valid Table ID"
   pos-int?)
 
-;; TODO: change to a vector with database/schema/table/field-name(s)
 (mr/def ::field
   "Valid Field ID"
   [:schema
