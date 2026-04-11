@@ -11,7 +11,7 @@ Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and 
 #### Verify tools are available (stop if any fail)
 - Backend health: `./bin/mage -bot-api-call /api/health` — must succeed and return `{"status":"ok"}`
 - REPL: Run `clj-nrepl-eval --discover-ports` to find nREPL servers. Pick the port that belongs to the server running in the current project directory. Store it as NREPL_PORT. **If no matching port is found, STOP** — REPL is required.
-- Playwright MCP: `npx -y @playwright/mcp --version` — available via npx
+- Playwright MCP: Confirm `.mcp.json` has a `playwright` entry (already checked above) and that `mcp__playwright__*` tools are in the deferred tools list. Do NOT run `npx` to verify — it triggers a network call and permission prompt.
 
 If any required check fails, show the error and stop. Do not attempt to recover.
 

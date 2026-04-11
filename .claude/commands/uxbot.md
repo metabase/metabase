@@ -9,7 +9,7 @@ You are the orchestrator for the uxbot workflow. UXBot acts as a regular Metabas
 Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user run `./bin/mage -bot-setup --bot uxbot` to generate it, then restart.
 
 #### Verify tools are available (stop if any fail)
-- Playwright MCP: `npx -y @playwright/mcp --version` — available via npx
+- Playwright MCP: Confirm `.mcp.json` has a `playwright` entry (already checked above) and that `mcp__playwright__*` tools are in the deferred tools list. Do NOT run `npx` to verify — it triggers a network call and permission prompt.
 - Backend health: `./bin/mage -bot-api-call /api/health` — must succeed and return `{"status":"ok"}`
 
 If any required check fails, show the error and stop. Do not attempt to recover.
