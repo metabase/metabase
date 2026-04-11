@@ -57,6 +57,7 @@ export const {
   setIsProcessing,
   setNavigateToPath,
   setProfileOverride,
+  toolCallArgs,
   toolCallStart,
   toolCallEnd,
   setMetabotReqIdOverride,
@@ -393,9 +394,12 @@ export const sendAgentRequest = createAsyncThunk<
           },
           onToolInputAvailable: function handleToolInputAvailable(part) {
             dispatch(
-              toolCallStart({
+              toolCallArgs({
                 toolCallId: part.toolCallId,
-                toolName: part.toolName,
+                args:
+                  typeof part.input === "string"
+                    ? part.input
+                    : JSON.stringify(part.input),
                 agentId,
               }),
             );
@@ -404,7 +408,10 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(
               toolCallEnd({
                 toolCallId: part.toolCallId,
-                result: part.output,
+                result:
+                  typeof part.output === "string"
+                    ? part.output
+                    : JSON.stringify(part.output),
                 agentId,
               }),
             );

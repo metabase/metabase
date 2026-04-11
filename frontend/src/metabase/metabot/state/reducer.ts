@@ -25,6 +25,7 @@ import {
 import type {
   MetabotAgentChatMessage,
   MetabotChatMessage,
+  MetabotDebugToolCallMessage,
   MetabotErrorMessage,
   MetabotToolCall,
   MetabotUserChatMessage,
@@ -152,6 +153,21 @@ export const metabot = createSlice({
           message: TOOL_CALL_MESSAGES[toolName],
           status: "started",
         });
+      },
+    ),
+    toolCallArgs: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{ toolCallId: string; args: string }>,
+      ) => {
+        const { toolCallId, args } = action.payload;
+        const msg = convo.messages.findLast(
+          (m): m is MetabotDebugToolCallMessage =>
+            m.type === "tool_call" && m.id === toolCallId,
+        );
+        if (msg) {
+          msg.args = args;
+        }
       },
     ),
     toolCallEnd: convoReducer(
