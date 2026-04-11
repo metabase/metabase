@@ -19,6 +19,7 @@ import { SidebarContent } from "../ClickBehaviorSidebarComponents";
 import { CustomLinkText } from "./CustomLinkText";
 import { CustomURLPicker } from "./CustomURLPicker";
 import { LinkOption } from "./LinkOption";
+import { LinkTargetControl } from "./LinkTargetControl";
 import { LinkedEntityPicker } from "./LinkedEntityPicker/LinkedEntityPicker";
 import { ValuesYouCanReference } from "./ValuesYouCanReference";
 
@@ -113,6 +114,12 @@ export function LinkOptions({
           </div>
         )}
       </div>
+      {hasSelectedLinkType && (
+        <LinkTargetControl
+          clickBehavior={clickBehavior}
+          updateSettings={updateSettings}
+        />
+      )}
     </SidebarContent>
   );
 }

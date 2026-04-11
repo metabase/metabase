@@ -7,6 +7,7 @@ import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
+import type { ClickBehaviorLinkTarget } from "metabase-types/api/click-behavior";
 import { isObject } from "metabase-types/guards";
 
 import { checkNotNull } from "./types";
@@ -128,6 +129,11 @@ type OpenOptions = {
   openInBlankWindow?: (url: string) => void;
   openInSameOrigin?: (location: LocationDescriptorObject) => void;
   ignoreSiteUrl?: boolean;
+  /**
+   * When set, overrides automatic same-tab vs new-tab heuristics (and ignores
+   * modifier keys for this navigation).
+   */
+  linkTarget?: ClickBehaviorLinkTarget;
 } & ShouldOpenInBlankWindowOptions;
 
 /**
@@ -140,10 +146,11 @@ export async function open(
     // custom function for opening in same window
     openInSameWindow = (url: string) => clickLink(url, false),
     // custom function for opening in new window
-    openInBlankWindow = (url: string) => clickLink(url, true),
+    openInBlankWindow = (url: string) => clickLink(url, "_blank"),
     // custom function for opening in same app instance
     openInSameOrigin,
     ignoreSiteUrl = false,
+    linkTarget,
     ...options
   }: OpenOptions = {},
 ): Promise<void> {
@@ -156,6 +163,24 @@ export async function open(
       // Plugin handled the link, don't continue with default behavior
       return;
     }
+  }
+
+  if (linkTarget != null) {
+    if (linkTarget === "_self") {
+      if (isSameOrigin(url) && isMetabaseUrl(url) && openInSameOrigin) {
+        const location = getLocation(url);
+        if (isObject(location) && "pathname" in location) {
+          openInSameOrigin(location);
+        } else {
+          openInSameWindow(url);
+        }
+      } else {
+        openInSameWindow(url);
+      }
+    } else {
+      clickLink(url, linkTarget);
+    }
+    return;
   }
 
   if (shouldOpenInBlankWindow(url, options)) {
@@ -179,18 +204,26 @@ export async function open(
 }
 
 export function openInBlankWindow(url: string): void {
-  clickLink(getWithSiteUrl(url), true);
+  clickLink(getWithSiteUrl(url), "_blank");
 }
 
-function clickLink(url: string, blank = false): void {
+type ClickLinkTarget = false | ClickBehaviorLinkTarget;
+
+function clickLink(url: string, target: ClickLinkTarget = false): void {
   const a = document.createElement("a");
   a.style.display = "none";
   document.body.appendChild(a);
   try {
     a.href = url;
     a.rel = "noopener";
-    if (blank) {
-      a.target = "_blank";
+    const htmlTarget =
+      target === "_blank"
+        ? "_blank"
+        : target === "_parent" || target === "_top"
+          ? target
+          : null;
+    if (htmlTarget) {
+      a.target = htmlTarget;
     }
     a.click();
   } finally {

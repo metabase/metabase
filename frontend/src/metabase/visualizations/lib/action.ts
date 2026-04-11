@@ -52,6 +52,7 @@ export function performAction(
           }
         },
         ignoreSiteUrl,
+        linkTarget: action.linkTarget,
       });
       didPerform = true;
     }

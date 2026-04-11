@@ -60,6 +60,12 @@ export type CustomDestinationClickBehaviorLinkType =
   | EntityCustomDestinationClickBehavior["linkType"]
   | ArbitraryCustomDestinationClickBehavior["linkType"];
 
+/**
+ * Where to open a custom click-through destination. When omitted, Metabase uses
+ * the default rules (same tab for in-app links, new tab for external URLs, etc.).
+ */
+export type ClickBehaviorLinkTarget = "_self" | "_blank" | "_parent" | "_top";
+
 export interface CrossFilterClickBehavior {
   type: "crossfilter";
   parameterMapping?: ClickBehaviorParameterMapping;
@@ -79,6 +85,7 @@ export interface DashboardCustomDestinationClickBehavior {
    */
   tabId?: DashboardTabId;
   parameterMapping?: ClickBehaviorParameterMapping;
+  linkTarget?: ClickBehaviorLinkTarget;
 }
 
 export interface QuestionCustomDestinationClickBehavior {
@@ -86,6 +93,7 @@ export interface QuestionCustomDestinationClickBehavior {
   linkType: "question";
   targetId?: CardId;
   parameterMapping?: ClickBehaviorParameterMapping;
+  linkTarget?: ClickBehaviorLinkTarget;
 }
 
 export interface ArbitraryCustomDestinationClickBehavior {
@@ -93,6 +101,7 @@ export interface ArbitraryCustomDestinationClickBehavior {
   linkType: "url";
   linkTemplate: string;
   linkTextTemplate?: string;
+  linkTarget?: ClickBehaviorLinkTarget;
 }
 
 export interface BaseActionClickBehavior {

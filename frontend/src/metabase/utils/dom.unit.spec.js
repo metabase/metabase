@@ -144,3 +144,47 @@ describe("open()", () => {
     expect(handleLink).not.toHaveBeenCalled();
   });
 });
+
+describe("open() explicit linkTarget", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("uses target _blank on the anchor when linkTarget is _blank", async () => {
+    await mockIsEmbeddingSdk(false);
+    mockSettings({ "site-url": `${window.location.origin}/` });
+
+    const anchors = [];
+    const originalCreateElement = document.createElement.bind(document);
+    jest
+      .spyOn(document, "createElement")
+      .mockImplementation((tagName, options) => {
+        const el = originalCreateElement(tagName, options);
+        if (tagName === "a") {
+          anchors.push(el);
+        }
+        return el;
+      });
+
+    await open("https://example.com/path", {
+      linkTarget: "_blank",
+      ignoreSiteUrl: true,
+    });
+
+    expect(anchors.length).toBeGreaterThan(0);
+    expect(anchors[anchors.length - 1].target).toBe("_blank");
+  });
+
+  it("uses openInSameOrigin for in-app links when linkTarget is _self", async () => {
+    await mockIsEmbeddingSdk(false);
+    mockSettings({ "site-url": `${window.location.origin}/` });
+    const openInSameOrigin = jest.fn();
+
+    await open("/dashboard/1", {
+      linkTarget: "_self",
+      openInSameOrigin,
+    });
+
+    expect(openInSameOrigin).toHaveBeenCalled();
+  });
+});
