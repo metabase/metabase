@@ -21,7 +21,7 @@
   [resource-path encoding]
   (str resource-path "." encoding))
 
-(defn- try-compressed-response
+(defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
    response map if a compressed variant exists and the client accepts it,
    otherwise nil."
@@ -32,22 +32,22 @@
             (assoc-in [:headers "Content-Encoding"] encoding)
             (assoc-in [:headers "Vary"] "Accept-Encoding"))))
 
-(defn- try-uncompressed-response
+(defn- uncompressed-resource
   "Serve the uncompressed version of `resource-path` if it exists."
   [resource-path]
   (some-> (response/resource-response resource-path)
           (response/content-type (mime/ext-mime-type resource-path))
           (assoc-in [:headers "Vary"] "Accept-Encoding")))
 
-(defn- compressed-resource
+(defn- static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
   [request options]
   (let [root (:root options)
         request-path (:* (:route-params request))
         resource-path (str root "/" request-path)]
-    (or (try-compressed-response request resource-path "br")
-        (try-compressed-response request resource-path "gz")
-        (try-uncompressed-response resource-path))))
+    (or (compressed-resource request resource-path "br")
+        (compressed-resource request resource-path "gz")
+        (uncompressed-resource resource-path))))
 
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
@@ -58,4 +58,4 @@
    Drop-in replacement for `compojure.route/resources`."
   [path options]
   (compojure/GET (add-wildcard path) request
-    (compressed-resource request options)))
+    (static-resource request options)))
