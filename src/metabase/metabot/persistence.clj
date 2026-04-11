@@ -23,6 +23,18 @@
   (and (sequential? data)
        (some #(#{"tool-input" "tool-output"} (:type %)) data)))
 
+(defn- v1-user-message?
+  "Returns true if `data` is the user-message shape that was backfilled to `data_version = 1`
+   when that column was introduced. These rows were written as `[{:role \"user\" :content \"…\"}]`
+   (already valid v2) and need no transformation — only an identity passthrough."
+  [data]
+  (and (sequential? data)
+       (seq data)
+       (every? #(and (= "user" (:role %))
+                     (string? (:content %))
+                     (nil? (:_type %)))
+               data)))
+
 (defn normalize-data-event-types
   "Replace underscores with hyphens in data event type names.
    E.g. \"data-navigate_to\" -> \"data-navigate-to\".
@@ -35,14 +47,51 @@
             entry))
         data))
 
+(defn- v1a-tool-call->parts
+  "Split one v1a `TOOL_CALL` entry (which may batch multiple calls) into v2 tool parts,
+   paired with matching results from `outputs` (keyed by `:tool_call_id`)."
+  [{:keys [tool_calls]} outputs]
+  (mapv (fn [{:keys [id name arguments]}]
+          (let [output (get outputs id)
+                input  (try (json/decode+kw arguments)
+                            (catch Throwable _ arguments))]
+            (cond-> {:type       (str "tool-" name)
+                     :toolCallId id
+                     :toolName   name
+                     :state      (if output "output-available" "input-available")
+                     :input      input}
+              output (assoc :output (:content output)))))
+        tool_calls))
+
 (defn migrate-v1a->v2
   "Migrate a v1a data array (ai-service origin, `:_type`-keyed) to v2 format.
-   Identity for now — real implementation coming next.
 
-   v1a: [{:role \"assistant\" :_type \"TOOL_CALL\" :tool_calls [{:id \"tc1\" :name \"search\" :arguments \"{...}\"}]}
-         {:role \"tool\" :_type \"TOOL_RESULT\" :tool_call_id \"tc1\" :content \"...\"}]"
+   Entry conversions:
+   - TEXT       -> {:type \"text\" :text <content>}
+   - ERROR      -> {:type \"error\" :errorText <content>} (matches AI SDK ErrorChunk)
+   - TOOL_CALL  -> one `tool-<name>` part per batched call, merged with matching TOOL_RESULT
+   - TOOL_RESULT -> stripped from output; merged into its paired TOOL_CALL
+   - DATA       -> {:type \"data-<type>\" :data <:value>}, `normalize-data-event-types` applied
+
+   v1a: [{:role \"assistant\" :_type \"TOOL_CALL\" :tool_calls [{:id \"tc1\" :name \"search\" :arguments \"{…}\"}]}
+         {:role \"tool\"      :_type \"TOOL_RESULT\" :tool_call_id \"tc1\" :content \"…\"}
+         {:_type \"DATA\" :type \"navigate_to\" :version 1 :value \"/q/1\"}]"
   [data]
-  (normalize-data-event-types data))
+  (let [outputs (->> data
+                     (filter #(= "TOOL_RESULT" (:_type %)))
+                     (into {} (map (juxt :tool_call_id identity))))]
+    (->> data
+         (remove #(= "TOOL_RESULT" (:_type %)))
+         (mapcat (fn [entry]
+                   (case (:_type entry)
+                     "TEXT"      [{:type "text" :text (:content entry)}]
+                     "ERROR"     [{:type "error" :errorText (:content entry)}]
+                     "TOOL_CALL" (v1a-tool-call->parts entry outputs)
+                     "DATA"      [{:type (str "data-" (:type entry))
+                                   :data (:value entry)}]
+                     [entry])))
+         vec
+         normalize-data-event-types)))
 
 (defn migrate-v1b->v2
   "Migrate a v1b data array (native-agent origin, `:type`-keyed) to v2 format.
@@ -78,12 +127,15 @@
 
 (defn migrate-v1->v2
   "Migrate a v1 data array to v2 format. Dispatches to `migrate-v1a->v2` or
-   `migrate-v1b->v2` based on the detected shape; throws if `data` matches neither."
+   `migrate-v1b->v2` based on the detected shape. `v1-user-message?` rows are already
+   valid v2 shape (backfilled to `data_version = 1`) and pass through unchanged.
+   Throws on any other shape."
   [data]
   (cond
-    (v1a? data) (migrate-v1a->v2 data)
-    (v1b? data) (migrate-v1b->v2 data)
-    :else       (throw (ex-info "Unrecognized v1 storage format" {:data data}))))
+    (v1a? data)             (migrate-v1a->v2 data)
+    (v1b? data)             (migrate-v1b->v2 data)
+    (v1-user-message? data) data
+    :else                   (throw (ex-info "Unrecognized v1 storage format" {:data data}))))
 
 (defn internal-parts->storable
   "Convert internal agent loop parts to v2 storage format.

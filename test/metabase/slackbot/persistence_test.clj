@@ -71,7 +71,29 @@
                        :deleted_by_user_id (mt/user->id :rasta)})
           (is (empty? (slackbot.persistence/message-history conv-id #{deleted-ts})))
           (is (= #{deleted-ts}
-                 (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts}))))))))
+                 (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts})))))
+
+      (testing "v1a rows (data_version=1, ai-service shape) migrate transparently through message-history"
+        (let [v1a-ts "1709567890.v1a001"]
+          (t2/insert! :model/MetabotMessage
+                      {:conversation_id conv-id
+                       :slack_msg_id    v1a-ts
+                       :role            "assistant"
+                       :profile_id      "test"
+                       :total_tokens    10
+                       :data            [{:role "assistant" :_type "TEXT" :content "ok"}
+                                         {:role "assistant" :_type "TOOL_CALL"
+                                          :tool_calls [{:id "tc1" :name "search"
+                                                        :arguments "{\"q\":\"test\"}"}]}
+                                         {:role "tool" :_type "TOOL_RESULT"
+                                          :tool_call_id "tc1" :content "result"}]
+                       :data_version    1})
+          (let [parts (get (slackbot.persistence/message-history conv-id #{v1a-ts}) v1a-ts)]
+            (is (= 2 (count parts)))
+            (is (= :assistant (:role (first parts))))
+            (is (= "search" (-> parts first :tool_calls first :name)))
+            (is (= :tool (:role (second parts))))
+            (is (= "result" (:content (second parts))))))))))
 
 (deftest soft-delete-response-test
   (testing "soft-delete-response! marks the assistant response as deleted"
