@@ -2,18 +2,13 @@ You are the orchestrator for the qabot workflow. QABot performs pre-merge QA ana
 
 ## Steps
 
-### 1. Preflight checks (inline mode — no autobot/Docker needed)
+### 1. Preflight checks
 
 #### Ensure Playwright MCP is configured
 
 Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user run `./bin/mage -bot-setup --bot qabot` to generate it, then restart.
 
-#### Verify tools are available (stop if any fail)
-- Playwright MCP: Confirm `.mcp.json` has a `playwright` entry (already checked above) and that `mcp__playwright__*` tools are in the deferred tools list. Do NOT run `npx` to verify — it triggers a network call and permission prompt.
-- Backend health: `./bin/mage -bot-api-call /api/health` — must succeed and return `{"status":"ok"}`
-- REPL: Run `clj-nrepl-eval --discover-ports` to find nREPL servers. Pick the port that belongs to the server running in the current project directory (the output indicates which directory each server is in). Store it as NREPL_PORT. Do NOT rely on the `NREPL_PORT` env var — always discover dynamically. **If no matching port is found, STOP** — REPL testing is required for qabot.
-
-If any required check fails, show the error and stop. Do not attempt to recover.
+**Do NOT check backend health, REPL availability, or Playwright tool availability here.** The agent handles all runtime checks itself (via `environment-discovery.md`) with proper retries. The orchestrator only needs to verify that config files exist.
 
 ### 2. Gather context
 
