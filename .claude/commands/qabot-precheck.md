@@ -1,11 +1,13 @@
 Run a precheck to verify the environment is correctly configured for `/qabot` to work — both inline and autobot mode. Report what's ready and what needs fixing.
 
+**IMPORTANT:** Avoid running shell commands that aren't covered by existing permission globs. Prefer reading config files (e.g., `.claude/settings.local.json`, `.mcp.json`) over running `echo`, `printenv`, `env`, `npx ... --version`, or other ad-hoc shell commands to check state. Every unnecessary permission prompt or network call slows down the workflow. The precheck should be fast and non-interactive — verify by reading configs and checking permissions, not by executing tools.
+
 **Common check definitions are in [shared/bot-precheck-common.md](shared/bot-precheck-common.md).** Read that file first, then run each referenced check as described there.
 
 ## Checks
 
 ### 1. Playwright MCP configuration
-Run the **Playwright MCP configuration** check from the shared file, using bot name `qabot`.
+Read `.mcp.json` and verify it has a `playwright` server configured. Do NOT run `npx -y @playwright/mcp --version` or any other shell command to verify — reading the config file is sufficient. If `mcp__playwright__*` tools appear in the deferred tools list, that's additional confirmation.
 
 ### 2. Claude permissions
 
@@ -37,12 +39,12 @@ Run the **clj-nrepl-eval installed** check from the shared file. This is **requi
 
 ### 5. PDF generation
 
-Run `npx -y md-to-pdf --version` to verify the PDF generator is available via npx.
-
-**IMPORTANT:** Run this as a standalone command — do not append `; echo ...` or other shell constructs, as this may not match the user's permission globs.
+Check that `Bash(npx -y md-to-pdf *)` (or `Bash(npx *)` or `Bash(*)`) is present in the permissions from step 2. Do NOT run `npx -y md-to-pdf --version` — that triggers a network call and permission prompt. The permission check is sufficient to confirm it will be available at runtime.
 
 ### 6. Server info and environment
-Run the **Server info and environment** check from the shared file. Also check for **LINEAR_API_KEY** (optional, warn if missing).
+Run the **Server info and environment** check from the shared file.
+
+**LINEAR_API_KEY** is optional (warn if missing). To check it, read `.claude/settings.local.json` and look for a `WebFetch(domain:linear.app)` permission — if present, assume the key is available. Do NOT run shell commands like `echo`, `printenv`, or `env` to check environment variables, as these will trigger unnecessary permission prompts.
 
 ## Report format
 
