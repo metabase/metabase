@@ -340,7 +340,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "data-code-edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
 
-                if (part.value.buffer_id === "qb") {
+                if (part.data.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
               })
