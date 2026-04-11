@@ -4,25 +4,55 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------- Storage format migration ----------------------------------------
 
-(defn v1-format?
+(defn- v1a?
+  "Returns true if `data` is in v1a storage format — the earlier ai-service origin
+   shape whose entries carry `:_type` fields (e.g. `FINISH_MESSAGE`, `DATA`,
+   `TOOL_CALL`, `TOOL_RESULT`)."
+  [data]
+  (and (sequential? data)
+       (some :_type data)))
+
+(defn- v1b?
   "Returns true if `data` is in v1 storage format (has separate tool-input/tool-output entries)."
   [data]
   (and (sequential? data)
        (some #(#{"tool-input" "tool-output"} (:type %)) data)))
 
-(defn migrate-v1->v2
-  "Migrate a v1 data array to v2 format. Merges separate tool-input/tool-output entries
-   into unified tool-{name} parts. Text and user-message blocks pass through unchanged.
+(defn normalize-data-event-types
+  "Replace underscores with hyphens in data event type names.
+   E.g. \"data-navigate_to\" -> \"data-navigate-to\".
+   Idempotent: already-hyphenated types pass through unchanged."
+  [data]
+  (mapv (fn [entry]
+          (if (and (string? (:type entry))
+                   (str/starts-with? (:type entry) "data-"))
+            (update entry :type #(str/replace % "_" "-"))
+            entry))
+        data))
 
-   v1: [{:type \"tool-input\" :id \"tc1\" :function \"search\" :arguments {...}}
-        {:type \"tool-output\" :id \"tc1\" :result {...}}]
-   v2: [{:type \"tool-search\" :toolCallId \"tc1\" :state \"output-available\" :input {...} :output {...}}]"
+(defn migrate-v1a->v2
+  "Migrate a v1a data array (ai-service origin, `:_type`-keyed) to v2 format.
+   Identity for now — real implementation coming next.
+
+   v1a: [{:role \"assistant\" :_type \"TOOL_CALL\" :tool_calls [{:id \"tc1\" :name \"search\" :arguments \"{...}\"}]}
+         {:role \"tool\" :_type \"TOOL_RESULT\" :tool_call_id \"tc1\" :content \"...\"}]"
+  [data]
+  (normalize-data-event-types data))
+
+(defn migrate-v1b->v2
+  "Migrate a v1b data array (native-agent origin, `:type`-keyed) to v2 format.
+   Merges separate tool-input/tool-output entries into unified tool-{name} parts.
+   Text and user-message blocks pass through unchanged. Also normalizes data event
+   type names from underscore to kebab-case.
+
+   v1b: [{:type \"tool-input\" :id \"tc1\" :function \"search\" :arguments {...}}
+         {:type \"tool-output\" :id \"tc1\" :result {...}}]
+   v2:  [{:type \"tool-search\" :toolCallId \"tc1\" :state \"output-available\" :input {...} :output {...}}]"
   [data]
   (let [outputs (->> data
                      (filter #(= "tool-output" (:type %)))
@@ -43,28 +73,17 @@
                               :input      (:arguments block)}
                        (some? (:result output)) (assoc :output (:result output))
                        has-err?                 (assoc :error (:error output))))
-                   block))))))
+                   block)))
+         normalize-data-event-types)))
 
-(defn normalize-data-event-types
-  "Replace underscores with hyphens in data event type names.
-   E.g. \"data-navigate_to\" -> \"data-navigate-to\".
-   Idempotent: already-hyphenated types pass through unchanged."
+(defn migrate-v1->v2
+  "Migrate a v1 data array to v2 format. Dispatches to `migrate-v1a->v2` or
+   `migrate-v1b->v2` based on the detected shape; throws if `data` matches neither."
   [data]
-  (mapv (fn [entry]
-          (if (and (string? (:type entry))
-                   (str/starts-with? (:type entry) "data-"))
-            (update entry :type #(str/replace % "_" "-"))
-            entry))
-        data))
-
-(defn ensure-current-format
-  "Ensure data is in the current (v2) storage format, migrating from v1 if needed.
-   Also normalizes data event type names from underscore to kebab-case."
-  [data]
-  (-> (if (v1-format? data)
-        (migrate-v1->v2 data)
-        data)
-      normalize-data-event-types))
+  (cond
+    (v1a? data) (migrate-v1a->v2 data)
+    (v1b? data) (migrate-v1b->v2 data)
+    :else       (throw (ex-info "Unrecognized v1 storage format" {:data data}))))
 
 (defn internal-parts->storable
   "Convert internal agent loop parts to v2 storage format.
@@ -145,27 +164,15 @@
 (defn store-message!
   "Persist messages to MetabotConversation and MetabotMessage tables.
 
-  Supports two input formats:
-  - Legacy (v1/ai-service): messages with :_type fields (FINISH_MESSAGE, DATA, TEXT, etc.)
-  - v2: flat vector of storable parts. When using v2, pass :usage and :role directly."
+  `messages` is a flat vector of storable parts — either a single user message
+  `[{:role :user :content \"...\"}]` or the output of `parts->storable-content`
+  for an assistant turn. For assistant turns, pass `:usage` and `:role` directly;
+  for user turns, `:role` is inferred from the first message."
   [conversation-id profile-id messages & {:keys [slack-msg-id channel-id user-id ai-proxy? usage role]}]
-  (let [;; Legacy format detection: look for _type fields
-        legacy?  (some :_type messages)
-        finish   (when legacy?
-                   (let [m (u/last messages)]
-                     (when (= (:_type m) :FINISH_MESSAGE) m)))
-        state    (when legacy?
-                   (u/seek #(and (= (:_type %) :DATA)
-                                 (= (:type %) "state"))
-                           messages))
-        data     (if legacy?
-                   (-> (remove #(or (= % state) (= % finish)) messages) vec)
-                   (vec messages))
-        usage    (or usage (:usage finish))
-        role     (or role (:role (first messages)))]
+  (let [data (vec messages)
+        role (or role (:role (first messages)))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (constantly (cond-> {:user_id api/*current-user-id*}
-                                            state (assoc :state state))))
+                              (constantly {:user_id api/*current-user-id*}))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert-returning-pk! :model/MetabotMessage
                              (cond-> {:conversation_id conversation-id

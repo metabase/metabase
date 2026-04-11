@@ -20,4 +20,4 @@
 (t2/define-after-select :model/MetabotMessage [message]
   (cond-> message
     (= 1 (:data_version message))
-    (update :data metabot-persistence/ensure-current-format)))
+    (update :data metabot-persistence/migrate-v1->v2)))

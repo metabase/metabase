@@ -6,33 +6,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private history-message-types
-  "Message types to include in history sent to ai-service."
-  #{"TOOL_CALL" "TOOL_RESULT"})
-
-(defn- normalize-history-message
-  "Keep only ai-service schema fields, keywordize role."
-  [msg]
-  (-> (select-keys msg [:role :content :tool_calls :tool_call_id])
-      (update :role keyword)))
-
-(defn- extract-history-messages-v1
-  "Filter and normalize v1 stored message data for history."
-  [data]
-  (->> data
-       (filter #(history-message-types (:_type %)))
-       (mapv normalize-history-message)))
-
-(defn- extract-history-messages
-  "Extract tool call history from stored message data.
-   Handles both v1 (separate _type entries) and v2 (merged tool-{name} parts) formats."
-  [message]
-  (let [data (:data message)]
-    (if (metabot-persistence/v1-format? data)
-      (extract-history-messages-v1 data)
-      ;; v2: use storable->tool-history to extract tool call/result pairs
-      (metabot-persistence/storable->tool-history data))))
-
 (defn message-history
   "Tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."
   [conversation-id slack-msg-ids]
@@ -42,8 +15,8 @@
                     :role "assistant"
                     :deleted_at nil
                     :slack_msg_id [:in slack-msg-ids])
-         (keep (fn [{:keys [slack_msg_id] :as msg}]
-                 (when-let [parts (seq (extract-history-messages msg))]
+         (keep (fn [{:keys [slack_msg_id data]}]
+                 (when-let [parts (seq (metabot-persistence/storable->tool-history data))]
                    [slack_msg_id parts])))
          (into {}))))
 

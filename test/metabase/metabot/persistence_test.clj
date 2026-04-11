@@ -52,22 +52,22 @@
              {:type "tool-search" :toolCallId "tc1"}
              {:type "data-code_edit" :data {}}])))))
 
-(deftest ensure-current-format-normalizes-data-types-test
-  (testing "normalizes underscore data types in v2 data"
-    (let [v2-data [{:type "text" :text "hello"}
-                   {:type "data-navigate_to" :data "/question#abc"}
-                   {:type "data-todo_list" :data []}]]
+(deftest migrate-v1->v2-normalizes-data-types-test
+  (testing "normalizes underscore data types in passthrough blocks"
+    (let [v1b-data [{:type "text" :text "hello"}
+                    {:type "data-navigate_to" :data "/question#abc"}
+                    {:type "data-todo_list" :data []}]]
       (is (= [{:type "text" :text "hello"}
               {:type "data-navigate-to" :data "/question#abc"}
               {:type "data-todo-list" :data []}]
-             (persistence/ensure-current-format v2-data)))))
+             (persistence/migrate-v1b->v2 v1b-data)))))
 
-  (testing "normalizes data types after v1->v2 migration"
-    (let [v1-data [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "test"}}
-                   {:type "tool-output" :id "tc1" :result {:output "found"}}
-                   {:type "data-transform_suggestion" :data {:id 1}}]]
+  (testing "normalizes data types after merging tool-input/tool-output pairs"
+    (let [v1b-data [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "test"}}
+                    {:type "tool-output" :id "tc1" :result {:output "found"}}
+                    {:type "data-transform_suggestion" :data {:id 1}}]]
       (is (= "data-transform-suggestion"
-             (-> (persistence/ensure-current-format v1-data)
+             (-> (persistence/migrate-v1->v2 v1b-data)
                  last
                  :type))))))
 
