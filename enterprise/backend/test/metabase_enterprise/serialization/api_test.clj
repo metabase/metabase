@@ -367,16 +367,27 @@
             log (slurp (io/input-stream res))]
         (is (re-find #"Cannot unpack archive" log))))))
 
+(defn- read-export-log
+  "Extract the export.log content from a tar.gz response."
+  [res]
+  (with-open [tar (open-tar res)]
+    (loop []
+      (when-let [e (.getNextEntry tar)]
+        (if (str/ends-with? (.getName ^TarArchiveEntry e) "export.log")
+          (slurp (io/reader tar))
+          (recur))))))
+
 (deftest export-extraction-error-test
-  (testing "Export fails with 500 when entity extraction fails"
+  (testing "Export with error still returns tar.gz with export.log containing error details"
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                         (mt/dynamic-value serdes/extract-one))]
-        (testing "Error response contains exception details"
+        (testing "Error details are in export.log inside the archive"
           (binding [api.serialization/*additive-logging* false]
-            (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+            (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                             :collection (:id coll) :data_model false :settings false)
-                  log (slurp (io/input-stream res))]
+                  log (read-export-log res)]
+              (is (some? log) "export.log should be present in the archive")
               (is (= {:id        "**ID**"
                       :entity_id "**ID**"
                       :model     "Card"
@@ -400,12 +411,12 @@
                    "error_message"   #"(?s)Error extracting Card \d+ .*"}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
 
-        (testing "full_stacktrace parameter includes full stack trace"
+        (testing "full_stacktrace parameter includes full stack trace in export.log"
           (binding [api.serialization/*additive-logging* false]
-            (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+            (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                             :collection (:id coll) :data_model false :settings false
                                             :full_stacktrace true)
-                  log (slurp (io/input-stream res))]
+                  log (read-export-log res)]
               (is (< 50 (count (str/split-lines log))))
               ;; Pop out the error event
               (snowplow-test/pop-event-data-and-user-id!))))))))
