@@ -231,11 +231,11 @@
         ;; extract/extract runs eager setup (target resolution, escape analysis) which can throw
         ;; for invalid inputs (e.g. bad collection ID). This must happen before streaming starts.
         entities (extract/extract opts)]
-    (sr/streaming-response {:content-type "application/gzip" :status 200} [os _cancel-chan]
+    (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
       (sr/set-header! "Content-Disposition"
                       (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
       (let [start  (System/nanoTime)
-            result (serialize-to-stream! os export-dirname entities opts)]
+            result (serialize-to-stream! output export-dirname entities opts)]
         (track-export-event! collection opts start result)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
