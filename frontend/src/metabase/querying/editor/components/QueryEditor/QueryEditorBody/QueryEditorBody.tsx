@@ -57,8 +57,11 @@ type QueryEditorBodyProps = {
   isShowingSnippetSidebar: boolean;
   isShowingTemplateTagsSidebar: boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
+  getDatabaseDisabledTooltip?: (
+    database: QueryEditorDatabasePickerItem,
+  ) => string | undefined;
   shouldDisableItem?: (item: OmniPickerItem | RecentCollectionItem) => boolean;
-  getDisabledItemTooltip?: (
+  getItemTooltip?: (
     item: OmniPickerItem | RecentCollectionItem,
   ) => string | undefined;
   shouldShowLibrary?: boolean;
@@ -98,8 +101,9 @@ export function QueryEditorBody({
   isShowingSnippetSidebar,
   isShowingTemplateTagsSidebar,
   shouldDisableDatabase,
+  getDatabaseDisabledTooltip,
   shouldDisableItem,
-  getDisabledItemTooltip,
+  getItemTooltip,
   shouldShowLibrary,
   onBlur,
   onChange,
@@ -130,13 +134,13 @@ export function QueryEditorBody({
   const dataPickerOptions = useMemo(
     () => ({
       shouldDisableItem,
-      getDisabledItemTooltip,
+      getItemTooltip,
       shouldDisableDatabase,
       shouldShowLibrary,
     }),
     [
       shouldDisableItem,
-      getDisabledItemTooltip,
+      getItemTooltip,
       shouldDisableDatabase,
       shouldShowLibrary,
     ],
@@ -185,6 +189,7 @@ export function QueryEditorBody({
         runQuery={hideRunButton ? undefined : onRunQuery}
         cancelQuery={onCancelQuery}
         databaseIsDisabled={shouldDisableDatabase}
+        databaseDisabledTooltip={getDatabaseDisabledTooltip}
         setDatasetQuery={handleNativeQueryChange}
         sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
         toggleDataReference={onToggleDataReference}

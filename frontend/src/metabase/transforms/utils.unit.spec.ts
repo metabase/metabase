@@ -7,6 +7,8 @@ import {
   validateDatabase,
 } from "./utils";
 
+const UNSUPPORTED_DB_TOOLTIP = "This database does not support transforms";
+
 describe("getDatabaseTransformDisabledReason", () => {
   it("returns undefined when database is undefined", () => {
     expect(getDatabaseTransformDisabledReason(undefined)).toBeUndefined();
@@ -26,16 +28,22 @@ describe("getDatabaseTransformDisabledReason", () => {
     );
   });
 
-  it("returns undefined for a regular database without DB routing", () => {
+  it("returns a reason for a database without the transforms/table feature", () => {
     const database = createMockDatabase({
       router_user_attribute: null,
       router_database_id: null,
     });
-    expect(getDatabaseTransformDisabledReason(database)).toBeUndefined();
+    expect(getDatabaseTransformDisabledReason(database)).toBe(
+      UNSUPPORTED_DB_TOOLTIP,
+    );
   });
 
-  it("returns undefined for a sample database (no DB routing)", () => {
-    const database = createMockDatabase({ is_sample: true });
+  it("returns undefined for a database that supports transforms", () => {
+    const database = createMockDatabase({
+      features: ["transforms/table"],
+      router_user_attribute: null,
+      router_database_id: null,
+    });
     expect(getDatabaseTransformDisabledReason(database)).toBeUndefined();
   });
 });

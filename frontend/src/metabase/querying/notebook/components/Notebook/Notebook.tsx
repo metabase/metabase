@@ -47,14 +47,16 @@ export const Notebook = ({
   };
 
   return (
-    <NotebookProvider modelsFilterList={modelsFilterList}>
+    <NotebookProvider
+      modelsFilterList={modelsFilterList}
+      dataPickerOptions={dataPickerOptions}
+    >
       <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
         <NotebookStepList
           updateQuestion={handleUpdateQuestion}
           question={question}
           reportTimezone={reportTimezone}
           readOnly={readOnly}
-          dataPickerOptions={dataPickerOptions}
         />
         {hasVisualizeButton && runQuestionQuery && (
           <VisualizeButton

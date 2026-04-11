@@ -39,24 +39,18 @@ export const EntityPickerProvider = ({
   const [previousPath, setPreviousPath] = useState<OmniPickerItem[]>([]);
   const [searchScope, setSearchScope] = useState<SearchScope>(null);
 
-  const {
-    isFolderItem,
-    isHiddenItem,
-    isDisabledItem,
-    isSelectableItem,
-    getDisabledItemTooltip,
-  } = useMemo(
-    () =>
-      getItemFunctions({
-        models: value.models,
-        isFolderItem: value.isFolderItem,
-        isHiddenItem: value.isHiddenItem,
-        isDisabledItem: value.isDisabledItem,
-        isSelectableItem: value.isSelectableItem,
-        getDisabledItemTooltip: value.getDisabledItemTooltip,
-      }),
-    [value],
-  );
+  const { isFolderItem, isHiddenItem, isDisabledItem, isSelectableItem } =
+    useMemo(
+      () =>
+        getItemFunctions({
+          models: value.models,
+          isFolderItem: value.isFolderItem,
+          isHiddenItem: value.isHiddenItem,
+          isDisabledItem: value.isDisabledItem,
+          isSelectableItem: value.isSelectableItem,
+        }),
+      [value],
+    );
 
   return (
     <OmniPickerContext.Provider
@@ -74,7 +68,6 @@ export const EntityPickerProvider = ({
         isHiddenItem,
         isDisabledItem,
         isSelectableItem,
-        getDisabledItemTooltip,
       }}
     >
       {children}

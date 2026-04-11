@@ -4,17 +4,27 @@ import { getEditorOptions } from "./utils";
 
 const DB_ROUTING_TOOLTIP =
   "Transforms can't be created on databases with DB routing enabled";
+const UNSUPPORTED_DB_TOOLTIP = "This database does not support transforms";
+
+function createTransformCapableDatabase(opts = {}) {
+  return createMockDatabase({
+    features: ["transforms/table"],
+    router_user_attribute: null,
+    router_database_id: null,
+    ...opts,
+  });
+}
 
 describe("getEditorOptions", () => {
-  describe("getDisabledDataPickerItemTooltip", () => {
+  describe("getDataPickerItemTooltip", () => {
     it("returns a tooltip for a database item with DB routing enabled via router_user_attribute", () => {
-      const database = createMockDatabase({
+      const database = createTransformCapableDatabase({
         id: 1,
         router_user_attribute: "tenant_id",
       });
       const options = getEditorOptions([database]);
 
-      const tooltip = options.getDisabledDataPickerItemTooltip?.({
+      const tooltip = options.getDataPickerItemTooltip?.({
         model: "database",
         id: 1,
         name: "Routed DB",
@@ -24,13 +34,13 @@ describe("getEditorOptions", () => {
     });
 
     it("returns a tooltip for a database item with DB routing enabled via router_database_id", () => {
-      const database = createMockDatabase({
+      const database = createTransformCapableDatabase({
         id: 2,
         router_database_id: 99,
       });
       const options = getEditorOptions([database]);
 
-      const tooltip = options.getDisabledDataPickerItemTooltip?.({
+      const tooltip = options.getDataPickerItemTooltip?.({
         model: "database",
         id: 2,
         name: "Routing Destination DB",
@@ -39,17 +49,26 @@ describe("getEditorOptions", () => {
       expect(tooltip).toBe(DB_ROUTING_TOOLTIP);
     });
 
-    it("returns undefined for a regular (non-routing) database item", () => {
-      const database = createMockDatabase({
-        id: 3,
-        router_user_attribute: null,
-        router_database_id: null,
-      });
+    it("returns a tooltip for a database that does not support transforms", () => {
+      const database = createMockDatabase({ id: 3, features: [] });
       const options = getEditorOptions([database]);
 
-      const tooltip = options.getDisabledDataPickerItemTooltip?.({
+      const tooltip = options.getDataPickerItemTooltip?.({
         model: "database",
         id: 3,
+        name: "H2 DB",
+      });
+
+      expect(tooltip).toBe(UNSUPPORTED_DB_TOOLTIP);
+    });
+
+    it("returns undefined for a transform-capable database", () => {
+      const database = createTransformCapableDatabase({ id: 4 });
+      const options = getEditorOptions([database]);
+
+      const tooltip = options.getDataPickerItemTooltip?.({
+        model: "database",
+        id: 4,
         name: "Normal DB",
       });
 
@@ -60,7 +79,7 @@ describe("getEditorOptions", () => {
       const database = createMockDatabase({ id: 1 });
       const options = getEditorOptions([database]);
 
-      const tooltip = options.getDisabledDataPickerItemTooltip?.({
+      const tooltip = options.getDataPickerItemTooltip?.({
         model: "database",
         id: 999,
         name: "Unknown DB",
@@ -70,13 +89,13 @@ describe("getEditorOptions", () => {
     });
 
     it("returns a tooltip for a table item whose database has DB routing", () => {
-      const database = createMockDatabase({
+      const database = createTransformCapableDatabase({
         id: 5,
         router_user_attribute: "org_id",
       });
       const options = getEditorOptions([database]);
 
-      const tooltip = options.getDisabledDataPickerItemTooltip?.({
+      const tooltip = options.getDataPickerItemTooltip?.({
         model: "table",
         id: 10,
         database_id: 5,
@@ -89,11 +108,43 @@ describe("getEditorOptions", () => {
     it("returns undefined for dashboard items", () => {
       const options = getEditorOptions([]);
 
-      const tooltip = options.getDisabledDataPickerItemTooltip?.({
+      const tooltip = options.getDataPickerItemTooltip?.({
         model: "dashboard",
         id: 1,
         name: "My Dashboard",
       });
+
+      expect(tooltip).toBeUndefined();
+    });
+  });
+
+  describe("getDatabasePickerItemTooltip", () => {
+    it("returns a tooltip for a database with DB routing", () => {
+      const database = createTransformCapableDatabase({
+        id: 1,
+        router_user_attribute: "tenant_id",
+      });
+      const options = getEditorOptions([database]);
+
+      const tooltip = options.getDatabasePickerItemTooltip?.({ id: 1 });
+
+      expect(tooltip).toBe(DB_ROUTING_TOOLTIP);
+    });
+
+    it("returns a tooltip for a database that does not support transforms", () => {
+      const database = createMockDatabase({ id: 2, features: [] });
+      const options = getEditorOptions([database]);
+
+      const tooltip = options.getDatabasePickerItemTooltip?.({ id: 2 });
+
+      expect(tooltip).toBe(UNSUPPORTED_DB_TOOLTIP);
+    });
+
+    it("returns undefined for a transform-capable database", () => {
+      const database = createTransformCapableDatabase({ id: 3 });
+      const options = getEditorOptions([database]);
+
+      const tooltip = options.getDatabasePickerItemTooltip?.({ id: 3 });
 
       expect(tooltip).toBeUndefined();
     });

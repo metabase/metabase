@@ -1,3 +1,4 @@
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { ColorName } from "metabase/ui/colors/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -48,8 +49,10 @@ export interface NotebookStepAction {
 
 export type NotebookDataPickerOptions = Pick<
   NotebookDataPickerProps,
-  "shouldDisableItem" | "getDisabledItemTooltip"
->;
+  "shouldDisableItem"
+> & {
+  getItemTooltip?: (item: OmniPickerItem) => string | undefined;
+};
 
 export interface NotebookStepProps {
   step: NotebookStep;
@@ -60,7 +63,6 @@ export interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   updateQuery: (query: Lib.Query) => Promise<void>;
-  dataPickerOptions?: NotebookDataPickerOptions;
 }
 
 export interface NotebookStepHeaderProps {

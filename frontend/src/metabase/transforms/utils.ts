@@ -118,6 +118,10 @@ export function getDatabaseTransformDisabledReason(
     return t`Transforms can't be created on databases with DB routing enabled`;
   }
 
+  if (!hasFeature(database, "transforms/table")) {
+    return t`This database does not support transforms`;
+  }
+
   return undefined;
 }
 

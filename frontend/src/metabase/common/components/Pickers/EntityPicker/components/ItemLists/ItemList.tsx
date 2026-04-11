@@ -58,7 +58,6 @@ export function ItemList({
     isDisabledItem,
     isFolderItem,
     isSelectableItem,
-    getDisabledItemTooltip,
     onChange,
     options,
   } = useOmniPickerContext();
@@ -104,10 +103,7 @@ export function ItemList({
           isTenantUser,
         });
         const isDisabled = isDisabledItem(item);
-        const disabledTooltip =
-          isDisabled && getDisabledItemTooltip
-            ? getDisabledItemTooltip(item)
-            : undefined;
+        const tooltip = options.getItemTooltip?.(item);
 
         return (
           <Box
@@ -115,14 +111,13 @@ export function ItemList({
             key={`${item.model}-${item.id}`}
             {...containerProps}
           >
-            <Tooltip
-              label={disabledTooltip}
-              disabled={!disabledTooltip}
-              position="right"
-            >
+            <Tooltip label={tooltip} disabled={!tooltip} position="right">
               <NavLink
                 w={"auto"}
                 disabled={isDisabled}
+                style={
+                  isDisabled && tooltip ? { pointerEvents: "all" } : undefined
+                }
                 rightSection={
                   isFolderItem(item) ? (
                     <Icon name="chevronright" size={10} />
@@ -147,6 +142,11 @@ export function ItemList({
                 onClick={(e: React.MouseEvent) => {
                   e.preventDefault(); // prevent form submission
                   e.stopPropagation(); // prevent parent onClick
+
+                  if (isDisabled) {
+                    return;
+                  }
+
                   setPath((prevPath) => [
                     ...prevPath.slice(0, pathIndex + 1),
                     item,
