@@ -31,7 +31,6 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-output-available",
             toolCallId: "x",
-            toolName: "analyze_data",
             output: "",
           };
           await pause1.promise;
@@ -44,7 +43,6 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-output-available",
             toolCallId: "y",
-            toolName: "analyze_chart",
             output: "",
           };
           await pause2.promise;
@@ -96,7 +94,6 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-output-available",
             toolCallId: "x",
-            toolName: "analyze_data",
             output: "",
           };
           await pause1.promise;
@@ -113,7 +110,6 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-output-available",
             toolCallId: "y",
-            toolName: "analyze_chart",
             output: "",
           };
           await pause3.promise;
@@ -176,7 +172,6 @@ describe("metabot > tool calls", () => {
         {
           type: "tool-output-available",
           toolCallId: "x",
-          toolName: "x",
           output: "",
         },
         { type: "text-start", id: "t2" },

@@ -14,8 +14,12 @@ export const toolInputAvailableSchema = Yup.object({
 
 export const toolOutputAvailableSchema = Yup.object({
   toolCallId: Yup.string().required(),
-  toolName: Yup.string().required(),
   output: Yup.mixed(),
+});
+
+export const toolOutputErrorSchema = Yup.object({
+  toolCallId: Yup.string().required(),
+  errorText: Yup.string().required(),
 });
 
 export const dataEventSchema = Yup.object({

@@ -8,6 +8,7 @@ const getMockedCallbacks = () => ({
   onToolInputStart: jest.fn(),
   onToolInputAvailable: jest.fn(),
   onToolResultPart: jest.fn(),
+  onToolErrorPart: jest.fn(),
   onError: jest.fn(),
   onMessageMetadata: jest.fn(),
 });
@@ -27,7 +28,7 @@ const mockSuccessStreamEvents: SSEEvent[] = [
   { type: "data-state", id: "d1", data: { queries: {} } },
   { type: "tool-input-start", toolCallId: "x", toolName: "x" },
   { type: "tool-input-available", toolCallId: "x", toolName: "x", input: "" },
-  { type: "tool-output-available", toolCallId: "x", toolName: "x", output: "" },
+  { type: "tool-output-available", toolCallId: "x", output: "" },
   { type: "finish-step" },
 ];
 const getMockSuccessStream = () => createMockSSEStream(mockSuccessStreamEvents);
@@ -95,13 +96,66 @@ describe("processChatResponse", () => {
       {
         type: "tool-output-available",
         toolCallId: "x",
-        toolName: "x",
         output: "",
       },
     ]);
     await expect(
       processChatResponse(mockStream, expectNoStreamedError),
     ).rejects.toBeTruthy();
+  });
+
+  it("should error if a tool-output-error is returned without a preceding tool call", async () => {
+    const mockStream = createMockSSEStream([
+      {
+        type: "tool-output-error",
+        toolCallId: "x",
+        errorText: "boom",
+      },
+    ]);
+    await expect(
+      processChatResponse(mockStream, expectNoStreamedError),
+    ).rejects.toBeTruthy();
+  });
+
+  it("should process tool-output-error and mark the tool call as errored", async () => {
+    const mockStream = createMockSSEStream([
+      { type: "tool-input-start", toolCallId: "x", toolName: "failing_tool" },
+      {
+        type: "tool-input-available",
+        toolCallId: "x",
+        toolName: "failing_tool",
+        input: { q: "hi" },
+      },
+      { type: "tool-output-error", toolCallId: "x", errorText: "kaboom" },
+    ]);
+    const config = getMockedCallbacks();
+
+    const result = await processChatResponse(mockStream, config);
+
+    expect(config.onToolErrorPart).toHaveBeenCalledWith({
+      type: "tool-output-error",
+      toolCallId: "x",
+      errorText: "kaboom",
+    });
+    expect(config.onToolResultPart).not.toHaveBeenCalled();
+    expect(result.toolCalls).toEqual([
+      {
+        toolCallId: "x",
+        toolName: "failing_tool",
+        state: "result",
+        value: undefined,
+        error: "kaboom",
+      },
+    ]);
+    expect(result.history).toEqual([
+      {
+        role: "assistant",
+        tool_calls: [
+          { id: "x", name: "failing_tool", arguments: '{"q":"hi"}' },
+        ],
+      },
+      { role: "tool", content: "kaboom", tool_call_id: "x" },
+    ]);
   });
 
   it("should handle messages across multiple chunks", async () => {

@@ -8,6 +8,7 @@ import {
   knownDataPartTypes,
   toolInputAvailableSchema,
   toolOutputAvailableSchema,
+  toolOutputErrorSchema,
 } from "./schemas";
 import { parseSSEStream } from "./sse-stream";
 import type {
@@ -16,6 +17,7 @@ import type {
   ToolInputAvailableEvent,
   ToolInputStartEvent,
   ToolOutputAvailableEvent,
+  ToolOutputErrorEvent,
 } from "./sse-types";
 import { isDataEvent } from "./sse-types";
 
@@ -26,7 +28,7 @@ type ToolCall =
       toolName: string;
       state: "result";
       value: unknown;
-      error?: unknown;
+      error?: string;
     };
 
 type DataPart = { type: string; data: unknown };
@@ -37,6 +39,7 @@ export type AIStreamingConfig = {
   onToolInputStart?: (event: ToolInputStartEvent) => void;
   onToolInputAvailable?: (event: ToolInputAvailableEvent) => void;
   onToolResultPart?: (event: ToolOutputAvailableEvent) => void;
+  onToolErrorPart?: (event: ToolOutputErrorEvent) => void;
   onError?: (errorText: string) => void;
   onMessageMetadata?: (metadata: MessageMetadata) => void;
 };
@@ -147,11 +150,35 @@ function processEvent(
         ...result.toolCalls[index],
         state: "result",
         value: event.output,
-        error: event.error,
       };
       result.history.push({
         role: "tool",
         content: event.output,
+        tool_call_id: event.toolCallId,
+      });
+      break;
+    }
+
+    case "tool-output-error": {
+      toolOutputErrorSchema.validateSync(event, { strict: true });
+      const index = result.toolCalls.findIndex(
+        (tc) => tc.toolCallId === event.toolCallId,
+      );
+      if (index === -1) {
+        throw new Error(
+          "Tool Results must be preceded by the tool call with the same toolCallId",
+        );
+      }
+      config.onToolErrorPart?.(event);
+      result.toolCalls[index] = {
+        ...result.toolCalls[index],
+        state: "result",
+        value: undefined,
+        error: event.errorText,
+      };
+      result.history.push({
+        role: "tool",
+        content: event.errorText,
         tool_call_id: event.toolCallId,
       });
       break;
@@ -194,7 +221,7 @@ function processEvent(
       //   lifecycle:  start, start-step, finish-step, abort
       //   text:       text-start, text-end
       //   tool:       tool-input-delta, tool-input-error, tool-approval-request,
-      //               tool-output-error, tool-output-denied
+      //               tool-output-denied
       //   reasoning:  reasoning-start, reasoning-delta, reasoning-end, reasoning-file
       //   sources:    source-url, source-document
       //   files:      file

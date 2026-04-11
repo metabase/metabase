@@ -49,9 +49,12 @@ export type ToolInputAvailableEvent = {
 export type ToolOutputAvailableEvent = {
   type: "tool-output-available";
   toolCallId: string;
-  toolName: string;
   output: unknown;
-  error?: unknown;
+};
+export type ToolOutputErrorEvent = {
+  type: "tool-output-error";
+  toolCallId: string;
+  errorText: string;
 };
 
 // error event
@@ -77,6 +80,7 @@ export type SSEEvent =
   | ToolInputDeltaEvent
   | ToolInputAvailableEvent
   | ToolOutputAvailableEvent
+  | ToolOutputErrorEvent
   | ErrorEvent
   | DataEvent;
 

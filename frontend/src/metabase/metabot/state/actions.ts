@@ -416,6 +416,16 @@ export const sendAgentRequest = createAsyncThunk<
               }),
             );
           },
+          onToolErrorPart: function handleToolErrorPart(part) {
+            dispatch(
+              toolCallEnd({
+                toolCallId: part.toolCallId,
+                result: part.errorText,
+                isError: true,
+                agentId,
+              }),
+            );
+          },
           onError: function handleError(part) {
             error = part;
           },

@@ -64,7 +64,6 @@ describe("ai requests", () => {
           {
             type: "tool-output-available",
             toolCallId: "x",
-            toolName: "x",
             output: "",
           },
         ],

@@ -716,21 +716,46 @@
                                :result   {:data [{:id 1}]}}])]
       (is (=? {:type       "tool-output-available"
                :toolCallId "call-1"
-               :toolName   "search"
                :output     {:data [{:id 1}]}}
               (nth events 2)))))
 
-  (testing ":tool-output with :error includes the error and a default empty output"
+  (testing ":tool-output with :result nil emits output: null"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type     :tool-output
+                               :id       "call-nil"
+                               :function "side-effect"
+                               :result   nil}])
+          event  (nth events 2)]
+      (is (= "tool-output-available" (:type event)))
+      (is (= "call-nil" (:toolCallId event)))
+      (is (contains? event :output))
+      (is (nil? (:output event)))))
+
+  (testing ":tool-output with :error emits tool-output-error carrying the message as errorText"
     (let [events (run-sse-xf [{:type :start :id "msg-1"}
                               {:type     :tool-output
                                :id       "call-2"
                                :function "search"
-                               :error    {:message "boom"}}])]
-      (is (=? {:type       "tool-output-available"
+                               :error    {:message "boom" :type "class java.lang.Exception"}}])
+          event  (nth events 2)]
+      (is (=? {:type       "tool-output-error"
                :toolCallId "call-2"
-               :toolName   "search"
-               :output     ""
-               :error      {:message "boom"}}
+               :errorText  "boom"}
+              event))
+      (testing "omits :toolName, :output, and :error"
+        (is (not (contains? event :toolName)))
+        (is (not (contains? event :output)))
+        (is (not (contains? event :error))))))
+
+  (testing ":tool-output with a non-map :error stringifies it into errorText"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type     :tool-output
+                               :id       "call-3"
+                               :function "search"
+                               :error    "raw error"}])]
+      (is (=? {:type       "tool-output-error"
+               :toolCallId "call-3"
+               :errorText  "raw error"}
               (nth events 2))))))
 
 (deftest parts->aisdk-sse-xf-data-test
@@ -822,7 +847,7 @@
                {:type "text-end" :id "t1"}
                {:type "tool-input-start" :toolCallId "call-1" :toolName "search"}
                {:type "tool-input-available" :toolCallId "call-1" :toolName "search" :input {:q "Q1"}}
-               {:type "tool-output-available" :toolCallId "call-1" :toolName "search" :output {:hits 3}}
+               {:type "tool-output-available" :toolCallId "call-1" :output {:hits 3}}
                {:type "text-start" :id "t2"}
                {:type "text-delta" :id "t2" :delta "Found 3 results."}
                {:type "text-end" :id "t2"}

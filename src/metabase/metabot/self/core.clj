@@ -363,11 +363,15 @@
                                            :input      (:arguments part)}))
 
              :tool-output
-             (rf result (format-sse-event (cond-> {:type       "tool-output-available"
-                                                   :toolCallId (:id part)
-                                                   :toolName   (:function part)
-                                                   :output     (or (:result part) "")}
-                                            (:error part) (assoc :error (:error part)))))
+             (rf result
+                 (format-sse-event
+                  (if-let [error (:error part)]
+                    {:type       "tool-output-error"
+                     :toolCallId (:id part)
+                     :errorText  (or (:message error) (str error))}
+                    {:type       "tool-output-available"
+                     :toolCallId (:id part)
+                     :output     (:result part)})))
 
              :data
              (rf result (format-sse-event {:type (str "data-" (or (:data-type part) "data"))

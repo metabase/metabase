@@ -34,7 +34,6 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
   ],
   "toolCalls": [
     {
-      "error": undefined,
       "state": "result",
       "toolCallId": "x",
       "toolName": "x",

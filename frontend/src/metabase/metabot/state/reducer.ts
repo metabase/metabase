@@ -173,7 +173,11 @@ export const metabot = createSlice({
     toolCallEnd: convoReducer(
       (
         convo,
-        action: ConvoPayloadAction<{ toolCallId: string; result?: any }>,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          result?: any;
+          isError?: boolean;
+        }>,
       ) => {
         convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
@@ -187,6 +191,9 @@ export const metabot = createSlice({
         if (message?.type === "tool_call") {
           message.status = "ended";
           message.result = action.payload.result;
+          if (action.payload.isError) {
+            message.is_error = true;
+          }
         }
       },
     ),

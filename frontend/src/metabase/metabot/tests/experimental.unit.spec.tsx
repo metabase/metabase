@@ -22,7 +22,6 @@ describe("metabot > experimental", () => {
           {
             type: "tool-output-available",
             toolCallId: "debug_test",
-            toolName: "debug_test",
             output: "",
           },
           { type: "text-start", id: "t2" },
