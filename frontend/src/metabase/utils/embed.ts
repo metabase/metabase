@@ -1,5 +1,6 @@
 import type { EnhancedStore, UnknownAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
+import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { setInitialUrlOptions } from "metabase/redux/embed";
