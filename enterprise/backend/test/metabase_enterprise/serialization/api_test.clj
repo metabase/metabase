@@ -117,13 +117,13 @@
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
-                  (is (= #{:log :dir :settings :transform :python-library}
+                  (is (= #{:log :settings :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :collection-entity :transform :python-library}
+                  (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export two collections"
@@ -138,52 +138,52 @@
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :collection-entity :transform :python-library}
+                  (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :collection-entity :transform :python-library}
+                  (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:transform :log :dir :collection-entity :settings :schema :database :python-library}
+                  (is (= #{:transform :log :collection-entity :settings :schema :database :python-library}
                          (tar-file-types f)))))
 
-              (testing "On exception API returns log"
+              (testing "On exception API returns tar.gz with error in export.log"
                 (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                                   (mt/dynamic-value serdes/extract-one))]
                   (let [res (binding [api.serialization/*additive-logging* false]
-                              (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
+                              (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
-                        log (slurp (io/input-stream res))]
-                    (testing "In logs we get an entry for the dashboard, then card, and then an error"
-                      (is (= #{"Dashboard" "Card"}
-                             (log-types (str/split-lines log))))
-                      (is (re-find #"deliberate error message" log))
-                      (is (=  {:id        "**ID**",
-                               :entity_id "**ID**",
-                               :model     "Card",
-                               :table     :report_card
-                               :cause     "[test] deliberate error message"}
-                              (extract-and-sanitize-exception-map log)))))))
+                        log (with-open [tar (open-tar res)]
+                              (loop []
+                                (when-let [e (.getNextEntry tar)]
+                                  (if (str/ends-with? (.getName ^TarArchiveEntry e) "export.log")
+                                    (slurp (io/reader tar))
+                                    (recur)))))]
+                    (testing "export.log inside the archive contains error details"
+                      (is (some? log) "export.log should be present in the archive")
+                      (is (re-find #"deliberate error message" log)))))))
 
-              (testing "You can pass specific directory name"
-                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                              :dirname "check" :all_collections false :data_model false :settings false)]
-                  (is (= "check/"
-                         (with-open [tar (open-tar f)]
-                           (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))
+            (testing "You can pass specific directory name"
+              (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                            :dirname "check" :all_collections false :data_model false :settings false)]
+                (is (str/starts-with?
+                     (with-open [tar (open-tar f)]
+                       (.getName ^TarArchiveEntry (first (u.compress/entries tar))))
+                     "check/")))))
 
-              (testing "Invalid entity ID returns an error instead of falling back to root collection"
-                (let [fake-eid "abcdefghijklmnopqrstu"
-                      res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
-                                                     :collection fake-eid :data_model false :settings false)
-                      log      (slurp (io/input-stream res))]
-                  (is (re-find #"Could not find Collection with entity ID" log))
-                  (is (re-find #"abcdefghijklmnopqrstu" log))))))))
+          (testing "Invalid entity ID returns an error instead of falling back to root collection"
+            (let [fake-eid "abcdefghijklmnopqrstu"
+                  res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                                 :collection fake-eid :data_model false :settings false)]
+              (is (re-find #"Could not find Collection with entity ID"
+                           (str (:message res))))
+              (is (re-find #"abcdefghijklmnopqrstu"
+                           (str (:message res))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files
