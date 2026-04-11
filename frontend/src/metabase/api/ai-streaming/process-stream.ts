@@ -109,7 +109,7 @@ function processEvent(
     }
 
     case "tool-input-available": {
-      toolInputAvailableSchema.validateSync(event, { strict: false });
+      toolInputAvailableSchema.validateSync(event, { strict: true });
       config.onToolInputAvailable?.(event);
       result.toolCalls.push({
         toolCallId: event.toolCallId,
@@ -133,7 +133,7 @@ function processEvent(
     }
 
     case "tool-output-available": {
-      toolOutputAvailableSchema.validateSync(event, { strict: false });
+      toolOutputAvailableSchema.validateSync(event, { strict: true });
       const index = result.toolCalls.findIndex(
         (tc) => tc.toolCallId === event.toolCallId,
       );
@@ -180,7 +180,7 @@ function processEvent(
     default: {
       // "data-*" event type
       if (isDataEvent(event)) {
-        dataEventSchema.validateSync(event, { strict: false });
+        dataEventSchema.validateSync(event, { strict: true });
         const dataPart: DataPart = { type: event.type, data: event.data };
         result.data.push(dataPart);
         if (knownDataPartTypes.includes(event.type)) {

@@ -89,7 +89,7 @@
                      "TOOL_CALL" (v1a-tool-call->parts entry outputs)
                      "DATA"      [{:type (str "data-" (:type entry))
                                    :data (:value entry)}]
-                     [entry])))
+                     (throw (ex-info "Unrecognized v1a entry type" {:entry entry})))))
          vec
          normalize-data-event-types)))
 

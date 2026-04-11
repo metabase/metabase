@@ -160,9 +160,12 @@
                     {:role "tool"      :_type "TOOL_RESULT" :tool_call_id "tc1" :content "r"}
                     {:_type "DATA" :type "navigate_to" :version 1 :value "/q/1"}]
           result   (persistence/migrate-v1->v2 v1a-data)]
-      (is (= ["text" "tool-search" "data-navigate-to"] (mapv :type result)))
-      (testing "no :_type survives anywhere in the migrated output"
-        (is (every? #(not (contains? % :_type)) result)))))
+      (is (= ["text" "tool-search" "data-navigate-to"] (mapv :type result)))))
+
+  (testing "throws on unrecognized v1a entry types"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1a entry type"
+                          (persistence/migrate-v1a->v2
+                           [{:_type "FINISH_MESSAGE" :role "assistant" :usage {}}]))))
 
   (testing "user-message rows (v1 by data_version, v2 by shape) pass through unchanged"
     (is (= [{:role "user" :content "Do we have data on orders"}]
