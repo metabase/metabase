@@ -41,7 +41,7 @@
       (store-entity! [_ entity]
         (let [resolved   (storage.util/resolve-storage-path ctx entity)
               entry-path (entity-entry-path dirname resolved)
-              content    (.getBytes (yaml-content entity) "UTF-8")]
+              content    (.getBytes ^String (yaml-content entity) "UTF-8")]
           (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
                                :file entry-path})
           (put-entry! tar entry-path content)
@@ -52,7 +52,7 @@
           (let [as-map  (into (sorted-map)
                               (for [{:keys [key value]} settings]
                                 [key value]))
-                content (.getBytes (yaml-content as-map) "UTF-8")]
+                content (.getBytes ^String (yaml-content as-map) "UTF-8")]
             (put-entry! tar (str dirname "/settings.yaml") content))))
 
       (store-log! [_ content]

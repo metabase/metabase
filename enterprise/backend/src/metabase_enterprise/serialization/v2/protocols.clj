@@ -1,6 +1,8 @@
-(ns metabase-enterprise.serialization.v2.protocols)
+(ns metabase-enterprise.serialization.v2.protocols
+  (:require
+   [potemkin.types :as p]))
 
-(defprotocol StorageBackend
+(p/defprotocol+ StorageBackend
   "Protocol for serialization storage backends."
   (store-entity! [this entity]
     "Store a single serialized entity. Returns its `:serdes/meta`.")
