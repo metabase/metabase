@@ -55,7 +55,10 @@ describe("Metadata", () => {
       overrides.statePathFetch ?? statePath.concat("fetch");
     const statePathUpdate =
       overrides.statePathUpdate ?? statePath.concat("update");
-    const requestStatePath = overrides.requestStatePath ?? statePath;
+    const requestStatePath = overrides.requestStatePath ?? [
+      "entities",
+      ...statePath,
+    ];
     const existingStatePath = overrides.existingStatePath ?? statePath;
     const getState =
       overrides.getState ??
