@@ -571,8 +571,9 @@
 (defmethod serdes/entity-id "FieldValues" [_ _] nil)
 
 (defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
-  (conj (serdes/generate-path "Field" {:id field_id})
-        {:model "FieldValues" :id "0"}))
+  (let [field (t2/select-one 'Field :id field_id)]
+    (conj (serdes/generate-path "Field" field)
+          {:model "FieldValues" :id "0"})))
 
 (defmethod serdes/dependencies "FieldValues" [fv]
   ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
