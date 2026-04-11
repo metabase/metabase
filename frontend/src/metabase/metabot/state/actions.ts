@@ -396,6 +396,7 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(
               toolCallArgs({
                 toolCallId: part.toolCallId,
+                toolName: part.toolName,
                 args:
                   typeof part.input === "string"
                     ? part.input
