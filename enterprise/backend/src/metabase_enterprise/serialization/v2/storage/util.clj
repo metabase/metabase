@@ -47,8 +47,3 @@
   The last element is the filename (without extension)."
   [ctx entity]
   (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
-
-(defn make-context
-  "Create a fresh storage context with unique-name generators and collection/dashboard paths."
-  []
-  (serdes/storage-base-context))

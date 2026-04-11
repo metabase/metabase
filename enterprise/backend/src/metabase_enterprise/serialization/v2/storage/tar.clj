@@ -34,7 +34,7 @@
   (let [gzip (GzipCompressorOutputStream. os (doto (GzipParameters.)
                                                (.setModificationTime (System/currentTimeMillis))))
         tar  (TarArchiveOutputStream. gzip 512 "UTF-8")
-        ctx  (storage.util/make-context)]
+        ctx  (serdes/storage-base-context)]
     (.setLongFileMode tar TarArchiveOutputStream/LONGFILE_POSIX)
     (.setBigNumberMode tar TarArchiveOutputStream/BIGNUMBER_POSIX)
     (reify protocols/StorageBackend

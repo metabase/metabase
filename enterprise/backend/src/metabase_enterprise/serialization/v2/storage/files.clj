@@ -22,7 +22,7 @@
 (defn make-backend
   "Create a filesystem storage backend rooted at `root-dir`."
   [root-dir]
-  (let [ctx (storage.util/make-context)]
+  (let [ctx (serdes/storage-base-context)]
     (reify protocols/StorageBackend
       (store-entity! [_ entity]
         (let [f (file ctx root-dir entity)]
