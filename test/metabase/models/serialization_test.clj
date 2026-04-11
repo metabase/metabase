@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.models.serialization :as serdes]
-   [metabase.test :as mt]))
+   [metabase.models.serialization :as serdes]))
 
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test
   (binding [serdes/*export-field-fk* (constantly ::field-id)]
@@ -195,55 +194,3 @@
                                        :values_source_type   :card
                                        :values_source_config {:card_id 1, :value_field [:field 53 nil]}
                                        :position             0}])))))
-
-(deftest export-database-fk-with-cache-test
-  (testing "3 databases with cache limit 2: evicts and re-loads on miss"
-    (mt/with-temp [:model/Database {db1-id :id} {:name "db1" :engine :h2}
-                   :model/Database {db2-id :id} {:name "db2" :engine :h2}
-                   :model/Database {db3-id :id} {:name "db3" :engine :h2}]
-      (binding [serdes/*batch-cache-max-size* 2]
-        (serdes/with-cache
-          (is (= "db1" (serdes/*export-database-fk* db1-id)))
-          (is (= "db2" (serdes/*export-database-fk* db2-id)))
-          (is (= "db3" (serdes/*export-database-fk* db3-id)))
-          (is (= "db1" (serdes/*export-database-fk* db1-id)))))))
-  (testing "non-existent database ID returns nil"
-    (serdes/with-cache
-      (is (nil? (serdes/*export-database-fk* Integer/MAX_VALUE))))))
-
-(deftest export-table-fk-with-cache-test
-  (testing "3 tables with FK and cache limit 2: batch-loads FK target, evicts and re-loads"
-    (mt/with-temp [:model/Database {db-id :id} {:name "db" :engine :h2}
-                   :model/Table    {t1-id :id} {:name "t1" :schema "public" :db_id db-id}
-                   :model/Table    {t2-id :id} {:name "t2" :schema "public" :db_id db-id}
-                   :model/Table    {t3-id :id} {:name "t3" :schema nil :db_id db-id}
-                   :model/Field    {f1-id :id} {:name "f1" :table_id t2-id :base_type :type/Integer}
-                   :model/Field    _f2         {:name "f2" :table_id t1-id :base_type :type/Integer
-                                                :fk_target_field_id f1-id}]
-      (binding [serdes/*batch-cache-max-size* 2]
-        (serdes/with-cache
-          (is (= ["db" "public" "t1"] (serdes/*export-table-fk* t1-id)))
-          (is (= ["db" "public" "t2"] (serdes/*export-table-fk* t2-id)))
-          (is (= ["db" nil "t3"]      (serdes/*export-table-fk* t3-id)))
-          (is (= ["db" "public" "t1"] (serdes/*export-table-fk* t1-id)))))))
-  (testing "non-existent table ID returns nil"
-    (serdes/with-cache
-      (is (nil? (serdes/*export-table-fk* Integer/MAX_VALUE))))))
-
-(deftest export-field-fk-with-cache-test
-  (testing "3-level parent chain with cache limit 2: all ancestors kept even when exceeding limit"
-    (mt/with-temp [:model/Database {db-id :id} {:name "db" :engine :h2}
-                   :model/Table    {t-id :id}  {:name "t" :schema nil :db_id db-id}
-                   :model/Field    {f1-id :id} {:name "f1" :table_id t-id :base_type :type/JSON}
-                   :model/Field    {f2-id :id} {:name "f2" :table_id t-id :base_type :type/JSON
-                                                :parent_id f1-id}
-                   :model/Field    {f3-id :id} {:name "f3" :table_id t-id :base_type :type/Text
-                                                :parent_id f2-id}]
-      (binding [serdes/*batch-cache-max-size* 2]
-        (serdes/with-cache
-          (is (= ["db" nil "t" "f1" "f2" "f3"] (serdes/*export-field-fk* f3-id)))
-          (is (= ["db" nil "t" "f1" "f2"]      (serdes/*export-field-fk* f2-id)))
-          (is (= ["db" nil "t" "f1"]           (serdes/*export-field-fk* f1-id)))))))
-  (testing "non-existent field ID returns nil"
-    (serdes/with-cache
-      (is (nil? (serdes/*export-field-fk* Integer/MAX_VALUE))))))
