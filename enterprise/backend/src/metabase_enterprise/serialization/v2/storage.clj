@@ -5,9 +5,9 @@
 (set! *warn-on-reflection* true)
 
 (defn store!
-  "Consume the entity `stream` and store each entity via the given `backend`.
+  "Consume the entity `stream` and store each entity via the given `writer`.
   Returns a report map with `:seen` and `:errors` vectors."
-  [stream backend]
+  [stream writer]
   (let [settings (atom [])
         report   (atom {:seen [] :errors []})]
     (doseq [entity stream]
@@ -19,8 +19,8 @@
         (swap! settings conj entity)
 
         :else
-        (swap! report update :seen conj (protocols/store-entity! backend entity))))
+        (swap! report update :seen conj (protocols/store-entity! writer entity))))
     (when (seq @settings)
-      (protocols/store-settings! backend @settings)
+      (protocols/store-settings! writer @settings)
       (swap! report update :seen conj [{:model "Setting"}]))
     @report))

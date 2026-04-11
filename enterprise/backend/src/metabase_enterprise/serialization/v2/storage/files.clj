@@ -19,11 +19,11 @@
         basename (str (last resolved) ".yaml")]
     (apply io/file root-dir (concat dirnames [basename]))))
 
-(defn make-backend
+(defn file-writer
   "Create a filesystem storage backend rooted at `root-dir`."
   [root-dir]
   (let [ctx (serdes/storage-base-context)]
-    (reify protocols/StorageBackend
+    (reify protocols/ExportWriter
       (store-entity! [_ entity]
         (let [f (file ctx root-dir entity)]
           (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))

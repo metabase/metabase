@@ -70,32 +70,32 @@
 
 (defn- serialize-to-stream!
   "Serialize directly to an OutputStream as streaming tar.gz. Returns result map."
-  [^java.io.OutputStream os ^String dirname entities {:keys [full-stacktrace]}]
-  (let [log-baos (ByteArrayOutputStream.)
-        backend  (v2.storage.tar/make-backend os dirname)
-        err      (atom nil)
-        report   (with-open [_logger (logger/for-ns log-baos ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
-                                                    {:additive *additive-logging*})]
-                   (try
-                     (let [report (serdes/with-cache
-                                    (v2.storage/store! entities backend))]
-                       (v2.protocols/store-log! backend (.toByteArray log-baos))
-                       (v2.protocols/finish! backend)
-                       report)
-                     (catch Exception e
-                       (reset! err e)
-                       (if full-stacktrace
-                         (log/error e "Error during serialization export")
-                         (log/error (u/strip-error e "Error during serialization export")))
-                       (try
-                         (v2.protocols/store-log! backend (.toByteArray log-baos))
-                         (v2.protocols/finish! backend)
-                         (catch Exception _)))))]
+  [^java.io.OutputStream output ^String dirname entities {:keys [full-stacktrace]}]
+  (let [log-output (ByteArrayOutputStream.)
+        writer     (v2.storage.tar/tar-writer output dirname)
+        error      (atom nil)
+        report     (with-open [_logger (logger/for-ns log-output ['metabase-enterprise.serialization
+                                                                  'metabase.models.serialization]
+                                                      {:additive *additive-logging*})]
+                     (try
+                       (let [report (serdes/with-cache
+                                      (v2.storage/store! entities writer))]
+                         (v2.protocols/store-log! writer (.toByteArray log-output))
+                         (v2.protocols/finish! writer)
+                         report)
+                       (catch Exception e
+                         (reset! error e)
+                         (if full-stacktrace
+                           (log/error e "Error during serialization export")
+                           (log/error (u/strip-error e "Error during serialization export")))
+                         (try
+                           (v2.protocols/store-log! writer (.toByteArray log-output))
+                           (v2.protocols/finish! writer)
+                           (catch Exception _)))))]
     {:report        report
-     :success       (nil? @err)
-     :error-message (when @err
-                      (u/strip-error @err nil))}))
+     :success       (nil? @error)
+     :error-message (when @error
+                      (u/strip-error @error nil))}))
 
 (defn- find-serialization-dir
   "Find an actual top-level dir with serialization data inside, instead of picking up various .DS_Store and similar

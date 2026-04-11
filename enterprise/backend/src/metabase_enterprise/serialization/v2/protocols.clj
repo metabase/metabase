@@ -2,8 +2,8 @@
   (:require
    [potemkin.types :as p]))
 
-(p/defprotocol+ StorageBackend
-  "Protocol for serialization storage backends."
+(p/defprotocol+ ExportWriter
+  "Protocol for serialization export writer."
   (store-entity! [this entity]
     "Store a single serialized entity. Returns its `:serdes/meta`.")
   (store-settings! [this settings]

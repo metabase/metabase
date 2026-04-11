@@ -114,7 +114,7 @@
         report (try
                  (serdes/with-cache
                    (-> (v2.extract/extract opts)
-                       (v2.storage/store! (v2.storage.files/make-backend path))))
+                       (v2.storage/store! (v2.storage.files/file-writer path))))
                  ;; we could publish :event/serdes-dump to go with :event/serdes-load above, but
                  ;; nothing would listen to it currently
                  (catch Exception e

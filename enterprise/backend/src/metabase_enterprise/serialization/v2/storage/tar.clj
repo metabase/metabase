@@ -23,28 +23,28 @@
     (.write tar-out content)
     (.closeArchiveEntry tar-out)))
 
-(defn- entity-entry-path
+(defn- entry-path
   "Build the tar entry path: dirname/resolved.../name.yaml"
   ^String [dirname resolved]
   (str dirname "/" (str/join "/" (drop-last resolved)) "/" (last resolved) ".yaml"))
 
-(defn make-backend
-  "Create a streaming tar.gz storage backend writing to `os`."
-  [^OutputStream os ^String dirname]
-  (let [gzip (GzipCompressorOutputStream. os (doto (GzipParameters.)
-                                               (.setModificationTime (System/currentTimeMillis))))
+(defn tar-writer
+  "Create a streaming tar.gz storage backend writing to `output`."
+  [^OutputStream output ^String dirname]
+  (let [gzip (GzipCompressorOutputStream. output (doto (GzipParameters.)
+                                                   (.setModificationTime (System/currentTimeMillis))))
         tar  (TarArchiveOutputStream. gzip 512 "UTF-8")
         ctx  (serdes/storage-base-context)]
     (.setLongFileMode tar TarArchiveOutputStream/LONGFILE_POSIX)
     (.setBigNumberMode tar TarArchiveOutputStream/BIGNUMBER_POSIX)
-    (reify protocols/StorageBackend
+    (reify protocols/ExportWriter
       (store-entity! [_ entity]
         (let [resolved   (storage.util/resolve-storage-path ctx entity)
-              entry-path (entity-entry-path dirname resolved)
+              path       (entry-path dirname resolved)
               content    (.getBytes ^String (yaml-content entity) "UTF-8")]
           (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
-                               :file entry-path})
-          (put-entry! tar entry-path content)
+                               :file path})
+          (put-entry! tar path content)
           (:serdes/meta entity)))
 
       (store-settings! [_ settings]
