@@ -2,19 +2,7 @@ You are the orchestrator for the fixbot workflow. Fixbot fixes a Linear issue, r
 
 ## Steps
 
-### 1. Preflight checks (inline mode — no autobot/Docker needed)
-
-#### Ensure Playwright MCP is configured
-
-Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user run `./bin/mage -bot-setup --bot fixbot` to generate it, then restart.
-
-#### Verify tools are available (stop if any fail)
-- Backend health: `./bin/mage -bot-api-call /api/health` — must succeed and return `{"status":"ok"}`
-- REPL: Run `clj-nrepl-eval --discover-ports` to find nREPL servers. Pick the port that belongs to the server running in the current project directory. Store it as NREPL_PORT. **If no matching port is found, STOP** — REPL is required.
-
-If any required check fails, show the error and stop. Do not attempt to recover.
-
-### 2. Resolve the issue ID
+### 1. Resolve the issue ID
 
 The user provided: `$ARGUMENTS`
 
@@ -31,10 +19,10 @@ This can be one of three formats:
 
 **Validation:** After resolving, confirm the issue ID looks like a Linear identifier (e.g., `MB-12345`). If not, tell the user the expected format and stop.
 
-### 3. Gather context
+### 2. Gather context
 
-#### Server info
-Run `./bin/mage -bot-server-info` and capture the full output.
+#### Timestamp
+- Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — instead, use the current date/time you already know to construct it directly (e.g., `20260411-143022`).
 
 #### Fetch the issue from Linear
 Run:
@@ -43,20 +31,31 @@ Run:
 ```
 Read the output to extract issue details and branch name.
 
-Also determine the app database from the issue description/comments:
+Save the full output to `.bot/fixbot/<TIMESTAMP>/tmp/linear-context.txt` using the `Write` tool.
+
+#### Determine branch name
+Extract the branch name from the Linear issue output. If none specified, use the issue ID lowercased (e.g., `mb-12345`).
+
+#### Determine app database
+From the issue description/comments:
 - If the issue mentions **MySQL** problems, MySQL-specific SQL syntax, or MySQL error messages → `mysql`
 - If the issue mentions **MariaDB** specifically → `mariadb`
 - Otherwise → `postgres` (the default)
 
-### 4. Generate agent prompt
+### 3. Generate agent prompt
 
 Run:
 ```
 ./bin/mage -bot-generate-prompt \
   --template dev/bot/fixbot-agent.md \
   --output .bot/fixbot/<TIMESTAMP>/prompt.md \
-  --set ISSUE_ID=<ISSUE_ID>
+  --set "ISSUE_ID=<ISSUE_ID>" \
+  --set "BRANCH_NAME=<branch-name>" \
+  --set "APP_DB=<postgres|mysql|mariadb>" \
+  --set "LINEAR_CONTEXT=$(cat .bot/fixbot/<TIMESTAMP>/tmp/linear-context.txt)"
 ```
+
+**Shell escaping:** The LINEAR_CONTEXT value contains quotes and special characters. Since it was already written to a temp file via the `Write` tool, the `$(cat ...)` substitution handles it safely.
 
 ### 5. Execute
 

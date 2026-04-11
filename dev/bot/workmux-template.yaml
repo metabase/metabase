@@ -1,12 +1,6 @@
 agent: claude
 
 post_create:
-  # Worktree setup (copies, symlinks, caches, bot.patch)
-  # Uses the main repo's bin/mage since the worktree branch may not have this code yet.
-  # Idempotent — skips if post-checkout hook already ran.
-  #- bash -c 'MAIN=$(git rev-parse --git-common-dir | sed "s|/\\.git$||"); if [ ! -L "$PWD/bin/bb" ]; then "$MAIN/bin/mage" -nvoxland-setup-worktree --worktree "$PWD"; fi'
-  # Dev environment (Docker, mise.local.toml, bot dirs)
-  - ./bin/mage -nvoxland-dev-env --app-db {{APP_DB}} --bot {{BOT_NAME}}
   # Bot hooks (workmux-status hooks.json)
   - ./bin/mage -bot-setup --bot {{BOT_NAME}}
 

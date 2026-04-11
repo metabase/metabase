@@ -2,15 +2,7 @@ You are the orchestrator for the reprobot workflow. ReproBot attempts to reprodu
 
 ## Steps
 
-### 1. Preflight checks (inline mode — no autobot/Docker needed)
-
-#### Ensure Playwright MCP is configured
-
-Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user run `./bin/mage -bot-setup --bot reprobot` to generate it, then restart.
-
-**Do NOT check backend health, REPL availability, or Playwright tool availability here.** The agent handles all runtime checks itself (via `environment-discovery.md`) with proper retries. The orchestrator only needs to verify that config files exist.
-
-### 2. Resolve the issue ID
+### 1. Resolve the issue ID
 
 The user provided: `$ARGUMENTS`
 
@@ -27,18 +19,12 @@ This can be one of three formats:
 
 **Validation:** Confirm the issue ID looks like `[A-Z]+-[0-9]+`. If not, tell the user the expected format and stop.
 
-### 3. Gather context
-
-#### Server info
-Run `./bin/mage -bot-server-info` and capture the output.
+### 2. Gather context
 
 #### Timestamp
 - Generate a timestamp in `YYYYMMDD-HHMMSS` format (construct directly, don't use `date` command).
 
-#### Create output directory
-Write an empty `.gitkeep` file to `.bot/reprobot/<TIMESTAMP>/output/.gitkeep` using the Write tool.
-
-### 4. Generate agent prompt
+### 3. Generate agent prompt
 
 Run:
 ```
@@ -49,6 +35,6 @@ Run:
   --set "OUTPUT_DIR=.bot/reprobot/<TIMESTAMP>"
 ```
 
-### 5. Execute
+### 4. Execute
 
 Read the generated `.bot/reprobot/<TIMESTAMP>/prompt.md` and follow its instructions (Phases 0–4) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.

@@ -6,20 +6,18 @@ The user provided: `$ARGUMENTS`
 
 ### 1. Parse arguments
 
-Parse as: `<branch-name> [from <base-branch>] <inner-command> [inner-args...] [--app-db postgres|mysql|mariadb]`
+Parse as: `<branch-name> [from <base-branch>] <inner-command> [inner-args...]`
 
 - First word: branch name (e.g., `master`, `my-feature-branch`)
 - If the next two words are `from <base>`: use `<base>` as the base branch for worktree creation (default: `origin/master`)
 - Next word starting with `/`: inner command (e.g., `/qabot`, `/fixbot`)
 - Remaining words: arguments to pass to the inner command
-- `--app-db`: optional database type (default: `postgres`)
 
 Examples:
 - `/autobot master /qabot` → branch=master, base=origin/master, command="/qabot"
 - `/autobot new-branch from existing-branch /qabot` → branch=new-branch, base=existing-branch, command="/qabot"
 - `/autobot my-branch /fixbot MB-12345` → branch=my-branch, base=origin/master, command="/fixbot MB-12345"
 - `/autobot master /uxbot test the dashboard` → branch=master, base=origin/master, command="/uxbot test the dashboard"
-- `/autobot master /reprobot MB-12345 --app-db mysql` → branch=master, base=origin/master, command="/reprobot MB-12345", app-db=mysql
 
 Extract the bot name from the inner command by stripping the leading `/` (e.g., `/qabot` → `qabot`).
 
@@ -29,8 +27,6 @@ Extract the bot name from the inner command by stripping the leading `/` (e.g., 
 
 Verify these are available (stop if any fail):
 - `workmux --version` — workmux is installed (`cargo install workmux`)
-- `docker info` — Docker is running
-- Check `node_modules/` exists in the project root (run `bun install` if not)
 
 #### Inner bot precheck
 
@@ -42,7 +38,7 @@ If no precheck skill exists for the inner bot, skip this step.
 
 Run:
 ```
-./bin/mage autobot-go <BRANCH_NAME> --bot <BOT_NAME> --app-db <APP_DB> --base <BASE_BRANCH> --command "<INNER_COMMAND> <INNER_ARGS>"
+./bin/mage -autobot-go <BRANCH_NAME> --bot <BOT_NAME> --base <BASE_BRANCH> --command "<INNER_COMMAND> <INNER_ARGS>"
 ```
 
 Pass the base branch (default `origin/master`, or whatever was parsed from `from <base>`).

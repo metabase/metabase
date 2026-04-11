@@ -2,26 +2,10 @@ You are the orchestrator for the qabot workflow. QABot performs pre-merge QA ana
 
 ## Steps
 
-### 1. Preflight checks
-
-#### Ensure Playwright MCP is configured
-
-Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user run `./bin/mage -bot-setup --bot qabot` to generate it, then restart.
-
-**Do NOT check backend health, REPL availability, or Playwright tool availability here.** The agent handles all runtime checks itself (via `environment-discovery.md`) with proper retries. The orchestrator only needs to verify that config files exist.
-
-### 2. Gather context
-
-#### Server info
-Run `./bin/mage -bot-server-info` and capture the full output. This will be passed to the agent.
+### 1. Gather context
 
 #### Timestamp
 - Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — instead, use the current date/time you already know to construct it directly (e.g., `20260409-143022`).
-
-#### Create output directory
-Create the output directory by writing a placeholder file using the `Write` tool:
-- Write an empty `.gitkeep` file to `.bot/qabot/<TIMESTAMP>/output/.gitkeep`
-- This creates the full directory tree without needing `mkdir -p` in bash.
 
 #### Linear issue
 The user provided: `$ARGUMENTS`
@@ -48,7 +32,7 @@ Try to fetch the PR description for the current branch:
 ```
 If a PR exists, capture the title and body as PR_CONTEXT. This is often the best source of intended behavior to test against. If no PR exists, set PR_CONTEXT to empty.
 
-### 3. Generate agent prompt
+### 2. Generate agent prompt
 
 Run:
 ```
@@ -64,6 +48,6 @@ Run:
 
 **Shell escaping:** The `--set` values may contain quotes, newlines, and special characters. Use the `Write` tool to save multi-line values to temp files under `.bot/qabot/<timestamp>/tmp/` (e.g., `.bot/qabot/<timestamp>/tmp/linear-context.txt`), then reference them with command substitution: `--set "LINEAR_CONTEXT=$(cat .bot/qabot/<timestamp>/tmp/linear-context.txt)"`. Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions. Do NOT write to `/tmp` — use `.bot/qabot/<timestamp>/tmp/` so everything stays within the project directory and matches the `Write(./**)` permission.
 
-### 4. Execute
+### 3. Execute
 
 Read the generated `.bot/qabot/<timestamp>/prompt.md` and follow its instructions (Phases 1–6) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.

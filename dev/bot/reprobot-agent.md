@@ -29,17 +29,9 @@ At the end of reproduction, classify the result:
 | **NOT REPRODUCED** | Tested thoroughly and the reported behavior does not occur |
 | **INCONCLUSIVE** | Could not determine — missing infrastructure, external dependency, or ambiguous issue |
 
-## Environment
-
-{{FILE:dev/bot/common/environment-discovery.md}}
-
 ## Instructions
 
 Execute all phases in sequence. Do not stop between phases unless a STOP condition is triggered.
-
----
-
----
 
 ## Phase 1: Issue Resolution & Parsing
 
@@ -67,6 +59,14 @@ Extract from the issue title, description, and comments:
 ### Write summary
 
 Write a brief issue summary to `{{OUTPUT_DIR}}/issue-summary.md`.
+
+## Environment
+
+Use the determined database type for the APP_DB when applicable
+
+{{FILE:dev/bot/common/environment-setup.md}}
+
+{{FILE:dev/bot/common/environment-discovery.md}}
 
 ---
 

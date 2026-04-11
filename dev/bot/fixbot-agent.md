@@ -3,6 +3,11 @@
 ## Issue
 
 **ID:** {{ISSUE_ID}}
+**Branch:** {{BRANCH_NAME}}
+**App DB:** {{APP_DB}}
+
+### Linear Context
+{{LINEAR_CONTEXT}}
 
 ## CRITICAL: 20-Minute Time Limit
 
@@ -38,6 +43,8 @@ Any time you need user input, are asking a question, stopping for a decision, or
 
 Use different headers to match the situation (e.g., "READY FOR TESTING", "QUESTION", "STOPPING — HUMAN DECISION NEEDED", "PR OPENED"). Be creative with the banners — vary them so they stay noticeable.
 
+{{FILE:dev/bot/common/environment-setup.md}}
+
 {{FILE:dev/bot/common/environment-discovery.md}}
 
 **IMPORTANT**: The dev environment always runs the **Enterprise Edition (EE)**. Even if the issue mentions the OSS version, develop and test against EE. If the fix specifically requires running the OSS edition (e.g., testing OSS-only behavior that differs from EE), STOP and tell the user — do not attempt an OSS-only fix.
@@ -54,7 +61,7 @@ The user is NOT a developer — do not ask them for implementation help, code su
 **CRITICAL: Execute all phases (1 through 4) in a single turn without stopping.** Do not end your turn after self-review — immediately continue to Phase 4 (browser verification and user testing instructions). Only stop and wait for user input after presenting the "READY FOR TESTING" banner in Phase 4.
 
 #### Phase 1: Understand
-1. Fetch the issue details by running `./bin/mage -fixbot-fetch-issue {{ISSUE_ID}}`. Read the title, description, and all comments carefully.
+1. Read the Linear Context above carefully — it contains the full issue details (title, description, comments). Do NOT re-fetch the issue with `-fixbot-fetch-issue` — it's already provided.
 2. Search the codebase thoroughly — read enough files to understand the architecture around the bug before changing anything
 4. Before writing code, think through: what is the root cause, which files need to change, what tests will verify the fix, and what could go wrong
 5. If the issue involves UI behavior, use the Playwright MCP tools (`mcp__playwright__browser_navigate`, `browser_snapshot`, etc.) to reproduce it in the browser once the backend is ready — seeing what the user sees often reveals more than reading code alone
