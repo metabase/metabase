@@ -32,6 +32,13 @@
             (assoc-in [:headers "Content-Encoding"] encoding)
             (assoc-in [:headers "Vary"] "Accept-Encoding"))))
 
+(defn- try-uncompressed-response
+  "Serve the uncompressed version of `resource-path` if it exists."
+  [resource-path]
+  (some-> (response/resource-response resource-path)
+          (response/content-type (mime/ext-mime-type resource-path))
+          (assoc-in [:headers "Vary"] "Accept-Encoding")))
+
 (defn- compressed-resource
   "Serve a static resource, preferring pre-compressed variants when available."
   [request options]
@@ -40,7 +47,7 @@
         resource-path (str root "/" request-path)]
     (or (try-compressed-response request resource-path "br")
         (try-compressed-response request resource-path "gz")
-        (response/resource-response resource-path))))
+        (try-uncompressed-response resource-path))))
 
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
