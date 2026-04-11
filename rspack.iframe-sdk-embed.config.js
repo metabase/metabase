@@ -74,14 +74,13 @@ module.exports = {
   optimization: { splitChunks: false, runtimeChunk: false },
   devtool: false,
   plugins: [
+    ...COMPRESSION_CONFIG,
     CopyJsFromTmpDirectoryPlugin({
-      fileName: OUT_FILE_NAME,
       tmpPath: OUT_TEMP_PATH,
       outputPath: path.join(BUILD_PATH, "app/"),
       copySourceMap: false,
       cleanupInDevMode: true,
     }),
-    ...COMPRESSION_CONFIG,
   ],
   resolve: {
     extensions: [".js", ".ts"],
