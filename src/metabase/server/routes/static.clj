@@ -39,15 +39,12 @@
           (response/content-type (mime/ext-mime-type resource-path))
           (assoc-in [:headers "Vary"] "Accept-Encoding")))
 
-(defn- static-resource
+(defn static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
-  [request options]
-  (let [{root :root} options
-        {{request-path :*} :route-params} request
-        resource-path (str root "/" request-path)]
-    (or (compressed-resource request resource-path "br")
-        (compressed-resource request resource-path "gz")
-        (uncompressed-resource resource-path))))
+  [request resource-path]
+  (or (compressed-resource request resource-path "br")
+      (compressed-resource request resource-path "gz")
+      (uncompressed-resource resource-path)))
 
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
@@ -56,6 +53,8 @@
   "A Ring handler that serves classpath resources from `root`, preferring
    pre-compressed (.br, .gz) variants when the client supports them.
    Drop-in replacement for `compojure.route/resources`."
-  [path options]
+  [path {root :root}]
   (compojure/GET (add-wildcard path) request
-    (static-resource request options)))
+    (let [{{request-path :*} :route-params} request
+          resource-path (str root "/" request-path)]
+      (static-resource request resource-path))))
