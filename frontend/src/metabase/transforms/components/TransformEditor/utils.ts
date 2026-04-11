@@ -63,10 +63,6 @@ export function getEditorOptions(
 
       return undefined;
     },
-    getDatabasePickerItemTooltip: (item) => {
-      const database = databases.find((db) => db.id === item.id);
-      return getDatabaseTransformDisabledReason(database);
-    },
     shouldShowLibrary: false,
     readOnly,
   };

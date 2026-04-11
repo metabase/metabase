@@ -520,7 +520,16 @@ LIMIT
         cy.findAllByTestId("picker-item")
           .contains(/Writable Postgres/)
           .should("not.have.attr", "data-disabled");
+
+        cy.log("Should show a tooltip explaining why the database is disabled");
+        cy.findAllByTestId("picker-item")
+          .contains("Sample Database")
+          .realHover();
       });
+      H.tooltip().should(
+        "contain.text",
+        "This database does not support transforms",
+      );
     });
 
     it("should not be possible to create an mbql transform from metrics", () => {
@@ -572,6 +581,13 @@ LIMIT
 
       cy.log("Clicking the disabled item does not close the popover");
       H.popover().should("be.visible");
+
+      cy.log("Should show a tooltip explaining why the database is disabled");
+      H.popover().findByRole("option", { name: "Sample Database" }).realHover();
+      H.tooltip().should(
+        "contain.text",
+        "This database does not support transforms",
+      );
     });
 
     it("not show the 'Show details' buttons in ID columns (metabase#64473)", () => {

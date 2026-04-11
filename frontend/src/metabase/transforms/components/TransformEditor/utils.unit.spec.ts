@@ -117,36 +117,4 @@ describe("getEditorOptions", () => {
       expect(tooltip).toBeUndefined();
     });
   });
-
-  describe("getDatabasePickerItemTooltip", () => {
-    it("returns a tooltip for a database with DB routing", () => {
-      const database = createTransformCapableDatabase({
-        id: 1,
-        router_user_attribute: "tenant_id",
-      });
-      const options = getEditorOptions([database]);
-
-      const tooltip = options.getDatabasePickerItemTooltip?.({ id: 1 });
-
-      expect(tooltip).toBe(DB_ROUTING_TOOLTIP);
-    });
-
-    it("returns a tooltip for a database that does not support transforms", () => {
-      const database = createMockDatabase({ id: 2, features: [] });
-      const options = getEditorOptions([database]);
-
-      const tooltip = options.getDatabasePickerItemTooltip?.({ id: 2 });
-
-      expect(tooltip).toBe(UNSUPPORTED_DB_TOOLTIP);
-    });
-
-    it("returns undefined for a transform-capable database", () => {
-      const database = createTransformCapableDatabase({ id: 3 });
-      const options = getEditorOptions([database]);
-
-      const tooltip = options.getDatabasePickerItemTooltip?.({ id: 3 });
-
-      expect(tooltip).toBeUndefined();
-    });
-  });
 });

@@ -125,7 +125,6 @@ export function QueryEditor({
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
             getItemTooltip={uiOptions?.getDataPickerItemTooltip}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
-            getDatabaseDisabledTooltip={uiOptions?.getDatabasePickerItemTooltip}
             shouldShowLibrary={uiOptions?.shouldShowLibrary}
             onChange={setQuestion}
             onRunQuery={runQuery}

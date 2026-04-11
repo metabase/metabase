@@ -74,9 +74,6 @@ export type QueryEditorUiOptions = {
   shouldDisableDatabasePickerItem?: (
     item: QueryEditorDatabasePickerItem,
   ) => boolean;
-  getDatabasePickerItemTooltip?: (
-    item: QueryEditorDatabasePickerItem,
-  ) => string | undefined;
   editorHeight?: number;
   shouldShowLibrary?: false;
   hidePreview?: boolean;
