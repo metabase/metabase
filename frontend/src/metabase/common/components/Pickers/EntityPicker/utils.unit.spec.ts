@@ -1,4 +1,3 @@
-import { getIcon } from "metabase/utils/icon";
 import type { CollectionItemModel } from "metabase-types/api";
 
 import {
@@ -16,10 +15,6 @@ import {
   isSelectedItem,
 } from "./utils";
 
-jest.mock("metabase/utils/icon", () => ({
-  getIcon: jest.fn(),
-}));
-
 describe("EntityPicker utils", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -27,24 +22,28 @@ describe("EntityPicker utils", () => {
 
   describe("getEntityPickerIcon", () => {
     it("should return the icon from getIcon", () => {
-      (getIcon as jest.Mock).mockReturnValue({
+      const mockGetIcon = jest.fn().mockReturnValue({
         name: "table",
         color: "text-dark",
       });
       const item = { id: 1, model: "table" } as OmniPickerItem;
-      const result = getEntityPickerIcon(item);
+      const result = getEntityPickerIcon(item, mockGetIcon);
       expect(result).toEqual({
         name: "table",
         c: "text-dark",
         color: undefined,
       });
-      expect(getIcon).toHaveBeenCalledWith(item, { isTenantUser: undefined });
+      expect(mockGetIcon).toHaveBeenCalledWith(item, {
+        isTenantUser: undefined,
+      });
     });
 
     it("should set color to text-primary-inverse if selected and no color present", () => {
-      (getIcon as jest.Mock).mockReturnValue({ name: "table" });
+      const mockGetIcon = jest.fn().mockReturnValue({ name: "table" });
       const item = { id: 1, model: "table" } as OmniPickerItem;
-      const result = getEntityPickerIcon(item, { isSelected: true });
+      const result = getEntityPickerIcon(item, mockGetIcon, {
+        isSelected: true,
+      });
       expect(result).toEqual({
         name: "table",
         c: "text-primary-inverse",
@@ -53,12 +52,14 @@ describe("EntityPicker utils", () => {
     });
 
     it("should change folder icon to folder_filled if selected", () => {
-      (getIcon as jest.Mock).mockReturnValue({
+      const mockGetIcon = jest.fn().mockReturnValue({
         name: "folder",
         color: "text-yellow",
       });
       const item = { id: 1, model: "collection" } as OmniPickerItem;
-      const result = getEntityPickerIcon(item, { isSelected: true });
+      const result = getEntityPickerIcon(item, mockGetIcon, {
+        isSelected: true,
+      });
       expect(result).toEqual({
         name: "folder_filled",
         c: "text-yellow",

@@ -1,4 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
+import type { IconData, ObjectWithModel } from "metabase/utils/icon";
+import { modelIconMap } from "metabase/utils/icon";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
@@ -7,6 +9,10 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { getJoinedTablesWithIcons } from "./utils";
+
+const mockGetIcon = (item: ObjectWithModel): IconData => ({
+  name: modelIconMap[item.model] ?? "unknown",
+});
 
 const joinedCard = createMockCard({
   name: "Joined Card",
@@ -61,7 +67,7 @@ const questionWithoutJoins = new Question(cardWithoutJoins, metadata);
 describe("QuestionInfoSidebar component utils", () => {
   describe("getJoinedTablesWithIcons", () => {
     it("retrieves one joined table", () => {
-      const actual = getJoinedTablesWithIcons(questionWithJoins);
+      const actual = getJoinedTablesWithIcons(questionWithJoins, mockGetIcon);
       expect(actual).toEqual([
         {
           name: "Joined Card",
@@ -72,7 +78,10 @@ describe("QuestionInfoSidebar component utils", () => {
     });
 
     it("returns [] if there are no joined tables", () => {
-      const actual = getJoinedTablesWithIcons(questionWithoutJoins);
+      const actual = getJoinedTablesWithIcons(
+        questionWithoutJoins,
+        mockGetIcon,
+      );
       expect(actual).toEqual([]);
     });
   });
