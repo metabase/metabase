@@ -33,7 +33,10 @@ export function createMockSlackChannelSpec(
       {
         name: "channel",
         displayName: "Post to",
-        options: ["#general", "#security"],
+        options: [
+          { displayName: "#general", id: "C001" },
+          { displayName: "#security", id: "C002" },
+        ],
         required: true,
       },
     ],
