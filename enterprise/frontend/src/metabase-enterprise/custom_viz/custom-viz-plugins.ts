@@ -15,6 +15,7 @@ import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
+  getPluginIconUrls,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type {
   Visualization,
@@ -309,8 +310,7 @@ export async function loadCustomVizPlugin(
     applyDefaultVisualizationProps(Component, vizDef, {
       identifier,
       getUiName: () => plugin.display_name,
-      iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
-      iconDarkUrl: getPluginAssetUrl(plugin.id, plugin.icon_dark),
+      ...getPluginIconUrls(plugin),
     });
 
     // Use registerVisualization for first load; overwrite directly for updates
@@ -346,11 +346,7 @@ export const useCustomVizPluginsIcon = () => {
       if (currentPlugin) {
         return {
           name: "unknown",
-          iconUrl: getPluginAssetUrl(currentPlugin.id, currentPlugin.icon),
-          iconDarkUrl: getPluginAssetUrl(
-            currentPlugin.id,
-            currentPlugin.icon_dark,
-          ),
+          ...getPluginIconUrls(currentPlugin),
         };
       }
     },
