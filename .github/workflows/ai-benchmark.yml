@@ -52,9 +52,8 @@ jobs:
       - name: Start Metabase container
         working-directory: ai-benchmark
         env:
-          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.MB_PREMIUM_EMBEDDING_TOKEN }}
-          MB_EE_EMBEDDING_SERVICE_API_KEY: ${{ secrets.MB_EE_EMBEDDING_SERVICE_API_KEY }}
-          MB_LLM_ANTHROPIC_API_KEY: ${{ secrets.MB_LLM_ANTHROPIC_API_KEY }}
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+          MB_LLM_ANTHROPIC_API_KEY: ${{ secrets.AI_BENCHMARK_ANTHROPIC_API_KEY }}
         run: ./scripts/start-metabase.sh --keep-running
 
       - name: Set up Python

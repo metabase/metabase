@@ -105,9 +105,6 @@ MISSING_VARS=()
 if [ -z "${MB_PREMIUM_EMBEDDING_TOKEN:-}" ]; then
     MISSING_VARS+=("MB_PREMIUM_EMBEDDING_TOKEN")
 fi
-if [ -z "${MB_EE_EMBEDDING_SERVICE_API_KEY:-}" ]; then
-    MISSING_VARS+=("MB_EE_EMBEDDING_SERVICE_API_KEY")
-fi
 if [ -z "${MB_LLM_ANTHROPIC_API_KEY:-}" ]; then
     MISSING_VARS+=("MB_LLM_ANTHROPIC_API_KEY")
 fi
@@ -124,7 +121,6 @@ if [ ${#MISSING_VARS[@]} -gt 0 ]; then
     fi
     echo "Set them with:"
     echo "  export MB_PREMIUM_EMBEDDING_TOKEN=\"your-token\""
-    echo "  export MB_EE_EMBEDDING_SERVICE_API_KEY=\"your-key\""
     echo "  export MB_LLM_ANTHROPIC_API_KEY=\"your-key\""
     echo ""
     read -p "Continue anyway? (y/N) " -n 1 -r
