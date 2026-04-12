@@ -10,6 +10,7 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { useColorScheme } from "metabase/ui";
+import type { IconData } from "metabase/utils/icon";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
@@ -19,7 +20,10 @@ import type {
   Visualization,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
-import type { CustomVizPluginRuntime } from "metabase-types/api";
+import type {
+  CustomVizPluginRuntime,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
@@ -330,5 +334,28 @@ export async function loadCustomVizPlugin(
     return null;
   }
 }
+
+export const useCustomVizPluginsIcon = () => {
+  const plugins = useCustomVizPlugins();
+
+  return useCallback(
+    (display: VisualizationDisplay): IconData | undefined => {
+      const currentPlugin = plugins?.find(
+        (plugin) => getCustomPluginIdentifier(plugin) === display,
+      );
+      if (currentPlugin) {
+        return {
+          name: "unknown",
+          iconUrl: getPluginAssetUrl(currentPlugin.id, currentPlugin.icon),
+          iconDarkUrl: getPluginAssetUrl(
+            currentPlugin.id,
+            currentPlugin.icon_dark,
+          ),
+        };
+      }
+    },
+    [plugins],
+  );
+};
 
 export { getCustomPluginIdentifier, getPluginAssetUrl };
