@@ -145,6 +145,10 @@ if [ ${#MISSING_VARS[@]} -gt 0 ]; then
         echo "  - $var"
     done
     echo ""
+    if [ "${CI:-}" = "true" ]; then
+        echo "Running in CI — aborting due to missing env vars"
+        exit 1
+    fi
     echo "Set them with:"
     echo "  export MB_PREMIUM_EMBEDDING_TOKEN=\"your-token\""
     echo "  export MB_EE_EMBEDDING_SERVICE_API_KEY=\"your-key\""
