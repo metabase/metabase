@@ -1032,7 +1032,8 @@
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
   [id]
-  (*export-fk-keyed* id :model/Database :name))
+  (when id
+    (t2/select-one-fn :name [:model/Database :id :name] :id id)))
 
 (defn ^:dynamic ^::cache *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
@@ -1049,8 +1050,8 @@
   [[import-table-fk]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
-          db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
+    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
+          db-name                     (*export-database-fk* db_id)]
       [db-name schema name])))
 
 (mu/defn ^:dynamic ^::cache *import-table-fk*
