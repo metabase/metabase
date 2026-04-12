@@ -28,7 +28,10 @@ const getDefaultPluginCustomViz = () => ({
   getPluginAssetUrl: (_pluginId: number, _assetPath: string | null) =>
     undefined as string | undefined,
   useCustomVizPluginsIcon: () => (_display: VisualizationDisplay) =>
-    undefined as IconData | undefined,
+    ({ icon: undefined, isLoading: false }) as {
+      icon: IconData | undefined;
+      isLoading: boolean;
+    },
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
   isCustomVizDisplay,

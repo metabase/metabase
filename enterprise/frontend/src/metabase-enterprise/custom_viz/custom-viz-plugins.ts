@@ -51,11 +51,11 @@ export function useCustomVizPlugins({
   const { token, uuid } = useEmbeddingEntityContext();
   const isPublicOrStaticEmbed = Boolean(token || uuid);
   const shouldLoad = enabled && !isPublicOrStaticEmbed;
-  const { data: plugins } = useListCustomVizPluginsQuery(undefined, {
+  const { data: plugins, isLoading } = useListCustomVizPluginsQuery(undefined, {
     skip: !shouldLoad,
   });
 
-  return plugins;
+  return { plugins, isLoading };
 }
 
 /**
@@ -119,7 +119,7 @@ function useCustomVizDevReload(
 export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
 } {
-  const plugins = useCustomVizPlugins();
+  const { plugins } = useCustomVizPlugins();
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
@@ -336,21 +336,25 @@ export async function loadCustomVizPlugin(
 }
 
 export const useCustomVizPluginsIcon = () => {
-  const plugins = useCustomVizPlugins();
+  const { plugins, isLoading } = useCustomVizPlugins();
 
   return useCallback(
-    (display: VisualizationDisplay): IconData | undefined => {
+    (
+      display: VisualizationDisplay,
+    ): { icon: IconData | undefined; isLoading: boolean } => {
+      if (isLoading) {
+        return { icon: undefined, isLoading: true };
+      }
       const currentPlugin = plugins?.find(
         (plugin) => getCustomPluginIdentifier(plugin) === display,
       );
-      if (currentPlugin) {
-        return {
-          name: "unknown",
-          ...getPluginIconUrls(currentPlugin),
-        };
-      }
+      const icon: IconData | undefined = currentPlugin
+        ? { name: "unknown", ...getPluginIconUrls(currentPlugin) }
+        : undefined;
+
+      return { icon, isLoading: false };
     },
-    [plugins],
+    [plugins, isLoading],
   );
 };
 

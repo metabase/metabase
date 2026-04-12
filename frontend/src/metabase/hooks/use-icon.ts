@@ -12,8 +12,16 @@ export const useGetIconForVisualizationType = () => {
   const getCustomVizIcon = PLUGIN_CUSTOM_VIZ.useCustomVizPluginsIcon();
 
   return useCallback(
-    (display: VisualizationDisplay): IconData =>
-      getCustomVizIcon(display) ?? getIconForVisualizationType(display),
+    (display: VisualizationDisplay): IconData => {
+      if (PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display)) {
+        const { icon, isLoading } = getCustomVizIcon(display);
+        if (isLoading || !icon) {
+          return { name: "unknown" };
+        }
+        return icon;
+      }
+      return getIconForVisualizationType(display);
+    },
     [getCustomVizIcon],
   );
 };
