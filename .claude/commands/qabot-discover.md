@@ -30,6 +30,14 @@ Try to fetch the PR description for the current branch:
 ```
 If a PR exists, save the output to `.bot/qabot/discover/pr-context.txt` using the `Write` tool.
 
+### 3b. Verify branch divergence
+
+Check if the branch has commits beyond master:
+```
+./bin/mage -bot-git-readonly git log --oneline origin/master..HEAD
+```
+If the log is empty (no commits beyond master), add `BRANCH_WARNING=no-local-commits` to result.env in step 5.
+
 ### 4. Generate timestamp
 
 Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — use the current date/time you already know to construct it directly.

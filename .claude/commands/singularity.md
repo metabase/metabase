@@ -42,6 +42,7 @@ Write `.bot/SUGGESTIONS-<TIMESTAMP>.md` with this structure:
 **Session:** <brief description of what was being done>
 **Date:** <today's date>
 **Outcome:** <succeeded / partially succeeded / failed>
+**Transcript:** <absolute path to this conversation's transcript JSONL file — find it with `ls -lt ~/.claude/projects/-Users-nvoxland-src-metabase-metabase-4/*.jsonl | head -1`>
 
 ## Summary
 
@@ -74,3 +75,4 @@ Write `.bot/SUGGESTIONS-<TIMESTAMP>.md` with this structure:
 - **Include prompt text diffs** — for prompt gap suggestions, show the exact text you'd add to the relevant prompt or agent file as a before/after or insertion.
 - **Cover the orchestrator too** — if the issue was in how the session was set up (database choice, prompt generation, environment config), suggest changes to the relevant `.claude/commands/*.md` file as well.
 - **Don't suggest things that are already documented** — if the answer was in the prompt and was just missed, that's a different problem than a missing instruction. Note which it was.
+- **Print the absolute path** — after writing the file, print the full absolute path to the suggestions file so the user can easily find it.

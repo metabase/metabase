@@ -34,6 +34,14 @@ APP_DB: postgres
 
 ## Phase 1: Git Diff + Context
 
+### Verify branch has PR changes
+
+Before gathering diffs, verify the branch actually contains changes:
+
+1. Run `./bin/mage -bot-git-readonly git log --oneline origin/master..HEAD` — if empty, the branch may be at master with no local commits.
+2. If no commits beyond master, check if a remote branch exists: `./bin/mage -bot-git-readonly git log --oneline HEAD..origin/<branch-name>`
+3. If the remote has commits the local branch doesn't, reset to remote: `./bin/mage -bot-git-readonly git merge --ff-only origin/<branch-name>` — if this fails, note in the report that the local branch diverges from remote and dynamic testing may not reflect PR changes.
+
 ### Gather the changes
 
 1. Run `./bin/mage -bot-git-readonly git diff origin/master...HEAD` to see all committed changes on the branch.
@@ -136,6 +144,21 @@ For each change, think about:
 - Are loading and error states handled?
 - Do form validations give helpful messages?
 - Are there accessibility issues (missing aria labels, broken keyboard nav)?
+
+### Behavioral Regressions
+- For each changed condition/branch: what was the OLD behavior for every possible input?
+  Does the NEW behavior preserve it, or does it silently break an existing use case?
+- **Build a truth table**: enumerate every combination of relevant state
+  (e.g., user exists/doesn't, field values, credential validity) and compare
+  old vs new behavior for each row. Any row where behavior changes is a potential
+  regression — evaluate whether that change is intentional AND safe.
+- Be skeptical of the PR description's framing — the author describes *intended*
+  behavior, but your job is to find *unintended* behavior changes. The PR may
+  correctly solve the stated problem while silently breaking an unstated assumption.
+- Pay special attention to state that may not be reliably set: fields that were
+  added later, fields that aren't always populated, fields that depend on how/when
+  the record was created. If the new logic depends on a field value, ask: "what
+  about records where this field was never set?"
 
 ### For each finding, record:
 - **File and line range** (e.g., `src/metabase/foo.clj:42-58`)

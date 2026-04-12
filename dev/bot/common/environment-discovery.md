@@ -1,7 +1,7 @@
 ## Initial Setup
 
 1. If you have not already, read `CLAUDE.md` in the project root for test commands and conventions.
-2. Read `.bot/autobot/llm-status.txt` using the `Read` tool (required before you can write status updates).
+2. Read `.bot/autobot/llm-status.txt` using the `Read` tool. **You must do this before any `Write` to that file** — the Write tool requires a prior Read on existing files.
 3. Wait for backend: run `./bin/mage -bot-preflight-health` (retries for up to 5 minutes). If it times out, **STOP and tell the user** to check the backend logs.
 4. Load Playwright MCP tools:
    ```
@@ -128,6 +128,10 @@ Bash commands can trigger permission prompts that slow you down. Prefer tools an
 | `find`, `ls` | `Glob` tool | Never prompts |
 
 When you must use bash, keep each command simple and standalone — do NOT chain commands with `&&`, `;`, or `|` as this creates compound commands that won't match permission globs like `Bash(./bin/mage *)`.
+
+**Sandbox TLS errors:** Commands that access `api.github.com` or `registry.npmjs.org` may fail with TLS certificate errors (`x509: OSStatus -26276`) inside the sandbox. If `./bin/mage -bot-git-readonly gh ...` or `./bin/mage -bot-md-to-pdf` fail with TLS errors, retry with `dangerouslyDisableSandbox: true`. This is expected in sandboxed environments.
+
+**PDF generation:** `./bin/mage -bot-md-to-pdf` uses `npx -y md-to-pdf` which may download the package from npm on first run. If the sandbox blocks `registry.npmjs.org`, use `dangerouslyDisableSandbox: true`.
 
 ### GitHub API Workaround
 
