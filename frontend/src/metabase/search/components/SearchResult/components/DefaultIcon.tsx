@@ -1,5 +1,5 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { useGetIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 
 import type { IconComponentProps } from "./ItemIcon";
 import { DEFAULT_ICON_SIZE } from "./constants";

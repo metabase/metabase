@@ -3,6 +3,7 @@ import { useMemo } from "react";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
@@ -15,7 +16,6 @@ import {
   NavLink,
   type NavLinkProps,
 } from "metabase/ui";
-import { useGetIcon } from "metabase/utils/icon";
 import { useSelector } from "metabase/utils/redux";
 
 import { useOmniPickerContext } from "../../context";

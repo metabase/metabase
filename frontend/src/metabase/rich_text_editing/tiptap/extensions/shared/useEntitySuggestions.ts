@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type { DocumentLinkedEntityPickerItemValue } from "metabase/rich_text_editing/tiptap/extensions/shared/LinkedEntityPickerModal/types";
-import { useGetIcon } from "metabase/utils/icon";
 import { modelToUrl } from "metabase/utils/urls/modelToUrl";
 import type {
   MentionableUser,

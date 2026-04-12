@@ -12,9 +12,9 @@ import {
 } from "metabase/collections/utils";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
-import { useGetIcon } from "metabase/utils/icon";
 import { modelToUrl } from "metabase/utils/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";

@@ -6,7 +6,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
-import { useGetIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type {
   MentionableUser,
   RecentItem,

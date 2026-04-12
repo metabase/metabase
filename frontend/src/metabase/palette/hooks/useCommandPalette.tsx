@@ -10,6 +10,7 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Search } from "metabase/entities/search";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
@@ -21,7 +22,6 @@ import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, Text } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { useGetIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";

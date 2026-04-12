@@ -5,9 +5,9 @@ import type {
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/collections/types";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
+import { useGetIconBase } from "metabase/hooks/use-icon";
 import type { ItemWithCollection } from "metabase/plugins";
 import type { IconData, ObjectWithModel } from "metabase/utils/icon";
-import { useGetIconBase } from "metabase/utils/use-icon";
 import type {
   Bookmark,
   Collection,

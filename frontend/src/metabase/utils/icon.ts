@@ -66,9 +66,3 @@ export type IconData = {
   iconUrl?: string;
   iconDarkUrl?: string;
 };
-
-export {
-  useGetIcon,
-  useGetIconBase,
-  useGetIconForVisualizationType,
-} from "./use-icon";

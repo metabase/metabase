@@ -3,9 +3,9 @@ import { c } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
-import { useGetIcon } from "metabase/utils/icon";
 import { useSelector } from "metabase/utils/redux";
 
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";

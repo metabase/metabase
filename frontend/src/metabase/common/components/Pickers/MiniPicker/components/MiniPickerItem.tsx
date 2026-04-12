@@ -1,6 +1,6 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Ellipsified, Icon, Menu, type MenuItemProps } from "metabase/ui";
-import { useGetIcon } from "metabase/utils/icon";
 
 import type {
   MiniPickerCollectionItem,

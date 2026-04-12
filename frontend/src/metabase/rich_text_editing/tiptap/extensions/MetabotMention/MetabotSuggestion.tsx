@@ -18,9 +18,9 @@ import { searchFilter } from "metabase/common/components/AccordionList/utils";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import { MenuItemComponent } from "metabase/documents/components/Editor/shared/MenuComponents";
 import { SuggestionPaper } from "metabase/documents/components/Editor/shared/SuggestionPaper";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { useMetabotName } from "metabase/metabot/hooks";
 import { Box, Group, Loader, Text } from "metabase/ui";
-import { useGetIcon } from "metabase/utils/icon";
 import type { Database, SearchResult } from "metabase-types/api";
 
 import { buildDbMenuItems } from "../shared/suggestionUtils";

@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { useListCardsQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
-import { useGetIcon } from "metabase/utils/icon";
 import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 

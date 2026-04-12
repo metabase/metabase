@@ -6,6 +6,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
@@ -16,7 +17,6 @@ import {
   SegmentedControl,
   Text,
 } from "metabase/ui";
-import { useGetIcon } from "metabase/utils/icon";
 
 import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
 import { useOmniPickerContext } from "../../context";
