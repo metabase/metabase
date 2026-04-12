@@ -73,9 +73,7 @@
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
    & args]
-  ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
-  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-    (.setAutoCommit conn false)
+  (jdbc/with-db-transaction [conn data-source]
     ;; Set up liquibase and let it do its thing
     (log/info "Setting up Liquibase...")
     (liquibase/with-liquibase [liquibase conn]
@@ -95,19 +93,14 @@
           :down-force    (apply liquibase/rollback-major-version! conn liquibase true args)
           :print         (print-migrations-and-quit-if-needed! liquibase data-source)
           :release-locks (liquibase/force-release-locks! liquibase))
-       ;; Migrations were successful; commit everything and re-enable auto-commit
-        (.commit conn)
-        (.setAutoCommit conn true)
         :done
        ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
        ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
        ;; clear the lock in that case, so handle that case separately
         (catch LockException e
-          (.rollback conn)
           (throw e))
        ;; If for any reason any part of the migrations fail then rollback all changes
         (catch Throwable e
-          (.rollback conn)
          ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
          ;; operation without releasing the lock first, the real error will get hidden behind a lock error
           (liquibase/release-lock-if-needed! liquibase)
