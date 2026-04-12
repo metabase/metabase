@@ -20,7 +20,7 @@ import {
 } from "metabase/selectors/user";
 import { Button, Flex, Icon } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import { connect, useDispatch, useSelector } from "metabase/utils/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -37,6 +37,7 @@ function QuestionPickerInner({
   onSelect,
   collectionsById,
 }: QuestionPickerInnerProps) {
+  const getIcon = useGetIcon();
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;

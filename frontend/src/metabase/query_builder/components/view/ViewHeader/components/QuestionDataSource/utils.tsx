@@ -2,7 +2,7 @@ import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import type { IconName } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
+import type { IconData, ObjectWithModel } from "metabase/utils/icon";
 import { isNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
@@ -194,6 +194,9 @@ function getTableURL(table: Table) {
   return ML_Urls.getUrl(table.newQuestion());
 }
 
-export function getQuestionIcon(question: Question): IconName {
+export function getQuestionIcon(
+  question: Question,
+  getIcon: (item: ObjectWithModel) => IconData,
+): IconName {
   return getIcon({ model: "card", type: question.type() }).name;
 }

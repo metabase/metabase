@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import type { ColorName } from "metabase/ui/colors/types";
-import { type IconData, getIcon } from "metabase/utils/icon";
+import type { IconData, ObjectWithModel } from "metabase/utils/icon";
 import type {
   CollectionItemModel,
   CollectionNamespace,
@@ -20,6 +20,10 @@ import {
 
 export const getEntityPickerIcon = (
   item: OmniPickerItem,
+  getIcon: (
+    item: ObjectWithModel,
+    opts?: { isTenantUser?: boolean },
+  ) => IconData,
   {
     isSelected,
     isTenantUser,

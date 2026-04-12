@@ -27,7 +27,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import { useSelector } from "metabase/utils/redux";
 import type {
   CollectionItem,
@@ -417,6 +417,7 @@ const ItemList = ({ children }: { children: React.ReactNode[] }) => {
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
+  const getIcon = useGetIcon();
   const isTable = isTableInDb(item);
 
   const itemText = isTable

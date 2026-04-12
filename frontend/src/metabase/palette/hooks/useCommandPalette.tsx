@@ -21,7 +21,7 @@ import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, Text } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
@@ -43,6 +43,7 @@ export const useCommandPalette = ({
   disabled: boolean;
   locationQuery: Query;
 }) => {
+  const getIcon = useGetIcon();
   const dispatch = useDispatch();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -237,6 +238,7 @@ export const useCommandPalette = ({
     locationQuery,
     isSearchTypeaheadEnabled,
     searchRequestId,
+    getIcon,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
@@ -268,7 +270,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [disabled, recentItems]);
+  }, [disabled, recentItems, getIcon]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,

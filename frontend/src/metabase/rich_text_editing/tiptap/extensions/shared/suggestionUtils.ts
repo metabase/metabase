@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
-import { getIcon } from "metabase/utils/icon";
+import type { IconData, ObjectWithModel } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
 import { type UrlableModel, modelToUrl } from "metabase/utils/urls/modelToUrl";
 import type {
@@ -22,6 +22,7 @@ export const filterRecents = (item: RecentItem, models: SuggestionModel[]) =>
 export function buildSearchMenuItems(
   searchResults: SearchResult[],
   onSelect: (result: SearchResult) => void,
+  getIcon: (item: ObjectWithModel) => IconData,
 ): MenuItem[] {
   return searchResults.map((result) => {
     const iconData = getIcon({
@@ -45,6 +46,7 @@ export function buildSearchMenuItems(
 export function buildRecentsMenuItems(
   recents: RecentItem[],
   onSelect: (recent: RecentItem) => void,
+  getIcon: (item: ObjectWithModel) => IconData,
 ): MenuItem[] {
   return recents.map((recent) => {
     const iconData = getIcon(recent);
@@ -65,6 +67,7 @@ export function buildRecentsMenuItems(
 export function buildDbMenuItems(
   dbs: Database[],
   onSelect: (db: Database) => void,
+  getIcon: (item: ObjectWithModel) => IconData,
 ): MenuItem[] {
   return dbs.map((db) => {
     const iconData = getIcon({ model: "database" });
@@ -96,6 +99,7 @@ export function buildUserMenuItems(
 export function buildSearchModelMenuItems(
   searchModels: SuggestionModel[],
   onSelect: (model: SuggestionModel) => void,
+  getIcon: (item: ObjectWithModel) => IconData,
 ): MenuItem[] {
   return searchModels.map((model) => {
     return {

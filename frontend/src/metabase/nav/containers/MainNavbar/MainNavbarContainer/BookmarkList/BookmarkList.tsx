@@ -17,7 +17,7 @@ import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Bookmark } from "metabase-types/api";
@@ -80,6 +80,7 @@ const BookmarkItem = ({
   onSelect,
   onDeleteBookmark,
 }: BookmarkItemProps) => {
+  const getIcon = useGetIcon();
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
 

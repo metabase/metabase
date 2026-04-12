@@ -32,7 +32,7 @@ import { Icon } from "metabase/ui";
 import {
   type IconModel,
   type ObjectWithModel,
-  getIcon,
+  useGetIcon,
 } from "metabase/utils/icon";
 import { useDispatch } from "metabase/utils/redux";
 import { modelToUrl } from "metabase/utils/urls/modelToUrl";
@@ -442,6 +442,7 @@ export const useEntityData = (
 
 export const SmartLinkComponent = memo(
   ({ node, updateAttributes }: NodeViewProps) => {
+    const getIcon = useGetIcon();
     const { entityId, model, label } = node.attrs;
 
     const {

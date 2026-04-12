@@ -6,6 +6,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
+import { useGetIcon } from "metabase/utils/icon";
 import type {
   MentionableUser,
   RecentItem,
@@ -57,6 +58,7 @@ export function useEntitySearch({
   searchModels = LINK_SEARCH_MODELS,
   searchOptions = {},
 }: UseEntitySearchOptions): UseEntitySearchResult {
+  const getIcon = useGetIcon();
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
       refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
@@ -115,12 +117,14 @@ export function useEntitySearch({
 
       if (!isSearchLoading) {
         items.push(
-          ...buildSearchMenuItems(searchResults, onSelectSearchResult),
+          ...buildSearchMenuItems(searchResults, onSelectSearchResult, getIcon),
         );
       }
     } else {
       if (!isRecentsLoading && filteredRecents.length > 0) {
-        items.push(...buildRecentsMenuItems(filteredRecents, onSelectRecent));
+        items.push(
+          ...buildRecentsMenuItems(filteredRecents, onSelectRecent, getIcon),
+        );
       }
     }
 
@@ -136,6 +140,7 @@ export function useEntitySearch({
     onSelectRecent,
     onSelectSearchResult,
     onSelectUser,
+    getIcon,
   ]);
 
   return {

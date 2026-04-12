@@ -3,8 +3,7 @@ import { t } from "ttag";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Markdown } from "metabase/common/components/Markdown";
 import { Icon } from "metabase/ui";
-import type { IconData } from "metabase/utils/icon";
-import { getIcon } from "metabase/utils/icon";
+import { type IconData, useGetIcon } from "metabase/utils/icon";
 import { isEmpty } from "metabase/utils/validate";
 import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
@@ -21,6 +20,16 @@ export const EntityDisplay = ({
   entity: UnrestrictedLinkEntity;
   showDescription?: boolean;
 }) => {
+  const getIcon = useGetIcon();
+
+  const getSearchIcon = (entity: UnrestrictedLinkEntity): IconData => {
+    const entityIcon = getIcon(entity) ?? { name: "link" as const };
+    if (entity.model === "table") {
+      entityIcon.name = "database";
+    }
+    return entityIcon;
+  };
+
   return (
     <EntityDisplayContainer>
       <LeftContainer>
@@ -66,14 +75,3 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
     </EntityDisplayContainer>
   );
 };
-
-function getSearchIcon(entity: UnrestrictedLinkEntity): IconData {
-  const entityIcon = getIcon(entity) ?? { name: "link" as const };
-
-  // we need to change this icon to make it match the icon in the search results
-  if (entity.model === "table") {
-    entityIcon.name = "database";
-  }
-
-  return entityIcon;
-}

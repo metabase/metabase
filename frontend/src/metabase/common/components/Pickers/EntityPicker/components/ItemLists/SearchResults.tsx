@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -15,7 +16,7 @@ import {
   SegmentedControl,
   Text,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 
 import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
 import { useOmniPickerContext } from "../../context";
@@ -39,6 +40,7 @@ export const SearchResults = ({
   const { path, setPath, isDisabledItem, isSelectableItem, options, onChange } =
     useOmniPickerContext();
   const selectedItem = path?.[path.length - 1];
+  const getIcon = useGetIcon();
 
   if (isLoading || error) {
     return (
@@ -99,7 +101,7 @@ export const SearchResults = ({
               active={isSelected}
               leftSection={
                 <EntityIcon
-                  {...getEntityPickerIcon(item, { isSelected })}
+                  {...getEntityPickerIcon(item, getIcon, { isSelected })}
                   size="1rem"
                 />
               }
@@ -151,21 +153,6 @@ const getItemText = (item: OmniPickerItem) => {
     : (item?.collection?.name ?? t`Our analytics`);
 };
 
-const getLocationIcon = (item: OmniPickerItem) => {
-  if (
-    item.model === "table" ||
-    item.model === "schema" ||
-    item.model === "database"
-  ) {
-    return null;
-  }
-
-  return getIcon({
-    ...item,
-    model: "collection",
-  });
-};
-
 const LocationInfo = ({
   item,
   isSelected,
@@ -173,13 +160,21 @@ const LocationInfo = ({
   item: OmniPickerItem;
   isSelected: boolean;
 }) => {
+  const getIcon = useGetIcon();
   const itemText = getItemText(item);
 
   if (!itemText) {
     return null;
   }
 
-  const iconProps = getLocationIcon(item);
+  const iconProps = match(item.model)
+    .with("table", "schema", "database", () => null)
+    .otherwise(() =>
+      getIcon({
+        ...item,
+        model: "collection",
+      }),
+    );
 
   return (
     <Flex gap="xs" align="center">

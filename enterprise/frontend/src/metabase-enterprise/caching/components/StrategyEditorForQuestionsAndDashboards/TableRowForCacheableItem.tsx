@@ -5,7 +5,7 @@ import { MaybeLink } from "metabase/common/components/Badge/Badge.styled";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Link } from "metabase/common/components/Link";
 import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import * as Urls from "metabase/utils/urls";
 import type { CacheableModel } from "metabase-types/api";
 
@@ -29,6 +29,7 @@ export const TableRowForCacheableItem = ({
   updateTarget: UpdateTarget;
   isFormDirty: boolean;
 }) => {
+  const getIcon = useGetIcon();
   const { name, id, collection, model, strategy, iconModel } = item;
 
   const iconName = iconModel

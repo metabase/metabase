@@ -37,7 +37,7 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import { useDispatch } from "metabase/utils/redux";
 import type {
   Collection,
@@ -335,6 +335,7 @@ const CollectionDisplay = ({
 }: {
   collection: CollectionEssentials;
 }) => {
+  const getIcon = useGetIcon();
   const icon = getIcon({ model: "collection", ...collection });
   return (
     <Flex align="center" gap="sm">

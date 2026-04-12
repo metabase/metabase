@@ -26,7 +26,7 @@ import {
   Repeat,
   Skeleton,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { SortingOptions } from "metabase-types/api";
@@ -207,6 +207,7 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
 };
 
 function NameCell({ model }: { model?: ModelResult }) {
+  const getIcon = useGetIcon();
   const headingId = `model-${model?.id || "dummy"}-heading`;
   const icon = getIcon(model ?? { model: "dataset" }) ?? { name: "folder" };
   return (

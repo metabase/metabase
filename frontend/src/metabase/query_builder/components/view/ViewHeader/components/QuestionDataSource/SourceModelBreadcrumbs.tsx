@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { Tooltip } from "metabase/ui";
+import { useGetIcon } from "metabase/utils/icon";
 import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
@@ -21,6 +22,7 @@ export function SourceModelBreadcrumbs({
   ...props
 }: SourceModelBreadcrumbsProps) {
   const collectionId = question.collectionId();
+  const getIcon = useGetIcon();
 
   const { data: collection, isLoading } = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
@@ -37,7 +39,7 @@ export function SourceModelBreadcrumbs({
         <HeadBreadcrumbs.Badge
           key="collection"
           to={Urls.collection(collection)}
-          icon={getQuestionIcon(question)}
+          icon={getQuestionIcon(question, getIcon)}
           inactiveColor="text-tertiary"
         >
           {collection?.name || t`Our analytics`}

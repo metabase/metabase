@@ -10,7 +10,7 @@ import type {
 } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import { useSelector } from "metabase/utils/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -24,6 +24,7 @@ export const useBuildTreeForCollection = (
   tree: TreeItem[];
   error?: unknown;
 } => {
+  const getIcon = useGetIcon();
   const {
     data: items,
     isLoading,
@@ -82,6 +83,7 @@ export const useBuildTreeForCollection = (
     sectionType,
     metricCollectionId,
     isRemoteSyncReadOnly,
+    getIcon,
   ]);
 };
 

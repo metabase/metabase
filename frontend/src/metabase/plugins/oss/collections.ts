@@ -9,7 +9,7 @@ import type {
 } from "metabase/collections/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
-import { getIconBase } from "metabase/utils/icon";
+import { useGetIconBase } from "metabase/utils/use-icon";
 import type {
   BaseEntityId,
   Bookmark,
@@ -78,10 +78,7 @@ const getDefaultPluginCollections = () => ({
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): React.ReactNode[] => [],
-  getIcon: (
-    item: Parameters<typeof getIconBase>[0],
-    _opts?: { isTenantUser?: boolean },
-  ) => getIconBase(item),
+  useGetIcon: useGetIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],

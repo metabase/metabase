@@ -1,9 +1,12 @@
 import { getUrl } from "metabase/querying/notebook/components/NotebookDataPicker/utils";
-import { getIcon } from "metabase/utils/icon";
+import type { IconData, ObjectWithModel } from "metabase/utils/icon";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-export const getJoinedTablesWithIcons = (question: Question) => {
+export const getJoinedTablesWithIcons = (
+  question: Question,
+  getIcon: (item: ObjectWithModel) => IconData,
+) => {
   const query = question?.query();
 
   const stageIndexes = Lib.stageIndexes(query);

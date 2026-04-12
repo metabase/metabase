@@ -20,6 +20,7 @@ import { MenuItemComponent } from "metabase/documents/components/Editor/shared/M
 import { SuggestionPaper } from "metabase/documents/components/Editor/shared/SuggestionPaper";
 import { useMetabotName } from "metabase/metabot/hooks";
 import { Box, Group, Loader, Text } from "metabase/ui";
+import { useGetIcon } from "metabase/utils/icon";
 import type { Database, SearchResult } from "metabase-types/api";
 
 import { buildDbMenuItems } from "../shared/suggestionUtils";
@@ -52,6 +53,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { data: dbsResponse, isLoading } = useListDatabasesQuery();
   const metabotName = useMetabotName();
+  const getIcon = useGetIcon();
 
   const handleDbSelect = useCallback(
     (item: Database) => {
@@ -85,11 +87,11 @@ const MetabotMentionSuggestionComponent = forwardRef<
         searchText: query,
       })[0];
       const dbs = sorted?.items?.map((item) => item.item.database) || [];
-      items.push(...buildDbMenuItems(dbs, handleDbSelect));
+      items.push(...buildDbMenuItems(dbs, handleDbSelect, getIcon));
     }
 
     return items;
-  }, [dbsResponse?.data, handleDbSelect, query]);
+  }, [dbsResponse?.data, handleDbSelect, query, getIcon]);
 
   const totalItems = menuItems.length;
 

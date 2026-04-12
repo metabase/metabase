@@ -20,7 +20,7 @@ import { Search } from "metabase/entities/search";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/utils/icon";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type { CardId, CollectionId } from "metabase-types/api";
@@ -43,6 +43,7 @@ export function QuestionList({
   hasCollections,
   showOnlyPublicCollections,
 }: QuestionListProps) {
+  const getIcon = useGetIcon();
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 

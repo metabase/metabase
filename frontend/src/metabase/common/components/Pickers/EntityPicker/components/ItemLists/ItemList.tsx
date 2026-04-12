@@ -15,6 +15,7 @@ import {
   NavLink,
   type NavLinkProps,
 } from "metabase/ui";
+import { useGetIcon } from "metabase/utils/icon";
 import { useSelector } from "metabase/utils/redux";
 
 import { useOmniPickerContext } from "../../context";
@@ -67,6 +68,7 @@ export function ItemList({
   }, [items, isHiddenItem]);
   const isCurrentLevel = path.length - 2 === pathIndex;
   const isTenantUser = useSelector(getIsTenantUser);
+  const getIcon = useGetIcon();
 
   const activeItemIndex = useMemo(() => {
     if (!filteredItems || !selectedItem) {
@@ -98,7 +100,7 @@ export function ItemList({
     >
       {filteredItems.map((item: OmniPickerItem, index) => {
         const isSelected = index === activeItemIndex;
-        const icon = getEntityPickerIcon(item, {
+        const icon = getEntityPickerIcon(item, getIcon, {
           isSelected: isSelected && isCurrentLevel,
           isTenantUser,
         });
