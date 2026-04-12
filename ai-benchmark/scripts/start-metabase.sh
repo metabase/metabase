@@ -1,39 +1,35 @@
 #!/bin/bash
 set -euo pipefail
 
-# Start a Metabase instance with preloaded data from a benchmark suite
+# Start a Metabase instance with preloaded benchmark data
 #
-# This script starts a containerized Metabase + Postgres instance with data
-# from the specified benchmark suite. It does NOT run the benchmark tests -
+# This script starts a containerized Metabase + Postgres instance with
+# the benchmark data dump. It does NOT run the benchmark tests -
 # use the Python benchmark runner for that.
 #
 # Usage:
-#   ./start-metabase.sh <suite_name> [options]
+#   ./start-metabase.sh [options]
 #
 # Example:
-#   # Start Metabase with canonical_benchmark data (interactive - stops on Ctrl+C)
-#   ./start-metabase.sh canonical_benchmark
+#   # Start Metabase (interactive - stops on Ctrl+C)
+#   ./start-metabase.sh
 #
 #   # Start and keep running in background
-#   ./start-metabase.sh canonical_benchmark --keep-running
+#   ./start-metabase.sh --keep-running
 #
 #   # Then run benchmarks against it:
 #   python -m src.benchmarks.e2e
 
 # Parse arguments
-SUITE_NAME=""
 KEEP_RUNNING=false
 SEARCH_ENGINE="semantic"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
-            echo "Usage: $0 <suite_name> [OPTIONS]"
+            echo "Usage: $0 [OPTIONS]"
             echo ""
-            echo "Start a Metabase + Postgres instance with benchmark suite data."
-            echo ""
-            echo "Arguments:"
-            echo "  suite_name           Name of the benchmark suite (required)"
+            echo "Start a Metabase + Postgres instance with benchmark data."
             echo ""
             echo "Options:"
             echo "  --search-engine=ENGINE  Set the search engine (default: semantic)"
@@ -43,16 +39,13 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Examples:"
             echo "  # Start interactively (stops on Ctrl+C)"
-            echo "  $0 canonical_benchmark"
+            echo "  $0"
             echo ""
             echo "  # Start in background"
-            echo "  $0 canonical_benchmark --keep-running"
+            echo "  $0 --keep-running"
             echo ""
             echo "  # Start with keyword search engine"
-            echo "  $0 canonical_benchmark --search-engine=appdb"
-            echo ""
-            echo "Available benchmark suites:"
-            find "$(dirname "$0")/../src/benchmarks" -maxdepth 1 -type d -not -name benchmarks -not -name __pycache__ -exec basename {} \;
+            echo "  $0 --search-engine=appdb"
             exit 0
             ;;
         --search-engine=*)
@@ -74,42 +67,22 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            if [ -z "${SUITE_NAME}" ]; then
-                SUITE_NAME="$1"
-            else
-                echo "Error: Unexpected argument: $1"
-                echo "Use --help for usage information"
-                exit 1
-            fi
-            shift
+            echo "Error: Unexpected argument: $1"
+            echo "Use --help for usage information"
+            exit 1
             ;;
     esac
 done
 
-if [ -z "${SUITE_NAME}" ]; then
-    echo "Error: Suite name not specified"
-    echo "Usage: $0 <suite_name> [OPTIONS]"
-    echo ""
-    echo "Available benchmark suites:"
-    find "$(dirname "$0")/../src/benchmarks" -maxdepth 1 -type d -not -name benchmarks -not -name __pycache__ -exec basename {} \;
-    exit 1
-fi
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SUITE_DIR="${SCRIPT_DIR}/../src/benchmarks/${SUITE_NAME}"
 DUMP_FILE="${SCRIPT_DIR}/../src/benchmarks/fixtures/db_dump.sql"
-
-if [ ! -d "${SUITE_DIR}" ]; then
-    echo "Error: Suite '${SUITE_NAME}' not found at ${SUITE_DIR}"
-    exit 1
-fi
 
 if [ ! -f "${DUMP_FILE}" ]; then
     echo "Error: Dump file not found at ${DUMP_FILE}"
     exit 1
 fi
 
-CONTAINER_NAME="${CONTAINER_NAME:-metabase-bench-${SUITE_NAME}}"
+CONTAINER_NAME="${CONTAINER_NAME:-metabase-benchmark}"
 IMAGE_NAME="metabase-benchmark-base:latest"
 
 # Port configuration with defaults
@@ -122,7 +95,7 @@ MB_EE_EMBEDDING_SERVICE_API_KEY="${MB_EE_EMBEDDING_SERVICE_API_KEY:-}"
 MB_LLM_ANTHROPIC_API_KEY="${MB_LLM_ANTHROPIC_API_KEY:-}"
 
 echo "======================================"
-echo "Starting Metabase with ${SUITE_NAME} data"
+echo "Starting Metabase benchmark instance"
 echo "======================================"
 echo ""
 
@@ -226,7 +199,7 @@ done
 
 echo ""
 echo "======================================"
-echo "✓ Metabase Instance Ready!"
+echo "Metabase Instance Ready"
 echo "======================================"
 echo ""
 echo "Container: ${CONTAINER_NAME}"

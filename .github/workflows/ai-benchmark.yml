@@ -55,7 +55,7 @@ jobs:
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.MB_PREMIUM_EMBEDDING_TOKEN }}
           MB_EE_EMBEDDING_SERVICE_API_KEY: ${{ secrets.MB_EE_EMBEDDING_SERVICE_API_KEY }}
           MB_LLM_ANTHROPIC_API_KEY: ${{ secrets.MB_LLM_ANTHROPIC_API_KEY }}
-        run: ./scripts/start-metabase.sh canonical_benchmark --keep-running
+        run: ./scripts/start-metabase.sh --keep-running
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -82,7 +82,7 @@ jobs:
 
       - name: Dump container logs
         if: always()
-        run: docker logs metabase-bench-canonical_benchmark > metabase-container.log 2>&1 || true
+        run: docker logs metabase-benchmark > metabase-container.log 2>&1 || true
 
       - name: Upload benchmark results
         if: always()
@@ -96,4 +96,4 @@ jobs:
 
       - name: Stop container
         if: always()
-        run: docker stop metabase-bench-canonical_benchmark || true
+        run: docker stop metabase-benchmark || true
