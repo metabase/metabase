@@ -9,6 +9,7 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
+import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { type DispatchFn, connect } from "metabase/utils/redux";
@@ -37,7 +38,6 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import TagEditorParamS from "./TagEditorParam.module.css";
 import {

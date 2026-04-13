@@ -11,6 +11,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals";
+import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import type {
   ChannelApiResponse,
   Notification,
@@ -28,7 +29,6 @@ import {
   createMockNotificationCronSubscription,
 } from "metabase-types/api/mocks/notification";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
 const configuredAlerts = () => screen.findByTestId("alert-configured-channel");
 

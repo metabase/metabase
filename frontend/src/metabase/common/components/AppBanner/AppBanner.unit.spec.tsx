@@ -3,6 +3,7 @@ import { Route } from "react-router";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenStatus } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -10,7 +11,6 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { AppBanner } from "./AppBanner";
 

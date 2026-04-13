@@ -137,7 +137,7 @@ export type {
 export type {
   EmbeddingEntityType,
   EmbeddingDataPicker,
-} from "metabase-types/store/embedding-data-picker";
+} from "metabase/redux/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 export type { IconName } from "metabase/embedding-sdk/types/icon";

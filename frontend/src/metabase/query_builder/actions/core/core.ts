@@ -14,6 +14,7 @@ import {
   resetQB,
   setParameterValue,
 } from "metabase/redux/query-builder";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { clone } from "metabase/utils/clone";
 import { shouldOpenInBlankWindow } from "metabase/utils/dom";
@@ -36,7 +37,6 @@ import type {
   Database,
   DatasetQuery,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {

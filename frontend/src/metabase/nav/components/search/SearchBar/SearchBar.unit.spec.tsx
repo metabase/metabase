@@ -15,6 +15,10 @@ import {
   within,
 } from "__support__/ui";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
@@ -22,10 +26,6 @@ import {
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",

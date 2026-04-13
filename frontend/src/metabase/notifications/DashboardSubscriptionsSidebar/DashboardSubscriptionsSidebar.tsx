@@ -24,6 +24,7 @@ import {
   getEditingPulse,
   getPulseFormInput,
 } from "metabase/notifications/pulse/selectors";
+import type { DraftDashboardSubscription, State } from "metabase/redux/store";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
 import {
@@ -45,7 +46,6 @@ import type {
   SubscriptionSupportingCard,
   User,
 } from "metabase-types/api";
-import type { DraftDashboardSubscription, State } from "metabase-types/store";
 
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 

@@ -1,6 +1,7 @@
 import type { Location } from "history";
 import _ from "underscore";
 
+import type { SelectedTabId } from "metabase/redux/store";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -39,7 +40,6 @@ import type {
   VirtualCardDisplay,
   VirtualDashboardCard,
 } from "metabase-types/api";
-import type { SelectedTabId } from "metabase-types/store";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {

@@ -1,3 +1,4 @@
+import type { RequestState, RequestsState } from "metabase/redux/store";
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
@@ -5,7 +6,6 @@ import type {
   GroupTableAccessPolicy,
   UserAttributeKey,
 } from "metabase-types/api";
-import type { RequestState, RequestsState } from "metabase-types/store";
 
 export type GroupTableAccessPolicyParams = { groupId: string; tableId: string };
 

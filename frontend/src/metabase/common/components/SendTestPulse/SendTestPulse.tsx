@@ -2,9 +2,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
+import type { DashboardSubscriptionData } from "metabase/redux/store";
 import { cleanPulse } from "metabase/utils/pulse";
 import type { Channel, ChannelSpecs } from "metabase-types/api";
-import type { DashboardSubscriptionData } from "metabase-types/store";
 
 type SendTestPulseProps<T extends DashboardSubscriptionData> = {
   channel: Channel;

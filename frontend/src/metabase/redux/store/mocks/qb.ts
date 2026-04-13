@@ -2,7 +2,7 @@ import type {
   QueryBuilderParentEntityState,
   QueryBuilderState,
   QueryBuilderUIControls,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 
 export const createMockQueryBuilderUIControlsState = (
   opts?: Partial<QueryBuilderUIControls>,

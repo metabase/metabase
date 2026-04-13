@@ -11,13 +11,13 @@ import {
   getParameterValuesBySlugMap,
   getParameters,
 } from "metabase/dashboard/selectors";
+import type { State } from "metabase/redux/store";
 import { getUserAttributes } from "metabase/selectors/user";
 import { getLinkTargets } from "metabase/utils/click-behavior";
 import { useStore } from "metabase/utils/redux";
 import type { ClickObject } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type { DashCardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 type EntityObject = {
   id: number | string;

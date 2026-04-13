@@ -1,5 +1,5 @@
+import type { AdminPathKey } from "metabase/redux/store";
 import type { User } from "metabase-types/api";
-import type { AdminPathKey } from "metabase-types/store";
 
 const canAccessMonitoringItems = (user?: User) =>
   user?.permissions?.can_access_monitoring ?? false;

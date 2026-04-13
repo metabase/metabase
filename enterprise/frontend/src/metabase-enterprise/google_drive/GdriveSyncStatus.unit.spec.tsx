@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { useDispatch } from "metabase/utils/redux";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { GdrivePayload } from "metabase-types/api";
@@ -17,7 +18,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { GdriveSyncStatus } from "./GdriveSyncStatus";
 

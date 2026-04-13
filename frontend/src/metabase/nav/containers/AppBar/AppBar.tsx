@@ -8,6 +8,7 @@ import {
 import { Collections } from "metabase/entities/collections";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
 import type { RouterProps } from "metabase/selectors/app";
 import {
   getDetailViewState,
@@ -23,7 +24,6 @@ import {
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { connect } from "metabase/utils/redux";
-import type { State } from "metabase-types/store";
 
 import AppBar from "../../components/AppBar";
 

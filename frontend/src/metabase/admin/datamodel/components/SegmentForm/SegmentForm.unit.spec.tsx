@@ -6,6 +6,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -13,7 +14,6 @@ import {
   createMockTable,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { SegmentForm } from "./SegmentForm";
 

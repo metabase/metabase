@@ -1,8 +1,8 @@
 import type { Action } from "@reduxjs/toolkit";
 import { useDeepCompareEffect } from "react-use";
 
+import type { State } from "metabase/redux/store";
 import { useDispatch, useSelector } from "metabase/utils/redux";
-import type { State } from "metabase-types/store";
 
 export interface EntityQuery<TId> {
   id: TId;

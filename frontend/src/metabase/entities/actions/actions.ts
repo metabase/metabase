@@ -6,6 +6,7 @@ import {
   useGetActionQuery,
   useListActionsQuery,
 } from "metabase/api";
+import type { Dispatch } from "metabase/redux/store";
 import { ActionSchema } from "metabase/schema";
 import {
   createEntity,
@@ -23,7 +24,6 @@ import type {
   WritebackImplicitQueryAction,
   WritebackQueryAction,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 type BaseCreateActionParams = Pick<
   WritebackAction,

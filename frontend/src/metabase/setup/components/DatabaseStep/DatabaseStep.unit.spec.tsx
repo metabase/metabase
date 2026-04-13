@@ -2,14 +2,14 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { SetupStep } from "metabase/setup/types";
-import type { DatabaseData } from "metabase-types/api";
-import { createMockDatabaseData } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockSetupState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { SetupStep } from "metabase/setup/types";
+import type { DatabaseData } from "metabase-types/api";
+import { createMockDatabaseData } from "metabase-types/api/mocks";
 
 import { DatabaseStep } from "./DatabaseStep";
 

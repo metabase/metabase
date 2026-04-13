@@ -5,9 +5,9 @@ import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Button, Checkbox, Flex, Modal } from "metabase/ui";
 import type { Channel } from "metabase-types/api";
-import type { DraftDashboardSubscription } from "metabase-types/store";
 
 function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
   return pulse.channels.map((c: Channel, index: number) =>

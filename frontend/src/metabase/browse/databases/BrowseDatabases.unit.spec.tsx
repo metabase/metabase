@@ -4,8 +4,8 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { BrowseDatabases } from "./BrowseDatabases";
 

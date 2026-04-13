@@ -3,12 +3,12 @@ import { useLayoutEffect } from "react";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PublicError } from "metabase/public/components/PublicError";
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
+import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { PublicStatusListing } from "metabase/status/components/PublicStatusListing";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { connect, useSelector } from "metabase/utils/redux";
-import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 interface OwnProps {
   children: JSX.Element;

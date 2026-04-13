@@ -12,13 +12,13 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
 import { getSpecialGroupType, isDefaultGroup } from "metabase/utils/groups";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { Database, Group, GroupsPermissions } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type {
   DataRouteParams,

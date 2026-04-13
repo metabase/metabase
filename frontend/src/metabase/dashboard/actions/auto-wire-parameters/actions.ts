@@ -24,6 +24,7 @@ import {
   getMappingOptionByTarget,
   getParameterMappingOptions,
 } from "metabase/parameters/utils/mapping-options";
+import type { Dispatch, GetState, StoreDashcard } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import type {
   DashCardId,
@@ -33,7 +34,6 @@ import type {
   ParameterTarget,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { Dispatch, GetState, StoreDashcard } from "metabase-types/store";
 
 export function showAutoWireToast(
   parameter_id: ParameterId,

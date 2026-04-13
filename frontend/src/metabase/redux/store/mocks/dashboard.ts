@@ -1,5 +1,5 @@
+import type { DashboardState, StoreDashboard } from "metabase/redux/store";
 import { createMockDashboard } from "metabase-types/api/mocks";
-import type { DashboardState, StoreDashboard } from "metabase-types/store";
 
 export const createMockDashboardState = (
   opts: Partial<DashboardState> = {},

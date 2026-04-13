@@ -19,6 +19,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import { setErrorPage } from "metabase/redux/app";
+import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import {
   getErrorPage,
   getIsAdminApp,
@@ -30,7 +31,6 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
 import { initializeIframeResizer } from "metabase/utils/dom";
 import { connect, useSelector } from "metabase/utils/redux";
-import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";

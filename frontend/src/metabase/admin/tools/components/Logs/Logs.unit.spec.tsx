@@ -3,11 +3,11 @@ import type { Location } from "history";
 import { Route } from "react-router";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UtilApi } from "metabase/services";
 import {
   createMockLocation,
   createMockRoutingState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { UtilApi } from "metabase/services";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";

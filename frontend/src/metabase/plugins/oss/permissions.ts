@@ -8,6 +8,7 @@ import {
   type PermissionSubject,
   type SpecialGroupType,
 } from "metabase/admin/permissions/types";
+import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -17,7 +18,6 @@ import type {
   GroupsPermissions,
   User,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { PluginGroupManagersType } from "../types";
 

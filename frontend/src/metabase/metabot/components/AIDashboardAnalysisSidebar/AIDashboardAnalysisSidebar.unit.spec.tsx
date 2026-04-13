@@ -3,13 +3,13 @@ import { screen, waitFor } from "@testing-library/react";
 import { setupAnalyzeChartEndpoint } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
 import type { AIEntityAnalysisResponse, Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { AIDashboardAnalysisSidebar } from "./AIDashboardAnalysisSidebar";
 

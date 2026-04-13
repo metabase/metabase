@@ -5,7 +5,7 @@ import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbedde
 import {
   createMockDashboardState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
 
 import { AddFilterParameterButton } from "./AddFilterParameterButton";
 

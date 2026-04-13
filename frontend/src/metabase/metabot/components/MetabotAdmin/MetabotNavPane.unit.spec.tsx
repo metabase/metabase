@@ -4,8 +4,8 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotNavPane } from "./MetabotNavPane";
 

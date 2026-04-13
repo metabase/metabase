@@ -21,6 +21,12 @@ import {
 } from "__support__/ui";
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import type { DashboardState } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
@@ -29,12 +35,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { DashboardState } from "metabase-types/store";
-import {
-  createMockDashboardState,
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import MainNavbar from "../MainNavbar";
 

@@ -1,10 +1,10 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DatabaseFeature } from "metabase-types/api";
-import { createMockDatabase } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { DatabaseFeature } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { DatabaseReplicationSection } from "./DatabaseReplicationSection";
 

@@ -7,13 +7,13 @@ import {
   setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { DraftTransformSource } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { TransformEditor } from "./TransformEditor";
 

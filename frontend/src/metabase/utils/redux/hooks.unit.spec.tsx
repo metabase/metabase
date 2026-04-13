@@ -1,6 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import type { State } from "metabase/redux/store";
 import { createMockUser } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
 
 import { useDispatch, useSelector } from "./hooks";
 

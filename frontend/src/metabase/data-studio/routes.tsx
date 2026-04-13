@@ -8,10 +8,10 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/utils/urls";
-import type { State } from "metabase-types/store";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";

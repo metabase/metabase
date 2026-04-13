@@ -1,4 +1,4 @@
-import type { ParametersState } from "metabase-types/store/parameters";
+import type { ParametersState } from "metabase/redux/store/parameters";
 
 export const createMockParametersState = (
   opts?: Partial<ParametersState>,

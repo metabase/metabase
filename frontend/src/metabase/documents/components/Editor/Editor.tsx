@@ -11,6 +11,8 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
+import type { State } from "metabase/redux/store";
+import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";
@@ -38,8 +40,6 @@ import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/exte
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 import { useSelector, useStore } from "metabase/utils/redux";
-import type { State } from "metabase-types/store";
-import type { CardEmbedRef } from "metabase-types/store/documents";
 
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";

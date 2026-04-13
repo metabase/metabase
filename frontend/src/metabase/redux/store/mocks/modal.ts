@@ -1,4 +1,4 @@
-import type { ModalState } from "metabase-types/store/modal";
+import type { ModalState } from "metabase/redux/store/modal";
 
 export const createMockModalState = (
   opts?: Partial<ModalState>,

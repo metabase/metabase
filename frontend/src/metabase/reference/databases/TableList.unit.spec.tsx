@@ -3,8 +3,8 @@ import { Route } from "react-router";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import TableList from "./TableList";
 

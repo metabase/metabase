@@ -4,11 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { setupBugReportEndpoints } from "__support__/server-mocks/bug-report";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCard,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { ErrorDiagnosticModal } from "./ErrorDiagnosticModal";
 import type { ErrorPayload, ReportableEntityName } from "./types";

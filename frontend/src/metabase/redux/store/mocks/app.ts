@@ -1,4 +1,4 @@
-import type { AppState } from "metabase-types/store";
+import type { AppState } from "metabase/redux/store";
 
 export const createMockAppState = (opts?: Partial<AppState>): AppState => ({
   detailView: null,
