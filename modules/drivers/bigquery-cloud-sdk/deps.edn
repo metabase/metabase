@@ -26,4 +26,6 @@
   io.grpc/grpc-netty-shaded              {:mvn/version "1.77.0"}
   ;; matches those in athena
   io.netty/netty-common                  {:mvn/version "4.2.7.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.7.Final"}}}
+  io.netty/netty-buffer                  {:mvn/version "4.2.7.Final"}
+  ;; pinned: google-cloud-bigquery pulls 2.18.2 which has resource exhaustion vulns
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}}}
