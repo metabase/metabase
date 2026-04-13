@@ -146,19 +146,14 @@ export interface RenderingContext {
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
-  colorScheme: "light" | "dark";
 }
 
-// Equivalent of StaticVisualizationProps
 export type CustomStaticVisualizationProps<
   TSettings extends Record<string, unknown>,
 > = {
   series: Series;
-  renderingContext: RenderingContext;
-  colorScheme: "light" | "dark";
-  isStorybook?: boolean;
   settings: CustomVisualizationSettings<TSettings>;
-  hasDevWatermark?: boolean;
+  renderingContext: RenderingContext;
 };
 
 export type ClickObject<TSettings extends Record<string, unknown>> = {

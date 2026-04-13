@@ -1,6 +1,7 @@
 import type {
   MetricBreakoutValuesResponse,
   RowValues,
+  VisualizationSettings,
 } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 import { createMockDatasetData } from "metabase-types/api/mocks/dataset";
@@ -46,6 +47,7 @@ const metricCol = createMockColumn({
 });
 
 const CARD_OPTS = { id: 1, name: "Revenue", display: "line" } as const;
+const EMPTY_VIZ: VisualizationSettings = {};
 
 function makeColorMap(values: string[]): BreakoutColorMap {
   const palette = [
@@ -79,6 +81,7 @@ describe("splitByBreakout", () => {
         1,
         true,
         makeColorMap(["Gadgets", "Widgets"]),
+        EMPTY_VIZ,
       );
 
       expect(result).toHaveLength(2);
@@ -114,6 +117,7 @@ describe("splitByBreakout", () => {
         2,
         true,
         makeColorMap(["Gadgets", "Widgets"]),
+        EMPTY_VIZ,
       );
 
       expect(result[0].card.name).toBe("Revenue: Gadgets");
@@ -139,6 +143,7 @@ describe("splitByBreakout", () => {
         1,
         true,
         makeColorMap(["Gadgets", "Widgets"]),
+        EMPTY_VIZ,
       );
 
       expect(result).toHaveLength(2);
@@ -172,6 +177,7 @@ describe("splitByBreakout", () => {
       1,
       true,
       makeColorMap(["Gadgets", "Widgets"]),
+      EMPTY_VIZ,
     );
 
     const ids = result.map((s) => s.card.id);
@@ -190,7 +196,13 @@ describe("splitByBreakout", () => {
     });
 
     const colorMap = makeColorMap(["Gadgets", "Widgets"]);
-    const { series: result } = splitByBreakout(series, 1, true, colorMap);
+    const { series: result } = splitByBreakout(
+      series,
+      1,
+      true,
+      colorMap,
+      EMPTY_VIZ,
+    );
 
     expect(result[0].card.visualization_settings.series_settings).toBeDefined();
     expect(result[1].card.visualization_settings.series_settings).toBeDefined();
@@ -208,6 +220,7 @@ describe("splitByBreakout", () => {
       1,
       true,
       makeColorMap(values),
+      EMPTY_VIZ,
     );
 
     expect(result).toHaveLength(1);
@@ -230,6 +243,7 @@ describe("splitByBreakout", () => {
       1,
       true,
       makeColorMap(["Gadgets", "Widgets"]),
+      EMPTY_VIZ,
     );
 
     expect(result[0].data.cols).toBe(result[1].data.cols);
@@ -257,6 +271,7 @@ describe("splitByBreakout", () => {
       1,
       true,
       colorMap,
+      EMPTY_VIZ,
     );
 
     expect(result).toHaveLength(1);
@@ -280,7 +295,13 @@ describe("splitByBreakout", () => {
       ["Widgets", "#88BF4D"],
     ]);
 
-    const { series: result } = splitByBreakout(series, 1, true, colorMap);
+    const { series: result } = splitByBreakout(
+      series,
+      1,
+      true,
+      colorMap,
+      EMPTY_VIZ,
+    );
 
     expect(result).toHaveLength(2);
     // series order follows colorMap iteration order, not data order
@@ -306,19 +327,21 @@ describe("splitByBreakout", () => {
 });
 
 describe("computeSourceBreakoutColors", () => {
-  it("returns empty object for empty definitions", () => {
-    expect(computeSourceBreakoutColors([])).toEqual({});
+  it("returns empty object for empty formula entities", () => {
+    expect(computeSourceBreakoutColors([], {})).toEqual({});
   });
 
   it("returns a string color for a definition without breakout", () => {
     const metadata = createMetricMetadata([REVENUE_METRIC]);
     const definition = setupDefinition(metadata, REVENUE_METRIC.id);
+    const sourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
 
-    const result = computeSourceBreakoutColors([
-      { id: "metric:1", definition },
-    ]);
+    const result = computeSourceBreakoutColors(
+      [{ id: sourceId, type: "metric" as const, definition }],
+      { [sourceId]: { id: sourceId, definition } },
+    );
 
-    expect(typeof result["metric:1"]).toBe("string");
+    expect(typeof result[0]).toBe("string");
   });
 
   it("returns a Map for a definition with breakout and breakout values", () => {
@@ -328,13 +351,11 @@ describe("computeSourceBreakoutColors", () => {
       REVENUE_METRIC.id,
       1,
     );
+    const sourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
 
-    const breakoutValues = new Map<
-      MetricSourceId,
-      MetricBreakoutValuesResponse
-    >([
+    const breakoutValues = new Map<number, MetricBreakoutValuesResponse>([
       [
-        "metric:1",
+        0,
         {
           values: ["Gadgets", "Widgets"],
           col: createMockColumn({
@@ -347,12 +368,13 @@ describe("computeSourceBreakoutColors", () => {
     ]);
 
     const result = computeSourceBreakoutColors(
-      [{ id: "metric:1", definition }],
+      [{ id: sourceId, type: "metric" as const, definition }],
+      { [sourceId]: { id: sourceId, definition } },
       breakoutValues,
     );
 
-    expect(result["metric:1"]).toBeInstanceOf(Map);
-    const colorMap = result["metric:1"] as Map<string, string>;
+    expect(result[0]).toBeInstanceOf(Map);
+    const colorMap = result[0] as Map<string, string>;
     expect(colorMap.size).toBe(2);
     expect(colorMap.has("Gadgets")).toBe(true);
     expect(colorMap.has("Widgets")).toBe(true);
@@ -368,13 +390,12 @@ describe("computeSourceBreakoutColors", () => {
       1,
     );
     const withoutBreakout = setupDefinition(metadata, REVENUE_METRIC.id);
+    const sourceId1: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
+    const sourceId2: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
 
-    const breakoutValues = new Map<
-      MetricSourceId,
-      MetricBreakoutValuesResponse
-    >([
+    const breakoutValues = new Map<number, MetricBreakoutValuesResponse>([
       [
-        "metric:1",
+        0,
         {
           values: ["Gadgets", "Widgets"],
           col: createMockColumn({
@@ -388,14 +409,22 @@ describe("computeSourceBreakoutColors", () => {
 
     const result = computeSourceBreakoutColors(
       [
-        { id: "metric:1", definition: withBreakout },
-        { id: "metric:2" as MetricSourceId, definition: withoutBreakout },
+        { id: sourceId1, type: "metric" as const, definition: withBreakout },
+        {
+          id: sourceId2,
+          type: "metric" as const,
+          definition: withoutBreakout,
+        },
       ],
+      {
+        [sourceId1]: { id: sourceId1, definition: withBreakout },
+        [sourceId2]: { id: sourceId2, definition: withoutBreakout },
+      },
       breakoutValues,
     );
 
-    expect(result["metric:1"]).toBeInstanceOf(Map);
-    expect(typeof result["metric:2" as MetricSourceId]).toBe("string");
+    expect(result[0]).toBeInstanceOf(Map);
+    expect(typeof result[1]).toBe("string");
   });
 
   it("falls back to string when breakout definition has no breakout values", () => {
@@ -405,13 +434,15 @@ describe("computeSourceBreakoutColors", () => {
       REVENUE_METRIC.id,
       1,
     );
+    const sourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
 
     const result = computeSourceBreakoutColors(
-      [{ id: "metric:1", definition }],
+      [{ id: sourceId, type: "metric" as const, definition }],
+      { [sourceId]: { id: sourceId, definition } },
       new Map(),
     );
 
-    expect(typeof result["metric:1"]).toBe("string");
+    expect(typeof result[0]).toBe("string");
   });
 });
 
