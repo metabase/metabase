@@ -84,14 +84,18 @@ const orders_raw_card = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(metadataProvider, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+      },
+    ],
+  }),
 };
+
 const orders_raw_question = new Question(orders_raw_card, metadata);
 
 const orders_card_without_pk = {
