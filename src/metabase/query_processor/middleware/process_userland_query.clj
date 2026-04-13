@@ -9,6 +9,7 @@
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
@@ -164,7 +165,8 @@
      :tenant_id         (:tenant_id @api/*current-user*)
      :is_impersonated   (boolean (:impersonation/role query))
      :is_db_routed      (boolean destination-database-id)
-     :parameters        (when (seq parameters) (json/encode parameters))
+     :parameters        (when (and (seq parameters) (analytics.settings/analytics-pii-retention-enabled))
+                          (json/encode parameters))
      :started_at        (t/zoned-date-time)
      :running_time      0
      :result_rows       0
