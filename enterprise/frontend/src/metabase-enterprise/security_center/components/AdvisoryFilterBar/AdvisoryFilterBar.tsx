@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { Checkbox, Group, Select, Stack } from "metabase/ui";
+import { Box, Checkbox, Group, Select, Stack } from "metabase/ui";
 import type { AdvisorySeverity } from "metabase-types/api";
 
 import type { AdvisoryFilter } from "../../types";
@@ -63,6 +63,7 @@ export function AdvisoryFilterBar({
         w={isSmallScreen ? "100%" : 180}
         data-testid="status-filter"
       />
+      <Box style={{ flex: 1 }} />
       <Checkbox
         label={t`Show dismissed`}
         checked={filter.showAcknowledged}

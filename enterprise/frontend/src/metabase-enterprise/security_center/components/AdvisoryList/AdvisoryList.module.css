@@ -1,3 +1,9 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xl);
+}
+
 .advisoryList {
   > :not(:last-child) {
     margin-bottom: var(--mantine-spacing-md);

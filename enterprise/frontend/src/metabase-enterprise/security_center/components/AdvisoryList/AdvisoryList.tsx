@@ -1,6 +1,7 @@
 import cx from "classnames";
+import { t } from "ttag";
 
-import { Box } from "metabase/ui";
+import { Box, Title } from "metabase/ui";
 import type { Advisory, AdvisoryId } from "metabase-types/api";
 
 import { sortAdvisories } from "../../utils";
@@ -14,22 +15,53 @@ interface AdvisoryListProps {
   className?: string;
 }
 
-export function AdvisoryList({
+function AdvisorySection({
   advisories,
   onAcknowledge,
-  className,
-}: AdvisoryListProps) {
-  const sorted = sortAdvisories(advisories);
-
+}: {
+  advisories: Advisory[];
+  onAcknowledge?: (advisoryId: AdvisoryId) => void;
+}) {
   return (
-    <Box className={cx(className, S.advisoryList)}>
-      {sorted.map((advisory) => (
+    <Box className={S.advisoryList}>
+      {advisories.map((advisory) => (
         <AdvisoryCard
           key={advisory.advisory_id}
           advisory={advisory}
           onAcknowledge={onAcknowledge}
         />
       ))}
+    </Box>
+  );
+}
+
+export function AdvisoryList({
+  advisories,
+  onAcknowledge,
+  className,
+}: AdvisoryListProps) {
+  const { affecting, notAffecting } = sortAdvisories(advisories);
+
+  return (
+    <Box className={cx(className, S.root)}>
+      {affecting.length > 0 && (
+        <Box>
+          <Title order={4} mb="md">{t`Affecting your instance`}</Title>
+          <AdvisorySection
+            advisories={affecting}
+            onAcknowledge={onAcknowledge}
+          />
+        </Box>
+      )}
+      {notAffecting.length > 0 && (
+        <Box>
+          <Title order={4} mb="md">{t`Other alerts`}</Title>
+          <AdvisorySection
+            advisories={notAffecting}
+            onAcknowledge={onAcknowledge}
+          />
+        </Box>
+      )}
     </Box>
   );
 }
