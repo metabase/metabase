@@ -247,6 +247,7 @@ describe("admin > custom visualizations", () => {
             .should("be.visible");
 
           H.visitCustomVizSettings();
+          cy.findByText("demo-viz").should("be.visible").realHover();
           cy.findByRole("button", { name: /ellipsis/i }).click();
           H.popover().findByText("Disable").click();
 
@@ -287,6 +288,7 @@ describe("admin > custom visualizations", () => {
           H.visitCustomVizSettings();
 
           // Delete the plugin
+          cy.findByText("demo-viz").should("be.visible").realHover();
           cy.findByRole("button", { name: /ellipsis/i }).click();
           H.popover().findByText("Remove").click();
 
