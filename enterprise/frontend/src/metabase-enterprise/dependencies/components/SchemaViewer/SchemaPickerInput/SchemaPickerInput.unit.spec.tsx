@@ -7,8 +7,8 @@ import {
   useListDatabaseSchemasQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Database, DatabaseId } from "metabase-types/api";
 
 import { SchemaPickerInput } from "./SchemaPickerInput";
@@ -95,11 +95,7 @@ function renderSchemaPicker(
   props?: Partial<ComponentProps<typeof SchemaPickerInput>>,
 ) {
   return renderWithProviders(
-    <SchemaPickerInput
-      databaseId={undefined}
-      schema={undefined}
-      {...props}
-    />,
+    <SchemaPickerInput databaseId={undefined} schema={undefined} {...props} />,
   );
 }
 

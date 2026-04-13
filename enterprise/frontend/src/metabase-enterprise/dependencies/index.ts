@@ -4,6 +4,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { CheckDependenciesForm } from "./components/CheckDependenciesForm";
 import { CheckDependenciesModal } from "./components/CheckDependenciesModal";
 import { CheckDependenciesTitle } from "./components/CheckDependenciesTitle";
+import { DatabaseSchemaViewerSection } from "./components/DatabaseSchemaViewerSection";
 import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 import {
@@ -25,6 +26,7 @@ export function initializePlugin() {
     PLUGIN_DEPENDENCIES.getDataStudioSchemaViewerRoutes =
       getDataStudioSchemaViewerRoutes;
     PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
+    PLUGIN_DEPENDENCIES.DatabaseSchemaViewerSection = DatabaseSchemaViewerSection;
     PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
     PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;
     PLUGIN_DEPENDENCIES.CheckDependenciesTitle = CheckDependenciesTitle;

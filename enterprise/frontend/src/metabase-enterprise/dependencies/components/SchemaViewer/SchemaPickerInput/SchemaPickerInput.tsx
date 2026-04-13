@@ -8,8 +8,6 @@ import {
   useListDatabaseSchemasQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import {
   Box,
   Button,
@@ -21,6 +19,8 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Database, DatabaseId, SchemaName } from "metabase-types/api";
 
 import S from "./SchemaPickerInput.module.css";
@@ -208,8 +208,7 @@ export function SchemaPickerInput({
               <SchemaList
                 schemas={schemas}
                 databaseName={
-                  databases?.find((db) => db.id === popoverSchemaListDbId)
-                    ?.name
+                  databases?.find((db) => db.id === popoverSchemaListDbId)?.name
                 }
                 currentSchema={
                   popoverSchemaListDbId === databaseId ? schema : undefined
@@ -346,9 +345,7 @@ function SchemaList({
                   {schemaName}
                 </Text>
               </Group>
-              {isCurrent && (
-                <FixedSizeIcon name="check" c="brand" />
-              )}
+              {isCurrent && <FixedSizeIcon name="check" c="brand" />}
             </Group>
           </UnstyledButton>
         );

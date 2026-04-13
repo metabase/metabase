@@ -1,11 +1,8 @@
 import { type NodeProps, useReactFlow, useStore } from "@xyflow/react";
-
-import { useZoomToNodes } from "../useZoomToNodes";
 import cx from "classnames";
 import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { getAccentColors } from "metabase/ui/colors/groups";
 import {
   ActionIcon,
   Box,
@@ -15,10 +12,12 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
+import { getAccentColors } from "metabase/ui/colors/groups";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
 import type { SchemaViewerFlowNode } from "../types";
+import { useZoomToNodes } from "../useZoomToNodes";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 import S from "./SchemaViewerTableNode.module.css";

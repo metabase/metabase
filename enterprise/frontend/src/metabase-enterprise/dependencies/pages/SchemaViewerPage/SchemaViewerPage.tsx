@@ -6,9 +6,9 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
@@ -55,15 +55,24 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
     return ids.map((id) => Number(id) as ConcreteTableId);
   }, [rawTableIds]);
 
-  // Persist last opened database/schema
+  // Persist last opened database/schema. The `schema_viewer` namespace in
+  // UserKeyValue unions two value shapes (per-schema prefs used elsewhere
+  // in the viewer, and the last-opened DB record used here under the
+  // "last_database" key) — narrow to the shape this page cares about.
   const {
-    value: lastDatabase,
+    value: lastDatabaseRaw,
     setValue: setLastDatabase,
     isLoading: isLoadingLastDatabase,
-  } = useUserKeyValue<{ databaseId: DatabaseId; schema?: string }>({
+  } = useUserKeyValue({
     namespace: "schema_viewer",
     key: "last_database",
   });
+  const lastDatabase =
+    lastDatabaseRaw != null &&
+    typeof lastDatabaseRaw === "object" &&
+    "databaseId" in lastDatabaseRaw
+      ? (lastDatabaseRaw as { databaseId: DatabaseId; schema?: string })
+      : undefined;
 
   // Fetch databases to validate saved preference exists
   const { data: databasesResponse, isLoading: isLoadingDatabases } =

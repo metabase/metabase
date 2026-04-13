@@ -196,10 +196,15 @@ export type UserKeyValue =
   | {
       namespace: "schema_viewer";
       key: string;
-      value: {
-        table_ids: number[];
-        hops: number;
-      };
+      value:
+        | {
+            table_ids: number[];
+            hops: number;
+          }
+        | {
+            databaseId: number;
+            schema?: string;
+          };
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

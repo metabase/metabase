@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
 import type { DatabaseSchemaViewerSectionProps } from "metabase/plugins";
 import { Button, Flex, Text } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 export function DatabaseSchemaViewerSection({
   database: _database,

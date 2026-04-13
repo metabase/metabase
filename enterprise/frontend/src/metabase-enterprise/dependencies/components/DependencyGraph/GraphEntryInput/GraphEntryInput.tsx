@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import type { EntityPickerProps } from "metabase/common/components/Pickers";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import { Button, Card, FixedSizeIcon } from "metabase/ui";
+import { Button, Card, FixedSizeIcon, type IconName } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import type {
   DependencyEntry,
@@ -21,14 +21,14 @@ import { SEARCH_MODELS } from "./constants";
 
 export type SelectedEntry = {
   label: string;
-  icon: string;
+  icon: IconName;
 };
 
 type GraphEntryInputProps = {
   node: DependencyNode | null;
   selectedEntry?: SelectedEntry | null;
   isGraphFetching: boolean;
-  getGraphUrl: (entry: PickerEntry | undefined) => string;
+  getGraphUrl: (entry: DependencyEntry | undefined) => string;
   allowedSearchModels?: SearchModel[];
   pickerModels?: EntityPickerProps["models"];
 };
@@ -62,6 +62,12 @@ export function GraphEntryInput({
 
   const handlePickerChange = (newEntry: PickerEntry) => {
     closePicker();
+    // The graph URL builder only handles DependencyEntry types. If the
+    // picker returned a Database/Schema entry (not supported by this
+    // graph), skip navigation — those picks are opaque to the graph view.
+    if (newEntry.type === "database" || newEntry.type === "schema") {
+      return;
+    }
     dispatch(push(getGraphUrl(newEntry)));
   };
 

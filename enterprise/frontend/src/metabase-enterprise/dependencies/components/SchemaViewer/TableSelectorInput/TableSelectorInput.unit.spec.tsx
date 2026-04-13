@@ -1,13 +1,13 @@
-import { MantineProvider } from "@mantine/core";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { ConcreteTableId, Table } from "metabase-types/api";
+import { createMockTable } from "metabase-types/api/mocks";
 
 import type { SchemaViewerFlowNode } from "../types";
 
 import { TableSelectorInput } from "./TableSelectorInput";
 
 const renderWithProvider = (component: React.ReactElement) => {
-  return render(<MantineProvider>{component}</MantineProvider>);
+  return renderWithProviders(component);
 };
 
 // Mock React Flow
@@ -17,13 +17,14 @@ jest.mock("@xyflow/react", () => ({
   }),
 }));
 
-const createTable = (id: number, name: string, displayName?: string): Table => ({
-  id: id as ConcreteTableId,
-  name,
-  display_name: displayName,
-  schema: "PUBLIC",
-  db_id: 1,
-});
+const createTable = (id: number, name: string, displayName?: string): Table =>
+  createMockTable({
+    id: id as ConcreteTableId,
+    name,
+    display_name: displayName ?? name,
+    schema: "PUBLIC",
+    db_id: 1,
+  });
 
 const createNode = (
   tableId: number,
@@ -35,7 +36,9 @@ const createNode = (
   position: { x: 0, y: 0 },
   data: {
     table_id: tableId,
-    table_name: tableName,
+    name: tableName,
+    display_name: tableName,
+    db_id: 1,
     schema: "PUBLIC",
     fields: [],
     is_focal: isFocal,
@@ -127,15 +130,13 @@ describe("TableSelectorInput", () => {
       expect(screen.getByText("1 tables selected")).toBeInTheDocument();
 
       rerender(
-        <MantineProvider>
-          <TableSelectorInput
-            nodes={[createNode(1, "ORDERS"), createNode(2, "PRODUCTS")]}
-            allTables={tables}
-            selectedTableIds={[1 as ConcreteTableId, 2 as ConcreteTableId]}
-            isUserModified={true}
-            onSelectionChange={jest.fn()}
-          />
-        </MantineProvider>,
+        <TableSelectorInput
+          nodes={[createNode(1, "ORDERS"), createNode(2, "PRODUCTS")]}
+          allTables={tables}
+          selectedTableIds={[1 as ConcreteTableId, 2 as ConcreteTableId]}
+          isUserModified={true}
+          onSelectionChange={jest.fn()}
+        />,
       );
 
       expect(screen.getByText("2 tables selected")).toBeInTheDocument();

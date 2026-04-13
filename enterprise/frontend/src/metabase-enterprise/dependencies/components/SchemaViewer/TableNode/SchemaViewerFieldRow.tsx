@@ -6,8 +6,8 @@ import type { ConcreteTableId, ErdField } from "metabase-types/api";
 import { useSchemaViewerContext } from "../SchemaViewerContext";
 import { ROW_HEIGHT } from "../constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
-import { getNodeId } from "../utils";
 import { useZoomToNodes } from "../useZoomToNodes";
+import { getNodeId } from "../utils";
 
 import S from "./SchemaViewerFieldRow.module.css";
 
