@@ -7,6 +7,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 import { getVisualizationTransformed } from "metabase/visualizations";
+import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
   TimeSeriesInterval,
@@ -14,6 +15,7 @@ import type {
 import {
   computeTimeseriesDataInterval,
   computeTimeseriesTicksInterval,
+  expectedTickCount,
   getTimezoneOrOffset,
   normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
@@ -29,6 +31,29 @@ import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+function createMockChartMeasurements(
+  outerWidth: number,
+  xTickWidth: number,
+): ChartLayout {
+  return {
+    boundaryWidth: 0,
+    ticksDimensions: {
+      getXTickWidth: () => xTickWidth,
+      yTicksWidthLeft: 0,
+      yTicksWidthRight: 0,
+      xTicksHeight: 0,
+      firstXTickWidth: 0,
+      lastXTickWidth: 0,
+    },
+    padding: { top: 0, bottom: 0, left: 0, right: 0 },
+    bounds: { top: 0, bottom: 0, left: 0, right: 0 },
+    outerHeight: 0,
+    outerWidth,
+    axisEnabledSetting: true,
+    panelGap: 0,
+  };
+}
 
 registerVisualizations();
 
@@ -133,14 +158,190 @@ describe("visualization.lib.timeseries", () => {
     });
   });
 
+  describe("expectedTickCount", () => {
+    const testCases: {
+      start: string;
+      end: string;
+      unit: CartesianChartDateTimeAbsoluteUnit;
+      count: number;
+      expected: number;
+    }[] = [
+      {
+        start: "2026-01-10",
+        end: "2026-02-20",
+        unit: "month",
+        count: 1,
+        expected: 1, // 2026-02-01
+      },
+      {
+        start: "2026-01-28",
+        end: "2026-03-02",
+        unit: "month",
+        count: 1,
+        expected: 2, // 2026-02-01, 2026-03-01
+      },
+      {
+        start: "2026-01-01",
+        end: "2026-03-01",
+        unit: "month",
+        count: 1,
+        expected: 3, // 2026-01-01, 2026-02-01, 2026-03-01
+      },
+      {
+        start: "2026-01-10",
+        end: "2026-01-20",
+        unit: "month",
+        count: 1,
+        expected: 0, // no month boundary in range
+      },
+      {
+        start: "2022-01-01",
+        end: "2026-01-01",
+        unit: "year",
+        count: 1,
+        expected: 5, // 2022-01-01, 2023-01-01, 2024-01-01, 2025-01-01, 2026-01-01
+      },
+      {
+        start: "2022-04-01",
+        end: "2026-04-01",
+        unit: "year",
+        count: 1,
+        expected: 4, // 2023-01-01, 2024-01-01, 2025-01-01, 2026-01-01
+      },
+      {
+        start: "2020-01-21",
+        end: "2020-04-05",
+        unit: "month",
+        count: 2,
+        expected: 1, // 2020-03-01
+      },
+      {
+        start: "2022-01-01",
+        end: "2026-01-01",
+        unit: "year",
+        count: 2,
+        expected: 3, // 2022-01-01, 2024-01-01, 2026-01-01
+      },
+      {
+        start: "2023-06-01",
+        end: "2027-06-01",
+        unit: "year",
+        count: 2,
+        expected: 2, // 2024-01-01, 2026-01-01
+      },
+      {
+        start: "2025-01-01",
+        end: "2026-01-01",
+        unit: "quarter",
+        count: 1,
+        expected: 5, // 2025Q1, 2025Q2, 2025Q3, 2025Q4, 2026Q1
+      },
+      {
+        start: "2024-12-15",
+        end: "2025-11-15",
+        unit: "quarter",
+        count: 2,
+        expected: 2, // 2025Q1, 2025Q3
+      },
+      {
+        start: "2025-01-05T00:00:00Z", // Sunday (start of week)
+        end: "2025-02-02T00:00:00Z", // Sunday
+        unit: "week",
+        count: 1,
+        expected: 5, // Jan 5, 12, 19, 26, Feb 2
+      },
+      {
+        start: "2025-01-08T00:00:00Z", // Wednesday
+        end: "2025-01-22T00:00:00Z", // Wednesday
+        unit: "week",
+        count: 1,
+        expected: 2, // Jan 12, Jan 19
+      },
+      {
+        start: "2025-03-15T00:00:00Z",
+        end: "2025-03-20T00:00:00Z",
+        unit: "day",
+        count: 1,
+        expected: 6, // Mar 15, 16, 17, 18, 19, 20
+      },
+      {
+        start: "2025-03-15T12:00:00Z",
+        end: "2025-03-20T12:00:00Z",
+        unit: "day",
+        count: 1,
+        expected: 5, // Mar 16, 17, 18, 19, 20
+      },
+      {
+        start: "2025-03-15T00:00:00Z",
+        end: "2025-03-15T12:00:00Z",
+        unit: "hour",
+        count: 3,
+        expected: 5, // 0:00, 3:00, 6:00, 9:00, 12:00
+      },
+      {
+        start: "2025-03-15T01:00:00Z",
+        end: "2025-03-15T10:00:00Z",
+        unit: "hour",
+        count: 3,
+        expected: 3, // 3:00, 6:00, 9:00
+      },
+      {
+        start: "2025-03-15T10:00:00Z",
+        end: "2025-03-15T11:00:00Z",
+        unit: "minute",
+        count: 15,
+        expected: 5, // 10:00, 10:15, 10:30, 10:45, 11:00
+      },
+      {
+        start: "2025-03-15T10:05:00Z",
+        end: "2025-03-15T11:05:00Z",
+        unit: "minute",
+        count: 15,
+        expected: 4, // 10:15, 10:30, 10:45, 11:00
+      },
+      {
+        start: "2025-03-15T10:00:00Z",
+        end: "2025-03-15T10:02:00Z",
+        unit: "second",
+        count: 30,
+        expected: 5, // :00, :30, 1:00, 1:30, 2:00
+      },
+      {
+        start: "2025-03-15T10:00:10Z",
+        end: "2025-03-15T10:02:10Z",
+        unit: "second",
+        count: 30,
+        expected: 4, // :30, 1:00, 1:30, 2:00
+      },
+      {
+        start: "2025-03-15T10:00:00Z",
+        end: "2025-03-15T10:00:01Z",
+        unit: "ms",
+        count: 1,
+        expected: 1001,
+      },
+    ];
+
+    testCases.forEach(({ start, end, unit, count, expected }) => {
+      it(`should return ${expected} for ${start} to ${end} with ${unit} interval and count ${count}`, () => {
+        expect(
+          expectedTickCount({ unit, count }, [
+            new Date(start).getTime(),
+            new Date(end).getTime(),
+          ]),
+        ).toBe(expected);
+      });
+    });
+  });
+
   describe("computeTimeseriesTicksInterval", () => {
-    // computeTimeseriesTicksInterval just uses tickFormat to measure the character length of the current formatting style
-    const fakeTickFormat = (_value: unknown) => "2020-01-01";
+    const mockFormatter = (value: RowValue) => String(value);
+
     type TickInput = {
       xDomain: ContinuousDomain;
       xInterval: TimeSeriesInterval;
-      chartWidth: number;
-      tickFormat: (value: RowValue) => string;
+      outerWidth: number;
+      xTickWidth: number;
     };
     type TickExpected = {
       expectedUnit: CartesianChartDateTimeAbsoluteUnit;
@@ -155,12 +356,12 @@ describe("visualization.lib.timeseries", () => {
             new Date("2021-01-01").getTime(),
           ],
           xInterval: { unit: "month", count: 1 },
-          chartWidth: 1920,
-          tickFormat: fakeTickFormat,
+          outerWidth: 1920,
+          xTickWidth: 55,
         },
         { expectedUnit: "month", expectedCount: 1 },
       ],
-      // it should be bump to quarters on a narrower chart
+      // 2 month unit should work
       [
         {
           xDomain: [
@@ -168,8 +369,21 @@ describe("visualization.lib.timeseries", () => {
             new Date("2021-01-01").getTime(),
           ],
           xInterval: { unit: "month", count: 1 },
-          chartWidth: 700,
-          tickFormat: fakeTickFormat,
+          outerWidth: 700,
+          xTickWidth: 55,
+        },
+        { expectedUnit: "month", expectedCount: 2 },
+      ],
+      // it should be bumped to quarters on a narrower chart
+      [
+        {
+          xDomain: [
+            new Date("2020-01-01").getTime(),
+            new Date("2021-01-01").getTime(),
+          ],
+          xInterval: { unit: "month", count: 1 },
+          outerWidth: 400,
+          xTickWidth: 55,
         },
         { expectedUnit: "quarter", expectedCount: 1 },
       ],
@@ -178,11 +392,11 @@ describe("visualization.lib.timeseries", () => {
         {
           xDomain: [
             new Date("2020-01-01").getTime(),
-            new Date("2021-01-01").getTime(),
+            new Date("2022-01-01").getTime(),
           ],
           xInterval: { unit: "month", count: 1 },
-          chartWidth: 300,
-          tickFormat: fakeTickFormat,
+          outerWidth: 300,
+          xTickWidth: 55,
         },
         { expectedUnit: "year", expectedCount: 1 },
       ],
@@ -192,23 +406,21 @@ describe("visualization.lib.timeseries", () => {
       //   {
       //     xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
       //     xInterval: { interval: "month", count: 3 },
-      //     chartWidth: 1920,
-      //     tickFormat: fakeTickFormat,
+      //     outerWidth: 1920,
+      //     xTickWidth: 55,
       //   },
       //   { expectedUnit: "month", expectedCount: 3 },
       // ],
-      // Long date formats should update the interval to have fewer ticks
+      // wide tick labels should update the interval to have fewer ticks
       [
         {
           xDomain: [
             new Date("2020-01-01").getTime(),
-            new Date("2021-01-01").getTime(),
+            new Date("2022-01-01").getTime(),
           ],
           xInterval: { unit: "month", count: 1 },
-          chartWidth: 1920,
-          tickFormat: () =>
-            // thankfully no date format is actually this long
-            "The eighth day of July in the year of our Lord two thousand and nineteen",
+          outerWidth: 1920,
+          xTickWidth: 418,
         },
         { expectedUnit: "year", expectedCount: 1 },
       ],
@@ -216,15 +428,15 @@ describe("visualization.lib.timeseries", () => {
 
     TEST_CASES.forEach(
       ([
-        { xDomain, xInterval, chartWidth, tickFormat },
+        { xDomain, xInterval, outerWidth, xTickWidth },
         { expectedUnit, expectedCount },
       ]) => {
         it(`should return ${expectedCount} ${expectedUnit}`, () => {
           const { unit, count } = computeTimeseriesTicksInterval(
             xDomain,
             xInterval,
-            chartWidth,
-            tickFormat,
+            createMockChartMeasurements(outerWidth, xTickWidth),
+            mockFormatter,
           );
           expect(unit).toBe(expectedUnit);
           expect(count).toBe(expectedCount);

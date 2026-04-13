@@ -274,7 +274,6 @@ export const getCartesianChartOption = (
   if (isSplitPanels) {
     const baseXAxis = buildDimensionAxis(
       chartModel,
-      chartWidth,
       settings,
       chartLayout,
       hasTimelineEvents,
@@ -304,7 +303,6 @@ export const getCartesianChartOption = (
     const axes = ensureRoomForLabels(
       buildAxes(
         chartModel,
-        chartWidth,
         chartLayout,
         settings,
         hasTimelineEvents,
