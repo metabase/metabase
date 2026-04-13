@@ -73,6 +73,7 @@
       (str/split hosts #","))))
 
 (defn- random-host []
+  (println "(seq @hosts):" (seq @hosts)) ; NOCOMMIT
   (u/prog1 (if (seq @hosts)
              (rand-nth @hosts)
              (tx/db-test-env-var-or-throw :redshift :host))
