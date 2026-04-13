@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
+import type { IconModel } from "metabase/utils/icon";
 import { modelIconMap } from "metabase/utils/icon";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -13,7 +14,7 @@ import { useGetJoinedTablesWithIcons } from "./hooks";
 
 jest.mock("metabase/hooks/use-icon", () => ({
   useGetIcon: () =>
-    jest.fn((item: { model: string }) => ({
+    jest.fn((item: { model: IconModel }) => ({
       name: modelIconMap[item.model] ?? "unknown",
     })),
 }));

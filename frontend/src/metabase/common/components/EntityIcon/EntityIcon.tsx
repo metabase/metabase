@@ -2,7 +2,7 @@ import type { CSSProperties, HTMLAttributes, ImgHTMLAttributes } from "react";
 
 import { Icon, type IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
-import { color as colorValue } from "metabase/ui/utils/colors";
+import { maybeColor } from "metabase/ui/utils/colors";
 import type { IconData } from "metabase/utils/icon";
 
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
@@ -31,7 +31,7 @@ export function EntityIcon({
   ...rest
 }: EntityIconProps) {
   if (iconUrl) {
-    const bg = color === "inherit" ? "currentColor" : colorValue(color);
+    const bg = color === "inherit" ? "currentColor" : maybeColor(color);
 
     return (
       <span

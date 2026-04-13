@@ -25,11 +25,14 @@ export const useGetJoinedTablesWithIcons = () => {
       const joinedTables = stageIndexes.flatMap((stageIndex) => {
         const joins = Lib.joins(query, stageIndex);
 
-        return joins.map((join) => {
+        return joins.flatMap((join) => {
           const thing = Lib.joinedThing(query, join);
-          const url = getUrl({ query, table: thing, stageIndex });
+          const href = getUrl({ query, table: thing, stageIndex });
+          if (!href) {
+            return [];
+          }
           const { displayName } = Lib.displayInfo(query, stageIndex, thing);
-          return { name: displayName, href: url };
+          return [{ name: displayName, href }];
         });
       });
 
