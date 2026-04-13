@@ -8,10 +8,6 @@ import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
 import { formatTimeWithUnit } from "metabase/utils/formatting/time";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ChannelApiResponse,
@@ -151,7 +147,7 @@ function hasProperGoalForAlert({
   question: Question | undefined;
   visualizationSettings: VisualizationSettings;
 }): boolean {
-  const alertType = question?.alertType(visualizationSettings);
+  const alertType = getAlertType(question, visualizationSettings);
 
   if (!alertType) {
     return false;
@@ -321,3 +317,57 @@ export const formatNotificationScheduleDescription = ({
       return "";
   }
 };
+
+export const ALERT_TYPE_ROWS = "alert-type-rows";
+export const ALERT_TYPE_TIMESERIES_GOAL = "alert-type-timeseries-goal";
+export const ALERT_TYPE_PROGRESS_BAR_GOAL = "alert-type-progress-bar-goal";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
+const AlertTypes = [
+  ALERT_TYPE_ROWS,
+  ALERT_TYPE_TIMESERIES_GOAL,
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+] as const;
+
+export type NotificationTriggerType = (typeof AlertTypes)[number];
+
+/**
+ * Returns the type of alert that the question supports
+ *
+ * The `visualization_settings` in card object doesn't contain default settings,
+ * so you can provide the complete visualization settings object to `alertType`
+ * for taking those into account
+ */
+export function getAlertType(
+  question: Question,
+  visualizationSettings?: VisualizationSettings,
+) {
+  const display = question.display();
+
+  if (!question.canRun()) {
+    return null;
+  }
+
+  const isLineAreaBar =
+    display === "line" || display === "area" || display === "bar";
+
+  if (display === "progress") {
+    return ALERT_TYPE_PROGRESS_BAR_GOAL;
+  } else if (isLineAreaBar) {
+    const vizSettings = visualizationSettings
+      ? visualizationSettings
+      : question.card().visualization_settings;
+    const goalEnabled = vizSettings["graph.show_goal"];
+    const hasSingleYAxisColumn =
+      vizSettings["graph.metrics"] && vizSettings["graph.metrics"].length === 1;
+
+    // We don't currently support goal alerts for multiseries question
+    if (goalEnabled && hasSingleYAxisColumn) {
+      return ALERT_TYPE_TIMESERIES_GOAL;
+    } else {
+      return ALERT_TYPE_ROWS;
+    }
+  } else {
+    return ALERT_TYPE_ROWS;
+  }
+}

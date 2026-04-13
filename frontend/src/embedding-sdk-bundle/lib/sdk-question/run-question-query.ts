@@ -70,7 +70,7 @@ export async function runQuestionQuerySdk(
 
   // FIXME: this removes "You can also get an alert when there are some results." feature for question
   if (question) {
-    question.alertType = () => null;
+    // question.alertType = () => null;
   }
 
   return { question, queryResults };
