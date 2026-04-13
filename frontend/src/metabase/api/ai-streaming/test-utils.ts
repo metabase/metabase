@@ -35,11 +35,13 @@ function lifecycleFinishFor(events: SSEEvent[]): (SSEEvent | string)[] {
  *
  * For array inputs, the full BE lifecycle is wrapped around the provided
  * events to match real server output:
- *   `start` → `start-step` → ...events... → `finish-step` → `finish` → `[DONE]`
+ *   `start` → `start-step` → ...<your events>... → `finish-step` → `finish` → `[DONE]`
  * Any lifecycle event the caller already supplies at the head or tail is
  * preserved and not duplicated, so tests can pass a custom `start`
  * (with a specific `messageId`) or `finish` (with `messageMetadata`) and have
- * it flow through unchanged. For async generator inputs, the generator
+ * it flow through unchanged.
+ *
+ * For async generator inputs, the generator
  * controls its own lifecycle — nothing is auto-added.
  */
 export function createMockSSEStream(

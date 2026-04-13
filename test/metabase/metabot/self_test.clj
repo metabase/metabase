@@ -783,19 +783,15 @@
       (is (=? {:type "error" :errorText "boom"}
               (nth events 2))))))
 
-(deftest parts->aisdk-sse-xf-finish-skipped-test
-  (testing ":finish parts are dropped — only the completion arity emits the terminal finish event"
-    (let [events (run-sse-xf [{:type :start :id "msg-1"}
-                              {:type :finish}])]
-      (is (= 5 (count events)))
-      (is (=? [{:type "start"}
-               {:type "start-step"}
-               {:type "finish-step"}
-               {:type "finish"}
-               :done]
-              events))
-      ;; The terminal finish event has no messageMetadata when no usage was observed.
-      (is (not (contains? (nth events 3) :messageMetadata))))))
+(deftest ^:parallel parts->aisdk-sse-xf-finish-reason-test
+  (let [finish-of (fn [parts]
+                    (->> (run-sse-xf parts)
+                         (filter #(and (map? %) (= "finish" (:type %))))
+                         first))]
+    (testing "default finishReason is \"stop\""
+      (is (= "stop" (:finishReason (finish-of [{:type :start :id "m"} {:type :text :id "t" :text "hi"}])))))
+    (testing "finishReason is \"error\" when an :error part was emitted"
+      (is (= "error" (:finishReason (finish-of [{:type :start :id "m"} {:type :error :error {:message "boom"}}])))))))
 
 (deftest parts->aisdk-sse-xf-usage-metadata-test
   (testing ":usage parts are accumulated per model and surfaced as messageMetadata on the terminal finish"

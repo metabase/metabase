@@ -9,24 +9,24 @@
 
 ;;; ---------------------------------------- Storage format migration ----------------------------------------
 
-(defn- v1a?
-  "Returns true if `data` is in v1a storage format — the earlier ai-service origin
-   shape whose entries carry `:_type` fields (e.g. `FINISH_MESSAGE`, `DATA`,
-   `TOOL_CALL`, `TOOL_RESULT`)."
+(defn- v1-external-ai-service?
+  "Returns true if `data` is in v1-external-ai-service storage format — the earlier
+   ai-service origin shape whose entries carry `:_type` fields (e.g. `FINISH_MESSAGE`,
+   `DATA`, `TOOL_CALL`, `TOOL_RESULT`)."
   [data]
   (and (sequential? data)
        (some :_type data)))
 
-(defn- v1b?
-  "Returns true if `data` is in v1 storage format (has separate tool-input/tool-output entries)."
+(defn- v1-native?
+  "Returns true if `data` is in v1-native storage format (has separate tool-input/tool-output entries)."
   [data]
   (and (sequential? data)
        (some #(#{"tool-input" "tool-output"} (:type %)) data)))
 
 (defn- v1-user-message?
-  "Returns true if `data` is the user-message shape that was backfilled to `data_version = 1`
-   when that column was introduced. These rows were written as `[{:role \"user\" :content \"…\"}]`
-   (already valid v2) and need no transformation — only an identity passthrough."
+  "Returns true if `data` is a user message written as `data_version = 1`. User messages
+   were always stored in the same format regardless of v1-external-ai-service vs v1-native,
+   and that format is already valid v2 — passthrough only."
   [data]
   (and (sequential? data)
        (seq data)
@@ -35,27 +35,15 @@
                      (nil? (:_type %)))
                data)))
 
-(defn normalize-data-event-types
-  "Replace underscores with hyphens in data event type names.
-   E.g. \"data-navigate_to\" -> \"data-navigate-to\".
-   Idempotent: already-hyphenated types pass through unchanged."
-  [data]
-  (mapv (fn [entry]
-          (if (and (string? (:type entry))
-                   (str/starts-with? (:type entry) "data-"))
-            (update entry :type #(str/replace % "_" "-"))
-            entry))
-        data))
-
-(defn- v1a-tool-call->parts
-  "Split one v1a `TOOL_CALL` entry (which may batch multiple calls) into v2 tool parts,
-   paired with matching results from `outputs` (keyed by `:tool_call_id`)."
+(defn- v1-external-ai-service-tool-call->parts
+  "Split one v1-external-ai-service `TOOL_CALL` entry (which may batch multiple calls)
+   into v2 tool parts, paired with matching results from `outputs` (keyed by `:tool_call_id`)."
   [{:keys [tool_calls]} outputs]
   (mapv (fn [{:keys [id name arguments]}]
           (let [output (get outputs id)
                 input  (try (json/decode+kw arguments)
                             (catch Throwable _ arguments))]
-            (cond-> {:type       (str "tool-" name)
+            (cond-> {:type       (str "tool-" (str/replace name "_" "-"))
                      :toolCallId id
                      :toolName   name
                      :state      (if output "output-available" "input-available")
@@ -63,19 +51,20 @@
               output (assoc :output (:content output)))))
         tool_calls))
 
-(defn migrate-v1a->v2
-  "Migrate a v1a data array (ai-service origin, `:_type`-keyed) to v2 format.
+(defn migrate-v1-external-ai-service->v2
+  "Migrate a v1-external-ai-service data array (ai-service origin, `:_type`-keyed) to v2 format.
 
    Entry conversions:
    - TEXT       -> {:type \"text\" :text <content>}
    - ERROR      -> {:type \"error\" :errorText <content>} (matches AI SDK ErrorChunk)
    - TOOL_CALL  -> one `tool-<name>` part per batched call, merged with matching TOOL_RESULT
    - TOOL_RESULT -> stripped from output; merged into its paired TOOL_CALL
-   - DATA       -> {:type \"data-<type>\" :data <:value>}, `normalize-data-event-types` applied
+   - DATA       -> {:type \"data-<type>\" :data <:value>}
 
-   v1a: [{:role \"assistant\" :_type \"TOOL_CALL\" :tool_calls [{:id \"tc1\" :name \"search\" :arguments \"{…}\"}]}
-         {:role \"tool\"      :_type \"TOOL_RESULT\" :tool_call_id \"tc1\" :content \"…\"}
-         {:_type \"DATA\" :type \"navigate_to\" :version 1 :value \"/q/1\"}]"
+   v1-external-ai-service:
+     [{:role \"assistant\" :_type \"TOOL_CALL\" :tool_calls [{:id \"tc1\" :name \"search\" :arguments \"{…}\"}]}
+      {:role \"tool\"      :_type \"TOOL_RESULT\" :tool_call_id \"tc1\" :content \"…\"}
+      {:_type \"DATA\" :type \"navigate_to\" :version 1 :value \"/q/1\"}]"
   [data]
   (let [outputs (->> data
                      (filter #(= "TOOL_RESULT" (:_type %)))
@@ -86,22 +75,21 @@
                    (case (:_type entry)
                      "TEXT"      [{:type "text" :text (:content entry)}]
                      "ERROR"     [{:type "error" :errorText (:content entry)}]
-                     "TOOL_CALL" (v1a-tool-call->parts entry outputs)
-                     "DATA"      [{:type (str "data-" (:type entry))
+                     "TOOL_CALL" (v1-external-ai-service-tool-call->parts entry outputs)
+                     "DATA"      [{:type (str "data-" (str/replace (:type entry) "_" "-"))
                                    :data (:value entry)}]
-                     (throw (ex-info "Unrecognized v1a entry type" {:entry entry})))))
-         vec
-         normalize-data-event-types)))
+                     (throw (ex-info "Unrecognized v1-external-ai-service entry type" {:entry entry})))))
+         vec)))
 
-(defn migrate-v1b->v2
-  "Migrate a v1b data array (native-agent origin, `:type`-keyed) to v2 format.
+(defn migrate-v1-native->v2
+  "Migrate a v1-native data array (native-agent origin, `:type`-keyed) to v2 format.
    Merges separate tool-input/tool-output entries into unified tool-{name} parts.
-   Text and user-message blocks pass through unchanged. Also normalizes data event
-   type names from underscore to kebab-case.
+   Text and user-message blocks pass through unchanged. Underscores in tool names
+   are kebab-cased inline.
 
-   v1b: [{:type \"tool-input\" :id \"tc1\" :function \"search\" :arguments {...}}
-         {:type \"tool-output\" :id \"tc1\" :result {...}}]
-   v2:  [{:type \"tool-search\" :toolCallId \"tc1\" :state \"output-available\" :input {...} :output {...}}]"
+   v1-native: [{:type \"tool-input\" :id \"tc1\" :function \"search\" :arguments {...}}
+               {:type \"tool-output\" :id \"tc1\" :result {...}}]
+   v2:        [{:type \"tool-search\" :toolCallId \"tc1\" :state \"output-available\" :input {...} :output {...}}]"
   [data]
   (let [outputs (->> data
                      (filter #(= "tool-output" (:type %)))
@@ -112,7 +100,7 @@
                  (if (= "tool-input" (:type block))
                    (let [output   (get outputs (:id block))
                          has-err? (some? (:error output))]
-                     (cond-> {:type       (str "tool-" (:function block))
+                     (cond-> {:type       (str "tool-" (str/replace (:function block) "_" "-"))
                               :toolCallId (:id block)
                               :toolName   (:function block)
                               :state      (cond
@@ -122,18 +110,17 @@
                               :input      (:arguments block)}
                        (some? (:result output)) (assoc :output (:result output))
                        has-err?                 (assoc :error (:error output))))
-                   block)))
-         normalize-data-event-types)))
+                   block))))))
 
 (defn migrate-v1->v2
-  "Migrate a v1 data array to v2 format. Dispatches to `migrate-v1a->v2` or
-   `migrate-v1b->v2` based on the detected shape. `v1-user-message?` rows are already
-   valid v2 shape (backfilled to `data_version = 1`) and pass through unchanged.
+  "Migrate a v1 data array to v2 format. Dispatches to `migrate-v1-external-ai-service->v2`
+   or `migrate-v1-native->v2` based on the detected shape. `v1-user-message?` rows are
+   already valid v2 shape (backfilled to `data_version = 1`) and pass through unchanged.
    Throws on any other shape."
   [data]
   (cond
-    (v1a? data)             (migrate-v1a->v2 data)
-    (v1b? data)             (migrate-v1b->v2 data)
+    (v1-external-ai-service? data) (migrate-v1-external-ai-service->v2 data)
+    (v1-native? data)              (migrate-v1-native->v2 data)
     (v1-user-message? data) data
     :else                   (throw (ex-info "Unrecognized v1 storage format" {:data data}))))
 
@@ -194,27 +181,6 @@
   (->> parts
        (remove #(non-storable-part-types (:type %)))
        internal-parts->storable))
-
-(defn storable->tool-history
-  "Extract tool call history entries from v2 storable parts.
-   Returns a seq of maps suitable for the slackbot history format."
-  [parts]
-  (mapcat (fn [block]
-            (when (and (string? (:type block))
-                       (str/starts-with? (:type block) "tool-"))
-              (let [tool-call {:role       :assistant
-                               :tool_calls [{:id        (:toolCallId block)
-                                             :name      (:toolName block)
-                                             :arguments (if (string? (:input block))
-                                                          (:input block)
-                                                          (json/encode (:input block)))}]}
-                    tool-result (when (#{"output-available" "error"} (:state block))
-                                  {:role         :tool
-                                   :tool_call_id (:toolCallId block)
-                                   :content      (or (:output block) (some-> (:error block) :message))})]
-                (cond-> [tool-call]
-                  tool-result (conj tool-result)))))
-          parts))
 
 (defn store-message!
   "Persist messages to MetabotConversation and MetabotMessage tables.

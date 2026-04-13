@@ -100,8 +100,8 @@ describe("metabot > convo state", () => {
     expect(getConvoReqState()).toEqual({ testing: 123 });
   });
 
-  // TODO: pipeThrough buffering in Jest/jsdom causes SSE events to not flush
-  // before abort fires. Works correctly in production and outside Jest.
+  // TODO (Sloan 2026-04-13): pipeThrough buffering in Jest/jsdom causes SSE events
+  // to not flush before abort fires. Works correctly in production and outside Jest.
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip("should use new state object if aborted response contained one", async () => {
     const { store } = setup();

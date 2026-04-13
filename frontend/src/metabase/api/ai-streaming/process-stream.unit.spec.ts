@@ -228,7 +228,33 @@ describe("processChatResponse", () => {
   });
 
   describe("messageMetadata", () => {
-    it("captures messageMetadata from a terminal finish event (last-wins over mid-stream)", async () => {
+    it("captures messageMetadata from finish event", async () => {
+      const finalMeta = {
+        usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+        usageByModel: {
+          "openai/gpt-5": {
+            inputTokens: 100,
+            outputTokens: 50,
+            totalTokens: 150,
+          },
+        },
+      };
+      const mockStream = createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "hi" },
+        { type: "text-end", id: "t1" },
+        { type: "finish", messageMetadata: finalMeta },
+      ]);
+      const config = getMockedCallbacks();
+
+      const result = await processChatResponse(mockStream, config);
+
+      expect(result.messageMetadata).toEqual(finalMeta);
+      expect(config.onMessageMetadata).toHaveBeenCalledTimes(1);
+      expect(config.onMessageMetadata).toHaveBeenCalledWith(finalMeta);
+    });
+
+    it("captures messageMetadata from message-metadata event and overwrites it with finish event", async () => {
       const midStreamMeta = {
         usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
         usageByModel: {
@@ -269,32 +295,6 @@ describe("processChatResponse", () => {
       expect(config.onMessageMetadata).toHaveBeenNthCalledWith(2, finalMeta);
     });
 
-    it("captures messageMetadata when only the terminal finish carries it", async () => {
-      const finalMeta = {
-        usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
-        usageByModel: {
-          "openai/gpt-5": {
-            inputTokens: 100,
-            outputTokens: 50,
-            totalTokens: 150,
-          },
-        },
-      };
-      const mockStream = createMockSSEStream([
-        { type: "text-start", id: "t1" },
-        { type: "text-delta", id: "t1", delta: "hi" },
-        { type: "text-end", id: "t1" },
-        { type: "finish", messageMetadata: finalMeta },
-      ]);
-      const config = getMockedCallbacks();
-
-      const result = await processChatResponse(mockStream, config);
-
-      expect(result.messageMetadata).toEqual(finalMeta);
-      expect(config.onMessageMetadata).toHaveBeenCalledTimes(1);
-      expect(config.onMessageMetadata).toHaveBeenCalledWith(finalMeta);
-    });
-
     it("leaves messageMetadata undefined when finish carries no metadata", async () => {
       const mockStream = createMockSSEStream([
         { type: "text-start", id: "t1" },
@@ -308,6 +308,34 @@ describe("processChatResponse", () => {
       expect(result.messageMetadata).toBeUndefined();
       expect(config.onMessageMetadata).not.toHaveBeenCalled();
     });
+  });
+
+  it("captures finishReason from finish event, or leaves it undefined when absent", async () => {
+    const meta = {
+      usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+    };
+
+    const withReason = await processChatResponse(
+      createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "hi" },
+        { type: "text-end", id: "t1" },
+        { type: "finish", finishReason: "stop", messageMetadata: meta },
+      ]),
+      getMockedCallbacks(),
+    );
+    expect(withReason.finishReason).toBe("stop");
+    expect(withReason.messageMetadata).toEqual(meta);
+
+    const withoutReason = await processChatResponse(
+      createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "hi" },
+        { type: "text-end", id: "t1" },
+      ]),
+      getMockedCallbacks(),
+    );
+    expect(withoutReason.finishReason).toBeUndefined();
   });
 
   it("should throw error if stream errors for another reason", async () => {

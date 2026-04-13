@@ -214,7 +214,7 @@
   []
   (aisdk-xf {:stream-text? true}))
 
-;;; SSE Protocol Output
+;;; AI SDK v6 Line Protocol Output
 
 (defn format-sse-event
   "Format a payload map as an SSE event line: data: {JSON}\n"
@@ -222,15 +222,14 @@
   (str "data: " (json/encode payload) "\n"))
 
 (defn- ->message-metadata
-  "Translate internal per-model usage into v6 `messageMetadata` shape.
+  "Translate internal per-model usage into an AI SDK v6 `messageMetadata` shape.
 
-  Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}` — the
-  internal agent-loop shape (see `accumulate-usage-xf` in metabot.agent.core).
+  Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}` .
 
   Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N}
             :usageByModel {\"provider/model\" {:inputTokens N :outputTokens N
                                                 :totalTokens N}}}`
-  matching Vercel AI SDK v5/v6 field names. Returns `nil` if no usage observed.
+  Returns `nil` if no usage observed.
 
   `reasoningTokens` and `cachedInputTokens` are intentionally omitted — our
   provider adapters don't surface them yet."
@@ -262,15 +261,12 @@
   expects a single `start` for the whole message. Subsequent :start parts are
   treated as step boundaries (finish-step + start-step).
 
-  Token usage is surfaced via Vercel's AI SDK v5/v6 `messageMetadata` mechanism:
-  `:usage` parts are accumulated cumulatively per model and the final snapshot
-  is attached to the terminal `finish` event as `messageMetadata` (when any
-  usage was observed). No mid-stream `message-metadata` events are emitted —
-  the terminal `finish` is sufficient for the typical short-lived response.
-
   Consecutive `:text` parts that share the same `:id` are coalesced into one
   text block — one `text-start`, many `text-delta`s, one `text-end`. Any
   intervening non-text part (or end of stream) closes the open block.
+  Non-text events implicitly close any open text block before emitting their
+  own SSE events, so the wire order is always:
+  text-start ... text-delta* ... text-end ... <next event>
 
   Input types and their SSE events:
     :start (1st)      -> {type:start, messageId:...} + {type:start-step}
@@ -284,11 +280,7 @@
     :error            -> {type:error, errorText:...}
     :usage            -> (accumulated; carried out on finish.messageMetadata)
     :finish           -> (ignored - completion arity handles final finish)
-    completion        -> {type:finish-step} + {type:finish, messageMetadata?:...} + [DONE]
-
-  Non-text events implicitly close any open text block before emitting their
-  own SSE events, so the wire order is always:
-    text-start ... text-delta* ... text-end ... <next event>"
+    completion        -> {type:finish-step} + {type:finish, messageMetadata?:...} + [DONE]"
   []
   (fn [rf]
     (let [error?           (volatile! false)
@@ -310,9 +302,10 @@
              close-text-block
              ;; Close the current step if started
              (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
-             ;; Emit finish (with messageMetadata when any usage was observed) + [DONE]
+             ;; Emit finish (with finishReason + optional messageMetadata) + [DONE]
              (rf (format-sse-event
-                  (cond-> {:type "finish"}
+                  (cond-> {:type         "finish"
+                           :finishReason (if @error? "error" "stop")}
                     (seq @usage-by-model)
                     (assoc :messageMetadata (->message-metadata @usage-by-model)))))
              (rf "data: [DONE]\n")
@@ -386,7 +379,7 @@
                                                             (str (:error part)))})))
 
              :finish
-             result ;; Ignored — completion arity handles the final finish
+             result
 
              :usage
              ;; Accumulate cumulative-per-model snapshot. Carried out on

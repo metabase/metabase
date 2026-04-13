@@ -12,6 +12,7 @@ import {
 } from "./schemas";
 import { parseSSEStream } from "./sse-stream";
 import type {
+  FinishReason,
   MessageMetadata,
   SSEEvent,
   ToolInputAvailableEvent,
@@ -50,6 +51,7 @@ export interface ProcessedChatResponse {
   history: MetabotHistory;
   data: DataPart[];
   messageMetadata?: MessageMetadata;
+  finishReason?: FinishReason;
 }
 
 /**
@@ -196,6 +198,9 @@ function processEvent(
     }
 
     case "finish": {
+      if (event.finishReason) {
+        result.finishReason = event.finishReason;
+      }
       // finish chunk's usage supersedes any prior mid-stream message-metadata snapshot
       if (event.messageMetadata) {
         result.messageMetadata = event.messageMetadata;

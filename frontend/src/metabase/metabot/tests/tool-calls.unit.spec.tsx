@@ -78,6 +78,79 @@ describe("metabot > tool calls", () => {
     });
   });
 
+  it("should work the same when tool-input-start precedes tool-input-available", async () => {
+    setup();
+
+    const [pause1, pause2] = createPauses(2);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield {
+            type: "tool-input-start",
+            toolCallId: "x",
+            toolName: "analyze_data",
+          };
+          yield {
+            type: "tool-input-available",
+            toolCallId: "x",
+            toolName: "analyze_data",
+            input: { query: "test" },
+          };
+          yield {
+            type: "tool-output-available",
+            toolCallId: "x",
+            output: { result: "ok" },
+          };
+          await pause1.promise;
+          yield {
+            type: "tool-input-start",
+            toolCallId: "y",
+            toolName: "analyze_chart",
+          };
+          yield {
+            type: "tool-input-available",
+            toolCallId: "y",
+            toolName: "analyze_chart",
+            input: { query: "test" },
+          };
+          yield {
+            type: "tool-output-available",
+            toolCallId: "y",
+            output: { result: "ok" },
+          };
+          await pause2.promise;
+          yield { type: "finish" };
+          yield "[DONE]";
+        })(),
+      ),
+    });
+
+    await enterChatMessage("Analyze this query");
+
+    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Inspecting the visualization"),
+    ).not.toBeInTheDocument();
+
+    pause1.resolve();
+
+    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Inspecting the visualization"),
+    ).toBeInTheDocument();
+
+    pause2.resolve();
+
+    await waitFor(() => {
+      expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Inspecting the visualization"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("should clear out list of tool calls when new text comes in", async () => {
     setup();
 

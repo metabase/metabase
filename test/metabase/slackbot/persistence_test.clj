@@ -73,11 +73,11 @@
           (is (= #{deleted-ts}
                  (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts})))))
 
-      (testing "v1a rows (data_version=1, ai-service shape) migrate transparently through message-history"
-        (let [v1a-ts "1709567890.v1a001"]
+      (testing "v1-external-ai-service rows (data_version=1, ai-service shape) migrate transparently through message-history"
+        (let [v1-external-ai-service-ts "1709567890.v1a001"]
           (t2/insert! :model/MetabotMessage
                       {:conversation_id conv-id
-                       :slack_msg_id    v1a-ts
+                       :slack_msg_id    v1-external-ai-service-ts
                        :role            "assistant"
                        :profile_id      "test"
                        :total_tokens    10
@@ -88,7 +88,7 @@
                                          {:role "tool" :_type "TOOL_RESULT"
                                           :tool_call_id "tc1" :content "result"}]
                        :data_version    1})
-          (let [parts (get (slackbot.persistence/message-history conv-id #{v1a-ts}) v1a-ts)]
+          (let [parts (get (slackbot.persistence/message-history conv-id #{v1-external-ai-service-ts}) v1-external-ai-service-ts)]
             (is (= 2 (count parts)))
             (is (= :assistant (:role (first parts))))
             (is (= "search" (-> parts first :tool_calls first :name)))
