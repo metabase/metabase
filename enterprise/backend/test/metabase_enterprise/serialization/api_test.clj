@@ -257,7 +257,7 @@
         (t2/delete! :model/Card (:id card))
 
         (let [re-indexed? (atom false)
-              res         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
+              _res        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
                             (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
                                                   {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                   {:file ba}))]
