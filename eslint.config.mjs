@@ -299,6 +299,7 @@ const configs = [
         {
           default: "disallow",
           rules: boundaryRules,
+          message: "${file.type} cannot import from ${dependency.type}",
         },
       ],
     },
