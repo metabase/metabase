@@ -7,7 +7,6 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
 import { UpsellCardContent } from "metabase/data-studio/upsells/components/UpsellCardContent";
-import * as Urls from "metabase/utils/urls";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
 import {
   INSPECTOR_UPSELL_CAMPAIGN,
@@ -15,6 +14,7 @@ import {
 } from "metabase/transforms/constants";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Center, Stack } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 type TransformInspectorUpsellPageProps = {
   params: { transformId: string };
