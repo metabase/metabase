@@ -23,8 +23,7 @@
    :card_id              true
    :table_id             true
    :group_id             true
-   :attribute_remappings {:foo 1}
-   :dependency_analysis_version 0})
+   :attribute_remappings {:foo 1}})
 
 (defmacro ^:private with-gtap-cleanup!
   "Invokes `body` ensuring any `Sandbox` created will be removed afterward. Leaving behind a GTAP can

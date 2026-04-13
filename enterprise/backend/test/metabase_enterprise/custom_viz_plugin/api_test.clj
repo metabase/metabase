@@ -92,6 +92,32 @@
           (doseq [plugin result]
             (is (not (contains? plugin :access_token)))))))))
 
+;;; ------------------------------------------------ Duplicate Validation ------------------------------------------------
+
+(deftest duplicate-repo-url-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "registering a plugin with an already-used repo_url returns a 400 with a friendly message"
+      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/dup-viz"
+                                               :identifier   "dup-viz"
+                                               :display_name "dup-viz"
+                                               :status       :active}]
+        (with-redefs [cache/fetch-and-update! (constantly nil)]
+          (is (re-find #"repo URL.*already exists"
+                       (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/"
+                                             {:repo_url "https://github.com/test/dup-viz"}))))))))
+
+(deftest duplicate-identifier-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "registering a plugin whose repo name resolves to an already-used identifier returns a 400"
+      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/org-a/my-viz"
+                                               :identifier   "my-viz"
+                                               :display_name "my-viz"
+                                               :status       :active}]
+        (with-redefs [cache/fetch-and-update! (constantly nil)]
+          (is (re-find #"identifier.*already exists"
+                       (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/"
+                                             {:repo_url "https://github.com/org-b/my-viz"}))))))))
+
 ;;; ------------------------------------------------ CRUD ------------------------------------------------
 
 (deftest delete-test

@@ -7,6 +7,8 @@ import {
 } from "metabase-types/api/mocks/metric";
 
 import type {
+  MetricDefinitionEntry,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
   SourceBreakoutColorMap,
 } from "../types/viewer-state";
@@ -84,32 +86,44 @@ describe("buildLegendGroups", () => {
     const metadata = createMetadata([REVENUE_METRIC]);
     const definition = setupDefinition(metadata, REVENUE_METRIC.id);
 
-    const definitions: MetricsViewerDefinitionEntry[] = [
-      { id: "metric:1", definition },
-    ];
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition },
+    };
     const activeBreakoutColors: SourceBreakoutColorMap = {
-      "metric:1": "#509EE3",
+      0: "#509EE3",
     };
 
-    expect(buildLegendGroups(definitions, activeBreakoutColors)).toEqual([]);
+    const formulaEntities: MetricDefinitionEntry[] = [
+      { id: "metric:1", type: "metric", definition: null },
+    ];
+
+    expect(
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    ).toEqual([]);
   });
 
   it("returns empty array when activeBreakoutColors has only string values", () => {
     const metadata = createMetadata([REVENUE_METRIC]);
-    const revenueDefinition = setupDefinitionWithBreakout(
+    const definition = setupDefinitionWithBreakout(
       metadata,
       REVENUE_METRIC.id,
       1,
     );
 
-    const definitions: MetricsViewerDefinitionEntry[] = [
-      { id: "metric:1", definition: revenueDefinition },
-    ];
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition },
+    };
     const activeBreakoutColors: SourceBreakoutColorMap = {
-      "metric:1": "#509EE3",
+      0: "#509EE3",
     };
 
-    expect(buildLegendGroups(definitions, activeBreakoutColors)).toEqual([]);
+    const formulaEntities: MetricDefinitionEntry[] = [
+      { id: "metric:1", type: "metric", definition: null },
+    ];
+
+    expect(
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    ).toEqual([]);
   });
 
   it("builds legend groups for definitions with and without breakouts", () => {
@@ -121,21 +135,33 @@ describe("buildLegendGroups", () => {
     );
     const ordersDefinition = setupDefinition(metadata, ORDERS_METRIC.id);
 
-    const definitions: MetricsViewerDefinitionEntry[] = [
-      { id: "metric:1", definition: revenueDefinition },
-      { id: "metric:2", definition: ordersDefinition },
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition: revenueDefinition },
+      "metric:2": { id: "metric:2", definition: ordersDefinition },
+    };
+
+    const formulaEntities: MetricDefinitionEntry[] = [
+      {
+        id: "metric:1",
+        type: "metric",
+        definition: revenueDefinition,
+      },
+      { id: "metric:2", type: "metric", definition: null },
     ];
 
     const activeBreakoutColors: SourceBreakoutColorMap = {
-      "metric:1": new Map([
+      0: new Map([
         ["Gadgets", "#509EE3"],
         ["Widgets", "#88BF4D"],
       ]),
-      "metric:2": "#A989C5",
+      1: "#A989C5",
     };
 
-    expect(buildLegendGroups(definitions, activeBreakoutColors)).toEqual([
+    expect(
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    ).toEqual([
       {
+        key: 0,
         header: "Category",
         subtitle: "Revenue",
         items: [
@@ -144,6 +170,7 @@ describe("buildLegendGroups", () => {
         ],
       },
       {
+        key: 1,
         header: "Orders",
         items: [{ label: "Orders", color: "#A989C5" }],
       },

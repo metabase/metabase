@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
@@ -237,10 +238,11 @@
   "Clojure entrypoint to render javascript visualizations. This functions is dynamic only for testing purposes.
    `custom-viz-bundles` is an optional seq of `{:identifier str :source str :assets map}` maps for custom visualization plugins."
   [cards-with-data dashcard-viz-settings custom-viz-bundles]
-  (let [options  (json/encode {:applicationColors (appearance/application-colors)
-                               :startOfWeek       (lib-be/start-of-week)
-                               :customFormatting  (appearance/custom-formatting)
-                               :tokenFeatures     (premium-features/token-features)})
+  (let [options (json/encode {:applicationColors (appearance/application-colors)
+                              :startOfWeek       (lib-be/start-of-week)
+                              :customFormatting  (appearance/custom-formatting)
+                              :tokenFeatures     (premium-features/token-features)
+                              :locale            (i18n/user-locale-string)})
         response (with-static-viz-context context
                    (js.engine/execute-fn-name context "initialize_context" options)
                    (when (seq custom-viz-bundles)

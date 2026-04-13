@@ -200,6 +200,7 @@ export const useChartEvents = (
 
           if (!visualizationIsClickable(clickData)) {
             onOpenQuestion(clickData?.cardId);
+            return;
           }
 
           onVisualizationClick?.(clickData);

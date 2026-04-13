@@ -1642,6 +1642,13 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
+      cy.log(
+        "wait for checklist to load and page to settle on the summary step",
+      );
+      H.main()
+        .findByRole("listitem", { name: "Summary", timeout: 10_000 })
+        .should("have.attr", "aria-current", "step");
+
       cy.log("reopen the strategy step and switch to connection impersonation");
       H.main()
         .findByRole("listitem", {

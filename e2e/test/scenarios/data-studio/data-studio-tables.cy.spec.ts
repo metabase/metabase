@@ -160,7 +160,7 @@ describe("scenarios > data studio > library > tables", () => {
         name: "Test question",
         query: { "source-table": ORDERS_ID },
       });
-
+      H.waitForBackfillComplete();
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.DataStudio.Tables.dependenciesTab().click();
       H.DependencyGraph.graph().within(() => {

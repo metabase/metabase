@@ -20,10 +20,10 @@ dataset_query:
         - [Internal Metabase Database, public, v_tasks, duration_seconds]
     breakout:
     - - field
-      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: day, effective-type: type/DateTimeWithLocalTZ}
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: day}
       - [Internal Metabase Database, public, v_tasks, started_at]
     - - field
-      - {base-type: type/Text, join-alias: Databases - Database Qualified, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Databases - Database Qualified}
       - [Internal Metabase Database, public, v_databases, name]
     filters:
     - - =
@@ -48,7 +48,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_tasks, database_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Databases - Database Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Databases - Database Qualified}
           - [Internal Metabase Database, public, v_databases, entity_qualified_id]
       fields: all
       stages:
