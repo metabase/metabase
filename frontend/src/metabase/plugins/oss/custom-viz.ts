@@ -19,7 +19,9 @@ const getDefaultPluginCustomViz = () => ({
     loading: false,
   }),
   useCustomVizPlugins: (_opts?: { enabled?: boolean }) =>
-    undefined as CustomVizPluginRuntime[] | undefined,
+    ({ plugins: undefined }) as {
+      plugins: CustomVizPluginRuntime[] | undefined;
+    },
   loadCustomVizPlugin: async (
     _plugin: CustomVizPluginRuntime,
     _cacheBustSuffix?: string,
