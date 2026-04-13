@@ -9,9 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Serialization" %}
 
-Once you get rolling with Metabase, it's often the case that you'll have more than one Metabase spun up. You might have a couple of Metabases for testing or development, and a few production ones, or maybe you have a separate Metabase per office or region.
-
-To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that you can then _import_ into one or more Metabases.
+Serialization lets you export the contents of one Metabase and import them into another Metabase. It's useful when you run multiple Metabases, like separate instances for testing and production, or a Metabase per office or region.
 
 - **Export** will serialize the contents of your source Metabase as YAML files.
 - **Import** will read those exported YAML files and create or update those serialized items in the target Metabase.
@@ -505,8 +503,6 @@ Here's a typical serialization export/import setup with default settings via the
 
    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
 
-   > We use `POST`, not `GET`, for the `/export` endpoint.
-
    This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 
 2. Unzip the compressed file:
@@ -515,7 +511,7 @@ Here's a typical serialization export/import setup with default settings via the
    tar -xvf metabase_data.tgz
    ```
 
-   The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export.
+   The extracted directory will be called something like `<instance-name>-<YYYY-MM-dd_HH_mm>`, with the instance name, date, and time of the export.
 
 ### Step 3: Import
 
@@ -583,8 +579,6 @@ To import exported artifacts into a Metabase instance, go to the directory where
 ```
 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to_export
 ```
-
-Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
 
 ### `import` options
 
