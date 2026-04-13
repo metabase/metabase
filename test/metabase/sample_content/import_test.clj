@@ -88,23 +88,24 @@
            portable refs, or changes normalization, this test will fail loudly and force us
            to regenerate sample-content.edn (or fix the serdes regression) instead of
            shipping broken sample content."
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db!)
-      (sample-data/extract-and-sync-sample-database!)
-      (#'sample-content.import/do-import!)
-      (let [source         (#'sample-content.import/load-edn "sample-content.edn")
-            collection-ids (t2/select-fn-set :id :model/Collection :is_sample true)
-            re-extracted   {:collections (#'sample-content.export/extract-collections)
-                            :cards       (#'sample-content.export/extract-cards collection-ids)
-                            :dashboards  (#'sample-content.export/extract-dashboards collection-ids)
-                            :documents   (#'sample-content.export/extract-documents collection-ids)}]
-        (doseq [k [:collections :cards :dashboards :documents]]
-          (testing (str k " round-trip")
-            (is (= (count (get source k)) (count (get re-extracted k)))
-                "entity count must match source EDN")
-            (is (= (strip-volatile (get source k))
-                   (strip-volatile (get re-extracted k)))
-                "each entity must re-extract identically to the source EDN")))))))
+    (mt/with-premium-features #{}
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (mdb/setup-db!)
+        (sample-data/extract-and-sync-sample-database!)
+        (#'sample-content.import/do-import!)
+        (let [source         (#'sample-content.import/load-edn "sample-content.edn")
+              collection-ids (t2/select-fn-set :id :model/Collection :is_sample true)
+              re-extracted   {:collections (#'sample-content.export/extract-collections)
+                              :cards       (#'sample-content.export/extract-cards collection-ids)
+                              :dashboards  (#'sample-content.export/extract-dashboards collection-ids)
+                              :documents   (#'sample-content.export/extract-documents collection-ids)}]
+          (doseq [k [:collections :cards :dashboards :documents]]
+            (testing (str k " round-trip")
+              (is (= (count (get source k)) (count (get re-extracted k)))
+                  "entity count must match source EDN")
+              (is (= (strip-volatile (get source k))
+                     (strip-volatile (get re-extracted k)))
+                  "each entity must re-extract identically to the source EDN"))))))))
 
 (deftest import-error-does-not-block-startup-test
   (testing "If import throws, it's caught and logged — doesn't propagate"
