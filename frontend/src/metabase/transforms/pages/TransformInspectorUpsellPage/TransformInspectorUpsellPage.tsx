@@ -7,7 +7,7 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
 import { UpsellCardContent } from "metabase/data-studio/upsells/components/UpsellCardContent";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
 import {
   INSPECTOR_UPSELL_CAMPAIGN,
