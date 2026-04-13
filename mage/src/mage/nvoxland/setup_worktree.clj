@@ -149,19 +149,27 @@
 ;; Bot patch
 
 (defn- apply-bot-patch!
-  "If bot.patch exists in the main worktree, apply it to the new worktree."
+  "If bot.patch exists in the main worktree, apply it to the new worktree.
+   Idempotent: if the patch is already applied, skip silently."
   [main-path worktree-root]
   (let [patch-file (str main-path "/bot.patch")]
-    (if (fs/exists? patch-file)
-      (let [{:keys [exit]} (shell/sh* {:quiet? true :dir worktree-root}
-                                      "git" "apply" "--check" patch-file)]
-        (if (zero? exit)
-          (do
-            (println (c/yellow "Applying bot.patch..."))
-            (shell/sh* {:dir worktree-root} "git" "apply" patch-file)
-            (println (c/green "Applied bot.patch")))
-          (println (c/yellow "Skipping bot.patch (does not apply cleanly to this branch)"))))
-      (println (c/yellow "No bot.patch found, skipping")))))
+    (cond
+      (not (fs/exists? patch-file))
+      (println (c/yellow "No bot.patch found, skipping"))
+
+      (zero? (:exit (shell/sh* {:quiet? true :dir worktree-root}
+                               "git" "apply" "--check" patch-file)))
+      (do
+        (println (c/yellow "Applying bot.patch..."))
+        (shell/sh* {:dir worktree-root} "git" "apply" patch-file)
+        (println (c/green "Applied bot.patch")))
+
+      (zero? (:exit (shell/sh* {:quiet? true :dir worktree-root}
+                               "git" "apply" "--reverse" "--check" patch-file)))
+      (println (c/green "bot.patch already applied, skipping"))
+
+      :else
+      (println (c/red "Skipping bot.patch (does not apply cleanly to this branch)")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main entry point
