@@ -321,9 +321,16 @@
   "Should we offer users the Metabase-managed AI provider?"
   :offer-metabase-ai-managed)
 
+(defn- custom-viz-disabled? []
+  (config/config-bool :mb-custom-viz-disable))
+
 (define-premium-feature enable-custom-viz?
   "Should we enable custom visualizations?"
-  :custom-viz)
+  :custom-viz
+  :getter (fn []
+            (and (not (custom-viz-disabled?))
+                 config/ee-available?
+                 (has-feature? "custom-viz"))))
 
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"
