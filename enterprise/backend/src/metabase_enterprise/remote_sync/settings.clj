@@ -207,9 +207,9 @@
         (setting/set! :remote-sync-branch nil))
       (let [current-token (setting/get :remote-sync-token)
             obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
-            token-to-check (if obfuscated? current-token remote-sync-token)
-            _ (when updating-git-settings?
-                (check-git-settings! (assoc settings :remote-sync-token token-to-check)))]
+            token-to-check (if obfuscated? current-token remote-sync-token)]
+        (when updating-git-settings?
+          (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
         (t2/with-transaction [_conn]
           (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
             (when (and (contains? settings k)
