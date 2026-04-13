@@ -2001,7 +2001,7 @@
       },
       "metabase-enterprise.replacement.schema.error-type" : {
         "type" : "string",
-        "enum" : [ "cycle-detected", "database-mismatch", "incompatible-implicit-joins" ]
+        "enum" : [ "cycle-detected", "database-mismatch", "incompatible-implicit-joins", "affects-gtap-policies" ]
       },
       "metabase-enterprise.replacement.schema.run" : {
         "type" : "object",
@@ -8190,6 +8190,8 @@
         "description" : "A recursive metric math expression tree.\n   Can be a leaf (metric/measure ref) or an arithmetic expression [op opts expr expr ...]\n   with at least 2 operands.\n   Note: uses :fn validator for arithmetic to avoid Malli's recursive seqex limitation.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib-metric.schema.expression-leaf"
+        }, {
+          "type" : "number"
         }, {
           "type" : "array"
         } ]
