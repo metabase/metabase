@@ -1,4 +1,6 @@
 import { utf8_to_b64url } from "metabase/utils/encoding";
+/* eslint-disable no-restricted-imports */
+import { serializeCardForUrl } from "metabase/utils/card";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
@@ -27,13 +29,13 @@ export function getUrl(
     !question.id() ||
     (originalQuestion && question.isDirtyComparedTo(originalQuestion))
   ) {
-    return Urls.question(null, {
-      hash: question.serializeForUrl({
-        includeDisplayIsLocked: true,
-        creationType,
-      }),
-      query,
+    const hash = serializeCardForUrl(question.card(), {
+      includeDisplayIsLocked: true,
+      creationType,
+      parameterValues: question._parameterValues,
     });
+
+    return Urls.question(null, { hash, query });
   } else {
     return Urls.question(question.card(), { query });
   }

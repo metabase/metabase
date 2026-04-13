@@ -4,12 +4,7 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-/* eslint-disable no-restricted-imports */
 import { applyParameter } from "metabase/querying/parameters/utils/query";
-import {
-  type SerializeCardOptions,
-  serializeCardForUrl,
-} from "metabase/utils/card";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -96,8 +91,6 @@ class Question {
    * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
    */
   _parameterValues: ParameterValuesMap;
-
-  private __libQuery: Lib.Query | undefined;
 
   private __libMetadataProvider: Lib.MetadataProvider | undefined;
 
@@ -719,17 +712,6 @@ class Question {
     );
   }
 
-  serializeForUrl(opts: SerializeCardOptions = {}) {
-    const card = {
-      ...this.card(),
-      dataset_query: Lib.toJsQuery(this.query()),
-    };
-    return serializeCardForUrl(card, {
-      ...opts,
-      parameterValues: this._parameterValues,
-    });
-  }
-
   // Internal methods
   _getValueForComparison() {
     const value = {
@@ -809,19 +791,19 @@ class Question {
       throw new Error("Internal query is not supported by Lib");
     }
 
-    this.__libQuery ??= Lib.fromJsQuery(
+    const libQuery = Lib.fromJsQuery(
       this.metadataProvider(),
       this.datasetQuery(),
     );
 
     // Helpers for working with the current query from CLJS REPLs.
-    if (process.env.NODE_ENV === "development") {
-      window.__lib_metadata = this.__libMetadataProvider;
-      window.__lib_query = this.__libQuery;
-      window.Lib = Lib;
-    }
+    // if (process.env.NODE_ENV === "development") {
+    //   window.__lib_metadata = this.__libMetadataProvider;
+    //   window.__lib_query = this.__libQuery;
+    //   window.Lib = Lib;
+    // }
 
-    return this.__libQuery;
+    return libQuery;
   }
 
   private metadataProvider(): Lib.MetadataProvider {
