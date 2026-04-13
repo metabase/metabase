@@ -31,12 +31,16 @@ Check out our guides for:
 - [Running multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)
 - [Setting up git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow)
 
-## How export works
+## Importing and exporting your Metabase content
 
 There are two ways to run these `export` and `import` commands:
 
 - [Using CLI commands](#serialization-with-cli-commands)
 - [Through the API](#serialization-via-the-api)
+
+If you're on Metabase Cloud, the API endpoints are your only option.
+
+## How export works
 
 - [What gets exported](#what-gets-exported)
 - [General Metabase settings that get exported](#general-metabase-settings-that-are-exported)
@@ -339,8 +343,6 @@ There are two endpoints:
 - `POST /api/ee/serialization/import`
 
 > We use `POST`, not `GET`, for the `/export` endpoint. The export operation does not modify your Metabase, but it's long and intensive, so we use `POST` to prevent accidental exports.
-
-For now, these endpoints are synchronous. If the serialization process takes too long, the request can time out. In this case, we suggest using the CLI commands.
 
 See [How export works](#how-export-works), [How import works](#how-import-works), and [Serialization best practices](#serialization-best-practices) for general information about serialization.
 
