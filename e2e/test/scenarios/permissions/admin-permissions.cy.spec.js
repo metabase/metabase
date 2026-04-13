@@ -20,7 +20,11 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
   it("shows hidden tables", () => {
     H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
-    cy.icon("eye_crossed_out").eq(0).click();
+    H.DataModel.TablePicker.getTable("Accounts").click();
+    H.DataModel.TableSection.getVisibilityTypeInput().should(
+      "have.value",
+      "Hidden",
+    );
 
     cy.visit(
       `admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,

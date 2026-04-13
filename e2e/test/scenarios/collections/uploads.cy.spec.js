@@ -74,9 +74,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
       "Ensure that table is visible in admin without refreshing (metabase#38041)",
     );
 
-    H.goToAdmin();
-
-    cy.findByRole("link", { name: "Table Metadata" }).click();
+    H.DataModel.visitDataStudio();
 
     H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
     H.DataModel.TablePicker.getTables().should("have.length", 2);

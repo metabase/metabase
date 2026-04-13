@@ -33,6 +33,7 @@ export function getDataStudioRoutes(
   CanAccessDataStudio: ComponentType,
   CanAccessDataModel: ComponentType,
   _CanAccessTransforms: ComponentType,
+  CanAccessFullDataStudio: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -50,38 +51,40 @@ export function getDataStudioRoutes(
         <Route path="transforms" component={TransformsSectionLayout}>
           {getDataStudioTransformRoutes()}
         </Route>
-        {getDataStudioGlossaryRoutes()}
-        {PLUGIN_LIBRARY.isEnabled ? (
-          PLUGIN_LIBRARY.getDataStudioLibraryRoutes()
-        ) : (
-          <Route path="library" component={LibraryUpsellPage} />
-        )}
-        {PLUGIN_WORKSPACES.isEnabled && (
-          <Route path="workspaces" component={WorkspacesSectionLayout}>
-            {PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes()}
-          </Route>
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled ? (
-          <Route path="dependencies" component={DependenciesSectionLayout}>
-            {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
-          </Route>
-        ) : (
-          <Route path="dependencies" component={DependenciesUpsellPage} />
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled ? (
-          <Route
-            path="dependency-diagnostics"
-            component={DependencyDiagnosticsSectionLayout}
-          >
-            {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
-          </Route>
-        ) : (
-          <Route
-            path="dependency-diagnostics"
-            component={DependencyDiagnosticsUpsellPage}
-          />
-        )}
-        <Route path="git-sync" component={GitSyncSectionLayout} />
+        <Route component={CanAccessFullDataStudio}>
+          {getDataStudioGlossaryRoutes()}
+          {PLUGIN_LIBRARY.isEnabled ? (
+            PLUGIN_LIBRARY.getDataStudioLibraryRoutes()
+          ) : (
+            <Route path="library" component={LibraryUpsellPage} />
+          )}
+          {PLUGIN_WORKSPACES.isEnabled && (
+            <Route path="workspaces" component={WorkspacesSectionLayout}>
+              {PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes()}
+            </Route>
+          )}
+          {PLUGIN_DEPENDENCIES.isEnabled ? (
+            <Route path="dependencies" component={DependenciesSectionLayout}>
+              {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
+            </Route>
+          ) : (
+            <Route path="dependencies" component={DependenciesUpsellPage} />
+          )}
+          {PLUGIN_DEPENDENCIES.isEnabled ? (
+            <Route
+              path="dependency-diagnostics"
+              component={DependencyDiagnosticsSectionLayout}
+            >
+              {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
+            </Route>
+          ) : (
+            <Route
+              path="dependency-diagnostics"
+              component={DependencyDiagnosticsUpsellPage}
+            />
+          )}
+          <Route path="git-sync" component={GitSyncSectionLayout} />
+        </Route>
       </Route>
     </Route>
   );

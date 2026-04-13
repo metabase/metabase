@@ -36,12 +36,13 @@ describe("scenarios > admin > permissions", () => {
     cy.signInAsNormalUser();
     cy.visit("/");
 
-    // Go to the admin settings
-    H.goToAdmin();
+    // Go to the Data Studio data model page
+    H.DataModel.visitDataStudio({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+    });
 
     // Assert the Data Model page state
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Table Metadata");
     H.DataModel.TablePicker.getTable("Orders").click();
     cy.wait("@tableMetadataFetch");
 
@@ -58,15 +59,16 @@ describe("scenarios > admin > permissions", () => {
     H.undoToast().should("contain.text", "Table name updated");
 
     // Update the table visibility
-    H.DataModel.TablePicker.getTable("Changed Name")
-      .button("Hide table")
-      .click();
-    H.DataModel.TablePicker.getTable("Changed Name")
-      .button("Hide table")
-      .should("not.exist");
-    H.DataModel.TablePicker.getTable("Changed Name")
-      .button("Unhide table")
-      .should("be.visible");
+    H.DataModel.TableSection.getVisibilityTypeInput().should(
+      "have.value",
+      "Internal",
+    );
+    H.DataModel.TableSection.getVisibilityTypeInput().click();
+    H.popover().findByText("Hidden").click();
+    H.DataModel.TableSection.getVisibilityTypeInput().should(
+      "have.value",
+      "Hidden",
+    );
   });
 
   it("allows changing data model permission for an entire database", () => {
@@ -83,12 +85,13 @@ describe("scenarios > admin > permissions", () => {
     cy.signInAsNormalUser();
     cy.visit("/");
 
-    // Go to the admin settings
-    H.goToAdmin();
+    // Go to the Data Studio data model page
+    H.DataModel.visitDataStudio({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+    });
 
     // Assert the Data Model page state
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Table Metadata");
     H.DataModel.TablePicker.getTables().should("have.length", 8);
     H.DataModel.TablePicker.getTable("Accounts").should("be.visible");
     H.DataModel.TablePicker.getTable("Analytic Events").should("be.visible");

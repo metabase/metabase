@@ -1,4 +1,7 @@
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_REMOTE_SYNC,
+} from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
@@ -8,6 +11,18 @@ export function canAccessDataStudio(state: State) {
   if (getIsEmbeddingIframe(state)) {
     return false;
   }
+  return (
+    getUserIsAdmin(state) ||
+    getUserIsAnalyst(state) ||
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)
+  );
+}
+
+/**
+ * Returns true for users who should see the full data studio (all tabs).
+ * Users with only "Manage table metadata" permission should only see the Tables tab.
+ */
+export function canAccessFullDataStudio(state: State) {
   return getUserIsAdmin(state) || getUserIsAnalyst(state);
 }
 

@@ -19,11 +19,3 @@ export type ParsedRouteParams = {
   schemaName: SchemaName | undefined;
   tableId: TableId | undefined;
 };
-
-export type Column = "nav" | "table" | "field" | "preview";
-
-export interface ColumnSizeConfig {
-  flex: number | string;
-  min: number;
-  max: number;
-}

@@ -84,6 +84,7 @@ export function setup({
         <TableSection
           table={tableWithSegments}
           activeTab={activeTab}
+          hasFullAccess
           hasLibrary
           canPublish
           onSyncOptionsClick={onSyncOptionsClick}

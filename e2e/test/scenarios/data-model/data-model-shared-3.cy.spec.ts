@@ -9,29 +9,22 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 const { H } = cy;
 const { TablePicker, TableSection, FieldSection, Shared } = cy.H.DataModel;
 
-const {
-  verifyTablePreview,
-  verifyObjectDetailPreview,
-  visitArea,
-  getTriggeredFromArea,
-} = Shared;
+const { verifyTablePreview, verifyObjectDetailPreview } = Shared;
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
 
-const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
-type Area = (typeof areas)[number];
+const visit = H.DataModel.visitDataStudio;
+const getTriggeredFrom = () => "data_studio";
 
-describe.each<Area>(areas)("data model > %s", (area: Area) => {
-  const visit = visitArea(area);
-  const getTriggeredFrom = getTriggeredFromArea(area);
-
+describe("data model", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
+    cy.intercept("GET", "/api/database").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("GET", "/api/database/*/schema/*").as("schema");
@@ -45,16 +38,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-
-    if (area === "admin") {
-      cy.intercept("GET", "/api/database?*").as("databases");
-      cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-      cy.intercept("PUT", "/api/table/*").as("updateTable");
-    }
-
-    if (area === "data studio") {
-      cy.intercept("GET", "/api/database").as("databases");
-    }
   });
 
   describe("Field section", () => {

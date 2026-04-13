@@ -58,6 +58,7 @@ interface Props {
   activeFieldId?: FieldId;
   activeTab: DataStudioTableMetadataTab;
   canPublish: boolean;
+  hasFullAccess: boolean;
   hasLibrary: boolean;
   onSyncOptionsClick: () => void;
   onUpdate: () => void;
@@ -70,6 +71,7 @@ const TableSectionBase = ({
   activeFieldId,
   activeTab,
   canPublish,
+  hasFullAccess,
   hasLibrary,
   onSyncOptionsClick,
   onUpdate,
@@ -308,7 +310,7 @@ const TableSectionBase = ({
                     </Tooltip>
                   )}
                 </PLUGIN_REPLACEMENT.SourceReplacementButton>
-                {isDependencyGraphEnabled && (
+                {isDependencyGraphEnabled && hasFullAccess && (
                   <Tooltip label={t`Dependency graph`}>
                     <Button
                       component={ForwardRefLink}

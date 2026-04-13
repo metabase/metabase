@@ -11,9 +11,6 @@ import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
 import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
-import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
-import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -47,7 +44,6 @@ import {
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/routes";
-import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -100,46 +96,22 @@ export const getRoutes = (
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
         </Route>
-        <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-          <Route>
-            <IndexRedirect to="database" />
-            <Route path="database" component={DataModelV1} />
-            <Route path="database/:databaseId" component={DataModelV1} />
-            <Route
-              path="database/:databaseId/schema/:schemaId"
-              component={DataModelV1}
-            />
-            <Route
-              path="database/:databaseId/schema/:schemaId/table/:tableId"
-              component={DataModelV1}
-            />
-            <Route
-              path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-              component={DataModelV1}
-            />
-            <Route component={DataModelV1}>
-              <Route path="segments" component={SegmentListApp} />
-              <Route path="segment/create" component={IsAdmin}>
-                <IndexRoute component={SegmentApp} />
-              </Route>
-              <Route path="segment/:id" component={IsAdmin}>
-                <IndexRoute component={SegmentApp} />
-              </Route>
-              <Route
-                path="segment/:id/revisions"
-                component={RevisionHistoryApp}
-              />
-            </Route>
-            <Redirect
-              from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-              to="database/:databaseId/schema/:schemaId/table/:tableId"
-            />
-            <Redirect
-              from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-              to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-            />
-          </Route>
-        </Route>
+        <Route
+          path="datamodel(/**)"
+          onEnter={({ location }, replace) => {
+            let newPath = location.pathname.replace(
+              /\/admin\/datamodel/,
+              "/data-studio/data",
+            );
+            // Old admin segment paths (/segments, /segment/create, /segment/:id, etc.)
+            // don't exist at the top level of /data-studio/data — redirect to root
+            newPath = newPath.replace(
+              /^(\/data-studio\/data)\/segments?\b.*$/,
+              "$1",
+            );
+            replace(newPath);
+          }}
+        />
         {/* PEOPLE */}
         <Route path="people" component={createAdminRouteGuard("people")}>
           <Route component={AdminPeopleApp}>
