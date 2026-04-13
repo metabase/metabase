@@ -1129,9 +1129,12 @@
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
   (when field-id
-    (let [fields                      (field-hierarchy field-id)
-          [db-name schema field-name] (*export-table-fk* (:table_id (first fields)))]
-      (into [db-name schema field-name] (map :name fields)))))
+    (let [{field-name :name :keys [parent_id table_id]} (t2/select-one [:model/Field :name :parent_id :table_id] :id field-id)]
+      (if (nil? parent_id)
+        (conj (*export-table-fk* table_id) field-name)
+        (let [fields                      (field-hierarchy field-id)
+              [db-name schema table-name] (*export-table-fk* table_id)]
+          (into [db-name schema table-name] (map :name fields)))))))
 
 (mu/defn ^:dynamic ^::cache *import-field-fk* :- [:maybe pos-int?]
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
