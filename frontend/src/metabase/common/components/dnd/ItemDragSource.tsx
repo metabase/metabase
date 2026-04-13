@@ -1,15 +1,29 @@
-/* eslint-disable react/prop-types */
+import type { ReactElement, ReactNode } from "react";
 import { Component } from "react";
+import type {
+  ConnectDragPreview,
+  ConnectDragSource,
+  DragSourceMonitor,
+} from "react-dnd";
 import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import { useToast } from "metabase/common/hooks";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { dragTypeForItem } from ".";
 
-class ItemDragSourceInner extends Component {
+interface ItemDragSourceInnerProps {
+  connectDragSource: ConnectDragSource;
+  connectDragPreview: ConnectDragPreview;
+  isDragging: boolean;
+  children: ReactElement | ((props: Record<string, unknown>) => ReactElement);
+  [key: string]: unknown;
+}
+
+class ItemDragSourceInner extends Component<ItemDragSourceInnerProps> {
   componentDidMount() {
     // Use empty image as a drag preview so browsers don't draw it
     // and we can draw whatever we want on the custom drag layer instead.
@@ -32,10 +46,20 @@ class ItemDragSourceInner extends Component {
   }
 }
 
+interface DragSourceOwnProps {
+  item: CollectionItem;
+  isSelected?: boolean;
+  selected?: CollectionItem[];
+  collection?: Collection;
+  onDrop?: () => void;
+  onMoveError?: (error: unknown) => void;
+  children?: ReactNode | ((props: Record<string, unknown>) => ReactNode);
+}
+
 const DragSourceComponent = DragSource(
-  (props) => dragTypeForItem(props.item),
+  (props: DragSourceOwnProps) => dragTypeForItem(props.item),
   {
-    canDrag({ isSelected, selected, collection, item }, monitor) {
+    canDrag({ isSelected, selected, collection }: DragSourceOwnProps) {
       // can't drag if can't write the parent collection
       if (
         collection &&
@@ -49,15 +73,21 @@ const DragSourceComponent = DragSource(
 
       return isSelected || numSelected === 0;
     },
-    beginDrag(props, monitor, component) {
+    beginDrag(props: DragSourceOwnProps) {
       return { item: props.item };
     },
-    async endDrag({ selected, onDrop, onMoveError }, monitor, component) {
+    async endDrag(
+      { selected, onDrop, onMoveError }: DragSourceOwnProps,
+      monitor: DragSourceMonitor,
+    ) {
       if (!monitor.didDrop()) {
         return;
       }
-      const { item } = monitor.getItem();
-      const { collection, pinIndex } = monitor.getDropResult();
+      const { item } = monitor.getItem() as { item: CollectionItem };
+      const { collection, pinIndex } = monitor.getDropResult() as {
+        collection?: Collection;
+        pinIndex?: number;
+      };
       if (item) {
         const items = selected && selected.length > 0 ? selected : [item];
         try {
@@ -71,7 +101,7 @@ const DragSourceComponent = DragSource(
             );
           }
 
-          onDrop && onDrop();
+          onDrop?.();
         } catch (e) {
           onMoveError?.(e);
         }
@@ -83,11 +113,21 @@ const DragSourceComponent = DragSource(
     connectDragPreview: connect.dragPreview(),
     isDragging: monitor.isDragging(),
   }),
-)(ItemDragSourceInner);
+  // react-dnd v7 HOC types can't express the own/collected props split
+)(ItemDragSourceInner as any);
 
-export function ItemDragSource(props) {
+interface ItemDragSourceProps {
+  item: CollectionItem;
+  isSelected?: boolean;
+  selected?: CollectionItem[];
+  collection?: Collection;
+  onDrop?: () => void;
+  children?: ReactNode | ((props: Record<string, unknown>) => ReactNode);
+}
+
+export function ItemDragSource(props: ItemDragSourceProps) {
   const [sendToast] = useToast();
-  const onMoveError = (error) =>
+  const onMoveError = (error: unknown) =>
     sendToast({
       message: getErrorMessage(error),
       icon: "warning_triangle_filled",

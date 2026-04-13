@@ -13,24 +13,37 @@ describe("admin > custom visualizations", () => {
   });
 
   describe("feature gating", () => {
-    it("should show upsell when feature is locked", () => {
-      // No token activation — feature is locked
-      H.visitCustomVizSettings();
+    describe("EE", () => {
+      it("should show upsell when feature is locked", () => {
+        // No token activation — feature is locked
+        H.visitCustomVizSettings();
 
-      cy.findByRole("heading", {
-        name: /Build your own visualizations/,
-      }).should("be.visible");
-      H.getAddVisualizationLink().should("not.exist");
+        cy.findByRole("heading", {
+          name: /Build your own visualizations/,
+        }).should("be.visible");
+        H.getAddVisualizationLink().should("not.exist");
+      });
+
+      it("should show manage page with valid token", () => {
+        H.activateToken("bleeding-edge");
+        H.visitCustomVizSettings();
+
+        cy.get("main")
+          .findByText("Manage custom visualizations")
+          .should("be.visible");
+        H.getAddVisualizationLink().should("be.visible");
+      });
     });
 
-    it("should show manage page with valid token", () => {
-      H.activateToken("bleeding-edge");
-      H.visitCustomVizSettings();
+    describe("OSS", { tags: "@OSS" }, () => {
+      it("should show upsell when feature is locked", () => {
+        H.visitCustomVizSettings();
 
-      cy.get("main")
-        .findByText("Manage custom visualizations")
-        .should("be.visible");
-      H.getAddVisualizationLink().should("be.visible");
+        cy.findByRole("heading", {
+          name: /Build your own visualizations/,
+        }).should("be.visible");
+        H.getAddVisualizationLink().should("not.exist");
+      });
     });
 
     it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {

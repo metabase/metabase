@@ -80,6 +80,7 @@
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"
+   "DependencyStatus"
    "DocumentBookmark"
    "HTTPAction"
    "ImplicitAction"

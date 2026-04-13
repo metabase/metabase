@@ -1,23 +1,29 @@
+import type { DropTargetMonitor } from "react-dnd";
 import { DropTarget } from "react-dnd";
 
 import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";
 
 import { MoveableDragTypes } from ".";
 
+interface CollectionDropTargetOwnProps {
+  collection: Collection;
+}
+
 export const CollectionDropTarget = DropTarget(
   MoveableDragTypes,
   {
-    drop(props) {
+    drop(props: CollectionDropTargetOwnProps) {
       return { collection: props.collection };
     },
-    canDrop(props, monitor) {
+    canDrop(props: CollectionDropTargetOwnProps, monitor: DropTargetMonitor) {
       const { collection } = props;
-      const { item } = monitor.getItem();
+      const { item } = monitor.getItem() as { item: CollectionItem };
       if (
         !isRootTrashCollection(collection) &&
         collection.can_write === false
@@ -41,4 +47,5 @@ export const CollectionDropTarget = DropTarget(
     hovered: monitor.isOver() && monitor.canDrop(),
     connectDropTarget: connect.dropTarget(),
   }),
-)(DropArea);
+  // react-dnd v7 HOC types can't express the own/collected props split
+)(DropArea as any);

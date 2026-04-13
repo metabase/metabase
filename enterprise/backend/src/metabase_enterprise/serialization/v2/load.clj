@@ -143,8 +143,8 @@
                                :error ::not-found}))))
           (log/debug "Local" {:path (serdes/log-path-str path)})
           ctx)
-        (let [_                  (log/info "Loading" (cond-> {:path (serdes/log-path-str path)}
-                                                       (circular path) (assoc :stripped true)))
+        (let [_                  (log/trace "Loading" (cond-> {:path (serdes/log-path-str path)}
+                                                        (circular path) (assoc :stripped true)))
               ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
               rebuilt-path       (serdes/path ingested)
               ;; If nil or absent :entity_id is taken as a signal to create a new entity

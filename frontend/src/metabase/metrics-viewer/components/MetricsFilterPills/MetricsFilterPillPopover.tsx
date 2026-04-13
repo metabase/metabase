@@ -6,7 +6,7 @@ import {
   trackMetricsViewerFilterRemoved,
 } from "metabase/metrics-viewer/analytics";
 import type { IconName } from "metabase/ui";
-import { Popover, Text } from "metabase/ui";
+import { Badge, Flex, Popover, Text } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 
 import { MetricsFilterPill } from "./MetricsFilterPill";
@@ -16,7 +16,9 @@ interface MetricsFilterPillPopoverProps {
   definition: LibMetric.MetricDefinition;
   filter: LibMetric.FilterClause;
   colors: string[];
-  icon: IconName;
+  icon?: IconName;
+  metricName?: string;
+  metricCount?: number;
   onUpdate: (newFilter: LibMetric.FilterClause) => void;
   onRemove: () => void;
 }
@@ -26,6 +28,8 @@ export function MetricsFilterPillPopover({
   filter,
   colors,
   icon,
+  metricName,
+  metricCount,
   onUpdate,
   onRemove,
 }: MetricsFilterPillPopoverProps) {
@@ -62,13 +66,30 @@ export function MetricsFilterPillPopover({
           onClick={() => setIsOpened((prev) => !prev)}
           onRemoveClick={handleRemove}
         >
-          {displayParts.label}
-          {displayParts.value && (
-            <Text component="span" fw={700} c="text-filter" fz="sm">
-              {" "}
-              {displayParts.value}
-            </Text>
-          )}
+          <Flex align="center" gap="xs">
+            {metricName && (
+              <Text component="span" fw={700} c="inherit" fz="inherit">
+                {metricName}
+              </Text>
+            )}
+            {metricName && (metricCount ?? 0) > 1 && (
+              <Badge
+                circle
+                color="filter"
+                // override background from Badge.config.tsx
+                styles={{ root: { background: "var(--badge-bg)" } }}
+              >
+                {metricCount}
+              </Badge>
+            )}
+            {displayParts.label}
+            {displayParts.value && (
+              <Text component="span" fw={700} c="inherit" fz="inherit">
+                {" "}
+                {displayParts.value}
+              </Text>
+            )}
+          </Flex>
         </MetricsFilterPill>
       </Popover.Target>
       <Popover.Dropdown>
