@@ -1,6 +1,6 @@
 import type { CSSProperties, HTMLAttributes, ImgHTMLAttributes } from "react";
 
-import { Icon, type IconProps, useMantineTheme } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 import { color as colorValue } from "metabase/ui/utils/colors";
 import type { IconData } from "metabase/utils/icon";
@@ -8,7 +8,6 @@ import type { IconData } from "metabase/utils/icon";
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];
   iconUrl?: string;
-  iconDarkUrl?: string;
   color?: ColorName | "inherit";
   size?: string | number;
   style?: CSSProperties;
@@ -22,7 +21,6 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
  */
 export function EntityIcon({
   iconUrl,
-  iconDarkUrl,
   name = "unknown",
   size = "1rem",
   color = "brand",
@@ -30,11 +28,7 @@ export function EntityIcon({
   alt = "",
   ...rest
 }: EntityIconProps) {
-  const theme = useMantineTheme();
-  const isDarkMode = theme.other.colorScheme === "dark";
-  const resolvedIconUrl = isDarkMode ? (iconDarkUrl ?? iconUrl) : iconUrl;
-
-  if (resolvedIconUrl) {
+  if (iconUrl) {
     const bg = color === "inherit" ? "currentColor" : colorValue(color);
 
     return (
@@ -49,7 +43,7 @@ export function EntityIcon({
           width: size,
           height: size,
           backgroundColor: bg,
-          maskImage: `url(${resolvedIconUrl})`,
+          maskImage: `url(${iconUrl})`,
           maskSize: "contain",
           maskRepeat: "no-repeat",
           maskPosition: "center",

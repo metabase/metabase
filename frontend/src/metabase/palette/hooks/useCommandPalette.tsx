@@ -190,7 +190,6 @@ export const useCommandPalette = ({
             subtitle: result.description || "",
             icon: icon.name,
             iconUrl: icon.iconUrl,
-            iconDarkUrl: icon.iconDarkUrl,
             section: "search",
             keywords: debouncedSearchText,
             priority: Priority.NORMAL - index,
@@ -256,7 +255,6 @@ export const useCommandPalette = ({
           name: getName(item),
           icon: icon.name,
           iconUrl: icon.iconUrl,
-          iconDarkUrl: icon.iconDarkUrl,
           section: "recent",
           perform: () => {},
           extra: {

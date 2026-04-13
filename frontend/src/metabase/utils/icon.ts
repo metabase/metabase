@@ -64,5 +64,4 @@ export type IconData = {
   name: IconName;
   color?: ColorName;
   iconUrl?: string;
-  iconDarkUrl?: string;
 };

@@ -10,7 +10,7 @@ type Props = {
 const ICON_SIZE = 20;
 
 export function CustomVizIcon({ plugin }: Props) {
-  const { iconUrl, iconDarkUrl } = getPluginIconUrls(plugin);
+  const { iconUrl } = getPluginIconUrls(plugin);
 
   return (
     <Flex
@@ -28,7 +28,6 @@ export function CustomVizIcon({ plugin }: Props) {
       <EntityIcon
         alt={plugin.display_name}
         iconUrl={iconUrl}
-        iconDarkUrl={iconDarkUrl}
         name="unknown"
         size={ICON_SIZE}
       />
