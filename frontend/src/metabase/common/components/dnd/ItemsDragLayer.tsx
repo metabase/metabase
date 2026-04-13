@@ -1,13 +1,25 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
-import { DragLayer } from "react-dnd";
+import { DragLayer, type XYCoord } from "react-dnd";
 import _ from "underscore";
 
+import type { CollectionContentTableColumnsMap } from "metabase/collections/components/CollectionContent/constants";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import { BaseItemsTable } from "metabase/common/components/ItemsTable/BaseItemsTable";
+import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { Box, Portal } from "metabase/ui";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
-class ItemsDragLayerInner extends Component {
+interface ItemsDragLayerInnerProps {
+  isDragging: boolean;
+  currentOffset: XYCoord | null;
+  selectedItems: CollectionItem[];
+  pinnedItems: CollectionItem[];
+  item: { item: CollectionItem } | null;
+  collection: Collection;
+  visibleColumnsMap: CollectionContentTableColumnsMap;
+}
+
+class ItemsDragLayerInner extends Component<ItemsDragLayerInnerProps> {
   render() {
     const {
       isDragging,
@@ -21,7 +33,7 @@ class ItemsDragLayerInner extends Component {
     if (!isDragging || !currentOffset) {
       return null;
     }
-    const items = selectedItems.length > 0 ? selectedItems : [item.item];
+    const items = selectedItems.length > 0 ? selectedItems : [item!.item];
     const x = currentOffset.x + window.scrollX;
     const y = currentOffset.y + window.scrollY;
     return (
@@ -39,7 +51,7 @@ class ItemsDragLayerInner extends Component {
         >
           <DraggedItems
             items={items}
-            draggedItem={item.item}
+            draggedItem={item!.item}
             pinnedItems={pinnedItems}
             collection={collection}
             visibleColumnsMap={visibleColumnsMap}
@@ -50,16 +62,25 @@ class ItemsDragLayerInner extends Component {
   }
 }
 
-export const ItemsDragLayer = DragLayer((monitor, props) => ({
+export const ItemsDragLayer = DragLayer((monitor) => ({
   item: monitor.getItem(),
   // itemType: monitor.getItemType(),
   initialOffset: monitor.getInitialSourceClientOffset(),
   currentOffset: monitor.getSourceClientOffset(),
   isDragging: monitor.isDragging(),
-}))(ItemsDragLayerInner);
+  // react-dnd v7 HOC types can't express the own/collected props split
+}))(ItemsDragLayerInner as any);
 
-class DraggedItems extends Component {
-  shouldComponentUpdate(nextProps) {
+interface DraggedItemsProps {
+  items: CollectionItem[];
+  draggedItem: CollectionItem;
+  pinnedItems: CollectionItem[];
+  collection: Collection;
+  visibleColumnsMap: CollectionContentTableColumnsMap;
+}
+
+class DraggedItems extends Component<DraggedItemsProps> {
+  shouldComponentUpdate(nextProps: DraggedItemsProps) {
     // necessary for decent drag performance
     return (
       nextProps.items.length !== this.props.items.length ||
@@ -68,7 +89,7 @@ class DraggedItems extends Component {
     );
   }
 
-  checkIsPinned = (item) => {
+  checkIsPinned = (item: CollectionItem) => {
     const { pinnedItems } = this.props;
     const index = pinnedItems.findIndex(
       (i) => i.model === item.model && i.id === item.id,
@@ -76,7 +97,7 @@ class DraggedItems extends Component {
     return index >= 0;
   };
 
-  renderItem = ({ item, ...itemProps }) => {
+  renderItem = ({ item, ...itemProps }: ItemRendererProps) => {
     const isPinned = this.checkIsPinned(item);
     const key = `${item.model}-${item.id}`;
 
@@ -100,7 +121,6 @@ class DraggedItems extends Component {
         item={item}
         isPinned={false}
         draggable={false}
-        hasBottomBorder={false}
       />
     );
   };
@@ -113,7 +133,7 @@ class DraggedItems extends Component {
       <div
         style={{
           position: "absolute",
-          transform: index > 0 ? `translate(0px, ${-index * 72}px)` : null,
+          transform: index > 0 ? `translate(0px, ${-index * 72}px)` : undefined,
         }}
       >
         <BaseItemsTable

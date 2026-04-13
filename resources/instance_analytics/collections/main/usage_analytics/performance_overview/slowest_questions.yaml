@@ -20,13 +20,13 @@ dataset_query:
         - [Internal Metabase Database, public, v_query_log, running_time_seconds]
     breakout:
     - - field
-      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week, effective-type: type/DateTimeWithLocalTZ}
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: week}
       - [Internal Metabase Database, public, v_query_log, started_at]
     - - field
-      - {base-type: type/Text, join-alias: Content - Dashboard Qualified, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Dashboard Qualified}
       - [Internal Metabase Database, public, v_content, name]
     - - field
-      - {base-type: type/Integer, join-alias: Content - Dashboard Qualified, effective-type: type/Integer}
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Dashboard Qualified}
       - [Internal Metabase Database, public, v_content, entity_id]
     filters:
     - - time-interval
@@ -50,7 +50,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_query_log, card_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Content - Dashboard Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Dashboard Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       fields: all
       stages:
@@ -66,7 +66,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_query_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - Entity, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - Entity}
           - [Internal Metabase Database, public, v_group_members, user_id]
       fields: all
       stages:
