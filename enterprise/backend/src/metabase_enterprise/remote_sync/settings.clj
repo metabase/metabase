@@ -197,21 +197,24 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
-  (if (and (contains? settings :remote-sync-url)
-           (str/blank? remote-sync-url))
-    (t2/with-transaction [_conn]
-      (setting/set! :remote-sync-url nil)
-      (setting/set! :remote-sync-token nil)
-      (setting/set! :remote-sync-branch nil))
-    (let [current-token (setting/get :remote-sync-token)
-          obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
-          token-to-check (if obfuscated? current-token remote-sync-token)
-          _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
+  (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
+        updating-git-settings? (some git-related-keys (keys settings))]
+    (if (and (contains? settings :remote-sync-url)
+             (str/blank? remote-sync-url))
       (t2/with-transaction [_conn]
-        (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
-          (when (and (contains? settings k)
-                     (not (and (= k :remote-sync-token) obfuscated?)))
-            (setting/set! k (k settings))))))))
+        (setting/set! :remote-sync-url nil)
+        (setting/set! :remote-sync-token nil)
+        (setting/set! :remote-sync-branch nil))
+      (let [current-token (setting/get :remote-sync-token)
+            obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
+            token-to-check (if obfuscated? current-token remote-sync-token)
+            _ (when updating-git-settings?
+                (check-git-settings! (assoc settings :remote-sync-token token-to-check)))]
+        (t2/with-transaction [_conn]
+          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
+            (when (and (contains? settings k)
+                       (not (and (= k :remote-sync-token) obfuscated?)))
+              (setting/set! k (k settings)))))))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.
