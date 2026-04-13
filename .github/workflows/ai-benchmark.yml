@@ -77,6 +77,68 @@ jobs:
             --sample ${{ inputs.sample }} \
             --seed 1337
 
+      - name: Upload results to dashboard
+        if: success()
+        env:
+          AI_BENCHMARK_UPLOAD_URL: ${{ secrets.AI_BENCHMARK_UPLOAD_URL }}
+          AI_BENCHMARK_UPLOAD_API_KEY: ${{ secrets.AI_BENCHMARK_UPLOAD_API_KEY }}
+        run: |
+          RESULTS_FILE=$(find ai-benchmark/logs -name "results.json" -type f | head -1)
+          if [ -z "$RESULTS_FILE" ]; then
+            echo "No results.json found, skipping upload"
+            exit 0
+          fi
+          if [ -z "$AI_BENCHMARK_UPLOAD_URL" ] || [ -z "$AI_BENCHMARK_UPLOAD_API_KEY" ]; then
+            echo "Upload secrets not configured, skipping"
+            exit 0
+          fi
+
+          BRANCH="${GITHUB_REF_NAME}"
+          COMMIT="${GITHUB_SHA}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PR_NUMBER=""
+          if [[ "$GITHUB_REF" == refs/pull/*/merge ]]; then
+            PR_NUMBER=$(echo "$GITHUB_REF" | grep -oP '\d+')
+          fi
+
+          # Build the payload: wrap results array with metadata
+          jq -n \
+            --argjson results "$(cat "$RESULTS_FILE")" \
+            --arg branch "$BRANCH" \
+            --arg commit_sha "$COMMIT" \
+            --arg source "main" \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg ci_run_url "$RUN_URL" \
+            --arg ci_workflow "ai-benchmark" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg profile "${{ inputs.profile }}" \
+            '{
+              results: $results,
+              branch: $branch,
+              commit_sha: $commit_sha,
+              source: (if $branch == "master" or $branch == "main" then "main" else "pr" end),
+              repo: $repo,
+              ci_run_url: $ci_run_url,
+              ci_workflow: $ci_workflow,
+              label: ("CI: " + $profile + " profile"),
+              pr_number: (if $pr_number != "" then ($pr_number | tonumber) else null end)
+            }' | curl -sf \
+              -X POST "$AI_BENCHMARK_UPLOAD_URL" \
+              -H "Authorization: Bearer $AI_BENCHMARK_UPLOAD_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d @- \
+              -o response.json -w "%{http_code}" | {
+                read HTTP_CODE
+                if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+                  echo "Upload successful (HTTP $HTTP_CODE)"
+                  cat response.json
+                else
+                  echo "Upload failed (HTTP $HTTP_CODE)"
+                  cat response.json
+                  exit 1
+                fi
+              }
+
       - name: Dump container logs
         if: always()
         run: docker logs metabase-benchmark > metabase-container.log 2>&1 || true
