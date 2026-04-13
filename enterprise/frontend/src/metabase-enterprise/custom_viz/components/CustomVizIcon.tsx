@@ -1,6 +1,6 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Flex } from "metabase/ui";
-import { getPluginIconUrls } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type { CustomVizPlugin } from "metabase-types/api";
 
 type Props = {
@@ -10,7 +10,7 @@ type Props = {
 const ICON_SIZE = 20;
 
 export function CustomVizIcon({ plugin }: Props) {
-  const { iconUrl } = getPluginIconUrls(plugin);
+  const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
 
   return (
     <Flex

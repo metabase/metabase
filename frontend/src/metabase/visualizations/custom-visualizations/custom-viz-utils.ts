@@ -38,10 +38,4 @@ export function getCustomPluginIdentifier(
   return `custom:${identifier}`;
 }
 
-export const getPluginIconUrls = (
-  plugin: Pick<CustomVizPluginRuntime, "id" | "icon">,
-) => ({
-  iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
-});
-
 export const defineSetting = <T>(definition: T) => definition;
