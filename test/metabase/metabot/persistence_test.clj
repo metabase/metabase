@@ -139,6 +139,10 @@
            (persistence/migrate-v1->v2
             [{:role "user" :content "Do we have data on orders"}]))))
 
+  (testing "empty data throws as unrecognized"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
+                          (persistence/migrate-v1->v2 []))))
+
   (testing "dispatcher still throws on truly unrecognized shapes"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
                           (persistence/migrate-v1->v2

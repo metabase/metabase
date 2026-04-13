@@ -18,10 +18,13 @@
        (some :_type data)))
 
 (defn- v1-native?
-  "Returns true if `data` is in v1-native storage format (has separate tool-input/tool-output entries)."
+  "Returns true if `data` is in v1-native storage format (tool-input, tool-output, text,
+   or error entries)."
   [data]
   (and (sequential? data)
-       (some #(#{"tool-input" "tool-output"} (:type %)) data)))
+       (seq data)
+       (every? #(#{"tool-input" "tool-output" "text" "error"} (:type %))
+               data)))
 
 (defn- v1-user-message?
   "Returns true if `data` is a user message written as `data_version = 1`. User messages
@@ -110,7 +113,10 @@
                               :input      (:arguments block)}
                        (some? (:result output)) (assoc :output (:result output))
                        has-err?                 (assoc :error (:error output))))
-                   block))))))
+                   (if (and (= "error" (:type block)) (map? (:error block)))
+                     {:type      "error"
+                      :errorText (get-in block [:error :message] "Unknown error")}
+                     block)))))))
 
 (defn migrate-v1->v2
   "Migrate a v1 data array to v2 format. Dispatches to `migrate-v1-external-ai-service->v2`
@@ -119,6 +125,7 @@
    Throws on any other shape."
   [data]
   (cond
+    (empty? data)                   data ;; handle case were we previously wrote empty arrays to db when FE aborted mid request
     (v1-external-ai-service? data) (migrate-v1-external-ai-service->v2 data)
     (v1-native? data)              (migrate-v1-native->v2 data)
     (v1-user-message? data) data
