@@ -226,11 +226,11 @@
   org.apache.httpcomponents/httpclient               {:mvn/version "4.5.14"
                                                       :exclusions [org.apache.commons/commons-lang3]}
   org.apache.httpcomponents/httpcore                  {:mvn/version "4.4.16"}
-  org.apache.zookeeper/zookeeper                     {:mvn/version "3.8.4"
+  org.apache.zookeeper/zookeeper                     {:mvn/version "3.8.6"
                                                       :exclusions [ch.qos.logback/logback-classic
                                                                    ch.qos.logback/logback-core
                                                                    org.slf4j/slf4j-log4j12]}
-  org.apache.curator/curator-framework               {:mvn/version "5.7.1"
+  org.apache.curator/curator-framework               {:mvn/version "5.9.0"
                                                       :exclusions [org.apache.zookeeper/zookeeper]}
 
   ;; Commons — pinned to override old transitive versions from httpclient/zookeeper.
