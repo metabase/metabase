@@ -84,9 +84,9 @@
         where     (when user-id [:= :c.user_id user-id])
         sort-col  (get sort-columns sort-by :c.created_at)
         direction (if (= sort-dir "asc") :asc :desc)
-        total     (:count (t2/query-one {:select [[[:count :*] :count]]
-                                         :from   [[:metabot_conversation :c]]
-                                         :where  where}))
+        total     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
+                                                 :from   [[:metabot_conversation :c]]}
+                                          where (assoc :where where))))
         rows      (t2/select :model/MetabotConversation
                              (cond-> (assoc list-query
                                             :order-by [[sort-col direction] [:c.id :asc]]
