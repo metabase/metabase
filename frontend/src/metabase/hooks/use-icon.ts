@@ -75,12 +75,4 @@ export const useGetIconBase = () => {
  * relies mainly on the `model` property to determine the icon to return
  * also handle special collection icons and visualization types for cards
  */
-export const useGetIcon = () => {
-  const getIconFromCollections = PLUGIN_COLLECTIONS.useGetIcon();
-  const getIconBase = useGetIconBase();
-  return useCallback(
-    (item: ObjectWithModel, opts?: { isTenantUser?: boolean }): IconData =>
-      getIconFromCollections?.(item, opts) ?? getIconBase(item),
-    [getIconFromCollections, getIconBase],
-  );
-};
+export const useGetIcon = () => PLUGIN_COLLECTIONS.useGetIcon();
