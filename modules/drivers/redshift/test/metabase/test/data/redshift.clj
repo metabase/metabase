@@ -225,7 +225,6 @@
         {expired-isolation :expired}  (classify-isolation-schemas conn isolation)
         drop-sql                      (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
     (with-open [stmt (.createStatement conn)]
-      ;; Drop schemas first
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]
@@ -233,7 +232,10 @@
                                     [expired-isolation "Dropping expired workspace isolation schema: %s"]]
               schema               collection]
         (log/infof fmt-str schema)
-        (.execute stmt (drop-sql schema))))))
+        (try
+          (.execute stmt (drop-sql schema))
+          (catch Throwable e
+            (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e))))))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

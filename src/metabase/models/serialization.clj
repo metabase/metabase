@@ -451,6 +451,11 @@
 
 (defmethod make-spec :default [_ _] nil)
 
+(defn ^:dynamic *make-spec*
+  "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
+  [model-name opts]
+  (make-spec model-name opts))
+
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
@@ -496,7 +501,7 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (let [spec (make-spec model-name opts)]
+    (let [spec (*make-spec* model-name opts)]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
                 (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
@@ -528,7 +533,7 @@
 (defn log-and-extract-one
   "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
-  (log/info "Extracting" {:path (log-path-str (generate-path model instance))})
+  (log/tracef "Extracting %s" (log-path-str (generate-path model instance)))
   (try
     (extract-one model opts instance)
     (catch Exception e
@@ -558,7 +563,7 @@
     (group-by backward-fk entities)))
 
 (defn- extract-batch-nested [model-name opts batch]
-  (let [spec (make-spec model-name opts)]
+  (let [spec (*make-spec* model-name opts)]
     (reduce-kv (fn [batch k transform]
                  (if-not (::nested transform)
                    batch
@@ -578,7 +583,7 @@
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
   collection."
   [model {:keys [collection-set where] :as opts}]
-  (let [spec (make-spec (name model) opts)]
+  (let [spec (*make-spec* (name model) opts)]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
@@ -592,7 +597,7 @@
                                             where)]}))))
 
 (defmethod extract-query :default [model-name opts]
-  (let [spec    (make-spec model-name opts)
+  (let [spec    (*make-spec* model-name opts)
         nested? (some ::nested (vals (:transform spec)))]
     (cond->> (extract-query-collections (keyword "model" model-name) opts)
       nested? (extract-reducible-nested model-name (dissoc opts :where)))))
@@ -796,7 +801,7 @@
           schemas))
 
 (defn- xform-one [model-name ingested]
-  (let [spec (make-spec model-name nil)]
+  (let [spec (*make-spec* model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
     (-> (select-keys ingested (:copy spec))
         (into (for [[k transform] (:transform spec)
@@ -816,7 +821,7 @@
         (coerce-keys (:coerce spec)))))
 
 (defn- spec-nested! [model-name ingested instance]
-  (let [spec (make-spec model-name nil)]
+  (let [spec (*make-spec* model-name nil)]
     (doseq [[k transform] (:transform spec)
             :when (and (::nested transform)
                        ;; handling circuit-breaking
@@ -1017,61 +1022,14 @@
 
 ;;; ## Databases
 
-(def ^:dynamic *batch-cache-max-size*
-  "Maximum number of entries in a batch cache before old entries are dropped."
-  50000)
-
-(defn- make-batch-cache
-  "Returns a fn `(f id) -> entity`. On miss, calls `(load-fn id max-batch)` which must
-   return a map of `{id entity, ...}`. `max-batch` is the maximum number of entries to return.
-   All returned entries are merged into the cache so sibling lookups become hits.
-   When old entries plus new batch exceed `*batch-cache-max-size*`, old entries are dropped.
-   New batch entries are never evicted, so the cache may temporarily exceed the limit
-   (e.g. a field parent_id chain longer than the limit)."
-  [load-fn]
-  (let [cache (atom {})
-        order (atom clojure.lang.PersistentQueue/EMPTY)]
-    (fn [id]
-      (let [v (get @cache id ::not-found)]
-        (if-not (identical? v ::not-found)
-          v
-          (let [new-batch  (load-fn id *batch-cache-max-size*)
-                new-keys   (set (keys new-batch))
-                ;; drop old entries to make room, but never drop new-batch entries
-                old-count  (- (count @cache) (count (filter new-keys (keys @cache))))
-                keep-old   (max 0 (- *batch-cache-max-size* (count new-batch)))]
-            (when (> old-count keep-old)
-              (let [to-drop (- old-count keep-old)]
-                (swap! order #(into clojure.lang.PersistentQueue/EMPTY (drop to-drop) %))
-                (swap! cache #(select-keys % (into new-keys @order)))))
-            (swap! cache merge new-batch)
-            (swap! order into (keys new-batch))
-            (get new-batch id)))))))
-
-(defn- batch-load-databases
-  "Loads the requested database plus other databases up to `max-batch`."
-  [id max-batch]
-  (let [target (t2/select-pk->fn identity [:model/Database :id :name] :id id)
-        others (when (> max-batch 1)
-                 (t2/select-pk->fn identity [:model/Database :id :name]
-                                   :id [:not= id]
-                                   {:limit (dec max-batch)}))]
-    (merge target others)))
-
-(defn- export-database-fk
-  "Given a numeric database ID and a fn that resolves it to a database entity,
-   return its name as a portable reference."
-  [id db-fn]
-  (when id
-    (:name (db-fn id))))
-
 (defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
   [id]
-  (export-database-fk id #(t2/select-one [:model/Database :id :name] :id %)))
+  (when id
+    (t2/select-one-fn :name [:model/Database :id :name] :id id)))
 
-(defn ^:dynamic ^::cache *import-database-fk*
+(defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
   [[*export-database-fk*]] is the inverse."
   [db-name]
@@ -1079,40 +1037,16 @@
 
 ;;; ## Tables
 
-(defn- batch-load-tables
-  "Loads the table with `id` plus FK-connected tables, up to `max-batch` total.
-   A database may have millions of tables due to partitioning, so we must respect the limit."
-  [id max-batch]
-  (let [target       (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema] :id id)
-        remaining    (- max-batch (count target))
-        fk-field-ids (when (pos? remaining)
-                       (t2/select-fn-set :fk_target_field_id :model/Field
-                                         :table_id id
-                                         :fk_target_field_id [:not= nil]))
-        fk-table-ids (when (seq fk-field-ids)
-                       (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
-        fk-tables    (when (seq fk-table-ids)
-                       (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema]
-                                         :id [:in fk-table-ids]
-                                         {:limit remaining}))]
-    (merge target fk-tables)))
-
-(defn- export-table-fk
-  "Given a numeric table ID, a fn that resolves it to a table entity, and a fn
-   that resolves a database ID to a database entity, return `[db-name schema table-name]`."
-  [id table-fn db-fn]
-  (when id
-    (let [table (table-fn id)]
-      [(export-database-fk (:db_id table) db-fn) (:schema table) (:name table)])))
 (mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
   [[*import-table-fk*]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (export-table-fk table-id
-                   #(t2/select-one [:model/Table :id :db_id :name :schema] :id %)
-                   #(t2/select-one [:model/Database :id :name] :id %)))
+  (when table-id
+    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
+          db-name                     (*export-database-fk* db_id)]
+      [db-name schema name])))
 
 (mu/defn ^:dynamic *import-table-fk*
   "Given a `table_id` as exported by [[*export-table-fk*]], resolve it back into a numeric `table_id`.
@@ -1165,66 +1099,6 @@
                :from           [:parents]
                :select         [:name :table_id]})))
 
-(defn- field-name-chain
-  "Walks parent_id chain in memory using `field-fn` to resolve each field.
-   Returns a seq of field names from root parent to the given field."
-  [field-id field-fn]
-  (loop [id field-id
-         names ()]
-    (let [field (field-fn id)]
-      (if-let [pid (:parent_id field)]
-        (recur pid (cons (:name field) names))
-        (cons (:name field) names)))))
-
-(defn- export-field-fk
-  "Given a numeric field ID and lookup fns for fields, tables, and databases,
-   return `[db-name schema table-name & field-names]`."
-  [field-id field-fn table-fn db-fn]
-  (when field-id
-    (let [field (field-fn field-id)
-          table-ref (export-table-fk (:table_id field) table-fn db-fn)
-          field-names (field-name-chain field-id field-fn)]
-      (into table-ref field-names))))
-
-(defn- load-field-hierarchy
-  "Loads the field with `id` and all its ancestors (via parent_id) in a single
-   recursive CTE query. Returns a map of `{id entity}`."
-  [id]
-  (into {}
-        (map (juxt :id identity))
-        (t2/select :model/Field
-                   {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
-                                      {:union-all [{:from   [[:metabase_field :mf]]
-                                                    :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                                    :where  [:= :id id]}
-                                                   {:from   [[:metabase_field :pf]]
-                                                    :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
-                                                    :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
-                    :from           [:parents]
-                    :select         [:id :name :parent_id :table_id]})))
-
-(defn- batch-load-fields
-  "Loads the requested field, its parent_id chain (via recursive CTE), and additional
-   fields from the same table and FK-connected tables, up to `max-batch` total.
-   A table may have millions of fields due to JSON unfolding, so we must respect the limit."
-  [field-id max-batch]
-  (let [required  (load-field-hierarchy field-id)
-        remaining (- max-batch (count required))]
-    (if-not (pos? remaining)
-      required
-      (let [table-id      (:table_id (get required field-id))
-            fk-field-ids  (t2/select-fn-set :fk_target_field_id :model/Field
-                                            :table_id table-id
-                                            :fk_target_field_id [:not= nil])
-            fk-table-ids  (when (seq fk-field-ids)
-                            (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
-            all-table-ids (cond-> #{table-id} (seq fk-table-ids) (into fk-table-ids))
-            extras        (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
-                                            :id [:not-in (set (keys required))]
-                                            :table_id [:in all-table-ids]
-                                            {:limit remaining})]
-        (merge required extras)))))
-
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
 
@@ -1243,10 +1117,10 @@
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (export-field-fk field-id
-                   #(t2/select-one [:model/Field :id :name :table_id :parent_id] :id %)
-                   #(t2/select-one [:model/Table :id :db_id :name :schema] :id %)
-                   #(t2/select-one [:model/Database :id :name] :id %)))
+  (when field-id
+    (let [fields                      (field-hierarchy field-id)
+          [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
+      (into [db-name schema table-name] (map :name fields)))))
 
 (mu/defn ^:dynamic *import-field-fk*
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
@@ -2032,30 +1906,9 @@
 
 ;;; ## Memoizing appdb lookups
 
-(defmacro with-memoize-cache
-  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
-  [& body]
-  (let [ns* 'metabase.models.serialization]
-    `(binding ~(reduce into []
-                       (for [[var-sym var] (ns-interns ns*)
-                             :when (::cache (meta var))
-                             :let [fq-sym (symbol (name ns*) (name var-sym))]]
-                         [fq-sym `(memoize ~fq-sym)]))
-       ~@body)))
-
-(defn with-batch-cache
-  "Runs `thunk` with the batch cache bound to the export functions."
-  [thunk]
-  (let [db-cache    (make-batch-cache batch-load-databases)
-        table-cache (make-batch-cache batch-load-tables)
-        field-cache (make-batch-cache batch-load-fields)]
-    (binding [*export-database-fk* #(export-database-fk % db-cache)
-              *export-table-fk*    #(export-table-fk % table-cache db-cache)
-              *export-field-fk*    #(export-field-fk % field-cache table-cache db-cache)]
-      (thunk))))
-
 (defmacro with-cache
-  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance,
-   and with database/table lookups backed by batch-loading caches."
+  "Runs body with resolvers bound to cached (memoized) versions for performance."
   [& body]
-  `(with-batch-cache (fn [] (with-memoize-cache ~@body))))
+  `(binding [resolve/*export-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.db/cached-export-resolver))
+             resolve/*import-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.db/cached-import-resolver))]
+     ~@body))
