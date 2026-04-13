@@ -48,7 +48,8 @@
                                                                    org.mockito/mockito-core]}
 
   org.apache.hive/hive-standalone-metastore-common   {:mvn/version "4.2.0"
-                                                      :exclusions [com.fasterxml.jackson.core/jackson-databind
+                                                      :exclusions [com.google.guava/guava
+                                                                   com.fasterxml.jackson.core/jackson-databind
                                                                    com.github.ben-manes.caffeine/caffeine
                                                                    com.github.joshelser/dropwizard-metrics-hadoop-metrics2-reporter
                                                                    com.google.protobuf/protobuf-java
@@ -238,6 +239,10 @@
   commons-io/commons-io                              {:mvn/version "2.18.0"}
   commons-codec/commons-codec                        {:mvn/version "1.17.1"}
   commons-logging/commons-logging                    {:mvn/version "1.3.5"}
+
+  ;; Guava — hive-standalone-metastore-common pulls 22.0 transitively.
+  ;; Pin to match root deps.edn and fix SNYK-JAVA-COMGOOGLEGUAVA-{1015415,32236,5710356}.
+  com.google.guava/guava                             {:mvn/version "33.5.0-jre"}
 
   ;; Netty — pinned explicitly at safe versions for security scanning.
   ;; Driver JARs are scanned individually so these must be declared directly.
