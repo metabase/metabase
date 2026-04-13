@@ -123,8 +123,10 @@
 ;; Fresh launch (workmux add — creates new worktree)
 
 (defn- launch-workmux-session!
-  "Launch a new workmux session (creates worktree from branch)."
-  [{:keys [session-name branch-name base-branch prompt-file workmux-config display-info]}]
+  "Launch a new workmux session (creates worktree from branch).
+   branch-ref is what workmux add receives as its positional arg — either the
+   existing branch name, or origin/<name> to check out a remote branch."
+  [{:keys [session-name branch-name branch-ref base-branch prompt-file workmux-config display-info]}]
   (let [workmux-path (str u/project-root-directory "/.workmux.yaml")
         backup-path  (str workmux-path ".bak")
         had-backup?  (.exists (java.io.File. workmux-path))
@@ -153,17 +155,18 @@
       (println (c/yellow "Prompt: ") prompt-file)
       (println)
 
-      (let [effective-base (or base-branch "origin/master")
-            workmux-cmd    (str "workmux add " branch-name
-                                " --name " session-name
-                                " -P " prompt-file
-                                " --base " effective-base)]
+      ;; branch-ref is either the local branch name or origin/<name> — workmux
+      ;; add will check it out either way. No --base needed since the branch
+      ;; already exists (autobot refuses to create new branches).
+      (let [ref         (or branch-ref branch-name)
+            workmux-cmd (str "workmux add " ref
+                             " --name " session-name
+                             " -P " prompt-file)]
         (if in-tmux?
           ;; Already inside tmux — run workmux directly
-          (shell/sh "workmux" "add" branch-name
+          (shell/sh "workmux" "add" ref
                     "--name" session-name
-                    "-P" prompt-file
-                    "--base" effective-base)
+                    "-P" prompt-file)
           ;; Not inside tmux — create a detached session
           (do
             (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
@@ -240,6 +243,50 @@
         (println (str "  tmux attach -t " session-name))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Branch validation
+
+(defn- local-branch-exists?
+  "Check if a local git branch with the given name exists."
+  [branch-name]
+  (let [{:keys [exit]} (shell/sh* {:quiet? true}
+                                  "git" "show-ref" "--verify" "--quiet"
+                                  (str "refs/heads/" branch-name))]
+    (zero? exit)))
+
+(defn- remote-branch-exists?
+  "Check if a remote git branch origin/<branch-name> exists."
+  [branch-name]
+  (let [{:keys [exit]} (shell/sh* {:quiet? true}
+                                  "git" "show-ref" "--verify" "--quiet"
+                                  (str "refs/remotes/origin/" branch-name))]
+    (zero? exit)))
+
+(defn- resolve-branch-ref!
+  "Fetch from origin and verify the branch exists locally or on origin.
+   Returns the ref to pass to workmux add (the branch name if local, or origin/<branch> if remote only).
+   Exits with error if neither exists — never creates a new branch."
+  [branch-name]
+  (println (c/yellow "Checking that branch exists: ") branch-name)
+  (shell/sh* {:quiet? true} "git" "fetch" "origin" branch-name)
+  (cond
+    (local-branch-exists? branch-name)
+    (do
+      (println (c/green "  Found local branch: ") branch-name)
+      branch-name)
+
+    (remote-branch-exists? branch-name)
+    (let [remote-ref (str "origin/" branch-name)]
+      (println (c/green "  Found remote branch: ") remote-ref)
+      remote-ref)
+
+    :else
+    (do
+      (println (c/red "Branch not found: ") branch-name)
+      (println (c/red "  No local branch and no origin/" branch-name " exists."))
+      (println (c/red "  autobot will NOT create new branches — create the branch first."))
+      (u/exit 1))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Launch entry point
 
 (defn go!
@@ -289,13 +336,18 @@
                 :wt-path        wt-path
                 :prompt-file    prompt-file
                 :workmux-config config}))
-            (launch-workmux-session!
-             {:session-name   session-name
-              :branch-name    branch-name
-              :base-branch    base-branch
-              :prompt-file    prompt-file
-              :workmux-config config
-              :display-info   {"Bot" bot-name "App DB" app-db "Command" command}})))))))
+            (do
+              ;; Fresh launch: verify the branch exists somewhere before creating a worktree.
+              ;; Returns the ref to pass to workmux (branch name if local, origin/<name> if remote-only).
+              (let [branch-ref (resolve-branch-ref! branch-name)]
+                (launch-workmux-session!
+                 {:session-name   session-name
+                  :branch-name    branch-name
+                  :branch-ref     branch-ref
+                  :base-branch    base-branch
+                  :prompt-file    prompt-file
+                  :workmux-config config
+                  :display-info   {"Bot" bot-name "App DB" app-db "Command" command}})))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Session management
