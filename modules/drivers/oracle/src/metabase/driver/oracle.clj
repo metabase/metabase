@@ -806,6 +806,7 @@
           "                    AND p.privilege = 'DELETE')"
           "       THEN 1 ELSE 0 END AS \"delete\""
           "FROM accessible_objects ao"]))
+       ;; Oracle SQL has no BOOLEAN type before 23c, so CASE returns 1/0
        (map (fn [row]
               (-> row
                   (update :select pos?)

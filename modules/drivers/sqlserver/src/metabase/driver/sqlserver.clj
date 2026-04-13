@@ -1189,6 +1189,8 @@
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
   [_driver conn-spec & {:as _options}]
+  ;; role is NULL because HAS_PERMS_BY_NAME checks the current user's effective
+  ;; permissions directly rather than querying role-based grants
   (->> (jdbc/query
         conn-spec
         (str/join
@@ -1203,6 +1205,7 @@
           "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'DELETE') AS [delete]"
           "FROM sys.objects o"
           "JOIN sys.schemas s ON o.schema_id = s.schema_id"
+          ;; U = user table, V = view
           "WHERE o.type IN ('U', 'V')"]))
        (map (fn [row]
               (-> row
