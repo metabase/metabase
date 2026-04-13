@@ -92,8 +92,8 @@
 (defn- strip-tool-output-bloat
   "For :tool-output parts, keep only :output in the result map.
   Both LLM adapters only read (get-in part [:result :output]) when replaying history.
-  Everything else (:structured-output, :resources, :data-parts, etc.) is transient
-  runtime data that can be very large."
+  Everything else (:structured-output, :resources, :data-parts, :reactions, etc.)
+  is transient runtime data consumed during streaming and can be very large."
   [{:keys [type] :as part}]
   (cond-> part
     (= :tool-output type) (update :result select-keys [:output])))
