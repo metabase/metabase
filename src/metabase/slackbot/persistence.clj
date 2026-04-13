@@ -12,7 +12,8 @@
   [parts]
   (mapcat (fn [block]
             (when (and (string? (:type block))
-                       (str/starts-with? (:type block) "tool-"))
+                       (str/starts-with? (:type block) "tool-")
+                       (not= "input-available" (:state block)))
               (let [tool-call {:role       :assistant
                                :tool_calls [{:id        (:toolCallId block)
                                              :name      (:toolName block)
@@ -22,7 +23,12 @@
                     tool-result (when (#{"output-available" "error"} (:state block))
                                   {:role         :tool
                                    :tool_call_id (:toolCallId block)
-                                   :content      (or (:output block) (some-> (:error block) :message))})]
+                                   :content      (or (:output block)
+                                                     (when-let [err (:error block)]
+                                                       (if (map? err)
+                                                         (or (:message err) (pr-str err))
+                                                         (str err)))
+                                                     "Tool execution failed")})]
                 (cond-> [tool-call]
                   tool-result (conj tool-result)))))
           parts))

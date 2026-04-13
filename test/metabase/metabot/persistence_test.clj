@@ -17,6 +17,27 @@
       (is (= "tool-create-sql-query"
              (-> (persistence/migrate-v1-external-ai-service->v2 v1-data) first :type))))))
 
+(deftest migrate-v1-native->v2-tool-error-test
+  (let [input [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}]]
+    (testing "error state: carries :error, omits :output"
+      (let [part (-> (persistence/migrate-v1-native->v2
+                      (conj input {:type "tool-output" :id "tc1" :error "boom"}))
+                     first)]
+        (is (= "error" (:state part)))
+        (is (= "boom" (:error part)))
+        (is (not (contains? part :output)))))
+
+    (testing "error state: preserves map-shaped :error"
+      (is (= {:message "bad"} (-> (persistence/migrate-v1-native->v2
+                                   (conj input {:type "tool-output" :id "tc1" :error {:message "bad"}}))
+                                  first :error))))
+
+    (testing "input-available when no matching tool-output exists"
+      (let [part (first (persistence/migrate-v1-native->v2 input))]
+        (is (= "input-available" (:state part)))
+        (is (not (contains? part :output)))
+        (is (not (contains? part :error)))))))
+
 (deftest migrate-v1-external-ai-service->v2-test
   (testing "TEXT entry becomes text part"
     (is (= [{:type "text" :text "hello"}]
@@ -123,6 +144,22 @@
                           (persistence/migrate-v1->v2
                            [{:role "assistant" :some-unknown-key "x"}])))))
 
+(deftest total-tokens-test
+  (testing "nil usage returns 0"
+    (is (zero? (#'persistence/total-tokens nil))))
+  (testing "empty map returns 0"
+    (is (zero? (#'persistence/total-tokens {}))))
+  (testing "single model sums prompt + completion"
+    (is (= 150 (#'persistence/total-tokens {"gpt-4" {:prompt 100 :completion 50}}))))
+  (testing "multiple models are summed"
+    (is (= 300 (#'persistence/total-tokens {"gpt-4"   {:prompt 100 :completion 50}
+                                            "claude"  {:prompt 80  :completion 70}}))))
+  (testing "non-map values in usage are skipped"
+    (is (= 150 (#'persistence/total-tokens {"gpt-4"  {:prompt 100 :completion 50}
+                                            "legacy" 200}))))
+  (testing "missing :prompt or :completion defaults to 0"
+    (is (= 50 (#'persistence/total-tokens {"m" {:completion 50}})))))
+
 (deftest internal-parts->storable-produces-kebab-case-test
   (testing "data parts get kebab-case type names"
     (let [parts [{:type :data :data-type "navigate-to" :data "/x"}
@@ -139,3 +176,51 @@
               "data-adhoc-viz"
               "data-static-viz"]
              (mapv :type result))))))
+
+(deftest internal-parts->storable-data-parts-full-shape-test
+  (testing "data part with :data-type produces correct type and preserves :data payload"
+    (is (= [{:type "data-navigate-to" :data "/metric/42"}]
+           (persistence/internal-parts->storable
+            [{:type :data :data-type "navigate-to" :data "/metric/42"}]))))
+
+  (testing "data part with nil :data-type falls back to \"data-data\""
+    (is (= [{:type "data-data" :data {:some "payload"}}]
+           (persistence/internal-parts->storable
+            [{:type :data :data-type nil :data {:some "payload"}}]))))
+
+  (testing "data part with missing :data-type key falls back to \"data-data\""
+    (is (= [{:type "data-data" :data [1 2 3]}]
+           (persistence/internal-parts->storable
+            [{:type :data :data [1 2 3]}]))))
+
+  (testing "data part with nil :data preserves nil in output"
+    (is (= [{:type "data-todo-list" :data nil}]
+           (persistence/internal-parts->storable
+            [{:type :data :data-type "todo-list" :data nil}])))))
+
+(deftest internal-parts->storable-error-part-test
+  (testing "error part (as produced by agent/core error-part) hits default branch"
+    ;; mimics the shape from agent/core.clj error-part
+    (is (= [{:type "error"}]
+           (persistence/internal-parts->storable
+            [{:type :error
+              :error {:message "Something went wrong"
+                      :type "java.lang.RuntimeException"
+                      :data nil}}]))))
+
+  (testing "error part :error field is not preserved by default branch"
+    (is (not (contains? (first (persistence/internal-parts->storable
+                                [{:type :error
+                                  :error {:message "API timeout"
+                                          :type "clojure.lang.ExceptionInfo"
+                                          :data {:api-error true}}}]))
+                        :error))))
+
+  (testing "error part with additional :text field preserves the text"
+    (let [result (persistence/internal-parts->storable
+                  [{:type :error
+                    :error {:message "boom"}
+                    :text "An error occurred"}])]
+      (is (= [{:type "error" :text "An error occurred"}]
+             result))
+      (is (not (contains? (first result) :error))))))

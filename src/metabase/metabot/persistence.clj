@@ -182,6 +182,17 @@
        (remove #(non-storable-part-types (:type %)))
        internal-parts->storable))
 
+(defn- total-tokens
+  "Sum prompt + completion tokens across all models in a usage map.
+   usage shape: {\"model\" {:prompt N :completion M}, ...}
+   Returns 0 for nil or empty usage."
+  [usage]
+  (transduce
+   (comp (filter map?)
+         (map #(+ (:prompt % 0) (:completion % 0))))
+   + 0
+   (vals usage)))
+
 (defn store-message!
   "Persist messages to MetabotConversation and MetabotMessage tables.
 
@@ -201,10 +212,7 @@
                                       :usage           usage
                                       :role            role
                                       :profile_id      profile-id
-                                      :total_tokens    (->> (vals usage)
-                                                            (filter map?)
-                                                            (map #(+ (:prompt %) (:completion %)))
-                                                            (apply +))
+                                      :total_tokens    (total-tokens usage)
                                       :ai_proxied      (boolean ai-proxy?)
                                       :data_version    2}
                                channel-id   (assoc :channel_id channel-id)

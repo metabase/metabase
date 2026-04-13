@@ -95,6 +95,85 @@
             (is (= :tool (:role (second parts))))
             (is (= "result" (:content (second parts))))))))))
 
+(deftest message-history-error-state-test
+  (let [conv-id (str (random-uuid))]
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+      (doseq [{:keys [label error-val expected-content]}
+              [{:label            "map error extracts :message"
+                :error-val        {:message "Something broke" :type "Exception"}
+                :expected-content "Something broke"}
+               {:label            "string error uses the string directly"
+                :error-val        "plain string error"
+                :expected-content "plain string error"}
+               {:label            "nil error falls back to sentinel"
+                :expected-content "Tool execution failed"}]]
+        (testing label
+          (let [ts (str "1709567890." (random-uuid))]
+            (t2/insert! :model/MetabotMessage
+                        {:conversation_id conv-id
+                         :slack_msg_id    ts
+                         :role            "assistant"
+                         :profile_id      "test"
+                         :total_tokens    10
+                         :data            [(cond-> {:type       "tool-search"
+                                                    :toolCallId "err"
+                                                    :toolName   "search"
+                                                    :state      "error"
+                                                    :input      {}}
+                                             (some? error-val) (assoc :error error-val))]
+                         :data_version    2})
+            (let [parts (get (slackbot.persistence/message-history conv-id #{ts}) ts)]
+              (is (= 2 (count parts)))
+              (is (= :assistant (:role (first parts))))
+              (is (= :tool (:role (second parts))))
+              (is (= expected-content (:content (second parts)))))))))))
+
+(def ^:private input-available-tool-block
+  {:type       "tool-search"
+   :toolCallId "ia1"
+   :toolName   "search"
+   :state      "input-available"
+   :input      {}})
+
+(deftest message-history-input-available-test
+  (let [conv-id (str (random-uuid))]
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+
+      (testing "input-available blocks are filtered out entirely"
+        (let [ts "1709567890.ia001"]
+          (t2/insert! :model/MetabotMessage
+                      {:conversation_id conv-id
+                       :slack_msg_id    ts
+                       :role            "assistant"
+                       :profile_id      "test"
+                       :total_tokens    10
+                       :data            [input-available-tool-block]
+                       :data_version    2})
+          (is (empty? (slackbot.persistence/message-history conv-id #{ts})))))
+
+      (testing "input-available blocks are excluded but output-available blocks are kept"
+        (let [ts "1709567890.ia002"]
+          (t2/insert! :model/MetabotMessage
+                      {:conversation_id conv-id
+                       :slack_msg_id    ts
+                       :role            "assistant"
+                       :profile_id      "test"
+                       :total_tokens    10
+                       :data            [input-available-tool-block
+                                         {:type       "tool-search"
+                                          :toolCallId "mix2"
+                                          :toolName   "search"
+                                          :state      "output-available"
+                                          :input      {}
+                                          :output     "found it"}]
+                       :data_version    2})
+          (let [parts (get (slackbot.persistence/message-history conv-id #{ts}) ts)]
+            (is (= 2 (count parts)))
+            (is (= "mix2" (-> parts first :tool_calls first :id)))
+            (is (= "found it" (:content (second parts))))))))))
+
 (deftest soft-delete-response-test
   (testing "soft-delete-response! marks the assistant response as deleted"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
