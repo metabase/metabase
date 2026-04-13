@@ -54,7 +54,15 @@ describe("admin > custom visualizations", () => {
       cy.signInAsNormalUser();
       cy.visit("/admin");
 
-      // TODO
+      cy.findByTestId("admin-layout-sidebar")
+        .findByText("Custom visualizations")
+        .should("not.exist");
+
+      cy.visit("/admin/settings/custom-visualizations");
+      cy.get("main").should(
+        "include.text",
+        "Sorry, you don’t have permission to see that.",
+      );
     });
   });
 

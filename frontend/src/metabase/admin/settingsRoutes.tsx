@@ -1,4 +1,4 @@
-import { IndexRedirect, Route } from "react-router";
+import { IndexRedirect, IndexRoute, Route } from "react-router";
 
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
@@ -29,6 +29,7 @@ import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSett
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
+import { createAdminRouteGuard } from "./utils";
 
 export const getSettingsRoutes = () => (
   <Route
@@ -78,20 +79,17 @@ export const getSettingsRoutes = () => (
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route
       path="custom-visualizations"
-      component={CustomVisualizationsManagePage}
-    />
-    <Route
-      path="custom-visualizations/new"
-      component={CustomVisualizationsFormPage}
-    />
-    <Route
-      path="custom-visualizations/edit/:id"
-      component={CustomVisualizationsFormPage}
-    />
-    <Route
-      path="custom-visualizations/development"
-      component={CustomVisualizationsDevelopmentPage}
-    />
+      /* do not allow users with "Settings access" permissions to access custom viz pages */
+      component={createAdminRouteGuard("custom-visualizations")}
+    >
+      <IndexRoute component={CustomVisualizationsManagePage} />
+      <Route path="new" component={CustomVisualizationsFormPage} />
+      <Route path="edit/:id" component={CustomVisualizationsFormPage} />
+      <Route
+        path="development"
+        component={CustomVisualizationsDevelopmentPage}
+      />
+    </Route>
     <Route path="uploads" component={UploadSettingsPage} />
     <Route
       path="python-runner"

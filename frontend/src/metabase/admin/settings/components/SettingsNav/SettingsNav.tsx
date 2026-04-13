@@ -11,6 +11,7 @@ import { UpsellGem } from "metabase/common/components/upsells/components/UpsellG
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Divider, Flex } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 
@@ -28,6 +29,7 @@ export function SettingsNav() {
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
   const hasCustomViz = useHasTokenFeature("custom-viz");
+  const isAdmin = useSelector(getUserIsAdmin);
 
   return (
     <AdminNavWrapper>
@@ -63,30 +65,33 @@ export function SettingsNav() {
         label={t`Localization`}
         icon="globe"
       />
-      <SettingsNavItem
-        path={!hasCustomViz ? "custom-visualizations" : undefined}
-        folderPattern="custom-visualizations"
-        label={
-          <Flex gap="sm" align="center">
-            <span>{t`Custom visualizations`}</span>
-            {!hasCustomViz && <UpsellGem />}
-          </Flex>
-        }
-        icon="bar"
-      >
-        {hasCustomViz && [
-          <SettingsNavItem
-            key="manage"
-            path="custom-visualizations"
-            label={t`Manage visualizations`}
-          />,
-          <SettingsNavItem
-            key="dev"
-            path="custom-visualizations/development"
-            label={t`Development`}
-          />,
-        ]}
-      </SettingsNavItem>
+      {/* do not allow users with "Settings access" permissions to access custom viz pages */}
+      {isAdmin && (
+        <SettingsNavItem
+          path={!hasCustomViz ? "custom-visualizations" : undefined}
+          folderPattern="custom-visualizations"
+          label={
+            <Flex gap="sm" align="center">
+              <span>{t`Custom visualizations`}</span>
+              {!hasCustomViz && <UpsellGem />}
+            </Flex>
+          }
+          icon="bar"
+        >
+          {hasCustomViz && [
+            <SettingsNavItem
+              key="manage"
+              path="custom-visualizations"
+              label={t`Manage visualizations`}
+            />,
+            <SettingsNavItem
+              key="dev"
+              path="custom-visualizations/development"
+              label={t`Development`}
+            />,
+          ]}
+        </SettingsNavItem>
+      )}
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}
