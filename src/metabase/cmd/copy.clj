@@ -124,15 +124,23 @@
     :model/Comment
     :model/CommentReaction
     ;; 59+
-    :model/Measure]
+    :model/Measure
+    ;; 60+
+    :model/OAuthClient
+    :model/OAuthAuthorizationCode
+    :model/OAuthAccessToken
+    :model/OAuthRefreshToken
+    :model/Metabot
+    :model/MetabotConversation
+    :model/MetabotMessage
+    :model/MetabotPrompt]
    (when config/ee-available?
-     [:model/Sandbox
+     [:model/MetabotPermissions
+      :model/MetabotGroupLimit
+      :model/MetabotInstanceLimit
+      :model/Sandbox
       :model/Tenant
-      :model/ConnectionImpersonation
-      :model/Metabot
-      :model/MetabotConversation
-      :model/MetabotMessage
-      :model/MetabotPrompt])))
+      :model/ConnectionImpersonation])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`

@@ -6,8 +6,7 @@ import {
   getSidebarOpen,
 } from "metabase/documents/selectors";
 import { Collections } from "metabase/entities/collections";
-import { connect } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { getMetabotVisible } from "metabase/metabot/state";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
@@ -23,6 +22,7 @@ import {
 } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 
 import AppBar from "../../components/AppBar";
@@ -32,7 +32,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   collectionId: Collections.selectors.getInitialCollectionId(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
-  isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
+  isMetabotVisible: getMetabotVisible(state, "omnibot"),
   isDocumentSidebarOpen: getSidebarOpen(state),
   isCommentSidebarOpen: getCommentSidebarOpen(state),
   isLogoVisible: getIsLogoVisible(state),

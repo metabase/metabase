@@ -1,7 +1,7 @@
 import type { Active } from "@dnd-kit/core";
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import {
   getHoveredItems,
   getReferencedColumns,

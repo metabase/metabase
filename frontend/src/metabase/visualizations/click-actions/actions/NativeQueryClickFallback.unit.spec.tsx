@@ -1,7 +1,7 @@
-jest.doMock("metabase/lib/dom");
+jest.doMock("metabase/utils/dom");
 
 import { createMockMetadata } from "__support__/metadata";
-import * as dom from "metabase/lib/dom";
+import * as iframeUtils from "metabase/utils/iframe";
 import Question from "metabase-lib/v1/Question";
 import {
   createEmptyAdHocNativeCard,
@@ -21,7 +21,7 @@ describe("NativeQueryClickFallback", () => {
   let isWithinIframeSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    isWithinIframeSpy = jest.spyOn(dom, "isWithinIframe");
+    isWithinIframeSpy = jest.spyOn(iframeUtils, "isWithinIframe");
   });
 
   afterEach(() => {

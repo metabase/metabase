@@ -40,6 +40,7 @@ describe("issue 9357", () => {
       H.filterWidget().findAllByRole("listitem").first().as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
+        useMouseEvents: true,
       });
 
       // Ensure they're in the right order

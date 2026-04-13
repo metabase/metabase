@@ -2,7 +2,7 @@ import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
-import type { ColorGetter } from "metabase/visualizations/types";
+import type { ColorGetter } from "metabase/ui/colors/types";
 
 import Watermark from "../../watermark.svg?component";
 

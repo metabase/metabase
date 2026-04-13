@@ -7,8 +7,9 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Card, Dataset } from "metabase-types/api";
 import {
@@ -18,8 +19,6 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-
-import { QuestionDownloadWidget } from "./QuestionDownloadWidget";
 
 registerVisualizations();
 

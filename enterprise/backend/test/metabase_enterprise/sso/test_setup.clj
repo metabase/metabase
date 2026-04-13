@@ -1,52 +1,34 @@
 (ns metabase-enterprise.sso.test-setup
-  "Shared test helpers for SSO tests.
+  "Shared test helpers for enterprise SSO tests (SAML, JWT, OIDC).
 
-   These utilities are used across multiple SSO integration tests (SAML, JWT, Slack Connect, etc.)
-   to avoid circular dependencies between test namespaces."
+   For Slack Connect and generic SSO helpers, see [[metabase.sso.test-helpers]]."
   (:require
-   [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.request.core :as request]
+   [metabase.sso.test-helpers :as sso.test-helpers]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.random :as u.random]
-   [toucan2.core :as t2]))
+   [metabase.util.random :as u.random]))
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Generic Helpers --------------------------------------------------
+(def successful-login?
+  "Return true if the response indicates a successful user login."
+  sso.test-helpers/successful-login?)
 
-(defn successful-login?
-  "Return true if the response indicates a successful user login.
-   Checks for the presence of a session cookie in the response."
-  [resp]
-  (or
-   (string? (get-in resp [:cookies request/metabase-session-cookie :value]))
-   (some #(str/starts-with? % request/metabase-session-cookie) (get-in resp [:headers "Set-Cookie"]))))
-
-(defn call-with-login-attributes-cleared!
-  "Execute `thunk` and ensure login_attributes are cleared afterward.
-
-   If login_attributes remain after tests run, depending on the order that the tests run,
-   lots of tests will fail as the login_attributes data from this test is unexpected in
-   those other tests."
-  [thunk]
-  (try
-    (thunk)
-    (finally
-      (u/ignore-exceptions
-        (t2/update! :model/User {} {:login_attributes nil})
-        (t2/update! :model/User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil})))))
+(def call-with-login-attributes-cleared!
+  "Execute thunk and ensure login_attributes are cleared afterward."
+  sso.test-helpers/call-with-login-attributes-cleared!)
 
 (defn do-with-other-sso-types-disabled!
-  "Execute `thunk` with LDAP, SAML, and JWT SSO types disabled.
-   Useful when testing a specific SSO provider in isolation."
+  "Execute `thunk` with LDAP, SAML, JWT, and Slack Connect SSO types disabled.
+   Useful when testing a specific SSO provider in isolation.
+
+   This EE version disables all SSO types including EE-only SAML and JWT."
   [thunk]
   (mt/with-temporary-setting-values
-    [ldap-enabled false
-     saml-enabled false
-     jwt-enabled  false]
+    [ldap-enabled          false
+     saml-enabled          false
+     jwt-enabled           false
+     slack-connect-enabled false]
     (thunk)))
 
 ;;; -------------------------------------------------- SAML Setup --------------------------------------------------
@@ -97,10 +79,10 @@
   (let [current-features (token-check/*token-features*)]
     (mt/with-additional-premium-features #{:sso-jwt}
       (mt/with-temporary-setting-values
-        [jwt-enabled              true
+        [jwt-enabled               true
          jwt-identity-provider-uri default-jwt-idp-uri
-         jwt-shared-secret        default-jwt-secret
-         site-url                 (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         jwt-shared-secret         default-jwt-secret
+         site-url                  (sso.test-helpers/localhost-site-url)]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -120,26 +102,6 @@
                   (fn []
                     ~@body)))))))))))
 
-;;; -------------------------------------------------- Slack Connect Setup --------------------------------------------------
-
-(def ^:private default-slack-client-id "test-slack-client-id")
-(def ^:private default-slack-client-secret "test-slack-client-secret")
-
-(defn call-with-default-slack-config!
-  "Execute `f` with default Slack Connect configuration set up."
-  [f]
-  (let [current-features (token-check/*token-features*)]
-    (mt/with-additional-premium-features #{:sso-slack}
-      (mt/with-temporary-setting-values
-        [slack-connect-enabled                  true
-         slack-connect-client-id                default-slack-client-id
-         slack-connect-client-secret            default-slack-client-secret
-         slack-connect-authentication-mode      "sso"
-         slack-connect-user-provisioning-enabled true
-         site-url                               (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
-        (mt/with-premium-features current-features
-          (f))))))
-
 ;;; -------------------------------------------------- OIDC (Generic) Setup --------------------------------------------------
 
 (def ^:private default-oidc-provider
@@ -158,7 +120,7 @@
     (mt/with-additional-premium-features #{:sso-oidc}
       (mt/with-temporary-setting-values
         [oidc-providers [default-oidc-provider]
-         site-url       (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url       (sso.test-helpers/localhost-site-url)]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -173,20 +135,5 @@
             (call-with-login-attributes-cleared!
              (fn []
                (call-with-default-oidc-config!
-                (fn []
-                  ~@body))))))))))
-
-(defmacro with-slack-default-setup!
-  "Set up default Slack Connect configuration for tests.
-   Includes premium features, other SSO types disabled, login attributes cleanup, and default Slack config."
-  [& body]
-  `(mt/test-helpers-set-global-values!
-     (mt/with-premium-features #{:audit-app}
-       (do-with-other-sso-types-disabled!
-        (fn []
-          (mt/with-additional-premium-features #{:sso-slack}
-            (call-with-login-attributes-cleared!
-             (fn []
-               (call-with-default-slack-config!
                 (fn []
                   ~@body))))))))))

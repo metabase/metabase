@@ -2,17 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 
 import { useSdkDispatch, useSdkStore } from "embedding-sdk-bundle/store";
+import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
   NAVIGATE_TO_NEW_CARD,
   reset as dashboardReset,
-} from "metabase/dashboard/actions";
-import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { parseNumber } from "metabase/lib/number";
-import * as Urls from "metabase/lib/urls";
-import { isJWT } from "metabase/lib/utils";
-import { navigateBackToDashboard } from "metabase/query_builder/actions";
+} from "metabase/redux/dashboard";
+import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
+import { isJWT } from "metabase/utils/jwt";
+import { parseNumber } from "metabase/utils/number";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 import {
   type DashboardId,

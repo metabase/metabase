@@ -1,4 +1,4 @@
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
@@ -177,17 +177,18 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const { leftAxisModel, rightAxisModel } = getYAxesModels(
-    seriesModels,
-    dataset,
-    transformedDataset,
-    settings,
-    columnByDataKey,
-    true,
-    stackModels,
-    isCompactFormatting,
-    gridSize,
-  );
+  const { leftAxisModel, rightAxisModel, splitPanelYAxisModels } =
+    getYAxesModels(
+      seriesModels,
+      dataset,
+      transformedDataset,
+      settings,
+      columnByDataKey,
+      true,
+      stackModels,
+      isCompactFormatting,
+      gridSize,
+    );
 
   const trendLinesModel = getTrendLines(
     rawSeries,
@@ -211,6 +212,7 @@ export const getCartesianChartModel = (
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
+    splitPanelYAxisModels,
     trendLinesModel,
     seriesLabelsFormatters,
     stackedLabelsFormatters,

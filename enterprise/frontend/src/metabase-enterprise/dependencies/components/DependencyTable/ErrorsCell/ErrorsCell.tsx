@@ -1,4 +1,4 @@
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Ellipsified } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getDependencyErrorInfo, getDependencyErrors } from "../../../utils";

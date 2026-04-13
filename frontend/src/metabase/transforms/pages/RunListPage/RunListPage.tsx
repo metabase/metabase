@@ -13,10 +13,11 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { Center, Flex, Stack } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { TransformRun, TransformRunId } from "metabase-types/api";
 
 import { RunFilterBar } from "./RunFilterBar";
@@ -43,6 +44,7 @@ type RunListPageProps = {
 };
 
 export function RunListPage({ location }: RunListPageProps) {
+  usePageTitle(t`Runs`);
   const params = getParsedParams(location);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();

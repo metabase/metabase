@@ -12,8 +12,8 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
@@ -168,6 +168,29 @@
          (let [details (merge {:user username :password password}
                               (mt/dbdef->connection-details :clickhouse :db {:database-name database}))]
            (is (true? (driver/can-connect? :clickhouse details)))))))))
+
+(deftest ^:parallel clickhouse-additional-options-test
+  (testing "additional options not prefixed with `clickhouse_setting_` are moved to custom_http_params (#70777)"
+    (mt/test-driver :clickhouse
+      (let [details (assoc (:details (mt/db))
+                           :additional-options "clickhouse_setting_max_threads=5&max_block_size=50"
+                           :clickhouse-settings "max_result_rows=10,max_columns_to_read=20")
+            spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+        (is (true? (driver/can-connect? :clickhouse details)))
+        (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&max_block_size=50"
+               (:subname spec)))
+        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20"
+               (:custom_http_params spec)))
+        (is (= {:max_threads 5
+                :max_block_size 65409 ;; unknown key is ignored
+                :max_results_rows 10
+                :max_columns_to_read 20}
+               (->> ["SELECT getSetting('max_threads') as max_threads,
+                             getSetting('max_block_size') as max_block_size,
+                             getSetting('max_result_rows') as max_results_rows,
+                             getSetting('max_columns_to_read') as max_columns_to_read;"]
+                    (jdbc/query spec)
+                    first)))))))
 
 (deftest clickhouse-qp-extract-datetime-timezone
   (mt/test-driver :clickhouse
@@ -463,6 +486,18 @@
                        (lib/filter (lib/= val-col "abc"))
                        (qp/process-query)
                        (mt/rows))))))))))
+
+(deftest ^:parallel handle-db-names-with-spaces-test
+  (mt/test-driver :clickhouse
+    (are [dbname exp-name] (let [details (assoc (:details (mt/db)) :dbname dbname)
+                                 spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+                             (is (true? (driver/can-connect? :clickhouse details)))
+                             (is (= (format "//localhost:8123/%s" exp-name)
+                                    (:subname spec))))
+      "test_data default fake_db" "test_data"
+      "test_data" "test_data"
+      "" ""
+      nil "default")))
 
 ;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
 ;;                           at the moment to avoid potential log flooding. We should revisit this during further

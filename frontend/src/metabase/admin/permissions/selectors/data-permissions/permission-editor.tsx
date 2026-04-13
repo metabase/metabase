@@ -7,7 +7,6 @@ import { getPlan } from "metabase/common/utils/plan";
 import { getIsHosted } from "metabase/databases/selectors";
 import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
-import { getSpecialGroupType, isDefaultGroup } from "metabase/lib/groups";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -16,6 +15,7 @@ import {
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
+import { getSpecialGroupType, isDefaultGroup } from "metabase/utils/groups";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { Database, Group, GroupsPermissions } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -309,6 +309,7 @@ export const getDatabasesPermissionEditor = createSelector(
       entities = metadata
         .databasesList({ savedQuestions: false })
         .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as Database))
+        .filter((db) => !(db as Database).router_database_id)
         .map((database) => {
           const entityId = getDatabaseEntityId(database);
           return {

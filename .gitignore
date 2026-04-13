@@ -1,5 +1,6 @@
 *.class
 *.*.rej
+*.d.css
 *.iml
 *.jar
 *.log
@@ -95,7 +96,7 @@ coverage-summary.json
 junit.xml
 pom.xml
 pom.xml.asc
-profiles.clj
+/profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
@@ -144,8 +145,6 @@ modules/drivers/*/.lsp/*
 
 .github/static-viz-sources.yaml
 
-# airgap
-/resources/airgap/
 
 # swc
 .swc/
@@ -175,3 +174,5 @@ CLAUDE.local.md
 /resources/python-sources/sqlglot-*.dist-info/
 /resources/python-sources/.lock
 __pycache__/
+.mcp.json
+.claude/worktrees

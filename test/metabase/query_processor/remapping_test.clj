@@ -6,11 +6,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -398,7 +398,7 @@
                     {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                      :breakout    [[:field
                                     (mt/id :orders :product_id)
-                                    {:base-type    :type/Integer}]]
+                                    {:base-type :type/Integer}]]
                      :limit       3})]
         (is (= [["Aerodynamic Bronze Hat"     144    5753.63]
                 ["Aerodynamic Concrete Bench" 116   10035.81]
@@ -415,7 +415,7 @@
                            {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                             :breakout    [[:field
                                            (mt/id :orders :product_id)
-                                           {:base-type    :type/Integer}]]
+                                           {:base-type :type/Integer}]]
                             :limit       3})
                          {:pivot_rows [0]
                           :pivot_cols []})]

@@ -15,8 +15,6 @@ import { OnboardingIllustration } from "metabase/common/components/OnboardingIll
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import {
   getDocsUrl,
@@ -40,6 +38,8 @@ import {
   Title,
   rem,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 import S from "./Onboarding.module.css";
 import {
@@ -523,7 +523,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="subscription-slack"
-                          to="/admin/settings/notifications"
+                          to="/admin/settings/slack"
                         >{t`Slack`}</Link>
                       )}.`}
                     </Text>
@@ -587,7 +587,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="alert-slack"
-                          to="/admin/settings/notifications"
+                          to="/admin/settings/slack"
                         >{t`Slack`}</Link>
                       )}.`}
                     </Text>

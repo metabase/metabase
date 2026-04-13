@@ -3,14 +3,14 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
+import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { useSelector, useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
-import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { useSelector, useStore } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardCard, Dataset } from "metabase-types/api";
@@ -57,7 +57,14 @@ export const PublicOrEmbeddedDashCardMenu = ({
   });
 
   return (
-    <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
+    <Menu
+      closeOnEscape
+      offset={4}
+      onClose={close}
+      opened={isOpen}
+      position="bottom-end"
+      trapFocus
+    >
       <Menu.Target>
         <ActionIcon
           size="xs"

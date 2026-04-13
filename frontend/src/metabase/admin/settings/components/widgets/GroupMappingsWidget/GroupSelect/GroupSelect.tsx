@@ -3,19 +3,28 @@ import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
-import { PopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger";
 import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
+import { Box, Icon, Popover } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import {
   canEditMembership,
-  getGroupColor,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo } from "metabase-types/api";
+
+function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
+  if (isAdminGroup(group)) {
+    return color("filter");
+  } else if (isDefaultGroup(group)) {
+    return color("text-secondary");
+  } else {
+    return color("brand");
+  }
+}
 
 type GroupSelectProps = {
   groups: GroupInfo[];
@@ -68,9 +77,12 @@ export const GroupSelect = ({
 
   if (groups.length === 0) {
     return (
-      <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className={CS.p1}>{emptyListMessage}</span>
-      </PopoverWithTrigger>
+      <Popover withinPortal={false} position="bottom-start">
+        <Popover.Target>{triggerElement}</Popover.Target>
+        <Popover.Dropdown style={{ boxSizing: "border-box" }}>
+          <Box p="sm">{emptyListMessage}</Box>
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 

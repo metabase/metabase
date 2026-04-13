@@ -1,6 +1,5 @@
 import type {
   DimensionMetadata,
-  FilterClause,
   MeasureDisplayInfo,
   MetricDefinition,
   MetricDisplayInfo,
@@ -12,7 +11,7 @@ import type { TemporalUnit } from "metabase-types/api";
 import { UNBINNED } from "../constants";
 
 import type { DimensionFilterValue } from "./dimension-filters";
-import { applyDimensionFilter } from "./dimension-filters";
+import { buildDimensionFilterClause } from "./dimension-filters";
 import { findBinningStrategy, findTemporalBucket } from "./dimension-lookup";
 
 // ── Projection application ──
@@ -214,11 +213,11 @@ export function buildExecutableDefinition(
         projections[0],
       );
       if (projectionDimension) {
-        definition = applyDimensionFilter(
-          definition,
+        const filterClause = buildDimensionFilterClause(
           projectionDimension,
           dimensionFilter,
         );
+        definition = LibMetric.filter(definition, filterClause);
       }
     }
   }
@@ -232,7 +231,6 @@ export type ProjectionInfo = {
   projection: ProjectionClause | undefined;
   projectionDimension: DimensionMetadata | undefined;
   filterDimension: DimensionMetadata | undefined;
-  filter: FilterClause | undefined;
   isTemporalBucketable: boolean;
   isBinnable: boolean;
   hasBinning: boolean;
@@ -259,7 +257,6 @@ export function getProjectionInfo(
     : false;
 
   let filterDimension: DimensionMetadata | undefined;
-  let filterClause: FilterClause | undefined;
 
   if (projectionDimension) {
     const dimensionInfo = LibMetric.displayInfo(
@@ -271,30 +268,12 @@ export function getProjectionInfo(
       const info = LibMetric.displayInfo(definition, candidate);
       return info.name === dimensionInfo.name;
     });
-
-    if (filterDimension) {
-      const existingFilters = LibMetric.filters(definition);
-      for (const existingFilter of existingFilters) {
-        const parts = LibMetric.filterParts(definition, existingFilter);
-        if (parts) {
-          const filterDimensionInfo = LibMetric.displayInfo(
-            definition,
-            parts.dimension,
-          );
-          if (filterDimensionInfo.name === dimensionInfo.name) {
-            filterClause = existingFilter;
-            break;
-          }
-        }
-      }
-    }
   }
 
   return {
     projection: firstProjection,
     projectionDimension: projectionDimension,
     filterDimension,
-    filter: filterClause,
     isTemporalBucketable,
     isBinnable,
     hasBinning,

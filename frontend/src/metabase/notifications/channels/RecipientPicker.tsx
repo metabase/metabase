@@ -5,12 +5,12 @@ import { TokenField } from "metabase/common/components/TokenField";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { isEmail } from "metabase/lib/email";
+import { Text } from "metabase/ui";
+import { isEmail } from "metabase/utils/email";
 import {
   type RecipientPickerValue,
   recipientIsValid,
-} from "metabase/lib/pulse";
-import { Text } from "metabase/ui";
+} from "metabase/utils/pulse";
 import type { User } from "metabase-types/api";
 
 import S from "./RecipientPicker.module.css";

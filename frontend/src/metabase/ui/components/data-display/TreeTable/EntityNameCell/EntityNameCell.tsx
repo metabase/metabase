@@ -1,10 +1,10 @@
 import { type ComponentProps, memo } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Text } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import { Ellipsified } from "metabase/ui/components/data-display/Ellipsified";
 
 interface EntityNameCellProps {
   icon?: IconName;

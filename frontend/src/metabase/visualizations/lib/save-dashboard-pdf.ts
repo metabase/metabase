@@ -3,7 +3,8 @@ import { t } from "ttag";
 
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { isStorybookActive } from "metabase/env";
-import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
+import { getCspNonce } from "metabase/utils/csp";
+import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -233,15 +234,10 @@ export const saveDashboardPdf = async ({
     width: contentWidth,
     useCORS: true,
     backgroundColor,
-    scale: window.devicePixelRatio || 1,
-    /**
-     * html2canvas-pro creates inline <style> elements that can be blocked by
-     * CSP (observed from Firefox). We created a temporary patch to support
-     * nonce until the library officially implements it.
-     *
-     * @see https://github.com/metabase/metabase/issues/66234
-     */
-    nonce: window.MetabaseNonce,
+    scale: Math.min(window.devicePixelRatio || 1, 2),
+    // We have patched html2canvas so that we can use our Nonce token. Without the patch, it complains
+    // that the token is not long enough
+    cspNonce: getCspNonce(),
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
@@ -372,8 +368,14 @@ export const saveDashboardPdf = async ({
       }
     }
 
+    pageCanvas.width = 0;
+    pageCanvas.height = 0;
+
     prevBreak = pageBreak;
   });
+
+  image.width = 0;
+  image.height = 0;
 
   pdf.save(fileName);
 };

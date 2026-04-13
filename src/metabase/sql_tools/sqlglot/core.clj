@@ -1,7 +1,7 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
    [clojure.string :as str]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
@@ -26,6 +26,7 @@
     ;; Fallback: pass through if already in correct format or unknown type
     error))
 
+;; TODO(rileythomp, 2026-03): Should this be a driver multimethod?
 (defn driver->dialect
   "Map a Metabase driver keyword to a SQLGlot dialect string.
    Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
@@ -41,6 +42,8 @@
     :sqlserver           "tsql"
     :sparksql            "spark"
     :presto-jdbc         "presto"
+    :starburst           "trino"
+    :clickhouse          "clickhouse"
     :vertica             nil
     :h2                  nil
     ;; Default: try using the driver name as dialect
@@ -54,7 +57,7 @@
     (let [db-tables (lib.metadata/tables query)
           db-transforms (lib.metadata/transforms query)
           sql (lib/raw-native-query query)
-          default-schema (driver.sql/default-schema driver)
+          default-schema (sql.normalize/default-schema driver)
           query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
       (into #{}
             (keep (fn [[_catalog table-schema table]]
@@ -90,7 +93,7 @@
                  (assoc m k
                         (cond
                           (and (normalizable-keys k) (string? v))
-                          (driver.sql/normalize-name driver v)
+                          (sql.normalize/normalize-name driver v)
 
                           (map? v)
                           (normalize-field driver v)
@@ -176,3 +179,7 @@
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
     (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
+
+(defmethod sql-tools/transpile-sql-impl :sqlglot
+  [_parser sql from-dialect to-dialect]
+  (sql-parsing/transpile-sql sql from-dialect to-dialect))

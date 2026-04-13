@@ -562,6 +562,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         H.moveDnDKitListElement("draggable-item-", {
           startIndex: 0,
           dropIndex: 1,
+          useMouseEvents: true,
           onBeforeDragEnd: () => {
             cy.get(".drag-overlay").within(() => {
               cy.findByTestId("draggable-item-ID").should(

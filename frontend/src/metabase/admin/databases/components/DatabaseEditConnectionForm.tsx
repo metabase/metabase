@@ -15,8 +15,8 @@ import type {
   DatabaseFormConfig,
   FormLocation,
 } from "metabase/databases/types";
-import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type {
   DatabaseData,
   DatabaseEditErrorType,
@@ -87,7 +87,11 @@ export const DatabaseEditConnectionForm = withRouter(
 
     return (
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
-        <LoadingAndErrorWrapper loading={!database} error={initializeError}>
+        <LoadingAndErrorWrapper
+          loading={!database}
+          error={initializeError}
+          noWrapper
+        >
           {isDbModifiable({
             id: database?.id,
             is_attached_dwh: isAttachedDWH,

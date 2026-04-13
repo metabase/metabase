@@ -39,7 +39,7 @@
 (defn jwt->session
   "Given a JWT, return a valid session token for the associated user (creating the user if necessary)."
   [jwt request]
-  (-> (session-data jwt request) :session :key))
+  (-> (session-data jwt (assoc request :token-exchange? true)) :session :key))
 
 (defn- throw-react-sdk-embedding-disabled
   []

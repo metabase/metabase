@@ -9,10 +9,10 @@ import { getCurrentDashcards, getTabs } from "metabase/dashboard/selectors";
 import {
   findDashCardForInlineParameter,
   isHeadingDashCard,
-  isQuestionDashCard,
 } from "metabase/dashboard/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Flex, Group, Icon, type IconName, Select, Text } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import visualizations from "metabase/visualizations";
 import type { BaseDashboardCard, ParameterId } from "metabase-types/api";
 

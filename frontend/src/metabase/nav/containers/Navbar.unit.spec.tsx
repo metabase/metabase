@@ -16,12 +16,12 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as dom from "metabase/lib/dom";
 import {
   CLOSE_NAVBAR,
   OPEN_NAVBAR,
   isNavbarOpenForPathname,
 } from "metabase/redux/app";
+import * as iframeUtils from "metabase/utils/iframe";
 import type { User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -140,6 +140,19 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarClosed();
   });
 
+  it("should not close navbar when preserveNavbarState is set", async () => {
+    const store = await setup({ isOpen: true });
+    await expectNavbarOpen();
+    store.dispatch({
+      type: "@@router/LOCATION_CHANGE",
+      payload: {
+        pathname: "/question/1",
+        state: { preserveNavbarState: true },
+      },
+    });
+    await expectNavbarOpen();
+  });
+
   it("should preserve state when navigating collections", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
@@ -164,7 +177,7 @@ describe("nav > containers > Navbar > Core App", () => {
     let isWithinIframeSpy: jest.SpyInstance;
 
     beforeAll(() => {
-      isWithinIframeSpy = jest.spyOn(dom, "isWithinIframe");
+      isWithinIframeSpy = jest.spyOn(iframeUtils, "isWithinIframe");
       isWithinIframeSpy.mockReturnValue(true);
     });
 

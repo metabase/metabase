@@ -3,8 +3,8 @@ import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Box, Card } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,

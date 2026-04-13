@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
 import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
 import { setOpenModal } from "metabase/redux/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import { DATA_STUDIO_UPGRADE_URL, UPGRADE_URL } from "../../constants";
 import { useUpsellLink } from "../use-upsell-link";
@@ -32,7 +32,8 @@ export function useUpgradeAction({
   }, [dispatch]);
 
   const shouldUseModal =
-    isHosted && (url === UPGRADE_URL || url === DATA_STUDIO_UPGRADE_URL);
+    isHosted &&
+    (url.startsWith(UPGRADE_URL) || url === DATA_STUDIO_UPGRADE_URL);
 
   if (shouldUseModal) {
     return {

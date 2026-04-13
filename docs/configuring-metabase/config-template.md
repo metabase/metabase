@@ -170,6 +170,7 @@ config:
     jwt-attribute-tenant: '@tenant'
     jwt-attribute-tenant-attributes: '@tenant.attributes'
     jwt-enabled: false
+    jwt-enabled-and-configured: false
     jwt-group-mappings: {}
     jwt-group-sync: false
     jwt-identity-provider-uri: null
@@ -203,6 +204,9 @@ config:
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+    mcp-apps-cors-custom-origins: ''
+    mcp-apps-cors-enabled-clients: []
+    metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
@@ -277,7 +281,7 @@ config:
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
     slack-connect-attribute-team-id: https://slack.com/team_id
-    slack-connect-authentication-mode: sso
+    slack-connect-authentication-mode: link-only
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false

@@ -19,7 +19,7 @@ env:
 
 jobs:
   destroy_pr:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: PR Review ENV Destroy
     permissions:
       id-token: write
@@ -28,7 +28,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
       - name: Tailscale
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@4e4c49acaa9818630ce0bd7a564372c17e33fb4d # v2
         with:
           oauth-client-id: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_SECRET }}
@@ -39,12 +39,14 @@ jobs:
         id: create-oidc-token
         shell: bash
         run: |
-          export OIDC_URL_WITH_AUDIENCE="$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${{ secrets.PR_ENV_K8S_AUDIENCE }}"
+          export OIDC_URL_WITH_AUDIENCE="$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${PR_ENV_K8S_AUDIENCE}"
           IDTOKEN=$(curl -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" -H "Accept: application/json; api-version=2.0" "$OIDC_URL_WITH_AUDIENCE" | jq -r .value)
           echo "::add-mask::${IDTOKEN}"
           echo "idToken=${IDTOKEN}" >>$GITHUB_OUTPUT
+        env:
+          PR_ENV_K8S_AUDIENCE: ${{ secrets.PR_ENV_K8S_AUDIENCE }}
       - name: Setup Kube Context
-        uses: azure/k8s-set-context@v2
+        uses: azure/k8s-set-context@0b53301dcc7ddd3f6d35f97fb67228ac4e5ab2fd # v2
         with:
           method: kubeconfig
           kubeconfig: |
@@ -73,7 +75,7 @@ jobs:
           kubectl delete ns hosting-pr${{ env.PR_NUMBER }}
       - name: Setup Helm
         if: ${{ inputs.self_hosting }}
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
           version: 'latest'
       - name: Destroy PR Review ENV (self-hosting)
@@ -87,9 +89,15 @@ jobs:
           sudo apt-get install -y postgresql-client
       - name: Drop app database if exists
         run: |
-          PGPASSWORD='${{ secrets.PR_ENV_DB_PASSWORD }}' \
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" \
           psql \
-          -h ${{ secrets.PR_ENV_DB_HOST }} \
-          -U ${{ secrets.PR_ENV_DB_USER }} \
-          -d ${{ secrets.PR_ENV_DB_NAME }} \
+          -h "${PR_ENV_DB_HOST}" \
+          -U "${PR_ENV_DB_USER}" \
+          -d "${PR_ENV_DB_NAME}" \
           -c "DROP DATABASE IF EXISTS hosting_pr${{ env.PR_NUMBER }};"
+
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}

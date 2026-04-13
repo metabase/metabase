@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -14,6 +15,7 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
    [metabase.task-history.core :as task-history]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -269,15 +271,19 @@
                                     {:run_type    run-type
                                      :entity_type :database
                                      :entity_id   (u/the-id database)})
-        ((with-duplicate-ops-prevented
-          operation database
-          (with-sync-events
-           operation database
-           (with-start-and-finish-logging
-            message
-            (with-db-logging-disabled
-             (sync-in-context database
-                              (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))))
+        (let [sync-fn (with-duplicate-ops-prevented
+                       operation database
+                       (with-sync-events
+                        operation database
+                        (with-start-and-finish-logging
+                         message
+                         (with-db-logging-disabled
+                          (sync-in-context database
+                                           (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
+              result (sync-fn)]
+          (when (instance? Throwable result)
+            (prometheus/inc! :metabase-sync/failures {:driver (name (:engine database))}))
+          result)))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -548,20 +554,21 @@
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
-        results    (do-with-start-and-finish-debug-logging
-                    (format "step ''%s'' for %s"
-                            step-name
-                            (name-for-logging database))
-                    (fn [& args]
-                      (with-returning-throwable (format "Error running step ''%s'' for %s" step-name (name-for-logging database))
-                        (task-history/with-task-history
-                          {:task            step-name
-                           :db_id           (u/the-id database)
-                           :on-success-info (fn [update-map result]
-                                              (if (instance? Throwable result)
-                                                (throw result)
-                                                (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
-                          (apply sync-fn database args)))))
+        results    (tracing/with-span :sync (str "sync.step." step-name) {:db/id (u/the-id database) :sync/step step-name}
+                     (do-with-start-and-finish-debug-logging
+                      (format "step ''%s'' for %s"
+                              step-name
+                              (name-for-logging database))
+                      (fn [& args]
+                        (with-returning-throwable (format "Error running step ''%s'' for %s" step-name (name-for-logging database))
+                          (task-history/with-task-history
+                            {:task            step-name
+                             :db_id           (u/the-id database)
+                             :on-success-info (fn [update-map result]
+                                                (if (instance? Throwable result)
+                                                  (throw result)
+                                                  (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
+                            (apply sync-fn database args))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time

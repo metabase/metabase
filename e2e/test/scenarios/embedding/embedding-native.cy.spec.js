@@ -1,3 +1,4 @@
+import { clone } from "metabase/utils/clone";
 const { H } = cy;
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -16,7 +17,7 @@ describe("scenarios > embedding > native questions", () => {
 
   context("UI", () => {
     function createAndVisitQuestion({ requiredTagName, defaultValue } = {}) {
-      const details = structuredClone(questionDetails);
+      const details = clone(questionDetails);
 
       if (requiredTagName) {
         details.native["template-tags"][requiredTagName].default = defaultValue;
@@ -134,7 +135,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByPlaceholderText("Enter an ID").type("926");
       cy.button("Add filter").click();
 
-      cy.findAllByRole("row").should("have.length", 1);
+      H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("December 29, 2024, 4:54 AM");
@@ -245,7 +246,7 @@ describe("scenarios > embedding > native questions", () => {
           },
         });
 
-        cy.findAllByRole("row").should("have.length", 1);
+        H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
         cy.findByText("92");
 
         H.filterWidget().should("not.exist");
@@ -325,7 +326,7 @@ describe("scenarios > embedding > native questions", () => {
 
         H.visitEmbeddedPage(payload);
 
-        cy.findAllByRole("row").should("have.length", 1);
+        H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
         cy.findByText("66.8");
 
         H.filterWidget().should("not.exist");

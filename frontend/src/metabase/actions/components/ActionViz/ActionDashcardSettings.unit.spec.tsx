@@ -26,7 +26,7 @@ import {
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
-import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
+import { ActionDashcardSettings } from "./ActionDashcardSettings";
 
 const dashboardParameter = createMockParameter({
   id: "dash-param-id",
@@ -81,9 +81,7 @@ const dashboard = createMockDashboard({
 const DEFAULT_VALUE = "default value";
 
 const setup = (
-  options?: Partial<
-    React.ComponentProps<typeof ConnectedActionDashcardSettings>
-  >,
+  options?: Partial<React.ComponentProps<typeof ActionDashcardSettings>>,
 ) => {
   const searchItems = models.map((model) =>
     createMockCollectionItem({ ...model, model: "dataset" }),
@@ -95,7 +93,7 @@ const setup = (
   setupActionsEndpoints([...actions1, ...actions2, ...implicitActions]);
 
   renderWithProviders(
-    <ConnectedActionDashcardSettings
+    <ActionDashcardSettings
       onClose={closeSpy}
       dashboard={dashboard}
       dashcard={actionDashcard}

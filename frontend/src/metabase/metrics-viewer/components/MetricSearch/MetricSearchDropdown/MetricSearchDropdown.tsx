@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
@@ -10,23 +10,19 @@ import {
 } from "../../../hooks/use-metric-measure-search";
 import type { SelectedMetric } from "../../../types/viewer-state";
 import { MetricSearchResults } from "../MetricSearchResults";
-import { filterSearchResults } from "../utils";
+import { type ExcludeMetric, filterSearchResults } from "../utils";
 
 import S from "./MetricSearchDropdown.module.css";
 
-type ExcludeMetric = {
-  id: number;
-  sourceType: "metric" | "measure";
-};
-
 type MetricSearchDropdownProps = {
-  selectedMetricIds: Set<number>;
-  selectedMeasureIds: Set<number>;
+  selectedMetricIds?: Set<number>;
+  selectedMeasureIds?: Set<number>;
   onSelect: (metric: SelectedMetric) => void;
   onClose?: () => void;
   excludeMetric?: ExcludeMetric;
   showSearchInput?: boolean;
   externalSearchText?: string;
+  onHasSelectionChange?: (hasSelection: boolean) => void;
 };
 
 export function MetricSearchDropdown({
@@ -37,6 +33,7 @@ export function MetricSearchDropdown({
   excludeMetric,
   showSearchInput = false,
   externalSearchText,
+  onHasSelectionChange,
 }: MetricSearchDropdownProps) {
   const [internalSearchText, setInternalSearchText] = useState("");
   const searchText = showSearchInput
@@ -88,6 +85,10 @@ export function MetricSearchDropdown({
     list: filteredResults,
     onEnter: handleEnter,
   });
+
+  useEffect(() => {
+    onHasSelectionChange?.(cursorIndex != null);
+  }, [cursorIndex, onHasSelectionChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

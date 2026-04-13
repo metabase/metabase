@@ -29,7 +29,7 @@
                                   :target_entity_id   target-id
                                   :user_id            user-id
                                   :status             :pending
-                                  :is_active          false
+                                  :is_active          nil
                                   :progress           0.0}))
 
 (defn start-run!

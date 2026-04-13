@@ -20,6 +20,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -381,7 +382,7 @@
    (fn [_]
      (default-timestamped
       {:name   (str "Test Workspace " (u/generate-nano-id))
-       :schema (str "mb__isolation_" (u/generate-nano-id))}))
+       :schema (str @#'driver.u/workspace-isolated-prefix (u/generate-nano-id))}))
 
    :model/WorkspaceTransform
    (fn [_]
@@ -524,9 +525,12 @@
 
 (defn- upsert-raw-setting!
   [original-value setting-k value]
-  (if original-value
-    (t2/update! :model/Setting setting-k {:value value})
-    (t2/insert! :model/Setting :key setting-k :value value))
+  (if (some? value)
+    (if original-value
+      (t2/update! :model/Setting setting-k {:value value})
+      (t2/insert! :model/Setting :key setting-k :value value))
+    (when original-value
+      (t2/delete! :model/Setting :key setting-k)))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
@@ -637,8 +641,8 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (let [value (setting/read-setting setting-k)]
-          (do-with-temporary-setting-value! setting-k value thunk :skip-init? true))))
+        (let [value (setting/get setting-k)]
+          (do-with-temporary-setting-value! setting-k value thunk))))
     thunk
     settings)))
 

@@ -21,7 +21,7 @@ on:
       runner:
         required: false
         type: string
-        default: ubuntu-22.04
+        default: ${{ vars.DEFAULT_RUNNER_KEY }}
       total_chunks: # number of chunks
         required: false
         type: number
@@ -166,8 +166,7 @@ jobs:
           # Related to our custom upload to S3
           output-name: e2e-${{ inputs.name }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           # Related to Trunk uploader
           variant: e2e-tests

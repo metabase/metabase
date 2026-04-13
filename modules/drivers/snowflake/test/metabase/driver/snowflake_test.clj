@@ -25,8 +25,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -440,6 +441,39 @@
                #_{:clj-kondo/ignore [:deprecated-var]}
                (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
 
+(deftest ^:sequential describe-table-fields-uuid-column-test
+  (mt/test-driver :snowflake
+    (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
+      (let [db-name    (#'driver.snowflake/db-name (mt/db))
+            table-name (str "uuid_test_" (u.random/random-name))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake
+         (mt/db)
+         nil
+         (fn [^java.sql.Connection conn]
+           (try
+             (doseq [stmt [(format "CREATE OR REPLACE TABLE \"%s\".\"PUBLIC\".\"%s\" (\"uuid_col\" UUID, \"name\" VARCHAR, \"description\" VARCHAR);"
+                                   db-name table-name)
+                           (format "INSERT INTO \"%s\".\"PUBLIC\".\"%s\" VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'test', 'a row');"
+                                   db-name table-name)]]
+               (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))
+             (let [table  {:name table-name :schema "PUBLIC"}
+                   fields (sql-jdbc.sync/describe-table-fields :snowflake conn table db-name)]
+               (testing "All columns including UUID should be synced"
+                 (is (= #{"uuid_col" "name" "description"}
+                        (into #{} (map :name) fields))))
+               (testing "UUID column should have a usable base type"
+                 (let [uuid-field (first (filter #(= "uuid_col" (:name %)) fields))]
+                   (is (some? uuid-field)
+                       "UUID column should exist as a synced field")
+                   (when uuid-field
+                     (is (isa? (:base-type uuid-field) :type/*)
+                         "UUID column should have a valid base type")))))
+             (finally
+               (jdbc/execute! {:connection conn}
+                              [(format "DROP TABLE IF EXISTS \"%s\".\"PUBLIC\".\"%s\";" db-name table-name)]
+                              {:transaction? false})))))))))
+
 (deftest ^:sequential describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
@@ -518,7 +552,7 @@
                                                              (original-query db sql-params (or opts {})))))]
             (is (can-connect? (:details (mt/db))))))
         (is (thrown?
-             net.snowflake.client.jdbc.SnowflakeSQLException
+             net.snowflake.client.api.exception.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
         (is (can-connect? (-> (:details (mt/db))
@@ -1022,25 +1056,24 @@
       nil "" "asdf" "snowflake:jdbc://x")))
 
 (deftest ^:parallel connection-str->parameters-test-2
-  (testing "Returns `\"ACCOUNT\"` for valid strings of no parameters"
-    (are [conn-str] (= {"ACCOUNT" "x"} (driver.snowflake/connection-str->parameters conn-str))
-      "jdbc:snowflake://x.snowflakecomputing.com"
-      "jdbc:snowflake://x.snowflakecomputing.com/"
-      "jdbc:snowflake://x.snowflakecomputing.com/?")))
+  (testing "Returns nil for valid strings of no parameters"
+    (are [conn-str exp] (= exp (driver.snowflake/connection-str->parameters conn-str))
+      "jdbc:snowflake://x.snowflakecomputing.com" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?x" nil)))
 
 (deftest ^:parallel connection-str->parameters-test-3
   (testing "Returns decoded parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role}
+      (is (= {"ROLE" role}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role))))))))
 
 (deftest ^:parallel connection-str->parameters-test-4
   (testing "Returns multiple url parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role
+      (is (= {"ROLE" role
               "FOO" "bar"}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role)
@@ -1475,3 +1508,25 @@
             table (:table-row (first rows))]
         (is (= "users" (:name table)) "Should be plain name, not 'transform_test_users'")
         (is (= "PUBLIC" (:schema table)))))))
+
+(deftest hour-bucketing-time-field-in-source-query-test
+  (testing "Hour group-by on time fields from a source query should work (#68065)"
+    (mt/test-driver :snowflake
+      (mt/dataset time-test-data
+        (let [mp         (mt/metadata-provider)
+              users      (lib.metadata/table mp (mt/id :users))
+              time-field (lib.metadata/field mp (mt/id :users :last_login_time))
+              ;; Build a two-stage query: the first stage selects the time field,
+              ;; the second stage groups it by :hour. In the second stage the field is
+              ;; referenced by name (string), not by integer ID — this is where the bug
+              ;; manifests: field-metadata is nil and database-type info is lost, causing
+              ;; Snowflake to incorrectly cast to TIMESTAMPNTZ.
+              query      (-> (lib/query mp users)
+                             (lib/with-fields [time-field])
+                             lib/append-stage
+                             (notebook-helpers/add-breakout
+                              "Summaries" "Last Login Time"
+                              {:col-fn #(lib/with-temporal-bucket % :hour)}))]
+          (mt/with-native-query-testing-context query
+            (is (some? (mt/rows (qp/process-query query)))
+                "Hour bucketing on a time field from a source query should not error")))))))

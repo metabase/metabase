@@ -7,11 +7,11 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.setup :as qp.setup]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn])
@@ -753,18 +753,12 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
                (qp/process-query (mt/mbql-query venues {:limit 1})))))
-        (letfn [(process-query []
-                  (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                           :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                                             :perms/create-queries {(mt/id :venues) :query-builder}}})))]
-          (testing "Make sure the middleware is actually preventing something by disabling it"
-            (with-redefs [qp.perms/remove-permissions-key identity]
-              (is (=? {:status :completed}
-                      (process-query)))))
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"You do not have permissions to run this query"
-               (process-query))))))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
+                                      :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}}))))))))
 
 (deftest e2e-ignore-user-supplied-sandboxed-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"

@@ -1,7 +1,8 @@
 import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
+import { useMetabotName } from "metabase/metabot/hooks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   Avatar,
@@ -12,6 +13,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import S from "./MenuItems.module.css";
 
@@ -112,21 +114,24 @@ export const CreateNewQuestionFooter = ({
   </UnstyledButton>
 );
 
-export const MetabotFooter = ({ isSelected, onClick }: ExtraItemProps) => (
-  <UnstyledButton
-    className={S.menuItemWithBorder}
-    onClick={onClick}
-    role="option"
-    aria-selected={isSelected}
-  >
-    <Group gap="sm" wrap="nowrap" align="center">
-      <Icon name="metabot" size={16} c="inherit" />
-      <Stack gap={2}>
-        <Text size="md" lh="lg" c="inherit">{t`Ask Metabot`}</Text>
-        <Text size="sm" c="text-tertiary" lh="md">
-          {t`It wants to help!`}
-        </Text>
-      </Stack>
-    </Group>
-  </UnstyledButton>
-);
+export const MetabotFooter = ({ isSelected, onClick }: ExtraItemProps) => {
+  const metabotName = useMetabotName();
+  return (
+    <UnstyledButton
+      className={S.menuItemWithBorder}
+      onClick={onClick}
+      role="option"
+      aria-selected={isSelected}
+    >
+      <Group gap="sm" wrap="nowrap" align="center">
+        <MetabotIcon size={16} c="inherit" />
+        <Stack gap={2}>
+          <Text size="md" lh="lg" c="inherit">{t`Ask ${metabotName}`}</Text>
+          <Text size="sm" c="text-tertiary" lh="md">
+            {t`It wants to help!`}
+          </Text>
+        </Stack>
+      </Group>
+    </UnstyledButton>
+  );
+};

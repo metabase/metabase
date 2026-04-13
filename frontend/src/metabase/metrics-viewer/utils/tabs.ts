@@ -1,23 +1,28 @@
-import { getObjectEntries } from "metabase/lib/objects";
+import { t } from "ttag";
+
+import type { DimensionDescriptor } from "metabase/metrics/common/utils/dimension-descriptors";
+import { getDimensionDescriptors } from "metabase/metrics/common/utils/dimension-descriptors";
+import { GEO_SUBTYPE_PRIORITY } from "metabase/metrics/common/utils/dimension-types";
 import type { IconName } from "metabase/ui";
-import type {
-  DimensionGroup,
-  DimensionMetadata,
-  MetricDefinition,
-} from "metabase-lib/metric";
+import { getObjectEntries } from "metabase/utils/objects";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import { MAX_AUTO_TABS } from "../constants";
 import type {
   MetricSourceId,
+  MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   MetricsViewerTabType,
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
 
-import { GEO_SUBTYPE_PRIORITY } from "./geo-dimensions";
-import type { TabTypeDefinition } from "./tab-config";
-import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
+import type { MetricSlot } from "./metric-slots";
+import {
+  TAB_TYPE_REGISTRY,
+  type TabTypeDefinition,
+  getTabConfig,
+} from "./tab-config";
 
 // ── Dimension classification ──
 
@@ -51,86 +56,40 @@ export function getDimensionIcon(dimension: DimensionMetadata): IconName {
   return "unknown";
 }
 
-function getDimensionType(
-  dimension: DimensionMetadata,
-): MetricsViewerTabType | null {
-  for (const config of TAB_TYPE_REGISTRY) {
-    if (config.dimensionPredicate(dimension)) {
-      return config.type;
-    }
-  }
-
-  return null;
-}
-
-export type ClassifiedDimension = {
-  dimension: DimensionMetadata;
-  id: string;
-  name: string;
-  displayName: string;
+export type ViewerDimensionDescriptor = DimensionDescriptor & {
   icon: IconName;
-  type: MetricsViewerTabType;
-  group?: DimensionGroup;
-  isDefault?: boolean;
-  canListValues?: boolean;
 };
 
-const dimensionsByTypeCache = new WeakMap<
+const viewerDimensionsCache = new WeakMap<
   MetricDefinition,
-  Map<string, ClassifiedDimension>
+  Map<string, ViewerDimensionDescriptor>
 >();
 
 export function getDimensionsByType(
-  def: MetricDefinition,
-): Map<string, ClassifiedDimension> {
-  const cached = dimensionsByTypeCache.get(def);
+  definition: MetricDefinition,
+): Map<string, ViewerDimensionDescriptor> {
+  const cached = viewerDimensionsCache.get(definition);
   if (cached) {
     return cached;
   }
 
-  const result = new Map<string, ClassifiedDimension>();
+  const descriptors = getDimensionDescriptors(definition);
+  const result = new Map<string, ViewerDimensionDescriptor>();
 
-  const defaultDimensionIds = new Set(
-    LibMetric.defaultBreakoutDimensions(def)
-      .map((dimension) => LibMetric.dimensionValuesInfo(def, dimension).id)
-      .filter(Boolean),
-  );
-
-  for (const dimension of LibMetric.projectionableDimensions(def)) {
-    const type = getDimensionType(dimension);
-    if (!type) {
-      continue;
-    }
-
-    const valuesInfo = LibMetric.dimensionValuesInfo(def, dimension);
-    const displayInfo = LibMetric.displayInfo(def, dimension);
-    if (!valuesInfo.id || result.has(valuesInfo.id)) {
-      continue;
-    }
-
-    result.set(valuesInfo.id, {
-      dimension,
-      id: valuesInfo.id,
-      name: displayInfo.name ?? displayInfo.displayName,
-      displayName: displayInfo.displayName,
-      icon: getDimensionIcon(dimension),
-      type,
-      group: displayInfo.group,
-      isDefault: defaultDimensionIds.has(valuesInfo.id),
-      canListValues: valuesInfo.canListValues,
+  for (const [id, dimension] of descriptors) {
+    result.set(id, {
+      ...dimension,
+      icon: getDimensionIcon(dimension.dimensionMetadata),
     });
   }
 
-  dimensionsByTypeCache.set(def, result);
+  viewerDimensionsCache.set(definition, result);
   return result;
 }
 
-export function resolveCommonTabLabel(
-  names: string[],
-  fallback: string,
-): string {
+export function resolveCommonTabLabel(names: string[]): string | null {
   if (names.length === 0) {
-    return fallback;
+    return null;
   }
   if (names.length === 1 || names.every((name) => name === names[0])) {
     return names[0];
@@ -153,18 +112,58 @@ export function resolveCommonTabLabel(
   return bestName;
 }
 
+/**
+ * Recompute tab labels from the current dimension mappings.
+ * Returns a new array only if at least one label changed.
+ */
+export function recomputeTabLabels(
+  tabs: MetricsViewerTabState[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  metricSlots: MetricSlot[],
+): MetricsViewerTabState[] {
+  const dimsBySlotIndex = new Map<
+    number,
+    Map<string, ViewerDimensionDescriptor>
+  >();
+  for (const slot of metricSlots) {
+    const entry = definitions[slot.sourceId];
+    if (entry?.definition) {
+      dimsBySlotIndex.set(
+        slot.slotIndex,
+        getDimensionsByType(entry.definition),
+      );
+    }
+  }
+
+  let changed = false;
+  const result = tabs.map((tab) => {
+    const names = resolveTabDimensionNames(
+      tab.dimensionMapping,
+      dimsBySlotIndex,
+    );
+    const label = resolveCommonTabLabel(names);
+    if (label != null && label !== tab.label) {
+      changed = true;
+      return { ...tab, label };
+    }
+    return tab;
+  });
+
+  return changed ? result : tabs;
+}
+
 // ── Default tab computation ──
 
-function classifyDimensionsBySource(
+function getDimensionDescriptorsBySlotIndex(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
-): Map<MetricSourceId, Map<string, ClassifiedDimension>> {
-  const result = new Map<MetricSourceId, Map<string, ClassifiedDimension>>();
+  metricSlots: MetricSlot[],
+): Map<number, Map<string, DimensionDescriptor>> {
+  const result = new Map<number, Map<string, DimensionDescriptor>>();
 
-  for (const sourceId of sourceOrder) {
-    const def = definitionsBySourceId[sourceId];
+  for (const slot of metricSlots) {
+    const def = definitionsBySourceId[slot.sourceId];
     if (def) {
-      result.set(sourceId, getDimensionsByType(def));
+      result.set(slot.slotIndex, getDimensionDescriptors(def));
     }
   }
 
@@ -172,13 +171,19 @@ function classifyDimensionsBySource(
 }
 
 function resolveTabDimensionNames(
-  dimensionMapping: Record<MetricSourceId, string>,
-  dimensionsBySource: Map<MetricSourceId, Map<string, ClassifiedDimension>>,
+  dimensionMapping: Record<number, string | null>,
+  dimensionsBySlotIndex: Map<number, Map<string, DimensionDescriptor>>,
 ): string[] {
   const names: string[] = [];
 
-  for (const [sourceId, dimensionId] of getObjectEntries(dimensionMapping)) {
-    const dimensionInfo = dimensionsBySource.get(sourceId)?.get(dimensionId);
+  for (const [key, dimensionId] of getObjectEntries(dimensionMapping)) {
+    if (dimensionId == null) {
+      continue;
+    }
+    const slotIndex = Number(key);
+    const dimensionInfo = dimensionsBySlotIndex
+      .get(slotIndex)
+      ?.get(dimensionId);
     if (dimensionInfo) {
       names.push(dimensionInfo.displayName);
     }
@@ -188,12 +193,12 @@ function resolveTabDimensionNames(
 }
 
 function findDimensionOfType(
-  dimensions: Map<string, ClassifiedDimension>,
+  dimensions: Map<string, DimensionDescriptor>,
   type: MetricsViewerTabType,
   requireDefault = false,
-): ClassifiedDimension | null {
+): DimensionDescriptor | null {
   for (const [, info] of dimensions) {
-    if (info.type === type && (!requireDefault || info.isDefault)) {
+    if (info.dimensionType === type && (!requireDefault || info.isDefault)) {
       return info;
     }
   }
@@ -201,13 +206,16 @@ function findDimensionOfType(
 }
 
 function findDimensionBySubtype(
-  dimensions: Map<string, ClassifiedDimension>,
+  dimensions: Map<string, DimensionDescriptor>,
   type: MetricsViewerTabType,
   getSubtype: (dimension: DimensionMetadata) => string | null,
   targetSubtype: string,
-): ClassifiedDimension | null {
+): DimensionDescriptor | null {
   for (const [, info] of dimensions) {
-    if (info.type === type && getSubtype(info.dimension) === targetSubtype) {
+    if (
+      info.dimensionType === type &&
+      getSubtype(info.dimensionMetadata) === targetSubtype
+    ) {
       return info;
     }
   }
@@ -223,78 +231,124 @@ function pickBestGeoSubtype(found: Set<string>): string | null {
   return found.size > 0 ? (found.values().next().value ?? null) : null;
 }
 
+function collectSubtypes(
+  dimensions: Map<string, DimensionDescriptor>,
+  type: MetricsViewerTabType,
+  getSubtype: (dimension: DimensionMetadata) => string | null,
+  into: Set<string>,
+): void {
+  for (const [, info] of dimensions) {
+    if (info.dimensionType === type) {
+      const subtype = getSubtype(info.dimensionMetadata);
+      if (subtype) {
+        into.add(subtype);
+      }
+    }
+  }
+}
+
 function computeBestSubtypeAcrossSources(
-  dimensionsBySource: Map<MetricSourceId, Map<string, ClassifiedDimension>>,
+  dimensionsByEntityIndex: Map<number, Map<string, DimensionDescriptor>>,
   type: MetricsViewerTabType,
   getSubtype: (dimension: DimensionMetadata) => string | null,
 ): string | null {
   const found = new Set<string>();
-
-  for (const [, dimensions] of dimensionsBySource) {
-    for (const [, info] of dimensions) {
-      if (info.type === type) {
-        const subtype = getSubtype(info.dimension);
-        if (subtype) {
-          found.add(subtype);
-        }
-      }
-    }
+  for (const [, dimensions] of dimensionsByEntityIndex) {
+    collectSubtypes(dimensions, type, getSubtype, found);
   }
-
   return pickBestGeoSubtype(found);
 }
 
 function findReferenceAcrossSources(
-  dimensionsBySource: Map<MetricSourceId, Map<string, ClassifiedDimension>>,
-  sourceOrder: MetricSourceId[],
+  dimensionsByEntityIndex: Map<number, Map<string, DimensionDescriptor>>,
+  entityOrder: number[],
   type: MetricsViewerTabType,
-): { sourceId: MetricSourceId; dimension: ClassifiedDimension } | null {
-  for (const sourceId of sourceOrder) {
-    const dimensions = dimensionsBySource.get(sourceId);
+): { entityIndex: number; dimension: DimensionDescriptor } | null {
+  for (const entityIndex of entityOrder) {
+    const dimensions = dimensionsByEntityIndex.get(entityIndex);
     if (!dimensions) {
       continue;
     }
     const defaultDimension = findDimensionOfType(dimensions, type, true);
     if (defaultDimension) {
-      return { sourceId, dimension: defaultDimension };
+      return { entityIndex, dimension: defaultDimension };
     }
   }
   return null;
 }
 
+/**
+ * Find the best matching dimension in `dimensions` for a given `reference`.
+ *
+ * Match priority: exact source > case-insensitive name > compatible type.
+ * When `getSubtype` is provided, name and type matches also require the
+ * subtype to agree (used for geo dimension matching).
+ */
 function findSourceMatch(
-  dimensions: Map<string, ClassifiedDimension>,
+  dimensions: Map<string, DimensionDescriptor>,
   type: MetricsViewerTabType,
-  reference: ClassifiedDimension,
-): ClassifiedDimension | null {
-  let nameMatch: ClassifiedDimension | null = null;
-  const referenceName = reference.name;
+  reference: DimensionDescriptor,
+  getSubtype?: (dimension: DimensionMetadata) => string | null,
+): DimensionDescriptor | null {
+  let nameMatch: DimensionDescriptor | null = null;
+  let typeMatch: DimensionDescriptor | null = null;
+  const referenceName = reference.name.toLowerCase();
 
   for (const [, info] of dimensions) {
-    if (info.type !== type) {
+    if (info.dimensionType !== type) {
       continue;
     }
-    if (LibMetric.isSameSource(info.dimension, reference.dimension)) {
+    if (
+      LibMetric.isSameSource(
+        info.dimensionMetadata,
+        reference.dimensionMetadata,
+      )
+    ) {
       return info;
     }
-    if (!nameMatch && referenceName && info.name === referenceName) {
-      nameMatch = info;
+    if (
+      !nameMatch &&
+      referenceName &&
+      info.name.toLowerCase() === referenceName
+    ) {
+      if (
+        !getSubtype ||
+        getSubtype(info.dimensionMetadata) ===
+          getSubtype(reference.dimensionMetadata)
+      ) {
+        nameMatch = info;
+      }
+    }
+    if (
+      !typeMatch &&
+      LibMetric.isCompatibleType(
+        info.dimensionMetadata,
+        reference.dimensionMetadata,
+      )
+    ) {
+      if (
+        !getSubtype ||
+        getSubtype(info.dimensionMetadata) ===
+          getSubtype(reference.dimensionMetadata)
+      ) {
+        typeMatch = info;
+      }
     }
   }
 
-  return nameMatch;
+  return nameMatch ?? typeMatch;
 }
 
 function resolveAggregateDimensionMapping(
-  dimensionsBySource: Map<MetricSourceId, Map<string, ClassifiedDimension>>,
-  sourceOrder: MetricSourceId[],
+  dimensionsByEntityIndex: Map<number, Map<string, DimensionDescriptor>>,
+  entityOrder: number[],
   config: TabTypeDefinition,
-): Record<MetricSourceId, string> {
-  const mapping: Record<MetricSourceId, string> = {};
+): Record<number, string> {
+  const mapping: Record<number, string> = {};
 
   if (config.dimensionSubtype) {
     const targetSubtype = computeBestSubtypeAcrossSources(
-      dimensionsBySource,
+      dimensionsByEntityIndex,
       config.type,
       config.dimensionSubtype,
     );
@@ -302,8 +356,8 @@ function resolveAggregateDimensionMapping(
       return mapping;
     }
 
-    for (const sourceId of sourceOrder) {
-      const dimensions = dimensionsBySource.get(sourceId);
+    for (const entityIndex of entityOrder) {
+      const dimensions = dimensionsByEntityIndex.get(entityIndex);
       if (!dimensions) {
         continue;
       }
@@ -314,7 +368,7 @@ function resolveAggregateDimensionMapping(
         targetSubtype,
       );
       if (match) {
-        mapping[sourceId] = match.id;
+        mapping[entityIndex] = match.id;
       }
     }
 
@@ -322,21 +376,21 @@ function resolveAggregateDimensionMapping(
   }
 
   const reference = findReferenceAcrossSources(
-    dimensionsBySource,
-    sourceOrder,
+    dimensionsByEntityIndex,
+    entityOrder,
     config.type,
   );
 
   if (reference) {
-    mapping[reference.sourceId] = reference.dimension.id;
+    mapping[reference.entityIndex] = reference.dimension.id;
   }
 
-  for (const sourceId of sourceOrder) {
-    if (mapping[sourceId]) {
+  for (const entityIndex of entityOrder) {
+    if (mapping[entityIndex]) {
       continue;
     }
 
-    const dimensions = dimensionsBySource.get(sourceId);
+    const dimensions = dimensionsByEntityIndex.get(entityIndex);
     if (!dimensions) {
       continue;
     }
@@ -349,7 +403,7 @@ function resolveAggregateDimensionMapping(
       findDimensionOfType(dimensions, config.type);
 
     if (match) {
-      mapping[sourceId] = match.id;
+      mapping[entityIndex] = match.id;
     }
   }
 
@@ -357,43 +411,43 @@ function resolveAggregateDimensionMapping(
 }
 
 function collectUniqueExactDimensions(
-  dimensionsBySource: Map<MetricSourceId, Map<string, ClassifiedDimension>>,
-  sourceOrder: MetricSourceId[],
+  dimensionsBySlotIndex: Map<number, Map<string, DimensionDescriptor>>,
+  slotOrder: number[],
   type: MetricsViewerTabType,
 ): Map<
   string,
-  { displayName: string; sourceIds: MetricSourceId[]; canListValues: boolean }
+  { displayName: string; slotIndices: number[]; canListValues: boolean }
 > {
   const unique = new Map<
     string,
     {
       displayName: string;
-      sourceIds: MetricSourceId[];
+      slotIndices: number[];
       canListValues: boolean;
     }
   >();
 
-  for (const sourceId of sourceOrder) {
-    const dimensions = dimensionsBySource.get(sourceId);
+  for (const slotIndex of slotOrder) {
+    const dimensions = dimensionsBySlotIndex.get(slotIndex);
     if (!dimensions) {
       continue;
     }
 
     for (const [, info] of dimensions) {
-      if (info.type !== type) {
+      if (info.dimensionType !== type) {
         continue;
       }
 
       const existing = unique.get(info.id);
       if (existing) {
-        existing.sourceIds.push(sourceId);
+        existing.slotIndices.push(slotIndex);
         if (info.canListValues) {
           existing.canListValues = true;
         }
       } else {
         unique.set(info.id, {
           displayName: info.displayName,
-          sourceIds: [sourceId],
+          slotIndices: [slotIndex],
           canListValues: info.canListValues ?? false,
         });
       }
@@ -405,21 +459,23 @@ function collectUniqueExactDimensions(
 
 export function computeDefaultTabs(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
+  metricSlots: MetricSlot[],
 ): MetricsViewerTabState[] {
-  if (sourceOrder.length === 0) {
+  if (metricSlots.length === 0) {
     return [];
   }
 
-  const dimensionsBySource = classifyDimensionsBySource(
+  const slotOrder = metricSlots.map((s) => s.slotIndex);
+
+  const dimensionsBySlotIndex = getDimensionDescriptorsBySlotIndex(
     definitionsBySourceId,
-    sourceOrder,
+    metricSlots,
   );
-  if (dimensionsBySource.size === 0) {
+  if (dimensionsBySlotIndex.size === 0) {
     return [];
   }
 
-  const tabs: MetricsViewerTabState[] = [];
+  const tabs: (MetricsViewerTabState & { index?: number })[] = [];
 
   for (const config of TAB_TYPE_REGISTRY) {
     if (!config.autoCreate || tabs.length >= MAX_AUTO_TABS) {
@@ -428,29 +484,33 @@ export function computeDefaultTabs(
 
     if (config.matchMode === "aggregate") {
       const mapping = resolveAggregateDimensionMapping(
-        dimensionsBySource,
-        sourceOrder,
+        dimensionsBySlotIndex,
+        slotOrder,
         config,
       );
-      if (Object.keys(mapping).length === 0) {
+      if (Object.keys(mapping).length < config.minDimensions) {
         continue;
       }
 
-      const names = resolveTabDimensionNames(mapping, dimensionsBySource);
+      const names = resolveTabDimensionNames(mapping, dimensionsBySlotIndex);
       tabs.push({
         id: config.fixedId,
         type: config.type,
-        label: resolveCommonTabLabel(names, config.fixedLabel),
+        label:
+          config.type === "scalar"
+            ? getScalarTabLabel()
+            : resolveCommonTabLabel(names),
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},
+        index: config.index,
       });
       continue;
     }
 
     const uniqueDimensions = collectUniqueExactDimensions(
-      dimensionsBySource,
-      sourceOrder,
+      dimensionsBySlotIndex,
+      slotOrder,
       config.type,
     );
 
@@ -463,14 +523,17 @@ export function computeDefaultTabs(
       },
     );
 
-    for (const [dimensionId, { displayName, sourceIds }] of sortedDimensions) {
+    for (const [
+      dimensionId,
+      { displayName, slotIndices },
+    ] of sortedDimensions) {
       if (tabs.length >= MAX_AUTO_TABS) {
         break;
       }
 
-      const mapping: Record<MetricSourceId, string> = {};
-      for (const sourceId of sourceIds) {
-        mapping[sourceId] = dimensionId;
+      const mapping: Record<number, string> = {};
+      for (const slotIndex of slotIndices) {
+        mapping[slotIndex] = dimensionId;
       }
 
       tabs.push({
@@ -480,54 +543,63 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},
+        index: config.index,
       });
     }
   }
 
-  return tabs;
+  tabs.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+
+  return tabs.map(({ index, ...tab }) => tab);
 }
 
 // ── Manual tab creation ──
 
-export function createTabFromDimension(
-  dimensionId: string,
-  definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
+export interface TabInfo {
+  type: MetricsViewerTabType;
+  label: string;
+  dimensionMapping: Record<number, string>;
+}
+
+export function createTabFromTabInfo(
+  tabInfo: TabInfo,
 ): MetricsViewerTabState | null {
-  const mapping: Record<MetricSourceId, string> = {};
-  let tabType: MetricsViewerTabType = "category";
-  let displayName: string | null = null;
-
-  for (const sourceId of sourceOrder) {
-    const def = definitionsBySourceId[sourceId];
-    if (!def) {
-      continue;
-    }
-
-    const dimensionInfo = getDimensionsByType(def).get(dimensionId);
-    if (!dimensionInfo) {
-      continue;
-    }
-
-    mapping[sourceId] = dimensionId;
-    tabType = dimensionInfo.type;
-    displayName ??= dimensionInfo.displayName;
+  const { type, label, dimensionMapping } = tabInfo;
+  if (type === "scalar") {
+    return createScalarTab();
   }
-
-  if (Object.keys(mapping).length === 0) {
+  const id = Object.values(dimensionMapping)[0];
+  if (id == null) {
     return null;
   }
-
-  const display = getTabConfig(tabType).defaultDisplayType;
-
+  const display = getTabConfig(type).defaultDisplayType;
   return {
-    id: dimensionId,
-    type: tabType,
-    label: displayName ?? dimensionId,
+    id,
+    type,
+    label,
     display,
-    dimensionMapping: mapping,
+    dimensionMapping,
     projectionConfig: {},
   };
+}
+
+function createScalarTab(): MetricsViewerTabState | null {
+  const config = getTabConfig("scalar");
+  if (config.matchMode !== "aggregate") {
+    return null;
+  }
+  return {
+    id: config.fixedId,
+    type: config.type,
+    label: getScalarTabLabel(),
+    display: config.defaultDisplayType,
+    dimensionMapping: {},
+    projectionConfig: {},
+  };
+}
+
+export function getScalarTabLabel() {
+  return t`Totals`;
 }
 
 // ── Tab dimension matching ──
@@ -536,21 +608,27 @@ function findSubtypeFromExistingTab(
   tab: StoredMetricsViewerTab,
   getSubtype: (dimension: DimensionMetadata) => string | null,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  slotIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
-  if (!baseDefinitions) {
+  if (!baseDefinitions || !slotIndexToSourceId) {
     return null;
   }
 
-  for (const [sourceId, dimensionName] of getObjectEntries(
-    tab.dimensionsBySource,
+  for (const [key, dimensionName] of getObjectEntries(
+    tab.dimensionBySlotIndex,
   )) {
+    const slotIndex = Number(key);
+    const sourceId = slotIndexToSourceId.get(slotIndex);
+    if (!sourceId) {
+      continue;
+    }
     const def = baseDefinitions[sourceId];
     if (!def) {
       continue;
     }
     const dimensionInfo = getDimensionsByType(def).get(dimensionName);
     if (dimensionInfo) {
-      return getSubtype(dimensionInfo.dimension);
+      return getSubtype(dimensionInfo.dimensionMetadata);
     }
   }
 
@@ -558,21 +636,12 @@ function findSubtypeFromExistingTab(
 }
 
 function findBestSubtypeInDimensions(
-  dimensionsByType: Map<string, ClassifiedDimension>,
+  dimensions: Map<string, DimensionDescriptor>,
   tabType: MetricsViewerTabType,
   getSubtype: (dimension: DimensionMetadata) => string | null,
 ): string | null {
   const found = new Set<string>();
-
-  for (const [, info] of dimensionsByType) {
-    if (info.type === tabType) {
-      const subtype = getSubtype(info.dimension);
-      if (subtype) {
-        found.add(subtype);
-      }
-    }
-  }
-
+  collectSubtypes(dimensions, tabType, getSubtype, found);
   return pickBestGeoSubtype(found);
 }
 
@@ -580,20 +649,26 @@ function findReferenceFromTab(
   tab: StoredMetricsViewerTab,
   type: MetricsViewerTabType,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
-): ClassifiedDimension | null {
-  if (!baseDefinitions) {
+  slotIndexToSourceId?: Map<number, MetricSourceId>,
+): DimensionDescriptor | null {
+  if (!baseDefinitions || !slotIndexToSourceId) {
     return null;
   }
 
-  for (const [sourceId, dimensionName] of getObjectEntries(
-    tab.dimensionsBySource,
+  for (const [key, dimensionName] of getObjectEntries(
+    tab.dimensionBySlotIndex,
   )) {
+    const entityIndex = Number(key);
+    const sourceId = slotIndexToSourceId.get(entityIndex);
+    if (!sourceId) {
+      continue;
+    }
     const def = baseDefinitions[sourceId];
     if (!def) {
       continue;
     }
     const dimensionInfo = getDimensionsByType(def).get(dimensionName);
-    if (dimensionInfo && dimensionInfo.type === type) {
+    if (dimensionInfo && dimensionInfo.dimensionType === type) {
       return dimensionInfo;
     }
   }
@@ -601,46 +676,21 @@ function findReferenceFromTab(
   return null;
 }
 
-function findDimensionBySourceMatch(
-  dimensionsByType: Map<string, ClassifiedDimension>,
-  reference: ClassifiedDimension,
-  getSubtype?: (dimension: DimensionMetadata) => string | null,
-): string | null {
-  let nameMatch: ClassifiedDimension | null = null;
-
-  for (const [, info] of dimensionsByType) {
-    if (info.type !== reference.type) {
-      continue;
-    }
-    if (LibMetric.isSameSource(info.dimension, reference.dimension)) {
-      return info.id;
-    }
-    if (
-      !nameMatch &&
-      info.name.toLowerCase() === reference.name.toLowerCase()
-    ) {
-      if (
-        !getSubtype ||
-        getSubtype(info.dimension) === getSubtype(reference.dimension)
-      ) {
-        nameMatch = info;
-      }
-    }
-  }
-
-  return nameMatch?.id ?? null;
-}
-
 function resolveSubtypeFallback(
-  dimensionsByType: Map<string, ClassifiedDimension>,
+  dimensionsByType: Map<string, DimensionDescriptor>,
   tabType: MetricsViewerTabType,
   getSubtype: (dimension: DimensionMetadata) => string | null,
   tab: StoredMetricsViewerTab,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  slotIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
   const targetSubtype =
-    findSubtypeFromExistingTab(tab, getSubtype, baseDefinitions) ??
-    findBestSubtypeInDimensions(dimensionsByType, tabType, getSubtype);
+    findSubtypeFromExistingTab(
+      tab,
+      getSubtype,
+      baseDefinitions,
+      slotIndexToSourceId,
+    ) ?? findBestSubtypeInDimensions(dimensionsByType, tabType, getSubtype);
 
   if (!targetSubtype) {
     return null;
@@ -653,30 +703,42 @@ function resolveSubtypeFallback(
 }
 
 function findExactColumnMatch(
-  dimensions: Map<string, ClassifiedDimension>,
+  dimensions: Map<string, DimensionDescriptor>,
   tab: StoredMetricsViewerTab,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  slotIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
   const exactMatch = dimensions.get(tab.id);
-  if (exactMatch?.type === tab.type) {
+  if (exactMatch?.dimensionType === tab.type) {
     return exactMatch.id;
   }
 
-  const reference = findReferenceFromTab(tab, tab.type, baseDefinitions);
+  const reference = findReferenceFromTab(
+    tab,
+    tab.type,
+    baseDefinitions,
+    slotIndexToSourceId,
+  );
   if (reference) {
-    return findDimensionBySourceMatch(dimensions, reference);
+    return findSourceMatch(dimensions, tab.type, reference)?.id ?? null;
   }
 
   return null;
 }
 
 function findAggregateMatch(
-  dimensions: Map<string, ClassifiedDimension>,
+  dimensions: Map<string, DimensionDescriptor>,
   tab: StoredMetricsViewerTab,
   config: TabTypeDefinition,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  slotIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
-  const reference = findReferenceFromTab(tab, config.type, baseDefinitions);
+  const reference = findReferenceFromTab(
+    tab,
+    config.type,
+    baseDefinitions,
+    slotIndexToSourceId,
+  );
 
   const defaultMatch = findDimensionOfType(dimensions, config.type, true);
   if (defaultMatch) {
@@ -684,13 +746,14 @@ function findAggregateMatch(
   }
 
   if (reference) {
-    const sourceMatch = findDimensionBySourceMatch(
+    const sourceMatch = findSourceMatch(
       dimensions,
+      config.type,
       reference,
       config.dimensionSubtype,
     );
     if (sourceMatch) {
-      return sourceMatch;
+      return sourceMatch.id;
     }
   }
 
@@ -701,6 +764,7 @@ function findAggregateMatch(
       config.dimensionSubtype,
       tab,
       baseDefinitions,
+      slotIndexToSourceId,
     );
     if (subtypeMatch) {
       return subtypeMatch;
@@ -714,13 +778,25 @@ export function findMatchingDimensionForTab(
   def: MetricDefinition,
   tab: StoredMetricsViewerTab,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  slotIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
   const dimensions = getDimensionsByType(def);
-  const config = TAB_TYPE_REGISTRY.find((config) => config.type === tab.type);
+  const config = getTabConfig(tab.type);
 
   if (config?.matchMode !== "aggregate") {
-    return findExactColumnMatch(dimensions, tab, baseDefinitions);
+    return findExactColumnMatch(
+      dimensions,
+      tab,
+      baseDefinitions,
+      slotIndexToSourceId,
+    );
   }
 
-  return findAggregateMatch(dimensions, tab, config, baseDefinitions);
+  return findAggregateMatch(
+    dimensions,
+    tab,
+    config,
+    baseDefinitions,
+    slotIndexToSourceId,
+  );
 }

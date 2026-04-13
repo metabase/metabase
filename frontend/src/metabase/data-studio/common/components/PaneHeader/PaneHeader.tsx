@@ -3,9 +3,8 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { useSelector } from "metabase/lib/redux";
+import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
   Box,
@@ -18,6 +17,7 @@ import {
   type StackProps,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
@@ -30,6 +30,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   actions?: ReactNode;
   breadcrumbs: ReactNode;
   showMetabotButton?: boolean;
+  showAppSwitcher?: boolean;
 }
 
 export const PaneHeader = ({
@@ -41,6 +42,7 @@ export const PaneHeader = ({
   actions,
   breadcrumbs,
   showMetabotButton,
+  showAppSwitcher = true,
   ...rest
 }: PaneHeaderProps) => {
   return (
@@ -49,14 +51,15 @@ export const PaneHeader = ({
         {breadcrumbs}
 
         <Group ml="auto" gap="md">
-          {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
-          <AppSwitcher className={S.ProfileLink} />
+          {showMetabotButton && <MetabotDataStudioButton />}
+          {showAppSwitcher && <AppSwitcher className={S.ProfileLink} />}
         </Group>
       </Flex>
       <Group
         className={className}
         gap="sm"
         justify="space-between"
+        align="flex-start"
         wrap="nowrap"
       >
         <Stack gap="md">

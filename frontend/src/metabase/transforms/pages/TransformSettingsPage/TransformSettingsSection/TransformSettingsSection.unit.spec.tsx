@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type {
   EnterpriseSettings,
   TokenFeatures,
@@ -31,6 +31,17 @@ type SetupOpts = {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
   transform?: Transform;
 };
+
+jest.mock(
+  "metabase/transforms/components/IncrementalTransform/useHasCheckpointOptions",
+  () => ({
+    useHasCheckpointOptions: jest.fn().mockReturnValue({
+      hasCheckpointOptions: true,
+      hasNativeCheckpointOptions: true,
+      transformType: "mbql",
+    }),
+  }),
+);
 
 function setup({
   transform = createMockTransform(),

@@ -11,11 +11,14 @@
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}"
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.pool :as python.pool]
+   [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
    (java.io Closeable)
    (java.util.concurrent ExecutionException TimeoutException)
@@ -387,9 +390,41 @@
           (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
           .asString))))
 
+(defn is-single-select-stmt?
+  "Validates that a query is a single SELECT statement
+   and returns the query reconstructed from the parsed AST."
+  [dialect sql]
+  (-> (with-open [^Closeable ctx (python.pool/python-context)]
+        (with-python-timeout ctx default-timeout-ms
+          (-> ^Value (common/eval-python ctx "sql_tools.is_single_select_stmt")
+              (.execute ^Value (object-array [sql dialect]))
+              .asString)))
+      json/decode+kw
+      (perf/update-keys (comp keyword u/->kebab-case-en))))
+
 (comment
   (referenced-tables "postgres" "select * from transactions")
 
   (validate-sql-query "postgres" "SELECT * FROM users")
 
   (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
+
+;;;; Transpile sql
+
+(defn- normalize-transpilation-result
+  [json-str]
+  (-> json-str
+      json/decode+kw
+      (perf/update-keys (comp keyword u/->kebab-case-en))
+      (m/update-existing :status (comp keyword u/->kebab-case-en))
+      (m/update-existing :reason (comp keyword u/->kebab-case-en))))
+
+(defn transpile-sql
+  "Transpiles sql string from one dialect to another."
+  [sql from-dialect to-dialect]
+  (-> (with-open [^Closeable ctx (python.pool/python-context)]
+        (with-python-timeout ctx default-timeout-ms
+          (-> ^Value (common/eval-python ctx "sql_tools.transpile_sql")
+              (.execute ^Value (object-array [sql from-dialect to-dialect]))
+              .asString)))
+      normalize-transpilation-result))

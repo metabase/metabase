@@ -21,7 +21,7 @@ import {
 } from "__support__/ui";
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as domUtils from "metabase/lib/dom";
+import * as iframeUtils from "metabase/utils/iframe";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -91,7 +91,7 @@ export async function setup({
   applicationName = "Metabase",
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
-    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+    jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
   }
 
   const SAMPLE_DATABASE = createMockDatabase({

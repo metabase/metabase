@@ -2,6 +2,11 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import {
+  trackMetricsViewerFilterAdded,
+  trackMetricsViewerFilterEdited,
+  trackMetricsViewerFilterRemoved,
+} from "metabase/metrics-viewer/analytics";
 import { Button, Icon, Popover } from "metabase/ui";
 import type {
   DimensionMetadata,
@@ -21,7 +26,6 @@ import { getFilterDisplayName } from "./utils";
 type DimensionFilterButtonProps = {
   definition: MetricDefinition;
   filterDimension: DimensionMetadata;
-  filter?: FilterClause;
   dimensionFilter?: DimensionFilterValue;
   allFilterDimensions?: DimensionMetadata[];
   onChange: (value: DimensionFilterValue | undefined) => void;
@@ -30,7 +34,6 @@ type DimensionFilterButtonProps = {
 export function DimensionFilterButton({
   definition,
   filterDimension,
-  filter,
   dimensionFilter,
   allFilterDimensions,
   onChange,
@@ -38,14 +41,11 @@ export function DimensionFilterButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const reconstructedFilter = useMemo((): FilterClause | undefined => {
-    if (filter) {
-      return filter;
-    }
     if (dimensionFilter) {
       return buildDimensionFilterClause(filterDimension, dimensionFilter);
     }
     return undefined;
-  }, [filter, dimensionFilter, filterDimension]);
+  }, [dimensionFilter, filterDimension]);
 
   const isDateDimension = LibMetric.isDateOrDateTime(filterDimension);
 
@@ -64,14 +64,20 @@ export function DimensionFilterButton({
       const parsed = parseFilter(definition, filterClause);
       if (parsed) {
         onChange(parsed.value);
+        if (dimensionFilter) {
+          trackMetricsViewerFilterEdited("dimension_filter");
+        } else {
+          trackMetricsViewerFilterAdded("dimension_filter");
+        }
       }
       setIsOpen(false);
     },
-    [definition, onChange],
+    [definition, onChange, dimensionFilter],
   );
 
   const handleClear = useCallback(() => {
     onChange(undefined);
+    trackMetricsViewerFilterRemoved("dimension_filter");
     setIsOpen(false);
   }, [onChange]);
 

@@ -26,7 +26,6 @@ import {
   useDeleteBookmarkMutation,
   useGetDocumentQuery,
   useListBookmarksQuery,
-  useListCommentsQuery,
   useUpdateDocumentMutation,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -40,11 +39,11 @@ import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { extractEntityId } from "metabase/lib/urls";
-import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import { Box } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { extractEntityId } from "metabase/utils/urls";
+import * as Urls from "metabase/utils/urls";
 import type {
   Card,
   CollectionId,
@@ -77,7 +76,6 @@ import {
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
-import { getListCommentsQuery } from "../utils/api";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
@@ -152,12 +150,6 @@ export const DocumentPage = ({
   if (documentId !== documentData?.id) {
     documentData = undefined;
   }
-
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(documentData),
-  );
-  const hasComments =
-    !!commentsData?.comments && commentsData.comments.length > 0;
 
   const canWrite =
     !documentData?.archived && (isNewDocument || documentData?.can_write);
@@ -505,7 +497,6 @@ export const DocumentPage = ({
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
               onShowHistory={handleShowHistory}
-              hasComments={hasComments}
             />
             <Editor
               onEditorReady={setEditorInstance}

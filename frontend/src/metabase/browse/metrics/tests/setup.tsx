@@ -266,7 +266,7 @@ export function setup({
     <>
       <Route path="/" component={() => <BrowseMetrics />} />
       <Route
-        path="/explore"
+        path="/metric/:cardId"
         component={() => <div data-testid="metric-detail-page" />}
       />
     </>,

@@ -2,14 +2,18 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import {
+  setOrUnsetParameterValues,
+  setParameterValue,
+} from "metabase/dashboard/actions/parameters";
+import {
   getDashCardById,
   getDashboardComplete,
   getParameterValuesBySlugMap,
   getParameters,
 } from "metabase/dashboard/selectors";
-import { getLinkTargets } from "metabase/lib/click-behavior";
-import { useStore } from "metabase/lib/redux";
 import { getUserAttributes } from "metabase/selectors/user";
+import { getLinkTargets } from "metabase/utils/click-behavior";
+import { useStore } from "metabase/utils/redux";
 import type { ClickObject } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type { DashCardId } from "metabase-types/api";
@@ -96,6 +100,8 @@ function createGetExtraDataForClick(
       dashboard,
       dashcard,
       userAttributes,
+      setOrUnsetParameterValues,
+      setParameterValue,
     };
   };
 }

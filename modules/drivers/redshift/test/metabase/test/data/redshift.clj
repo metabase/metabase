@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -33,11 +34,6 @@
 
 ;;; need to load this so we can properly override the implementation of `describe-database` below
 (comment metabase.driver.redshift/keep-me)
-
-(def ^:private workspace-isolation-prefix (or
-                                           @(requiring-resolve 'metabase-enterprise.workspaces.util/isolated-prefix)
-                                           ;; OSS might not be able to require it
-                                           "mb__isolation"))
 
 (defmethod driver/database-supports? [:redshift :test/time-type]
   [_driver _feature _database]
@@ -211,15 +207,14 @@
   left behind by workspace tests. Only deletes isolation schemas older than [[hours-before-expired-threshold]]
   to avoid interfering with parallel test runs."
   [^java.sql.Connection conn]
-  (let [isolation-pattern (str workspace-isolation-prefix "_")
-        {old-convention   :old
+  (let [{old-convention   :old
          caches-with-info :cache
          isolation        :isolation} (reduce (fn [acc s]
                                                 (cond (sql.tu.unique-prefix/old-dataset-name? s)
                                                       (update acc :old conj s)
                                                       (str/starts-with? s "metabase_cache_")
                                                       (update acc :cache conj s)
-                                                      (str/starts-with? s isolation-pattern)
+                                                      (driver.u/workspace-isolated-schema? s)
                                                       (update acc :isolation conj s)
                                                       :else acc))
                                               {:old [] :cache [] :isolation []}
@@ -341,19 +336,35 @@
    ;; if this is a dataset with no tables (for example when using [[metabase.actions.test-util/with-empty-db]]) then we
    ;; can consider the dataset to already be loaded
    (empty? (:table-definitions dbdef))
-   ;; otherwise, check and make sure the first table in the dbdef has been created.
+   ;; otherwise, probe the first table directly. Retry a few times because fresh connections may be routed to
+   ;; Redshift compute nodes that haven't propagated DDL changes yet (eventual consistency).
    (let [session-schema (unique-session-schema)
          tabledef       (first (:table-definitions dbdef))
-         ;; table-name should be something like test_data_venues
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
-         ;; Use direct SQL query instead of JDBC metadata API (.getTables) because the metadata API
-         ;; can return stale/cached results on Redshift, causing flaky test failures.
          jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
-         results        (jdbc/query jdbc-spec
-                                    ["SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1"
-                                     session-schema
-                                     table-name])]
-     (seq results))))
+         probe-sql      (format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)
+         probe!         (fn []
+                          (sql-jdbc.execute/do-with-connection-with-options
+                           driver jdbc-spec {:write? false}
+                           (fn [^java.sql.Connection conn]
+                             (jdbc/query {:connection conn} [probe-sql])
+                             true)))]
+     (try
+       (probe!)
+       (catch com.amazon.redshift.util.RedshiftException e
+         (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
+           false
+           (throw e)))
+       (catch Exception e
+         ;; Transient error (timeout, network, etc.) - retry once after a short delay.
+         (log/warnf e "dataset-already-loaded? probe failed for %s.%s, retrying" session-schema table-name)
+         (Thread/sleep 1000)
+         (try
+           (probe!)
+           (catch com.amazon.redshift.util.RedshiftException e2
+             (if (re-find #"relation .* does not exist" (or (ex-message e2) ""))
+               false
+               (throw e2)))))))))
 
 (defmethod driver/database-supports? [:redshift :test/use-fake-sync]
   [_driver _feature _database]

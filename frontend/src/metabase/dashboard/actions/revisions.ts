@@ -3,11 +3,11 @@ import {
   fetchDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
-import { entityCompatibleQuery } from "metabase/lib/entities";
-import { createThunkAction } from "metabase/lib/redux";
+import { REVERT_TO_REVISION } from "metabase/redux/dashboard";
+import { entityCompatibleQuery } from "metabase/utils/entities";
+import { createThunkAction } from "metabase/utils/redux";
 import type { DashboardId, Revision } from "metabase-types/api";
 
-export const REVERT_TO_REVISION = "metabase/dashboard/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   (dashboardId: DashboardId, revision: Revision) => {
