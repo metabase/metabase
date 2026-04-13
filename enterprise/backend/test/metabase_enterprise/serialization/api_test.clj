@@ -26,6 +26,32 @@
       (GzipCompressorInputStream.)
       (TarArchiveInputStream.)))
 
+(defn- entry-names
+  "Return a seq of all entry names in the given tar.gz response."
+  [f]
+  (with-open [tar (open-tar f)]
+    (mapv (fn [^TarArchiveEntry e] (.getName e)) (u.compress/entries tar))))
+
+(defn- first-entry-name
+  "Return the name of the first entry in the given tar.gz response."
+  [f]
+  (first (entry-names f)))
+
+(defn- read-export-log
+  "Extract the export.log content from a tar.gz response."
+  [f]
+  (with-open [tar (open-tar f)]
+    (loop []
+      (when-let [e (.getNextEntry tar)]
+        (if (str/ends-with? (.getName ^TarArchiveEntry e) "export.log")
+          (slurp (io/reader tar))
+          (recur))))))
+
+(defn- export-log-line-count
+  "Count lines in export.log inside the tar.gz response."
+  [f]
+  (count (str/split-lines (or (read-export-log f) ""))))
+
 (def ^:private file-types
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
@@ -158,12 +184,7 @@
                   (let [res (binding [api.serialization/*additive-logging* false]
                               (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
-                        log (with-open [tar (open-tar res)]
-                              (loop []
-                                (when-let [e (.getNextEntry tar)]
-                                  (if (str/ends-with? (.getName ^TarArchiveEntry e) "export.log")
-                                    (slurp (io/reader tar))
-                                    (recur)))))]
+                        log (read-export-log res)]
                     (testing "export.log inside the archive contains error details"
                       (is (some? log) "export.log should be present in the archive")
                       (is (re-find #"deliberate error message" log)))))))
@@ -171,10 +192,7 @@
             (testing "You can pass specific directory name"
               (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                             :dirname "check" :all_collections false :data_model false :settings false)]
-                (is (str/starts-with?
-                     (with-open [tar (open-tar f)]
-                       (.getName ^TarArchiveEntry (first (u.compress/entries tar))))
-                     "check/")))))
+                (is (str/starts-with? (first-entry-name f) "check/")))))
 
           (testing "Invalid entity ID returns an error instead of falling back to root collection"
             (let [fake-eid "abcdefghijklmnopqrstu"
@@ -215,18 +233,9 @@
                     io/input-stream)
             ba  (#'api.serialization/ba-copy res)]
         (testing "Archive contains correct number of files with proper log entries"
-          (is (= 13
-                 (with-open [tar (open-tar ba)]
-                   (count
-                    (for [^TarArchiveEntry e (u.compress/entries tar)
-                          :when              (.isFile e)]
-                      (do
-                        (condp re-find (.getName e)
-                          #"/export.log$" (testing "Log contains extract and store entries"
-                                            (is (= (+ #_extract 12 #_store 12)
-                                                   (count (line-seq (io/reader tar))))))
-                          nil)
-                        (.getName e))))))))
+          (is (= 13 (count (filter #(not (str/ends-with? % "/")) (entry-names ba)))))
+          (testing "Log contains extract and store entries"
+            (is (= (+ #_extract 12 #_store 12) (export-log-line-count ba)))))
 
         (testing "Snowplow export event was sent"
           (is (=? {"event"           "serialization"
@@ -367,16 +376,6 @@
             log (slurp (io/input-stream res))]
         (is (re-find #"Cannot unpack archive" log))))))
 
-(defn- read-export-log
-  "Extract the export.log content from a tar.gz response."
-  [res]
-  (with-open [tar (open-tar res)]
-    (loop []
-      (when-let [e (.getNextEntry tar)]
-        (if (str/ends-with? (.getName ^TarArchiveEntry e) "export.log")
-          (slurp (io/reader tar))
-          (recur))))))
-
 (deftest export-extraction-error-test
   (testing "Export with error still returns tar.gz with export.log containing error details"
     (with-serialization-test-data! [coll _dash card]
@@ -426,17 +425,11 @@
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                         (mt/dynamic-value serdes/extract-one))]
-        (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
-                                            :collection (:id coll) :data_model false :settings false
-                                            :continue_on_error true)
-                      io/input-stream)]
-          (with-open [tar (open-tar res)]
-            (doseq [^TarArchiveEntry e (u.compress/entries tar)]
-              (condp re-find (.getName e)
-                #"/export.log$" (testing "Log shows extract entries, error, and store entries"
-                                  (is (= (+ #_extract 12 #_error 1 #_store 11)
-                                         (count (line-seq (io/reader tar))))))
-                nil))))
+        (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
+                                        :collection (:id coll) :data_model false :settings false
+                                        :continue_on_error true)]
+          (testing "Log shows extract entries, error, and store entries"
+            (is (= (+ #_extract 12 #_error 1 #_store 11) (export-log-line-count res)))))
 
         (testing "Snowplow event shows partial success with error count"
           (is (=? {"event"           "serialization"

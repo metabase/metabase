@@ -42,8 +42,8 @@
         (let [resolved   (storage.util/resolve-storage-path ctx entity)
               path       (entry-path dirname resolved)
               content    (.getBytes ^String (yaml-content entity) "UTF-8")]
-          (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
-                               :file path})
+          (log/trace "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
+                                :file path})
           (put-entry! tar path content)
           (:serdes/meta entity)))
 
