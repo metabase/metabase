@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database
   "SQL JDBC impl for `describe-database`."
-  (:refer-clojure :exclude [empty? get-in])
+  (:refer-clojure :exclude [get-in])
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
@@ -14,7 +14,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [empty? get-in]])
+   [metabase.util.performance :refer [get-in]])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
