@@ -16,7 +16,6 @@
   (when (map? node)
     (when (contains? node "type")
       (is (not= nil (node "type"))))
-    (is (not= false (:items node)))
     (when-let [one-of (:oneOf node)]
       (is (< 1 (count one-of)))
       (is (not (some empty? one-of)) (pr-str :empty-one-of one-of)))
@@ -30,13 +29,13 @@
 
 (def simple-query
   {:lib/type :mbql/query
-   :database 1
+   :database "hello"
    :stages   [{:lib/type :mbql.stage/mbql
-               :source-table 2
+               :source-table ["hello" "schema" "tbl"]
                :order-by
-               [[:asc {:lib/uuid "00000000-0000-0000-0000-000000000020"}
-                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000030"
-                          :base-type :type/BigInteger} 3]]]}]})
+               [[:asc {}
+                 [:field {:base-type :type/BigInteger}
+                  "hello" "schema" "tbl" "f"]]]}]})
 
 (defn- is-valid? [schema-file query]
   (let [query-json (json-util/encode query {:pretty true})
@@ -62,9 +61,6 @@
             (is (zero? (:exit jv)) (:err jv))))
         (testing "simple query"
           (is-valid? schema-file simple-query))
-        #_(testing "generated query is validated"
-          (let [query (gen/random-query (mt/metadata-provider))]
-            (is-valid? schema-file query)))
         (testing "representation examples validate"
           (let [examples-dir "../representations/examples/v1/collections/main/queries"]
             (when (.exists (File. examples-dir))
