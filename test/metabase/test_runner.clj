@@ -51,8 +51,9 @@
 (defn- all-drivers []
   (into #{:h2 :postgres :mysql}
         (for [^java.io.File file (.listFiles (io/file "components"))
-              :when              (.isDirectory file)]
-          (keyword (.getName file)))))
+              :when              (and (.isDirectory file)
+                                      (str/starts-with? (.getName file) "driver-"))]
+          (keyword (subs (.getName file) (count "driver-"))))))
 
 (defn- excluded-drivers []
   (set/difference (all-drivers) (tx.env/test-drivers)))
@@ -61,7 +62,7 @@
 (defmethod hawk/find-tests nil
   [_nil options]
   (let [excluded-driver-dirs (for [driver (excluded-drivers)]
-                               (format "components/%s" (name driver)))
+                               (format "components/driver-%s" (name driver)))
         exclude-directory?   (fn [dir]
                                (let [dir (str dir)]
                                  (some (fn [excluded]
