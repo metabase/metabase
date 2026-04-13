@@ -218,8 +218,8 @@
                                                           :email "rasta@metabase.com"}]}}]
                       (:recipients (t2/hydrate noti-handler [:recipients :recipients-detail])))))))))))
 
-(deftest hydrate-notification-filters-deactivated-users-test
-  (testing "hydrate-notification excludes user recipients whose user is deactivated (GDGT-1927)"
+(deftest recipients-detail-nils-deactivated-users-test
+  (testing "recipients-detail hydration leaves :user nil for deactivated users so they don't get notifications (GDGT-1927)"
     (mt/with-model-cleanup [:model/Notification]
       (mt/with-temp [:model/Channel chn (assoc api.channel-test/default-test-channel :name "Channel")
                      :model/User    deactivated-user {:email "deactivated@metabase.com" :is_active false}
@@ -231,13 +231,12 @@
                       :channel_id   (:id chn)
                       :recipients   [{:type :notification-recipient/user :user_id (:id deactivated-user)}
                                      {:type :notification-recipient/user :user_id (:id active-user)}]}])
-              hydrated (models.notification/hydrate-notification (t2/select-one :model/Notification (:id noti)))
-              recipients (->> hydrated :handlers first :recipients)
-              user-ids   (set (map :user_id recipients))]
-          (testing "active user is still in the hydrated recipients"
-            (is (contains? user-ids (:id active-user))))
-          (testing "deactivated user is filtered out"
-            (is (not (contains? user-ids (:id deactivated-user))))))))))
+              handler (t2/select-one :model/NotificationHandler :notification_id (:id noti))
+              by-user-id (->> (t2/hydrate handler [:recipients :recipients-detail])
+                              :recipients
+                              (into {} (map (juxt :user_id identity))))]
+          (is (some? (get-in by-user-id [(:id active-user) :user])) "active user :user is hydrated")
+          (is (nil? (get-in by-user-id [(:id deactivated-user) :user])) "deactivated user :user is nil"))))))
 
 (deftest delete-template-set-null-on-existing-handlers-test
   (testing "if a channel template is deleted, then set null on existing notification_handler"

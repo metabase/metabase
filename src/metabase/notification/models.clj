@@ -264,12 +264,19 @@
    {:default []}))
 
 (methodical/defmethod t2/batched-hydrate [:default :recipients-detail]
-  "Batch hydration of details (user, group members) for NotificationRecipients"
+  "Batch hydration of details (user, group members) for NotificationRecipients.
+  Deactivated users have :user set to nil so they don't receive notifications (GDGT-1927)."
   [_model _k recipients]
   (-> (group-by :type recipients)
       (m/update-existing :notification-recipient/user
                          (fn [recipients]
-                           (t2/hydrate recipients :user)))
+                           (let [hydrated (t2/hydrate recipients :user)
+                                 inactive-ids (when (seq hydrated)
+                                                (t2/select-pks-set :model/User
+                                                                   :id [:in (map :user_id hydrated)]
+                                                                   :is_active false))]
+                             (mapv #(cond-> % (contains? inactive-ids (:user_id %)) (assoc :user nil))
+                                   hydrated))))
       (m/update-existing :notification-recipient/group
                          (fn [recipients]
                            (t2/hydrate recipients [:permissions_group :members])))
@@ -507,43 +514,14 @@
                          [:payload ::NotificationCard]]]
     [::mc/default       :map]]])
 
-(defn- remove-deactivated-user-recipients
-  "Drop user recipients whose user is deactivated, so disabled accounts stop receiving
-  notifications (GDGT-1927). Group-type recipients are unaffected because the group
-  members hydration already excludes deactivated users."
-  [notifications]
-  (let [collection? (sequential? notifications)
-        notis       (if collection? notifications [notifications])
-        user-ids    (->> notis
-                         (mapcat :handlers)
-                         (mapcat :recipients)
-                         (filter #(= :notification-recipient/user (:type %)))
-                         (keep :user_id)
-                         distinct)
-        inactive-ids (when (seq user-ids)
-                       (t2/select-pks-set :model/User
-                                          :id [:in user-ids]
-                                          :is_active false))
-        active-recipient? (fn [{:keys [type user_id]}]
-                            (not (and (= :notification-recipient/user type)
-                                      (contains? inactive-ids user_id))))
-        result (mapv (fn [noti]
-                       (update noti :handlers
-                               (fn [handlers]
-                                 (mapv #(update % :recipients (partial filterv active-recipient?))
-                                       handlers))))
-                     notis)]
-    (if collection? result (first result))))
-
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications]
-  (-> (t2/hydrate notification-or-notifications
-                  :creator
-                  :payload
-                  :subscriptions
-                  [:handlers :channel :template [:recipients :recipients-detail]])
-      remove-deactivated-user-recipients))
+  (t2/hydrate notification-or-notifications
+              :creator
+              :payload
+              :subscriptions
+              [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
   "Find all active card notifications for a given card-id."
