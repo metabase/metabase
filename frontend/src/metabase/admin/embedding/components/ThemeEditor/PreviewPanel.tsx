@@ -17,7 +17,7 @@ export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
     <Flex
       direction="column"
       flex={1}
-      style={{ backgroundColor: "var(--mb-color-bg-light)" }}
+      style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
     >
       <Box p="xl" pb="sm">
         <Text fw={700} fz="xl">{t`Theme preview`}</Text>
