@@ -5,6 +5,8 @@ summary: Use a combination of agent skills and serialization to develop Metabase
 
 # File-based development
 
+{% include plans-blockquote.html feature="Serialization" %}
+
 You can use AI to generate YAML files that serialize content like questions and dashboards, then import those items into Metabase.
 
 ## The file-based toolkit
@@ -63,6 +65,8 @@ git checkout -b your-branch-name
    tar -xvf metabase_data.tgz
    ```
 
+   The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export. Rename it to `metabase_data` so the compress command in step 7 works as written, or substitute the actual directory name when you get there.
+
 ### 4. Commit the export
 
 Commit the initial exported set of YAML files. If your AI goes off the rails, you can always revert to the original export.
@@ -113,6 +117,8 @@ curl -X POST \
   'https://your-metabase-url/api/ee/serialization/import' \
   -o -
 ```
+
+The `-o -` flag writes the import response to stdout, so you can see whether the import succeeded and check any warnings.
 
 Log in to this Metabase and check that the changes are as you expect.
 
