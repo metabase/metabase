@@ -9,7 +9,7 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   iconUrl?: string;
   iconDarkUrl?: string;
   // `(string & {})` keeps `ColorName` autocompletion while still allowing
-  // arbitrary CSS color strings such as `var(--mb-color-secondary-color)`.
+  // arbitrary CSS color strings such as hex codes or CSS variables.
   color?: ColorName | "inherit" | (string & {});
   size?: string | number;
   style?: CSSProperties;
