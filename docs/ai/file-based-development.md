@@ -87,7 +87,7 @@ Make sure your agent actually invokes the skills, otherwise the agent may not ge
 
 Set up a Metabase instance to check your work. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
 
-We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a docker compose file, add this to your env vars:
+We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a [docker compose file](../installation-and-operation/running-metabase-on-docker.md), add these [environment variables](../configuring-metabase/environment-variables.md):
 
 ```
 MB_LOAD_SAMPLE_CONTENT: "false"
