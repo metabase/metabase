@@ -1,59 +1,87 @@
-const createElement = ({ type, name }) => ({
+const createElement = ({
+  type,
+  name,
+  pattern,
+  mode,
+  enforceOutgoing = false,
+}) => ({
   type: `${type}/${name}`,
-  pattern: `frontend/src/metabase/${name}/**`,
+  pattern: pattern ?? `frontend/src/metabase/${name}/**`,
+  ...(mode && { mode }),
+  enforceOutgoing,
 });
 
-const libModules = ["lib", "css"];
-
-const basicModules = ["ui", "api"];
-
-const sharedModules = ["common", "querying", "visualizations"];
-
-const featureModules = ["dashboard", "query_builder", "admin", "reference"];
-
-const appMiscFilePaths = [
-  "frontend/src/metabase/app.js",
-  "frontend/src/metabase/app-embed-sdk.tsx",
-  "frontend/src/metabase/app-main.js",
-  "frontend/src/metabase/app-embed.ts",
-  "frontend/src/metabase/app-public.ts",
-  "frontend/src/metabase/App.tsx",
-  "frontend/src/metabase/App.styled.tsx",
-  "frontend/src/metabase/routes.jsx",
-  "frontend/src/metabase/routes-embed.tsx",
-  "frontend/src/metabase/routes-public.tsx",
-  "frontend/src/metabase/AppThemeProvider.tsx",
-  "frontend/src/metabase/AppColorSchemeProvider.tsx",
-];
-
 const elements = [
-  { type: "lib/types", pattern: "frontend/src/metabase-types/*/**" },
-  {
-    type: "lib/schema",
+  // lib
+  createElement({
+    type: "lib",
+    name: "types",
+    pattern: "frontend/src/metabase-types/*/**",
+  }),
+  createElement({
+    type: "lib",
+    name: "schema",
     pattern: "frontend/src/metabase/schema.js",
-    mode: "full", // matches the entire path
-  },
-  { type: "basic/mlv2", pattern: "frontend/src/metabase-lib/*/**" },
-  ...libModules.map((name) => createElement({ type: "lib", name })),
-  ...basicModules.map((name) => createElement({ type: "basic", name })),
-  ...sharedModules.map((name) => createElement({ type: "shared", name })),
-  ...featureModules.map((name) => createElement({ type: "feature", name })),
-  {
-    type: "feature/enterprise",
-    pattern: "enterprise/frontend/src/metabase-enterprise/**",
-    mode: "full", // matches the entire path, because enterprise is in a different directory
-  },
-  {
-    type: "lib/env",
+    mode: "full",
+  }),
+  createElement({ type: "lib", name: "lib" }),
+  createElement({ type: "lib", name: "css" }),
+  createElement({
+    type: "lib",
+    name: "env",
     pattern: "frontend/src/metabase/env.ts",
     mode: "full",
-  },
-  ...appMiscFilePaths.map((path) => ({
-    type: "app/misc",
-    pattern: path,
+  }),
+  // basic
+  createElement({
+    type: "basic",
+    name: "mlv2",
+    pattern: "frontend/src/metabase-lib/*/**",
+  }),
+  createElement({ type: "basic", name: "ui" }),
+  createElement({ type: "basic", name: "api" }),
+  // shared
+  createElement({ type: "shared", name: "common" }),
+  createElement({ type: "shared", name: "querying" }),
+  createElement({ type: "shared", name: "visualizations" }),
+  // feature
+  createElement({ type: "feature", name: "dashboard" }),
+  createElement({
+    type: "feature",
+    name: "query_builder",
+    enforceOutgoing: true,
+  }),
+  createElement({ type: "feature", name: "admin" }),
+  createElement({ type: "feature", name: "reference" }),
+  createElement({
+    type: "feature",
+    name: "enterprise",
+    pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
-  })),
-  { type: "shared/other", pattern: "frontend/src/*/**" },
+  }),
+  // app
+  ...[
+    "frontend/src/metabase/app.js",
+    "frontend/src/metabase/app-embed-sdk.tsx",
+    "frontend/src/metabase/app-main.js",
+    "frontend/src/metabase/app-embed.ts",
+    "frontend/src/metabase/app-public.ts",
+    "frontend/src/metabase/App.tsx",
+    "frontend/src/metabase/App.styled.tsx",
+    "frontend/src/metabase/routes.jsx",
+    "frontend/src/metabase/routes-embed.tsx",
+    "frontend/src/metabase/routes-public.tsx",
+    "frontend/src/metabase/AppThemeProvider.tsx",
+    "frontend/src/metabase/AppColorSchemeProvider.tsx",
+  ].map((path) =>
+    createElement({ type: "app", name: "misc", pattern: path, mode: "full" }),
+  ),
+  // catch-all for unmoduled files - must be last
+  createElement({
+    type: "shared",
+    name: "other",
+    pattern: "frontend/src/*/**",
+  }),
 ];
 
 const rules = [
@@ -96,4 +124,42 @@ const rules = [
   },
 ];
 
-export { elements, rules };
+// Build enforcedRules: only enforce boundaries for modules with enforceOutgoing: true.
+// Non-enforced modules get a blanket allow-all so they pass without errors.
+const enforcedElementTypes = new Set(
+  elements.filter((el) => el.enforceOutgoing).map((el) => el.type),
+);
+
+const getEnforcedTypesForPattern = (pattern) => {
+  if (pattern.endsWith("/*")) {
+    const prefix = pattern.slice(0, -1);
+    return [...enforcedElementTypes].filter((type) => type.startsWith(prefix));
+  }
+  return enforcedElementTypes.has(pattern) ? [pattern] : [];
+};
+
+const nonEnforcedTypes = [
+  ...new Set(elements.filter((el) => !el.enforceOutgoing).map((el) => el.type)),
+];
+
+const enforcedRules = [
+  ...rules
+    .map((rule) => {
+      const enforcedFromTypes = rule.from.flatMap(getEnforcedTypesForPattern);
+      if (enforcedFromTypes.length === 0) {
+        return null;
+      }
+      return { ...rule, from: enforcedFromTypes };
+    })
+    .filter(Boolean),
+  ...(nonEnforcedTypes.length > 0
+    ? [
+        {
+          from: nonEnforcedTypes,
+          allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
+        },
+      ]
+    : []),
+];
+
+export { elements, rules, enforcedRules };
