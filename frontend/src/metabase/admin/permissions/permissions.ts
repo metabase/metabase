@@ -22,16 +22,16 @@ import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
 import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
 import {
-  combineReducers,
-  createAction,
-  createThunkAction,
-} from "metabase/lib/redux";
-import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
 } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
+import {
+  combineReducers,
+  createAction,
+  createThunkAction,
+} from "metabase/utils/redux";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Collection,

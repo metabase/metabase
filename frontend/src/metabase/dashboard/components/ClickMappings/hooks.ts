@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
-import { isQuestionDashCard } from "metabase/lib/dashboard";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { GTAPApi } from "metabase/services";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 import Question from "metabase-lib/v1/Question";
 import {
   getTargetsForDashboard,

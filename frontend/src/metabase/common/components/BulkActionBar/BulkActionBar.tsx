@@ -2,9 +2,9 @@ import cx from "classnames";
 import type { HTMLAttributes } from "react";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { Box, type BoxProps, Flex, Portal, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { BulkActionsToast, ToastCard } from "./BulkActionBar.styled";
 

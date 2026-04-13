@@ -26,7 +26,7 @@
      (let [details            {:host "read-host" :port 5432}
            write-data-details {:host "write-host" :port 5432}]
        (testing "effective-details returns write_data_details when :write-data and details exist"
-         (testing "with kebab-case key (MLv2 metadata style)"
+         (testing "with kebab-case key (Lib metadata style)"
            (let [database {:lib/type           :metadata/database
                            :details            details
                            :write-data-details write-data-details}]

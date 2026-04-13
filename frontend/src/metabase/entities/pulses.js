@@ -6,12 +6,12 @@ import {
   useListSubscriptionsQuery,
 } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
+import { color } from "metabase/ui/colors";
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
-import { color } from "metabase/ui/colors";
+} from "metabase/utils/entities";
 /**
  * @deprecated use "metabase/api" instead
  */

@@ -2,11 +2,15 @@ import { useMemo } from "react";
 import { noop } from "underscore";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
+import type { DimensionPillBarItem } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
-import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
+import {
+  DISPLAY_TYPE_REGISTRY,
+  getTabConfig,
+} from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
+import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { DimensionMetadata } from "metabase-lib/metric";
@@ -15,6 +19,7 @@ import type { CardId, SingleSeries } from "metabase-types/api";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../../types/viewer-state";
 
@@ -22,18 +27,17 @@ import S from "./MetricsViewerVisualization.module.css";
 
 type MetricsViewerVisualizationProps = {
   rawSeries: SingleSeries[];
-  dimensionItems: DimensionItem[];
-  onDimensionChange?: (
-    definitionId: MetricSourceId,
-    dimension: DimensionMetadata,
-  ) => void;
-  onDimensionRemove?: (definitionId: MetricSourceId) => void;
+  dimensionItems: DimensionPillBarItem[];
+  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
+  onDimensionRemove?: (slotIndex: number) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
+  metricSlots: MetricSlot[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToEntityIndex: Record<CardId, number>;
   interactive?: boolean;
 };
 
@@ -45,9 +49,11 @@ export function MetricsViewerVisualization({
   onBrush,
   className,
   definitions,
+  formulaEntities,
+  metricSlots,
   tab,
   onTabUpdate,
-  cardIdToDimensionId,
+  cardIdToEntityIndex,
   interactive = true,
 }: MetricsViewerVisualizationProps) {
   const { ref, width } = useElementSize();
@@ -58,13 +64,31 @@ export function MetricsViewerVisualization({
       interactive
         ? new MetricsViewerClickActionsMode({
             definitions,
+            formulaEntities,
+            metricSlots,
             tab,
             onTabUpdate,
-            cardIdToDimensionId,
+            cardIdToEntityIndex,
           })
         : undefined,
-    [cardIdToDimensionId, definitions, interactive, onTabUpdate, tab],
+    [
+      definitions,
+      cardIdToEntityIndex,
+      formulaEntities,
+      metricSlots,
+      interactive,
+      onTabUpdate,
+      tab,
+    ],
   );
+
+  const tabConfig = getTabConfig(tab.type);
+  const hasAnyOptions = dimensionItems.some((item) =>
+    item.type === "expression"
+      ? item.metricSources.some((s) => s.availableOptions.length > 0)
+      : item.availableOptions.length > 0,
+  );
+  const hideDimensionPill = tabConfig.minDimensions === 0 && !hasAnyOptions;
 
   return (
     <Flex
@@ -114,7 +138,7 @@ export function MetricsViewerVisualization({
         </DebouncedFrame>
       )}
 
-      {dimensionItems.length > 0 && onDimensionChange && (
+      {!hideDimensionPill && (
         <DimensionPillBar
           items={dimensionItems}
           onDimensionChange={onDimensionChange}

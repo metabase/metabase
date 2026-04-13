@@ -17,6 +17,8 @@ export type GroupLimitsTabProps = {
   limitPeriod: MetabotLimitPeriod;
   limitType: MetabotLimitType;
   variant: "regular-groups" | "tenant-groups";
+  allUsersGroup?: GroupInfo;
+  allUsersGroupLimit?: number | null;
 };
 
 export type GroupLimitsMap = Record<number, number | null>;

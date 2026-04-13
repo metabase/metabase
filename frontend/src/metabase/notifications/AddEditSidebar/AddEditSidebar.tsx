@@ -2,7 +2,7 @@ import {
   getParameters,
   getTabHiddenParameterSlugs,
 } from "metabase/dashboard/selectors";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 
 import { AddEditEmailSidebar as AddEditEmailSidebarComponent } from "./AddEditEmailSidebar";

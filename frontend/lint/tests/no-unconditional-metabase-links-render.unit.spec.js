@@ -21,7 +21,7 @@ const ruleTester = new RuleTester({
 const VALID_CASES = [
   {
     code: `
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
@@ -31,7 +31,7 @@ const docsLink = useSelector(state =>
   },
   {
     code: `
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
@@ -76,7 +76,7 @@ const INVALID_CASES = [
   {
     name: "Detect getDocsUrl()",
     code: `
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 
 const docsLink = useSelector(state =>
@@ -88,7 +88,7 @@ const docsLink = useSelector(state =>
   {
     name: "Detect getLearnUrl()",
     code: `
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 
 const docsLink = useSelector(state =>

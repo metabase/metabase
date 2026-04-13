@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
-import { getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Text, Title } from "metabase/ui";
+import { getUserName } from "metabase/utils/user";
 import * as Lib from "metabase-lib";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 

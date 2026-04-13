@@ -102,6 +102,8 @@ describe("scenarios > data studio > library > metrics", () => {
     H.echartsContainer().findByText("Count").should("be.visible");
 
     cy.log("Verify metric dependencies page");
+    H.waitForBackfillComplete();
+    cy.reload();
     H.DataStudio.Metrics.dependenciesTab().click();
     H.DependencyGraph.graph().within(() => {
       cy.findByText("Orders").should("be.visible");

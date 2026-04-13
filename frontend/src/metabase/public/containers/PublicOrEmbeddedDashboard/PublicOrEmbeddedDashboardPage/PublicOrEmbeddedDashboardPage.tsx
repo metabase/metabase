@@ -6,12 +6,12 @@ import { useDashboardLocationSync } from "metabase/dashboard/containers/Dashboar
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { isActionDashCard, isQuestionCard } from "metabase/lib/dashboard";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 

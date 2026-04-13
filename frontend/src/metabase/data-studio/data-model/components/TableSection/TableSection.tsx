@@ -9,10 +9,6 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
-import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -38,6 +34,10 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+import type { DataStudioTableMetadataTab } from "metabase/utils/urls/data-studio";
+import { dependencyGraph } from "metabase/utils/urls/dependencies";
 import {
   type FieldId,
   type Table,

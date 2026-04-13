@@ -1,10 +1,10 @@
 import type { Location } from "history";
 import { useEffect } from "react";
 
-import { parseHashOptions } from "metabase/lib/browser";
-import { useDispatch } from "metabase/lib/redux";
 import type { EmbeddingHashOptions } from "metabase/public/lib/types";
 import { setOptions } from "metabase/redux/embed";
+import { parseHashOptions } from "metabase/utils/browser";
+import { useDispatch } from "metabase/utils/redux";
 
 export const useSetEmbedFont = ({ location }: { location: Location }) => {
   const dispatch = useDispatch();

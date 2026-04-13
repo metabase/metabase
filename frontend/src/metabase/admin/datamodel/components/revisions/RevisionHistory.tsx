@@ -5,8 +5,8 @@ import { t } from "ttag";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import * as Urls from "metabase/lib/urls";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
+import * as Urls from "metabase/utils/urls";
 import type {
   Revision as RevisionType,
   Segment,

@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { extractEntityId } from "metabase/lib/urls";
+import { extractEntityId } from "metabase/utils/urls";
 
 import { DocumentPage } from "./components/DocumentPage";
 

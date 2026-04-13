@@ -8,6 +8,7 @@
    [metabase-enterprise.dependencies.erd :as erd]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
+   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -1187,6 +1188,13 @@
                      (not include-personal-collections) (comp (remove in-personal-collection?)))
                 (fetch-and-hydrate-nodes nodes-by-type))
           (sort-dependents sort-column sort-direction)))))
+
+(api.macros/defendpoint :get "/backfill-status" :- [:map
+                                                    [:complete :boolean]]
+  "Returns whether the dependency backfill has pending work.
+  `complete` is true when there are no stale or outdated entities awaiting processing."
+  [_route-params _query-params]
+  {:complete (not (deps.dependency-status/has-stale-or-outdated?))})
 
 ;;; -------------------------------------------------- ERD Endpoint --------------------------------------------------
 

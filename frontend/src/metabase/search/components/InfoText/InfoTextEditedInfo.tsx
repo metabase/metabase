@@ -3,10 +3,10 @@ import { t } from "ttag";
 import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
-import { getRelativeTime } from "metabase/lib/time-dayjs";
-import { isNotNull } from "metabase/lib/types";
 import type { WrappedResult } from "metabase/search/types";
 import { Text, Tooltip } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
+import { isNotNull } from "metabase/utils/types";
 import type { UserListResult } from "metabase-types/api";
 
 import {

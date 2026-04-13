@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { useHasEmailSetup, useHasSlackSetup } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Icon, Menu, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
 
 export function DashboardSubscriptionMenuItem({
