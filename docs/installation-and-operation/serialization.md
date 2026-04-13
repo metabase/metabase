@@ -708,19 +708,12 @@ If you're upgrading from Metabase version 46.X or older, here's what you need to
 - The `export` command replaces the `dump` command.
 - The `import` command replace the `load` command.
 
-A few other changes to call out:
-
-- The exported YAML files have a slightly different structure:
-  - Metabase will prefix each file with a 24-character Entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
-    You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids).
-  - The file tree is slightly different.
-- To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
-
-Starting with Metabase 60, the export format changed again:
+Starting with Metabase 60, the export format changed:
 
 - File and directory names now use human-readable names (like `accounts_model.yaml`) instead of Entity ID prefixes. Entity IDs are still present inside each YAML file.
 - Fields with default values (like `archived: false`) and null-valued fields are omitted from the YAML output, keeping files compact.
 - The file tree organizes collections by namespace (`main/`, `snippets/`, `transforms/`), and entities are stored inside their parent collection folder.
+- To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
 
 If you've written scripts to automate serialization, you'll need to:
 
