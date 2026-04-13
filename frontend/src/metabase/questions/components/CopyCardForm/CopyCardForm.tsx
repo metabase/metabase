@@ -5,9 +5,9 @@ import * as Yup from "yup";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";
+import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
   Form,
   FormErrorMessage,
