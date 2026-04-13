@@ -10,6 +10,7 @@ dimensions: []
 position: 8
 custom_position: 0
 database_position: 8
+has_field_values: auto-list
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}
 - {id: public, model: Schema}

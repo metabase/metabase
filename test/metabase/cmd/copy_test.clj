@@ -36,6 +36,7 @@
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Dependency
+    :model/DependencyStatus
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotPermissions

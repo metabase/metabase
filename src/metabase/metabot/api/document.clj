@@ -100,8 +100,7 @@
                                 :profile-id    :document-generate-content
                                 :state         {}
                                 :context       context
-                                :tracking-opts {:source             "document_generate_content"
-                                                :track-user-intent? true}}))
+                                :tracking-opts {:source "document_generate_content"}}))
         chart-output (latest-chart-structured-output parts)
         draft-card   (draft-card-from-chart-output chart-output)
         description  (or (:description chart-output)

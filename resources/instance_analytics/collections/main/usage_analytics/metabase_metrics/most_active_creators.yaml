@@ -17,7 +17,7 @@ dataset_query:
       - {lib/uuid: 0fc9b145-a552-4546-b197-cf0b3c866dcb}
     breakout:
     - - field
-      - {base-type: type/Text, join-alias: People - User, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: People - User}
       - [Internal Metabase Database, public, v_users, full_name]
     - - field
       - {base-type: type/Integer, effective-type: type/Integer}
@@ -38,7 +38,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_audit_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
       stages:
       - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
@@ -50,10 +50,10 @@ dataset_query:
       - - =
         - {}
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
         - - field
-          - {join-alias: People - User, base-type: type/Integer, lib/uuid: 8975626d-dbb1-425e-9112-bdfa5f461850}
+          - {base-type: type/Integer, join-alias: People - User, lib/uuid: 8975626d-dbb1-425e-9112-bdfa5f461850}
           - user_id
       stages:
       - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
