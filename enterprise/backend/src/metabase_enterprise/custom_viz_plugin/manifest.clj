@@ -7,7 +7,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
-   (org.semver4j Semver SemverException)))
+   (org.semver4j Semver)))
 
 (set! *warn-on-reflection* true)
 
@@ -46,9 +46,11 @@
     (if (or config/is-dev? (nil? current-version) (str/blank? metabase_version))
       true
       (try
-        (let [current (Semver/coerce (normalize-mb-version current-version))]
-          (.satisfies (.withClearedPreReleaseAndBuild current) ^String metabase_version))
-        (catch SemverException e
+        (if-let [current (Semver/coerce (normalize-mb-version current-version))]
+          (.satisfies (.withClearedPreReleaseAndBuild current) ^String metabase_version)
+          ;; Unknown/uncoercible current version (e.g. `vLOCAL_DEV` in CI) — be permissive.
+          true)
+        (catch Exception e
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
           false)))))
 
