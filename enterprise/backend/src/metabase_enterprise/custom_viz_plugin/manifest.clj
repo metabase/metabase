@@ -40,7 +40,7 @@
       true
       (try
         (let [current (Semver/coerce current-version)]
-          (.satisfies current ^String metabase_version))
+          (.satisfies (.withClearedPreReleaseAndBuild current) ^String metabase_version))
         (catch SemverException e
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
           false)))))
