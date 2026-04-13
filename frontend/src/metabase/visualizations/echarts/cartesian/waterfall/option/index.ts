@@ -252,7 +252,6 @@ export const getWaterfallChartOption = (
     series: seriesOption,
     ...buildAxes(
       chartModel,
-      chartWidth,
       chartLayout,
       settings,
       hasTimelineEvents,
