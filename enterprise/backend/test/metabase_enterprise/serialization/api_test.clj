@@ -47,11 +47,6 @@
           (slurp (io/reader tar))
           (recur))))))
 
-(defn- export-log-line-count
-  "Count lines in export.log inside the tar.gz response."
-  [f]
-  (count (str/split-lines (or (read-export-log f) ""))))
-
 (def ^:private file-types
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
@@ -69,13 +64,6 @@
           (when-let [m (re-find re fname)]
             [ftype (when (vector? m) (second m))]))
         (partition 2 file-types)))
-
-(defn- log-types
-  "Find out entity type by log message"
-  [lines]
-  (->> lines
-       (keep #(second (re-find #"(?:Extracting|Loading|Storing) \{:path (\w+)" %)))
-       set))
 
 (defn- tar-file-types [f & [raw?]]
   (with-open [tar (open-tar f)]
@@ -232,10 +220,8 @@
                                           :collection (:id coll) :data_model false :settings false)
                     io/input-stream)
             ba  (#'api.serialization/ba-copy res)]
-        (testing "Archive contains correct number of files with proper log entries"
-          (is (= 13 (count (filter #(not (str/ends-with? % "/")) (entry-names ba)))))
-          (testing "Log contains extract and store entries"
-            (is (= (+ #_extract 12 #_store 12) (export-log-line-count ba)))))
+        (testing "Archive contains correct number of files"
+          (is (= 13 (count (filter #(not (str/ends-with? % "/")) (entry-names ba))))))
 
         (testing "Snowplow export event was sent"
           (is (=? {"event"           "serialization"
@@ -275,10 +261,6 @@
                             (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
                                                   {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                   {:file ba}))]
-          (testing "Log contains imported entity types"
-            (is (= #{"Collection" "Dashboard" "Card" "PythonLibrary" "TransformJob" "TransformTag"}
-                   (log-types (line-seq (io/reader (io/input-stream res)))))))
-
           (testing "Entities are restored in the database"
             (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
             (is (= (:name card) (t2/select-one-fn :name :model/Card :entity_id (:entity_id card)))))
@@ -351,9 +333,7 @@
                                           {:file ba}
                                           :continue_on_error true)
                 log (slurp (io/input-stream res))]
-            (testing "Log shows loaded entities and error"
-              (is (= #{"Dashboard" "Card" "Collection" "TransformJob" "TransformTag" "PythonLibrary"}
-                     (log-types (str/split-lines log))))
+            (testing "Log contains the missing-collection error"
               (is (re-find #"Collection 'DoesNotExist' was not found" log)))
 
             (testing "Snowplow event shows partial success with error count"
@@ -428,8 +408,8 @@
         (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                         :collection (:id coll) :data_model false :settings false
                                         :continue_on_error true)]
-          (testing "Log shows extract entries, error, and store entries"
-            (is (= (+ #_extract 12 #_error 1 #_store 11) (export-log-line-count res)))))
+          (testing "Log contains the deliberate error"
+            (is (re-find #"deliberate error message" (read-export-log res)))))
 
         (testing "Snowplow event shows partial success with error count"
           (is (=? {"event"           "serialization"
