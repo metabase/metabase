@@ -281,7 +281,7 @@
               yaml-before (clean-and-export!)
 
               ;; Export again but with nested entity query results reversed,
-              ;; simulating non-deterministic DB row ordering (as seen on Postgres)
+              ;; simulating non-deterministic DB row ordering (as seen on Aurora Postgres)
               original-fn @#'serdes/transform->nested
               yaml-reversed
               (with-redefs [serdes/transform->nested
