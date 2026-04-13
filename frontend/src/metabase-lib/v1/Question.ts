@@ -752,11 +752,11 @@ class Question {
     );
 
     // Helpers for working with the current query from CLJS REPLs.
-    // if (process.env.NODE_ENV === "development") {
-    //   window.__lib_metadata = this.__libMetadataProvider;
-    //   window.__lib_query = this.__libQuery;
-    //   window.Lib = Lib;
-    // }
+    if (process.env.NODE_ENV === "development") {
+      window.__lib_metadata = this.__libMetadataProvider;
+      window.__lib_query = this.__libQuery;
+      window.Lib = Lib;
+    }
 
     return libQuery;
   }
