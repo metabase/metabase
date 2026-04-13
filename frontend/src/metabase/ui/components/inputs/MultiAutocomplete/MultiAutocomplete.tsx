@@ -53,6 +53,11 @@ export type MultiAutocompleteProps = BoxProps &
     onSearchChange?: (newValue: string) => void;
   };
 
+/**
+ * Base multi-value autocomplete component. For most use cases, prefer
+ * {@link MultiAutocompleteWithTranslation} from `metabase/common/components/MultiAutocomplete`
+ * which adds content translation and translation-aware sorting.
+ */
 export function MultiAutocomplete({
   value,
   data = [],
