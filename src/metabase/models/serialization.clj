@@ -450,6 +450,11 @@
 
 (defmethod make-spec :default [_ _] nil)
 
+(defn ^:dynamic ^::cache *make-spec*
+  "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
+  [model-name opts]
+  (make-spec model-name opts))
+
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
@@ -495,7 +500,7 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (let [spec (make-spec model-name opts)]
+    (let [spec (*make-spec* model-name opts)]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
                 (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
@@ -557,7 +562,7 @@
     (group-by backward-fk entities)))
 
 (defn- extract-batch-nested [model-name opts batch]
-  (let [spec (make-spec model-name opts)]
+  (let [spec (*make-spec* model-name opts)]
     (reduce-kv (fn [batch k transform]
                  (if-not (::nested transform)
                    batch
@@ -577,7 +582,7 @@
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
   collection."
   [model {:keys [collection-set where] :as opts}]
-  (let [spec (make-spec (name model) opts)]
+  (let [spec (*make-spec* (name model) opts)]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
@@ -591,7 +596,7 @@
                                             where)]}))))
 
 (defmethod extract-query :default [model-name opts]
-  (let [spec    (make-spec model-name opts)
+  (let [spec    (*make-spec* model-name opts)
         nested? (some ::nested (vals (:transform spec)))]
     (cond->> (extract-query-collections (keyword "model" model-name) opts)
       nested? (extract-reducible-nested model-name (dissoc opts :where)))))
@@ -795,7 +800,7 @@
           schemas))
 
 (defn- xform-one [model-name ingested]
-  (let [spec (make-spec model-name nil)]
+  (let [spec (*make-spec* model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
     (-> (select-keys ingested (:copy spec))
         (into (for [[k transform] (:transform spec)
@@ -815,7 +820,7 @@
         (coerce-keys (:coerce spec)))))
 
 (defn- spec-nested! [model-name ingested instance]
-  (let [spec (make-spec model-name nil)]
+  (let [spec (*make-spec* model-name nil)]
     (doseq [[k transform] (:transform spec)
             :when (and (::nested transform)
                        ;; handling circuit-breaking
