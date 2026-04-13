@@ -277,3 +277,17 @@
           (is (nil? (:user_agent result)))
           (is (nil? (:sanitized_user_agent result)))
           (is (nil? (:ip_address result))))))))
+
+(deftest embed-referrer-header-precedence-test
+  (let [request (-> (ring.mock/request :get "/api/embed/card/1")
+                    (ring.mock/header "x-metabase-embed-referrer" "https://embed.example.com/analytics/dash")
+                    (ring.mock/header "origin" "https://fallback.example.com")
+                    (ring.mock/header "referer" "https://fallback.example.com/other/path")
+                    (assoc :remote-addr "10.0.0.1"))]
+    (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+      (request.current/with-current-request request
+        (let [result (sdk/include-sdk-info {})]
+          (testing "hostname comes from embed-referrer header, not origin"
+            (is (= "embed.example.com" (:embedding_hostname result))))
+          (testing "path comes from embed-referrer header, not referer"
+            (is (= "/analytics/dash" (:embedding_path result)))))))))

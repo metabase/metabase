@@ -79,8 +79,8 @@
   "Returns embedding_hostname from the current request. Always collected (not PII)."
   []
   (when-let [request (request.current/current-request)]
-    (let [embed-origin (get-in request [:headers "x-metabase-embed-origin"])
-          origin       (or embed-origin (get-in request [:headers "origin"]))]
+    (let [embed-referrer (get-in request [:headers "x-metabase-embed-referrer"])
+          origin         (or embed-referrer (get-in request [:headers "origin"]))]
       {:embedding_hostname (extract-hostname origin)})))
 
 (defn- pii-fields
@@ -88,8 +88,8 @@
   []
   (when (analytics.settings/analytics-pii-retention-enabled)
     (when-let [request (request.current/current-request)]
-      (let [embed-origin (get-in request [:headers "x-metabase-embed-origin"])]
-        {:embedding_path       (extract-path (or embed-origin (get-in request [:headers "referer"])))
+      (let [embed-referrer (get-in request [:headers "x-metabase-embed-referrer"])]
+        {:embedding_path       (extract-path (or embed-referrer (get-in request [:headers "referer"])))
          :user_agent           (some-> (get-in request [:headers "user-agent"])
                                        (subs 0 (min (count (get-in request [:headers "user-agent"])) 512)))
          :sanitized_user_agent (request.user-agent/describe-user-agent (get-in request [:headers "user-agent"]))
