@@ -8,7 +8,8 @@
   "Consume the entity `stream` and store each entity via the given `writer`.
   Returns a report map with `:seen` and `:errors` vectors.
 
-  Uses `reduce` to make elements reach the writer as they are produced and not materialize the upstream."
+  Uses `reduce` to make elements reach the writer as they are produced and 
+  not materialize the entire upstream before the loop body."
   [stream writer]
   (let [settings (atom [])
         report   (atom {:seen [] :errors []})]
