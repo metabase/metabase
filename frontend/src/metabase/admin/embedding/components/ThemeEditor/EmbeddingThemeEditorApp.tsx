@@ -5,8 +5,8 @@ import { useEmbeddingThemeEditor } from "metabase/admin/embedding/hooks/use-embe
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal/LeaveRouteConfirmModal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
-import { useDispatch } from "metabase/lib/redux";
 import { Flex, Loader, Stack } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import { EditorPanel } from "./EditorPanel";
 import { PreviewPanel } from "./PreviewPanel";
