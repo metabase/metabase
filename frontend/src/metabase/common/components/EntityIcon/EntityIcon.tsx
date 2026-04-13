@@ -1,7 +1,8 @@
-import type { CSSProperties, ImgHTMLAttributes } from "react";
+import type { CSSProperties, HTMLAttributes, ImgHTMLAttributes } from "react";
 
 import { Icon, type IconProps, useMantineTheme } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
+import { color as colorValue } from "metabase/ui/utils/colors";
 import type { IconData } from "metabase/utils/icon";
 
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
@@ -24,7 +25,7 @@ export function EntityIcon({
   iconDarkUrl,
   name = "unknown",
   size = "1rem",
-  color,
+  color = "brand",
   style,
   alt = "",
   ...rest
@@ -34,14 +35,26 @@ export function EntityIcon({
   const resolvedIconUrl = isDarkMode ? (iconDarkUrl ?? iconUrl) : iconUrl;
 
   if (resolvedIconUrl) {
-    // color is intentionally not applied — CSS color has no effect on <img>
+    const bg = color === "inherit" ? "currentColor" : colorValue(color);
+
     return (
-      <img
+      <span
+        role={alt ? "img" : undefined}
+        aria-label={alt || undefined}
         aria-hidden={alt ? undefined : "true"}
-        src={resolvedIconUrl}
-        alt={alt}
-        style={{ ...style, width: size, height: size }}
-        {...(rest as ImgHTMLAttributes<HTMLImageElement>)}
+        style={{
+          ...style,
+          display: "inline-block",
+          verticalAlign: "middle",
+          width: size,
+          height: size,
+          backgroundColor: bg,
+          maskImage: `url(${resolvedIconUrl})`,
+          maskSize: "contain",
+          maskRepeat: "no-repeat",
+          maskPosition: "center",
+        }}
+        {...(rest as HTMLAttributes<HTMLSpanElement>)}
       />
     );
   }
