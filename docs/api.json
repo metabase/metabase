@@ -2001,7 +2001,7 @@
       },
       "metabase-enterprise.replacement.schema.error-type" : {
         "type" : "string",
-        "enum" : [ "cycle-detected", "database-mismatch", "incompatible-implicit-joins" ]
+        "enum" : [ "cycle-detected", "database-mismatch", "incompatible-implicit-joins", "affects-gtap-policies" ]
       },
       "metabase-enterprise.replacement.schema.run" : {
         "type" : "object",
@@ -2103,6 +2103,41 @@
         }, {
           "type" : "null"
         } ]
+      },
+      "metabase-enterprise.security-center.schema.advisory-id" : {
+        "type" : "string",
+        "minLength" : 1
+      },
+      "metabase-enterprise.security-center.schema.affected-versions" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.version-range"
+        }
+      },
+      "metabase-enterprise.security-center.schema.match-status" : {
+        "type" : "string",
+        "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
+      },
+      "metabase-enterprise.security-center.schema.semver" : {
+        "type" : "string",
+        "pattern" : "^\\d+\\.\\d+\\.\\d+$"
+      },
+      "metabase-enterprise.security-center.schema.severity" : {
+        "type" : "string",
+        "enum" : [ "critical", "high", "medium", "low" ]
+      },
+      "metabase-enterprise.security-center.schema.version-range" : {
+        "description" : "A single affected version range with inclusive min and exclusive fixed.",
+        "type" : "object",
+        "properties" : {
+          "fixed" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
+          },
+          "min" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
+          }
+        },
+        "required" : [ "min", "fixed" ]
       },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
@@ -8155,6 +8190,8 @@
         "description" : "A recursive metric math expression tree.\n   Can be a leaf (metric/measure ref) or an arithmetic expression [op opts expr expr ...]\n   with at least 2 operands.\n   Note: uses :fn validator for arithmetic to avoid Malli's recursive seqex limitation.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib-metric.schema.expression-leaf"
+        }, {
+          "type" : "number"
         }, {
           "type" : "array"
         } ]
@@ -24870,6 +24907,39 @@
         "tags" : [ "/api/ee/database-routing" ]
       }
     },
+    "/api/ee/dependencies/backfill-status" : {
+      "get" : {
+        "operationId" : "get-api-ee-dependencies-backfill-status",
+        "summary" : "GET /api/ee/dependencies/backfill-status",
+        "description" : "Returns whether the dependency backfill has pending work.\n  `complete` is true when there are no stale or outdated entities awaiting processing.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "complete" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "complete" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
     "/api/ee/dependencies/check-card" : {
       "post" : {
         "operationId" : "post-api-ee-dependencies-check-card",
@@ -27729,6 +27799,270 @@
           }
         },
         "tags" : [ "/api/ee/scim/v2" ]
+      }
+    },
+    "/api/ee/security-center" : {
+      "get" : {
+        "operationId" : "get-api-ee-security-center",
+        "summary" : "GET /api/ee/security-center",
+        "description" : "List all security advisories with match status.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "advisories" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "published_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "advisory_url" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "minLength" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "last_evaluated_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "match_status" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                          },
+                          "acknowledged_by" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : {
+                                "common_name" : {
+                                  "type" : "string",
+                                  "minLength" : 1
+                                },
+                                "email" : {
+                                  "description" : "value must be a valid email address.",
+                                  "type" : "string"
+                                },
+                                "id" : {
+                                  "description" : "value must be an integer greater than zero.",
+                                  "type" : "integer",
+                                  "minimum" : 1
+                                }
+                              },
+                              "required" : [ "id", "common_name", "email" ]
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "title" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "affected_versions" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.affected-versions"
+                          },
+                          "remediation" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "advisory_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                          },
+                          "severity" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.severity"
+                          },
+                          "description" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "acknowledged_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "advisory_id", "title", "severity", "description", "advisory_url", "remediation", "published_at", "match_status", "last_evaluated_at", "acknowledged_by", "acknowledged_at", "affected_versions" ]
+                      }
+                    },
+                    "last_checked_at" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "last_checked_at", "advisories" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
+      }
+    },
+    "/api/ee/security-center/sync" : {
+      "post" : {
+        "operationId" : "post-api-ee-security-center-sync",
+        "summary" : "POST /api/ee/security-center/sync",
+        "description" : "Trigger an async advisory sync + re-evaluation.\n   Returns immediately. If a sync is already running, the request is a no-op.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "status" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
+      }
+    },
+    "/api/ee/security-center/test-notification" : {
+      "post" : {
+        "operationId" : "post-api-ee-security-center-test-notification",
+        "summary" : "POST /api/ee/security-center/test-notification",
+        "description" : "Send a test notification through the configured Security Center channels.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "success" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
+      }
+    },
+    "/api/ee/security-center/{advisory-id}/acknowledge" : {
+      "post" : {
+        "operationId" : "post-api-ee-security-center-advisory-id-acknowledge",
+        "summary" : "POST /api/ee/security-center/{advisory-id}/acknowledge",
+        "description" : "Acknowledge a security advisory. Stops repeat notifications.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "advisory-id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "acknowledged_at" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "acknowledged_by" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "email" : {
+                            "description" : "value must be a valid email address.",
+                            "type" : "string"
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          }
+                        },
+                        "required" : [ "id", "common_name", "email" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "advisory_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                    },
+                    "match_status" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                    }
+                  },
+                  "required" : [ "advisory_id", "match_status", "acknowledged_by", "acknowledged_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
       }
     },
     "/api/ee/semantic-search/status" : {
@@ -43397,9 +43731,6 @@
                         "type" : "string"
                       },
                       "updated_at" : { },
-                      "dependency_analysis_version" : {
-                        "type" : "integer"
-                      },
                       "source_readable" : {
                         "oneOf" : [ {
                           "type" : "boolean"
@@ -43459,7 +43790,7 @@
                         } ]
                       }
                     },
-                    "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "dependency_analysis_version", "creator" ],
+                    "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "creator" ],
                     "additionalProperties" : false
                   }
                 }
@@ -43729,9 +44060,6 @@
                       "type" : "string"
                     },
                     "updated_at" : { },
-                    "dependency_analysis_version" : {
-                      "type" : "integer"
-                    },
                     "source_readable" : {
                       "oneOf" : [ {
                         "type" : "boolean"
@@ -43791,7 +44119,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "dependency_analysis_version", "creator" ],
+                  "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "creator" ],
                   "additionalProperties" : false
                 }
               }
@@ -44768,9 +45096,6 @@
                         "type" : "string"
                       },
                       "updated_at" : { },
-                      "dependency_analysis_version" : {
-                        "type" : "integer"
-                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -44801,7 +45126,7 @@
                         } ]
                       }
                     },
-                    "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "dependency_analysis_version", "creator" ]
+                    "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "creator" ]
                   }
                 }
               }
@@ -45798,9 +46123,6 @@
                       "type" : "string"
                     },
                     "updated_at" : { },
-                    "dependency_analysis_version" : {
-                      "type" : "integer"
-                    },
                     "source_readable" : {
                       "oneOf" : [ {
                         "type" : "boolean"
@@ -45860,7 +46182,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "dependency_analysis_version", "creator" ],
+                  "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "creator" ],
                   "additionalProperties" : false
                 }
               }
@@ -46138,9 +46460,6 @@
                       "type" : "string"
                     },
                     "updated_at" : { },
-                    "dependency_analysis_version" : {
-                      "type" : "integer"
-                    },
                     "source_readable" : {
                       "oneOf" : [ {
                         "type" : "boolean"
@@ -46200,7 +46519,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "dependency_analysis_version", "creator" ],
+                  "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "creator" ],
                   "additionalProperties" : false
                 }
               }
@@ -46615,9 +46934,6 @@
                         "type" : "string"
                       },
                       "updated_at" : { },
-                      "dependency_analysis_version" : {
-                        "type" : "integer"
-                      },
                       "source_readable" : {
                         "oneOf" : [ {
                           "type" : "boolean"
@@ -46677,7 +46993,7 @@
                         } ]
                       }
                     },
-                    "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "dependency_analysis_version", "creator" ],
+                    "required" : [ "id", "name", "description", "source", "target", "source_type", "entity_id", "created_at", "updated_at", "creator_id", "collection_id", "creator" ],
                     "additionalProperties" : false
                   }
                 }

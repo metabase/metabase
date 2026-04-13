@@ -10,8 +10,8 @@ export const MAX_LIMIT_INPUT = 999999999;
  * Sanitizes the input value for a usage limit.
  * Return an integer value or null if the input is empty.
  */
-export const sanitizeUsageLimitValue = (inputValue: string) => {
-  let sanitizedStrValue = inputValue.trim();
+export const sanitizeUsageLimitValue = (inputValue: string | number) => {
+  let sanitizedStrValue = String(inputValue).trim();
 
   if (sanitizedStrValue !== "") {
     sanitizedStrValue = Math.min(
