@@ -10,11 +10,11 @@
   max-width: 15rem;
 }
 
-.QuotaMessageInput {
-  max-width: 26rem;
-}
-
 .InputDescription {
   color: var(--mb-color-text-secondary);
   line-height: 1rem;
+}
+
+.QuotaMessageInputWrapper {
+  width: 100%;
 }

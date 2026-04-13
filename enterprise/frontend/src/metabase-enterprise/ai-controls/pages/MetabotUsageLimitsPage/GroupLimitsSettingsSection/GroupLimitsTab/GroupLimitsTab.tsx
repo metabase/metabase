@@ -5,7 +5,7 @@ import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Stack, Text, TextInput } from "metabase/ui";
+import { Box, NumberInput, Stack, Text } from "metabase/ui";
 import { isDefaultGroup } from "metabase/utils/groups";
 import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
@@ -20,6 +20,7 @@ import {
   getDescription,
   getErrorMessage,
   getGroupLimitAriaLabel,
+  getMaxUsageInputSuffix,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -140,15 +141,19 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
                       <td className={S.BodyCell}>{group.name}</td>
                       <td className={S.BodyCell}>
                         <div className={S.InputWrapper}>
-                          <TextInput
+                          <NumberInput
                             placeholder={placeholder}
                             value={localLimitsMap?.[group.id] ?? ""}
-                            onChange={(e) =>
-                              handleChange(group, e.target.value)
+                            onChange={(value) =>
+                              handleChange(group, String(value))
                             }
                             classNames={{ input: S.LimitInput }}
-                            type="number"
-                            min={1}
+                            suffix={getMaxUsageInputSuffix(
+                              limitType,
+                              localLimitsMap?.[group.id],
+                            )}
+                            min={0}
+                            decimalScale={0}
                             aria-label={getGroupLimitAriaLabel(
                               limitType,
                               group.name,

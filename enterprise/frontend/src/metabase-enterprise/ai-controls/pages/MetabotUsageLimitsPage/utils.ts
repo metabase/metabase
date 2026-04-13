@@ -106,3 +106,14 @@ export function getQuotaMessageInputDescription(
 ) {
   return messageDescriptionMap[limitPeriod];
 }
+
+export function getMaxUsageInputSuffix(
+  limitType: MetabotLimitType,
+  value?: number | null,
+) {
+  if (limitType === "tokens" && !!value) {
+    return " " + (value === 1 ? t`Million` : t`Millions`);
+  }
+
+  return undefined;
+}

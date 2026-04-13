@@ -5,7 +5,15 @@ import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Alert, Box, Icon, Stack, Text, TextInput } from "metabase/ui";
+import {
+  Alert,
+  Box,
+  Icon,
+  NumberInput,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import { useUpdateAIControlsTenantLimitMutation } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
 
@@ -18,6 +26,7 @@ import {
   getColumnName,
   getDescription,
   getInputLabel,
+  getMaxUsageInputSuffix,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -138,15 +147,19 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                       <tr key={tenant.id} className={S.BodyRow}>
                         <td className={S.BodyCell}>{tenant.name}</td>
                         <td className={S.BodyCell}>
-                          <TextInput
+                          <NumberInput
                             placeholder={placeholder}
                             value={localLimitsMap?.[tenant.id] ?? ""}
-                            onChange={(e) =>
-                              handleChange(tenant, e.target.value)
+                            onChange={(value) =>
+                              handleChange(tenant, String(value))
                             }
                             classNames={{ input: S.LimitInput }}
-                            type="number"
-                            min={1}
+                            suffix={getMaxUsageInputSuffix(
+                              limitType,
+                              localLimitsMap?.[tenant.id],
+                            )}
+                            min={0}
+                            decimalScale={0}
                             aria-label={getInputLabel(
                               tenant.name,
                               limitType,
