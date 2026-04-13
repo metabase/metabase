@@ -7,7 +7,7 @@ import {
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { getChartMaxSeries } from "metabase/visualizations/lib/utils";
 import type {
   DatasetColumn,
   RowValues,
@@ -87,13 +87,14 @@ export const validateBreakoutSeriesCount = (
     },
   ] = series;
   const cardinality = getBreakoutCardinality(cols, rows, settings);
+  const maxSeries = getChartMaxSeries();
   const exceedsLimit =
-    series.length > MAX_SERIES ||
-    (cardinality != null && cardinality > MAX_SERIES);
+    series.length > maxSeries ||
+    (cardinality != null && cardinality > maxSeries);
 
   if (exceedsLimit) {
     throw new Error(
-      t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
+      t`This chart type doesn't support more than ${maxSeries} series of data.`,
     );
   }
 };

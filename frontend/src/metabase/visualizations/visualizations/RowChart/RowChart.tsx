@@ -20,7 +20,7 @@ import {
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { getChartMaxSeries } from "metabase/visualizations/lib/utils";
 import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
@@ -386,7 +386,7 @@ const RowViz: VisualizationDefinition = {
     }
 
     const cardinality = getBreakoutCardinality(data.cols, data.rows, settings);
-    if (cardinality != null && cardinality > MAX_SERIES) {
+    if (cardinality != null && cardinality > getChartMaxSeries()) {
       return originalMultipleSeries;
     }
 

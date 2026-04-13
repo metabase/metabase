@@ -2,6 +2,7 @@ import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
 window.MetabaseBootstrap = {
+  "chart-max-series": 100,
   "enable-xrays": true,
   "available-timezones": [
     "GMT",

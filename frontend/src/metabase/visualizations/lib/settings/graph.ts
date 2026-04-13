@@ -19,7 +19,10 @@ import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getBreakoutCardinality } from "metabase/visualizations/lib/settings/validation";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
+import {
+  columnsAreValid,
+  getChartMaxSeries,
+} from "metabase/visualizations/lib/utils";
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
   getAreDimensionsAndMetricsValid,
@@ -108,7 +111,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
     getWrapperStyle: (series, vizSettings) => ({
       marginBottom:
         vizSettings["graph.dimensions"]?.length === 2 &&
-        series.length <= MAX_SERIES
+        series.length <= getChartMaxSeries()
           ? "0.5rem"
           : "1rem",
     }),
@@ -195,7 +198,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
         return true;
       }
       const cardinality = getBreakoutCardinality(cols, rows, settings);
-      return cardinality == null || cardinality > MAX_SERIES;
+      return cardinality == null || cardinality > getChartMaxSeries();
     },
     dashboard: false,
     readDependencies: [

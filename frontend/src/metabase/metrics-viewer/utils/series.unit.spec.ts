@@ -208,7 +208,7 @@ describe("splitByBreakout", () => {
     expect(result[1].card.visualization_settings.series_settings).toBeDefined();
   });
 
-  it("returns original series when breakout values exceed MAX_SERIES", () => {
+  it("returns original series when breakout values exceed chart max series", () => {
     const values = Array.from({ length: 102 }, (_, i) => `Value ${i}`);
     const rows: RowValues[] = values.map((v, i) => ["2024-01", v, i]);
     const series = createMockSingleSeries(CARD_OPTS, {

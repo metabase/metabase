@@ -56,3 +56,25 @@
                    (assert (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword new-value))
                            (trs "Invalid day of week: {0}" (pr-str new-value))))
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
+
+(def ^:private ^:const chart-max-series-upper-bound
+  "Hard cap so misconfiguration cannot trivially freeze the browser when rendering many series."
+  10000)
+
+(defsetting chart-max-series
+  (deferred-tru
+   (str "Maximum number of series Metabase will attempt to render for charts with multiple breakouts "
+        "(combined bar, line, or area series, and similar). "
+        "Very large values can slow or freeze the browser; raise gradually and monitor performance."))
+  :visibility :public
+  :export?    true
+  :type       :positive-integer
+  :default    100
+  :audit      :getter
+  :doc        (str "Also settable via environment variable MB_CHART_MAX_SERIES. Values are clamped to at most "
+                   chart-max-series-upper-bound " to limit browser load.")
+  :getter     (fn chart-max-series-getter []
+                (let [v (setting/get-value-of-type :positive-integer :chart-max-series)]
+                  (if (nil? v)
+                    100
+                    (-> v (max 1) (min chart-max-series-upper-bound))))))

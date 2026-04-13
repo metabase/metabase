@@ -544,6 +544,7 @@ interface PublicSettings {
   "available-locales": LocaleData[] | null;
   "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
+  "chart-max-series": number;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;

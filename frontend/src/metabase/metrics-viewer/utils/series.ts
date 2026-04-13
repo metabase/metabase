@@ -14,7 +14,7 @@ import {
   formatBreakoutValue,
   getBreakoutSeriesName,
 } from "metabase/visualizations/echarts/cartesian/model/series";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { getChartMaxSeries } from "metabase/visualizations/lib/utils";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
@@ -454,7 +454,7 @@ export function splitByBreakout(
     if (!groupedRows) {
       groupedRows = [];
       rowsByBreakoutValue.set(breakoutValue, groupedRows);
-      if (rowsByBreakoutValue.size > MAX_SERIES) {
+      if (rowsByBreakoutValue.size > getChartMaxSeries()) {
         return {
           series: [series],
           activeBreakoutColorMap: breakoutColorMap.values().next().value,

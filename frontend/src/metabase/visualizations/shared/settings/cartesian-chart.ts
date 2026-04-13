@@ -9,8 +9,8 @@ import {
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
 import {
-  MAX_SERIES,
   columnsAreValid,
+  getChartMaxSeries,
   getColumnCardinality,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
@@ -387,12 +387,12 @@ export function getDefaultScatterColumns(data: DatasetData): {
       rows,
       cols.indexOf(dimensions[1]),
     );
-    if (cardinality0 <= cardinality1 && cardinality0 <= MAX_SERIES) {
+    if (cardinality0 <= cardinality1 && cardinality0 <= getChartMaxSeries()) {
       colorDimension = dimensions[0].name;
       xAxisDimension = dimensions[1].name;
     } else if (cardinality0 <= cardinality1) {
       xAxisDimension = dimensions[0].name;
-    } else if (cardinality1 <= MAX_SERIES) {
+    } else if (cardinality1 <= getChartMaxSeries()) {
       colorDimension = dimensions[1].name;
       xAxisDimension = dimensions[0].name;
     } else {
