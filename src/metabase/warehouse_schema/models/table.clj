@@ -687,7 +687,7 @@
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database :name)
+               :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
                :transform_id   (serdes/fk :model/Transform)}
    :defaults {:is_defective_duplicate  false

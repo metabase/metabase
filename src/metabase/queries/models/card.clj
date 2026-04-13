@@ -1326,7 +1326,7 @@
           :legacy_query]
    :transform
    {:created_at             (serdes/date)
-    :database_id            (serdes/fk :model/Database :name)
+    :database_id            (serdes/fk :model/Database)
     :table_id               (serdes/fk :model/Table)
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
