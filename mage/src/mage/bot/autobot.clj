@@ -158,22 +158,29 @@
       ;; branch-ref is either the local branch name or origin/<name> — workmux
       ;; add will check it out either way. No --base needed since the branch
       ;; already exists (autobot refuses to create new branches).
-      (let [ref (or branch-ref branch-name)]
+      (let [ref         (or branch-ref branch-name)
+            workmux-cmd (str "workmux add " ref
+                             " --name " session-name
+                             " -P " prompt-file
+                             "; exit")]
         (if in-tmux?
           ;; Already inside tmux — run workmux directly; it creates a new window
           ;; in the current session.
           (shell/sh "workmux" "add" ref
                     "--name" session-name
                     "-P" prompt-file)
-          ;; Not inside tmux — use workmux's --session flag so it creates its own
-          ;; tmux session. This avoids the extra "zsh" window we used to get from
-          ;; pre-creating a tmux session and sending keys to it.
+          ;; Not inside tmux — create a detached session and run workmux in the
+          ;; initial window. The `; exit` suffix causes the initial shell to
+          ;; terminate once workmux has created its own window (window 1), so
+          ;; we end up with just the bot panes and no leftover zsh window.
+          ;; NOTE: `workmux add --session` was tried instead, but it hangs when
+          ;; run from a non-interactive subprocess (no tty).
           (do
-            (println (c/yellow "Not inside tmux. Running workmux with --session..."))
-            (shell/sh "workmux" "add" ref
-                      "--name" session-name
-                      "-P" prompt-file
-                      "--session")
+            (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
+            (shell/sh "nohup" "bash" "-c"
+                      (str "tmux new-session -d -s " session-name
+                           " && tmux send-keys -t " session-name
+                           " " (pr-str workmux-cmd) " Enter"))
             (println)
             (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
             (println)
@@ -181,6 +188,10 @@
             (println (str "  tmux attach -t " session-name)))))
 
       (finally
+        ;; When not in tmux, workmux add was launched async via send-keys;
+        ;; give it time to read .workmux.yaml before we restore/remove it
+        (when-not in-tmux?
+          (Thread/sleep 3000))
         ;; Restore .workmux.yaml
         (if had-backup?
           (do
@@ -344,6 +355,52 @@
                   :prompt-file    prompt-file
                   :workmux-config config
                   :display-info   {"Bot" bot-name "App DB" app-db "Command" command}})))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Result lookup
+
+(defn- most-recent-result-md
+  "Given a worktree path and a bot name, find the most recent result.md file
+   under <wt>/.bot/<bot>/*/result.md. Returns the java.io.File or nil."
+  [wt-path bot-name]
+  (let [bot-dir (java.io.File. (str wt-path "/.bot/" bot-name))]
+    (when (.isDirectory bot-dir)
+      (->> (.listFiles bot-dir)
+           (filter #(.isDirectory ^java.io.File %))
+           (map (fn [^java.io.File subdir]
+                  (java.io.File. subdir "result.md")))
+           (filter #(.exists ^java.io.File %))
+           (sort-by #(.lastModified ^java.io.File %))
+           last))))
+
+(defn result!
+  "Print the most recent result.md for a given branch+bot combination.
+   Usage: ./bin/mage -autobot-result <branch> <bot>"
+  [{:keys [arguments]}]
+  (let [[branch bot-name] arguments]
+    (when (or (str/blank? branch) (str/blank? bot-name))
+      (println (c/red "Usage: ./bin/mage -autobot-result <branch> <bot>"))
+      (u/exit 1))
+    (let [session-name (branch-to-session-name branch)
+          session      (find-session session-name)
+          wt-path      (when session (worktree-path session))]
+      (cond
+        (not wt-path)
+        (do
+          (println (c/red "No worktree found for branch: " branch))
+          (print-available-sessions!)
+          (u/exit 1))
+
+        :else
+        (let [result-file (most-recent-result-md wt-path bot-name)]
+          (if result-file
+            (do
+              (println (c/bold (c/cyan "Result file: ")) (.getPath ^java.io.File result-file))
+              (println)
+              (println (slurp result-file)))
+            (do
+              (println (c/yellow (str "No result.md found for bot '" bot-name "' in " wt-path)))
+              (println (c/yellow "The bot may not have started writing one yet, or the bot name is wrong.")))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Session management

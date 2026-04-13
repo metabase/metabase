@@ -115,6 +115,32 @@ Write to `.bot/autobot/llm-status.txt` when your status changes meaningfully. Th
 - Only update when visible state meaningfully changes — don't spam
 - Overwrite the whole file each time
 
+## Result File
+
+Maintain a `result.md` file in your output directory (`{{OUTPUT_DIR}}/result.md`) that summarizes what you've done so far. This is what the user sees when they run `/autobot-result <branch> <bot>` — they check it instead of attaching to tmux to see how you're doing.
+
+**Format:** exactly two paragraphs.
+- **Paragraph 1 — What's done.** Concrete, past-tense summary of what you've completed so far: phases finished, files read, tests run, findings so far, decisions made. Be specific: "Analyzed the diff (3 backend files, 1 migration), built a truth table for the new auth gate, found 1 SEVERE regression." Not vague: "Reviewed the PR."
+- **Paragraph 2 — What's next / current state.** What you're currently doing and what comes next, OR (if you're blocked or finished) a clear statement of that. If blocked, name what you need.
+
+**After the two paragraphs, list every artifact you've produced so far as a bulleted list of absolute paths.** Include reports, screenshots, API responses, log captures, fix plans, prompt files — anything you've written to disk during this session. Paths must be absolute so the user can click or copy them directly. Add new items as you produce them; do NOT remove items from previous updates. Example format:
+
+```markdown
+## Artifacts
+
+- `/Users/.../metabase-4__worktrees/<branch>/.bot/qabot/20260413-211500/diff-summary.md` — Phase 1 diff analysis
+- `/Users/.../metabase-4__worktrees/<branch>/.bot/qabot/20260413-211500/initial-review.md` — Phase 2 static findings
+- `/Users/.../metabase-4__worktrees/<branch>/.bot/qabot/20260413-211500/output/issue-01-before.png` — baseline screenshot
+```
+
+**When to update:** write `result.md` as soon as you start (even if the first version just says "Starting up, loading environment."), then overwrite it at every meaningful milestone — phase boundaries, finding a bug, finishing a major step, hitting a blocker. Don't wait for the end.
+
+**Rules:**
+- Overwrite the whole file each time — don't append
+- Plain Markdown, no banners or boxes
+- Never truncate to a placeholder like "TODO" — if you don't know what to say, write what you actually just did
+- Keep the two-paragraph section tight; the artifact list can grow long
+
 ## Minimizing Permission Prompts
 
 Bash commands can trigger permission prompts that slow you down. Prefer tools and wrappers that are auto-allowed:

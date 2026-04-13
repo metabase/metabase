@@ -714,6 +714,14 @@
    :requires [[mage.bot.autobot :as autobot]]
    :task (task! (autobot/list-all! parsed))}
 
+  -autobot-result
+  {:doc "Print the most recent result.md for a branch+bot combination"
+   :examples [["./bin/mage -autobot-result uxw-291-skip-ldap-for-non-ldap qabot"
+               "Print qabot's latest result.md for the given branch"]]
+   :requires [[mage.bot.autobot :as autobot]]
+   :arg-schema [:tuple [:string {:name "branch"}] [:string {:name "bot"}]]
+   :task (task! (autobot/result! parsed))}
+
   -autobot-quit
   {:doc "Tear down and remove a autobot session. No args = remove current session."
    :examples [["./bin/mage -autobot-quit qabot-master" "Remove named session"]

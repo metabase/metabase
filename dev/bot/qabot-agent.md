@@ -131,6 +131,37 @@ For each change, think about:
 - Unicode, special characters, very long strings
 - Concurrent requests, rapid repeated actions
 
+### Adversarial Inputs ("what would a QA engineer try?")
+For every input the change accepts — form fields, URL params, API request bodies, filter values, JSON payloads — stop and ask: *"what would a bored QA engineer type into this to break it?"* Brainstorm a list of unexpected inputs **before** you assume validation is correct, then read the validation/coercion code to check each one. Report any unhandled case, confusing error, hang, crash, or silent corruption as a finding.
+
+**"Stupid user" inputs** — things a confused or distracted real user might genuinely type, looking for missing validation, bad error messages, or silent coercion failures:
+- Text in number fields (`"banana"`, `"abc"`, `"1.2.3"`, `"1e999"`, scientific notation where only integers are expected)
+- Empty strings, whitespace-only strings, leading/trailing whitespace, tabs, newlines
+- Values in the wrong format (`"1,000.00"` vs `"1000"`, `"2026-13-45"` invalid dates, `"yesterday"` natural-language dates)
+- Copy-paste from another source with hidden characters (zero-width spaces, non-breaking spaces, smart quotes, curly apostrophes)
+- Negative numbers where positive is expected; zero where non-zero is expected; very large numbers (`Integer.MAX_VALUE`, `Long.MAX_VALUE`, `Number.MAX_SAFE_INTEGER + 1`, `Infinity`, `-Infinity`, `NaN`)
+- Wrong types (passing an array where a string is expected, a number where a boolean is expected, `null` where something non-null is required)
+- Duplicate submissions (same form submitted twice, same record created twice)
+- Values that are syntactically valid but semantically nonsense (end date before start date, nested parent=self references, self-joins)
+- Wrong case (`"TRUE"` vs `"true"`, `"ldap"` vs `"LDAP"`, `:Ldap` vs `:ldap`)
+- Pasting a URL or a SQL query into a name field, or a multi-line value into a single-line field
+
+**Malicious inputs** — things an attacker would deliberately craft to find vulnerabilities (overlaps with Security but worth explicitly testing):
+- SQL injection payloads in any string field (`'; DROP TABLE users; --`, `" OR 1=1 --`, especially where string interpolation into SQL is plausible)
+- XSS payloads in any field rendered in the UI (`<script>alert(1)</script>`, `<img src=x onerror=alert(1)>`, `javascript:alert(1)` in URL fields, SVG with onload)
+- Path traversal in filename/path fields (`../../etc/passwd`, `%2e%2e%2f`, absolute paths where relative is expected)
+- SSRF in URL/host fields (`http://169.254.169.254/latest/meta-data/`, `file:///etc/passwd`, `http://localhost:5432`, internal hostnames)
+- Command injection in anywhere the value flows into a subprocess (`; rm -rf /`, `$(whoami)`, backticks, pipes)
+- Template injection (`{{7*7}}`, `${7*7}`, `#{7*7}` — in fields that might flow through a template engine)
+- Unicode normalization tricks (homoglyphs, RTL override characters, zero-width joiners used to confuse display/comparison)
+- Very large inputs (10 MB string, 100k-element array) to probe memory limits and DoS surface
+- Strings that contain terminators for whatever format the backend uses (`"` and `\` in JSON contexts, `\u0000` null bytes, CRLF injection in anything that flows to HTTP headers or logs)
+- IDs belonging to other tenants/users when tested as a non-admin user (IDOR) — try replacing `id=123` with `id=1`, `id=0`, `id=-1`, `id=999999999`
+
+**How to use this list:** you don't need to try every item on every field. Pick the inputs that are most plausible for each field's type and path, but always pick at least one from each category ("stupid" and "malicious") per user-reachable input. If you find that validation is done at one layer but not another (e.g., frontend validates but backend doesn't), that's a finding even if there's no current UI path to trigger it — classify as API_ROBUSTNESS.
+
+**Let the code guide you, but don't let it constrain you.** Reading the validation, coercion, and parsing code is the fastest way to generate *targeted* adversarial inputs — if the code calls `Integer/parseInt` you know to try non-numeric input; if it builds a regex from user input you know to try regex metacharacters; if it splits on `,` you know to try values containing `,`. Use the code to find the most likely weak spots first. **But the code is not the ceiling** — also try inputs the code doesn't obviously handle or mention at all. Real bugs often live exactly in the cases the author didn't think about, so the fact that the code has no explicit handling for a particular input is itself a reason to try it. Spend at least some of your time on "what would a user try that the code doesn't appear to anticipate?" rather than only on "what does the code claim to validate?"
+
 ### Backend Robustness (for any backend/Clojure changes)
 - Concurrency and thread safety — shared mutable state, atoms, agents, refs
 - Resource lifecycle — are things properly started, stopped, and cleaned up?
