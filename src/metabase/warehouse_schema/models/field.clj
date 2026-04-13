@@ -465,7 +465,7 @@
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id (assoc opts :sparse? true))}
+               :dimensions         (serdes/nested :model/Dimension :field_id opts)}
    :defaults {:active                     true
               :database_is_auto_increment false
               :database_required          false
