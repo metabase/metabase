@@ -3,7 +3,7 @@ import type {
   CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
-} from "custom-viz/src/types";
+} from "custom-viz";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 

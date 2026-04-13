@@ -1,4 +1,4 @@
-import type { CustomVisualization } from "custom-viz/src/types";
+import type { CustomVisualization } from "custom-viz";
 
 import type { Visualization } from "metabase/visualizations/types/visualization";
 
