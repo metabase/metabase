@@ -310,10 +310,12 @@
                :let [data (store/load-table! store path)]
                :when data]
            (->table-metadata data))
-         (for [path (store/all-table-paths store)
-               :let [data (store/load-table! store path)]
-               :when data]
-           (->table-metadata data))))
+         ;; Only return tables for the current database
+         (let [db-name @current-db]
+           (for [path (store/tables-for-database store db-name)
+                 :let [data (store/load-table! store path)]
+                 :when data]
+             (->table-metadata data)))))
 
       :metadata/column
       (vec

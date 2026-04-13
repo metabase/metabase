@@ -29,7 +29,22 @@
     "Resolve table by [db schema table]. Returns map with :name, :schema, :display-name, etc. or nil.")
 
   (resolve-field [this field-path]
-    "Resolve field by [db schema table field]. Returns map with :name, :base-type, :semantic-type, etc. or nil."))
+    "Resolve field by [db schema table field]. Returns map with :name, :base-type, :semantic-type, etc. or nil.")
+
+  (fields-for-table [this table-path]
+    "Return a set of field paths belonging to the given table path [db schema table].")
+
+  (all-field-paths [this]
+    "Return all known field paths.")
+
+  (all-database-names [this]
+    "Return all known database names.")
+
+  (all-table-paths [this]
+    "Return all known table paths.")
+
+  (tables-for-database [this db-name]
+    "Return table paths belonging to the given database name."))
 
 (defprotocol AssetsSource
   "Resolve serialized entity references to entity data."

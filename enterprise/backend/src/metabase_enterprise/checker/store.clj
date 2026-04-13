@@ -19,20 +19,6 @@
 (set! *warn-on-reflection* true)
 
 ;;; ===========================================================================
-;;; Index utilities
-;;; ===========================================================================
-
-(defn- build-fields-by-table
-  "Build a map of table-path → set-of-field-paths from a field index.
-   Field paths are [db schema table field]; table path is the first 3 elements."
-  [field-index]
-  (reduce-kv (fn [m field-path _file]
-               (let [table-path (subvec field-path 0 3)]
-                 (update m table-path (fnil conj #{}) field-path)))
-             {}
-             field-index))
-
-;;; ===========================================================================
 ;;; Store creation
 ;;; ===========================================================================
 
@@ -47,7 +33,6 @@
   (atom {:schema-source   schema-source
          :assets-source   assets-source
          :index           index
-         :fields-by-table (build-fields-by-table (:field index))
          :id-counter      0
          :ref->id         {}                ; {kind {ref id}}
          :id->ref         {}                ; {kind {id ref}}
@@ -87,29 +72,34 @@
   (get-in @store [:index kind ref]))
 
 (defn all-database-names
-  "All database names from the file index."
+  "All database names from the schema source."
   [store]
-  (all-refs store :database))
+  (source/all-database-names (:schema-source @store)))
 
 (defn all-table-paths
-  "All table paths from the file index."
+  "All table paths from the schema source."
   [store]
-  (all-refs store :table))
+  (source/all-table-paths (:schema-source @store)))
 
 (defn all-field-paths
-  "All field paths from the file index."
+  "All field paths from the schema source."
   [store]
-  (all-refs store :field))
+  (source/all-field-paths (:schema-source @store)))
 
 (defn all-card-ids
   "All card entity-ids from the file index."
   [store]
   (all-refs store :card))
 
+(defn tables-for-database
+  "Table paths belonging to a specific database."
+  [store db-name]
+  (source/tables-for-database (:schema-source @store) db-name))
+
 (defn fields-for-table
   "Field paths belonging to a specific table path."
   [store table-path]
-  (get-in @store [:fields-by-table table-path]))
+  (source/fields-for-table (:schema-source @store) table-path))
 
 ;;; ===========================================================================
 ;;; ID registry — assign synthetic integer IDs to portable refs

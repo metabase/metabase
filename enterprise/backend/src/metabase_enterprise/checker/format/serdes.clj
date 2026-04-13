@@ -104,39 +104,89 @@
         (when-let [entity-id (extract-entity-id file-path)]
           {:kind kind :ref entity-id :file file-path})))))
 
+(defn- read-yaml-name
+  "Read the `name:` field from a YAML file using regex (fast).
+   Falls back to `fallback` if the file doesn't exist or can't be read."
+  [^File yaml-file ^String fallback]
+  (if (.exists yaml-file)
+    (or (quick-extract (.getPath yaml-file) "name" #"(?m)^name:\s*(.+)")
+        fallback)
+    fallback))
+
+(defn- db-dir
+  "Resolve a real database name to its directory on disk."
+  ^File [^File databases-dir db-name->dir db-name]
+  (let [dir-name (get db-name->dir db-name db-name)]
+    (io/file databases-dir dir-name)))
+
+(defn- list-table-dirs
+  "Return a seq of table directory Files for a database.
+   Walks schemas/<schema>/tables/<table>/ and tables/<table>/ directories."
+  [^File databases-dir db-name->dir-map db-name]
+  (let [^File db (db-dir databases-dir db-name->dir-map db-name)
+        result   (volatile! [])]
+    (let [^File schemas-dir (io/file db "schemas")]
+      (when (.isDirectory schemas-dir)
+        (doseq [^File schema-d (.listFiles schemas-dir)
+                :when (.isDirectory schema-d)]
+          (let [^File tables-dir (io/file schema-d "tables")]
+            (when (.isDirectory tables-dir)
+              (doseq [^File td (.listFiles tables-dir)
+                      :when (.isDirectory td)]
+                (vswap! result conj td)))))))
+    (let [^File tables-dir (io/file db "tables")]
+      (when (.isDirectory tables-dir)
+        (doseq [^File td (.listFiles tables-dir)
+                :when (.isDirectory td)]
+          (vswap! result conj td))))
+    @result))
+
+(defn- index-segments-and-measures
+  "Walk a table directory's segments/ and measures/ subdirectories.
+   Reads entity_id from each YAML (only a handful exist).
+   Returns a seq of {:kind :ref :file} entries."
+  [^File table-dir]
+  (into []
+        (mapcat
+         (fn [[subdir kind]]
+           (let [^File d (io/file table-dir subdir)]
+             (when (.isDirectory d)
+               (keep (fn [^File f]
+                       (when (and (.isFile f) (str/ends-with? (.getName f) ".yaml"))
+                         (when-let [eid (extract-entity-id (.getPath f))]
+                           {:kind kind :ref eid :file (.getPath f)})))
+                     (.listFiles d))))))
+        [["segments" :segment] ["measures" :measure]]))
+
 (defn- index-schema-dir
-  "Walk a schema directory and build an index from serdes/meta in each YAML file.
-   Does not assume any directory structure — reads metadata from file content.
-   Also registers database names found in any entity's metadata path.
-   Returns a vector of {:kind :ref :file} index entries."
-  [schema-dir]
-  (let [databases-seen (volatile! {})   ; db-name → first file-path
-        entries (into []
-                      (keep (fn [^java.io.File file]
-                              (when (and (.isFile file)
-                                         (str/ends-with? (.getName file) ".yaml"))
-                                (let [path      (.getPath file)
-                                      meta-path (extract-serdes-meta path)]
-                                  (when meta-path
-                                    ;; Track database names from metadata paths
-                                    (when (and (>= (count meta-path) 1)
-                                               (= "Database" (:model (first meta-path))))
-                                      (let [db-name (:id (first meta-path))]
-                                        (when-not (contains? @databases-seen db-name)
-                                          (vswap! databases-seen assoc db-name path))))
-                                    (serdes-meta->index-entry meta-path path))))))
-                      (file-seq (io/file schema-dir)))
-        ;; Add database entries inferred from children, but only for databases that don't already have their own YAML
-        ;; file in the primary entries
-        primary-dbs (into #{}
-                          (keep (fn [{:keys [kind ref]}]
-                                  (when (= kind :database) ref)))
-                          entries)]
-    (into entries
-          (keep (fn [[db-name file-path]]
-                  (when-not (contains? primary-dbs db-name)
-                    {:kind :database :ref db-name :file file-path})))
-          @databases-seen)))
+  "Walk a databases directory and index databases, segments, and measures.
+   Reads ~40 database YAMLs for real names, plus a handful of segment/measure YAMLs
+   for entity_ids. Tables and fields are resolved on demand from the filesystem.
+
+   When `include-segments-measures?` is true, also walks table directories
+   to find segment and measure YAMLs (for export dirs). Set to false for
+   schema-only dirs to avoid walking thousands of table directories.
+
+   Returns {:entries [...]
+            :db-name->dir {real-db-name dir-name}}."
+  [schema-dir & {:keys [include-segments-measures?]}]
+  (let [schema-dir   (io/file schema-dir)
+        db-name->dir (volatile! {})
+        entries      (volatile! [])]
+    (doseq [^File db-dir (.listFiles schema-dir)
+            :when (.isDirectory db-dir)]
+      (let [dir-name (.getName db-dir)
+            db-yaml  (io/file db-dir (str dir-name ".yaml"))
+            db-name  (read-yaml-name db-yaml dir-name)]
+        (vswap! db-name->dir assoc db-name dir-name)
+        (vswap! entries conj {:kind :database :ref db-name
+                              :file (if (.exists db-yaml) (.getPath db-yaml) (.getPath db-dir))})
+        ;; Walk table directories for segments and measures (export dirs only)
+        (when include-segments-measures?
+          (doseq [^File table-dir (list-table-dirs schema-dir @db-name->dir db-name)]
+            (vswap! entries into (index-segments-and-measures table-dir))))))
+    {:entries      @entries
+     :db-name->dir @db-name->dir}))
 
 ;;; ===========================================================================
 ;;; File Walking - Build index of all entities
@@ -172,17 +222,15 @@
 
 (defn build-file-index
   "Build index of all entity files in an export directory.
-   Returns a map with:
-   - Entity kind keys (:database, :table, :field, :card, :dashboard, :collection)
-     each mapping ref → file-path (first occurrence wins)
-   - `:duplicates` — a vector of {:kind :ref :files [path1 path2 ...]} for any
-     ref that appears in multiple files"
+   Returns `{:index {kind {ref file-path}} :db-name->dir {real-name dir-name}}`
+   where index also has `:duplicates` for refs appearing in multiple files."
   [export-dir]
   (let [databases-dir (io/file export-dir "databases")
-        entries (concat
-                 (when (.isDirectory databases-dir)
-                   (index-schema-dir databases-dir))
-                 (index-collections-tree export-dir))
+        schema-result (when (.isDirectory databases-dir)
+                        (index-schema-dir databases-dir :include-segments-measures? true))
+        entries       (concat
+                       (:entries schema-result)
+                       (index-collections-tree export-dir))
         ;; Group by [kind ref] to find duplicates
         by-key  (reduce (fn [m {:keys [kind ref file]}]
                           (update m [kind ref] (fnil conj []) file))
@@ -198,21 +246,22 @@
                               (when (> (count files) 1)
                                 {:kind kind :ref ref :files files})))
                       by-key)]
-    (cond-> index
-      (seq dupes) (assoc :duplicates dupes))))
+    {:index        (cond-> index
+                     (seq dupes) (assoc :duplicates dupes))
+     :db-name->dir (:db-name->dir schema-result)}))
 
 (defn build-database-dir-index
-  "Build index of database/table/field/measure/segment entities from a schema
-   directory by reading serdes/meta from each YAML file. Does not assume any
-   directory structure.
+  "Build index of databases from a schema directory.
+   Tables and fields are resolved on demand.
 
-   Returns `{kind {ref file-path}}` with :database, :table, :field, :measure, :segment entries."
+   Returns `{:index {:database {name file-path}} :db-name->dir {real-name dir-name}}`."
   [databases-dir]
-  (let [entries (index-schema-dir databases-dir)]
-    (reduce (fn [idx {:keys [kind ref file]}]
-              (assoc-in idx [kind ref] file))
-            {}
-            entries)))
+  (let [{:keys [entries db-name->dir]} (index-schema-dir databases-dir)]
+    {:index        (reduce (fn [idx {:keys [kind ref file]}]
+                             (assoc-in idx [kind ref] file))
+                           {}
+                           entries)
+     :db-name->dir db-name->dir}))
 
 (defn index-stats
   "Get statistics about a file index."
@@ -234,19 +283,92 @@
 ;;; This keeps format knowledge here, lib knowledge in checker.
 ;;; ===========================================================================
 
-(deftype SerdesSource [export-dir index]
+(defn- table-dir
+  "Resolve a table path [db schema table] to its directory on disk.
+   Table directory names match the table name (not slugified)."
+  ^File [^File databases-dir db-name->dir [db schema table]]
+  (let [^File db (db-dir databases-dir db-name->dir db)]
+    (if schema
+      (io/file db "schemas" schema "tables" table)
+      (io/file db "tables" table))))
+
+(defn- list-table-paths
+  "List table paths for a database by walking its directory structure.
+   Returns a seq of [db-name schema table-name] refs."
+  [^File databases-dir db-name->dir db-name]
+  (let [^File db (db-dir databases-dir db-name->dir db-name)
+        result   (transient [])]
+    ;; With schema: <db>/schemas/<schema>/tables/<table>/
+    (let [^File schemas-dir (io/file db "schemas")]
+      (when (.isDirectory schemas-dir)
+        (doseq [^File schema-dir (.listFiles schemas-dir)
+                :when (.isDirectory schema-dir)]
+          (let [schema-name (.getName schema-dir)
+                ^File tables-dir (io/file schema-dir "tables")]
+            (when (.isDirectory tables-dir)
+              (doseq [^File td (.listFiles tables-dir)
+                      :when (.isDirectory td)]
+                (conj! result [db-name schema-name (.getName td)])))))))
+    ;; Without schema: <db>/tables/<table>/
+    (let [^File tables-dir (io/file db "tables")]
+      (when (.isDirectory tables-dir)
+        (doseq [^File td (.listFiles tables-dir)
+                :when (.isDirectory td)]
+          (conj! result [db-name nil (.getName td)]))))
+    (persistent! result)))
+
+(defn- list-field-paths
+  "List field paths for a table by reading its fields/ directory.
+   Returns a set of [db schema table field-name] paths, skipping FieldValues/FieldUserSettings."
+  [^File databases-dir db-name->dir [db schema table :as table-path]]
+  (let [^File td         (table-dir databases-dir db-name->dir table-path)
+        ^File fields-dir (io/file td "fields")]
+    (when (.isDirectory fields-dir)
+      (into #{}
+            (keep (fn [^File f]
+                    (let [fname (.getName f)]
+                      (when (and (.isFile f)
+                                 (str/ends-with? fname ".yaml")
+                                 (not (str/includes? fname "___")))
+                        [db schema table (str/replace fname #"\.yaml$" "")]))))
+            (.listFiles fields-dir)))))
+
+(deftype SerdesSource [databases-dir index db-name->dir]
   source/SchemaSource
   (resolve-database [_ db-name]
     (when-let [file (get-in index [:database db-name])]
       (load-yaml file)))
 
-  (resolve-table [_ table-path]
-    (when-let [file (get-in index [:table table-path])]
-      (load-yaml file)))
+  (resolve-table [_ [db schema table-name :as table-path]]
+    (let [^File td   (table-dir databases-dir db-name->dir table-path)
+          ^File yaml (io/file td (str (.getName td) ".yaml"))]
+      (when (.exists yaml)
+        (load-yaml (.getPath yaml)))))
 
-  (resolve-field [_ field-path]
-    (when-let [file (get-in index [:field field-path])]
-      (load-yaml file)))
+  (resolve-field [_ [db schema table-name field :as field-path]]
+    (let [^File td   (table-dir databases-dir db-name->dir [db schema table-name])
+          ^File yaml (io/file td "fields" (str field ".yaml"))]
+      (when (.exists yaml)
+        (load-yaml (.getPath yaml)))))
+
+  (fields-for-table [_ table-path]
+    (list-field-paths databases-dir db-name->dir table-path))
+
+  (all-field-paths [this]
+    (into #{}
+          (mapcat #(source/fields-for-table this %))
+          (source/all-table-paths this)))
+
+  (all-database-names [_]
+    (keys (:database index)))
+
+  (all-table-paths [_]
+    (into []
+          (mapcat #(list-table-paths databases-dir db-name->dir %))
+          (keys (:database index))))
+
+  (tables-for-database [_ db-name]
+    (list-table-paths databases-dir db-name->dir db-name))
 
   source/AssetsSource
   (resolve-card [_ entity-id]
@@ -282,26 +404,30 @@
       (load-yaml file))))
 
 (defn make-source
-  "Create a MetadataSource for a serdes export directory."
+  "Create a MetadataSource for a serdes export directory.
+   The databases-dir for field resolution is export-dir/databases."
   [export-dir]
-  (->SerdesSource export-dir (build-file-index export-dir)))
+  (let [databases-dir (io/file export-dir "databases")
+        {:keys [index db-name->dir]} (build-file-index export-dir)]
+    (->SerdesSource databases-dir index db-name->dir)))
 
 (defn make-database-source
   "Create a MetadataSource for a directory that IS the databases directory.
    The directory should contain database subdirectories directly (e.g., `Sample Database/`).
    This source only resolves databases, tables, and fields — not cards."
   [databases-dir]
-  (->SerdesSource databases-dir (build-database-dir-index databases-dir)))
+  (let [{:keys [index db-name->dir]} (build-database-dir-index databases-dir)]
+    (->SerdesSource (io/file databases-dir) index db-name->dir)))
 
 (defn source-index
   "Get the file index from a SerdesSource."
   [^SerdesSource source]
   (.-index source))
 
-(defn source-export-dir
-  "Get the export directory from a SerdesSource."
+(defn source-databases-dir
+  "Get the databases directory from a SerdesSource."
   [^SerdesSource source]
-  (.-export-dir source))
+  (.-databases-dir source))
 
 ;;; ===========================================================================
 ;;; Enumeration
@@ -314,15 +440,15 @@
 
 (defn all-database-names
   "Get all database names from source."
-  [^SerdesSource source]
-  (keys (:database (.-index source))))
+  [source]
+  (source/all-database-names source))
 
 (defn all-table-paths
   "Get all table paths from source."
-  [^SerdesSource source]
-  (keys (:table (.-index source))))
+  [source]
+  (source/all-table-paths source))
 
 (defn all-field-paths
   "Get all field paths from source."
-  [^SerdesSource source]
-  (keys (:field (.-index source))))
+  [source]
+  (source/all-field-paths source))
