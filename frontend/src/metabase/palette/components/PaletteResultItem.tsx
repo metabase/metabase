@@ -44,6 +44,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           {...icon}
           iconUrl={item.iconUrl}
           iconDarkUrl={item.iconDarkUrl}
+          IconComponent={item.IconComponent}
           style={{
             flexBasis: "16px",
           }}

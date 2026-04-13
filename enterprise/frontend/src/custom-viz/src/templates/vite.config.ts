@@ -61,14 +61,14 @@ function metabaseVizExternals() {
 const DEV_PORT = 5174;
 
 /**
- * Rewrite an SVG source string so every fill/stroke becomes `currentColor`
- * (except `fill="none"` / `stroke="none"`), and force the root <svg>'s
- * intrinsic width/height to 100% so the surrounding wrapper can size it.
- * Keeps the viewBox intact.
+ * Normalize an SVG source string so the root <svg>'s intrinsic width/height
+ * are 100% (the surrounding wrapper sizes it), preserving the viewBox and all
+ * author-specified colors. Fills and strokes are left untouched so multi-color
+ * brand icons render the same in the plugin registry as they do in the
+ * author's source file.
  */
 function makeIconBundleSource(svgText: string): string {
   const themed = svgText
-    .replace(/\s(fill|stroke)="(?!none")([^"]*)"/g, ' $1="currentColor"')
     .replace(/<svg\b([^>]*)>/, (_match, attrs) => {
       const stripped = attrs
         .replace(/\swidth="[^"]*"/g, "")

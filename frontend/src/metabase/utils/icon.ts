@@ -4,6 +4,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 import { getIconForVisualizationType } from "metabase/visualizations";
+import type { VisualizationIconComponent } from "metabase/visualizations/types/visualization";
 import type {
   CardType,
   Collection,
@@ -69,6 +70,7 @@ export type IconData = {
   color?: ColorName;
   iconUrl?: string;
   iconDarkUrl?: string;
+  IconComponent?: VisualizationIconComponent;
 };
 
 /** get an Icon for any entity object, doesn't depend on the entity system */

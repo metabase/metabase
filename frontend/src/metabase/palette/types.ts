@@ -4,6 +4,7 @@ import type React from "react";
 
 import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { VisualizationIconComponent } from "metabase/visualizations/types/visualization";
 import type { ModerationReviewStatus } from "metabase-types/api";
 
 import type { GROUP_LABELS } from "./constants";
@@ -31,6 +32,7 @@ export type PaletteAction = Action &
     icon?: IconName;
     iconUrl?: string;
     iconDarkUrl?: string;
+    IconComponent?: VisualizationIconComponent;
   };
 
 export type PaletteActionImpl = ActionImpl &
@@ -39,6 +41,7 @@ export type PaletteActionImpl = ActionImpl &
     icon?: IconName;
     iconUrl?: string;
     iconDarkUrl?: string;
+    IconComponent?: VisualizationIconComponent;
   };
 
 export type ShortcutGroup = keyof typeof GROUP_LABELS;

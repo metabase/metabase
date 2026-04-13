@@ -12,7 +12,10 @@ import type {
 } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./types";
-import type { Visualization } from "./types/visualization";
+import type {
+  Visualization,
+  VisualizationDefinition,
+} from "./types/visualization";
 
 const visualizations = new Map<VisualizationDisplay, Visualization>();
 const aliases = new Map<string, Visualization>();
@@ -121,12 +124,14 @@ export function getIconForVisualizationType(display: VisualizationDisplay): {
   name: IconName;
   iconUrl?: string;
   iconDarkUrl?: string;
+  IconComponent?: VisualizationDefinition["IconComponent"];
 } {
   const viz = visualizations.get(display);
   return {
     name: viz?.iconName ?? "unknown",
     iconUrl: viz?.iconUrl,
     iconDarkUrl: viz?.iconDarkUrl,
+    IconComponent: viz?.IconComponent,
   };
 }
 
