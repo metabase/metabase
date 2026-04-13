@@ -113,35 +113,36 @@ describe("useEmbeddingThemeEditor", () => {
       shadow: "#333333",
     };
 
-    function setupWithCustomColors() {
-      const themeWithCustomColors: EmbeddingTheme = {
-        ...TEST_THEME,
-        settings: {
-          ...TEST_THEME.settings,
-          colors: {
-            brand: "#FF0000",
-            background: "#111111",
-            "text-primary": "#222222",
-            ...CUSTOM_ADDITIONAL_COLORS,
-            charts: [
-              "#A00",
-              "#B00",
-              "#C00",
-              "#D00",
-              "#E00",
-              "#F00",
-              "#100",
-              "#200",
-            ],
-          },
+    const THEME_WITH_CUSTOM_COLORS: EmbeddingTheme = {
+      ...TEST_THEME,
+      settings: {
+        ...TEST_THEME.settings,
+        colors: {
+          brand: "#FF0000",
+          background: "#111111",
+          "text-primary": "#222222",
+          ...CUSTOM_ADDITIONAL_COLORS,
+          charts: [
+            "#A00",
+            "#B00",
+            "#C00",
+            "#D00",
+            "#E00",
+            "#F00",
+            "#100",
+            "#200",
+          ],
         },
-      };
+      },
+    };
 
-      fetchMock.get("path:/api/embed-theme/1", themeWithCustomColors, {
-        overwriteRoutes: true,
+    function setupWithCustomColors() {
+      fetchMock.get("path:/api/embed-theme/1", THEME_WITH_CUSTOM_COLORS);
+      fetchMock.put("path:/api/embed-theme/1", THEME_WITH_CUSTOM_COLORS);
+
+      return renderHookWithProviders(() => useEmbeddingThemeEditor(1), {
+        withUndos: true,
       });
-
-      return setup();
     }
 
     it("hasAdditionalColorChanges is false when colors match defaults", async () => {
