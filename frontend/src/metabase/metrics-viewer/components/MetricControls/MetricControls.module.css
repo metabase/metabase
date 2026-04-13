@@ -1,7 +1,3 @@
-.container {
-  box-shadow: 0 2px 8px 0 var(--mb-color-shadow);
-}
-
 .divider {
   align-self: stretch;
 }

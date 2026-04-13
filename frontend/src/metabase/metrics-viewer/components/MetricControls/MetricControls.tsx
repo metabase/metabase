@@ -85,7 +85,6 @@ export function MetricControls({
     <Flex
       maw="100%"
       h="3rem"
-      className={S.container}
       display="inline-flex"
       bg="background-primary"
       bd="1px solid var(--mb-color-border)"
