@@ -101,43 +101,48 @@ jobs:
             PR_NUMBER=$(echo "$GITHUB_REF" | grep -oP '\d+')
           fi
 
-          # Build the payload: wrap results array with metadata
+          # Build the payload: read results from file via jq's --slurpfile to avoid ARG_MAX
+          SOURCE="pr"
+          if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
+            SOURCE="main"
+          fi
+
           jq -n \
-            --argjson results "$(cat "$RESULTS_FILE")" \
+            --slurpfile results "$RESULTS_FILE" \
             --arg branch "$BRANCH" \
             --arg commit_sha "$COMMIT" \
-            --arg source "main" \
+            --arg source "$SOURCE" \
             --arg repo "$GITHUB_REPOSITORY" \
             --arg ci_run_url "$RUN_URL" \
             --arg ci_workflow "ai-benchmark" \
             --arg pr_number "$PR_NUMBER" \
             --arg profile "${{ inputs.profile }}" \
             '{
-              results: $results,
+              results: $results[0],
               branch: $branch,
               commit_sha: $commit_sha,
-              source: (if $branch == "master" or $branch == "main" then "main" else "pr" end),
+              source: $source,
               repo: $repo,
               ci_run_url: $ci_run_url,
               ci_workflow: $ci_workflow,
               label: ("CI: " + $profile + " profile"),
               pr_number: (if $pr_number != "" then ($pr_number | tonumber) else null end)
-            }' | curl -sf \
-              -X POST "$AI_BENCHMARK_UPLOAD_URL" \
-              -H "Authorization: Bearer $AI_BENCHMARK_UPLOAD_API_KEY" \
-              -H "Content-Type: application/json" \
-              -d @- \
-              -o response.json -w "%{http_code}" | {
-                read HTTP_CODE
-                if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-                  echo "Upload successful (HTTP $HTTP_CODE)"
-                  cat response.json
-                else
-                  echo "Upload failed (HTTP $HTTP_CODE)"
-                  cat response.json
-                  exit 1
-                fi
-              }
+            }' > payload.json
+
+          HTTP_CODE=$(curl -s -X POST "$AI_BENCHMARK_UPLOAD_URL" \
+            -H "Authorization: Bearer $AI_BENCHMARK_UPLOAD_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d @payload.json \
+            -o response.json -w "%{http_code}")
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "Upload successful (HTTP $HTTP_CODE)"
+            cat response.json
+          else
+            echo "Upload failed (HTTP $HTTP_CODE)"
+            cat response.json
+            exit 1
+          fi
 
       - name: Dump container logs
         if: always()
