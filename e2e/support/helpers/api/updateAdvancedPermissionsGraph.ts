@@ -1,28 +1,18 @@
-type ApplicationPermissionValue = "yes" | "no";
-
-type ApplicationPermissions = {
-  monitoring?: ApplicationPermissionValue;
-  setting?: ApplicationPermissionValue;
-  subscription?: ApplicationPermissionValue;
-};
-
-type ApplicationPermissionsGroups = Record<number, ApplicationPermissions>;
-
-type ApplicationPermissionsGraph = {
-  groups: ApplicationPermissionsGroups;
-  revision: number;
-};
+import type {
+  AdvancedPermissionsGraph,
+  AdvancedPermissionsGroups,
+} from "metabase/api";
 
 export function updateAdvancedPermissionsGraph(
-  groupsPermissionsObject: ApplicationPermissionsGroups,
-): Cypress.Chainable<Cypress.Response<ApplicationPermissionsGraph>> {
+  groupsPermissionsObject: AdvancedPermissionsGroups,
+): Cypress.Chainable<Cypress.Response<AdvancedPermissionsGraph>> {
   return cy
-    .request<ApplicationPermissionsGraph>(
+    .request<AdvancedPermissionsGraph>(
       "GET",
       "/api/ee/advanced-permissions/application/graph",
     )
     .then(({ body: { groups, revision } }) => {
-      const updatedGroups: ApplicationPermissionsGroups = { ...groups };
+      const updatedGroups: AdvancedPermissionsGroups = { ...groups };
       for (const [groupId, permissions] of Object.entries(
         groupsPermissionsObject,
       )) {
@@ -32,7 +22,7 @@ export function updateAdvancedPermissionsGraph(
         };
       }
 
-      return cy.request<ApplicationPermissionsGraph>(
+      return cy.request<AdvancedPermissionsGraph>(
         "PUT",
         "/api/ee/advanced-permissions/application/graph",
         {
