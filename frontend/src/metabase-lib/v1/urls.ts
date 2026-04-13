@@ -21,7 +21,12 @@ type UrlBuilderOpts = {
 
 export function getUrl(
   question: Question,
-  { originalQuestion, query, creationType }: UrlBuilderOpts = {},
+  {
+    originalQuestion,
+    query,
+    creationType,
+    includeDisplayIsLocked,
+  }: UrlBuilderOpts = {},
 ) {
   question = question.omitTransientCardIds();
 
@@ -30,7 +35,7 @@ export function getUrl(
     (originalQuestion && question.isDirtyComparedTo(originalQuestion))
   ) {
     const hash = serializeCardForUrl(question.card(), {
-      includeDisplayIsLocked: true,
+      includeDisplayIsLocked,
       creationType,
       parameterValues: question._parameterValues,
     });
