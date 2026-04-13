@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
+   [metabase.sample-content.export :as sample-content.export]
    [metabase.sample-content.import :as sample-content.import]
    [metabase.sample-data.core :as sample-data]
    [metabase.test :as mt]
@@ -73,6 +74,37 @@
             "No new dashboards should be created on second import")
         (is (= card-count-before (t2/count :model/Card))
             "No new cards should be created on second import")))))
+
+(defn- strip-volatile
+  "Remove fields that legitimately change between export runs (e.g. the current
+  Metabase version stamped onto cards). Keep everything else so the round-trip
+  test catches serdes-shape drift."
+  [entities]
+  (mapv #(dissoc % :metabase_version) entities))
+
+(deftest round-trip-test
+  (testing "Each entity type round-trips: re-extracting after import matches the source EDN.
+           This catches serdes breaking changes — if a future refactor drops fields, renames
+           portable refs, or changes normalization, this test will fail loudly and force us
+           to regenerate sample-content.edn (or fix the serdes regression) instead of
+           shipping broken sample content."
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db!)
+      (sample-data/extract-and-sync-sample-database!)
+      (#'sample-content.import/do-import!)
+      (let [source         (#'sample-content.import/load-edn "sample-content.edn")
+            collection-ids (t2/select-fn-set :id :model/Collection :is_sample true)
+            re-extracted   {:collections (#'sample-content.export/extract-collections)
+                            :cards       (#'sample-content.export/extract-cards collection-ids)
+                            :dashboards  (#'sample-content.export/extract-dashboards collection-ids)
+                            :documents   (#'sample-content.export/extract-documents collection-ids)}]
+        (doseq [k [:collections :cards :dashboards :documents]]
+          (testing (str k " round-trip")
+            (is (= (count (get source k)) (count (get re-extracted k)))
+                "entity count must match source EDN")
+            (is (= (strip-volatile (get source k))
+                   (strip-volatile (get re-extracted k)))
+                "each entity must re-extract identically to the source EDN")))))))
 
 (deftest import-error-does-not-block-startup-test
   (testing "If import throws, it's caught and logged — doesn't propagate"
