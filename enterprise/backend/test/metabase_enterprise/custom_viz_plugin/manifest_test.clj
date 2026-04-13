@@ -26,6 +26,14 @@
   (testing "returns false for a range the current version does not satisfy"
     (with-redefs [config/mb-version-info {:tag "v1.58.0"}]
       (is (false? (manifest/compatible? {:metabase_version ">=1.59"})))))
+  (testing "SNAPSHOT pre-release versions satisfy ranges (pre-release is stripped)"
+    (with-redefs [config/mb-version-info {:tag "v1.61.1-SNAPSHOT"}]
+      (is (true? (manifest/compatible? {:metabase_version ">=1.59"}))))
+    (with-redefs [config/mb-version-info {:tag "v1.58.0-SNAPSHOT"}]
+      (is (false? (manifest/compatible? {:metabase_version ">=1.59"})))))
+  (testing "build metadata is stripped for version comparison"
+    (with-redefs [config/mb-version-info {:tag "v1.60.0+build123"}]
+      (is (true? (manifest/compatible? {:metabase_version ">=1.59"})))))
   (testing "returns true in dev mode regardless of version"
     (with-redefs [config/is-dev? true]
       (is (true? (manifest/compatible? {:metabase_version ">=99.0.0"})))))
