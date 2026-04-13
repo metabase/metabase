@@ -260,6 +260,10 @@ function hasProperGoalForAlert({
   question: Question | undefined;
   visualizationSettings: VisualizationSettings;
 }): boolean {
+  if (!question) {
+    return false;
+  }
+
   const alertType = getAlertType(question, visualizationSettings);
 
   if (!alertType) {
