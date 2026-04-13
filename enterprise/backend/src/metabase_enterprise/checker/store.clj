@@ -158,15 +158,34 @@
         (let [id (get-or-assign! store :database db-name)]
           (cache-entity! store :database db-name (assoc data :id id))))))
 
-(defn load-table!
-  "Load and cache a table, assigning it and its database integer IDs."
-  [store table-path]
+(defn ensure-table-id!
+  "Ensure a table path has an assigned integer ID and minimal metadata cached.
+   Does NOT parse the table YAML — derives name/schema from the path.
+   Use [[load-table!]] when full table data is needed."
+  [store [db-name schema table-name :as table-path]]
   (or (cached-entity store :table table-path)
+      (let [id    (get-or-assign! store :table table-path)
+            db-id (get-or-assign! store :database db-name)]
+        (cache-entity! store :table table-path
+                       {:id    id
+                        :db_id db-id
+                        :name  table-name
+                        :schema schema}))))
+
+(defn load-table!
+  "Load and cache a table, assigning it and its database integer IDs.
+   Parses the table YAML for full metadata."
+  [store table-path]
+  (let [cached (cached-entity store :table table-path)]
+    (if (and cached (contains? cached :display_name))
+      ;; Already fully loaded
+      cached
+      ;; Load from YAML, merging with any existing minimal cache
       (when-let [data (source/resolve-table (schema-source store) table-path)]
         (let [[db-name _ _] table-path
               id    (get-or-assign! store :table table-path)
               db-id (get-or-assign! store :database db-name)]
-          (cache-entity! store :table table-path (assoc data :id id :db_id db-id))))))
+          (cache-entity! store :table table-path (assoc data :id id :db_id db-id)))))))
 
 (defn load-field!
   "Load and cache a field, assigning it and its table integer IDs."

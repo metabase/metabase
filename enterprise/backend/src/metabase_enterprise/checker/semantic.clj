@@ -715,12 +715,11 @@
         (str/join "\n" @lines)))))
 
 (defn- make-sources-and-index
+  "Build schema and assets sources from `schema-dir` and `export-dir`,
+   and a merged file index."
   [export-dir schema-dir]
-  (let [_  (println "making schema source..." (System/currentTimeMillis))
-        schema-source (serdes/make-database-source schema-dir)
-        _  (println "making assets source..." (System/currentTimeMillis))
+  (let [schema-source (serdes/make-database-source schema-dir)
         assets-source (serdes/make-source export-dir)
-        _  (println "merging indexes..." (System/currentTimeMillis))
         schema-index  (serdes/source-index schema-source)
         assets-index  (serdes/source-index assets-source)
         index         (merge schema-index (select-keys assets-index [:card :dashboard :collection :document :measure :segment :snippet :transform :duplicates]))]
@@ -751,12 +750,9 @@
      (check-one ctx \"entity-id\")
      (check-one ctx \"entity-id\" :verbose true)"
   [export-dir schema-dir]
-  (println "starting" (System/currentTimeMillis))
   (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)
-        _ (println "finished index. starting store" (System/currentTimeMillis))
         store    (binding [mu.fn/*enforce* false]
                    (store/make-store schema-source assets-source index))
-        _ (println "finished store, starting provider" (System/currentTimeMillis))
         provider (provider/make-provider store)]
     {:store store :provider provider :index index}))
 

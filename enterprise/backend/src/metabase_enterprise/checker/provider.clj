@@ -310,10 +310,11 @@
                :let [data (store/load-table! store path)]
                :when data]
            (->table-metadata data))
-         ;; Only return tables for the current database
+         ;; Only return tables for the current database — uses lightweight
+         ;; path-derived metadata, no YAML parsing
          (let [db-name @current-db]
            (for [path (store/tables-for-database store db-name)
-                 :let [data (store/load-table! store path)]
+                 :let [data (store/ensure-table-id! store path)]
                  :when data]
              (->table-metadata data)))))
 
