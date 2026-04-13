@@ -395,35 +395,6 @@ Default (API): `<instance-name>-<YYYY-MM-dd_HH_mm>`. For the CLI, the directory 
 
 Sets the name of the directory that holds the exported YAML files.
 
-## Serialization best practices
-
-### Avoid using serialization for backups
-
-Serialization is _not_ meant to back up your Metabase.
-
-See [Backing up Metabase](./backing-up-metabase-application-data.md).
-
-If you're instead looking to do a one-time migration from the default H2 database included with Metabase to a MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
-
-### Use the same Metabase major version for source and target instance
-
-Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
-
-Metabase will log a warning if the versions doesn't match, but it won't block the import.
-
-### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
-
-Avoid using H2 as your application database! This note is just for when you're playing around with a local version of Metabase. If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running, no problemo.
-
-### You'll need to manually add license tokens
-
-Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](../installation-and-operation/activating-the-enterprise-edition.md), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
-
-### Metabase adds logs to exports and imports
-
-- Exports: Metabase adds logs to the compressed directory as `export.log`.
-- Imports: You can add the `-o -` flag to export logs directly into the terminal, or `-o import.log` to save to a file.
-
 ## Serialization via the API
 
 > Just like the CLI serialization commands, these endpoints are only available for [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -594,6 +565,35 @@ Which prints out:
 import path & options
          Load serialized Metabase instance as created by the [[export]] command from directory `path`.
 ```
+
+## Serialization best practices
+
+### Avoid using serialization for backups
+
+Serialization is _not_ meant to back up your Metabase.
+
+See [Backing up Metabase](./backing-up-metabase-application-data.md).
+
+If you're instead looking to do a one-time migration from the default H2 database included with Metabase to a MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
+
+### Use the same Metabase major version for source and target instance
+
+Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
+
+Metabase will log a warning if the versions doesn't match, but it won't block the import.
+
+### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
+
+Avoid using H2 as your application database! This note is just for when you're playing around with a local version of Metabase. If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running, no problemo.
+
+### You'll need to manually add license tokens
+
+Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](../installation-and-operation/activating-the-enterprise-edition.md), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+
+### Metabase adds logs to exports and imports
+
+- Exports: Metabase adds logs to the compressed directory as `export.log`.
+- Imports: You can add the `-o -` flag to export logs directly into the terminal, or `-o import.log` to save to a file.
 
 ## Other uses of serialization
 
