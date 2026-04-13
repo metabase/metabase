@@ -51,6 +51,8 @@
               lock-name (view-count-lock model)]
           (log/debugf "Writing %d items to %s view counts with lock %s" (count ids) model lock-name)
           (cluster-lock/with-cluster-lock lock-name
+            ;; Using t2/query instead of t2/update! avoids triggering Toucan2 model hooks,
+            ;; specifically search-index enqueues on after-update.
             (t2/query {:update (t2/table-name model)
                        :set    {:view_count [:+ :view_count (into [:case]
                                                                   (mapcat (fn [[cnt ids]]
@@ -117,13 +119,18 @@
   (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
                                              (fn [xs] (apply t/max (map :timestamp xs))))]
     (try
+      ;; Use t2/query (raw SQL) instead of t2/update! to avoid triggering Toucan2 model hooks
+      ;; (specifically :hook/search-index after-update). The search index can tolerate staleness on this field: the
+      ;; index will catch up on the next re-index cycle or when the dashboard is edited. This matches the pattern used
+      ;; in increment-view-counts!*
       (cluster-lock/with-cluster-lock dashboard-statistics-lock
-        (t2/update! :model/Dashboard :id [:in (keys dashboard-id->timestamp)]
-                    {:last_viewed_at (into [:case]
-                                           (mapcat (fn [[id timestamp]]
-                                                     [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
-                                                   dashboard-id->timestamp))
-                     :updated_at :updated_at})) ;; setting last_viewed_at should not update the updated_at column
+        (t2/query {:update (t2/table-name :model/Dashboard)
+                   :set    {:last_viewed_at (into [:case]
+                                                  (mapcat (fn [[id timestamp]]
+                                                            [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                          dashboard-id->timestamp))
+                            :updated_at :updated_at}
+                   :where  [:in :id (keys dashboard-id->timestamp)]}))
       (catch Exception e
         (log/error e "Failed to update dashboard last_viewed_at")))))
 
