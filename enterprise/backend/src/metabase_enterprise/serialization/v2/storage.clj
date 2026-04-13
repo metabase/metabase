@@ -65,9 +65,9 @@
 
 (defn- store-entity! [opts entity]
   (let [f (file opts entity)]
-    (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
-                         :file (str (.relativize (Path/of (str (:root-dir opts)) (make-array String 0))
-                                                 (.toPath f)))})
+    (log/trace "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
+                          :file (str (.relativize (Path/of (str (:root-dir opts)) (make-array String 0))
+                                                  (.toPath f)))})
     (spit-yaml! f entity)
     (:serdes/meta entity)))
 

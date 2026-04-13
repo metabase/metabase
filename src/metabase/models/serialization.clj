@@ -527,7 +527,7 @@
 (defn log-and-extract-one
   "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
-  (log/info "Extracting" {:path (log-path-str (generate-path model instance))})
+  (log/tracef "Extracting %s" (log-path-str (generate-path model instance)))
   (try
     (extract-one model opts instance)
     (catch Exception e
