@@ -47,7 +47,13 @@ export const ChartTypeSidebar = ({
   // Eagerly load all custom viz plugins so they register in the
   // visualizations Map and can be rendered by ChartTypeOption.
   useEffect(() => {
-    if (!customVizPlugins || customVizPlugins.length === 0) {
+    if (!customVizPlugins) {
+      // Plugin list query still loading — don't mark loaded yet, otherwise
+      // the later setPluginsLoaded(true) after bundles resolve is a no-op
+      // and the picker never recomputes to include custom viz.
+      return;
+    }
+    if (customVizPlugins.length === 0) {
       setPluginsLoaded(true);
       return;
     }

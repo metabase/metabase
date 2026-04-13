@@ -528,5 +528,26 @@ describe("admin > custom visualizations", () => {
         cy.findByText("Custom viz rendered successfully").should("be.visible");
       });
     });
+
+    it("passes the user's locale to the plugin and updates when the user changes it", () => {
+      visitTestQuestion();
+      switchToDemoViz();
+      H.saveSavedQuestion();
+
+      // Default user locale is "en"
+      cy.findByTestId("demo-viz-locale").should("have.text", "Locale: en");
+
+      // Change the current user's locale to German. The plugin factory runs
+      // again on the next full page load with the new locale value.
+      cy.request("GET", "/api/user/current").then(({ body: user }) => {
+        cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
+      });
+
+      H.interceptPluginBundle();
+      cy.reload();
+      cy.wait("@pluginBundle");
+
+      cy.findByTestId("demo-viz-locale").should("have.text", "Locale: de");
+    });
   });
 });
