@@ -27,30 +27,6 @@ SELECT id AS entity_id,
        query,
        embedding_client,
        embedding_route,
-       CASE
-         WHEN COALESCE(embedding_route, embedding_client) = 'public'       THEN 'public-sharing'
-         WHEN COALESCE(embedding_route, embedding_client) = 'guest-embed'  THEN 'guest-embedding'
-         WHEN COALESCE(embedding_route, embedding_client) = 'metabot'      THEN 'metabot'
-         WHEN COALESCE(embedding_route, embedding_client) = 'agent-api'    THEN 'agent-api'
-         WHEN embedding_client = 'embedding-sdk-react'         THEN 'sdk'
-         WHEN embedding_client = 'embedding-sdk-react-preview' THEN 'sdk-preview'
-         WHEN embedding_client = 'embedding-iframe'            THEN 'iframe'
-         WHEN embedding_client = 'embedding-iframe-preview'    THEN 'iframe-preview'
-         WHEN embedding_client = 'embedding-iframe-static'           THEN 'iframe-static'
-         WHEN embedding_client = 'embedding-iframe-static-preview'   THEN 'iframe-static-preview'
-         WHEN embedding_client = 'embedding-iframe-full-app'         THEN 'iframe-full-app'
-         WHEN embedding_client = 'embedding-iframe-full-app-preview' THEN 'iframe-full-app-preview'
-         WHEN embedding_client = 'embedding-iframe-public'           THEN 'iframe-public'
-         WHEN embedding_client = 'embedding-iframe-public-preview'   THEN 'iframe-public-preview'
-         WHEN embedding_client = 'public'                      THEN 'public-sharing'
-         WHEN embedding_client = 'public-preview'              THEN 'public-sharing-preview'
-         WHEN embedding_client = 'guest-embed'                 THEN 'guest-embedding'
-         WHEN embedding_client = 'guest-embed-preview'         THEN 'guest-embedding-preview'
-         WHEN embedding_client = 'embedding-simple'            THEN 'modular-embedding'
-         WHEN embedding_client = 'embedding-simple-preview'    THEN 'modular-embedding-preview'
-         WHEN embedding_client IS NULL OR embedding_client = '' THEN 'internal'
-         ELSE embedding_client
-       END AS surface,
        CASE WHEN embedding_client LIKE '%-preview' THEN TRUE ELSE FALSE END AS is_preview,
        embedding_version,
        auth_method,

@@ -547,7 +547,7 @@
                 (is (= "card"                  (:entity_type row)))
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-                (is (= "public-sharing"        (:surface row)))
+
                 (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -560,7 +560,7 @@
               (let [row (latest-v-query-log (:id card))]
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-                (is (= "public-sharing"        (:surface row)))
+
                 (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -588,7 +588,7 @@
                 (is (= "card"                  (:entity_type row)))
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-                (is (= "public-sharing"        (:surface row)))
+
                 (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (= "public"                (:auth_method row)))
@@ -601,7 +601,7 @@
               (let [row (latest-v-query-log (:id card))]
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
-                (is (= "public-sharing"        (:surface row)))
+
                 (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (= "public"                (:auth_method row)))
