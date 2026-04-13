@@ -46,15 +46,20 @@
           (println (str var-name "=" display-v)))))
     (println)
 
-    ;; nREPL discovery
+    ;; nREPL discovery — extract the port number from clj-nrepl-eval's output
+    ;; and print a single unambiguous line for the agent to consume.
     (println "## nREPL Servers")
     (println)
     (let [{:keys [exit out]} (shell/sh* {:quiet? true} "clj-nrepl-eval" "--discover-ports")
-          lines (when (zero? exit) (remove str/blank? out))]
-      (if (seq lines)
-        (doseq [line lines]
-          (println line))
-        (println "NONE")))
+          ;; Look for "localhost:PORT (lang)" lines.
+          port-match (when (zero? exit)
+                       (some (fn [line]
+                               (when-let [m (re-find #"localhost:(\d+)" line)]
+                                 (second m)))
+                             out))]
+      (if port-match
+        (println (str "NREPL_PORT=" port-match))
+        (println "NREPL_PORT=NONE")))
     (println)
 
     ;; Source info
