@@ -69,41 +69,7 @@ Metabase will only export the following entities:
 - Python libraries (shared Python modules used by transforms)
 - Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
-All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported. Those entities are tied to user accounts, and therefore aren't available
-
-Metabase will export its artifacts to a directory of YAML files. The export includes:
-
-- Directories that contain YAML files for various Metabase entities.
-  An example export could include the following directories, depending on what you exported and the contents of your Metabase:
-
-  - actions
-  - channels
-  - collections
-    - main
-      - my_collection
-        - some_question.yaml
-        - sub_collection
-          - ...
-      - my_collection.yaml
-    - snippets
-    - transforms
-  - databases
-  - glossary
-  - metabots
-  - python_libraries
-  - transforms
-
-  Under `collections`, content is grouped into subfolders by the collection's `namespace` field (the same `namespace` value you'll see inside each collection's YAML): `main` contains most collections, `snippets` contains [native query snippet](../questions/native-editor/writing-sql.md#snippets) collections, and `transforms` contains transform collections. Inside each subfolder, the folder tree mirrors the collection hierarchy in Metabase. Each collection has a YAML file and a folder containing its child entities (questions, dashboards, subcollections, etc.).
-
-  The top-level `transforms` directory (separate from `collections/transforms`) contains transform tags and transform jobs. Other top-level directories include `channels` for notification channels, `metabots` for AI assistant configurations, and `python_libraries` for shared Python modules used by transforms.
-
-  File and folder names are simplified versions of entity names (lowercase, with special characters replaced by underscores).
-
-  When serializing through the API, the export directory [will be compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
-
-- A `settings.yaml` file that includes some [Metabase-wide settings](#general-metabase-settings-that-are-exported)
-
-Database connection details are not included by default, but you can [configure your export](#customize-what-gets-exported) to include them.
+All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported. Those entities are tied to user accounts, and therefore aren't portable between Metabases.
 
 ### General Metabase settings that are exported
 
@@ -261,15 +227,15 @@ metabase_version: v1.60.1
 type: metric
 ```
 
-To keep exported files compact, Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Top-level fields with `null` values are also omitted.
+Some things to keep in mind:
 
-Fields prefixed with `lib/` in the example (like `lib/type`, `lib/source`) are internal metadata that Metabase generates during export. You don't need to provide or edit them when hand-writing YAML — see the [Metabase Representation Format spec](https://github.com/metabase/representations) for which fields are required vs. informational.
+- To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
+- To keep exported files compact, Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Top-level fields with `null` values are also omitted.
+- Fields prefixed with `lib/` in the example (like `lib/type`, `lib/source`) are internal metadata that Metabase generates during export. You don't need to provide or edit them when hand-writing YAML — see the [Metabase Representation Format spec](https://github.com/metabase/representations) for which fields are required vs. informational.
 
-To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
+### Metabase uses Entity IDs to identify Metabase items
 
-### Metabase uses Entity IDs to identify and reference Metabase items
-
-Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, model, collection, etc.). These Entity IDs are in addition to the sequential IDs Metabase generates. Entity IDs use the [NanoID format](https://github.com/ai/nanoid), and are stable across Metabases. By "stable" we mean that you can, for example, export a dashboard with an entity ID from one Metabase, and import that dashboard into another Metabase and have that dashboard use the same Entity ID, even though it's in a different Metabase.
+Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, etc.). These Entity IDs are in addition to the sequential IDs Metabase generates that you'll see in URLs. Entity IDs use the [NanoID format](https://github.com/ai/nanoid), and are stable across Metabases. By "stable" we mean that you can, for example, export a dashboard with an entity ID from one Metabase, and import that dashboard into another Metabase and have that dashboard use the same Entity ID, even though the item is now in two different Metabase instances.
 
 To get an item's Entity ID in Metabase:
 
@@ -277,18 +243,7 @@ To get an item's Entity ID in Metabase:
 2. Click on the info button.
 3. In the overview tab, copy the Entity ID.
 
-You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
-
-```yaml
-entity_id: r6vC_vLmo9zG6_r9sAuYG
-```
-
-This ID also appears in the `serdes/meta → id` field (these IDs must match):
-
-```yaml
-serdes/meta:
-  - id: r6vC_vLmo9zG6_r9sAuYG
-```
+You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. This ID also appears in the `serdes/meta → id` field (these IDs must match).
 
 Metabase uses simplified versions of entity names for file and directory names in exports. Names are lowercased, and special characters are replaced with underscores. Names are also truncated for filesystem compatibility.
 
@@ -304,16 +259,6 @@ If two entities in the same folder share the same name after simplification, Met
 products_by_week.yaml
 products_by_week_2.yaml
 ```
-
-Entity IDs don't appear in file or directory names, but they're still present inside each YAML file (in the `entity_id` and `serdes/meta` fields).
-
-For example, in the [Example of a serialized question](#example-of-a-serialized-question) above, you can see the field `collection_id`:
-
-```yaml
-collection_id: onou5H28Wvy3kWnjxxdKQ
-```
-
-This ID refers to the collection where the question was saved. In a real export, you'd find this collection as a folder in the export tree (named by its simplified name), with a matching `entity_id` inside its YAML file.
 
 ### Entity IDs work with embedding
 
@@ -346,31 +291,24 @@ dataset_query:
 
 ## How import works
 
-Metabase will read the provided YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite. Import will not delete items from the target instance — it only creates or overwrites.
+Metabase will read the imported YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite. Imports _only_ create or overwrite items; they never delete items from the target instance.
 
 - If you import an item with an `entity_id` that doesn't exist in your target Metabase, Metabase will create a new item.
-
-- If you import an item with an `entity_id` that already exists in your target Metabase, the existing item will be overwritten.
-
-  In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
-
+- If you import an item with an `entity_id` that already exists in your target Metabase, the import will overwrite the existing item. In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
 - If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
-
-- All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the import.
-
-  For example, if an exported YAML has the field `collection_id: onou5H28Wvy3kWnjxxdKQ`, then the collection `onou5H28Wvy3kWnjxxdKQ` must already exist in the target instance, or there must be a YAML file with the export of a collection that has this ID.
+- All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the import. For example, if an exported YAML has the field `collection_id: onou5H28Wvy3kWnjxxdKQ`, then the collection `onou5H28Wvy3kWnjxxdKQ` must already exist in the target instance, or there must be a YAML file with the export of a collection that has this ID.
 
 ## Serialization best practices
 
 ### Avoid using serialization for backups
 
-Just a note: serialization is _not_ meant to back up your Metabase.
+Serialization is _not_ meant to back up your Metabase.
 
 See [Backing up Metabase](./backing-up-metabase-application-data.md).
 
 If you're instead looking to do a one-time migration from the default H2 database included with Metabase to a MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
 
-### Use the same Metabase version for source and target instance
+### Use the same Metabase major version for source and target instance
 
 Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
 
@@ -378,7 +316,7 @@ Metabase will log a warning if the versions doesn't match, but it won't block th
 
 ### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
 
-If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running.
+Avoid using H2 as your application database! This note is just for when you're playing around with a local version of Metabase. If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running, no problemo.
 
 ### You'll need to manually add license tokens
 
@@ -388,105 +326,6 @@ Metabase excludes your license token from exports, so if you're running multiple
 
 - Exports: Metabase adds logs to the compressed directory as `export.log`.
 - Imports: You can add the `-o -` flag to export logs directly into the terminal, or `-o import.log` to save to a file.
-
-## Serialization with CLI commands
-
-> To serialize data on Metabase Cloud, use the [import and export API endpoints](#serialization-via-the-api)
-
-Metabase provides [`export`](#exporting-with-cli) and [`import`](#importing-with-cli) CLI commands.
-
-See [How export works](#how-export-works), [How import works](#how-import-works), and [Serialization best practices](#serialization-best-practices) for general information about serialization.
-
-### Exporting with CLI
-
-To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
-
-```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export dir_name
-```
-
-Where `dir_name` can be whatever you want to call the directory.
-
-### `export` options
-
-To view a list of `export` options, use the `help` command:
-
-```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help export
-```
-
-Which will run and then print something like:
-
-```
-export path & options
-	 Serialize Metabase instance into directory at `path`.
-	 Options:
-	   -c, --collection ID             Export only specified ID; may occur multiple times.
-	   -C, --no-collections            Do not export any content in collections.
-	   -S, --no-settings               Do not export settings.yaml
-	   -D, --no-data-model             Do not export any data model entities; useful for subsequent exports.
-	   -f, --include-field-values      Include field values along with field metadata.
-	   -s, --include-database-secrets  Include database connection details (in plain text; use caution).
-```
-
-#### `--collection`
-
-By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collection` flag. There's no option to include all personal collections at once — you must specify each personal collection's numeric ID individually.
-
-The `--collection` flag (alias `-c`) lets you specify by ID one or more collections to include in the export. You can find the collection ID in the collection's URL, e.g., for a collection at: `your-metabase.com/collection/42-terraforming-progress`, the ID would be `42`.
-
-The `--collection` flag works the same regardless of a collection's namespace. Metabase determines the output directory (`collections/main/`, `collections/snippets/`, or `collections/transforms/`) from the collection's own namespace property, not from the ID you pass.
-
-If you want to specify multiple collections, separate the IDs with commas. E.g.,
-
-```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export export_name --collection 1,2,3
-```
-
-#### `--no-collections`
-
-The `--no-collections` flag (alias `-C`) tells Metabase to exclude all collections from the export.
-
-#### `--no-settings`
-
-The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.yaml` file that includes [site-wide settings](#general-metabase-settings-that-are-exported), which is exported by default.
-
-#### `--no-data-model`
-
-The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the Table Metadata settings from the export. Admins define the metadata settings in the [Table Metadata](../data-modeling/metadata-editing.md) tab of the Admin settings.
-
-#### `--include-field-values`
-
-The `--include-field-values` flag (alias `-f`) tells Metabase to include the sample values for field values, which Metabase uses to present dropdown menus. By default, Metabase excludes these sample field values.
-
-#### `--include-database-secrets`
-
-The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase.
-
-### Importing with CLI
-
-To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
-
-```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to_export
-```
-
-Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
-
-### `import` options
-
-Most options are defined when exporting data from a Metabase. To view a list of import flags, run:
-
-```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help import
-```
-
-Which prints out:
-
-```
-import path & options
-         Load serialized Metabase instance as created by the [[export]] command from directory `path`.
-```
 
 ## Serialization via the API
 
@@ -683,6 +522,106 @@ tar -xvf  metabase_data.tgz
    The `-o -` option will output logs in the terminal.
 
    > If you import Metabase data into the same Metabase as you exported it from, you will overwrite your existing questions, dashboards, etc. See [How import works](#how-import-works).
+
+
+## Serialization with CLI commands
+
+> To serialize data on Metabase Cloud, use the [import and export API endpoints](#serialization-via-the-api)
+
+Metabase provides [`export`](#exporting-with-cli) and [`import`](#importing-with-cli) CLI commands.
+
+See [How export works](#how-export-works), [How import works](#how-import-works), and [Serialization best practices](#serialization-best-practices) for general information about serialization.
+
+### Exporting with CLI
+
+To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
+
+```
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export dir_name
+```
+
+Where `dir_name` can be whatever you want to call the directory.
+
+### `export` options
+
+To view a list of `export` options, use the `help` command:
+
+```
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help export
+```
+
+Which will run and then print something like:
+
+```
+export path & options
+	 Serialize Metabase instance into directory at `path`.
+	 Options:
+	   -c, --collection ID             Export only specified ID; may occur multiple times.
+	   -C, --no-collections            Do not export any content in collections.
+	   -S, --no-settings               Do not export settings.yaml
+	   -D, --no-data-model             Do not export any data model entities; useful for subsequent exports.
+	   -f, --include-field-values      Include field values along with field metadata.
+	   -s, --include-database-secrets  Include database connection details (in plain text; use caution).
+```
+
+#### `--collection`
+
+By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collection` flag. There's no option to include all personal collections at once — you must specify each personal collection's numeric ID individually.
+
+The `--collection` flag (alias `-c`) lets you specify by ID one or more collections to include in the export. You can find the collection ID in the collection's URL, e.g., for a collection at: `your-metabase.com/collection/42-terraforming-progress`, the ID would be `42`.
+
+The `--collection` flag works the same regardless of a collection's namespace. Metabase determines the output directory (`collections/main/`, `collections/snippets/`, or `collections/transforms/`) from the collection's own namespace property, not from the ID you pass.
+
+If you want to specify multiple collections, separate the IDs with commas. E.g.,
+
+```
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export export_name --collection 1,2,3
+```
+
+#### `--no-collections`
+
+The `--no-collections` flag (alias `-C`) tells Metabase to exclude all collections from the export.
+
+#### `--no-settings`
+
+The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.yaml` file that includes [site-wide settings](#general-metabase-settings-that-are-exported), which is exported by default.
+
+#### `--no-data-model`
+
+The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the Table Metadata settings from the export. Admins define the metadata settings in the [Table Metadata](../data-modeling/metadata-editing.md) tab of the Admin settings.
+
+#### `--include-field-values`
+
+The `--include-field-values` flag (alias `-f`) tells Metabase to include the sample values for field values, which Metabase uses to present dropdown menus. By default, Metabase excludes these sample field values.
+
+#### `--include-database-secrets`
+
+The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase.
+
+### Importing with CLI
+
+To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
+
+```
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to_export
+```
+
+Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
+
+### `import` options
+
+Most options are defined when exporting data from a Metabase. To view a list of import flags, run:
+
+```
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help import
+```
+
+Which prints out:
+
+```
+import path & options
+         Load serialized Metabase instance as created by the [[export]] command from directory `path`.
+```
 
 ## Other uses of serialization
 
