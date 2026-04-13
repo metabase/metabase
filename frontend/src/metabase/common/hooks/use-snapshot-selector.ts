@@ -1,6 +1,6 @@
 import { type DependencyList, useEffect, useRef } from "react";
 
-import { useStore } from "metabase/lib/redux";
+import { useStore } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 
 /**

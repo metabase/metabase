@@ -4,8 +4,8 @@ import { Route } from "react-router";
 import { push } from "react-router-redux";
 
 import { Modal } from "metabase/common/components/Modal";
-import { connect } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { connect } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 
 type RouteParams = Record<string, string | undefined>;
 

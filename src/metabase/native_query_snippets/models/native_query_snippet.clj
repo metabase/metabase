@@ -173,7 +173,7 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name :template_tags]
-   :skip      [:dependency_analysis_version]
+   :skip      []
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)}

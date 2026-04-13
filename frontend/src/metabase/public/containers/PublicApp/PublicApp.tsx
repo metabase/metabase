@@ -1,13 +1,13 @@
 import { useLayoutEffect } from "react";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { isWithinIframe } from "metabase/lib/dom";
-import { connect, useSelector } from "metabase/lib/redux";
 import { PublicError } from "metabase/public/components/PublicError";
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { PublicStatusListing } from "metabase/status/components/PublicStatusListing";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { connect, useSelector } from "metabase/utils/redux";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 interface OwnProps {

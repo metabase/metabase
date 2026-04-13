@@ -12,7 +12,7 @@
 (def ^:private dim-ref-2 {:node/type :ast/dimension-ref :dimension-id uuid-2 :options {:temporal-unit :month}})
 
 (def ^:private sample-ast
-  {:node/type  :ast/root
+  {:node/type  :ast/source-query
    :source     {:node/type   :source/metric
                 :id          42
                 :name        "Test Metric"
@@ -36,8 +36,7 @@
                  :table-id     100
                  :column       {:node/type :ast/column :id 2}}]
    :filter     nil
-   :group-by   []
-   :metadata-provider :test-provider})
+   :group-by   []})
 
 ;;; -------------------------------------------------- Basic Compilation --------------------------------------------------
 
@@ -588,6 +587,25 @@
           stage-1 (second (:stages result))]
       (is (seq (:joins stage-0)))
       (is (nil? (:joins stage-1))))))
+
+(deftest ^:parallel compile-two-stage-join-fields-test
+  (testing "join without :fields gets :all in stage 0"
+    (let [join-no-fields (dissoc sample-join :fields)
+          ast            (assoc-in sample-ast [:source :joins]
+                                   [{:node/type :ast/join
+                                     :mbql-join join-no-fields}])
+          result         (ast.compile/compile-to-mbql ast)
+          stage-0-join   (first (:joins (first (:stages result))))]
+      (is (= :all (:fields stage-0-join)))))
+
+  (testing "join with explicit :fields is overridden to :all (dimension system advertises all joined columns)"
+    (let [join-with-fields (assoc sample-join :fields [[:field {:join-alias "Products"} 20]])
+          ast              (assoc-in sample-ast [:source :joins]
+                                     [{:node/type :ast/join
+                                       :mbql-join join-with-fields}])
+          result           (ast.compile/compile-to-mbql ast)
+          stage-0-join     (first (:joins (first (:stages result))))]
+      (is (= :all (:fields stage-0-join))))))
 
 (deftest ^:parallel compile-two-stage-filter-separation-test
   (let [source-filter {:node/type :filter/mbql

@@ -35,48 +35,24 @@ export function disableTouchEmulation() {
   );
 }
 
-export function longPressAndDrag(
-  selector: string,
-  startX: number,
-  startY: number,
-  endX: number,
-  holdMs = LONG_PRESS_MS,
-) {
-  cy.findByTestId(selector).trigger("pointerdown", startX, startY, {
-    force: true,
-    isPrimary: true,
-    button: 0,
+/**
+ * Dispatches a native touchstart event on the element.
+ * Unlike cy.realTouch(), this fires a real DOM TouchEvent that bubbles
+ * to document — needed to test Mantine's useClickOutside which listens
+ * for touchstart at the document level.
+ */
+export function fireTouchStart(selector: string) {
+  cy.findByTestId(selector).then(($el) => {
+    const el = $el[0];
+    const touch = new Touch({ identifier: 0, target: el });
+    el.dispatchEvent(
+      new TouchEvent("touchstart", {
+        bubbles: true,
+        cancelable: true,
+        touches: [touch],
+      }),
+    );
   });
-
-  cy.wait(holdMs);
-
-  cy.findByTestId(selector)
-    .trigger("mousemove", endX, startY)
-    .trigger("mouseup", endX, startY);
-}
-
-export function quickSwipe(
-  selector: string,
-  startX: number,
-  startY: number,
-  endX: number,
-) {
-  cy.findByTestId(selector)
-    .trigger("pointerdown", startX, startY, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .trigger("pointermove", endX, startY, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .trigger("pointerup", endX, startY, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    });
 }
 
 export function longPressAndDrag(

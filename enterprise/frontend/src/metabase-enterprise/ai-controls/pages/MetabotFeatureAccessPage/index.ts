@@ -1,0 +1,1 @@
+export { MetabotFeatureAccessPage } from "./MetabotFeatureAccessPage";

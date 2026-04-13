@@ -1,12 +1,13 @@
+import { useEffect, useState } from "react";
 import { Route } from "react-router";
 import { replace } from "react-router-redux";
-import { useMount } from "react-use";
 
-import { useDispatch } from "metabase/lib/redux";
 import {
   useMetabotAgent,
-  useMetabotEnabledEmbeddingAware,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { Loader } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 export const getMetabotQuickLinks = () => {
   return (
@@ -14,20 +15,33 @@ export const getMetabotQuickLinks = () => {
       key="metabot"
       path="metabot/new"
       component={(props) => {
-        const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+        const { canUseMetabot, isLoading } = useUserMetabotPermissions();
         const { submitInput } = useMetabotAgent("omnibot");
         const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();
+        const [hasSubmitted, setHasSubmitted] = useState(false);
 
-        useMount(() => {
+        useEffect(() => {
+          if (isLoading || hasSubmitted) {
+            return;
+          }
+
           dispatch(replace("/"));
 
-          if (prompt && isMetabotEnabled) {
-            submitInput(prompt, { focusInput: true });
+          if (prompt && canUseMetabot) {
+            void submitInput(prompt, { focusInput: true });
+            setHasSubmitted(true);
           }
-        });
+        }, [
+          isLoading,
+          canUseMetabot,
+          prompt,
+          submitInput,
+          dispatch,
+          hasSubmitted,
+        ]);
 
-        return null;
+        return <Loader m="5rem auto" display="block" size="xl" />;
       }}
     />
   );

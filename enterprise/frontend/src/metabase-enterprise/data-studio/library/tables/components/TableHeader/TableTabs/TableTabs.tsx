@@ -5,10 +5,10 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Table } from "metabase-types/api";
 
 type TableTabsProps = {

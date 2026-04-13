@@ -15,14 +15,14 @@ import {
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getGroupNameLocalized,
   getGroupSortOrder,
   getSpecialGroupType,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
   CollectionId,

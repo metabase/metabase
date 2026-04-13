@@ -8,8 +8,6 @@ import _ from "underscore";
 
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useRouter } from "metabase/router";
@@ -22,8 +20,10 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
-import { useMetabotAgent, useMetabotEnabledEmbeddingAware } from "../../hooks";
+import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -247,8 +247,8 @@ const MetabotQueryBuilderInner = () => {
 export const MetabotQueryBuilder = (
   props: React.ComponentProps<typeof QueryBuilder>,
 ) => {
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
-  if (!isMetabotEnabled) {
+  const { canUseNlq } = useUserMetabotPermissions();
+  if (!canUseNlq) {
     return <QueryBuilder {...props} />;
   }
   return <MetabotQueryBuilderInner />;

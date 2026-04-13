@@ -61,7 +61,7 @@
 }
 
 .body {
-  align-items: center;
+  align-items: start;
 }
 
 .input {
@@ -86,7 +86,9 @@
 
   &:disabled {
     border-color: var(--mb-color-background-disabled);
-    background-color: var(--mb-color-background-disabled);
+    background-color: var(
+      --mb-color-background-tertiary
+    ); /* Opaque color needed here */
   }
 }
 
@@ -100,9 +102,20 @@
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
-  margin-top: var(--mantine-spacing-xs);
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.error {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .icon {
   color: var(--mb-color-text-primary-inverse);
+}
+
+.labelWrapper {
+  gap: 0.25rem;
+  align-self: center;
 }

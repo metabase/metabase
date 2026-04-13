@@ -146,11 +146,13 @@
                            :hard-ttl        (t/seconds 1)})]
       (with-redefs [mdb/db-is-set-up? (constantly false)]
         (is (= {:valid false
+                :canonical? false
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token)))
         (dotimes [_ 50] (token-check/-check-token checker token))
         (is (= {:valid false
+                :canonical? false
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token))))
@@ -210,6 +212,7 @@
             (age-cache-entry! token (+ (u/hours->ms 36) 1000) local-cache)
             (Thread/sleep 60) ;; expire local-cached-token-checker
             (is (= {:valid         false
+                    :canonical?    false
                     :status        "Unable to validate token"
                     :error-details "network failure!"}
                    (token-check/check-token checker token)))))
@@ -314,6 +317,31 @@
                   "Request body should include mb-version")
               (is (contains? body "users")
                   "Request body should include users count"))))))))
+
+(deftest send-metering-events-preserves-value-types-test
+  (testing "metering values are not converted to strings before sending"
+    (let [fake-usage {"anthropic:claude-sonnet-4-6:tokens" 500
+                      "openai:gpt-4:tokens"                300}
+          request-data (atom nil)]
+      (mt/with-random-premium-token! [_token]
+        (with-redefs [token-check/metering-stats (constantly {:users          10
+                                                              :external-users 2
+                                                              :internal-users 8
+                                                              :domains        1
+                                                              :metabot-usage  fake-usage
+                                                              :metabot-tokens 800})
+                      http/post                 (fn [_url opts]
+                                                  (reset! request-data opts)
+                                                  {:status 200 :body "{}"})]
+          (token-check/send-metering-events!)
+          (let [body (json/decode (:body @request-data) keyword)]
+            (is (= 10 (:users body))
+                "numeric values should remain numeric after JSON round-trip")
+            (is (map? (:metabot-usage body))
+                "map values should remain maps after JSON round-trip")
+            (is (= fake-usage
+                   (update-keys (:metabot-usage body) name))
+                "nested map values should round-trip intact")))))))
 
 (deftest send-metering-events-error-handling-test
   (testing "send-metering-events! handles errors gracefully"
@@ -557,6 +585,7 @@
           token   (tu/random-token)]
       ;; error-catching wraps it, so we get the error-details response
       (is (= {:valid false
+              :canonical? false
               :status "Unable to validate token"
               :error-details "MetaStore unreachable"}
              (token-check/-check-token checker token))))))

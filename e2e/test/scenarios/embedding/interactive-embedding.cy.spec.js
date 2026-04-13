@@ -9,7 +9,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { uuid } from "metabase/lib/uuid";
+import { uuid } from "metabase/utils/uuid";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,

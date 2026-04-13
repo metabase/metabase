@@ -3,7 +3,7 @@ import { createRef } from "react";
 import type { Action } from "redux-actions";
 import _ from "underscore";
 
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 import type { Undo } from "metabase-types/store/undo";
 

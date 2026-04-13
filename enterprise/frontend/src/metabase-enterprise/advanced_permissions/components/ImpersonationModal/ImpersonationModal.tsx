@@ -13,7 +13,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseQuery } from "metabase/common/hooks";
 import { getParentPath } from "metabase/hoc/ModalRoute";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {

@@ -16,8 +16,6 @@ import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/util
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getIcon } from "metabase/lib/icon";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   Box,
@@ -29,6 +27,8 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
+import { useSelector } from "metabase/utils/redux";
 import type {
   CollectionItem,
   SchemaName,

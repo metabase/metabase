@@ -1,21 +1,23 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import {
   useMetabotAgent,
-  useMetabotEnabledEmbeddingAware,
+  useMetabotName,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { Button } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import { trackQueryFixClicked } from "../../analytics";
 
 export function FixSqlQueryButton() {
   const dispatch = useDispatch();
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseSqlGeneration } = useUserMetabotPermissions();
+  const metabotName = useMetabotName();
   const { submitInput, isDoingScience } = useMetabotAgent("sql");
 
-  if (!isMetabotEnabled) {
+  if (!canUseSqlGeneration) {
     return null;
   }
 
@@ -30,6 +32,6 @@ export function FixSqlQueryButton() {
     <Button
       loading={isDoingScience}
       onClick={handleClick}
-    >{t`Have Metabot fix it`}</Button>
+    >{t`Have ${metabotName} fix it`}</Button>
   );
 }

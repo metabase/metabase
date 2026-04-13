@@ -9,6 +9,7 @@ export interface TicksDimensions {
   xTicksHeight: number;
   firstXTickWidth: number;
   lastXTickWidth: number;
+  getXTickWidth: (text: string) => number;
 }
 
 export interface ChartBoundsCoords {
@@ -26,7 +27,9 @@ export interface ChartLayout {
   bounds: ChartBoundsCoords;
   boundaryWidth: number;
   outerHeight: number;
+  outerWidth: number;
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"];
   stackedBarTicksRotation?: TicksRotation;
   panelHeight?: number;
+  panelGap: number;
 }

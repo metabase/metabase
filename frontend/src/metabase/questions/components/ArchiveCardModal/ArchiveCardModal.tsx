@@ -88,8 +88,8 @@ function getLabels(card: Card) {
 
   if (type === "metric") {
     return {
-      title: t`Archive this metric?`,
-      message: t`This metric will be removed from any dashboards or pulses using it.`,
+      title: t`Move this metric to trash?`,
+      message: t`This metric will be removed from any dashboards or alerts using it.`,
     };
   }
 

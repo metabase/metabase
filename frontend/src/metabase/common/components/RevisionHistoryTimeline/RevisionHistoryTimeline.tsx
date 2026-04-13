@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
-import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { Box, Button, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Revision } from "metabase-types/api";
 
 import S from "./RevisionHistoryTimeline.module.css";

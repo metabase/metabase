@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Styles from "metabase/css/core/index.css";
-import { ALTKEY, METAKEY } from "metabase/lib/browser";
 import { shortcuts as ALL_SHORTCUTS } from "metabase/palette/shortcuts";
 import type { ShortcutDef, ShortcutGroup } from "metabase/palette/types";
 import {
@@ -16,6 +15,7 @@ import {
   Tabs,
   Text,
 } from "metabase/ui";
+import { ALTKEY, METAKEY } from "metabase/utils/browser";
 
 import { ELLIPSIS, GROUP_LABELS } from "../../constants";
 

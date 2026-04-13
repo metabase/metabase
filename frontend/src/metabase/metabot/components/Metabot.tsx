@@ -4,15 +4,15 @@ import { t } from "ttag";
 
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useSelector } from "metabase/lib/redux";
 import {
   useMetabotAgent,
-  useMetabotEnabledEmbeddingAware,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { getUser } from "metabase/selectors/user";
 import { Box, Button, Flex, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { trackMetabotChatOpened } from "../analytics";
 import type { MetabotAgentId } from "../state";
@@ -111,12 +111,12 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
 
 export const Metabot = (props: MetabotProps) => {
   const currentUser = useSelector(getUser);
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseMetabot } = useUserMetabotPermissions();
 
   // NOTE: do not render Metabot if the user is not authenticated.
   // doing so will cause a redirect for unauthenticated requests
   // which will break interactive embedding. See (metabase#58687).
-  if (!currentUser || !isMetabotEnabled) {
+  if (!currentUser || !canUseMetabot) {
     return null;
   }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDashboardContext } from "metabase/dashboard/context";
-import resizeObserver from "metabase/lib/resize-observer";
+import resizeObserver from "metabase/utils/resize-observer";
 
 type Opts = {
   reservedWidth: number;

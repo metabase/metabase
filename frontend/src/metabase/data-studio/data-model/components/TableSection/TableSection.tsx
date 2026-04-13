@@ -9,10 +9,6 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
-import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -38,6 +34,10 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+import type { DataStudioTableMetadataTab } from "metabase/utils/urls/data-studio";
+import { dependencyGraph } from "metabase/utils/urls/dependencies";
 import {
   type FieldId,
   type Table,
@@ -233,90 +233,13 @@ const TableSectionBase = ({
 
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
-      <Box className={S.header}>
-        <NameDescriptionInput
-          description={table.description ?? ""}
-          descriptionPlaceholder={t`Give this table a description`}
-          name={table.display_name}
-          nameIcon="table2"
-          nameMaxLength={254}
-          namePlaceholder={t`Give this table a name`}
-          onNameChange={handleNameChange}
-          onDescriptionChange={handleDescriptionChange}
-        />
-      </Box>
-
-      <Group justify="stretch" gap="sm">
-        {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
-          <Button
-            flex="1"
-            p="sm"
-            leftSection={
-              <Icon name={table.is_published ? "unpublish" : "publish"} />
-            }
-            onClick={handlePublishToggle}
-          >
-            {table.is_published ? t`Unpublish` : t`Publish`}
-          </Button>
-        )}
-        {!table.db?.is_attached_dwh && (
-          <Button
-            flex="1"
-            leftSection={<Icon name="settings" />}
-            onClick={onSyncOptionsClick}
-          >
-            {t`Sync settings`}
-          </Button>
-        )}
-        <PLUGIN_REPLACEMENT.SourceReplacementButton>
-          {({ tooltip, isDisabled }) => (
-            <Tooltip label={tooltip ?? t`Find and replace`}>
-              <Button
-                p="sm"
-                w="2.5rem"
-                flex="0 1 auto"
-                leftSection={<Icon name="find_replace" />}
-                aria-label={t`Find and replace`}
-                disabled={isDisabled}
-                onClick={() => setModalType("replace")}
-              />
-            </Tooltip>
-          )}
-        </PLUGIN_REPLACEMENT.SourceReplacementButton>
-        {isDependencyGraphEnabled && (
-          <Tooltip label={t`Dependency graph`}>
-            <Button
-              component={ForwardRefLink}
-              to={dependencyGraph({
-                entry: { id: Number(table.id), type: "table" },
-              })}
-              p="sm"
-              w="2.5rem"
-              flex="0 1 auto"
-              leftSection={<Icon name="dependencies" />}
-              aria-label={t`Dependency graph`}
-              onClickCapture={registerDependencyGraphTrackingEvent}
-              onAuxClick={registerDependencyGraphTrackingEvent}
-            />
-          </Tooltip>
-        )}
-
-        <Box style={{ flexGrow: 0, width: 40 }}>
-          <TableLink table={table} />
-        </Box>
-      </Group>
-
-      <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
-
-      <TableSectionGroup title={t`Metadata`}>
-        <TableMetadata table={table} />
-      </TableSectionGroup>
-
-      {table.is_published && <TableCollection table={table} />}
-
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="md">
+            <Tabs.Tab
+              value="details"
+              leftSection={<Icon name="info" />}
+            >{t`Details`}</Tabs.Tab>
             <Tabs.Tab
               value="field"
               leftSection={<Icon name="list" />}
@@ -330,6 +253,93 @@ const TableSectionBase = ({
               leftSection={<Icon name="ruler" />}
             >{t`Measures`}</Tabs.Tab>
           </Tabs.List>
+
+          <Tabs.Panel value="details">
+            <Stack gap="md">
+              <Box className={S.header}>
+                <NameDescriptionInput
+                  description={table.description ?? ""}
+                  descriptionPlaceholder={t`Give this table a description`}
+                  name={table.display_name}
+                  nameIcon="table2"
+                  nameMaxLength={254}
+                  namePlaceholder={t`Give this table a name`}
+                  onNameChange={handleNameChange}
+                  onDescriptionChange={handleDescriptionChange}
+                />
+              </Box>
+
+              <Group justify="stretch" gap="sm">
+                {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
+                  <Button
+                    flex="1"
+                    p="sm"
+                    leftSection={
+                      <Icon
+                        name={table.is_published ? "unpublish" : "publish"}
+                      />
+                    }
+                    onClick={handlePublishToggle}
+                  >
+                    {table.is_published ? t`Unpublish` : t`Publish`}
+                  </Button>
+                )}
+                {!table.db?.is_attached_dwh && (
+                  <Button
+                    flex="1"
+                    leftSection={<Icon name="settings" />}
+                    onClick={onSyncOptionsClick}
+                  >
+                    {t`Sync settings`}
+                  </Button>
+                )}
+                <PLUGIN_REPLACEMENT.SourceReplacementButton>
+                  {({ tooltip, isDisabled }) => (
+                    <Tooltip label={tooltip ?? t`Find and replace`}>
+                      <Button
+                        p="sm"
+                        w="2.5rem"
+                        flex="0 1 auto"
+                        leftSection={<Icon name="find_replace" />}
+                        aria-label={t`Find and replace`}
+                        disabled={isDisabled}
+                        onClick={() => setModalType("replace")}
+                      />
+                    </Tooltip>
+                  )}
+                </PLUGIN_REPLACEMENT.SourceReplacementButton>
+                {isDependencyGraphEnabled && (
+                  <Tooltip label={t`Dependency graph`}>
+                    <Button
+                      component={ForwardRefLink}
+                      to={dependencyGraph({
+                        entry: { id: Number(table.id), type: "table" },
+                      })}
+                      p="sm"
+                      w="2.5rem"
+                      flex="0 1 auto"
+                      leftSection={<Icon name="dependencies" />}
+                      aria-label={t`Dependency graph`}
+                      onClickCapture={registerDependencyGraphTrackingEvent}
+                      onAuxClick={registerDependencyGraphTrackingEvent}
+                    />
+                  </Tooltip>
+                )}
+
+                <Box style={{ flexGrow: 0, width: 40 }}>
+                  <TableLink table={table} />
+                </Box>
+              </Group>
+
+              <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
+
+              <TableSectionGroup title={t`Metadata`}>
+                <TableMetadata table={table} />
+              </TableSectionGroup>
+
+              {table.is_published && <TableCollection table={table} />}
+            </Stack>
+          </Tabs.Panel>
 
           <Tabs.Panel value="field">
             <Stack gap="md">
