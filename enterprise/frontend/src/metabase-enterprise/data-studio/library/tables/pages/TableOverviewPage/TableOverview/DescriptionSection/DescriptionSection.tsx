@@ -6,8 +6,6 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import { isNullOrUndefined } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -26,6 +24,8 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import { isNullOrUndefined } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
 import S from "./DescriptionSection.module.css";

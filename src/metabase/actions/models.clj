@@ -426,7 +426,7 @@
    :skip      [;; this is a temporary column to power v57 => v56 rollbacks, and we can remove it in v58.
                :legacy_query]
    :transform {:action_id     (serdes/parent-ref)
-               :database_id   (serdes/fk :model/Database :name)
+               :database_id   (serdes/fk :model/Database)
                :dataset_query {:export serdes/export-mbql :import serdes/import-mbql}}})
 
 (defmethod serdes/generate-path "HTTPAction" [_ _] nil)

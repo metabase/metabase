@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { measureTextWidth } from "metabase/lib/measure-text";
 import type { SelectProps } from "metabase/ui";
+import { measureTextWidth } from "metabase/utils/measure-text";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import type { ScheduleSettings } from "metabase-types/api";
 

@@ -9,9 +9,9 @@ import {
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
 import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import { documentWithAnchor } from "metabase/lib/urls";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { useSelector } from "metabase/utils/redux";
+import { documentWithAnchor } from "metabase/utils/urls";
 
 interface UseBlockMenusOptions {
   node: NodeViewProps["node"];

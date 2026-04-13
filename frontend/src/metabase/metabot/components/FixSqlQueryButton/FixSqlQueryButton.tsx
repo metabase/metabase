@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import {
   useMetabotAgent,
   useMetabotName,
@@ -8,6 +7,7 @@ import {
 } from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { Button } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import { trackQueryFixClicked } from "../../analytics";
 

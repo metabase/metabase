@@ -1,7 +1,7 @@
 import { forwardRef, useLayoutEffect } from "react";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { isNumber } from "metabase/lib/types";
+import { isNumber } from "metabase/utils/types";
 import type { EChartsRendererProps } from "metabase/visualizations/components/EChartsRenderer/EChartsRenderer";
 import { EChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/EChartsRenderer";
 import { ResponsiveEChartsRendererStyled } from "metabase/visualizations/components/EChartsRenderer/ResponsiveEChartsRenderer.styled";

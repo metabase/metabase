@@ -244,7 +244,7 @@
    - sources: source table info (with fields) for native column resolution
 
    Returns:
-   {:preprocessed-query <pMBQL> (MBQL only)
+   {:preprocessed-query <MBQL 5> (MBQL only)
     :driver <keyword> (native only)
     :from-table-id <int> (native only)
     :from-table <honeysql> (native only)

@@ -10,8 +10,6 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { PublishTablesModalProps } from "metabase/plugins";
 import {
@@ -24,6 +22,8 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,

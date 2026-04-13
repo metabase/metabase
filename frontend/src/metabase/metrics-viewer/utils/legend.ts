@@ -1,17 +1,20 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
 import * as LibMetric from "metabase-lib/metric";
-import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  SourceColorMap,
+import {
+  type MetricSourceId,
+  type MetricsViewerDefinitionEntry,
+  type MetricsViewerFormulaEntity,
+  type SourceBreakoutColorMap,
+  isExpressionEntry,
 } from "../types/viewer-state";
+import { isMetricEntry } from "../types/viewer-state";
 
 import { getDefinitionName } from "./definition-builder";
-import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
+import {
+  entryHasBreakout,
+  getEffectiveDefinitionEntry,
+  getEntryBreakout,
+} from "./definition-entries";
 
 export interface LegendItem {
   label: string;
@@ -19,80 +22,111 @@ export interface LegendItem {
 }
 
 export interface LegendGroup {
+  key: number;
   header: string;
   subtitle?: string;
   items: LegendItem[];
 }
 
 export function buildLegendGroups(
-  definitions: MetricsViewerDefinitionEntry[],
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>,
-  sourceColors: SourceColorMap,
+  formulaEntities: MetricsViewerFormulaEntity[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  activeBreakoutColors: SourceBreakoutColorMap,
 ): LegendGroup[] {
-  const hasAnyBreakout = definitions.some((entry) => entryHasBreakout(entry));
+  const hasAnyBreakout = formulaEntities.some((entity, entityIndex) => {
+    if (!isMetricEntry(entity)) {
+      return false;
+    }
+    return (
+      entryHasBreakout(getEffectiveDefinitionEntry(entity, definitions)) &&
+      activeBreakoutColors[entityIndex] instanceof Map
+    );
+  });
+
   if (!hasAnyBreakout) {
     return [];
   }
 
   const groups: LegendGroup[] = [];
 
-  for (const entry of definitions) {
-    if (!entry.definition) {
-      continue;
-    }
+  formulaEntities.forEach((entity, entityIndex) => {
+    const colors = activeBreakoutColors[entityIndex];
 
-    const colors = sourceColors[entry.id];
-    if (!colors || colors.length === 0) {
-      continue;
-    }
+    const getNextColor = () => {
+      return typeof colors === "string"
+        ? colors
+        : colors instanceof Map
+          ? colors.values().next().value
+          : undefined;
+    };
 
-    const definitionName = getDefinitionName(entry.definition);
-    const breakoutProjection = getEntryBreakout(entry);
+    if (isExpressionEntry(entity)) {
+      const color = getNextColor();
 
-    if (breakoutProjection) {
-      const response = breakoutValuesBySourceId.get(entry.id);
-      if (!response || response.values.length === 0) {
-        continue;
+      if (!color) {
+        return;
       }
 
+      groups.push({
+        key: entityIndex,
+        header: entity.name,
+        items: [{ label: entity.name, color }],
+      });
+      return;
+    }
+
+    const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
+    if (!effectiveEntry.definition) {
+      return;
+    }
+
+    const pristineDef = definitions[entity.id];
+    const definitionName = getDefinitionName(
+      pristineDef?.definition ?? effectiveEntry.definition,
+    );
+    const breakoutProjection = getEntryBreakout(effectiveEntry);
+
+    if (breakoutProjection && colors instanceof Map) {
       const rawDimension = LibMetric.projectionDimension(
-        entry.definition,
+        effectiveEntry.definition,
         breakoutProjection,
       );
       const dimensionInfo = rawDimension
-        ? LibMetric.displayInfo(entry.definition, rawDimension)
+        ? LibMetric.displayInfo(effectiveEntry.definition, rawDimension)
         : null;
 
-      const items: LegendItem[] = response.values.map((val, index) => ({
-        label: String(
-          formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
-            column: response.col,
-          }),
-        ),
-        color: colors[index] ?? colors[colors.length - 1],
-      }));
+      const items: LegendItem[] = Array.from(colors.entries()).map(
+        ([breakoutValue, color]) => ({
+          label: breakoutValue,
+          color,
+        }),
+      );
 
       const header =
         dimensionInfo?.longDisplayName ?? dimensionInfo?.displayName;
       if (!header) {
-        continue;
+        return;
       }
 
       groups.push({
+        key: entityIndex,
         header,
         subtitle: definitionName ?? undefined,
         items,
       });
     } else {
-      if (!definitionName) {
-        continue;
+      const color = getNextColor();
+
+      if (!definitionName || !color) {
+        return;
       }
       groups.push({
+        key: entityIndex,
         header: definitionName,
-        items: [{ label: definitionName, color: colors[0] }],
+        items: [{ label: definitionName, color }],
       });
     }
-  }
+  });
 
   return groups;
 }

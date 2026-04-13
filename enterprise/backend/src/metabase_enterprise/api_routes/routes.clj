@@ -8,7 +8,6 @@
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
-   [metabase-enterprise.agent-api.workspace :as agent-api.workspace]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
@@ -24,12 +23,14 @@
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
+   [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
+   [metabase-enterprise.security-center.api]
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
@@ -39,7 +40,6 @@
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase-enterprise.workspaces.api]
-   [metabase.agent-api.api :as agent-api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -61,11 +61,13 @@
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :scim                       (deferred-tru "SCIM configuration")
    :semantic-search            (deferred-tru "Semantic Search")
+   :admin-security-center      (deferred-tru "Security Center")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
    :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
+   :metabot-v3                (deferred-tru "Metabot")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
    :transforms-python          (deferred-tru "Transforms Python")
@@ -115,12 +117,14 @@
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
+   "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
+   "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
@@ -132,8 +136,7 @@
 (def ^:private routes-map
   (merge
    naughty-routes-map
-   {"/agent" {"/v1" {"/workspace" (premium-handler (agent-api.workspace/workspace-handler agent-api/+auth) :workspaces)}}
-    "/ee"    ee-routes-map}))
+   {"/ee" ee-routes-map}))
 
 (def ^{:arglists '([request respond raise])} routes
   "API routes only available when running Metabase® Enterprise Edition™.

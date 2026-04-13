@@ -170,6 +170,7 @@ config:
     jwt-attribute-tenant: '@tenant'
     jwt-attribute-tenant-attributes: '@tenant.attributes'
     jwt-enabled: false
+    jwt-enabled-and-configured: false
     jwt-group-mappings: {}
     jwt-group-sync: false
     jwt-identity-provider-uri: null

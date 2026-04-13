@@ -4,10 +4,10 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
-import * as domModule from "metabase/lib/dom";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import * as domModule from "metabase/utils/dom";
 
 import { Metabot } from "../components/Metabot";
 

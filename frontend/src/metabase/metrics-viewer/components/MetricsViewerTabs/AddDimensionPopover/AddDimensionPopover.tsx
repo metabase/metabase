@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
+import { trackMetricsViewerDimensionTabAdded } from "metabase/metrics-viewer/analytics";
 import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
 import { ActionIcon, Icon, Popover } from "metabase/ui";
 
@@ -9,9 +10,11 @@ import type { MetricSourceId } from "../../../types/viewer-state";
 import type {
   AvailableDimensionsResult,
   DimensionPickerItem,
+  DimensionPickerSection,
   SourceDisplayInfo,
 } from "../../../utils/dimension-picker";
 import { buildDimensionPickerSections } from "../../../utils/dimension-picker";
+import { getScalarTabLabel } from "../../../utils/tabs";
 
 import S from "./AddDimensionPopover.module.css";
 
@@ -20,6 +23,7 @@ type AddDimensionPopoverProps = {
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   hasMultipleSources: boolean;
+  canAddScalarTab: boolean;
   onAddTab: (tabInfo: TabInfo) => void;
 };
 
@@ -29,6 +33,7 @@ export function AddDimensionPopover({
   sourceDataById,
   hasMultipleSources,
   onAddTab,
+  canAddScalarTab,
 }: AddDimensionPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -46,6 +51,7 @@ export function AddDimensionPopover({
   const handleSelect = useCallback(
     (item: DimensionPickerItem) => {
       onAddTab(item.tabInfo);
+      trackMetricsViewerDimensionTabAdded();
       setIsOpen(false);
     },
     [onAddTab],
@@ -55,6 +61,26 @@ export function AddDimensionPopover({
     (item: DimensionPickerItem) => <Icon name={item.icon} />,
     [],
   );
+
+  let finalSections: DimensionPickerSection[] = sections;
+  if (canAddScalarTab) {
+    finalSections = [
+      {
+        items: [
+          {
+            name: getScalarTabLabel(),
+            icon: "number",
+            tabInfo: {
+              type: "scalar",
+              label: getScalarTabLabel(),
+              dimensionMapping: {},
+            },
+          },
+        ],
+      },
+      ...sections,
+    ];
+  }
 
   return (
     <Popover opened={isOpen} onChange={setIsOpen} position="bottom-start">
@@ -71,7 +97,7 @@ export function AddDimensionPopover({
       <Popover.Dropdown p={0} className={S.dropdown}>
         <AccordionList
           className={S.dimensionPicker}
-          sections={sections}
+          sections={finalSections}
           onChange={handleSelect}
           renderItemIcon={renderItemIcon}
           alwaysExpanded

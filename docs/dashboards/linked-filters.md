@@ -48,7 +48,7 @@ Linked filters are only "aware" of relationships defined in the table metadata. 
 - Linked filters can't see relationships defined by joins in models or questions.
 - Linked filters can't use any filter or join logic from any underlying card or model.
 
-For example, say you have a table with State and City columns, and you build a model that filters out rows with `City = San Francisco`. You ask a question based on that model, and add it to a dashboard. You add State and City filters to the dashboard, and link them. If you select were to select `State = CA`, the city filter may still show `San Francisco` as option, even though there are no records with `San Francisco` in the question and the underlying model, because the filter only "knows" about the underlying table metadata (which includes sample values for the column).
+For example, say you have a table with State and City columns, and you build a model that filters out rows with `City = San Francisco`. You ask a question based on that model, and add it to a dashboard. You add State and City filters to the dashboard, and link them. If you were to select `State = CA`, the city filter may still show `San Francisco` as option, even though there are no records with `San Francisco` in the question and the underlying model, because the filter only "knows" about the underlying table metadata (which includes sample values for the column).
 
 ### Linked filters don't work with custom columns or summaries
 

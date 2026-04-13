@@ -8,7 +8,7 @@ on:
       - unlabeled
       - synchronize
     paths:
-      - src/metabase/lib/js.cljs
+      - src/metabase/utils/js.cljs
 jobs:
   mbql-library-changelog-check:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

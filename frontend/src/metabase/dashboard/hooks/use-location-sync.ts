@@ -4,9 +4,9 @@ import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
-import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
-import { useDispatch } from "metabase/lib/redux";
-import { isNullOrUndefined } from "metabase/lib/types";
+import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
+import { useDispatch } from "metabase/utils/redux";
+import { isNullOrUndefined } from "metabase/utils/types";
 
 type SYNCED_KEY = "refresh" | "fullscreen";
 

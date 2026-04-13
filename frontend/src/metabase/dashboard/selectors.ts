@@ -8,9 +8,6 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isQuestionCard, isQuestionDashCard } from "metabase/lib/dashboard";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -26,6 +23,9 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
+import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -230,7 +230,7 @@ export const getDashcardHref = createSelector(
       !dashboard ||
       !dashcard ||
       !isQuestionDashCard(dashcard) ||
-      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+      !dashcard.card.dataset_query // cards without queries will cause Lib to throw in getNewCardUrl
     ) {
       return undefined;
     }

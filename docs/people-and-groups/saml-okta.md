@@ -59,7 +59,7 @@ Even though Okta says these are optional, Metabase requires them. Okta will pass
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname`    | user.firstName |
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname`      | user.lastName  |
 
-The names of attribute statement in Okta should match the attribute names in Metabase (names are case sensitive). If you want to use non-default attribute names in you Okta app configuration, you will also need to change the names for the attribute fields in Metabase in **Admin panel** > **Authentication** > **SAML**.
+The names of attribute statements in Okta should match the attribute names in Metabase (names are case sensitive). If you want to use non-default attribute names in your Okta app configuration, you will also need to change the names for the attribute fields in Metabase in **Admin panel** > **Authentication** > **SAML**.
 
 > **Make sure that people [cannot edit their email address attribute](https://help.okta.com/oie/en-us/content/topics/users-groups-profiles/usgp-user-edit-attributes.htm)**. To log people in to your Metabase (or to create a Metabase account on first login), your IdP will pass the email address attribute to Metabase. If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
 

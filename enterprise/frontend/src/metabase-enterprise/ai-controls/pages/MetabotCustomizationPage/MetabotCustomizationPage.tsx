@@ -1,34 +1,17 @@
-import { useDebouncedCallback } from "@mantine/hooks";
-import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useAdminSetting } from "metabase/api/utils";
 import { TextInput } from "metabase/ui";
+import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
 
 import { MetabotIconField } from "./MetabotIconField";
 
-const SAVE_DEBOUNCE_MS = 500;
-
 export function MetabotCustomizationPage() {
-  const { value: initialInputValue, updateSetting: updateName } =
-    useAdminSetting("metabot-name");
-  const [nameInput, setNameInput] = useState<string>();
-
-  useEffect(() => {
-    if (nameInput === undefined && initialInputValue !== undefined) {
-      setNameInput(initialInputValue ?? "");
-    }
-  }, [initialInputValue, nameInput]);
-
-  const debouncedSaveName = useDebouncedCallback((value: string) => {
-    if (value) {
-      updateName({ key: "metabot-name", value, toast: false });
-    }
-  }, SAVE_DEBOUNCE_MS);
+  const { handleInputChange, inputValue: nameInput } =
+    useAdminSettingWithDebouncedInput<string | null>("metabot-name");
 
   return (
     <SettingsPageWrapper title={t`Customization`} mt="sm">
@@ -40,11 +23,8 @@ export function MetabotCustomizationPage() {
           label={t`Metabot's name`}
           placeholder={t`Metabot`}
           mb="sm"
-          value={nameInput}
-          onChange={(e) => {
-            setNameInput(e.currentTarget.value);
-            debouncedSaveName(e.currentTarget.value);
-          }}
+          value={nameInput || ""}
+          onChange={(e) => handleInputChange(e.target.value)}
           error={nameInput ? undefined : t`Metabot's name is required`}
         />
         <MetabotIconField />

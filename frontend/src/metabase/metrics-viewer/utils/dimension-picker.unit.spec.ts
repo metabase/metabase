@@ -42,7 +42,7 @@ const REVENUE_DIMENSIONS = [
     tabInfo: {
       type: "numeric",
       label: "Amount",
-      dimensionMapping: { [REVENUE_SOURCE_ID]: "dim-amount" },
+      dimensionMapping: { 0: "dim-amount" },
     },
   },
   {
@@ -51,7 +51,7 @@ const REVENUE_DIMENSIONS = [
     tabInfo: {
       type: "category",
       label: "Category",
-      dimensionMapping: { [REVENUE_SOURCE_ID]: "dim-category" },
+      dimensionMapping: { 0: "dim-category" },
     },
   },
   {
@@ -60,7 +60,7 @@ const REVENUE_DIMENSIONS = [
     tabInfo: {
       type: "time",
       label: "Created At",
-      dimensionMapping: { [REVENUE_SOURCE_ID]: "dim-created-at" },
+      dimensionMapping: { 0: "dim-created-at" },
     },
   },
   {
@@ -69,7 +69,7 @@ const REVENUE_DIMENSIONS = [
     tabInfo: {
       type: "boolean",
       label: "Is Active",
-      dimensionMapping: { [REVENUE_SOURCE_ID]: "dim-active" },
+      dimensionMapping: { 0: "dim-active" },
     },
   },
 ];
@@ -81,7 +81,7 @@ const ORDERS_DIMENSIONS = [
     tabInfo: {
       type: "time",
       label: "Created At",
-      dimensionMapping: { [ORDERS_SOURCE_ID]: "dim-created-at" },
+      dimensionMapping: { 0: "dim-created-at" },
     },
   },
   {
@@ -90,7 +90,7 @@ const ORDERS_DIMENSIONS = [
     tabInfo: {
       type: "category",
       label: "Status",
-      dimensionMapping: { [ORDERS_SOURCE_ID]: "dim-status" },
+      dimensionMapping: { 0: "dim-status" },
     },
   },
 ];
@@ -105,7 +105,7 @@ describe("getAvailableDimensionsForPicker", () => {
   it("returns dimensions for a single metric source", () => {
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
-      [REVENUE_SOURCE_ID],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
       new Set(),
     );
 
@@ -120,7 +120,7 @@ describe("getAvailableDimensionsForPicker", () => {
   it("returns dimensions for a second metric source", () => {
     const result = getAvailableDimensionsForPicker(
       { [ORDERS_SOURCE_ID]: ordersDefinition },
-      [ORDERS_SOURCE_ID],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: ORDERS_SOURCE_ID }],
       new Set(),
     );
 
@@ -138,7 +138,10 @@ describe("getAvailableDimensionsForPicker", () => {
         [REVENUE_SOURCE_ID]: revenueDefinition,
         [ORDERS_SOURCE_ID]: ordersDefinition,
       },
-      [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+      ],
       new Set(),
     );
 
@@ -146,7 +149,26 @@ describe("getAvailableDimensionsForPicker", () => {
       shared: [],
       bySource: {
         [REVENUE_SOURCE_ID]: REVENUE_DIMENSIONS,
-        [ORDERS_SOURCE_ID]: ORDERS_DIMENSIONS,
+        [ORDERS_SOURCE_ID]: [
+          {
+            icon: "calendar",
+            group: undefined,
+            tabInfo: {
+              type: "time",
+              label: "Created At",
+              dimensionMapping: { 1: "dim-created-at" },
+            },
+          },
+          {
+            icon: "string",
+            group: undefined,
+            tabInfo: {
+              type: "category",
+              label: "Status",
+              dimensionMapping: { 1: "dim-status" },
+            },
+          },
+        ],
       },
     });
   });
@@ -158,7 +180,7 @@ describe("getAvailableDimensionsForPicker", () => {
 
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
-      [REVENUE_SOURCE_ID],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
       new Set(allIds),
     );
 
