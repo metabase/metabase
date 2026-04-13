@@ -1,5 +1,6 @@
 import { Card, Flex, Text } from "metabase/ui";
-import { colors } from "metabase/ui/colors";
+
+import { colors } from "./colors";
 
 export default {
   title: "Design System/Colors",
