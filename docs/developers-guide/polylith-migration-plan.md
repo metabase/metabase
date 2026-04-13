@@ -46,7 +46,7 @@ The primary goals are:
 1. Add `workspace.edn` at the repo root:
    ```clojure
    {:top-namespace "metabase"
-    :interface-ns "core"
+    :interface-ns "api"
     :vcs {:name "git" :auto-add false}
     :projects {"development" {:alias "dev"}}}
    ```
@@ -219,7 +219,7 @@ Once bricks are established, replace the static test partitioning in `backend.ym
        # Get changed/affected projects since the merge base
        CHANGED=$(clojure -M:poly ws get:changes:changed-or-affected-projects since:previous-release)
        echo "changed-projects=$CHANGED" >> $GITHUB_OUTPUT
-       
+
        # Get list of changed bricks for targeted testing
        BRICKS=$(clojure -M:poly ws get:changes:changed-or-affected-bricks since:previous-release)
        echo "changed-bricks=$BRICKS" >> $GITHUB_OUTPUT

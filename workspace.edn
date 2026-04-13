@@ -1,0 +1,4 @@
+{:top-namespace "metabase"
+ :interface-ns "api"
+ :vcs {:name "git" :auto-add false}
+ :projects {"development" {:alias "dev"}}}
