@@ -13,3 +13,22 @@
 .expressionText {
   white-space: pre-wrap;
 }
+
+.editableName {
+  padding: 0;
+  border: none;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+  min-width: 2rem;
+
+  &:hover,
+  &:focus-within {
+    border-color: transparent;
+  }
+
+  textarea {
+    cursor: text;
+    white-space: nowrap;
+  }
+}
