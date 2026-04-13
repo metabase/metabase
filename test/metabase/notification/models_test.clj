@@ -218,6 +218,27 @@
                                                           :email "rasta@metabase.com"}]}}]
                       (:recipients (t2/hydrate noti-handler [:recipients :recipients-detail])))))))))))
 
+(deftest hydrate-notification-filters-deactivated-users-test
+  (testing "hydrate-notification excludes user recipients whose user is deactivated (GDGT-1927)"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Channel chn (assoc api.channel-test/default-test-channel :name "Channel")
+                     :model/User    deactivated-user {:email "deactivated@metabase.com" :is_active false}
+                     :model/User    active-user      {:email "active@metabase.com"      :is_active true}]
+        (let [noti (models.notification/create-notification!
+                    default-system-event-notification
+                    [default-user-invited-subscription]
+                    [{:channel_type (:type chn)
+                      :channel_id   (:id chn)
+                      :recipients   [{:type :notification-recipient/user :user_id (:id deactivated-user)}
+                                     {:type :notification-recipient/user :user_id (:id active-user)}]}])
+              hydrated (models.notification/hydrate-notification (t2/select-one :model/Notification (:id noti)))
+              recipients (->> hydrated :handlers first :recipients)
+              user-ids   (set (map :user_id recipients))]
+          (testing "active user is still in the hydrated recipients"
+            (is (contains? user-ids (:id active-user))))
+          (testing "deactivated user is filtered out"
+            (is (not (contains? user-ids (:id deactivated-user))))))))))
+
 (deftest delete-template-set-null-on-existing-handlers-test
   (testing "if a channel template is deleted, then set null on existing notification_handler"
     (mt/with-model-cleanup [:model/Notification]
