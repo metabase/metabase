@@ -333,10 +333,6 @@ describe("admin > custom visualizations", () => {
       H.activateToken("bleeding-edge");
       H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
 
-      // ChartTypeSidebar.tsx eagerly loads all registered custom viz bundles
-      // on mount and only adds them to the viz picker once the fetch resolves.
-      // Auto-load (useAutoLoadCustomVizPlugin) also fires this when opening
-      // a card whose display is already "custom:…" (persistence + error tests).
       H.interceptPluginBundle();
 
       // Default-view (table) Count-of-Orders card — demo-viz requires
