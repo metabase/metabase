@@ -186,3 +186,7 @@ export function createTestJsNativeQuery(
 ): OpaqueDatasetQuery {
   return toJsQuery(createTestNativeQuery(metadataProvider, nativeQuerySpec));
 }
+
+export function normalize<T extends Query | DatasetQuery>(mbql: T): T {
+  return ML.normalize(mbql);
+}

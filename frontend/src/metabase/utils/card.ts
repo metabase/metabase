@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+import * as Lib from "metabase-lib";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
 
 export type SerializeCardOptions = {
@@ -89,7 +89,7 @@ export function deserializeCardFromUrl(serialized: string): Card {
 export function deserializeCard(serializedCard: string) {
   const card = deserializeCardFromUrl(serializedCard);
   if (card.dataset_query.database != null) {
-    card.dataset_query = normalize(card.dataset_query);
+    card.dataset_query = Lib.normalize(card.dataset_query);
   }
   return card;
 }
