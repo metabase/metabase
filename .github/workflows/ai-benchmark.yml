@@ -70,9 +70,7 @@ jobs:
       - name: Run benchmark
         working-directory: ai-benchmark
         env:
-          AI_SERVICE_OPEN_AI_API_KEY: ${{ secrets.AI_SERVICE_OPEN_AI_API_KEY }}
-          AI_SERVICE_ANTHROPIC_API_KEY: ${{ secrets.AI_SERVICE_ANTHROPIC_API_KEY }}
-          AI_SERVICE_OPEN_ROUTER_API_KEY: ${{ secrets.AI_SERVICE_OPEN_ROUTER_API_KEY }}
+          AI_SERVICE_ANTHROPIC_API_KEY: ${{ secrets.AI_BENCHMARK_ANTHROPIC_API_KEY }}
         run: |
           poetry run ai-benchmark \
             --profile ${{ inputs.profile }} \
