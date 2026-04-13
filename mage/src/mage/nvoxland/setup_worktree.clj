@@ -150,7 +150,8 @@
 
 (defn- apply-bot-patch!
   "If bot.patch exists in the main worktree, apply it to the new worktree.
-   Idempotent: if the patch is already applied, skip silently."
+   Uses --3way merge so it can handle target branches that have their own changes
+   to files the patch touches. Idempotent: if already applied, skip silently."
   [main-path worktree-root]
   (let [patch-file (str main-path "/bot.patch")]
     (cond
@@ -158,18 +159,15 @@
       (println (c/yellow "No bot.patch found, skipping"))
 
       (zero? (:exit (shell/sh* {:quiet? true :dir worktree-root}
-                               "git" "apply" "--check" patch-file)))
-      (do
-        (println (c/yellow "Applying bot.patch..."))
-        (shell/sh* {:dir worktree-root} "git" "apply" patch-file)
-        (println (c/green "Applied bot.patch")))
-
-      (zero? (:exit (shell/sh* {:quiet? true :dir worktree-root}
                                "git" "apply" "--reverse" "--check" patch-file)))
       (println (c/green "bot.patch already applied, skipping"))
 
       :else
-      (println (c/red "Skipping bot.patch (does not apply cleanly to this branch)")))))
+      (let [{:keys [exit]} (shell/sh* {:dir worktree-root}
+                                      "git" "apply" "--3way" patch-file)]
+        (if (zero? exit)
+          (println (c/green "Applied bot.patch (3-way merge)"))
+          (println (c/red "Failed to apply bot.patch — conflicts could not be resolved")))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main entry point
