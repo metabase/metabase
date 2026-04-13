@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
 import type { InsightsMenuItemProps } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 
 export const InsightsMenuItem = ({

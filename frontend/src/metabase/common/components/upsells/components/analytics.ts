@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent } from "metabase/utils/analytics";
 
 type UpsellEventProps = {
   location: string;

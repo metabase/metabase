@@ -16,9 +16,6 @@ import {
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getDashboardType } from "metabase/lib/dashboard";
-import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -27,6 +24,9 @@ import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-
 import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
+import { getDashboardType } from "metabase/utils/dashboard";
+import { initializeIframeResizer, isSmallScreen } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";

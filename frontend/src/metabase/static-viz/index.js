@@ -6,13 +6,13 @@ import ReactDOMServer from "react-dom/server";
 
 // eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
-import "metabase/lib/dayjs";
+import "metabase/utils/dayjs";
 
-import { updateStartOfWeek } from "metabase/lib/i18n";
-import MetabaseSettings from "metabase/lib/settings";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
+import { updateStartOfWeek } from "metabase/utils/i18n";
+import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import {

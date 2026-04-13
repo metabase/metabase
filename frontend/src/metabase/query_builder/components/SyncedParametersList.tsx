@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
 import {
   ParametersList,
   type ParametersListProps,
 } from "metabase/parameters/components/ParametersList";
+import { useDispatch } from "metabase/utils/redux";
 import type { ParameterId } from "metabase-types/api";
 
 import { setParameterValueToDefault } from "../actions";

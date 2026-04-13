@@ -180,7 +180,7 @@
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
-   "/frontend-errors"      'metabase.frontend-errors.api
+   "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)

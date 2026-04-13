@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 
-import { useStore } from "metabase/lib/redux";
 import type {
   UseCheckDependenciesProps,
   UseCheckDependenciesResult,
 } from "metabase/plugins";
 import { getSubmittableQuestion } from "metabase/query_builder/selectors";
+import { useStore } from "metabase/utils/redux";
 import { useLazyCheckCardDependenciesQuery } from "metabase-enterprise/api";
 import type Question from "metabase-lib/v1/Question";
 import type { CheckCardDependenciesRequest } from "metabase-types/api";

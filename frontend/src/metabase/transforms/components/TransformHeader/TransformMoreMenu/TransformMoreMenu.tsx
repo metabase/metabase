@@ -2,10 +2,10 @@ import { type MouseEvent, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Transform } from "metabase-types/api";
 
 import { TransformRevisionHistorySidebar } from "../../TransformRevisionHistorySidebar";

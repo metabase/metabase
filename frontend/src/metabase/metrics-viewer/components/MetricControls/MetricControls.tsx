@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { Divider, Flex } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
-import type { TemporalUnit } from "metabase-types/api";
+import type { TemporalUnit, VisualizationSettings } from "metabase-types/api";
 
 import type {
   MetricsViewerDisplayType,
@@ -14,6 +14,7 @@ import { getTabConfig } from "../../utils/tab-config";
 
 import { BinningButton } from "./BinningButton";
 import { BucketButton } from "./BucketButton";
+import { ChartLayoutPicker } from "./ChartLayoutPicker";
 import { ChartTypePicker } from "./ChartTypePicker";
 import { DimensionFilterButton } from "./DimensionFilterButton";
 import S from "./MetricControls.module.css";
@@ -36,6 +37,11 @@ type MetricControlsProps = {
   onDimensionFilterChange: (value: DimensionFilterValue | undefined) => void;
   onTemporalUnitChange: (unit: TemporalUnit | undefined) => void;
   onBinningChange: (binningStrategy: string | undefined) => void;
+  showStackSeries?: boolean;
+  visualizationSettings?: Partial<VisualizationSettings>;
+  onVisualizationSettingsChange?: (
+    updates: Partial<VisualizationSettings>,
+  ) => void;
 };
 
 export function MetricControls({
@@ -48,6 +54,9 @@ export function MetricControls({
   onDimensionFilterChange,
   onTemporalUnitChange,
   onBinningChange,
+  showStackSeries,
+  visualizationSettings,
+  onVisualizationSettingsChange,
 }: MetricControlsProps) {
   const projectionInfo = useMemo(
     () => getProjectionInfo(definition),
@@ -90,6 +99,19 @@ export function MetricControls({
         value={effectiveDisplayType}
         onChange={onDisplayTypeChange}
       />
+      {showStackSeries && onVisualizationSettingsChange && (
+        <>
+          <Divider orientation="vertical" className={S.divider} mx="xs" />
+          <ChartLayoutPicker
+            isStacked={!!visualizationSettings?.["graph.split_panels"]}
+            onToggle={(stacked) =>
+              onVisualizationSettingsChange({
+                "graph.split_panels": stacked,
+              })
+            }
+          />
+        </>
+      )}
       {hasFilterControls && projectionInfo.filterDimension && (
         <>
           <Divider orientation="vertical" className={S.divider} mx="xs" />

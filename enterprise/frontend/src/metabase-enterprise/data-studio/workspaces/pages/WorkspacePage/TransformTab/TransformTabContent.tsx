@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
@@ -15,6 +14,7 @@ import {
   getInitialPythonSource,
 } from "metabase/transforms/pages/NewTransformPage/utils";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useDryRunWorkspaceTransformMutation } from "metabase-enterprise/api";
 import { useWorkspaceTransformRun } from "metabase-enterprise/data-studio/workspaces/hooks";
 import * as Lib from "metabase-lib";

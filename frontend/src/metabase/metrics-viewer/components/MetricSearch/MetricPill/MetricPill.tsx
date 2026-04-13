@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -25,8 +25,6 @@ type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
   definitionEntry: MetricsViewerDefinitionEntry;
-  selectedMetricIds: Set<number>;
-  selectedMeasureIds: Set<number>;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
   onSetBreakout: (dimension: ProjectionClause | undefined) => void;
@@ -37,14 +35,32 @@ export function MetricPill({
   metric,
   colors,
   definitionEntry,
-  selectedMetricIds,
-  selectedMeasureIds,
   onSwap,
   onRemove,
   onSetBreakout,
   onOpen,
 }: MetricPillProps) {
   const [popoverState, setPopoverState] = useState<PillPopoverState>("closed");
+
+  const { selectedMetricIds, selectedMeasureIds } = useMemo(() => {
+    if (metric.sourceType === "metric") {
+      return {
+        selectedMetricIds: new Set<number>([metric.id]),
+        selectedMeasureIds: new Set<number>(),
+      };
+    }
+    if (metric.sourceType === "measure") {
+      return {
+        selectedMetricIds: new Set<number>(),
+        selectedMeasureIds: new Set<number>([metric.id]),
+      };
+    }
+
+    return {
+      selectedMetricIds: new Set<number>(),
+      selectedMeasureIds: new Set<number>(),
+    };
+  }, [metric.id, metric.sourceType]);
 
   const dimensions = useMemo(
     () =>

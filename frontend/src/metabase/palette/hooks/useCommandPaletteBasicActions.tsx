@@ -12,8 +12,6 @@ import {
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { Collections } from "metabase/entities/collections/collections";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
 import {
   closeModal,
@@ -28,6 +26,8 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 import { useColorScheme } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { ModalName } from "metabase-types/store/modal";
 
 import {

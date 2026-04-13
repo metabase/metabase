@@ -17,7 +17,7 @@ dataset_query:
       - {lib/uuid: 09b66eb9-b03f-4a51-bb51-0ead673e972a}
     breakout:
     - - field
-      - {base-type: type/Text, join-alias: People - User, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: People - User}
       - [Internal Metabase Database, public, v_users, full_name]
     - - field
       - {base-type: type/Integer, effective-type: type/Integer}
@@ -38,7 +38,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_view_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: People - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - User}
           - [Internal Metabase Database, public, v_users, user_id]
       stages:
       - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
@@ -53,7 +53,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_view_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
       stages:
       - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
@@ -120,7 +120,7 @@ result_metadata:
   lib/card-id: 120
   lib/deduplicated-name: user_id
   lib/desired-column-alias: user_id
-  lib/external-remap: {field-id: 1626, id: 35, name: User ID, lib/type: metadata.column.remapping/external}
+  lib/external-remap: {field-id: 1645, id: 35, name: User ID, lib/type: metadata.column.remapping/external}
   lib/from-model?: true
   lib/original-display-name: User ID
   lib/original-name: user_id

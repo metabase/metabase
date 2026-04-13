@@ -2,8 +2,8 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Tooltip } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";

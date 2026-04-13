@@ -9,9 +9,9 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { Questions } from "metabase/entities/questions";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { SchemaSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getCollectionVirtualSchemaId,

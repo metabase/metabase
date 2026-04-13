@@ -2,9 +2,9 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo, useMemo, useState } from "react";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { Box } from "metabase/ui";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import * as Lib from "metabase-lib";
 
 import { DatasetNotebook } from "./DatasetNotebook";
