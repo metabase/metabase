@@ -68,7 +68,7 @@ describe("Collections plugin utils", () => {
   });
 
   describe("useGetIcon", () => {
-    const createGetIcon = (
+    const callGetIcon = (
       ...args: Parameters<ReturnType<typeof useGetIcon>>
     ) => {
       const { result } = renderHook(() => useGetIcon());
@@ -76,43 +76,41 @@ describe("Collections plugin utils", () => {
     };
 
     it("should return the default icon for a regular collection", () => {
-      expect(createGetIcon({ model: "collection" })).toEqual({
-        name: "folder",
-      });
+      expect(callGetIcon({ model: "collection" })).toEqual({ name: "folder" });
     });
 
     it("should return the default icon for a regular dashboard", () => {
-      expect(createGetIcon({ model: "dashboard" })).toEqual({
+      expect(callGetIcon({ model: "dashboard" })).toEqual({
         name: "dashboard",
       });
     });
 
     it("should return the default icon for a regular question", () => {
-      expect(createGetIcon({ model: "card" })).toEqual({ name: "table2" });
+      expect(callGetIcon({ model: "card" })).toEqual({ name: "table2" });
     });
 
     describe("enterprise icons", () => {
       it("should return the correct icon for an instance analytics collection", () => {
         expect(
-          createGetIcon({ model: "collection", type: "instance-analytics" }),
+          callGetIcon({ model: "collection", type: "instance-analytics" }),
         ).toEqual({ name: "audit" });
       });
 
       it("should return the correct icon for an official collection", () => {
         expect(
-          createGetIcon({ model: "collection", authority_level: "official" }),
+          callGetIcon({ model: "collection", authority_level: "official" }),
         ).toEqual({ name: "official_collection", color: "saturated-yellow" });
       });
 
       it("should return the correct icon for a remote synced collection", () => {
         expect(
-          createGetIcon({ model: "collection", is_remote_synced: true }),
+          callGetIcon({ model: "collection", is_remote_synced: true }),
         ).toEqual({ name: "synced_collection" });
       });
 
       it("should return the correct icon for a remote synced entity", () => {
         expect(
-          createGetIcon({ model: "dashboard", is_remote_synced: true }),
+          callGetIcon({ model: "dashboard", is_remote_synced: true }),
         ).toEqual({ name: "dashboard" });
       });
 
@@ -122,12 +120,12 @@ describe("Collections plugin utils", () => {
           collection_authority_level: "official",
           model: "collection" as const,
         };
-        expect(createGetIcon(collection).name).toBe("official_collection");
+        expect(callGetIcon(collection).name).toBe("official_collection");
       });
 
       it("should return the correct icon for an official model", () => {
         expect(
-          createGetIcon({ model: "dataset", moderated_status: "verified" }),
+          callGetIcon({ model: "dataset", moderated_status: "verified" }),
         ).toEqual({ name: "model_with_badge" });
       });
     });
