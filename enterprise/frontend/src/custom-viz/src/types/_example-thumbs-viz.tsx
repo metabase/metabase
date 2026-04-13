@@ -83,6 +83,7 @@ const ThumbsVizComponent = (
   }
 
   const emoji = value >= threshold ? "👍" : "👎";
+  const fontSize = height * 0.5;
 
   return (
     <div
@@ -90,12 +91,10 @@ const ThumbsVizComponent = (
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        width,
-        height,
-        fontSize: "10rem",
+        height: "100%",
       }}
     >
-      {emoji}
+      <span style={{ fontSize }}>{emoji}</span>
     </div>
   );
 };
