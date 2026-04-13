@@ -3,7 +3,6 @@ import { useMemo } from "react";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
-import { useGetIcon } from "metabase/hooks/use-icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
@@ -20,7 +19,7 @@ import { useSelector } from "metabase/utils/redux";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
-import { getEntityPickerIcon, isSelectedItem } from "../../utils";
+import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 import { ItemListLoader } from "../LoadingSpinner";
 
 const PickerColumn = ({
@@ -68,7 +67,7 @@ export function ItemList({
   }, [items, isHiddenItem]);
   const isCurrentLevel = path.length - 2 === pathIndex;
   const isTenantUser = useSelector(getIsTenantUser);
-  const getIcon = useGetIcon();
+  const getEntityPickerIcon = useGetEntityPickerIcon();
 
   const activeItemIndex = useMemo(() => {
     if (!filteredItems || !selectedItem) {
@@ -100,7 +99,7 @@ export function ItemList({
     >
       {filteredItems.map((item: OmniPickerItem, index) => {
         const isSelected = index === activeItemIndex;
-        const icon = getEntityPickerIcon(item, getIcon, {
+        const icon = getEntityPickerIcon(item, {
           isSelected: isSelected && isCurrentLevel,
           isTenantUser,
         });

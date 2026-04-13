@@ -24,7 +24,7 @@ import {
   useCurrentSearchScope,
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
-import { getEntityPickerIcon, isSelectedItem } from "../../utils";
+import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
   searchResults,
@@ -40,7 +40,7 @@ export const SearchResults = ({
   const { path, setPath, isDisabledItem, isSelectableItem, options, onChange } =
     useOmniPickerContext();
   const selectedItem = path?.[path.length - 1];
-  const getIcon = useGetIcon();
+  const getEntityPickerIcon = useGetEntityPickerIcon();
 
   if (isLoading || error) {
     return (
@@ -101,7 +101,7 @@ export const SearchResults = ({
               active={isSelected}
               leftSection={
                 <EntityIcon
-                  {...getEntityPickerIcon(item, getIcon, { isSelected })}
+                  {...getEntityPickerIcon(item, { isSelected })}
                   size="1rem"
                 />
               }

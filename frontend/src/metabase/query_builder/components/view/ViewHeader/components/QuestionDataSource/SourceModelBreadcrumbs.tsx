@@ -9,8 +9,6 @@ import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
-import { getQuestionIcon } from "./utils";
-
 interface SourceModelBreadcrumbsProps {
   divider?: ReactElement | string;
   question: Question;
@@ -39,7 +37,7 @@ export function SourceModelBreadcrumbs({
         <HeadBreadcrumbs.Badge
           key="collection"
           to={Urls.collection(collection)}
-          icon={getQuestionIcon(question, getIcon)}
+          icon={getIcon({ model: "card", type: question.type() }).name}
           inactiveColor="text-tertiary"
         >
           {collection?.name || t`Our analytics`}
