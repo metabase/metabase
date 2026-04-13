@@ -206,7 +206,7 @@
   [git-ref]
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")
-                    (str/includes? filename "modules/drivers/"))
+                    (str/includes? filename "components/"))
             (when-not *github-output-only?*
               (println (str "Running driver tests because " (pr-str filename) " was changed")))
             filename))
@@ -298,12 +298,12 @@
    "vertica" [:vertica]})
 
 (defn- drivers-with-file-changes
-  "Returns a set of driver keywords that have file changes in modules/drivers/<driver>/."
+  "Returns a set of driver keywords that have file changes in components/<driver>/."
   [git-ref]
   (let [updated-files (u/updated-files (or git-ref "master"))]
     (into #{}
           (mapcat (fn [filename]
-                    (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
+                    (when-let [[_ dir-name] (re-matches #"components/([^/]+)/.*" filename)]
                       (get driver-directory->drivers dir-name))))
           updated-files)))
 
@@ -350,7 +350,7 @@
    ## What counts as 'driver deps affected'?
 
    The driver module is considered affected when:
-   - Files in modules/drivers/* are changed (triggers all drivers)
+   - Files in components/* are changed (triggers all drivers)
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
@@ -403,7 +403,7 @@
     (and (contains? cloud-drivers driver)
          (contains? particular-driver-changed? driver))
     {:should-run true
-     :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
+     :reason (str "driver files changed (components/" (name driver) "/**)")}
 
     ;; Priority 8: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)

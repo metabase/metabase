@@ -7,20 +7,20 @@
   "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
 
  :deps
- {metabase/athena             {:local/root "athena"}
-  metabase/bigquery-cloud-sdk {:local/root "bigquery-cloud-sdk"}
-  metabase/clickhouse         {:local/root "clickhouse"}
-  metabase/databricks         {:local/root "databricks"}
-  metabase/druid              {:local/root "druid"}
-  metabase/druid-jdbc         {:local/root "druid-jdbc"}
-  metabase/hive-like          {:local/root "hive-like"}
-  metabase/mongo              {:local/root "mongo"}
-  metabase/oracle             {:local/root "oracle"}
-  metabase/presto-jdbc        {:local/root "presto-jdbc"}
-  metabase/redshift           {:local/root "redshift"}
-  metabase/snowflake          {:local/root "snowflake"}
-  metabase/sparksql           {:local/root "sparksql"}
-  metabase/sqlite             {:local/root "sqlite"}
-  metabase/sqlserver          {:local/root "sqlserver"}
-  metabase/starburst          {:local/root "starburst"}
-  metabase/vertica            {:local/root "vertica"}}}
+ {metabase/athena             {:local/root "../../components/driver-athena"}
+  metabase/bigquery-cloud-sdk {:local/root "../../components/driver-bigquery-cloud-sdk"}
+  metabase/clickhouse         {:local/root "../../components/driver-clickhouse"}
+  metabase/databricks         {:local/root "../../components/driver-databricks"}
+  metabase/druid              {:local/root "../../components/driver-druid"}
+  metabase/druid-jdbc         {:local/root "../../components/driver-druid-jdbc"}
+  metabase/hive-like          {:local/root "../../components/driver-hive-like"}
+  metabase/mongo              {:local/root "../../components/driver-mongo"}
+  metabase/oracle             {:local/root "../../components/driver-oracle"}
+  metabase/presto-jdbc        {:local/root "../../components/driver-presto-jdbc"}
+  metabase/redshift           {:local/root "../../components/driver-redshift"}
+  metabase/snowflake          {:local/root "../../components/driver-snowflake"}
+  metabase/sparksql           {:local/root "../../components/driver-sparksql"}
+  metabase/sqlite             {:local/root "../../components/driver-sqlite"}
+  metabase/sqlserver          {:local/root "../../components/driver-sqlserver"}
+  metabase/starburst          {:local/root "../../components/driver-starburst"}
+  metabase/vertica            {:local/root "../../components/driver-vertica"}}}
