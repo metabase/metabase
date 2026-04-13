@@ -117,7 +117,9 @@ describe(
           cy.log("font fields should be visible");
           cy.findByLabelText("Font").should("be.visible");
           cy.findByLabelText("Base font size").should("be.visible");
-          cy.findByLabelText("Line height").should("be.visible");
+          cy.findByLabelText("Line height")
+            .scrollIntoView()
+            .should("be.visible");
         });
 
         cy.log("select a font family");
