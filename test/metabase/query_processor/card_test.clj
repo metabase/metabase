@@ -397,12 +397,20 @@
     ;; Use enough parameters (9) so that Clojure's PersistentHashMap doesn't coincidentally preserve insertion order.
     ;; PersistentArrayMap (used for <= 8 entries) preserves insertion order, but PersistentHashMap (>= 9) does not.
     (let [tag-names  ["zeta" "alpha" "mu" "beta" "omega" "gamma" "theta" "delta" "epsilon"]
-          tag-ids    (mapv #(str "_" (u/upper-case-en %) "_") tag-names)
-          tags       (into {} (map (fn [n id] [n {:id id :name n :display-name (str n " param") :type :text}])
-                                   tag-names tag-ids))
-          params     (mapv (fn [n id] {:id id :type :string/= :slug n :name (str n " param")
-                                       :target [:variable [:template-tag n]]})
-                           tag-names tag-ids)
+          name->id   #(str "_" (u/upper-case-en %) "_")
+          tags       (into {} (map (fn [n]
+                                     [n {:id           (name->id n)
+                                         :name         n
+                                         :display-name (str n " param")
+                                         :type         :text}]))
+                              tag-names)
+          params     (mapv (fn [n]
+                             {:id     (name->id n)
+                              :type   :string/=
+                              :slug   n
+                              :name   (str n " param")
+                              :target [:variable [:template-tag n]]})
+                           tag-names)
           placeholders (str/join " AND " (map #(str % " = {{" % "}}") tag-names))
           query      (str "SELECT * FROM t WHERE " placeholders)]
       (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
@@ -411,6 +419,6 @@
                                                                   :query         query}}
                                        :parameters    params}]
         (let [result (qp.card/combined-parameters-and-template-tags card)]
-          (is (= tag-ids
+          (is (= (mapv name->id tag-names)
                  (mapv :id result))
               "Parameters should be returned in the same order as card.parameters"))))))
