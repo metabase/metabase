@@ -1,3 +1,5 @@
+const { H } = cy;
+
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 function createThemeViaApi(name = "Test theme") {

@@ -128,23 +128,34 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
               ))}
             </Flex>
 
-            <UnstyledButton
-              mt="sm"
-              onClick={() => setMoreColorsOpen((v) => !v)}
-            >
-              <Flex align="center" gap="xs">
-                <Text c="brand" fz="sm" fw={600}>
-                  {moreColorsOpen
-                    ? t`Hide additional colors`
-                    : t`Show more colors`}
-                </Text>
-                <Icon
-                  name={moreColorsOpen ? "chevronup" : "chevronright"}
-                  size={12}
-                  c="brand"
-                />
-              </Flex>
-            </UnstyledButton>
+            <Flex mt="sm" align="center" justify="space-between">
+              <UnstyledButton onClick={() => setMoreColorsOpen((v) => !v)}>
+                <Flex align="center" gap="xs">
+                  <Text c="brand" fz="sm" fw={600}>
+                    {moreColorsOpen
+                      ? t`Hide additional colors`
+                      : t`Show more colors`}
+                  </Text>
+                  <Icon
+                    name={moreColorsOpen ? "chevronup" : "chevronright"}
+                    size={12}
+                    c="brand"
+                  />
+                </Flex>
+              </UnstyledButton>
+
+              {moreColorsOpen && editor.hasAdditionalColorChanges && (
+                <Button
+                  variant="subtle"
+                  size="compact-sm"
+                  aria-label={t`Revert to default colors`}
+                  onClick={editor.resetAdditionalColors}
+                  px="xs"
+                >
+                  <Icon name="revert" size={16} />
+                </Button>
+              )}
+            </Flex>
 
             <Collapse in={moreColorsOpen}>
               <Stack gap="sm" mt="md">

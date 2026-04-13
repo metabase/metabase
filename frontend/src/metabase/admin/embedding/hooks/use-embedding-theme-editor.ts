@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
 import {
   useGetEmbeddingThemeQuery,
   useUpdateEmbeddingThemeMutation,
@@ -16,6 +17,19 @@ interface ThemeEditorState {
   settings: MetabaseTheme;
 }
 
+/** Color keys that belong to the "additional colors" section. */
+const ADDITIONAL_COLOR_KEYS: Exclude<MetabaseColor, "charts">[] = [
+  "text-secondary",
+  "text-tertiary",
+  "border",
+  "background-secondary",
+  "filter",
+  "summarize",
+  "positive",
+  "negative",
+  "shadow",
+];
+
 export function useEmbeddingThemeEditor(themeId: number) {
   const {
     data: serverTheme,
@@ -24,6 +38,7 @@ export function useEmbeddingThemeEditor(themeId: number) {
   } = useGetEmbeddingThemeQuery(themeId);
   const [updateTheme] = useUpdateEmbeddingThemeMutation();
   const [sendToast] = useToast();
+  const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
 
   const [pristineTheme, setPristineTheme] = useState<ThemeEditorState | null>(
     null,
@@ -127,6 +142,48 @@ export function useEmbeddingThemeEditor(themeId: number) {
     });
   }, []);
 
+  const hasAdditionalColorChanges = useMemo(() => {
+    if (!currentTheme) {
+      return false;
+    }
+
+    const colors = currentTheme.settings.colors ?? {};
+    const defaultColors = defaultThemeSettings.colors ?? {};
+
+    for (const key of ADDITIONAL_COLOR_KEYS) {
+      if ((colors[key] ?? "") !== ((defaultColors[key] as string) ?? "")) {
+        return true;
+      }
+    }
+
+    return (
+      JSON.stringify(colors.charts ?? []) !==
+      JSON.stringify(defaultColors.charts ?? [])
+    );
+  }, [currentTheme, defaultThemeSettings]);
+
+  const resetAdditionalColors = useCallback(() => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      const defaultColors = defaultThemeSettings.colors ?? {};
+      const updatedColors = { ...prev.settings.colors };
+
+      for (const key of ADDITIONAL_COLOR_KEYS) {
+        updatedColors[key] = (defaultColors[key] as string) ?? "";
+      }
+
+      updatedColors.charts = defaultColors.charts ?? [];
+
+      return {
+        ...prev,
+        settings: { ...prev.settings, colors: updatedColors },
+      };
+    });
+  }, [defaultThemeSettings]);
+
   const handleSave = useCallback(async () => {
     if (!currentTheme) {
       return;
@@ -158,6 +215,8 @@ export function useEmbeddingThemeEditor(themeId: number) {
     setName,
     setColor,
     setChartColor,
+    hasAdditionalColorChanges,
+    resetAdditionalColors,
     setFontFamily,
     setFontSize,
     setLineHeight,

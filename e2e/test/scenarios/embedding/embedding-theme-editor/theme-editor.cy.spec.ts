@@ -1,3 +1,5 @@
+const { H } = cy;
+
 function createThemeViaApi(name = "Test theme") {
   return cy
     .request("POST", "/api/embed-theme", {
@@ -181,6 +183,27 @@ describe(
           cy.log("collapse additional colors");
           cy.findByText("Hide additional colors").click();
           cy.findByText("Secondary text").should("not.be.visible");
+        });
+      });
+
+      it("can revert additional colors back to defaults", () => {
+        createThemeViaApi("Revert colors").then((theme) => {
+          visitThemeEditor(theme.id);
+        });
+
+        H.main().within(() => {
+          cy.findByText("Show more colors").click();
+
+          cy.log(
+            "revert button should be visible since the API theme has non-default additional colors",
+          );
+          cy.findByLabelText("Revert to default colors").should("be.visible");
+
+          cy.log("click revert to reset additional colors to defaults");
+          cy.findByLabelText("Revert to default colors").click();
+
+          cy.log("revert button should disappear after resetting");
+          cy.findByLabelText("Revert to default colors").should("not.exist");
         });
       });
 
