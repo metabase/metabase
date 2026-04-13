@@ -148,7 +148,8 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
-                      (validate-target-schema! new)
+                      (when (contains? body :target)
+                        (validate-target-schema! new))
                       (validate-incremental-column-type! new)
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
