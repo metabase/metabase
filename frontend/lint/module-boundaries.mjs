@@ -24,13 +24,14 @@ const elements = [
     pattern: "frontend/src/metabase/schema.js",
     mode: "full",
   }),
-  createElement({ type: "lib", name: "lib" }),
+  createElement({ type: "lib", name: "utils" }),
   createElement({ type: "lib", name: "css" }),
   createElement({
     type: "lib",
     name: "env",
     pattern: "frontend/src/metabase/env.ts",
     mode: "full",
+    enforceOutgoing: true,
   }),
   // basic
   createElement({
@@ -58,6 +59,7 @@ const elements = [
     name: "enterprise",
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
+    enforceOutgoing: true,
   }),
   // app
   ...[
@@ -74,7 +76,13 @@ const elements = [
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
   ].map((path) =>
-    createElement({ type: "app", name: "misc", pattern: path, mode: "full" }),
+    createElement({
+      type: "app",
+      name: "misc",
+      pattern: path,
+      mode: "full",
+      enforceOutgoing: true,
+    }),
   ),
   // catch-all for unmoduled files - must be last
   createElement({
@@ -124,42 +132,49 @@ const rules = [
   },
 ];
 
-// Build enforcedRules: only enforce boundaries for modules with enforceOutgoing: true.
-// Non-enforced modules get a blanket allow-all so they pass without errors.
-const enforcedElementTypes = new Set(
-  elements.filter((el) => el.enforceOutgoing).map((el) => el.type),
-);
+/**
+ * Returns a subset of rules that only enforces boundaries for modules with
+ * enforceOutgoing: true. Non-enforced modules get a blanket allow-all.
+ */
+function buildEnforcedRules(elements, rules) {
+  const enforcedTypes = new Set(
+    elements.filter((el) => el.enforceOutgoing).map((el) => el.type),
+  );
+  const nonEnforcedTypes = new Set(
+    elements.filter((el) => !el.enforceOutgoing).map((el) => el.type),
+  );
 
-const getEnforcedTypesForPattern = (pattern) => {
-  if (pattern.endsWith("/*")) {
-    const prefix = pattern.slice(0, -1);
-    return [...enforcedElementTypes].filter((type) => type.startsWith(prefix));
-  }
-  return enforcedElementTypes.has(pattern) ? [pattern] : [];
-};
+  // Narrows a wildcard "from" pattern (e.g. "feature/*") to only the concrete
+  // types that have enforceOutgoing: true (e.g. ["feature/query_builder"]),
+  // so enforced rules don't accidentally apply to non-enforced modules.
+  const expandPattern = (pattern) => {
+    if (pattern.endsWith("/*")) {
+      const prefix = pattern.slice(0, -1);
+      return [...enforcedTypes].filter((type) => type.startsWith(prefix));
+    }
+    return enforcedTypes.has(pattern) ? [pattern] : [];
+  };
 
-const nonEnforcedTypes = [
-  ...new Set(elements.filter((el) => !el.enforceOutgoing).map((el) => el.type)),
-];
+  // Keep only rules whose `from` matches an enforced module, replacing
+  // wildcard patterns with the concrete enforced types.
+  const narrowedRules = rules.flatMap((rule) => {
+    const from = rule.from.flatMap(expandPattern);
+    return from.length > 0 ? [{ ...rule, from }] : [];
+  });
 
-const enforcedRules = [
-  ...rules
-    .map((rule) => {
-      const enforcedFromTypes = rule.from.flatMap(getEnforcedTypesForPattern);
-      if (enforcedFromTypes.length === 0) {
-        return null;
-      }
-      return { ...rule, from: enforcedFromTypes };
-    })
-    .filter(Boolean),
-  ...(nonEnforcedTypes.length > 0
-    ? [
-        {
-          from: nonEnforcedTypes,
-          allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
-        },
-      ]
-    : []),
-];
+  return [
+    ...narrowedRules,
+    ...(nonEnforcedTypes.size > 0
+      ? [
+          {
+            from: [...nonEnforcedTypes],
+            allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
+          },
+        ]
+      : []),
+  ];
+}
+
+const enforcedRules = buildEnforcedRules(elements, rules);
 
 export { elements, rules, enforcedRules };
