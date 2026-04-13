@@ -30,7 +30,6 @@ export type PaletteAction = Action &
     subtitle?: Action["subtitle"];
     icon?: IconName;
     iconUrl?: string;
-    iconDarkUrl?: string;
   };
 
 export type PaletteActionImpl = ActionImpl &
@@ -38,7 +37,6 @@ export type PaletteActionImpl = ActionImpl &
     subtitle?: Action["subtitle"];
     icon?: IconName;
     iconUrl?: string;
-    iconDarkUrl?: string;
   };
 
 export type ShortcutGroup = keyof typeof GROUP_LABELS;

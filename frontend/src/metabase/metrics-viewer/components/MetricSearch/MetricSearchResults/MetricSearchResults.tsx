@@ -1,8 +1,8 @@
 import type React from "react";
 import { t } from "ttag";
 
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Repeat, Skeleton, Stack, Text } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 
 import type { MetricOrMeasureResult } from "../../../hooks/use-metric-measure-search";
 import { MetricResultItem } from "../MetricResultItem";
@@ -26,6 +26,7 @@ export function MetricSearchResults({
   getRef,
   onSelectResult,
 }: MetricSearchResultsProps) {
+  const getIcon = useGetIcon();
   if (isLoading) {
     return (
       <Stack gap="sm" p="sm">
