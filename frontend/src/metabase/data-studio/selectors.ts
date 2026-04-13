@@ -18,6 +18,14 @@ export function canAccessDataStudio(state: State) {
   );
 }
 
+/**
+ * Returns true for users who should see the full data studio (all tabs).
+ * Users with only "Manage table metadata" permission should only see the Tables tab.
+ */
+export function canAccessFullDataStudio(state: State) {
+  return getUserIsAdmin(state) || getUserIsAnalyst(state);
+}
+
 export const getUserCanWriteSegments = (
   state: State,
   isTablePublished: boolean,

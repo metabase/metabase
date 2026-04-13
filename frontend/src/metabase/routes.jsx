@@ -72,6 +72,7 @@ import { trackPageView } from "./analytics";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
+  CanAccessFullDataStudio,
   CanAccessOnboarding,
   CanAccessSettings,
   CanAccessTransforms,
@@ -394,6 +395,7 @@ export const getRoutes = (store) => {
             CanAccessDataStudio,
             CanAccessDataModel,
             CanAccessTransforms,
+            CanAccessFullDataStudio,
           )}
         </Route>
       </Route>

@@ -14,6 +14,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
+import { canAccessFullDataStudio as canAccessFullDataStudioSelector } from "metabase/data-studio/selectors";
 import { isCypressActive } from "metabase/env";
 import {
   FieldSection,
@@ -35,6 +36,7 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
 import { trackMetadataChange } from "../../analytics";
@@ -65,6 +67,7 @@ export const DataModel = ({ children, params }: Props) => {
   );
 };
 
+// eslint-disable-next-line complexity
 function DataModelContent({ params }: Props) {
   const {
     hasSelectedItems,
@@ -125,7 +128,8 @@ function DataModelContent({ params }: Props) {
   const error = databasesError ?? tableError;
 
   const hasLibrary = hasLibraryCollection(libraryCollection);
-  const canPublish = hasLibraryFeature;
+  const hasFullAccess = useSelector(canAccessFullDataStudioSelector);
+  const canPublish = hasLibraryFeature && hasFullAccess;
 
   const [onUpdateCallback, setOnUpdateCallback] = useState<
     ((path?: TreePath) => void) | null
@@ -286,6 +290,7 @@ function DataModelContent({ params }: Props) {
                     activeFieldId={fieldId}
                     activeTab={activeTab}
                     canPublish={canPublish}
+                    hasFullAccess={hasFullAccess}
                     hasLibrary={hasLibrary}
                     onSyncOptionsClick={openSyncModal}
                     onUpdate={() =>

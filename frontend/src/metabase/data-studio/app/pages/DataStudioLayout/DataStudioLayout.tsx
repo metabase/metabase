@@ -7,6 +7,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { canAccessFullDataStudio as canAccessFullDataStudioSelector } from "metabase/data-studio/selectors";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -93,6 +94,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
+  const hasFullAccess = useSelector(canAccessFullDataStudioSelector);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -119,20 +121,22 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             isNavbarOpened={isNavbarOpened}
             onNavbarToggle={onNavbarToggle}
           />
-          <DataStudioTab
-            label={t`Library`}
-            icon="repository"
-            to={Urls.dataStudioLibrary()}
-            isSelected={currentTab === "library"}
-            showLabel={isNavbarOpened}
-            isGated={!hasLibraryFeature}
-            rightSection={
-              hasDirtyChanges &&
-              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-              ) : null
-            }
-          />
+          {hasFullAccess && (
+            <DataStudioTab
+              label={t`Library`}
+              icon="repository"
+              to={Urls.dataStudioLibrary()}
+              isSelected={currentTab === "library"}
+              showLabel={isNavbarOpened}
+              isGated={!hasLibraryFeature}
+              rightSection={
+                hasDirtyChanges &&
+                PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+                  <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+                ) : null
+              }
+            />
+          )}
 
           {canAccessDataModel && (
             <DataStudioTab
@@ -143,29 +147,35 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
-            showLabel={isNavbarOpened}
-          />
-          <DataStudioTab
-            label={t`Dependency graph`}
-            icon="dependencies"
-            to={Urls.dependencyGraph()}
-            isSelected={currentTab === "dependencies"}
-            showLabel={isNavbarOpened}
-            isGated={!hasDependenciesFeature}
-          />
-          <DataStudioTab
-            label={t`Dependency diagnostics`}
-            icon="search_check"
-            to={Urls.dependencyDiagnostics()}
-            isSelected={currentTab === "dependency-diagnostics"}
-            showLabel={isNavbarOpened}
-            isGated={!hasDependenciesFeature}
-          />
+          {hasFullAccess && (
+            <DataStudioTab
+              label={t`Glossary`}
+              icon="glossary"
+              to={Urls.dataStudioGlossary()}
+              isSelected={currentTab === "glossary"}
+              showLabel={isNavbarOpened}
+            />
+          )}
+          {hasFullAccess && (
+            <DataStudioTab
+              label={t`Dependency graph`}
+              icon="dependencies"
+              to={Urls.dependencyGraph()}
+              isSelected={currentTab === "dependencies"}
+              showLabel={isNavbarOpened}
+              isGated={!hasDependenciesFeature}
+            />
+          )}
+          {hasFullAccess && (
+            <DataStudioTab
+              label={t`Dependency diagnostics`}
+              icon="search_check"
+              to={Urls.dependencyDiagnostics()}
+              isSelected={currentTab === "dependency-diagnostics"}
+              showLabel={isNavbarOpened}
+              isGated={!hasDependenciesFeature}
+            />
+          )}
           {canAccessTransforms && (
             <DataStudioTab
               label={t`Transforms`}
@@ -187,21 +197,22 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           )}
         </Stack>
         <Stack gap="0.75rem">
-          {hasRemoteSyncFeature ? (
-            <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
-              isNavbarOpened={isNavbarOpened}
-              onClick={() => setIsGitSettingsOpen(true)}
-            />
-          ) : (
-            <DataStudioTab
-              label={t`Set up remote sync`}
-              icon="gear"
-              to={Urls.dataStudioGitSync()}
-              isSelected={currentTab === "git-sync"}
-              showLabel={isNavbarOpened}
-              isGated
-            />
-          )}
+          {hasFullAccess &&
+            (hasRemoteSyncFeature ? (
+              <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
+                isNavbarOpened={isNavbarOpened}
+                onClick={() => setIsGitSettingsOpen(true)}
+              />
+            ) : (
+              <DataStudioTab
+                label={t`Set up remote sync`}
+                icon="gear"
+                to={Urls.dataStudioGitSync()}
+                isSelected={currentTab === "git-sync"}
+                showLabel={isNavbarOpened}
+                isGated
+              />
+            ))}
           {canAccessTransforms && (
             <DataStudioTab
               label={t`Jobs`}
