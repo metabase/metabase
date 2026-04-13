@@ -410,13 +410,13 @@
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
-   :coerce {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
-   :defaults {:archived                false
-              :archived_directly       false
-              :auto_apply_filters      true
-              :enable_embedding        false
-              :show_in_getting_started false}})
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by (juxt :created_at :entity_id)} opts))}
+   :coerce    {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
+   :defaults  {:archived                false
+               :archived_directly       false
+               :auto_apply_filters      true
+               :enable_embedding        false
+               :show_in_getting_started false}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
@@ -424,7 +424,7 @@
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/visualization-settings-deps visualization_settings)
-    (when card_id   #{[{:model "Card" :id card_id}]})
+    (when card_id #{[{:model "Card" :id card_id}]})
     (when action_id #{[{:model "Action" :id action_id}]})
     (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
@@ -439,10 +439,10 @@
   (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
         dashboard (t2/select-one :model/Dashboard :id id)
-        dash-id   id]
+        dash-id id]
     (merge-with
      merge
-     ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
+      ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
      ;; here. So their actions, and their cards both direct, mentioned in their parameters viz settings, and related
      ;; via dashboard card series.
      (into {} (for [{:keys [id card_id parameter_mappings]} dashcards

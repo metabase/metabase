@@ -246,7 +246,7 @@
             (is (= #{["common.py.yaml"]}
                    (file-set (io/file dump-dir "python_libraries"))))))))))
 
-(deftest do-dashcard-ordering-test
+(deftest dashcard-ordering-test
   (testing "Test that dashcard ordering in YAML export is stable when the DB returns dashcards
    in a different order (simulating non-deterministic query results from Aurora/postgres)."
     (mt/with-empty-h2-app-db!
@@ -277,13 +277,15 @@
               find-dash-file (fn [dir]
                                (->> (file-seq (io/file dir))
                                     (filter #(str/ends-with? (.getName ^java.io.File %) ".yaml"))
-                                    (filter #(str/includes? (.getPath ^java.io.File %) "dashboards"))
+                                    (filter #(str/includes? (.getName ^java.io.File %) "my_dashboard"))
                                     first))
               clean-and-export! (fn []
                                   (doseq [^java.io.File f (reverse (file-seq (io/file dump-dir)))]
                                     (.delete f))
                                   (.mkdirs (io/file dump-dir))
-                                  (storage/store! (serdes/with-cache (into [] (extract/extract {:no-settings true}))) dump-dir)
+                                  (storage/store! (serdes/with-cache (into [] (extract/extract {:no-settings true
+                                                                                                :no-transforms true})))
+                                                  (storage.files/file-writer dump-dir))
                                   (slurp (find-dash-file dump-dir)))
 
               ;; Export with normal DB order
