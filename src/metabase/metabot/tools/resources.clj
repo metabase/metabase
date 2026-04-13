@@ -98,7 +98,7 @@
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for table. Supported: fields")
                       {:resource-id resource-id :sub-resource sub-resource})))))
 
-(defn- fetch-model-resource
+(defn- fetch-model-or-card-resource
   "Fetch model resource based on URI components."
   [{:keys [resource-id sub-resource sub-resource-id]}]
   (let [model-id (parse-long resource-id)]
@@ -183,7 +183,8 @@
 (def ^:private resource-handlers
   "Map of resource type to handler function."
   {"table"     fetch-table-resource
-   "model"     fetch-model-resource
+   "model"     fetch-model-or-card-resource
+   "question"  fetch-model-or-card-resource
    "metric"    fetch-metric-resource
    "transform" fetch-transform-resource
    "dashboard" fetch-dashboard-resource})
