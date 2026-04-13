@@ -549,29 +549,47 @@
   (eduction (map (partial log-and-extract-one model opts))
             (extract-query model opts)))
 
-(defn- transform->nested [transform opts batch]
+(defn- transform->nested [transform opts batch parent-ids]
   (let [backward-fk (:backward-fk transform)
-        entities    (-> (extract-query (name (:model transform))
-                                       (assoc opts :where [:in backward-fk (map :id batch)]))
-                        t2.realize/realize)]
-    (group-by backward-fk entities)))
+        batch-ids   (into #{} (comp (map :id)
+                                    (if parent-ids (filter parent-ids) identity))
+                          batch)]
+    (if (empty? batch-ids)
+      {}
+      (let [entities (-> (extract-query (name (:model transform))
+                                        (assoc opts :where [:in backward-fk batch-ids]))
+                         t2.realize/realize)]
+        (group-by backward-fk entities)))))
 
-(defn- extract-batch-nested [model-name opts batch]
+(defn- nested-parent-ids
+  "Fetch the set of parent ids that have at least one child for this nested transform.
+  Computed once per export so sparse child tables (e.g. Dimension) don't trigger a per-batch
+  query for every parent batch."
+  [transform]
+  (t2/select-fn-set (:backward-fk transform) (:model transform)))
+
+(defn- extract-batch-nested [model-name opts parent-id-sets batch]
   (let [spec (make-spec model-name opts)]
     (reduce-kv (fn [batch k transform]
                  (if-not (::nested transform)
                    batch
-                   (mi/instances-with-hydrated-data batch k #(transform->nested transform opts batch) :id)))
+                   (let [parent-ids (get parent-id-sets k)]
+                     (mi/instances-with-hydrated-data
+                      batch k #(transform->nested transform opts batch parent-ids) :id))))
                batch
                (:transform spec))))
 
 (defn- extract-reducible-nested [model-name opts reducible]
-  (eduction (comp (map t2.realize/realize)
-                  (partition-all (or (:batch-limit opts)
-                                     extract-nested-batch-limit))
-                  (map (partial extract-batch-nested model-name opts))
-                  cat)
-            reducible))
+  (let [spec           (make-spec model-name opts)
+        parent-id-sets (into {} (for [[k transform] (:transform spec)
+                                      :when (and (::nested transform) (-> transform :opts :sparse?))]
+                                  [k (nested-parent-ids transform)]))]
+    (eduction (comp (map t2.realize/realize)
+                    (partition-all (or (:batch-limit opts)
+                                       extract-nested-batch-limit))
+                    (map (partial extract-batch-nested model-name opts parent-id-sets))
+                    cat)
+              reducible)))
 
 (defn extract-query-collections
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
@@ -1819,7 +1837,14 @@
                             :import #(*import-fk-keyed* % model field-name)}
     :else                  {::fk true :export #(*export-fk* % model) :import #(*import-fk* % model)}))
 
-(defn nested "Nested entities" [model backward-fk opts]
+(defn nested
+  "Nested entities.
+
+  Options:
+    :sparse? - when true, fetch the set of parent ids that have at least one child once upfront, and skip the
+               per-batch query for parent batches that have no children. Useful when the parent table has many
+               rows but only a few have children (e.g. Field -> Dimension)."
+  [model backward-fk opts]
   (let [model-name (name model)
         sorter     (:sort-by opts :created_at)
         key-field  (:key-field opts :entity_id)]
