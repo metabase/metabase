@@ -23,6 +23,7 @@
   assert-airgap-allows-user-creation!
   assert-has-feature
   assert-has-any-features
+  canonically-has-feature?
   ee-feature-error
   is-trial?
   has-any-features?
