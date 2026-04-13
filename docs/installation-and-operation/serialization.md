@@ -42,7 +42,7 @@ There are two ways to run these `export` and `import` commands:
 - [General Metabase settings that get exported](#general-metabase-settings-that-are-exported)
 - [Customize what gets exported](#customize-what-gets-exported)
 - [Example of a serialized question](#example-of-a-serialized-question)
-- [Metabase uses Entity IDs to identify and reference items](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)
+- [Metabase uses Entity IDs to identify and reference items](#metabase-uses-entity-ids-to-identify-metabase-items)
 
 ### What gets exported
 
@@ -262,7 +262,7 @@ products_by_week_2.yaml
 
 ### Entity IDs work with embedding
 
-Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Guest embedding](../embedding/guest-embedding.md), [Modular embedding](../embedding/modular-embedding.md), [SDK](../embedding/sdk/introduction.md), and [Full app embedding](../embedding/full-app-embedding.md).
+Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-metabase-items) for questions, dashboards, and collections in [Guest embedding](../embedding/guest-embedding.md), [Modular embedding](../embedding/modular-embedding.md), [SDK](../embedding/sdk/introduction.md), and [Full app embedding](../embedding/full-app-embedding.md).
 
 A high-level workflow for using Entity IDs when embedding Metabase in your app would look something like:
 
@@ -278,7 +278,7 @@ By default, Metabase exports some database and data model settings. Exports excl
 
 Metabase serializes databases and tables in the `databases` directory. It will include YAML files for every database, table, field, segment, and metric.
 
-Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)).
+Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by Entity IDs](#metabase-uses-entity-ids-to-identify-metabase-items)).
 
 For example, in the [Example of a serialized question](#example-of-a-serialized-question), there are several YAML keys that reference the database by name:
 
@@ -291,7 +291,7 @@ dataset_query:
 
 ## How import works
 
-Metabase will read the imported YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite. Imports _only_ create or overwrite items; they never delete items from the target instance.
+Metabase will read the imported YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-metabase-items) to figure out which items to create or overwrite. Imports _only_ create or overwrite items; they never delete items from the target instance.
 
 - If you import an item with an `entity_id` that doesn't exist in your target Metabase, Metabase will create a new item.
 - If you import an item with an `entity_id` that already exists in your target Metabase, the import will overwrite the existing item. In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
@@ -633,7 +633,7 @@ We're providing some directions on how to approach these unsupported use cases, 
 
 > Duplicating assets via serialization, while technically possible, isn't officially supported, so do so at your own risk. The risk here being that you may have to manage long chains of dependencies, which can make it more likely you'll forget to edit an entity ID, or overwrite an entity ID that already exists. So make sure you're doing backups and checking your changes into version control.
 
-Using serialization to duplicate content is not trivial, because you'll need to wrangle [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for all the items you want to duplicate — _and_ the IDs for all the items that are related to those items — to avoid overwriting existing data.
+Using serialization to duplicate content is not trivial, because you'll need to wrangle [Entity IDs](#metabase-uses-entity-ids-to-identify-metabase-items) for all the items you want to duplicate — _and_ the IDs for all the items that are related to those items — to avoid overwriting existing data.
 
 Before starting this perilous journey, review [how export works](#how-export-works) and [how import works](#how-import-works), and contact [help@metabase.com](mailto:help@metabase.com) if you have any questions.
 

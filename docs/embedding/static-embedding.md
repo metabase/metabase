@@ -97,7 +97,7 @@ For iframe snippets:
 
 ## If you serialize your Metabase, use Entity IDs in your static embeds
 
-Using [Entity IDs](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) in your static embeds will make sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
+Using [Entity IDs](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-metabase-items) in your static embeds will make sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
 
 To use an Entity ID in a static embed, all you need to do is edit the `resource` map in the `payload` used to sign your token. Replace the item's (autopopulated) ID with its Entity ID and you're done.
 
