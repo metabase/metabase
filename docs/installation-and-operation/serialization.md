@@ -11,20 +11,14 @@ redirect_from:
 
 Once you get rolling with Metabase, it's often the case that you'll have more than one Metabase spun up. You might have a couple of Metabases for testing or development, and a few production ones, or maybe you have a separate Metabase per office or region.
 
-To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
+To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that you can then  _import_ into one or more Metabases.
 
-**Export** will serialize the contents of your source Metabase as YAML files.
+- **Export** will serialize the contents of your source Metabase as YAML files.
+- **Import** will read those exported YAML files and create or update those serialized items in the target Metabase.
 
-**Import** will read those exported YAML files and create or update items in the target Metabase based on the contents serialized in those YAML files.
+## Serialization format
 
-The [Metabase Representation Format](https://github.com/metabase/representations) repository contains the full specification for the YAML format used by serialization, including JSON schemas for each entity type, complete examples, and an [NPM validation package](https://www.npmjs.com/package/@metabase/representations) you can use to validate exported files.
-
-There are two ways to run these `export` and `import` commands:
-
-- [Using CLI commands](#serialization-with-cli-commands)
-- [Through the API](#serialization-via-the-api)
-
-> We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
+The [Metabase Representation Format](https://github.com/metabase/representations) repository contains the full specification for the YAML format used by serialization, including schemas for each entity type, examples, and an [NPM validation package](https://www.npmjs.com/package/@metabase/representations) you can use to validate YAML files.
 
 ## Serialization use cases
 
@@ -39,15 +33,21 @@ Check out our guides for:
 
 ## How export works
 
+There are two ways to run these `export` and `import` commands:
+
+- [Using CLI commands](#serialization-with-cli-commands)
+- [Through the API](#serialization-via-the-api)
+
 - [What gets exported](#what-gets-exported)
 - [General Metabase settings that get exported](#general-metabase-settings-that-are-exported)
 - [Customize what gets exported](#customize-what-gets-exported)
+- [Example of a serialized question](#example-of-a-serialized-question)
+- [Metabase uses Entity IDs to identify and reference items](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)
 
 ### What gets exported
 
 Metabase will only export the following entities:
 
-- Collections (but personal collections don't get exported unless you explicitly specify them through [export options](#customize-what-gets-exported))
 - Collections (but personal collections don't get exported unless you explicitly specify them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Questions (cards)
@@ -64,12 +64,12 @@ Metabase will only export the following entities:
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
-- Channels (email and HTTP notification channels)
-- Metabot settings
+- Notification channels (email and webhook destinations used by alerts and subscriptions)
+- Metabot configuration (AI assistant settings and prompts)
 - Python libraries (shared Python modules used by transforms)
 - Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
-All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported.
+All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported. Those entities are tied to user accounts, and therefore aren't available
 
 Metabase will export its artifacts to a directory of YAML files. The export includes:
 
@@ -93,11 +93,11 @@ Metabase will export its artifacts to a directory of YAML files. The export incl
   - python_libraries
   - transforms
 
-  Under `collections`, content is organized by namespace: `main` contains most collections, while `snippets` contains [native query snippet](../questions/native-editor/writing-sql.md#snippets) collections and `transforms` contains transform collections. Inside each namespace, the folder tree mirrors the collection hierarchy in Metabase. Each collection has a YAML file and a folder containing its child entities (questions, dashboards, subcollections, etc.).
+  Under `collections`, content is grouped into subfolders by the collection's `namespace` field (the same `namespace` value you'll see inside each collection's YAML): `main` contains most collections, `snippets` contains [native query snippet](../questions/native-editor/writing-sql.md#snippets) collections, and `transforms` contains transform collections. Inside each subfolder, the folder tree mirrors the collection hierarchy in Metabase. Each collection has a YAML file and a folder containing its child entities (questions, dashboards, subcollections, etc.).
 
   The top-level `transforms` directory (separate from `collections/transforms`) contains transform tags and transform jobs. Other top-level directories include `channels` for notification channels, `metabots` for AI assistant configurations, and `python_libraries` for shared Python modules used by transforms.
 
-  File and folder names are slugified versions of entity names (lowercase, with special characters replaced by underscores).
+  File and folder names are simplified versions of entity names (lowercase, with special characters replaced by underscores).
 
   When serializing through the API, the export directory [will be compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
 
@@ -110,85 +110,85 @@ Database connection details are not included by default, but you can [configure 
 Here's the list of the general settings Metabase exports in the `settings.yaml` file. For more on Metabase settings, see [Configuring Metabase](../configuring-metabase/start.md).
 
 ```
-aggregated-query-row-limit: null
-allowed-iframe-hosts: null
-application-colors: null
-application-favicon-url: null
-application-font: null
-application-font-files: null
-application-logo-url: null
-application-name: null
-available-fonts: null
-available-locales: null
-available-timezones: null
-breakout-bins-num: null
-csv-field-separator: null
-custom-formatting: null
-custom-geojson: null
-custom-geojson-enabled: null
-custom-homepage: null
-custom-homepage-dashboard: null
-default-maps-enabled: null
-disable-cors-on-localhost: null
-email-max-recipients-per-second: null
-embedded-metabot-enabled?: null
-embedding-homepage: null
-embedding-hub-production-embed-snippet-created: null
-embedding-hub-sso-auth-manual-tested: null
-embedding-hub-test-embed-snippet-created: null
-enable-embedding: null
-enable-nested-queries: null
-enable-pivoted-exports: null
-enable-sandboxes?: null
-enable-whitelabeling?: null
-enable-xrays: null
-gsheets: '{}'
-hide-embed-branding?: null
-humanization-strategy: null
-landing-page: null
-landing-page-illustration: null
-landing-page-illustration-custom: null
-loading-message: null
-login-page-illustration: null
-login-page-illustration-custom: null
-metabot-chat-system-prompt: null
-metabot-enabled?: null
-metabot-icon: null
-metabot-limit-reset-rate: null
-metabot-limit-unit: null
-metabot-name: null
-metabot-nlq-system-prompt: null
-metabot-quota-reached-message: null
-metabot-show-illustrations: null
-metabot-sql-system-prompt: null
-native-query-autocomplete-match-style: null
-no-data-illustration: null
-no-data-illustration-custom: null
-no-object-illustration: null
-no-object-illustration-custom: null
-non-table-chart-generated: null
-persisted-models-enabled: null
-report-timezone: null
-report-timezone-long: null
-report-timezone-short: null
-search-typeahead-enabled: null
-setup-embedding-autoenabled: null
-setup-license-active-at-setup: null
-show-homepage-data: null
-show-homepage-pin-message: null
-show-homepage-xrays: null
-show-metabot: null
-show-sdk-embed-terms: null
-show-simple-embed-terms: null
-show-static-embed-terms: null
-site-locale: null
-site-name: null
-source-address-header: null
-start-of-week: null
-subscription-allowed-domains: null
-synchronous-batch-updates: null
-system-timezone: null
-unaggregated-query-row-limit: null
+aggregated-query-row-limit
+allowed-iframe-hosts
+application-colors
+application-favicon-url
+application-font
+application-font-files
+application-logo-url
+application-name
+available-fonts
+available-locales
+available-timezones
+breakout-bins-num
+csv-field-separator
+custom-formatting
+custom-geojson
+custom-geojson-enabled
+custom-homepage
+custom-homepage-dashboard
+default-maps-enabled
+disable-cors-on-localhost
+email-max-recipients-per-second
+embedded-metabot-enabled?
+embedding-homepage
+embedding-hub-production-embed-snippet-created
+embedding-hub-sso-auth-manual-tested
+embedding-hub-test-embed-snippet-created
+enable-embedding
+enable-nested-queries
+enable-pivoted-exports
+enable-sandboxes?
+enable-whitelabeling?
+enable-xrays
+gsheets
+hide-embed-branding?
+humanization-strategy
+landing-page
+landing-page-illustration
+landing-page-illustration-custom
+loading-message
+login-page-illustration
+login-page-illustration-custom
+metabot-chat-system-prompt
+metabot-enabled?
+metabot-icon
+metabot-limit-reset-rate
+metabot-limit-unit
+metabot-name
+metabot-nlq-system-prompt
+metabot-quota-reached-message
+metabot-show-illustrations
+metabot-sql-system-prompt
+native-query-autocomplete-match-style
+no-data-illustration
+no-data-illustration-custom
+no-object-illustration
+no-object-illustration-custom
+non-table-chart-generated
+persisted-models-enabled
+report-timezone
+report-timezone-long
+report-timezone-short
+search-typeahead-enabled
+setup-embedding-autoenabled
+setup-license-active-at-setup
+show-homepage-data
+show-homepage-pin-message
+show-homepage-xrays
+show-metabot
+show-sdk-embed-terms
+show-simple-embed-terms
+show-static-embed-terms
+site-locale
+site-name
+source-address-header
+start-of-week
+subscription-allowed-domains
+synchronous-batch-updates
+system-timezone
+unaggregated-query-row-limit
 ```
 
 ### Customize what gets exported
@@ -196,57 +196,13 @@ unaggregated-query-row-limit: null
 You can customize what gets exported. You can tell Metabase:
 
 - Export specific collections
-- Exclude collections
-- Exclude Metabase settings
-- Exclude table metadata
+- Do not export collections
+- Do not export Metabase settings
+- Do not export table metadata
 - Include sample field values (excluded by default)
 - Include database connection details (excluded by default)
 
 See [export parameters in CLI commands](#export-options) or [export parameters in API calls](#api-export-parameters).
-
-For details on the YAML format, Entity IDs, and how items reference each other in exported files, see [Understanding the export format](#understanding-the-export-format).
-
-## How import works
-
-Metabase will read the provided YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite. Import will not delete items from the target instance — it only creates or overwrites.
-
-- If the `entity_id` doesn't exist, Metabase will create a new item.
-- If Metabase finds the `entity_id`, it will overwrite the existing item. Overwriting replaces the entire item; there's no field-level merge with local changes. If someone customizes a dashboard directly on the target instance, importing an older YAML of that dashboard will clobber those customizations.
-- If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
-- All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the imported YAMLs.
-
-## Serialization best practices
-
-### Avoid using serialization for backups
-
-Just a note: serialization is _not_ meant to back up your Metabase.
-
-See [Backing up Metabase](./backing-up-metabase-application-data.md).
-
-If you're instead looking to do a one-time migration from the default H2 database included with Metabase to a MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
-
-### Use the same Metabase version for source and target instance
-
-Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
-
-Metabase will log a warning if the versions doesn't match, but it won't block the import.
-
-### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
-
-If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running.
-
-### You'll need to manually add license tokens
-
-Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](../installation-and-operation/activating-the-enterprise-edition.md), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
-
-### Metabase adds logs to exports and imports
-
-- Exports: Metabase adds logs to the compressed directory as `export.log`.
-- Imports: You can add the `-o -` flag to export logs directly into the terminal, or `-o import.log` to save to a file.
-
-## Understanding the export format
-
-This section covers the structure of exported YAML files: what they look like, how Metabase identifies items, and how items reference each other. You don't need to read this to run a basic export and import — it's here for when you need to inspect, hand-edit, or script against the exported files.
 
 ### Example of a serialized question
 
@@ -311,7 +267,6 @@ Fields prefixed with `lib/` in the example (like `lib/type`, `lib/source`) are i
 
 To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
 
-
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
 Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, model, collection, etc.). These Entity IDs are in addition to the sequential IDs Metabase generates. Entity IDs use the [NanoID format](https://github.com/ai/nanoid), and are stable across Metabases. By "stable" we mean that you can, for example, export a dashboard with an entity ID from one Metabase, and import that dashboard into another Metabase and have that dashboard use the same Entity ID, even though it's in a different Metabase.
@@ -335,7 +290,7 @@ serdes/meta:
   - id: r6vC_vLmo9zG6_r9sAuYG
 ```
 
-Metabase uses slugified entity names for file and directory names in exports. Names are lowercased, and special characters are replaced with underscores. Names are also truncated for filesystem compatibility.
+Metabase uses simplified versions of entity names for file and directory names in exports. Names are lowercased, and special characters are replaced with underscores. Names are also truncated for filesystem compatibility.
 
 ```
 products_by_week.yaml
@@ -343,7 +298,7 @@ accounts_model.yaml
 converted_customers.yaml
 ```
 
-If two entities in the same folder share the same slugified name, Metabase appends a numeric suffix to disambiguate:
+If two entities in the same folder share the same name after simplification, Metabase appends a numeric suffix to disambiguate:
 
 ```
 products_by_week.yaml
@@ -358,7 +313,7 @@ For example, in the [Example of a serialized question](#example-of-a-serialized-
 collection_id: onou5H28Wvy3kWnjxxdKQ
 ```
 
-This ID refers to the collection where the question was saved. In a real export, you'd find this collection as a folder in the export tree (named by its slugified name), with a matching `entity_id` inside its YAML file.
+This ID refers to the collection where the question was saved. In a real export, you'd find this collection as a folder in the export tree (named by its simplified name), with a matching `entity_id` inside its YAML file.
 
 ### Entity IDs work with embedding
 
@@ -388,6 +343,51 @@ database_id: Sample PostgreSQL
 dataset_query:
   database: Sample PostgreSQL
 ```
+
+## How import works
+
+Metabase will read the provided YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite. Import will not delete items from the target instance — it only creates or overwrites.
+
+- If you import an item with an `entity_id` that doesn't exist in your target Metabase, Metabase will create a new item.
+
+- If you import an item with an `entity_id` that already exists in your target Metabase, the existing item will be overwritten.
+
+  In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
+
+- If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
+
+- All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the import.
+
+  For example, if an exported YAML has the field `collection_id: onou5H28Wvy3kWnjxxdKQ`, then the collection `onou5H28Wvy3kWnjxxdKQ` must already exist in the target instance, or there must be a YAML file with the export of a collection that has this ID.
+
+## Serialization best practices
+
+### Avoid using serialization for backups
+
+Just a note: serialization is _not_ meant to back up your Metabase.
+
+See [Backing up Metabase](./backing-up-metabase-application-data.md).
+
+If you're instead looking to do a one-time migration from the default H2 database included with Metabase to a MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
+
+### Use the same Metabase version for source and target instance
+
+Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
+
+Metabase will log a warning if the versions doesn't match, but it won't block the import.
+
+### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
+
+If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running.
+
+### You'll need to manually add license tokens
+
+Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](../installation-and-operation/activating-the-enterprise-edition.md), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+
+### Metabase adds logs to exports and imports
+
+- Exports: Metabase adds logs to the compressed directory as `export.log`.
+- Imports: You can add the `-o -` flag to export logs directly into the terminal, or `-o import.log` to save to a file.
 
 ## Serialization with CLI commands
 
@@ -771,17 +771,27 @@ If you're upgrading from Metabase version 46.X or older, here's what you need to
 
 A few other changes to call out:
 
-- The exported YAML files have a different structure:
-  - File and directory names now use slugified human-readable names (like `accounts_model.yaml`) instead of Entity ID prefixes. Entity IDs are still present inside each YAML file. You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids) from older exports.
-  - Fields with default values (like `archived: false`) and null-valued fields are omitted from the YAML output, keeping files compact.
-  - The file tree organizes collections by namespace (`main/`, `snippets/`, `transforms/`), and entities are stored inside their parent collection folder.
+- The exported YAML files have a slightly different structure:
+  - Metabase will prefix each file with a 24-character Entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
+    You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids).
+  - The file tree is slightly different.
 - To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
+
+Starting with Metabase 60, the export format changed again:
+
+- File and directory names now use human-readable names (like `accounts_model.yaml`) instead of Entity ID prefixes. Entity IDs are still present inside each YAML file.
+- Fields with default values (like `archived: false`) and null-valued fields are omitted from the YAML output, keeping files compact.
+- The file tree organizes collections by namespace (`main/`, `snippets/`, `transforms/`), and entities are stored inside their parent collection folder.
 
 If you've written scripts to automate serialization, you'll need to:
 
 - Reserialize your Metabase using the upgraded Metabase (which uses the new `export` and `import` commands). Note that serialization will only work if you export and import your Metabase using the same Metabase version.
 - Update those scripts with the new commands. See the new [export options](#export-options).
 - If your scripts do any post-processing of the exported YAML files, you may need to update your scripts to accommodate the slightly different directory and YAML file structures.
+
+## Let us know how we can improve serialization
+
+We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
 
 ## Further reading
 
