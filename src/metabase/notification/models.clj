@@ -265,18 +265,17 @@
 
 (methodical/defmethod t2/batched-hydrate [:default :recipients-detail]
   "Batch hydration of details (user, group members) for NotificationRecipients.
-  Deactivated users have :user set to nil so they don't receive notifications (GDGT-1927)."
+  Only active users are attached as :user; deactivated users get :user nil so they
+  don't receive notifications (GDGT-1927)."
   [_model _k recipients]
   (-> (group-by :type recipients)
       (m/update-existing :notification-recipient/user
                          (fn [recipients]
-                           (let [hydrated (t2/hydrate recipients :user)
-                                 inactive-ids (when (seq hydrated)
-                                                (t2/select-pks-set :model/User
-                                                                   :id [:in (map :user_id hydrated)]
-                                                                   :is_active false))]
-                             (mapv #(cond-> % (contains? inactive-ids (:user_id %)) (assoc :user nil))
-                                   hydrated))))
+                           (let [id->user (when (seq recipients)
+                                            (t2/select-fn->fn :id identity :model/User
+                                                              :id [:in (map :user_id recipients)]
+                                                              :is_active true))]
+                             (mapv #(assoc % :user (id->user (:user_id %))) recipients))))
       (m/update-existing :notification-recipient/group
                          (fn [recipients]
                            (t2/hydrate recipients [:permissions_group :members])))
