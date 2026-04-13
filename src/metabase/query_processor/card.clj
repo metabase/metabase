@@ -263,12 +263,11 @@
                                               ;; order importance: we want the info from `template-tag` to be merged last
                                               (merge param tt-param)
                                               param))
-                                          parameters)
-        ;; Append any template-tag parameters not already present in card.parameters
-        extra-parameters            (into []
-                                          (remove #(contains? parameter-ids (:id %)))
-                                          template-tag-parameters)]
-    (into merged-parameters extra-parameters)))
+                                          parameters)]
+    ;; Append any template-tag parameters not already present in card.parameters
+    (into merged-parameters
+          (remove #(contains? parameter-ids (:id %)))
+          template-tag-parameters))
 
 (mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."

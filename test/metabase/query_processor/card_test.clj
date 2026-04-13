@@ -394,7 +394,7 @@
 
 (deftest combined-parameters-and-template-tags-preserves-parameter-order-test
   (testing "combined-parameters-and-template-tags should preserve the order of card.parameters (#62079)"
-    ;; Use enough parameters (9) so that Clojure's PersistentHashMap doesn't coincidentally preserve insertion order.
+    ;; Use enough parameters (9) so that Clojure switches to PersistentHashMap.
     ;; PersistentArrayMap (used for <= 8 entries) preserves insertion order, but PersistentHashMap (>= 9) does not.
     (let [tag-names  ["zeta" "alpha" "mu" "beta" "omega" "gamma" "theta" "delta" "epsilon"]
           name->id   #(str "_" (u/upper-case-en %) "_")
