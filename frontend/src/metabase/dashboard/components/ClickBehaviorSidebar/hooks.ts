@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { hasActionsMenu } from "metabase/utils/click-behavior";
 import { useSelector } from "metabase/utils/redux";
 import type { ClickBehaviorType, DashboardCard } from "metabase-types/api";
+
+import { hasActionsMenu } from "../../utils";
 
 export function useClickBehaviorOptionName(
   value: ClickBehaviorType,
