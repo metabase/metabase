@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
-import { getUserName } from "metabase/lib/user";
+import { getUserName } from "metabase/utils/user";
 
 export const DEFAULT_DATE = "past30days~";
 export const DEFAULT_GROUP = "1"; // All Users group

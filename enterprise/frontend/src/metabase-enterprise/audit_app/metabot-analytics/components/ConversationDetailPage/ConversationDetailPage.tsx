@@ -7,8 +7,6 @@ import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getUserName } from "metabase/lib/user";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -25,6 +23,8 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 

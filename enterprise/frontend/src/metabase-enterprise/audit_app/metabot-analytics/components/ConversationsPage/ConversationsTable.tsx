@@ -7,9 +7,9 @@ import { SortableColumnHeader } from "metabase/common/components/ItemsTable/Base
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
-import { getUserName } from "metabase/lib/user";
 import { Badge, Box, Ellipsified, Flex } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import { getUserName } from "metabase/utils/user";
 import type { SortingOptions } from "metabase-types/api";
 
 import type { ConversationSortColumn, ConversationSummary } from "../../types";

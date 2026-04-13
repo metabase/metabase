@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
 import { useGetDatabaseMetadataQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/utils/redux";
 import type {
   CardMetadata,
   MetadataProvider,

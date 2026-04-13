@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import { formatNumber } from "metabase/lib/formatting/numbers";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { Card, SimpleGrid, Skeleton, Stack, Text } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting/numbers";
 import type { CardMetadata, TableMetadata } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
