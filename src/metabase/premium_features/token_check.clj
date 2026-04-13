@@ -211,13 +211,10 @@
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (mr/validate [:re RemoteCheckedToken] token)
       (tracing/with-span :tasks "metering.send-events" {}
-        (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
-              stats (-> (metering-stats)
-                        ;; for backwards compatibility, we send values as strings
-                        (update-vals str))]
+        (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
           (try
             (http/post (metering-url token token-check-url)
-                       {:body (json/encode (merge stats
+                       {:body (json/encode (merge (metering-stats)
                                                   {:site-uuid site-uuid
                                                    :mb-version (:tag config/mb-version-info)}))
                         :content-type :json
@@ -666,6 +663,12 @@
    feature-name :- [:or string? mu/localized-string-schema]]
   (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
+
+(defn is-trial?
+  "True if the current premium token is a trial subscription.
+   Returns false if there is no token or the status cannot be fetched."
+  []
+  (-> (-token-status) :trial boolean))
 
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."

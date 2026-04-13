@@ -19,7 +19,9 @@ export function crudGroupMappingsWidget(authenticationMethod) {
   cy.findByText("data").should("not.exist");
   cy.findByText("nosql").should("not.exist");
 
-  cy.icon("close").click({ force: true });
+  cy.findByTestId("admin-content-table").within(() => {
+    cy.icon("close").click({ force: true });
+  });
   cy.findByText(/remove all group members/i).click();
   cy.button("Remove mapping and members").click();
 

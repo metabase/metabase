@@ -123,3 +123,8 @@
   "URL for a transform's run tab."
   [transform-id]
   (format "%s/data-studio/transforms/%s/run" (site-url) transform-id))
+
+(defn security-center-url
+  "Url for the Security Center"
+  []
+  (format "%s/admin/security-center" (site-url)))

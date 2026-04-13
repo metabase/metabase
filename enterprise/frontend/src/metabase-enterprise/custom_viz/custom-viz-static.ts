@@ -1,3 +1,4 @@
+import MetabaseSettings from "metabase/utils/settings";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   defineSetting,
@@ -16,7 +17,8 @@ export function registerCustomVizPlugin(
 ) {
   const assetMap = assets || {};
   const getAssetUrl = (name: string) => assetMap[name] || "";
-  const vizDef = factory({ defineSetting, getAssetUrl });
+  const locale = MetabaseSettings.get("site-locale") ?? "en";
+  const vizDef = factory({ defineSetting, getAssetUrl, locale });
   const display = getCustomPluginIdentifier(identifier);
   customVizRegistry.set(display, vizDef);
 

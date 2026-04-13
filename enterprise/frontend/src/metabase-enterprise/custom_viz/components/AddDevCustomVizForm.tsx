@@ -12,7 +12,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Group, Stack, Text } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 
 type FormState = {
   devBundleUrl: string;
@@ -53,13 +53,10 @@ export function AddDevCustomVizForm() {
         {({ dirty }) => (
           <Form>
             <Stack gap="lg">
-              <Text fw={700} fz="lg">
-                {t`Add a dev visualization`}
-              </Text>
               <FormTextInput
                 name="devBundleUrl"
                 label={t`Dev server URL`}
-                description={t`URL of the local dev server serving the visualization bundle.`}
+                description={t`URL of the local dev server serving the visualization bundle, manifest, and assets.`}
                 placeholder="http://localhost:5174"
                 autoFocus
               />

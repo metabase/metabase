@@ -1,1 +1,1 @@
-export { MetricSearchInput as MetricSearch } from "./MetricSearchInput";
+export { MetricSearchInput } from "./MetricSearchInput";

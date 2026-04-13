@@ -70,6 +70,8 @@ export interface RenderingContext {
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
+  /** Defaults to "light" when not provided. */
+  colorScheme?: "light" | "dark";
 
   theme: VisualizationTheme;
 }

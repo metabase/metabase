@@ -49,6 +49,8 @@ const baseConfig = {
     // - Flat: node_modules/<pkg>/ where <pkg> is NOT in esmPackages
     // - Bun:  node_modules/.bun/<pkg>@<ver>/ where <pkg> is NOT in esmPackages
     `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
+    // CLJS files are already compiled CJS — skip transform entirely
+    "<rootDir>/target/cljs_dev/",
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
