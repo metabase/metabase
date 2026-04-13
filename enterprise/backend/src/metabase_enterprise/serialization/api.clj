@@ -1,13 +1,14 @@
 (ns metabase-enterprise.serialization.api
   (:require
-   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
-   [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.protocols :as v2.protocols]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase-enterprise.serialization.v2.storage.tar :as v2.storage.tar]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -19,7 +20,6 @@
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -68,43 +68,34 @@
 
 ;;; Logic
 
-(defn- serialize&pack ^File [{:keys [dirname full-stacktrace] :as opts}]
-  (let [dirname  (or dirname
-                     (format "%s-%s"
-                             (u/slugify (appearance/site-name))
-                             (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
-        path     (io/file parent-dir dirname)
-        dst      (io/file (str (.getPath path) ".tar.gz"))
-        log-file (io/file path "export.log")
-        err      (atom nil)
-        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
-                                                    {:additive *additive-logging*})]
-                   (try                 ; try/catch inside logging to log errors
-                     (let [report (serdes/with-cache
-                                    (-> (extract/extract opts)
-                                        (storage/store! path)))]
-                       ;; not removing dumped yamls immediately to save some time before response
-                       (u.compress/tgz path dst)
-                       report)
-                     (catch Exception e
-                       (reset! err e)
-                       (if full-stacktrace
-                         (log/error e "Error during serialization export")
-                         (log/error (u/strip-error e "Error during serialization export"))))))]
-    {:archive       (when (.exists dst)
-                      dst)
-     :log-file      (when (.exists log-file)
-                      log-file)
-     :report        report
-     :status        (:status-code (ex-data @err))
-     :error-message (when @err
-                      (u/strip-error @err nil))
-     :callback      (fn []
-                      (when (.exists path)
-                        (run! io/delete-file (reverse (file-seq path))))
-                      (when (.exists dst)
-                        (io/delete-file dst)))}))
+(defn- serialize-to-stream!
+  "Serialize directly to an OutputStream as streaming tar.gz. Returns result map."
+  [^java.io.OutputStream output ^String dirname entities {:keys [full-stacktrace]}]
+  (let [log-output (ByteArrayOutputStream.)
+        writer     (v2.storage.tar/tar-writer output dirname)
+        error      (atom nil)
+        report     (with-open [_logger (logger/for-ns log-output ['metabase-enterprise.serialization
+                                                                  'metabase.models.serialization]
+                                                      {:additive *additive-logging*})]
+                     (try
+                       (let [report (serdes/with-cache
+                                      (v2.storage/store! entities writer))]
+                         (v2.protocols/store-log! writer (.toByteArray log-output))
+                         (v2.protocols/finish! writer)
+                         report)
+                       (catch Exception e
+                         (reset! error e)
+                         (if full-stacktrace
+                           (log/error e "Error during serialization export")
+                           (log/error (u/strip-error e "Error during serialization export")))
+                         (try
+                           (v2.protocols/store-log! writer (.toByteArray log-output))
+                           (v2.protocols/finish! writer)
+                           (catch Exception _)))))]
+    {:report        report
+     :success       (nil? @error)
+     :error-message (when @error
+                      (u/strip-error @error nil))}))
 
 (defn- find-serialization-dir
   "Find an actual top-level dir with serialization data inside, instead of picking up various .DS_Store and similar
@@ -159,31 +150,23 @@
      :callback      #(when (.exists dst)
                        (run! io/delete-file (reverse (file-seq dst))))}))
 
-(defn- serialization-api-handler
-  [collection result-atom opts]
-  (let [done-chan (a/chan)]
-    [(u.jvm/in-virtual-thread*
-      (let [start (System/nanoTime)
-            {:keys [archive report error-message] :as pack-result} (serialize&pack opts)]
-        (analytics/track-event! :snowplow/serialization
-                                {:event           :serialization
-                                 :direction       "export"
-                                 :source          "api"
-                                 :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                                 :count           (count (:seen report))
-                                 :error_count     (count (:errors report))
-                                 :collection      (str/join "," (map str collection))
-                                 :all_collections (and (empty? collection)
-                                                       (not (:no-collections opts)))
-                                 :data_model      (not (:no-data-model opts))
-                                 :settings        (not (:no-settings opts))
-                                 :field_values    (:include-field-values opts)
-                                 :secrets         (:include-database-secrets opts)
-                                 :success         (boolean archive)
-                                 :error_message   error-message})
-        (reset! result-atom pack-result)
-        (a/>!! done-chan :done)))
-     done-chan]))
+(defn- track-export-event! [collection opts start {:keys [report success error-message]}]
+  (analytics/track-event! :snowplow/serialization
+                          {:event           :serialization
+                           :direction       "export"
+                           :source          "api"
+                           :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                           :count           (count (:seen report))
+                           :error_count     (count (:errors report))
+                           :collection      (str/join "," (map str collection))
+                           :all_collections (and (empty? collection)
+                                                 (not (:no-collections opts)))
+                           :data_model      (not (:no-data-model opts))
+                           :settings        (not (:no-settings opts))
+                           :field_values    (:include-field-values opts)
+                           :secrets         (:include-database-secrets opts)
+                           :success         (boolean success)
+                           :error_message   error-message}))
 
 ;;; HTTP API
 
@@ -239,33 +222,21 @@
                             :no-settings              (not settings?)
                             :include-field-values     include-field-values?
                             :include-database-secrets include-database-secrets?
-                            :dirname                  dirname
                             :continue-on-error        continue-on-error?
                             :full-stacktrace          full-stacktrace?}
-        result (atom nil)
-        [archive-thread finished-chan] (serialization-api-handler collection result opts)]
-    (sr/streaming-response {:content-type "application/gzip" :status 200} [os cancel-chan]
-      (a/<!!
-       (a/go
-         (case (a/alt! cancel-chan :cancel finished-chan :done)
-           :cancel (do
-                     (future-cancel archive-thread)
-                     (when-let [cb (:callback @result)]
-                       (cb))
-                     (.close os))
-           :done (let [{:keys [archive status log-file callback]} @result]
-                   (try
-                     (if archive
-                       (do
-                         (sr/set-header! "Content-Disposition"
-                                         (format "attachment; filename=\"%s\"" (.getName ^File archive)))
-                         (io/copy archive os))
-                       (do
-                         (sr/set-status! (or status 500))
-                         (sr/set-content-type! "text/plain")
-                         (io/copy log-file os)))
-                     (finally
-                       (callback))))))))))
+        export-dirname (or dirname
+                           (format "%s-%s"
+                                   (u/slugify (appearance/site-name))
+                                   (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
+        ;; extract/extract runs eager setup (target resolution, escape analysis) which can throw
+        ;; for invalid inputs (e.g. bad collection ID). This must happen before streaming starts.
+        entities (extract/extract opts)]
+    (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
+      (sr/set-header! "Content-Disposition"
+                      (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
+      (let [start  (System/nanoTime)
+            result (serialize-to-stream! output export-dirname entities opts)]
+        (track-export-event! collection opts start result)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
