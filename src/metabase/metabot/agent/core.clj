@@ -626,9 +626,9 @@
                                   (:status (ex-data e))
                                   (:provider (ex-data e))
                                   (pr-str (:body (ex-data e))))
-                      (log/error e (format "Agent loop API error: %s provider=%s"
-                                           (ex-message e)
-                                           (:provider (ex-data e)))))
+                      (log/errorf e "Agent loop API error: %s provider=%s"
+                                  (ex-message e)
+                                  (:provider (ex-data e))))
                     (log/error e "Agent loop error"))
                   (rf init (error-part e)))
                 (finally
