@@ -93,7 +93,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
   );
 
   return (
-    <Stack px={48} h="100%" gap={0} className={S.root}>
+    <Stack px="3rem" h="100%" gap={0} className={S.root}>
       <Box pt="md" flex="0 0 auto">
         <MetricSearchPanel
           definitions={definitions}

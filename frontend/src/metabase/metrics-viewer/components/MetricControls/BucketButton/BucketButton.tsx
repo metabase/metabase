@@ -55,7 +55,6 @@ export function BucketButton({
       <Popover.Target>
         <Button
           w={184}
-          style={{ flexShrink: 1 }}
           justify="space-between"
           fw="bold"
           py="xs"
