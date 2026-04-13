@@ -342,7 +342,8 @@
                                                            :data_authority (:data_authority table-map)})]
                                              (reset! synced-table created)
                                              created))
-                      sync/sync-table!   (constantly nil)]
+                      sync/sync-table!     (constantly nil)
+                      driver/table-exists? (constantly false)]
           (transforms-base.u/activate-table-and-mark-computed! db target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
@@ -407,3 +408,55 @@
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))
+
+(deftest activate-table-resolves-nil-schema-test
+  (testing "activate-table-and-mark-computed! resolves nil schema when physical table exists in default schema"
+    (let [target {:type "table" :schema nil :name "test_nil_schema_fix"}
+          synced-table (atom nil)]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        (with-redefs [sync/create-table! (fn [database table-map]
+                                           (let [created (t2/insert-returning-instance!
+                                                          :model/Table
+                                                          {:db_id          (:id database)
+                                                           :name           (:name table-map)
+                                                           :schema         (:schema table-map)
+                                                           :active         true
+                                                           :is_writable    (:is_writable table-map)
+                                                           :data_source    (:data_source table-map)
+                                                           :data_authority (:data_authority table-map)})]
+                                             (reset! synced-table created)
+                                             created))
+                      sync/sync-table!   (constantly nil)
+                      ;; Simulate: physical table exists in "PUBLIC" (H2's default schema)
+                      driver/table-exists? (fn [_driver _db table]
+                                             (= "PUBLIC" (:schema table)))]
+          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (is (some? @synced-table))
+          (let [table (t2/select-one :model/Table (:id @synced-table))]
+            (is (= "PUBLIC" (:schema table))
+                "Table schema should be updated to the driver's default schema"))))))
+
+  (testing "activate-table-and-mark-computed! leaves nil schema when physical table has no default schema"
+    (let [target {:type "table" :schema nil :name "test_nil_schema_no_default"}
+          synced-table (atom nil)]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        (with-redefs [sync/create-table! (fn [database table-map]
+                                           (let [created (t2/insert-returning-instance!
+                                                          :model/Table
+                                                          {:db_id          (:id database)
+                                                           :name           (:name table-map)
+                                                           :schema         (:schema table-map)
+                                                           :active         true
+                                                           :is_writable    (:is_writable table-map)
+                                                           :data_source    (:data_source table-map)
+                                                           :data_authority (:data_authority table-map)})]
+                                             (reset! synced-table created)
+                                             created))
+                      sync/sync-table!   (constantly nil)
+                      ;; Simulate: physical table does NOT exist under default schema
+                      driver/table-exists? (constantly false)]
+          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (is (some? @synced-table))
+          (let [table (t2/select-one :model/Table (:id @synced-table))]
+            (is (nil? (:schema table))
+                "Table schema should remain nil when physical table isn't in default schema")))))))
