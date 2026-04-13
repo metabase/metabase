@@ -12,6 +12,7 @@ export const ItemTitle = styled(Text)<TextProps>`
 
 export const ItemIcon = styled(Icon)`
   justify-self: end;
+  color: var(--mb-color-brand);
 `;
 
 const activeItemCss = css`
