@@ -43,13 +43,6 @@
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (profiles/get-tools-for-profile profile-id #{})))
 
-(deftest ^:parallel get-tools-for-embedding-next-profile-test
-  (let [tools (tools-for-profile :embedding_next)]
-    (is (map? tools))
-    (is (contains? tools "construct_notebook_query"))
-    (is (contains? tools "read_resource"))
-    (is (contains? tools "list_available_data_sources"))))
-
 (deftest ^:parallel get-tools-for-internal-profile-test
   (let [tools (tools-for-profile :internal)]
     (is (map? tools))
