@@ -11,7 +11,7 @@ export function EmbeddingThemeCard({
   onDuplicate,
   onDelete,
 }: {
-  theme: Omit<EmbeddingTheme, "settings">;
+  theme: EmbeddingTheme;
   onEdit: (id: number) => void;
   onDuplicate: (id: number) => void;
   onDelete: (id: number) => void;
@@ -23,7 +23,7 @@ export function EmbeddingThemeCard({
       onClick={() => onEdit(theme.id)}
       style={{ cursor: "pointer" }}
     >
-      <EmbeddingThemeCardPreview />
+      <EmbeddingThemeCardPreview theme={theme.settings} />
 
       <Group align="center" justify="space-between" px="md" py="sm">
         <Text fz="lg">{theme.name}</Text>
@@ -49,9 +49,12 @@ const EmbeddingThemeActionMenu = ({
 }) => {
   return (
     <Menu position="bottom-end">
+      {/* stopPropagation prevents triggering the card's onEdit when clicking the menu */}
       <Menu.Target>
-        {/** This avoids triggering the card's onEdit when we click on the ellipsis menu. */}
-        <ActionIcon onClick={(e) => e.stopPropagation()}>
+        <ActionIcon
+          aria-label={t`Duplicate and delete`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
