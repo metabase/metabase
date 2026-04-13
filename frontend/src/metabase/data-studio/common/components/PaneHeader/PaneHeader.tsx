@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { getLocation } from "metabase/selectors/routing";
@@ -144,7 +145,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
 
   return (
     <Group gap="sm">
-      {tabs.map(({ label, to, icon, isSelected }) => {
+      {tabs.map(({ label, to, icon, isGated, isSelected }) => {
         const selected =
           typeof isSelected === "function"
             ? isSelected(pathname)
@@ -160,6 +161,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
             bg={selected ? "background-selected" : backgroundColor}
             bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
+            rightSection={isGated ? <UpsellGem.New size={14} /> : null}
           >
             {label}
           </Button>
