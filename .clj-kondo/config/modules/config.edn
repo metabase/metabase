@@ -902,11 +902,13 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
+           models
            premium-features
            server
            settings
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard}
+   :model-exports #{:model/EmbeddingTheme}}
 
   embedding-rest
   {:team "Embedding"
@@ -926,7 +928,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
