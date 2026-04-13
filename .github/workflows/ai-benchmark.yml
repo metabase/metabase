@@ -6,7 +6,7 @@ on:
       profile:
         description: 'Agent profile to benchmark'
         required: false
-        default: 'internal'
+        default: 'nlq'
         type: choice
         options:
           - internal
