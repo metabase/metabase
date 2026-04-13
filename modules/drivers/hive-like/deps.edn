@@ -241,7 +241,6 @@
   commons-logging/commons-logging                    {:mvn/version "1.3.5"}
 
   ;; Guava — hive-standalone-metastore-common pulls 22.0 transitively.
-  ;; Pin to match root deps.edn and fix SNYK-JAVA-COMGOOGLEGUAVA-{1015415,32236,5710356}.
   com.google.guava/guava                             {:mvn/version "33.5.0-jre"}
 
   ;; Netty — pinned explicitly at safe versions for security scanning.
