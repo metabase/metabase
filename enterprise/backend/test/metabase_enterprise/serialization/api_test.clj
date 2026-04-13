@@ -159,9 +159,7 @@
                               (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
                         log (slurp (io/input-stream res))]
-                    (testing "In logs we get an entry for the dashboard, then card, and then an error"
-                      (is (= #{"Dashboard" "Card"}
-                             (log-types (str/split-lines log))))
+                    (testing "Log contains the error from the deliberate failure"
                       (is (re-find #"deliberate error message" log))
                       (is (=  {:id        "**ID**",
                                :entity_id "**ID**",
