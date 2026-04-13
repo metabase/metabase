@@ -33,6 +33,25 @@ describe("admin > custom visualizations", () => {
           .should("be.visible");
         H.getAddVisualizationLink().should("be.visible");
       });
+
+      it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {
+        H.activateToken("bleeding-edge");
+        H.updateAdvancedPermissionsGraph({
+          [ALL_USERS_GROUP]: { setting: "yes" },
+        });
+        cy.signInAsNormalUser();
+
+        cy.visit("/admin/settings/custom-visualizations");
+        cy.get("main").should(
+          "include.text",
+          "Sorry, you don’t have permission to see that.",
+        );
+
+        H.goToAdmin();
+        cy.findByTestId("admin-layout-sidebar")
+          .findByText("Custom visualizations")
+          .should("not.exist");
+      });
     });
 
     describe("OSS", { tags: "@OSS" }, () => {
@@ -44,25 +63,6 @@ describe("admin > custom visualizations", () => {
         }).should("be.visible");
         H.getAddVisualizationLink().should("not.exist");
       });
-    });
-
-    it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {
-      H.activateToken("bleeding-edge");
-      H.updateAdvancedPermissionsGraph({
-        [ALL_USERS_GROUP]: { setting: "yes" },
-      });
-      cy.signInAsNormalUser();
-      cy.visit("/admin");
-
-      cy.findByTestId("admin-layout-sidebar")
-        .findByText("Custom visualizations")
-        .should("not.exist");
-
-      cy.visit("/admin/settings/custom-visualizations");
-      cy.get("main").should(
-        "include.text",
-        "Sorry, you don’t have permission to see that.",
-      );
     });
   });
 
