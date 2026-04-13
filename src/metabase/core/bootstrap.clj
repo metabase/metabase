@@ -42,21 +42,20 @@
   println)
 
 (defn- run-standalone-mode
-  "Run a standalone mode if --mode is present. Returns true if handled, false if no --mode.
-   Errors if --mode is specified but not recognized.
+  "Errors if --mode is specified but not recognized.
    The mode's -main function is responsible for calling System/exit."
   [mode args]
-  (if (nil? mode)
-    false
-    (let [startup (case mode
-                    "checker" 'metabase-enterprise.checker.cli/entrypoint
-                    nil)]
-      (if startup
-        ((requiring-resolve startup) args)
-        (do (binding [*out* *err*]
-              (output! (str "Unknown mode: " mode))
-              (output! "Available modes: checker"))
-            (System/exit 1))))))
+  (let [startup (case mode
+                  ;; schema checker was moved out to js. Perhaps this will get a long running server mode checker? Or
+                  ;; perhaps just this one.
+                  "checker" 'metabase-enterprise.checker.cli/entrypoint
+                  nil)]
+    (if startup
+      ((requiring-resolve startup) args)
+      (do (binding [*out* *err*]
+            (output! (str "Unknown mode: " mode))
+            (output! "Available modes: checker"))
+          (System/exit 1)))))
 
 (defn -main
   "Main entrypoint. Invokes [[metabase.core.core/entrypoint]]"
@@ -67,7 +66,7 @@
   ((requiring-resolve 'metabase.classloader.core/the-classloader))
   ;; Check for standalone modes first - these skip loading metabase.core.core
   (let [{:keys [options]} (cli/parse-opts args [[nil "--mode MODE"]])
-        mode (:mode options)]
-    (when-not (run-standalone-mode mode args)
-      ;; Otherwise, proceed with normal startup
+        mode              (:mode options)]
+    (if mode
+      (run-standalone-mode mode args)
       (apply (requiring-resolve 'metabase.core.core/entrypoint) args))))
