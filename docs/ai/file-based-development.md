@@ -1,0 +1,137 @@
+---
+title: File-based development
+summary: Use a combination of agent skills and serialization to develop Metabase content with agents on your local file system.
+---
+
+# File-based development
+
+You can use AI to generate YAML files that serialize content like questions and dashboards, then import those items into Metabase.
+
+## The file-based toolkit
+
+We provide a set of tools for creating and editing Metabase content [serialized](../installation-and-operation/serialization.md) as YAML files.
+
+- [Metabase Representation Format](https://github.com/metabase/representations). This is a directory that includes a spec, schemas, and examples for all Metabase entities as YAML files: questions, dashboards, and so on.
+- CLI commands and API endpoints to export and import content serialized in YAML.
+- [Agent skills](https://github.com/metabase/agent-skills) to work with these YAML files and your Metabase's metadata.
+
+## Prerequisites
+
+To help your AI edit your YAML files, you should add the following skills to your agent:
+
+- metabase-representation-format
+- metabase-database-metadata
+
+See [Agent skills](https://github.com/metabase/agent-skills).
+
+## Using AI to create Metabase content
+
+Here's a basic workflow.
+
+### 1. Create a git repo
+
+Initialize a git repo with a README.md and an initial commit.
+
+### 2. Check out a branch
+
+Create a new branch to track your work.
+
+```
+git checkout -b your-branch-name
+```
+
+### 3. Export your production Metabase
+
+1. Create an [API key](../people-and-groups/api-keys.md).
+2. Assign the key to the Admin group.
+3. Send a `curl` request to export data:
+
+   ```sh
+   curl \
+     -H 'X-API-Key: YOUR_API_KEY' \
+     -X POST 'https://your-metabase-url/api/ee/serialization/export' \
+     -o metabase_data.tgz
+   ```
+
+   substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
+
+   This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
+
+4. Unzip the compressed file:
+
+   ```sh
+   tar -xvf metabase_data.tgz
+   ```
+
+### 4. Commit the export
+
+Commit the initial exported set of YAML files. If your AI goes off the rails, you can always revert to the original export.
+
+### 5. Use AI to edit or create new content
+
+Change into the directory with your serialized files and ask your agent to create whatever you want.
+
+Example prompt:
+
+```
+Use the metabase-database-metadata and metabase-representation-format skills to do the following by editing the YAML files in this directory:
+
+1. Create a new collection called "File-based collection".
+2. Create a new dashboard called "AI-created dashboard", saved to that collection.
+3. Create a question called "AI counts products" that counts the number of products by category.
+4. Add that question to the "AI-created dashboard".
+```
+Make sure your agent actually invokes the skills, otherwise the agent may not get the YAML format right.
+
+### 6. Set up a development instance to check your work
+
+Set up a Metabase instance to check your work. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
+
+We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a docker compose file, add this to your env vars:
+
+```
+MB_LOAD_SAMPLE_CONTENT: "false"
+MB_INSTALL_ANALYTICS_DATABASE: "false"
+```
+
+### 7. Import the changes to your development Metabase
+
+Import your changes to your development Metabase, and check that the import works and the content is as expected.
+
+First, compress your directory of YAML files:
+
+```
+tar -czf metabase_data.tgz metabase_data
+```
+
+Then import that compressed file:
+
+```
+curl -X POST \
+  -H 'X-API-Key: YOUR_API_KEY' \
+  -F 'file=@metabase_data.tgz' \
+  'https://your-metabase-url/api/ee/serialization/import' \
+  -o -
+```
+
+Log in to this Metabase and check that the changes are as you expect.
+
+#### Did your AI go off the rails?
+
+Use git to restore your changes. Avoid re-exporting from your production to "reset" your directory. Exports will overwrite any edits you make to existing files, but exports _won't_ delete any new files your AI creates. So the best way to "reset" is to restore your YAMLs to the last known good commit.
+
+### 8. Commit your changes
+
+If all looks good, commit your changes. If you get any errors, provide the error info to the agent in the same session and it should iron out any issues.
+
+### 9. Import to your production Metabase
+
+Import your changes via the API, or set up [remote sync](../installation-and-operation/remote-sync.md) so that your production instance pulls in the changes automatically.
+
+## Deleting content
+
+Since imports and exports _don't_ delete content, if you want to delete content, you'll need to delete that content in the Metabase application itself, then update the YAML files as well.
+
+1. Delete the content in your production Metabase (in the app's UI itself).
+2. Export from your production Metabase to your repo.
+3. Commit the changes so that the YAML files are updated. That way Metabase won't recreate the deleted items the next time you import your changes.
