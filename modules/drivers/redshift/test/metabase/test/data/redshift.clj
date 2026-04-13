@@ -66,8 +66,25 @@
 (defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
+;; MB_REDSHIFT_TEST_HOSTS
+(defonce ^:private hosts
+  (delay
+    (when-let [hosts (not-empty (tx/db-test-env-var :redshift :hosts))]
+      (str/split hosts #","))))
+
+(defn- random-host []
+  (u/prog1 (if (seq @hosts)
+             (rand-nth @hosts)
+             (tx/db-test-env-var-or-throw :redshift :host))
+    ;; using println on purpose here for purposes of debugging CI, we can remove in the future when we're happy that
+    ;; multiple hosts works as expected
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "Using Redshift host" (pr-str (first (str/split <> #"\."))))))
+
+(defonce ^:private host (delay (random-host)))
+
 (def db-connection-details
-  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+  (delay {:host                    @host
           :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
           :db                      (tx/db-test-env-var-or-throw :redshift :db)
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
