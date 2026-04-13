@@ -186,6 +186,7 @@ describe("admin > custom visualizations", () => {
 
         // Refetch
         H.interceptPluginRefresh();
+        cy.findByText("demo-viz").should("be.visible").realHover();
         cy.findByRole("button", { name: /ellipsis/i }).click();
         H.popover().findByText("Re-fetch").click();
         cy.wait("@pluginRefresh").then(({ response }) => {
