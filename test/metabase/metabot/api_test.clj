@@ -617,7 +617,7 @@
     (let [text-part {:type :text :text "hello"}]
       (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
   (testing "handles result with no :output key"
-    (is (= {:type :tool-output :id "call-2" :result {:output nil}}
+    (is (= {:type :tool-output :id "call-2" :result {}}
            (#'api/strip-tool-output-bloat
             {:type   :tool-output
              :id     "call-2"

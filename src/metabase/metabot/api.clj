@@ -94,10 +94,9 @@
   Both LLM adapters only read (get-in part [:result :output]) when replaying history.
   Everything else (:structured-output, :resources, :data-parts, etc.) is transient
   runtime data that can be very large."
-  [{:keys [type result] :as part}]
-  (if (= :tool-output type)
-    (assoc part :result {:output (:output result)})
-    part))
+  [{:keys [type] :as part}]
+  (cond-> part
+    (= :tool-output type) (update :result select-keys [:output])))
 
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
@@ -116,11 +115,10 @@
         ;; :data is like `:navigate_to`
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
-                        (mapv strip-tool-output-bloat))
-        content-json (json/encode content)]
+                        (mapv strip-tool-output-bloat))]
     (prometheus/observe! :metabase-metabot/message-persist-bytes
                          {:profile-id (or profile-id "unknown")}
-                         (u/string-byte-count content-json))
+                         (u/string-byte-count (json/encode content)))
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
@@ -128,7 +126,7 @@
                                                :state   (:data state-part)})))
       (t2/insert! :model/MetabotMessage
                   {:conversation_id conversation-id
-                   :data            content-json
+                   :data            content
                    :usage           usage
                    :role            :assistant
                    :profile_id      profile-id
