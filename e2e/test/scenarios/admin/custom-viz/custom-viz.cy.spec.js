@@ -207,7 +207,6 @@ describe("admin > custom visualizations", () => {
         cy.findByLabelText(/Pinned version/)
           .clear()
           .type("main");
-        cy.findByLabelText(/I understand/).click();
 
         cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
           "pluginUpdate",

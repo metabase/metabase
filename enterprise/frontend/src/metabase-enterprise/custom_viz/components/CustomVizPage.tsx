@@ -42,21 +42,21 @@ export function CustomVizPage({ params }: Props) {
   const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
   const { data: plugins } = useListAllCustomVizPluginsQuery();
   const plugin = pluginId ? plugins?.find((p) => p.id === pluginId) : undefined;
-  const isEdit = pluginId != null;
+  const isEdit = pluginId !== undefined;
 
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
 
   const validationSchema = useMemo(
     () =>
-      Yup.object({
-        acknowledgedRisk: isEdit
-          ? Yup.boolean()
-          : Yup.boolean().oneOf(
+      isEdit
+        ? undefined
+        : Yup.object({
+            acknowledgedRisk: Yup.boolean().oneOf(
               [true],
               t`You must acknowledge the security risk before proceeding.`,
             ),
-      }),
+          }),
     [isEdit],
   );
 
