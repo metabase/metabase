@@ -538,7 +538,12 @@ export function useViewerState(): UseViewerStateResult {
         // Otherwise the caller is not changing entity structure (paren cleanup,
         // filter/breakout changes, URL restore) so tabs are kept as-is.
         const reconciledTabs = slotMapping
-          ? remapDimensionMappings(prev.tabs, slotMapping, formulaEntities)
+          ? remapDimensionMappings(
+              prev.tabs,
+              slotMapping,
+              formulaEntities,
+              prev.formulaEntities,
+            )
           : prev.tabs;
         let tabs = assignDimensionsForUnmappedSlots(
           reconciledTabs,
