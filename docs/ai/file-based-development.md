@@ -65,8 +65,6 @@ git checkout -b your-branch-name
    tar -xvf metabase_data.tgz
    ```
 
-   The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export. Rename it to `metabase_data` so the compress command in step 7 works as written, or substitute the actual directory name when you get there.
-
 ### 4. Commit the export
 
 Commit the initial exported set of YAML files. If your AI goes off the rails, you can always revert to the original export.
@@ -85,6 +83,7 @@ Use the metabase-database-metadata and metabase-representation-format skills to 
 3. Create a question called "AI counts products" that counts the number of products by category.
 4. Add that question to the "AI-created dashboard".
 ```
+
 Make sure your agent actually invokes the skills, otherwise the agent may not get the YAML format right.
 
 ### 6. Set up a development instance to check your work
