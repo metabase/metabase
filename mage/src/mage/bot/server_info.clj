@@ -46,20 +46,24 @@
           (println (str var-name "=" display-v)))))
     (println)
 
-    ;; nREPL discovery — extract the port number from clj-nrepl-eval's output
-    ;; and print a single unambiguous line for the agent to consume.
+    ;; nREPL discovery — try clj-nrepl-eval first, fall back to reading
+    ;; .nrepl-port directly (which Metabase's dev REPL writes on startup).
     (println "## nREPL Servers")
     (println)
     (let [{:keys [exit out]} (shell/sh* {:quiet? true} "clj-nrepl-eval" "--discover-ports")
-          ;; Look for "localhost:PORT (lang)" lines.
-          port-match (when (zero? exit)
-                       (some (fn [line]
-                               (when-let [m (re-find #"localhost:(\d+)" line)]
-                                 (second m)))
-                             out))]
-      (if port-match
-        (println (str "NREPL_PORT=" port-match))
-        (println "NREPL_PORT=NONE")))
+          port-from-cmd  (when (zero? exit)
+                           (some (fn [line]
+                                   (when-let [m (re-find #"localhost:(\d+)" line)]
+                                     (second m)))
+                                 out))
+          port-from-file (when-not port-from-cmd
+                           (let [f (java.io.File. ^String (System/getProperty "user.dir") ".nrepl-port")]
+                             (when (.exists f)
+                               (str/trim (slurp f)))))]
+      (cond
+        port-from-cmd  (println (str "NREPL_PORT=" port-from-cmd))
+        port-from-file (println (str "NREPL_PORT=" port-from-file))
+        :else          (println "NREPL_PORT=NONE")))
     (println)
 
     ;; Source info

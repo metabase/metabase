@@ -9,6 +9,8 @@
    ```
    If ToolSearch says "MCP servers still connecting," wait 10 seconds and retry up to 3 times. If it still fails, **STOP and tell the user**: "Playwright MCP tools are not available."
 
+   **Always load Playwright, even for backend-only diffs.** Backend changes can produce surprising frontend behavior — wrong response shapes, broken error flows, changed permissions, auth regressions, etc. Part of your job is to exercise the backend changes through the UI and look for anything a user would find surprising or broken, regardless of whether the diff touches any frontend files.
+
 ## Fail-Fast on Tool Issues
 
 If any of these fail during setup or at any point, **STOP immediately** and tell the user what you tried and what failed. Do NOT attempt to fix infrastructure — the user is responsible for providing a working environment.
@@ -16,7 +18,7 @@ If any of these fail during setup or at any point, **STOP immediately** and tell
 - Playwright MCP tools unavailable or erroring → STOP
 - Backend server not responding to health check → STOP
 - API calls returning connection errors → STOP
-- nREPL not responding (shows `NONE` in server info) → STOP
+- nREPL not responding (`-bot-server-info` reports `NREPL_PORT=NONE` AND `.nrepl-port` is absent in the project root) → STOP
 - Linear API unreachable → continue without Linear context (optional)
 
 ## Output and Work Directory
@@ -40,7 +42,7 @@ Use `http://localhost:$MB_JETTY_PORT` for all API calls and browser navigation. 
 
 The backend runs an nREPL server.
 
-The nREPL port is reported by `./bin/mage -bot-server-info` under "nREPL Servers". If it says `NONE`, there is no running REPL — **STOP and tell the user** to start the backend before continuing.
+The nREPL port is reported by `./bin/mage -bot-server-info` under "nREPL Servers" as `NREPL_PORT=<port>`. `-bot-server-info` tries `clj-nrepl-eval --discover-ports` first, then falls back to reading `.nrepl-port` in the project root. If it still reports `NREPL_PORT=NONE`, there is no running REPL — **STOP and tell the user** to start the backend before continuing.
 
 Use nREPL for:
 - Evaluating Clojure expressions against the running backend

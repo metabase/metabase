@@ -76,6 +76,8 @@ For each changed area, note:
 
 This analysis drives your priorities in Phases 2-4: spend more time investigating and exercising the untested paths. Well-tested functionality still deserves a usability review and edge case thinking, but untested code paths are where bugs are most likely hiding.
 
+**Watch for tests that assert a function is NOT called, a path is NOT taken, or an exception IS thrown on a previously-legal path.** Tests of the form `(with-redefs [foo (fn [& _] (throw ...))] (is (= ... (do-thing))))` codify a *prohibition*: "doing-thing must not touch foo." A prohibition test is one concrete signal that the code contains a new prohibition, but it is only a signal — the code itself is the primary source. Flag any such test here in Phase 1 so that Phase 2's "Every new prohibition is a new requirement" analysis covers both the code-level guard AND the test that locks it in.
+
 ### Learn UI interaction patterns from E2E tests
 
 Read the E2E test files related to the changed functionality (`e2e/` directory, `*.cy.spec.ts` files). These are valuable as **examples of how to interact with the UI** — use them to learn:
@@ -96,6 +98,18 @@ Write a brief diff summary to `{{OUTPUT_DIR}}/diff-summary.md` covering:
 ## Phase 2: Code Analysis (Static Review)
 
 Read the changed files thoroughly. **Prioritize untested code paths** identified in Phase 1 — these are the most likely places for bugs to hide.
+
+**Anti-anchor reminder.** Before you begin static review, explicitly write down — in `initial-review.md` — the top three reasons this patch might be *wrong*, not the top three reasons it looks right. If you cannot come up with three plausible failure modes, you have not yet understood the patch well enough to review it. Code that is small, well-tested, and stylistically clean is not evidence of correctness — it is only evidence of care. Reviews that open with praise are reviews that miss bugs. Attack the diff first, then credit it.
+
+**Every new prohibition is a new requirement.** This is the most important lens for the entire review. Any place the PR *narrows* what was previously allowed — a new guard, a new early-return, a new `when`, a new condition in an `if`, a new precondition check, an added `cond` branch that filters something out, a tightened spec, a stricter validation, a prohibition test, a removed call site — creates a new rule: *this thing that used to happen must no longer happen, at least not in some case.* Before accepting any such change, you MUST:
+
+1. **State the old rule in one sentence.** "Previously, X happened when Y." Be precise about the triggering condition Y.
+2. **State the new rule in one sentence.** "Now, X only happens when Y AND Z." Name the new condition Z.
+3. **Enumerate who was in `Y AND NOT Z`.** What concrete records, users, flows, callers, inputs, or deployment states fell under the old rule but are excluded by the new one? If you cannot enumerate them, you cannot yet accept the change as safe.
+4. **For each excluded case, ask: was this exclusion intended?** Is it mentioned in the PR description? Does it match a reasonable reading of the Linear issue? If the author framed the PR as "fixing X" but the new rule also excludes Y and Z as a side-effect, that side-effect is a regression unless the author explicitly acknowledges and justifies it.
+5. **For each excluded case, ask: is it reachable by a legitimate user journey?** Not "could an adversary trigger it" — "does a normal customer operating the product in a normal way end up there?" If yes, the exclusion is a REGRESSION and must be reported as SEVERE even if the diff is small and the tests are green.
+
+This lens applies to **every** added guard, not just to tests. A prohibition test is just one signal that the code contains a new prohibition; the code itself is the primary source. When in doubt, imagine this change being reviewed ten years from now by an engineer who only has the diff and wonders "why is this guard here?" — if you can't answer why every excluded case is correctly excluded, neither can they, and the guard is a bug waiting to happen.
 
 For each change, look for **specific, triggerable bugs**.
 
@@ -152,6 +166,16 @@ For each change, think about:
   (e.g., user exists/doesn't, field values, credential validity) and compare
   old vs new behavior for each row. Any row where behavior changes is a potential
   regression — evaluate whether that change is intentional AND safe.
+- **Include transition rows, not just state rows.** A state-only truth table
+  (one row per possible value of a field) is insufficient for any PR that changes
+  how a record MOVES between states. For every "no-op" row (state the new code
+  treats as unchanged), ask: *is this state a terminal state, or a transitional
+  one on the way to another state?* Add explicit rows for each transition the old
+  code enabled: *record was in state A, then performed action X, which moved it
+  to state B.* If the new code breaks that transition, that's a regression even
+  if every individual state row looks safe in isolation. Specifically look for
+  transitions driven by a user's first successful login, first successful SSO
+  handshake, first sync — any "first-time" event that flips a bit.
 - Be skeptical of the PR description's framing — the author describes *intended*
   behavior, but your job is to find *unintended* behavior changes. The PR may
   correctly solve the stated problem while silently breaking an unstated assumption.
@@ -159,6 +183,17 @@ For each change, think about:
   added later, fields that aren't always populated, fields that depend on how/when
   the record was created. If the new logic depends on a field value, ask: "what
   about records where this field was never set?"
+- **Flag-writer census for gated conditions.** If the new logic gates behavior on
+  a field's value (e.g., "only do X when `user.sso_source = :ldap`"), you MUST
+  enumerate every code path that writes that field BEFORE accepting the gate as
+  safe. Use `Grep` to find writers (`t2/update!`, `t2/insert!`, raw SQL, migrations
+  under `resources/migrations/`). For each writer, ask: *can this writer fire
+  without going through the flow I am now gating?* If the only writer is the gated
+  flow itself, the gate creates a **bootstrap deadlock** — existing records in the
+  "other" bucket can never escape. This is a REGRESSION, not a feature, and must
+  be reported as SEVERE. The classic signature: the field is set by the success
+  path of flow F, and the PR now only runs F when the field is already set. Zero
+  new records can enter the "set" state after the PR.
 
 ### For each finding, record:
 - **File and line range** (e.g., `src/metabase/foo.clj:42-58`)
@@ -179,6 +214,8 @@ If no potential bugs are found, write "No issues found during code analysis. The
 ## Phase 3: Reproduce Issues
 
 For each finding from Phase 2 with confidence MEDIUM or above. Also, spend extra time exercising code paths that Phase 1's test coverage analysis identified as untested — even if Phase 2 didn't flag a specific bug, try interacting with untested functionality to see if anything unexpected happens.
+
+**Prefer reproducing through the UI when the change is user-reachable.** Even if a bug lives in backend code, reproducing it through the actual user flow tells you whether real users will hit it, what error message they'll see, and whether other UI state gets corrupted. REPL/API reproduction is fastest for confirming the bug exists, but a UI repro is the strongest evidence and the most informative for the report. Do both when the bug is UI-reachable.
 
 ### Choose the fastest verification path
 
@@ -249,13 +286,13 @@ Write `{{OUTPUT_DIR}}/initial-review-results.md` with:
 
 Now act as a **QA engineer and UX expert**. You have access to the source code AND the running app — use both.
 
-**If the branch has no frontend changes, no new API endpoints, and no user-facing behavior changes:** Keep this phase brief. Focus on server health verification, startup/shutdown behavior, and a concise list of architectural strengths. Don't force a full browser-based UX review when there's no UX to review.
+**Backend-only diffs still need a full UX review.** A backend change with no frontend files modified can still produce surprising frontend behavior — wrong response shapes, broken error flows, changed permissions, auth regressions, slower queries that cause UI jank, dropped data, etc. Your job is to find out what a real user would experience after this change lands. Don't shortcut this phase based on what files the diff touches; shortcut it based on what surface area the change actually affects (and exercise that surface area through the UI).
 
 ### Code-guided exploration
-1. From the diff, identify which UI pages/components changed
-2. Identify which API endpoints changed
+1. From the diff, identify which UI pages/components are affected — directly (frontend file changes) or indirectly (backend changes that flow through to the UI via API responses, permissions, settings, etc.)
+2. Identify which API endpoints changed (or which endpoints' behavior changed because they call into modified backend code)
 3. Refer back to Phase 1's test coverage analysis — focus UX testing on areas with weak or no test coverage. Well-tested flows deserve a quick usability check, but untested flows need thorough exploration
-3. Look for related pages/APIs that should be consistent with the changes
+4. Look for related pages/APIs that should be consistent with the changes
 
 ### Browser-based UX review (Playwright)
 Navigate to the affected areas and evaluate using the shared UX checklist:
@@ -293,6 +330,16 @@ Write `{{OUTPUT_DIR}}/ux-review.md` with findings and evidence references.
 ---
 
 ## Phase 5: Final Report
+
+### Pre-report self-audit
+
+Before generating the report, re-read `initial-review.md` and `ux-review.md` with the following checklist in mind. Add any new findings that fall out of this pass to `initial-review.md`, then re-run Phase 3 verification for them. **Do NOT skip this step when the current findings list is empty — empty findings lists are the exact condition under which self-audit has the highest value.**
+
+1. **Bootstrap check.** For every piece of state the PR reads, is there a code path that writes that state WITHOUT going through the code path the PR gates? If no — the PR may contain a deadlock.
+2. **Transition check.** For every "before" state the PR leaves unchanged, is that state reachable by a legitimate user journey, or is it only reachable as a transient waypoint on the way to another state the PR now blocks?
+3. **Prohibition test check.** For every test the PR adds of the form "X must NOT happen," re-derive WHY that prohibition is correct. Was X previously legal? Under what conditions? Does the new prohibition eliminate a legitimate user journey?
+4. **Rollout check.** Could an admin deploy this PR to an existing instance with real users and have those users immediately stop being able to do something they could do yesterday? Name the specific user class.
+5. **Writer census check.** For any field read by the new code, list every writer of that field. If the list is shorter than expected, revisit the gate.
 
 ### Gather inputs
 Read `initial-review-results.md` and `ux-review.md` from the output directory.

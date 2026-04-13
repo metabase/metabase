@@ -158,22 +158,22 @@
       ;; branch-ref is either the local branch name or origin/<name> — workmux
       ;; add will check it out either way. No --base needed since the branch
       ;; already exists (autobot refuses to create new branches).
-      (let [ref         (or branch-ref branch-name)
-            workmux-cmd (str "workmux add " ref
-                             " --name " session-name
-                             " -P " prompt-file)]
+      (let [ref (or branch-ref branch-name)]
         (if in-tmux?
-          ;; Already inside tmux — run workmux directly
+          ;; Already inside tmux — run workmux directly; it creates a new window
+          ;; in the current session.
           (shell/sh "workmux" "add" ref
                     "--name" session-name
                     "-P" prompt-file)
-          ;; Not inside tmux — create a detached session
+          ;; Not inside tmux — use workmux's --session flag so it creates its own
+          ;; tmux session. This avoids the extra "zsh" window we used to get from
+          ;; pre-creating a tmux session and sending keys to it.
           (do
-            (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
-            (shell/sh "nohup" "bash" "-c"
-                      (str "tmux new-session -d -s " session-name
-                           " && tmux send-keys -t " session-name
-                           " '" workmux-cmd "' Enter"))
+            (println (c/yellow "Not inside tmux. Running workmux with --session..."))
+            (shell/sh "workmux" "add" ref
+                      "--name" session-name
+                      "-P" prompt-file
+                      "--session")
             (println)
             (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
             (println)
@@ -181,10 +181,6 @@
             (println (str "  tmux attach -t " session-name)))))
 
       (finally
-        ;; When not in tmux, workmux add was launched async via send-keys;
-        ;; give it time to read .workmux.yaml before we restore/remove it
-        (when-not in-tmux?
-          (Thread/sleep 3000))
         ;; Restore .workmux.yaml
         (if had-backup?
           (do
