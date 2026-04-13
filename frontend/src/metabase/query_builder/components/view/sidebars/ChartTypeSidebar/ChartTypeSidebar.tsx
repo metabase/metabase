@@ -36,7 +36,7 @@ export const ChartTypeSidebar = ({
 }: ChartTypeSidebarProps) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const customVizPlugins = PLUGIN_CUSTOM_VIZ.useCustomVizPlugins();
+  const { plugins: customVizPlugins } = PLUGIN_CUSTOM_VIZ.useCustomVizPlugins();
   const [pluginsLoaded, setPluginsLoaded] = useState(false);
 
   const onInfo = useCallback(

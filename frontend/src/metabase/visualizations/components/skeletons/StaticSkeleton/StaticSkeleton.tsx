@@ -24,7 +24,6 @@ export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
 export interface StaticSkeletonIconProps {
   name: IconName;
   iconUrl?: string;
-  iconDarkUrl?: string;
 }
 
 const StaticSkeleton = ({

@@ -19,6 +19,7 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import {
   Ellipsified,
   FixedSizeIcon,
@@ -26,7 +27,6 @@ import {
   Repeat,
   Skeleton,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { SortingOptions } from "metabase-types/api";
@@ -207,6 +207,7 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
 };
 
 function NameCell({ model }: { model?: ModelResult }) {
+  const getIcon = useGetIcon();
   const headingId = `model-${model?.id || "dummy"}-heading`;
   const icon = getIcon(model ?? { model: "dataset" }) ?? { name: "folder" };
   return (

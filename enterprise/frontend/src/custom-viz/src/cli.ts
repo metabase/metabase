@@ -13,7 +13,6 @@ import { version } from "../package.json";
 
 import {
   generateGitignore,
-  generateIconDarkSvg,
   generateIconSvg,
   generateIndexTsx,
   generateManifest,
@@ -67,10 +66,6 @@ program
       writeFile(join(name, "metabase-plugin.json"), generateManifest(name)),
       writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
       writeFile(
-        join(name, "public", "assets", "icon-dark.svg"),
-        generateIconDarkSvg(),
-      ),
-      writeFile(
         join(name, "public", "assets", "thumbs-up.png"),
         readBinaryTemplate("thumbs-up.png"),
       ),
@@ -89,7 +84,6 @@ program
     console.log(`  ${name}/src/index.tsx`);
     console.log(`  ${name}/metabase-plugin.json`);
     console.log(`  ${name}/public/assets/icon.svg`);
-    console.log(`  ${name}/public/assets/icon-dark.svg`);
     console.log(`  ${name}/public/assets/thumbs-up.png`);
     console.log(`  ${name}/public/assets/thumbs-down.png`);
     console.log(`  ${name}/.gitignore`);

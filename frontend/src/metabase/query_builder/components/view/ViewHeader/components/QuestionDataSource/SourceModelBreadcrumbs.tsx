@@ -2,13 +2,12 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Tooltip } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
-
-import { getQuestionIcon } from "./utils";
 
 interface SourceModelBreadcrumbsProps {
   divider?: ReactElement | string;
@@ -21,6 +20,7 @@ export function SourceModelBreadcrumbs({
   ...props
 }: SourceModelBreadcrumbsProps) {
   const collectionId = question.collectionId();
+  const getIcon = useGetIcon();
 
   const { data: collection, isLoading } = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
@@ -37,7 +37,7 @@ export function SourceModelBreadcrumbs({
         <HeadBreadcrumbs.Badge
           key="collection"
           to={Urls.collection(collection)}
-          icon={getQuestionIcon(question)}
+          icon={getIcon({ model: "card", type: question.type() }).name}
           inactiveColor="text-tertiary"
         >
           {collection?.name || t`Our analytics`}

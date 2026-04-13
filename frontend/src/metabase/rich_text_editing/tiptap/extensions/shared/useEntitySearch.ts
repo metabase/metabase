@@ -22,11 +22,10 @@ import {
   USER_SEARCH_LIMIT,
 } from "./constants";
 import {
-  buildRecentsMenuItems,
-  buildSearchMenuItems,
-  buildUserMenuItems,
-  filterRecents,
-} from "./suggestionUtils";
+  useBuildRecentsMenuItems,
+  useBuildSearchMenuItems,
+} from "./suggestionHooks";
+import { buildUserMenuItems, filterRecents } from "./suggestionUtils";
 
 export type EntitySearchOptions = Omit<SearchRequest, "q" | "models" | "limit">;
 
@@ -57,6 +56,8 @@ export function useEntitySearch({
   searchModels = LINK_SEARCH_MODELS,
   searchOptions = {},
 }: UseEntitySearchOptions): UseEntitySearchResult {
+  const buildSearchMenuItems = useBuildSearchMenuItems();
+  const buildRecentsMenuItems = useBuildRecentsMenuItems();
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
       refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
@@ -136,6 +137,8 @@ export function useEntitySearch({
     onSelectRecent,
     onSelectSearchResult,
     onSelectUser,
+    buildSearchMenuItems,
+    buildRecentsMenuItems,
   ]);
 
   return {

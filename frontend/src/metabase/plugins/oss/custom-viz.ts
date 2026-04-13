@@ -1,7 +1,11 @@
 import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { CustomVizPluginRuntime } from "metabase-types/api";
+import type { IconData } from "metabase/utils/icon";
+import type {
+  CustomVizPluginRuntime,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
 const getDefaultPluginCustomViz = () => ({
@@ -15,7 +19,10 @@ const getDefaultPluginCustomViz = () => ({
     loading: false,
   }),
   useCustomVizPlugins: (_opts?: { enabled?: boolean }) =>
-    undefined as CustomVizPluginRuntime[] | undefined,
+    ({ plugins: undefined, isLoading: false }) as {
+      plugins: CustomVizPluginRuntime[] | undefined;
+      isLoading: boolean;
+    },
   loadCustomVizPlugin: async (
     _plugin: CustomVizPluginRuntime,
     _cacheBustSuffix?: string,
@@ -23,6 +30,11 @@ const getDefaultPluginCustomViz = () => ({
   ) => null as string | null,
   getPluginAssetUrl: (_pluginId: number, _assetPath: string | null) =>
     undefined as string | undefined,
+  useCustomVizPluginsIcon: () => (_display: VisualizationDisplay) =>
+    ({ icon: undefined, isLoading: false }) as {
+      icon: IconData | undefined;
+      isLoading: boolean;
+    },
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
   isCustomVizDisplay,

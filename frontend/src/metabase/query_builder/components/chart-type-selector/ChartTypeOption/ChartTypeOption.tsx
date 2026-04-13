@@ -25,9 +25,7 @@ export const ChartTypeOption = ({
 
   const displayName = visualization?.getUiName() ?? visualizationType;
   const iconName = visualization?.iconName;
-  const hasCustomIcon = !!(
-    visualization?.iconUrl || visualization?.iconDarkUrl
-  );
+  const hasCustomIcon = !!visualization?.iconUrl;
 
   return (
     <Center pos="relative" data-testid="chart-type-option">
@@ -61,7 +59,6 @@ export const ChartTypeOption = ({
           <EntityIcon
             name={iconName ?? "unknown"}
             iconUrl={visualization?.iconUrl}
-            iconDarkUrl={visualization?.iconDarkUrl}
             alt={displayName}
             c={isSelected ? "white" : "brand"}
             size={20}
