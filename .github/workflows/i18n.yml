@@ -49,3 +49,7 @@ jobs:
       run: ./bin/i18n/update-translation-template
     - name: Verify i18n translations (.po files)
       run: ./bin/i18n/build-translation-resources
+    - name: Validate translated MessageFormat patterns
+      run: >-
+        clojure -X:dev:test
+        :only '[metabase.util.i18n.validation-test]'
