@@ -25,7 +25,7 @@ const elements = [
     mode: "full",
   }),
   createElement({ type: "lib", name: "utils" }),
-  createElement({ type: "lib", name: "css" }),
+  createElement({ type: "lib", name: "css", enforceOutgoing: true }),
   createElement({
     type: "lib",
     name: "env",
@@ -39,10 +39,10 @@ const elements = [
     name: "mlv2",
     pattern: "frontend/src/metabase-lib/*/**",
   }),
-  createElement({ type: "basic", name: "ui" }),
+  createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "basic", name: "api" }),
   // shared
-  createElement({ type: "shared", name: "common" }),
+  createElement({ type: "shared", name: "common", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "visualizations" }),
   // feature
