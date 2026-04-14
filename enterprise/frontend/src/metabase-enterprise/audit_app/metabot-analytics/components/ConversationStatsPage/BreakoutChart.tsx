@@ -4,6 +4,7 @@ import { useGetAdhocQueryQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { Card, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type { VisualizationDisplay } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -24,6 +25,14 @@ type Props = {
   title: string;
   display?: VisualizationDisplay;
   metric: UsageStatsMetric;
+  onDimensionClick?: (value: unknown) => void;
+};
+
+// When a custom click handler is provided, we need visualizationIsClickable
+// to return true. This mode satisfies that check; the action is never executed
+// because handleVisualizationClick short-circuits first.
+const CLICKABLE_MODE: ClickActionsMode = {
+  actionsForClick: () => [{ name: "custom-click" } as any],
 };
 
 export function BreakoutChart({
@@ -32,6 +41,7 @@ export function BreakoutChart({
   title,
   display = "row",
   metric,
+  onDimensionClick,
 }: Props) {
   const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
 
@@ -87,7 +97,7 @@ export function BreakoutChart({
   }, [data, jsQuery, display]);
 
   if (isFetching || !rawSeries) {
-    return <Skeleton h={300} />;
+    return <Skeleton h={350} />;
   }
 
   return (
@@ -95,7 +105,17 @@ export function BreakoutChart({
       <Text fw="bold" mb="sm">
         {title}
       </Text>
-      <Visualization rawSeries={rawSeries} isDashboard />
+      <Visualization
+        rawSeries={rawSeries}
+        isDashboard
+        mode={onDimensionClick ? CLICKABLE_MODE : undefined}
+        handleVisualizationClick={(clicked: any) => {
+          const value = clicked?.dimensions?.[0]?.value;
+          if (value != null && onDimensionClick) {
+            onDimensionClick(value);
+          }
+        }}
+      />
     </Card>
   );
 }

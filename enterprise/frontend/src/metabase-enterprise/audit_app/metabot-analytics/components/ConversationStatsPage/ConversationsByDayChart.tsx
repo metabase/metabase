@@ -4,6 +4,7 @@ import { useGetAdhocQueryQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { Card, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -21,9 +22,18 @@ import {
 type Props = {
   dateFilter: DateFilterValue;
   metric: UsageStatsMetric;
+  onDimensionClick?: (value: unknown) => void;
 };
 
-export function ConversationsByDayChart({ dateFilter, metric }: Props) {
+const CLICKABLE_MODE: ClickActionsMode = {
+  actionsForClick: () => [{ name: "custom-click" } as any],
+};
+
+export function ConversationsByDayChart({
+  dateFilter,
+  metric,
+  onDimensionClick,
+}: Props) {
   const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
 
   const query = useMemo(() => {
@@ -79,7 +89,7 @@ export function ConversationsByDayChart({ dateFilter, metric }: Props) {
   }, [data, jsQuery]);
 
   if (isFetching || !rawSeries) {
-    return <Skeleton h={300} />;
+    return <Skeleton h={350} />;
   }
 
   return (
@@ -87,7 +97,17 @@ export function ConversationsByDayChart({ dateFilter, metric }: Props) {
       <Text fw="bold" mb="sm">
         {getChartTitle(metric, "day")}
       </Text>
-      <Visualization rawSeries={rawSeries} isDashboard />
+      <Visualization
+        rawSeries={rawSeries}
+        isDashboard
+        mode={onDimensionClick ? CLICKABLE_MODE : undefined}
+        handleVisualizationClick={(clicked: any) => {
+          const value = clicked?.dimensions?.[0]?.value;
+          if (value != null && onDimensionClick) {
+            onDimensionClick(value);
+          }
+        }}
+      />
     </Card>
   );
 }
