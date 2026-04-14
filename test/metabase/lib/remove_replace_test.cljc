@@ -545,6 +545,29 @@
                                           (second (lib/aggregations <> 0))
                                           (lib/max (meta/field-metadata :products :price)))))))))))
 
+(deftest ^:parallel replace-clause-preserves-aggregation-name-test
+  (testing "replace-clause preserves the :name of the aggregation being replaced (so refs from later stages keep working)"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
+                    (lib/aggregate (lib/distinct (meta/field-metadata :venues :name))))
+          [agg1 agg2] (lib/aggregations query)
+          replaced    (lib/replace-clause query agg1 (lib/max (meta/field-metadata :venues :price)))]
+      (is (= "aggregation"   (-> agg1 second :name)))
+      (is (= "aggregation_2" (-> agg2 second :name)))
+      (is (=? [[:max {:name "aggregation"} [:field {} (meta/id :venues :price)]]
+               [:distinct {:name "aggregation_2"} [:field {} (meta/id :venues :name)]]]
+              (lib/aggregations replaced)))))
+  (testing "an explicit :name on the replacement clause is respected and not overwritten"
+    (let [query    (-> (lib.tu/venues-query)
+                       (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
+          agg      (first (lib/aggregations query))
+          replaced (lib/replace-clause query agg
+                                       (lib.options/with-clause-name
+                                         (lib/max (meta/field-metadata :venues :price))
+                                         "custom-name"))]
+      (is (=? [[:max {:name "custom-name"} [:field {} (meta/id :venues :price)]]]
+              (lib/aggregations replaced))))))
+
 (deftest ^:parallel replace-metric-test
   (testing "replacing with metric should work"
     (let [metadata-provider (lib.tu/mock-metadata-provider
