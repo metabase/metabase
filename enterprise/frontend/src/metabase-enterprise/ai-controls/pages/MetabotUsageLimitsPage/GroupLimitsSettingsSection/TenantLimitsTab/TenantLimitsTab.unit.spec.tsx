@@ -92,8 +92,8 @@ describe("TenantLimitsTab", () => {
       ],
     });
 
-    expect(screen.getByDisplayValue("1 Million")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("10 Millions")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1 million")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("10 million")).toBeInTheDocument();
   });
 
   it("shows 'Unlimited' placeholder when instance limit is null", () => {
@@ -143,7 +143,7 @@ describe("TenantLimitsTab", () => {
     });
     await userEvent.type(acmeInput, "300");
 
-    expect(acmeInput).toHaveValue("300 Millions");
+    expect(acmeInput).toHaveValue("300 million");
   });
 
   it("shows error when value exceeds the instance limit", async () => {

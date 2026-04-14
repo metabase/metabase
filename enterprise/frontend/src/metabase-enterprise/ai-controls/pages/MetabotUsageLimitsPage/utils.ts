@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, msgid, t } from "ttag";
 
 import type { SegmentedControlItem } from "metabase/ui";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
@@ -112,7 +112,14 @@ export function getMaxUsageInputSuffix(
   value?: number | null,
 ) {
   if (limitType === "tokens" && !!value) {
-    return " " + (value === 1 ? t`Million` : t`Millions`);
+    return (
+      " " +
+      c("suffix after a numeral, e.g. '10 million'").ngettext(
+        msgid`million`,
+        `million`,
+        value,
+      )
+    );
   }
 
   return undefined;

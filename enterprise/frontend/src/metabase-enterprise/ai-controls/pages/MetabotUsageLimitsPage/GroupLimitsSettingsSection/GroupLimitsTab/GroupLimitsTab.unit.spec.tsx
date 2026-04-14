@@ -115,8 +115,8 @@ describe("GroupLimitsTab", () => {
       ],
     });
 
-    expect(screen.getByDisplayValue("100 Millions")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("50 Millions")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("100 million")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("50 million")).toBeInTheDocument();
   });
 
   it("shows 'Unlimited' placeholder when instance limit is null", () => {
@@ -140,10 +140,10 @@ describe("GroupLimitsTab", () => {
       name: /Administrators/,
     });
     await userEvent.type(adminInput, "1");
-    expect(adminInput).toHaveValue("1 Million");
+    expect(adminInput).toHaveValue("1 million");
     await userEvent.clear(adminInput);
     await userEvent.type(adminInput, "10");
-    expect(adminInput).toHaveValue("10 Millions");
+    expect(adminInput).toHaveValue("10 million");
   });
 
   it("shows error message when error is present", () => {
