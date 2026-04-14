@@ -145,3 +145,9 @@
    scorers.dimension/numeric-variance  0.00
    scorers.dimension/temporal-range    0.05
    scorers.dimension/text-structure    0.05})
+
+(def metrics-viewer-weights
+  "Weight profile for metrics viewer dimension picker. Only type-based scorers are
+   included since dimension metadata doesn't carry fingerprint data."
+  {scorers.dimension/type-penalty 0.50
+   scorers.dimension/type-bonus   0.50})

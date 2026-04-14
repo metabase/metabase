@@ -2,6 +2,7 @@
   "Core logic for computing projectable dimensions and their positions in a MetricDefinition.
    Projectable dimensions are dimensions that can be used for projections (breakouts)."
   (:require
+   [metabase.interestingness.core :as interestingness]
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.schema :as lib-metric.schema]
@@ -39,10 +40,21 @@
                      positions (assoc :projection-positions (vec positions)))))
                dimensions)))
 
+(defn- score-and-sort-dimensions
+  "Score dimensions by interestingness and sort highest first.
+   Annotates each dimension with `:interestingness-score`."
+  [dimensions]
+  (let [scored (perf/mapv (fn [dim]
+                            (let [{:keys [score]} (interestingness/score-field
+                                                    interestingness/metrics-viewer-weights dim)]
+                              (assoc dim :interestingness-score score)))
+                          dimensions)]
+    (vec (sort-by :interestingness-score > scored))))
+
 (mu/defn projectable-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Get dimensions that can be used for projections.
-   Returns dimensions with :projection-positions indicating which are already used.
-   For single-source definitions; uses the expression leaf's :lib/uuid to scope projections."
+   Returns dimensions with :projection-positions indicating which are already used,
+   sorted by interestingness score (highest first)."
   [definition :- ::lib-metric.schema/metric-definition]
   (let [{:keys [expression projections metadata-provider]} definition
         leaf-type  (lib-metric.definition/expression-leaf-type expression)
@@ -54,13 +66,16 @@
         typed-proj (perf/some #(when (= leaf-uuid (:lib/uuid %)) %)
                               (or projections []))
         flat-projs (if typed-proj (:projection typed-proj) [])]
-    (add-projection-positions dimensions flat-projs)))
+    (-> dimensions
+        (add-projection-positions flat-projs)
+        score-and-sort-dimensions)))
 
 (defn projectable-dimensions-for-source
   "Get projectable dimensions for a specific source instance.
    source-instance is an expression leaf vector [:metric {:lib/uuid \"...\"} id]
    or [:measure {:lib/uuid \"...\"} id].
-   Returns dimensions with :projection-positions scoped to that source's typed-projection."
+   Returns dimensions with :projection-positions scoped to that source's typed-projection,
+   sorted by interestingness score (highest first)."
   [definition source-instance]
   (let [{:keys [projections metadata-provider]} definition
         leaf-type    (lib-metric.definition/expression-leaf-type source-instance)
@@ -72,7 +87,9 @@
         typed-proj   (perf/some #(when (= source-uuid (:lib/uuid %)) %)
                                 (or projections []))
         flat-projs   (if typed-proj (:projection typed-proj) [])]
-    (add-projection-positions dimensions flat-projs)))
+    (-> dimensions
+        (add-projection-positions flat-projs)
+        score-and-sort-dimensions)))
 
 (defn project-for-source
   "Add a projection for a dimension-ref to a specific source instance.
