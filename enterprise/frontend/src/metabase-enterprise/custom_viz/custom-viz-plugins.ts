@@ -23,6 +23,8 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
 import type {
+  CustomVizPlugin,
+  CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -41,6 +43,11 @@ import { ensureVizApi } from "./custom-viz-globals";
 const loadedPlugins = new Map<
   number,
   { identifier: string; commit: string | null; etag: string | null }
+>();
+
+const failedPluginCommits = new Map<
+  CustomVizPluginId,
+  CustomVizPlugin["resolved_commit"]
 >();
 
 /**
@@ -76,7 +83,7 @@ function useCustomVizDevReload(
       return;
     }
 
-    const identifier = display!.slice("custom:".length);
+    const identifier = display.slice("custom:".length);
     const plugin = plugins.find((p) => p.identifier === identifier);
     if (!plugin?.dev_bundle_url) {
       return;
@@ -163,7 +170,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       return;
     }
 
-    const identifier = display!.slice("custom:".length);
+    const identifier = display.slice("custom:".length);
     const plugin = plugins.find((p) => p.identifier === identifier);
     if (!plugin) {
       return;
@@ -195,10 +202,27 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   const matchedPlugin = needsCustomViz
     ? plugins?.find((p) => getCustomPluginIdentifier(p) === display)
     : undefined;
-  const isReady =
-    matchedPlugin != null &&
-    loadedPlugins.get(matchedPlugin.id)?.commit ===
-      matchedPlugin.resolved_commit;
+
+  // A plugin is "ready" when we've either loaded its bundle or recorded a
+  // failure for the current commit. Failed plugins resolve to loading: false
+  // so the visualization registry falls back to the default instead
+  // of spinning forever.
+  const isReady = (() => {
+    if (!matchedPlugin) {
+      return false;
+    }
+    const loadedCommit = loadedPlugins.get(matchedPlugin.id)?.commit;
+    const failedCommit = failedPluginCommits.get(matchedPlugin.id);
+    /**
+     * Commits may be null, so null === null is a valid case.
+     * Undefined indicates that the plugin hasn't been loaded yet.
+     */
+    if (loadedCommit === undefined && failedCommit === undefined) {
+      return false;
+    }
+    const resolvedCommit = matchedPlugin.resolved_commit;
+    return resolvedCommit === loadedCommit || resolvedCommit === failedCommit;
+  })();
 
   return { loading: needsCustomViz && !isReady };
 }
@@ -234,10 +258,7 @@ export async function loadCustomVizPlugin(
     }
     const res = await fetch(bundleUrl.href, { cache: "no-store" });
     if (!res.ok) {
-      onInfo?.(
-        t`Couldn't load "${plugin.display_name}" plugin bundle (HTTP ${res.status}).`,
-      );
-      return null;
+      throw new Error(`HTTP ${res.status}`);
     }
 
     const text = await res.text();
@@ -333,10 +354,17 @@ export async function loadCustomVizPlugin(
       commit: plugin.resolved_commit,
       etag: null,
     });
+    failedPluginCommits.delete(plugin.id);
 
     return identifier;
   } catch (error) {
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
+    if (!failedPluginCommits.has(plugin.id)) {
+      onInfo?.(
+        t`The "${plugin.display_name}" visualization is currently unavailable.`,
+      );
+    }
+    failedPluginCommits.set(plugin.id, plugin.resolved_commit);
     return null;
   }
 }
