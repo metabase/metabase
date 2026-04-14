@@ -1,7 +1,7 @@
 import type { Feature, FeatureCollection } from "geojson";
 import { t } from "ttag";
 
-import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+import { computeMinimalBounds } from "metabase/utils/geometry";
 import type { GeoJSONData } from "metabase-types/api";
 
 import { Api } from "./api";

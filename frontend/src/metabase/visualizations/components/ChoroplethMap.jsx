@@ -15,13 +15,11 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import { formatValue } from "metabase/utils/formatting";
+import { computeMinimalBounds } from "metabase/utils/geometry";
 import { connect, useSelector } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import {
-  computeMinimalBounds,
-  getCanonicalRowKey,
-} from "metabase/visualizations/lib/mapping";
+import { getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
 import {
   getDefaultSize,
   getMinSize,
