@@ -113,7 +113,7 @@ export const ChartTypeOption = ({
           <Tooltip
             label={t`This is a development version of the visualization`}
           >
-            <Badge>{t`dev`}</Badge>
+            <Badge variant="outline">{t`dev`}</Badge>
           </Tooltip>
         )}
       </Stack>
