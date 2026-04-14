@@ -347,7 +347,7 @@ export async function loadCustomVizPlugin(
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPlugins.has(plugin.id)) {
       onInfo?.(
-        t`The "${plugin.display_name}" visualization is currently unavailable. Showing a fallback.`,
+        t`The "${plugin.display_name}" visualization is currently unavailable.`,
       );
     }
     failedPlugins.set(plugin.id, plugin.resolved_commit);
