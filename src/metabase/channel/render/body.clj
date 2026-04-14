@@ -404,14 +404,14 @@
    can resolve `getAssetUrl` calls without HTTP."
   [card]
   (when-let [identifier (render.util/custom-viz-identifier (:display card))]
-    (let [{:keys [manifest id] :as plugin} (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+    (let [{:keys [manifest] :as plugin} (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
       (when-let [content (some-> plugin
                                  custom-viz-plugin/resolve-bundle
                                  :content)]
         (let [asset-names (some-> manifest custom-viz-plugin/asset-paths)
               assets      (into {}
                                 (keep (fn [asset-name]
-                                        (when-let [bytes (custom-viz-plugin/resolve-asset id asset-name)]
+                                        (when-let [bytes (custom-viz-plugin/resolve-asset plugin asset-name)]
                                           [asset-name (asset->data-uri asset-name bytes)])))
                                 asset-names)]
           [{:identifier identifier :source content :assets assets}])))))

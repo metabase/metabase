@@ -344,6 +344,15 @@
   [topic event]
   (audit-log/record-event! topic event))
 
+(derive ::custom-viz-plugin-event ::event)
+(derive :event/custom-viz-plugin-create ::custom-viz-plugin-event)
+(derive :event/custom-viz-plugin-update ::custom-viz-plugin-event)
+(derive :event/custom-viz-plugin-delete ::custom-viz-plugin-event)
+
+(methodical/defmethod events/publish-event! ::custom-viz-plugin-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
 (derive ::remote-sync-event ::event)
 (derive :event/remote-sync-import ::remote-sync-event)
 (derive :event/remote-sync-export ::remote-sync-event)

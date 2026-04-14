@@ -1,4 +1,4 @@
-import type { ColumnTypes } from "custom-viz/src/types/column-types";
+import type { ColumnTypes } from "custom-viz";
 
 import {
   hasLatitudeAndLongitudeColumns,

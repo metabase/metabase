@@ -145,6 +145,10 @@
   [glossary _event-type]
   (select-keys glossary [:term]))
 
+(defmethod model-details :model/CustomVizPlugin
+  [plugin _event-type]
+  (select-keys plugin [:identifier :display_name :repo_url :status :enabled :resolved_commit]))
+
 (defmethod model-details :model/RemoteSyncTask
   [task _event-type]
   (select-keys task [:sync_task_type :version]))

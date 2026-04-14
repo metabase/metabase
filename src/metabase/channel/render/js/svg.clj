@@ -47,7 +47,7 @@
     (js.engine/load-resource bundle-path)
     (js.engine/load-resource interface-path)))
 
-(defn make-context
+(defn make-untrusted-context
   "Create a new JS context for static viz rendering. UNTRUSTED: this context is sandboxed
    and must only be used to run code that may include third-party custom viz plugins."
   []
@@ -67,7 +67,7 @@
     (Pool. (reify IPool$Generator
              (generate [_ _]
                ;; Generate a tuple of the engine and the expiry timestamp.
-               [(load-viz-bundle (make-context))
+               [(load-viz-bundle (make-untrusted-context))
                 (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
              (destroy [_ _ _v]))
            ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below 1 instance.
@@ -103,7 +103,7 @@
   "Impl for [[with-static-viz-context]]."
   [f]
   (if config/is-dev?
-    (f (load-viz-bundle (make-context)))
+    (f (load-viz-bundle (make-untrusted-context)))
     (loop []
       (let [[context expiry-ts :as tuple] (.acquire static-viz-context-pool :engines)]
         (if (>= (System/nanoTime) expiry-ts)

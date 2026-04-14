@@ -340,6 +340,7 @@
                     :model/Channel
                     :model/Collection
                     :model/Comment
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/Database
                     :model/Document
@@ -2798,6 +2799,7 @@
            metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            config
+           events
            models
            premium-features
            server

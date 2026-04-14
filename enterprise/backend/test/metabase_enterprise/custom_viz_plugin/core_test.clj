@@ -18,7 +18,7 @@
 (deftest oss-resolve-asset-test
   (testing "OSS stub returns nil"
     (mt/with-premium-features #{}
-      (is (nil? (custom-viz-plugin/resolve-asset 1 "icon.svg"))))))
+      (is (nil? (custom-viz-plugin/resolve-asset {:id 1} "icon.svg"))))))
 
 (deftest oss-asset-paths-test
   (testing "OSS stub returns empty vector"
@@ -43,12 +43,13 @@
 (deftest ee-resolve-asset-delegates-test
   (testing "EE resolve-asset delegates to cache/resolve-asset"
     (mt/with-premium-features #{:custom-viz}
-      (let [expected-bytes (.getBytes "img-data")]
-        (with-redefs [cache/resolve-asset (fn [id path]
-                                            (when (and (= id 42) (= path "icon.svg"))
+      (let [plugin         {:id 42}
+            expected-bytes (.getBytes "img-data")]
+        (with-redefs [cache/resolve-asset (fn [p path]
+                                            (when (and (= p plugin) (= path "icon.svg"))
                                               expected-bytes))]
           (is (= expected-bytes
-                 (custom-viz-plugin/resolve-asset 42 "icon.svg"))))))))
+                 (custom-viz-plugin/resolve-asset plugin "icon.svg"))))))))
 
 (deftest ee-asset-paths-delegates-test
   (testing "EE asset-paths delegates to manifest/asset-paths"

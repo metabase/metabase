@@ -15,7 +15,7 @@ export const CUSTOM_VIZ_FIXTURE_PATH =
 export const CUSTOM_VIZ_IDENTIFIER = "custom-viz-repo";
 
 // Frontend display type: "custom:{identifier}"
-export const CUSTOM_VIZ_DISPLAY = "custom:" + CUSTOM_VIZ_IDENTIFIER;
+export const CUSTOM_VIZ_DISPLAY = `custom:${CUSTOM_VIZ_IDENTIFIER}` as const;
 
 // Second repo for multi-plugin tests
 export const CUSTOM_VIZ_REPO_PATH_2 =
@@ -85,7 +85,7 @@ export function setupCustomVizPlugin(): Cypress.Chainable<CustomVizPlugin> {
 // -- Intercept helpers --
 
 export function interceptPluginBundle() {
-  cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle").as("pluginBundle");
+  cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*").as("pluginBundle");
 }
 
 export function interceptPluginList() {
@@ -142,7 +142,7 @@ export function visitCustomVizEditForm(id: number) {
 // -- UI helpers --
 
 export function getAddVisualizationLink() {
-  return cy.findByRole("link", { name: /Add/ });
+  return cy.findByRole("link", { name: /Add$/ });
 }
 
 /**
