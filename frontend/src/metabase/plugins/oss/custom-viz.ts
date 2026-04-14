@@ -8,6 +8,14 @@ import type {
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
+// prevents infinite render loop
+const noopCustomVizIcon = (
+  _display: VisualizationDisplay,
+): { icon: IconData | undefined; isLoading: boolean } => ({
+  icon: undefined,
+  isLoading: false,
+});
+
 const getDefaultPluginCustomViz = () => ({
   // Admin settings pages
   ManageCustomVizPage: PluginPlaceholder as ComponentType<any>,
@@ -30,11 +38,7 @@ const getDefaultPluginCustomViz = () => ({
   ) => null as string | null,
   getPluginAssetUrl: (_pluginId: number, _assetPath: string | null) =>
     undefined as string | undefined,
-  useCustomVizPluginsIcon: () => (_display: VisualizationDisplay) =>
-    ({ icon: undefined, isLoading: false }) as {
-      icon: IconData | undefined;
-      isLoading: boolean;
-    },
+  useCustomVizPluginsIcon: () => noopCustomVizIcon,
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
   isCustomVizDisplay,
