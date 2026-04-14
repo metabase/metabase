@@ -213,4 +213,37 @@
 
   (let [csv-file-name "card_analysis.csv"
         card-ids [123 456]]
-    (generate-card-compilation-analysis csv-file-name card-ids)))
+    (generate-card-compilation-analysis csv-file-name card-ids))
+
+  "You can look for differences card compilation performance between two csvs with this query"
+  "
+   ```sql
+   with master_stats_2000 as (
+     select card_id, compilation_time,
+     count(*) over() as total_cards,
+     count(*) filter (where error_msg is not null) over() as num_errors,
+     (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY compilation_time)
+      FROM \"public\".\"master_7000_20260410175341\") as median_comp_time,
+     avg(compilation_time) over() as avg_comp_time
+     from \"public\".\"master_7000_20260410175341\"
+   ),
+   ck_stats_2000 as (
+     select card_id, compilation_time,
+     count(*) over() as total_cards,
+     count(*) filter (where error_msg is not null) over() as num_errors,
+     (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY compilation_time)
+      FROM \"public\".\"col_keys_7000_20260410175334\") as median_comp_time,
+     avg(compilation_time) over() as avg_comp_time
+     from \"public\".\"col_keys_7000_20260410175334\"
+   )
+   select count(*) over(),
+   m.card_id, m.compilation_time as master_time, ck.compilation_time as ck_time,
+   m.compilation_time - ck.compilation_time as compilation_diff,
+   m.num_errors as master_errors, ck.num_errors as ck_errors,
+   m.median_comp_time as master_median, ck.median_comp_time as ck_median,
+   m.avg_comp_time as master_avg, ck.avg_comp_time as ck_avg
+   from master_stats_2000 m
+   left join ck_stats_2000 ck
+   on m.card_id = ck.card_id
+   order by compilation_diff asc;
+   ```")
