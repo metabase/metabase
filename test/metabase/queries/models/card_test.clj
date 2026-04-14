@@ -748,6 +748,7 @@
                                  :semantic_type            :type/Category
                                  :visibility_type          :normal
                                  :description              "desc"
+                                 :fingerprint              {:global {:distinct-count 100}}
                                  :lib/desired-column-alias "bloat"
                                  :qp/internal-flag         true)
                          base)
@@ -757,14 +758,13 @@
                                                 :result_metadata metadata}]
         (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
               cols      (:result_metadata extracted)
-              ;; snake-cased form of :name + (lib/model-preserved-keys false) — the closed set
-              ;; of keys a non-native model export is allowed to emit
-              allowed   #{:name :description :display_name :semantic_type :visibility_type
-                          :fk_target_field_id :settings}
+              ;; mirror the export's transformation exactly so this test stays in sync with
+              ;; production if (lib/model-preserved-keys false) ever changes
+              allowed   (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false))
               leaked    (into #{} (mapcat #(remove allowed (keys %))) cols)]
           (is (seq cols))
           (is (= #{} leaked)
-              "no key outside the allowed set leaks through (including the bloat keys we deliberately added)")
+              "no key outside the allowed set leaks through (including bloat keys deliberately seeded)")
           (is (every? #(= "Custom!" (:display_name %)) cols)
               "user-set :display_name survives"))))))
 
@@ -783,8 +783,8 @@
         (is (= #{:name :id :display_name :semantic_type}
                (set (keys col))))
         (is (= "Venue ID" (:display_name col)))
-        ;; :id should be portablized to a Field FK path, not a raw number
-        (is (vector? (:id col)))))))
+        ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
+        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
