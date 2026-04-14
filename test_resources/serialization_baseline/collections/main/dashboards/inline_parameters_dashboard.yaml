@@ -22,49 +22,6 @@ serdes/meta:
   label: inline_parameters_dashboard
   model: Dashboard
 dashcards:
-- entity_id: yaY0FfjZyI9oEQQR5TZ3q
-  created_at: '2026-04-02T02:59:02.778668Z'
-  row: 0
-  col: 0
-  size_x: 24
-  size_y: 1
-  inline_parameters:
-  - d0000001-0000-0000-0000-000000000001
-  parameter_mappings: []
-  series: []
-  visualization_settings:
-    column_settings: null
-    text: Products in {{category}}
-    virtual_card:
-      display: heading
-  serdes/meta:
-  - id: eUXWiB6QAXkOc7P1ozoat
-    model: Dashboard
-  - id: yaY0FfjZyI9oEQQR5TZ3q
-    model: DashboardCard
-- entity_id: v29EoQMk66PPR6a68pe_S
-  created_at: '2026-04-02T02:59:02.778668Z'
-  row: 1
-  col: 0
-  size_x: 12
-  size_y: 2
-  inline_parameters:
-  - d0000001-0000-0000-0000-000000000001
-  - d0000002-0000-0000-0000-000000000002
-  parameter_mappings: []
-  series: []
-  visualization_settings:
-    column_settings: null
-    text: |-
-      Showing products in the **{{category}}** category
-      with price above **{{min_price}}**.
-    virtual_card:
-      display: text
-  serdes/meta:
-  - id: eUXWiB6QAXkOc7P1ozoat
-    model: Dashboard
-  - id: v29EoQMk66PPR6a68pe_S
-    model: DashboardCard
 - entity_id: _5CQR0-k5mgaLOemB5EOl
   card_id: h5F2EjHsRd73Dqqh8sAtd
   created_at: '2026-04-02T02:59:02.778668Z'
@@ -102,5 +59,48 @@ dashcards:
     model: Dashboard
   - id: _5CQR0-k5mgaLOemB5EOl
     model: DashboardCard
+- entity_id: v29EoQMk66PPR6a68pe_S
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 1
+  col: 0
+  size_x: 12
+  size_y: 2
+  inline_parameters:
+  - d0000001-0000-0000-0000-000000000001
+  - d0000002-0000-0000-0000-000000000002
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      Showing products in the **{{category}}** category
+      with price above **{{min_price}}**.
+    virtual_card:
+      display: text
+  serdes/meta:
+  - id: eUXWiB6QAXkOc7P1ozoat
+    model: Dashboard
+  - id: v29EoQMk66PPR6a68pe_S
+    model: DashboardCard
+- entity_id: yaY0FfjZyI9oEQQR5TZ3q
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 1
+  inline_parameters:
+    - d0000001-0000-0000-0000-000000000001
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: Products in {{category}}
+    virtual_card:
+      display: heading
+  serdes/meta:
+    - id: eUXWiB6QAXkOc7P1ozoat
+      model: Dashboard
+    - id: yaY0FfjZyI9oEQQR5TZ3q
+      model: DashboardCard
 tabs: []
 width: fixed
