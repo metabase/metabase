@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useAdminSetting } from "metabase/api/utils";
-import type { GenericErrorResponse } from "metabase/lib/errors";
 import { TextInput } from "metabase/ui";
+import type { GenericErrorResponse } from "metabase/utils/errors";
 
 import { getRelativeLandingPageUrl } from "./utils";
 

@@ -20,7 +20,7 @@ dataset_query:
       - {base-type: type/Integer, effective-type: type/Integer}
       - [Internal Metabase Database, public, v_view_log, entity_id]
     - - field
-      - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
       - [Internal Metabase Database, public, v_content, name]
     filters:
     - - =
@@ -38,7 +38,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_view_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
       stages:
       - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
@@ -53,7 +53,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       stages:
       - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}

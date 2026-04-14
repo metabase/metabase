@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 
 import type { NewQuestionMenuItem } from "./types";
 

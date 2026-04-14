@@ -6,10 +6,10 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import { createMockState } from "metabase/redux/store/mocks";
+import * as domUtils from "metabase/utils/dom";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { useUpsellFlow } from "./use-upsell-flow";
 

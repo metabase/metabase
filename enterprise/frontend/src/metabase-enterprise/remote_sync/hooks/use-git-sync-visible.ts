@@ -1,6 +1,6 @@
 import { useAdminSetting } from "metabase/api/utils";
-import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 
 import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../constants";
 

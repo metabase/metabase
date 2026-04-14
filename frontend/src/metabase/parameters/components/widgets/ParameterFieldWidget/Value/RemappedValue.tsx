@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
 
 type RenderNormal = (opts: { value?: unknown; column?: Field }) => ReactNode;

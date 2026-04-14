@@ -25,9 +25,6 @@ import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -47,6 +44,9 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+import { type NamedUser, getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";

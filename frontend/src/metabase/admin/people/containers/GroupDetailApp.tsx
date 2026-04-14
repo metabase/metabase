@@ -6,8 +6,8 @@ import {
   useListUserMembershipsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 
 import { GroupDetail } from "../components/GroupDetail";
 

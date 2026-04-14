@@ -263,6 +263,31 @@
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-query query-spec)))
 
+(def ^:private TestAdvisory
+  "Schema for a single advisory in the testing seed endpoint."
+  [:map
+   [:advisory_id       ms/NonBlankString]
+   [:title             ms/NonBlankString]
+   [:severity          [:enum "critical" "high" "medium" "low"]]
+   [:description       ms/NonBlankString]
+   [:advisory_url      {:optional true} [:maybe ms/NonBlankString]]
+   [:remediation       ms/NonBlankString]
+   [:affected_versions [:sequential [:map [:min :string] [:fixed :string]]]]
+   [:matching_query    {:optional true} [:maybe [:map-of :keyword :string]]]
+   [:match_status      [:enum "unknown" "active" "resolved" "not_affected" "error"]]
+   [:published_at      :any]
+   [:updated_at        :any]])
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/security-advisories"
+  "Nuke all existing security advisories and insert the provided ones."
+  [_route-params
+   _query-params
+   {:keys [advisories]} :- [:map
+                            [:advisories [:sequential TestAdvisory]]]]
+  (t2/delete! :model/SecurityAdvisory)
+  (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
+
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
   [_route-params

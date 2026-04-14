@@ -1,6 +1,9 @@
 interface Window {
   MetabaseBootstrap: any;
   MetabaseRoot?: string;
+  /**
+   * @deprecated - use getCspNonce() from metabase/utils/csp instead
+   */
   MetabaseNonce?: string;
   MetabaseUserColorScheme?: string;
 

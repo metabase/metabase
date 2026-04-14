@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 
 export const trackMetabotChatOpened = (
   origin: "header" | "command_palette" | "keyboard_shortcut" | "native_editor",

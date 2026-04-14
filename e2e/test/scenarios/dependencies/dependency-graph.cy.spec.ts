@@ -690,6 +690,8 @@ function visitGraph() {
 }
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
+  // Wait for async dependency computation to complete before navigating
+  H.waitForBackfillComplete();
   return cy.visit(BASE_URL, { qs: { id, type } });
 }
 

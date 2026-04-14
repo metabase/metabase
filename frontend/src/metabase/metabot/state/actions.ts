@@ -9,12 +9,13 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { createAsyncThunk } from "metabase/lib/redux";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import { createAsyncThunk } from "metabase/utils/redux";
 import type {
   JSONValue,
   MetabotAgentRequest,
@@ -22,7 +23,6 @@ import type {
   MetabotChatContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
 import { METABOT_ERR_MSG } from "../constants";
 

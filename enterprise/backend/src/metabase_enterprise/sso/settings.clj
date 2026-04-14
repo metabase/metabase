@@ -318,7 +318,8 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :audit            :getter
   :getter           (fn [] (and (jwt-configured) (jwt-enabled)))
   :export?          false
-  :can-set-via-env? false)
+  :can-set-via-env? false
+  :doc              false)
 
 (defsetting sdk-encryption-validation-key
   (deferred-tru "Used for encrypting and checking whether SDK requests are signed")

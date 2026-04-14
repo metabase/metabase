@@ -10,7 +10,7 @@ import {
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { createDashCard, createVirtualCard } from "metabase/dashboard/utils";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import type {
   CollectionId,
   CollectionItem,

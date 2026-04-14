@@ -1,6 +1,6 @@
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getIsHosted } from "metabase/databases/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,

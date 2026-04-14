@@ -3,8 +3,8 @@ import querystring from "querystring";
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { renderLinkURLForClick } from "metabase/lib/formatting/link";
-import * as Urls from "metabase/lib/urls";
+import { renderLinkURLForClick } from "metabase/utils/formatting/link";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {

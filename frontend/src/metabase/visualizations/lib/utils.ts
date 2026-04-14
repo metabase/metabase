@@ -2,7 +2,7 @@ import crossfilter from "crossfilter";
 import * as d3 from "d3";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCoordinate,

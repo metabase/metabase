@@ -1,7 +1,7 @@
 import { c } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/redux/query-builder";
+import { useDispatch } from "metabase/utils/redux";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,

@@ -175,11 +175,13 @@
         effective-type      (lib.util.match/match-lite field
                               [:field _id-or-name (opts :guard map?)]
                               ((some-fn :effective-type :base-type) opts))
+        mock-field          (get mock-temporal-fields temporal-type)
         expected-identifier (cond-> (-> (h2x/identifier :field "ABC" (name temporal-type))
                                         (cond-> effective-type
                                           (h2x/with-type-info {:effective-type effective-type}))
                                         (vary-meta assoc ::bigquery.qp/do-not-qualify? true))
-                              (not field-literal?) (h2x/with-database-type-info (name temporal-type)))
+                              (not field-literal?) (h2x/with-database-type-info (name temporal-type))
+                              field-literal?       (h2x/with-type-info {:effective-type (:base-type mock-field)}))
         args                (repeat (dec num-args) expected-value)]
     (if (fn? honeysql-filter-fn)
       (honeysql-filter-fn expected-identifier args)

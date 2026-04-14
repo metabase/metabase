@@ -1,6 +1,7 @@
 import Color from "color";
 
 const { H } = cy;
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -8,7 +9,6 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
   SAMPLE_DATABASE;
 
@@ -113,6 +113,150 @@ const ALL_MODELS = [
 
 const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 
+// ============================================================================
+// Test Helpers
+// ============================================================================
+
+/**
+ * Add a metric or measure to the explorer via the search panel
+ */
+const addMetric = (name: string) => {
+  // for some reason `type` clicks in the middle of the input first
+  // so we use `{end}` to make sure we type at the end
+  H.MetricsViewer.searchInput().type(`{end}, ${name}`);
+  H.MetricsViewer.searchResults().findByText(name).click();
+
+  H.MetricsViewer.runButton().click();
+};
+const addMetricMath = (expression: ({ metricName: string } | string)[]) => {
+  H.MetricsViewer.searchInput().type("{end}, ");
+  for (const item of expression) {
+    if (typeof item === "string") {
+      H.MetricsViewer.searchInput().type(`{end}${item}`);
+    } else {
+      H.MetricsViewer.searchInput().type(`{end}${item.metricName}`);
+      H.MetricsViewer.searchResults().findByText(item.metricName).click();
+    }
+  }
+  H.MetricsViewer.runButton().click();
+};
+
+/**
+ * Select a breakout dimension
+ */
+const selectBreakout = (
+  cardname: string,
+  dimensionName: string,
+  index = 0,
+  binning?: string,
+) => {
+  H.MetricsViewer.searchBarPills().contains(cardname).rightclick();
+  H.popover().findByText("Break out").click();
+  const breakout = H.popover()
+    .findAllByText(dimensionName)
+    .should("have.length.at.least", index)
+    .eq(index)
+    .closest("[role=option]");
+
+  if (binning) {
+    breakout.findByTestId("dimension-list-item-binning").realHover().click();
+    H.popover().findByRole("menuitem", { name: binning }).click();
+  } else {
+    breakout.click();
+  }
+};
+
+/**
+ * Intercept and wait for dataset query
+ */
+const interceptDatasetQuery = () => {
+  cy.intercept("POST", "/api/metric/dataset").as("dataset");
+};
+
+/**
+ * Verify the grid displays the correct number of metric cards
+ */
+const verifyMetricCount = (count: number) => {
+  H.MetricsViewer.searchBarPills().should("have.length", count);
+};
+
+/**
+ * Switch to a specific tab
+ */
+const switchToTab = (tabName: string) => {
+  H.MetricsViewer.getTab(tabName).click();
+};
+
+/**
+ * Convert CSS rgb() color string to uppercase hex (#RRGGBB).
+ */
+const rgbToHex = (rgb: string): string => {
+  return Color(rgb).hex().toUpperCase();
+};
+
+/**
+ * Get hex color(s) from a search bar pill's color indicator.
+ * Returns an array of hex color strings.
+ */
+const getPillColors = (pillIndex: number): Cypress.Chainable<string[]> => {
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
+  return H.MetricsViewer.searchBarPills()
+    .should("have.length.greaterThan", pillIndex)
+    .eq(pillIndex)
+    .findByTestId("color-indicator-container")
+    .children()
+    .then(($children) => {
+      const colors: string[] = [];
+      $children.each((_i, el) => {
+        const $el = Cypress.$(el);
+        // Multi-dot: backgroundColor is set; single icon: color is set
+        const bg = $el.css("background-color");
+        const fg = $el.css("color");
+        const raw =
+          bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" ? bg : fg;
+        colors.push(rgbToHex(raw));
+      });
+      return colors;
+    });
+};
+
+/**
+ * Assert that every color in a pill's indicator appears somewhere on the
+ * chart (as a `fill` or `stroke` attribute on an SVG `path`).
+ */
+const assertPillColorsInChart = (pillIndex: number) => {
+  getPillColors(pillIndex).then((colors) => {
+    for (const color of colors) {
+      H.echartsContainer()
+        .find(`path[fill="${color}"], path[stroke="${color}"]`)
+        .should("exist");
+    }
+  });
+};
+
+/**
+ * Assert that the breakout legend dot colors match the pill colors for the
+ * given pill index.
+ */
+const assertLegendColorsMatchPill = (pillIndex: number) => {
+  getPillColors(pillIndex).then((pillColors) => {
+    H.MetricsViewer.breakoutLegend()
+      .findAllByTestId("breakout-legend-dot")
+      .then(($dots) => {
+        const legendColors: string[] = [];
+        $dots.each((_i, el) => {
+          const bg = Cypress.$(el).css("background-color");
+          legendColors.push(rgbToHex(bg));
+        });
+
+        // Every pill color should appear in the legend
+        for (const color of pillColors) {
+          expect(legendColors).to.include(color);
+        }
+      });
+  });
+};
+
 describe("scenarios > metrics > explorer", () => {
   before(() => {
     H.restore();
@@ -124,6 +268,10 @@ describe("scenarios > metrics > explorer", () => {
   beforeEach(() => {
     H.restore(SNAPSHOT_NAME as any);
     cy.signInAsAdmin();
+
+    interceptDatasetQuery();
+    cy.intercept("GET", "/api/metric/*").as("getMetric");
+    cy.intercept("GET", "/api/measure/*").as("getMeasure");
     H.resetSnowplow();
     H.enableTracking();
   });
@@ -131,64 +279,6 @@ describe("scenarios > metrics > explorer", () => {
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
   });
-
-  // ============================================================================
-  // Test Helpers
-  // ============================================================================
-
-  /**
-   * Add a metric or measure to the explorer via the search panel
-   */
-  const addMetric = (name: string) => {
-    H.MetricsViewer.searchInput().clear().type(name);
-    H.MetricsViewer.searchResults().findByText(name).click();
-  };
-
-  /**
-   * Select a breakout dimension
-   */
-  const selectBreakout = (
-    cardname: string,
-    dimensionName: string,
-    index = 0,
-    binning?: string,
-  ) => {
-    H.MetricsViewer.searchBarPills().contains(cardname).rightclick();
-    H.popover().findByText("Break out").click();
-    const breakout = H.popover()
-      .findAllByText(dimensionName)
-      .should("have.length.at.least", index)
-      .eq(index)
-      .closest("[role=option]");
-
-    if (binning) {
-      breakout.findByTestId("dimension-list-item-binning").realHover().click();
-      H.popover().findByRole("menuitem", { name: binning }).click();
-    } else {
-      breakout.click();
-    }
-  };
-
-  /**
-   * Intercept and wait for dataset query
-   */
-  const intercedptDatasetQuery = () => {
-    cy.intercept("POST", "/api/metric/dataset").as("dataset");
-  };
-
-  /**
-   * Verify the grid displays the correct number of metric cards
-   */
-  const verifyMetricCount = (count: number) => {
-    H.MetricsViewer.searchBarPills().should("have.length", count);
-  };
-
-  /**
-   * Switch to a specific tab
-   */
-  const switchToTab = (tabName: string) => {
-    H.MetricsViewer.getTab(tabName).click();
-  };
 
   // ============================================================================
   // Entry Points
@@ -245,10 +335,6 @@ describe("scenarios > metrics > explorer", () => {
   // ============================================================================
 
   describe("Adding metrics and measures", () => {
-    beforeEach(() => {
-      intercedptDatasetQuery();
-    });
-
     it("should add multiple metrics", () => {
       H.MetricsViewer.goToViewer();
 
@@ -264,28 +350,22 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
       verifyMetricCount(2);
 
-      cy.log("no results");
-      H.MetricsViewer.searchInput().type("xyznonexistent");
-      H.MetricsViewer.searchResults().should(
-        "contain.text",
-        "No results found",
-      );
-
-      cy.log("does not allow duplicates");
-      H.MetricsViewer.searchInput().clear().type("Count of products");
-      H.MetricsViewer.searchResults().should(
-        "contain.text",
-        "No results found",
-      );
+      cy.log("allows duplicates");
+      addMetric("Count of products");
 
       cy.log("Should allow me to add measures");
-      H.MetricsViewer.searchInput().clear();
       addMetric("Test Measure");
-
       H.expectUnstructuredSnowplowEvent({
         event: "metrics_viewer_metric_added",
         event_detail: "measure",
       });
+
+      cy.log("no results");
+      H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
+      H.MetricsViewer.searchResults().should(
+        "contain.text",
+        "No results found",
+      );
     });
 
     it("Should not show me metrics that live in collections I do not have permissions to see", () => {
@@ -310,6 +390,8 @@ describe("scenarios > metrics > explorer", () => {
         "No results found",
       );
 
+      H.MetricsViewer.searchInput().clear();
+
       addMetric("Count of orders");
       cy.log(
         "even though we can see the metric, we don't have permissions to run the query",
@@ -326,9 +408,11 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Breakouts", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
+      cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
+      cy.wait("@getMetric");
       cy.wait("@dataset");
     });
 
@@ -403,6 +487,384 @@ describe("scenarios > metrics > explorer", () => {
         .children()
         .should("have.length", 6);
     });
+
+    it("should handle breakout independently for multiple instances of the same metric", () => {
+      cy.log(
+        "Expand formula editor and create expression with second metric instance",
+      );
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput()
+        .clear()
+        .type("Count of orders, Count of orders + Count of products");
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      cy.findByTestId("run-expression-button").click();
+
+      cy.wait("@dataset");
+
+      cy.log("Should have 2 metric pills (expression pill is separate)");
+      H.MetricsViewer.searchBarPills().should("have.length", 3);
+
+      cy.log(
+        "Two standalone instances of the same metric should have different pill colors",
+      );
+      getPillColors(0).then((pill0Colors) => {
+        getPillColors(2).then((pill2Colors) => {
+          expect(pill0Colors[0]).to.not.equal(pill2Colors[0]);
+        });
+      });
+
+      cy.log(
+        "Each standalone pill color should appear on the chart as fill or stroke",
+      );
+      assertPillColorsInChart(0);
+      assertPillColorsInChart(2);
+
+      cy.log("Apply breakout to first instance of Count of orders");
+      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.popover().findByText("Break out").click();
+      H.popover().findByText("Source").click();
+      cy.wait("@dataset");
+
+      cy.log("Breakout legend should be visible with Source values");
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "User → Source" }).should(
+          "be.visible",
+        );
+        cy.findByText("Twitter").should("be.visible");
+        cy.findByText("Facebook").should("be.visible");
+        cy.findByText("Organic").should("be.visible");
+        cy.findByText("Google").should("be.visible");
+        cy.findByText("Affiliate").should("be.visible");
+      });
+
+      cy.log("First pill should show multiple color indicators (breakout)");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("Second pill should have single color (no breakout yet)");
+      H.MetricsViewer.searchBarPills()
+        .eq(2)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Breakout pill colors should appear on the chart");
+      assertPillColorsInChart(0);
+
+      cy.log("Non-breakout pill color should appear on the chart");
+      assertPillColorsInChart(2);
+
+      cy.log(
+        "Legend dot colors should match pill colors for breakout instance",
+      );
+      assertLegendColorsMatchPill(0);
+
+      cy.log("Apply breakout to second instance of Count of orders");
+      H.MetricsViewer.searchBarPills().eq(2).rightclick();
+      H.popover().findByText("Break out").click();
+      H.popover().findByText("Source").click();
+      cy.wait("@dataset");
+
+      cy.log("Both pills should now have multiple color indicators");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+      H.MetricsViewer.searchBarPills()
+        .eq(2)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("Both breakout pills' colors should appear on the chart");
+      assertPillColorsInChart(0);
+      assertPillColorsInChart(2);
+
+      cy.log(
+        "The two breakout pills should have different color sets (different entities)",
+      );
+      getPillColors(0).then((pill0Colors) => {
+        getPillColors(2).then((pill2Colors) => {
+          expect(pill0Colors[0]).to.not.equal(pill2Colors[0]);
+        });
+      });
+
+      cy.log("Remove breakout from first instance");
+      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.popover().findByText("Remove breakout").click();
+
+      cy.log(
+        "Legend should still be visible because second instance has breakout",
+      );
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "User → Source" }).should(
+          "be.visible",
+        );
+      });
+
+      cy.log("First pill should have single color (breakout removed)");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Second pill should still have multiple colors");
+      H.MetricsViewer.searchBarPills()
+        .eq(2)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("After removing breakout, pill colors should still match chart");
+      assertPillColorsInChart(0);
+      assertPillColorsInChart(2);
+    });
+
+    it("should preserve breakout state when editing formula and re-running", () => {
+      cy.log("Set up: two instances of Count of orders with an expression");
+      cy.findByTestId("metrics-formula-input").click();
+
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      cy.findByTestId("run-expression-button").click();
+
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+
+      cy.log("Apply breakout to first instance of Count of orders");
+      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.popover().findByText("Break out").click();
+      H.popover().findByText("Source").click();
+      cy.wait("@dataset");
+
+      cy.log("Verify breakout is applied — first pill has multiple colors");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+
+      cy.log("Enter formula edit mode and append a new metric");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(", Count of products");
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
+
+      cy.log("Should now have 3 metric pills");
+      H.MetricsViewer.searchBarPills().should("have.length", 3);
+
+      cy.log(
+        "First pill should still have breakout — multiple color indicators preserved",
+      );
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("Breakout legend should still be visible");
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "User → Source" }).should(
+          "be.visible",
+        );
+      });
+
+      cy.log("Newly added third pill should have single color (no breakout)");
+      H.MetricsViewer.searchBarPills()
+        .eq(2)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Second pill (standalone Count of orders) should still be single");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Remove second pill (standalone Count of orders)");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByLabelText("Remove Count of orders")
+        .click();
+
+      cy.log(
+        "First pill should still have breakout — multiple color indicators preserved",
+      );
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+    });
+
+    it("cannot breakout a metric math expression", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+      H.MetricsViewer.searchBarPills().eq(1).rightclick();
+      H.popover({ skipVisibilityCheck: true }).should("not.exist");
+    });
+
+    it("should show an expression dimension pill with per-metric accordion", () => {
+      cy.log("Create expression: Count of orders + Count of products");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(
+        ", Count of orders + Count of products",
+      );
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
+
+      cy.log(
+        "Dimension pill bar should contain an expression dimension pill with a selected dimension",
+      );
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findByTestId("expression-dimension-pill").should("exist");
+        cy.findByTestId("expression-dimension-pill").should(
+          "not.contain.text",
+          "Select dimensions",
+        );
+      });
+
+      cy.log("Click the expression dimension pill to open the popover");
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .click();
+
+      cy.log(
+        "Popover should show accordion sections for each metric in the expression",
+      );
+      H.popover().within(() => {
+        cy.findAllByTestId("expression-metric-section").should(
+          "have.length",
+          2,
+        );
+        cy.findAllByTestId("expression-metric-header")
+          .eq(0)
+          .should("contain.text", "Count of orders");
+        cy.findAllByTestId("expression-metric-header")
+          .eq(1)
+          .should("contain.text", "Count of products");
+      });
+
+      cy.log(
+        "Expand the second metric section and verify dimension options are shown",
+      );
+      H.popover().findAllByTestId("expression-metric-header").eq(1).click();
+
+      H.popover().within(() => {
+        cy.get("[data-element-id=list-item][aria-selected=false]")
+          .contains(/Created At/)
+          .click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.log("Expression dimension pill should now show 'Multiple dimensions'");
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .should("contain.text", "Multiple dimensions");
+    });
+
+    it("should preserve non-default expression dimensions after page reload", () => {
+      cy.log(
+        "Create expression with only expression entity: Count of orders + Count of products",
+      );
+      H.MetricsViewer.searchInput().clear();
+      H.MetricsViewer.searchInput().type("Count of orders + Count of products");
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
+
+      cy.log(
+        "Open the expression dimension pill and pick a non-default dimension for the second metric",
+      );
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .click();
+
+      // Expand the second metric accordion section
+      H.popover().findAllByTestId("expression-metric-header").eq(1).click();
+
+      // Pick a non-default dimension (e.g. "Created At" for Products)
+      H.popover().within(() => {
+        cy.get("[data-element-id=list-item][aria-selected=false]")
+          .contains(/Created At/)
+          .click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.log("Verify the pill shows 'Multiple dimensions' (non-default state)");
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .should("contain.text", "Multiple dimensions");
+
+      cy.log(
+        "Remember the selected dimension index for the first metric before reload",
+      );
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .click();
+
+      H.popover()
+        .find("[data-element-id=list-item]")
+        .then(($items) => {
+          const selectedIndex = $items
+            .toArray()
+            .findIndex((el) => el.getAttribute("aria-selected") === "true");
+          expect(selectedIndex).to.be.gte(0);
+          cy.wrap(selectedIndex).as("firstMetricDimensionIndex");
+        });
+
+      // Close the popover
+      cy.realPress("Escape");
+
+      cy.log("Reload the page and verify the dimension choice persists");
+      cy.reload();
+      cy.wait("@getMetric");
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .should("contain.text", "Multiple dimensions")
+        .click();
+
+      cy.log(
+        "Verify the first metric still has the same selected dimension after reload",
+      );
+
+      cy.get<number>("@firstMetricDimensionIndex").then((expectedIndex) => {
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        H.popover()
+          .find("[data-element-id=list-item]")
+          .eq(expectedIndex)
+          .should("have.attr", "aria-selected", "true");
+      });
+    });
   });
 
   // ============================================================================
@@ -411,18 +873,27 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Tabs", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
     });
 
     it("should switch between tabs", () => {
+      //should work with metric math as well
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
       H.MetricsViewer.tabsShouldBe([
         "Created At",
         "State",
         "Title",
         "Category",
+        "Totals",
       ]);
       H.MetricsViewer.assertVizType("Line");
 
@@ -430,7 +901,7 @@ describe("scenarios > metrics > explorer", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "metrics_viewer_dimension_tab_switched",
       });
-      H.MetricsViewer.assertVizType("Map");
+      H.MetricsViewer.assertAllVizTypes("Map", 2);
 
       switchToTab("Category");
       H.MetricsViewer.assertVizType("Bar");
@@ -438,6 +909,9 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("should allow changing display types");
       H.MetricsViewer.changeVizType("line");
       H.MetricsViewer.assertVizType("Line");
+
+      switchToTab("Totals");
+      H.MetricsViewer.assertAllVizTypes("Number", 2);
     });
 
     it("should not show dimensions that are already in tabs in the dimension picker", () => {
@@ -461,6 +935,28 @@ describe("scenarios > metrics > explorer", () => {
       });
     });
 
+    it("should auto-assign dimensions for a newly added metric after running the formula", () => {
+      cy.log(
+        "After adding a second metric, all dimension pills should have a selected dimension",
+      );
+
+      cy.findByTestId("metrics-formula-input").click();
+      addMetric("Count of products");
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findAllByText("Select a dimension").should("not.exist");
+      });
+
+      cy.log(
+        "Switch to another tab and verify dimensions are assigned there too",
+      );
+      switchToTab("Category");
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findAllByText("Select a dimension").should("not.exist");
+      });
+    });
+
     it("should map shared dimensions to all metrics when adding a tab from the picker", () => {
       addMetric("Count of products");
       cy.wait("@dataset");
@@ -479,6 +975,37 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getDimensionPillContainer().within(() => {
         cy.findAllByText("Select a dimension").should("not.exist");
       });
+    });
+
+    it("should remove then re-add the totals tab", () => {
+      //should work with metric math as well
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      // Need to hover the tab so that the remove button is accessible
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Totals" })
+        .realHover();
+      H.MetricsViewer.getRemoveTabButton("Totals").click();
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Totals" })
+        .should("not.exist");
+
+      H.MetricsViewer.getAddDimensionButton().click();
+      H.popover().within(() => {
+        cy.findAllByText("Totals").click();
+      });
+      cy.wait("@dataset");
+
+      cy.log("totals tab should be selected and show correct viz type");
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Totals" })
+        .should("have.attr", "aria-selected", "true");
+      H.MetricsViewer.assertAllVizTypes("Number", 2);
     });
 
     it("should add a dimension tab and remove it", () => {
@@ -533,7 +1060,7 @@ describe("scenarios > metrics > explorer", () => {
       });
       H.MetricsViewer.getDimensionPillContainer().within(() => {
         cy.findByText("User → Source").should("exist");
-        cy.findByText("Select a dimension").click();
+        cy.findByText("Account → Source").click();
       });
 
       H.popover().findByText("Plan").click();
@@ -607,7 +1134,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Automatic split view", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
@@ -625,6 +1152,28 @@ describe("scenarios > metrics > explorer", () => {
       switchToTab("Category");
       H.MetricsViewer.assertVizType("Bar");
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
+    });
+
+    it("should stack series into panels when the stack series button is toggled", () => {
+      addMetric("Count of products");
+      cy.wait("@dataset");
+
+      cy.log("line chart with multiple series should show chart layout picker");
+      H.MetricsViewer.assertVizType("Line");
+      cy.findByTestId("chart-layout-picker").should("be.visible");
+      cy.findByLabelText("Stack layout").click();
+
+      cy.log("should split the chart into separate panels");
+      H.splitPanelAxisLines().should("have.length", 2);
+
+      cy.log("toggling off should return to unified view");
+      cy.findByLabelText("Default layout").click();
+      H.splitPanelAxisLines().should("have.length", 0);
+
+      cy.log("button should not be visible for non-line/area/bar charts");
+      switchToTab("State");
+      H.MetricsViewer.assertVizType("Map");
+      cy.findByTestId("chart-layout-picker").should("not.exist");
     });
 
     it("should automatically split for display types that do not support multiple series", () => {
@@ -656,7 +1205,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Filters", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
@@ -990,17 +1539,30 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Drill through", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
+      //should work with metric math as well
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
     });
 
-    it("should drill into more graual time dimensions on timeseries chart", () => {
+    it("should drill into more granular time dimensions on timeseries chart", () => {
       H.MetricsViewer.getMerticControls()
         .findByRole("button", { name: /by month/ })
         .should("exist");
-      H.MetricsViewer.getMetricVisualizationDataPoints().eq(4).click();
+      // this is messy, but adding the metric math expression causes the viz to unmount and dispose the ECharts instance
+      // if you click on the chart while it's being disposed, the click isn't handled properly
+      cy.wait(1000);
+      H.MetricsViewer.getMetricVisualization()
+        .get("path[stroke='#EF8C8C']")
+        .eq(4)
+        .click();
       H.popover().findByText("See this month by week").click();
 
       H.MetricsViewer.getMerticControls()
@@ -1008,7 +1570,7 @@ describe("scenarios > metrics > explorer", () => {
         .should("exist");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
-        5,
+        12,
       );
     });
 
@@ -1021,8 +1583,96 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText(/September/).should("be.visible");
         cy.findByText(/October/).should("be.visible");
         cy.findByText(/November/).should("be.visible");
-        cy.findByText(/December/).should("be.visible");
       });
+    });
+  });
+
+  describe("metric math", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+      addMetric("Count of orders");
+      cy.wait("@dataset");
+    });
+    it("should apply filters and dimensions to individual metric instances within expressions", () => {
+      selectBreakout("Count of orders", "Category");
+      cy.wait("@dataset");
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of orders" },
+      ]);
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getFilterButton().click();
+      H.popover().within(() => {
+        cy.findAllByText("Count of orders")
+          .should("have.length", 3)
+          .eq(1)
+          .click();
+        cy.findByText("Category").click();
+        cy.findByText("Doohickey").click();
+        cy.button("Add filter").click();
+      });
+      H.MetricsViewer.getFilterButton().click();
+      H.popover().within(() => {
+        cy.findAllByText("Count of orders").eq(2).click();
+        cy.findByText("Category").click();
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /All time/i })
+        .click();
+      H.popover().findByText("Previous 12 months").click();
+
+      function assertMetricMath() {
+        cy.log("breakout is applied");
+        H.MetricsViewer.searchBarPills()
+          .contains(
+            "[data-testid=metrics-viewer-search-pill]",
+            "Count of orders",
+          )
+          .findByTestId("color-indicator-container")
+          .children()
+          .should("have.length", 4);
+        cy.log(
+          "filter pills are in place and show the badge indicating the unique metric instance",
+        );
+        const filterPills = H.MetricsViewer.getAllFilterPills();
+        filterPills.should("have.length", 2);
+        H.MetricsViewer.getAllFilterPills()
+          .eq(0)
+          .findByText("2")
+          .should("not.exist");
+        H.MetricsViewer.getAllFilterPills()
+          .eq(1)
+          .findByText("2")
+          .should("exist");
+
+        cy.log("dimension filter is applied");
+        H.MetricsViewer.getMetricVisualizationDataPoints().should(
+          "have.length.of.at.most",
+          60,
+        );
+        switchToTab("Totals");
+        cy.log("correct value is calculated from metric math expression");
+        H.MetricsViewer.getAllMetricVisualizations()
+          .should("have.length", 5)
+          .eq(4)
+          .contains("8,915");
+        switchToTab("Created At");
+      }
+      assertMetricMath();
+
+      cy.log("refresh and assert again");
+      cy.reload();
+      assertMetricMath();
+
+      cy.log("edit formula and assert again");
+      H.MetricsViewer.searchInput().type("{end} + 0", { delay: 100 });
+      H.MetricsViewer.runButton().click();
+      assertMetricMath();
     });
   });
 });
@@ -1051,8 +1701,7 @@ describe("scenarios > metrics > explorer > BigInt filters", () => {
       };
       H.createQuestion(BIGINT_METRIC);
       H.MetricsViewer.goToViewer();
-      H.MetricsViewer.searchInput().type(METRIC_NAME);
-      H.MetricsViewer.searchResults().findByText(METRIC_NAME).click();
+      addMetric(METRIC_NAME);
       H.MetricsViewer.getFilterButton().click();
       H.popover().findByText("ID").click();
       H.popover().within(() => {
