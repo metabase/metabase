@@ -57,18 +57,18 @@
       (let [manifest {:name   "test-viz"
                       :icon   "icon.svg"
                       :assets ["icon.svg" "thumb.png"]}]
-        (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url         "https://github.com/test/viz"
-                                                        :identifier       "test-viz"
-                                                        :display_name     "test-viz"
-                                                        :status           :active
-                                                        :resolved_commit  "abc123"
-                                                        :manifest         manifest}]
+        (mt/with-temp [:model/CustomVizPlugin plugin {:repo_url         "https://github.com/test/viz"
+                                                      :identifier       "test-viz"
+                                                      :display_name     "test-viz"
+                                                      :status           :active
+                                                      :resolved_commit  "abc123"
+                                                      :manifest         manifest}]
           (testing "returns nil for assets not in manifest whitelist"
-            (is (nil? (cache/resolve-asset id "not-listed.png"))))
+            (is (nil? (cache/resolve-asset plugin "not-listed.png"))))
           (testing "returns nil for path traversal attempts"
-            (is (nil? (cache/resolve-asset id "../../../etc/passwd"))))
+            (is (nil? (cache/resolve-asset plugin "../../../etc/passwd"))))
           (testing "returns nil for absolute path attempts"
-            (is (nil? (cache/resolve-asset id "/etc/passwd")))))))))
+            (is (nil? (cache/resolve-asset plugin "/etc/passwd")))))))))
 
 ;;; ------------------------------------------------ fetch-and-update! state consistency ------------------------------------------------
 

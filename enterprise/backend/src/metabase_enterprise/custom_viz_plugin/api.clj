@@ -9,6 +9,7 @@
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.events.core :as events]
    [metabase.server.streaming-response :as sr]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -116,7 +117,10 @@
     ;; and updates display_name/icon from manifest
     (cache/fetch-and-update! plugin)
     ;; re-read to get updated status
-    (plugin->response (t2/select-one :model/CustomVizPlugin :id (:id plugin)))))
+    (let [result (t2/select-one :model/CustomVizPlugin :id (:id plugin))]
+      (events/publish-event! :event/custom-viz-plugin-create {:object  result
+                                                              :user-id api/*current-user-id*})
+      (plugin->response result))))
 
 (api.macros/defendpoint :post "/dev" :- CustomVizPluginResponse
   "Register a dev-only custom visualization plugin from a local dev server.
@@ -155,6 +159,8 @@
                                                             :manifest        manifest
                                                             :metabase_version version-str))]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
+    (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
+                                                            :user-id api/*current-user-id*})
     (plugin->response plugin)))
 
 (api.macros/defendpoint :get "/" :- [:sequential CustomVizPluginResponse]
@@ -181,9 +187,11 @@
   "Remove a custom visualization plugin and evict its cached bundle."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-  (t2/delete! :model/CustomVizPlugin :id id)
-  nil)
+  (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
+    (t2/delete! :model/CustomVizPlugin :id id)
+    (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
+                                                            :user-id api/*current-user-id*})
+    nil))
 
 (api.macros/defendpoint :put "/:id" :- CustomVizPluginResponse
   "Update a custom visualization plugin."
@@ -194,15 +202,19 @@
             [:access_token   {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (let [existing    (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-        updates    (select-keys body [:enabled :access_token :pinned_version])]
+  (let [existing (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+        updates  (select-keys body [:enabled :access_token :pinned_version])]
     (when (seq updates)
       (t2/update! :model/CustomVizPlugin id updates))
     (when (and (contains? updates :pinned_version)
                (not= (:pinned_version updates) (:pinned_version existing)))
       (let [updated-plugin (t2/select-one :model/CustomVizPlugin :id id)]
-        (cache/fetch-and-update! updated-plugin))))
-  (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
+        (cache/fetch-and-update! updated-plugin)))
+    (let [result (t2/select-one :model/CustomVizPlugin :id id)]
+      (events/publish-event! :event/custom-viz-plugin-update {:object          result
+                                                              :previous-object existing
+                                                              :user-id         api/*current-user-id*})
+      (plugin->response result))))
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the cached JS bundle for a plugin.
@@ -244,11 +256,11 @@
    respond
    raise]
   (try
-    (let [_plugin      (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+    (let [plugin       (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
           dev?         (cache/resolve-dev-bundle id)
-          bytes        (cache/resolve-asset id path)]
+          bytes        (cache/resolve-asset plugin path)]
       (if bytes
         (respond {:status  200
                   :headers (cond-> {"Content-Type" content-type}
@@ -323,7 +335,11 @@
                      :manifest         manifest
                      :metabase_version version-str}))
       (cache/fetch-and-update! plugin))
-    (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))
+    (let [result (t2/select-one :model/CustomVizPlugin :id id)]
+      (events/publish-event! :event/custom-viz-plugin-update {:object          result
+                                                              :previous-object plugin
+                                                              :user-id         api/*current-user-id*})
+      (plugin->response result))))
 
 (def routes
   "`/api/ee/custom-viz-plugin` routes."

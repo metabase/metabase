@@ -14,8 +14,8 @@
 (defenterprise resolve-asset
   "Enterprise implementation: resolve a static asset for a plugin."
   :feature :custom-viz
-  [plugin-id asset-path]
-  (cache/resolve-asset plugin-id asset-path))
+  [plugin asset-path]
+  (cache/resolve-asset plugin asset-path))
 
 (defenterprise asset-paths
   "Enterprise implementation: list static asset names from the manifest."

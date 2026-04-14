@@ -118,18 +118,11 @@
 
 ;;; ------------------------------------------------ Get ------------------------------------------------
 
-(defn- select-plugin-for-read
-  "Select the fields needed for git read operations."
-  [plugin-id]
-  (t2/select-one [:model/CustomVizPlugin :id :repo_url :access_token :pinned_version :resolved_commit :manifest]
-                 :id plugin-id))
-
 (defn get-bundle
   "Get the JS bundle for a plugin. Reads from the local bare git repo at the resolved commit."
-  [plugin-id]
-  (when-let [{:keys [resolved_commit] :as plugin} (select-plugin-for-read plugin-id)]
-    (when resolved_commit
-      (read-bundle-from-git plugin))))
+  [{:keys [resolved_commit] :as plugin}]
+  (when resolved_commit
+    (read-bundle-from-git plugin)))
 
 (defn- asset-whitelisted?
   "Check whether an asset path is explicitly listed in the plugin's manifest."
@@ -141,11 +134,10 @@
 (defn get-asset
   "Get a static asset for a plugin. Reads from the local bare git repo at the resolved commit.
    Returns a byte array or nil."
-  ^bytes [plugin-id ^String asset-name]
-  (when-let [{:keys [resolved_commit] :as plugin} (select-plugin-for-read plugin-id)]
-    (when resolved_commit
-      (let [snapshot (plugin-snapshot plugin)]
-        (read-asset-from-git snapshot resolved_commit asset-name)))))
+  ^bytes [{:keys [resolved_commit] :as plugin} ^String asset-name]
+  (when resolved_commit
+    (let [snapshot (plugin-snapshot plugin)]
+      (read-asset-from-git snapshot resolved_commit asset-name))))
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
@@ -221,18 +213,17 @@
         dev-url (resolve-dev-bundle id)]
     (if dev-url
       (fetch-dev-bundle dev-url)
-      (or (get-bundle id)
+      (or (get-bundle plugin)
           ;; no resolved_commit yet — fetch from remote and try again
           (do (fetch-and-update! plugin)
-              (get-bundle id))))))
+              (get-bundle (t2/select-one :model/CustomVizPlugin :id (:id plugin))))))))
 
 (defn resolve-asset
   "Resolve a static asset for a plugin, respecting dev base URL if set.
    Only serves assets whitelisted by the plugin's manifest.
    Returns a byte array or nil."
-  ^bytes [plugin-id ^String asset-name]
-  (when-let [plugin (select-plugin-for-read plugin-id)]
-    (when (asset-whitelisted? plugin asset-name)
-      (if-let [dev-url (resolve-dev-bundle plugin-id)]
-        (fetch-dev-asset dev-url asset-name)
-        (get-asset plugin-id asset-name)))))
+  ^bytes [plugin ^String asset-name]
+  (when (asset-whitelisted? plugin asset-name)
+    (if-let [dev-url (resolve-dev-bundle (:id plugin))]
+      (fetch-dev-asset dev-url asset-name)
+      (get-asset plugin asset-name))))
