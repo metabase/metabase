@@ -1257,20 +1257,9 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defn- model-card? [card]
-  ;; on extract :type is the keyword :model; on ingest from YAML it round-trips as the string "model"
-  (contains? #{:model "model"} (:type card)))
-
-(defn- native-model? [card]
-  (and (model-card? card)
-       (let [q (:dataset_query card)]
-         (or (contains? #{:native "native"} (:type q))
-             (contains? #{:mbql.stage/native "mbql.stage/native"}
-                        (get-in q [:stages 0 :lib/type]))))))
-
 (defn- export-result-metadata [card _k metadata]
-  (if (and (seq metadata) (model-card? card))
-    (let [native? (native-model? card)
+  (if (and (seq metadata) (model? card))
+    (let [native?   (lib/native? (:dataset_query card))
           keep-keys (into #{:name}
                           (map u/->snake_case_en)
                           (lib/model-preserved-keys native?))]
