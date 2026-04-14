@@ -420,3 +420,109 @@
                       cache/resolve-bundle     (constantly nil)]
           (let [resp (mt/user-http-request :crowberto :get 503 (str "ee/custom-viz-plugin/" id "/bundle"))]
             (is (some? resp))))))))
+
+;;; ------------------------------------------------ Audit Log ------------------------------------------------
+
+(deftest audit-log-create-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "registering a plugin records a custom-viz-plugin-create audit event"
+        (with-redefs [cache/fetch-and-update! (fn [plugin]
+                                                (t2/update! :model/CustomVizPlugin (:id plugin)
+                                                            {:status          :active
+                                                             :resolved_commit "sha123"}))]
+          (let [resp  (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
+                                            {:repo_url "https://github.com/test/audit-create-viz"})
+                entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
+            (is (partial=
+                 {:topic    :custom-viz-plugin-create
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "CustomVizPlugin"
+                  :model_id (:id resp)
+                  :details  {:identifier      "audit-create-viz"
+                             :display_name    "audit-create-viz"
+                             :repo_url        "https://github.com/test/audit-create-viz"
+                             :status          "active"
+                             :enabled         true
+                             :resolved_commit "sha123"}}
+                 entry))))))))
+
+(deftest audit-log-create-dev-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "registering a dev plugin records a custom-viz-plugin-create audit event"
+        (with-redefs [cache/fetch-dev-manifest    (constantly {:name "audit-dev-chart" :icon "icon.svg"})
+                      cache/set-or-clear-dev-bundle! (constantly nil)]
+          (let [resp  (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
+                                            {:dev_bundle_url "http://localhost:5174"})
+                entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
+            (is (partial=
+                 {:topic    :custom-viz-plugin-create
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "CustomVizPlugin"
+                  :model_id (:id resp)}
+                 entry))
+            (is (= "audit-dev-chart" (get-in entry [:details :identifier])))))))))
+
+(deftest audit-log-delete-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (testing "deleting a plugin records a custom-viz-plugin-delete audit event"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/audit-delete-viz"
+                                                      :identifier   "audit-delete-viz"
+                                                      :display_name "Audit Delete Viz"
+                                                      :status       :active}]
+        (mt/user-http-request :crowberto :delete 204 (str "ee/custom-viz-plugin/" id))
+        (is (partial=
+             {:topic    :custom-viz-plugin-delete
+              :user_id  (mt/user->id :crowberto)
+              :model    "CustomVizPlugin"
+              :model_id id
+              :details  {:identifier   "audit-delete-viz"
+                         :display_name "Audit Delete Viz"
+                         :repo_url     "https://github.com/test/audit-delete-viz"
+                         :status       "active"}}
+             (mt/latest-audit-log-entry "custom-viz-plugin-delete" id)))))))
+
+(deftest audit-log-update-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (testing "updating a plugin records a custom-viz-plugin-update audit event with changed fields"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/audit-update-viz"
+                                                      :identifier   "audit-update-viz"
+                                                      :display_name "Audit Update Viz"
+                                                      :status       :active
+                                                      :enabled      true}]
+        (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
+                              {:enabled false})
+        (let [entry (mt/latest-audit-log-entry "custom-viz-plugin-update" id)]
+          (is (partial=
+               {:topic    :custom-viz-plugin-update
+                :user_id  (mt/user->id :crowberto)
+                :model    "CustomVizPlugin"
+                :model_id id}
+               entry))
+          (is (= {:previous {:enabled true}
+                  :new      {:enabled false}}
+                 (select-keys (:details entry) [:previous :new]))))))))
+
+(deftest audit-log-refresh-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (testing "refreshing a plugin records a custom-viz-plugin-update audit event"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/audit-refresh-viz"
+                                                      :identifier      "audit-refresh-viz"
+                                                      :display_name    "audit-refresh-viz"
+                                                      :status          :active
+                                                      :resolved_commit "old-sha"}]
+        (with-redefs [cache/fetch-and-update! (fn [plugin]
+                                                (t2/update! :model/CustomVizPlugin (:id plugin)
+                                                            {:resolved_commit "new-sha"}))]
+          (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))
+          (let [entry (mt/latest-audit-log-entry "custom-viz-plugin-update" id)]
+            (is (partial=
+                 {:topic    :custom-viz-plugin-update
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "CustomVizPlugin"
+                  :model_id id}
+                 entry))
+            (is (= {:previous {:resolved_commit "old-sha"}
+                    :new      {:resolved_commit "new-sha"}}
+                   (select-keys (:details entry) [:previous :new])))))))))
