@@ -6,7 +6,6 @@
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.server.settings :as server.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
@@ -77,9 +76,7 @@
 (t2/define-before-insert :model/AuthIdentity
   [{:keys [provider] :as auth-identity}]
   (provider/validate (provider/provider-string->keyword provider) auth-identity)
-  (cond-> auth-identity
-    (= provider "slack-connect")
-    (update :metadata assoc :signing_secret_version (server.settings/slack-connect-signing-secret-version))))
+  auth-identity)
 
 (t2/define-before-update :model/AuthIdentity
   [{:keys [provider] :as auth-identity}]

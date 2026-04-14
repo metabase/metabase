@@ -423,72 +423,74 @@
 (deftest slack-id->user-id-test
   (testing "slack-id->user-id only returns active users with sso_source 'slack'"
     (let [slack-id "U12345SLACK"]
-      (mt/with-temp [:model/User {active-slack-user-id :id}   {:email      "active-slack@example.com"
-                                                               :is_active  true
-                                                               :sso_source "slack"}
-                     :model/User {inactive-slack-user-id :id} {:email      "inactive-slack@example.com"
-                                                               :is_active  false
-                                                               :sso_source "slack"}
-                     :model/User {active-google-user-id :id}  {:email      "active-google@example.com"
-                                                               :is_active  true
-                                                               :sso_source "google"}]
-        (testing "returns user ID for active user with sso_source 'slack'"
-          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-slack-user-id
-                                                :provider    "slack-connect"
-                                                :provider_id slack-id}]
-            (is (= active-slack-user-id
-                   (#'slackbot/slack-id->user-id slack-id)))))
+      (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
+        (mt/with-temp [:model/User {active-slack-user-id :id}   {:email      "active-slack@example.com"
+                                                                 :is_active  true
+                                                                 :sso_source "slack"}
+                       :model/User {inactive-slack-user-id :id} {:email      "inactive-slack@example.com"
+                                                                 :is_active  false
+                                                                 :sso_source "slack"}
+                       :model/User {active-google-user-id :id}  {:email      "active-google@example.com"
+                                                                 :is_active  true
+                                                                 :sso_source "google"}]
+          (testing "returns user ID for active user with sso_source 'slack'"
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-slack-user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 0}}]
+              (is (= active-slack-user-id
+                     (#'slackbot/slack-id->user-id slack-id)))))
 
-        (testing "returns user ID for active user with sso_source 'google'"
-          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
-                                                :provider    "slack-connect"
-                                                :provider_id slack-id}]
-            (is (= active-google-user-id
-                   (#'slackbot/slack-id->user-id slack-id)))))
+          (testing "returns user ID for active user with sso_source 'google'"
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 0}}]
+              (is (= active-google-user-id
+                     (#'slackbot/slack-id->user-id slack-id)))))
 
-        (testing "returns nil for inactive user with sso_source 'slack'"
-          (mt/with-temp [:model/AuthIdentity _ {:user_id     inactive-slack-user-id
-                                                :provider    "slack-connect"
-                                                :provider_id slack-id}]
-            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
+          (testing "returns nil for inactive user with sso_source 'slack'"
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     inactive-slack-user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 0}}]
+              (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
 
-        (testing "returns nil for active user with different provider"
-          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
-                                                :provider    "google"
-                                                :provider_id slack-id}]
-            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
+          (testing "returns nil for active user with different provider"
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
+                                                  :provider    "google"
+                                                  :provider_id slack-id}]
+              (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
 
-        (testing "returns nil when no AuthIdentity exists"
-          (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))
+          (testing "returns nil when no AuthIdentity exists"
+            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))))))
 
 (deftest slack-id->user-id-signing-secret-version-test
   (testing "slack-id->user-id respects signing secret version"
     (let [slack-id "U12345VERSION"]
       (mt/with-temp [:model/User {user-id :id} {:email     "version-test@example.com"
                                                 :is_active true}]
-        (testing "identity created under current version is accepted"
+        (testing "identity with current version is accepted"
           (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
             (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
                                                   :provider    "slack-connect"
-                                                  :provider_id slack-id}]
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 1}}]
               (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
 
-        (testing "identity created under old version is rejected after rotation"
-          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
+        (testing "identity with old version is rejected after rotation"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 2]
             (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
                                                   :provider    "slack-connect"
-                                                  :provider_id slack-id}]
-              ;; simulate signing secret rotation
-              (server.settings/slack-connect-signing-secret-version! 2)
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 1}}]
               (is (nil? (#'slackbot/slack-id->user-id slack-id))))))
 
         (testing "identity with no version (legacy) is rejected"
           (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
-            (mt/with-temp [:model/AuthIdentity {identity-id :id} {:user_id     user-id
-                                                                  :provider    "slack-connect"
-                                                                  :provider_id slack-id}]
-              ;; clear the version that before-insert stamped, to simulate a legacy row
-              (t2/update! :model/AuthIdentity identity-id {:metadata nil})
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id}]
               (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))))
 
 (deftest channel-message-without-mention-no-auth-test

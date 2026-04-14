@@ -3,6 +3,7 @@
    and adds Slack-specific configuration and claim extraction."
   (:require
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.server.settings :as server.settings]
    [metabase.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -172,6 +173,12 @@
 
 (methodical/defmethod auth-identity/login! :after :provider/slack-connect
   [_provider result]
+  (when (:success? result)
+    (when-let [user-id (or (some-> result :user :id)
+                           (some-> result :authenticated-user deref :id))]
+      (t2/update! :model/AuthIdentity
+                  {:user_id user-id :provider provider-name}
+                  {:metadata {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}})))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)
     result))
