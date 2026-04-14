@@ -5,6 +5,8 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -1185,3 +1187,39 @@
                    (mt/formatted-rows
                     [u.date/temporal-str->iso8601-str int int]
                     (qp/process-query query))))))))))
+
+(deftest ^:parallel expression-as-bucketed-join-key-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+    (testing "can join a custom expression that uses temporal bucketing (#59614)"
+      (let [mp               (mt/metadata-provider)
+            orders-table     (lib.metadata/table mp (mt/id :orders))
+            products-table   (lib.metadata/table mp (mt/id :products))
+            orders-id        (lib.metadata/field mp (mt/id :orders :id))
+            orders-quantity  (lib.metadata/field mp (mt/id :orders :quantity))
+            orders-created   (lib.metadata/field mp (mt/id :orders :created_at))
+            products-created (lib.metadata/field mp (mt/id :products :created_at))
+            ;; Build an expression that uses CASE to pick between two timestamp
+            ;; values. Both branches return orders.created_at, but wrapping it in
+            ;; a :case forces the compiler to go through the [:sql :expression]
+            ;; path rather than inlining a plain :field ref.
+            q                (-> (lib/query mp orders-table)
+                                 (lib/expression "effective_date"
+                                                 (lib/case
+                                                  [[(lib/> orders-quantity 0) orders-created]]
+                                                   orders-created)))
+            ;; Reference the expression with :day bucketing on the LHS of the
+            ;; join, and bucket products.created_at to :day on the RHS. Without
+            ;; the fix in [:sql :expression], the LHS stays as a raw timestamp
+            ;; CASE and the join never matches.
+            effective-ref    (-> (lib/expression-ref q "effective_date")
+                                 (lib/with-temporal-bucket :day))
+            products-day     (lib/with-temporal-bucket products-created :day)
+            query            (-> q
+                                 (lib/join (lib/join-clause products-table
+                                                            [(lib/= effective-ref products-day)]))
+                                 (lib/order-by orders-id :asc)
+                                 (lib/limit 3))]
+        (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "2019-02-11T21:40:27.892Z" nil nil nil nil nil nil nil nil]
+                [2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3 "2018-05-15T08:04:04.58Z" nil nil nil nil nil nil nil nil]
+                [3 1 105 52.72 2.9 49.2 6.42 "2019-12-06T22:22:48.544Z" 2 "2019-12-06T22:22:48.544Z" nil nil nil nil nil nil nil nil]]
+               (mt/rows (qp/process-query query))))))))
