@@ -10,6 +10,10 @@ export const getObjectKeys = <K extends string>(
   return Object.keys(obj) as K[];
 };
 
+export const getObjectValues = <V>(obj: Record<string, V>): V[] => {
+  return Object.values(obj) as V[];
+};
+
 export const objectFromEntries = <K extends string, V>(
   entries: readonly (readonly [K, V])[],
 ): Record<K, V> => {

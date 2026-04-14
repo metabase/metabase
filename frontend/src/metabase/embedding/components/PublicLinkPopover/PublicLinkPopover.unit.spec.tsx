@@ -3,8 +3,8 @@ import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type { PublicLinkPopoverProps } from "./PublicLinkPopover";
 import { PublicLinkPopover } from "./PublicLinkPopover";

@@ -10,8 +10,8 @@ import {
   type StrategyData,
 } from "metabase/admin/performance/types";
 import { defaultCron } from "metabase/common/components/Schedule/cron";
+import type { AdminPath } from "metabase/redux/store";
 import { CacheDurationUnit } from "metabase-types/api";
-import type { AdminPath } from "metabase-types/store";
 
 export const durationUnits = new Set(
   Object.values(CacheDurationUnit).map(String),

@@ -12,6 +12,7 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
+import { getDefinitionColumnName } from "./definition-builder";
 import { getMapRegionForDimension } from "./geo-dimensions";
 
 // ── Types ──
@@ -21,17 +22,28 @@ export interface ChartTypeOption {
   icon: IconName;
 }
 
-interface DisplayTypeDefinition {
-  supportsMultipleSeries: boolean;
-  supportsStacking: boolean;
-  getSettings: (
-    def: MetricDefinition,
-    dimension: DimensionMetadata,
-  ) => VisualizationSettings;
-  combineSettings?: (
-    settings: VisualizationSettings[],
-  ) => VisualizationSettings;
-}
+type DisplayTypeDefinition =
+  | {
+      dimensionRequired: true;
+      supportsMultipleSeries: boolean;
+      supportsStacking: boolean;
+      getSettings: (
+        def: MetricDefinition,
+        dimension: DimensionMetadata,
+      ) => VisualizationSettings;
+      combineSettings?: (
+        settings: VisualizationSettings[],
+      ) => VisualizationSettings;
+    }
+  | {
+      dimensionRequired: false;
+      supportsMultipleSeries: boolean;
+      supportsStacking: boolean;
+      getSettings: (def: MetricDefinition) => VisualizationSettings;
+      combineSettings?: (
+        settings: VisualizationSettings[],
+      ) => VisualizationSettings;
+    };
 
 interface BaseTabTypeDefinition {
   type: MetricsViewerTabType;
@@ -40,6 +52,8 @@ interface BaseTabTypeDefinition {
   dimensionSubtype?: (dimension: DimensionMetadata) => string | null;
   defaultDisplayType: MetricsViewerDisplayType;
   availableDisplayTypes: ChartTypeOption[];
+  minDimensions: number;
+  index?: number;
 }
 
 interface AggregateTabType extends BaseTabTypeDefinition {
@@ -82,6 +96,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     fixedId: "time",
     defaultDisplayType: "line",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "geo",
@@ -92,6 +107,18 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     dimensionSubtype: getGeoSubtype,
     defaultDisplayType: "map",
     availableDisplayTypes: GEO_CHART_TYPES,
+    minDimensions: 1,
+  },
+  {
+    type: "scalar",
+    autoCreate: true,
+    matchMode: "aggregate",
+    fixedId: "scalar",
+    dimensionPredicate: () => false,
+    defaultDisplayType: "scalar",
+    availableDisplayTypes: [{ type: "scalar", icon: "number" }],
+    index: 5,
+    minDimensions: 0,
   },
   {
     type: "category",
@@ -100,6 +127,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     matchMode: "exact-column",
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "boolean",
@@ -108,6 +136,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     matchMode: "exact-column",
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "numeric",
@@ -116,6 +145,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     matchMode: "exact-column",
     defaultDisplayType: "bar",
     availableDisplayTypes: NUMERIC_CHART_TYPES,
+    minDimensions: 1,
   },
 ];
 
@@ -162,13 +192,6 @@ function getChartSettings(
   };
 }
 
-function getPieSettings(
-  _def: MetricDefinition,
-  _dimension: DimensionMetadata,
-): VisualizationSettings {
-  return {};
-}
-
 function getScatterSettings(
   def: MetricDefinition,
   dimension: DimensionMetadata,
@@ -201,6 +224,12 @@ function getMapSettings(
   };
 }
 
+function getScalarSettings(def: MetricDefinition): VisualizationSettings {
+  return {
+    "scalar.field": getDefinitionColumnName(def) ?? undefined,
+  };
+}
+
 function combineColors(
   settings: VisualizationSettings[],
 ): VisualizationSettings {
@@ -221,41 +250,43 @@ export const DISPLAY_TYPE_REGISTRY: Record<
   DisplayTypeDefinition
 > = {
   line: {
+    dimensionRequired: true,
     supportsMultipleSeries: true,
     supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
   area: {
+    dimensionRequired: true,
     supportsMultipleSeries: true,
     supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
   bar: {
+    dimensionRequired: true,
     supportsMultipleSeries: true,
     supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
-  row: {
-    supportsMultipleSeries: true,
-    supportsStacking: false,
-    getSettings: getChartSettings,
-  },
   scatter: {
+    dimensionRequired: true,
     supportsMultipleSeries: true,
-    supportsStacking: false,
+    supportsStacking: true,
     getSettings: getScatterSettings,
+    combineSettings: combineColors,
   },
   map: {
+    dimensionRequired: true,
     supportsMultipleSeries: false,
-    supportsStacking: false,
+    supportsStacking: true,
     getSettings: getMapSettings,
   },
-  pie: {
+  scalar: {
+    dimensionRequired: false,
     supportsMultipleSeries: false,
-    supportsStacking: false,
-    getSettings: getPieSettings,
+    supportsStacking: true,
+    getSettings: getScalarSettings,
   },
 };

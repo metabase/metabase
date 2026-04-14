@@ -32,6 +32,7 @@
    [metabase-enterprise.serialization.v2.load :as load]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
@@ -108,7 +109,7 @@
   ;; Use a separate cache to make sure there is no cross-contamination.
   (serdes/with-cache
     (-> (extract/extract {:include-field-values true :include-metabot true})
-        (storage/store! output-dir))))
+        (storage/store! (storage.files/file-writer output-dir)))))
 
 (defn- delete-dir-contents! [^File dir]
   (when (and dir (.exists dir))
@@ -139,7 +140,7 @@
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
   []
-  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) source-dir))
+  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) (storage.files/file-writer source-dir)))
 
 ;; If this test is failing, read the docstring at the top of this namespace for what to do B-)
 (deftest baseline-completeness-test

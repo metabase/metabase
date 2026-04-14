@@ -9,12 +9,12 @@ import {
 } from "__support__/server-mocks";
 import { findRequests } from "__support__/server-mocks/util";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockEmailChannelSpec,
   createMockSlackChannelSpec,
 } from "metabase-types/api/mocks/security-center";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type { NotificationConfig } from "../../hooks/use-notification-config";
 import {
