@@ -15,6 +15,8 @@
         "{{tmpdir}}",
         "/tmp",
         "/private/tmp",
+        "/var/folders",
+        "/private/var/folders",
         "~/Library/Caches/ms-playwright",
         "~/Library/Application Support/Google/Chrome"
       ],
@@ -29,6 +31,8 @@
         "{{tmpdir}}",
         "/tmp",
         "/private/tmp",
+        "/var/folders",
+        "/private/var/folders",
         "~/Library/Caches/ms-playwright",
         "~/Library/Application Support/Google/Chrome"
       ]
@@ -38,10 +42,23 @@
       "allowAllUnixSockets": true,
       "allowedDomains": [
         "metabase.com",
+        "*.metabase.com",
+        "*.coredev.metabase.com",
+        "repl.coredev.metabase.com",
         "github.com",
         "api.github.com",
+        "*.githubusercontent.com",
         "*.blob.core.windows.net",
-        "api.linear.app"
+        "api.linear.app",
+        "registry.npmjs.org",
+        "*.npmjs.org",
+        "*.npmjs.com",
+        "nodejs.org",
+        "playwright.download.prss.microsoft.com",
+        "cdn.playwright.dev",
+        "repo1.maven.org",
+        "repo.clojars.org",
+        "repo.maven.apache.org"
       ]
     }
   },

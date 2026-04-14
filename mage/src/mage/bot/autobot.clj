@@ -84,14 +84,47 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Self-detection (for running stop/quit from inside a session)
 
-(defn- detect-current-session
-  "Detect the current session name when running inside a worktree.
-   Returns the session name or nil if not inside a session."
+(defn- current-worktree-path
+  "Return the absolute path of the git worktree the caller is currently in,
+   or nil if not inside a git repo."
   []
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "current")]
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true :dir (System/getProperty "user.dir")}
+                                      "git" "rev-parse" "--show-toplevel")]
     (when (zero? exit)
-      (let [name (str/trim (str/join "" out))]
-        (when (seq name) name)))))
+      (str/trim (str/join "" out)))))
+
+(defn- main-repo-path
+  "Return the absolute path of the main (common) git repo, or nil if not in a git repo.
+   When run from a linked worktree, this returns the main repo, not the worktree."
+  []
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true :dir (System/getProperty "user.dir")}
+                                      "git" "rev-parse" "--git-common-dir")]
+    (when (zero? exit)
+      (let [git-dir (str/trim (str/join "" out))
+            ;; git-common-dir is usually `<main>/.git` or an absolute path ending in `/.git`
+            abs     (if (str/starts-with? git-dir "/")
+                      git-dir
+                      (str (System/getProperty "user.dir") "/" git-dir))]
+        (str/replace abs #"/\.git/?$" "")))))
+
+(defn- detect-current-session
+  "Detect the current session name when the caller is inside a worktree.
+
+   Derives the name from the current worktree's path rather than asking
+   workmux (which has no `current` subcommand). If the caller is in the
+   main repo, returns nil (there's no active session there).
+
+   Strategy:
+   1. `git rev-parse --show-toplevel` → current worktree path
+   2. `git rev-parse --git-common-dir` → main repo path
+   3. If they are the same, we're in the main repo → nil
+   4. Otherwise take the basename of the worktree path as the session name
+      (autobot always names worktrees with the session slug)."
+  []
+  (let [wt   (current-worktree-path)
+        main (main-repo-path)]
+    (when (and wt main (not= wt main))
+      (last (str/split wt #"/")))))
 
 (defn- resolve-session-name
   "Resolve a session name from arguments, or detect current session if no args."

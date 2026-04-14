@@ -106,6 +106,12 @@ Read the changed files thoroughly. **Prioritize untested code paths** identified
 1. **State the old rule in one sentence.** "Previously, X happened when Y." Be precise about the triggering condition Y.
 2. **State the new rule in one sentence.** "Now, X only happens when Y AND Z." Name the new condition Z.
 3. **Enumerate who was in `Y AND NOT Z`.** What concrete records, users, flows, callers, inputs, or deployment states fell under the old rule but are excluded by the new one? If you cannot enumerate them, you cannot yet accept the change as safe.
+3a. **Walk every input BRANCH of the gated function, not just every caller.** A function like `(or discovery-path manual-path)` has two input branches that may live in *opposite authorization contexts*: one is attacker-controlled (the discovery document from a remote OIDC provider), the other is admin-authorized (a URL the operator typed into the settings UI). A guard that is correct for one branch can be a regression for the other, and a caller walk will miss this because both branches reach the same caller. Write the branch analysis as a **literal bulleted list** in `initial-review.md`, not a mental note:
+   - Branch 1 (e.g., discovery-document path): who's in `Y AND NOT Z` here?
+   - Branch 2 (e.g., manual config / settings path): who's in `Y AND NOT Z` here?
+   - Branch 3 (fallback / default): who's in `Y AND NOT Z` here?
+
+   Apply the same scrutiny to `cond` branches, `case` branches, destructured map shapes, variadic arities, and any pattern that switches on input shape. If you collapse the analysis to "the callers handle/don't handle the throw," you are at the wrong granularity and will miss half the regressions.
 4. **For each excluded case, ask: was this exclusion intended?** Is it mentioned in the PR description? Does it match a reasonable reading of the Linear issue? If the author framed the PR as "fixing X" but the new rule also excludes Y and Z as a side-effect, that side-effect is a regression unless the author explicitly acknowledges and justifies it.
 5. **For each excluded case, ask: is it reachable by a legitimate user journey?** Not "could an adversary trigger it" — "does a normal customer operating the product in a normal way end up there?" If yes, the exclusion is a REGRESSION and must be reported as SEVERE even if the diff is small and the tests are green.
 
@@ -177,6 +183,7 @@ For every input the change accepts — form fields, URL params, API request bodi
 - SSRF (user-controlled URLs in server-side requests)
 - Data leakage (sensitive fields in API responses that shouldn't be there)
 - IDOR (can user A access user B's resources by guessing IDs?)
+- **Observability of security events.** For every new security guard, ask: "When this guard fires, what does it look like in the server logs?" Can an SRE running a SIEM or alert rule distinguish a blocked attack from a routine network hiccup? If the blocked case produces the same log line as an unrelated failure (e.g., a generic `"Failed to fetch X"` warning that covers both "SSRF block" and "connection refused"), flag it as a GOOD_TO_FIX — the guard works but operators lose the signal. Recommend a distinct log message at WARN/ERROR with the blocked URL, a dedicated metric counter, or both.
 
 ### API Consistency
 - Does the response shape match similar existing endpoints?
@@ -232,6 +239,8 @@ For every input the change accepts — form fields, URL params, API request bodi
 - **UI reachable**: Yes/No — can this be triggered through the current UI, or only via direct API call?
 
 **API_ROBUSTNESS vs SEVERE:** If a bug crashes the server (500 error) or produces wrong results but can ONLY be triggered via direct API call — not through any current UI path — classify it as API_ROBUSTNESS, not SEVERE. SEVERE is reserved for bugs that affect users through the UI. Exception: if the API bug is a security issue (auth bypass, data leak, injection), classify it as SECURITY regardless. API_ROBUSTNESS issues matter for SDK users, integrations, and future UI changes.
+
+**SEVERE vs GOOD_TO_FIX — the "legitimate user journey" test.** Before labeling a finding SEVERE, ask: *"Is there a legitimate user journey that worked before this PR and doesn't anymore?"* If yes → SEVERE. If the answer is "no, but the PR correctly blocks a bad path and the error handling is ugly (stack trace instead of clean 401, misleading error message, leaked internal URL in the response, 500 instead of structured error)" → **GOOD_TO_FIX**, not SEVERE. A clean 500 in an attacker-triggered scenario is a bad user experience, but it is not a user-breaking regression. Reserve SEVERE for regressions against existing legitimate flows — otherwise SEVERE loses its signal value and the real SEVEREs get drowned in hygiene findings. When in doubt, ask: "If I merge this PR as-is, will a real customer's existing workflow break on upgrade?" Only that question distinguishes SEVERE from GOOD_TO_FIX.
 - **Description**: What the issue is
 - **Reproduction hypothesis**: How to trigger it (specific API call, UI action, or data condition)
 - **Confidence**: HIGH, MEDIUM, or LOW

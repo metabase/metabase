@@ -18,4 +18,4 @@ panes:
 
   - command: mise x -- ./bin/mage -bot-status .bot/autobot/llm-status.txt
     split: vertical
-    size: 7
+    size: 10
