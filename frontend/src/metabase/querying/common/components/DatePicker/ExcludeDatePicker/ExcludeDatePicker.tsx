@@ -134,7 +134,6 @@ export function ExcludeOptionPicker({
             display="block"
             variant="subtle"
             onClick={() => onSelectUnit(option.unit)}
-            data-testid={`exclude-unit-${option.unit}`}
           >
             {option.label}
           </Button>

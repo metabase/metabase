@@ -93,9 +93,6 @@ export function saveDashboard({
     "saveDashboard-getDashboardMetadata",
   );
 
-  // Use the stable `edit-bar` test id and the Save button's `edit-bar-save-button`
-  // test id rather than matching against translated label text. This makes the helper
-  // safe to call from tests that run under non-English locales.
   cy.findByTestId("edit-bar").should("be.visible");
   cy.findByTestId("edit-bar-save-button").click();
 

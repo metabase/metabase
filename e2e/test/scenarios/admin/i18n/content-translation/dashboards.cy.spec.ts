@@ -570,8 +570,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
                 if (isMultiSelect) {
                   cy.findByText(/Apparat/).click();
                 }
-                // Use the stable testid rather than the German "Add filter" label.
-                cy.findByTestId("update-filter-button").click();
+                cy.findByText(/Füge einen Filter hinzu/).click();
               });
               H.tableInteractiveBody().within(() => {
                 cy.findAllByText(/Dingsbums/).should(
@@ -770,13 +769,12 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
 
           H.filterWidget().findByText("Multi").click();
-          // Use the stable list-field testid instead of the French placeholder.
-          // Search matches against untranslated text, hence "Fran" matching these names.
-          cy.findByTestId("list-field").type("Fran");
+          // Search matches against untranslated text, hence "Fran" matching these names
+          cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
           cy.wait("@searchQuery");
           cy.findByTestId("parameter-value-dropdown").within(() => {
             cy.findByText(/Glacia Froskeon/).click();
-            cy.findByTestId("update-filter-button").click();
+            cy.button(/Ajouter un filtre/).click();
           });
 
           H.tableInteractiveBody().within(() => {
@@ -789,13 +787,12 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
 
           cy.findByTestId("parameter-widget").click();
-          // Use the stable list-field testid instead of the French placeholder.
-          // Search matches against untranslated text, hence "Fran" matching these names.
-          cy.findByTestId("list-field").type("Fran");
+          // Search matches against untranslated text, hence "Fran" matching these names
+          cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
           cy.findByText(/Hammera Francite/).click();
           cy.realPress("Escape");
           cy.findByTestId("parameter-value-dropdown")
-            .findByTestId("update-filter-button")
+            .button(/Mettre à jour le filtre/)
             .click();
 
           H.tableInteractiveBody().within(() => {

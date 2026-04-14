@@ -162,7 +162,6 @@ export const DashCardCardParameterMapperButton = ({
             aria-haspopup="listbox"
             aria-expanded={isDropdownVisible}
             aria-disabled={isDisabled || !hasPermissionsToMap}
-            data-testid="parameter-mapper-button"
           >
             {buttonText && (
               <Box

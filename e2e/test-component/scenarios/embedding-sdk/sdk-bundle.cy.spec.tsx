@@ -175,10 +175,7 @@ describe(
               cy.findByText("[zz] Filter").should("exist");
             });
 
-            // Update props via the imperative API (via window). Switching back to
-            // `en` proves the imperative API actually triggers a locale change
-            // (the assertion would still pass on a no-op if both transitions were
-            // `en-ZZ` -> `en-ZZ`).
+            // Update props via the imperative API (via window).
             cy.window().then((win) => {
               win.METABASE_PROVIDER_PROPS_STORE.setProps({
                 authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,

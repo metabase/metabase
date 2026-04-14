@@ -254,7 +254,6 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
                 <Button
                   justify="center"
                   onClick={() => setCurrentView({ type: "create-dashboard" })}
-                  data-testid="new-dashboard-button"
                 >
                   {t`New dashboard`}
                 </Button>

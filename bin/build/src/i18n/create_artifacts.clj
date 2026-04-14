@@ -7,6 +7,8 @@
    [i18n.pseudo-locale :as pseudo-locale]
    [metabuild-common.core :as u]))
 
+(set! *warn-on-reflection* true)
+
 (defn- locales-dot-edn []
   {:locales  (conj (i18n/locales) "en")
    :packages ["metabase"]
@@ -42,9 +44,11 @@
 
   ([_options]
    (u/step "Create i18n artifacts"
-     ;; Generate the `en-ZZ` pseudo-locale .po file before enumerating locales so it's included in both
-     ;; `resources/locales.clj` and the per-locale artifact generation. See UXW-3460.
-     (pseudo-locale/generate-pseudo-locale-po!)
+     ;; Generate the `en-ZZ` pseudo-locale .po file before enumerating locales.
+     ;; Only when `MB_ENABLE_TEST_LOCALES=true` — production builds should not
+     ;; include the pseudo-locale in the JAR. (UXW-3460)
+     (when (= "true" (System/getenv "MB_ENABLE_TEST_LOCALES"))
+       (pseudo-locale/generate-pseudo-locale-po!))
      (generate-locales-dot-edn!)
      (create-artifacts-for-all-locales!)
      (u/announce "Translation resources built successfully."))))

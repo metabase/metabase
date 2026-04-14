@@ -62,7 +62,6 @@ export const SaveEditButton = () => {
           failedText={t`Save failed`}
           successText={t`Saved`}
           disabled={isSaveDisabled}
-          data-testid="edit-bar-save-button"
         />
       </span>
     </Tooltip>

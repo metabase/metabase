@@ -361,14 +361,21 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       cy.findByText("Today").click();
     });
 
-    H.getDashboardCard(0).findByText("Variable: [zz] Today").should("exist");
-    H.getDashboardCard(1).findByText("Variable: [zz] Today").should("exist");
+    H.getDashboardCard(0)
+      .findByText("Variable: [zz] Today")
+      .should("be.visible");
+    H.getDashboardCard(1)
+      .findByText("Variable: [zz] Today")
+      .should("be.visible");
 
     // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
     // English on the homepage.
     cy.visit("/");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick up where you left off").should("exist");
+
+    cy.findByTestId("home-page").within(() => {
+      cy.findByText("Pick up where you left off").should("be.visible");
+      cy.findByText("[zz] Pick up where you left off").should("not.exist");
+    });
   });
 
   it("should localize date parameters in the instance locale", () => {

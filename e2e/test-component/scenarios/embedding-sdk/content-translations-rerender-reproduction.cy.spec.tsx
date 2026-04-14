@@ -40,10 +40,7 @@ describe("scenarios > embedding-sdk > content-translations-rerender-reproduction
       },
     );
 
-    // Wait for the editor to be mounted via a stable selector instead of a
-    // German UI string. The data picker is the first thing to render in the
-    // notebook editor when starting from `questionId="new"`.
-    getSdkRoot().findByTestId("data-step-cell").should("be.visible");
+    getSdkRoot().contains("Wähle deine Start-Daten");
   };
 
   it("should rerender content after a content-translation plugin is loaded", () => {
@@ -58,13 +55,9 @@ describe("scenarios > embedding-sdk > content-translations-rerender-reproduction
       cy.findByText("Bestellungen").click();
     });
 
-    // Click into the (empty) filter step to open its popover. We target the
-    // step container by its stable test id rather than relying on the German
-    // "Add filters to narrow your answer" placeholder text.
-    getSdkRoot()
-      .findByTestId("step-filter-0-0")
-      .findByTestId("notebook-cell-item")
-      .click();
+    getSdkRoot().within(() => {
+      cy.findByText("Füge Filter hinzu, um deine Antwort einzugrenzen").click();
+    });
 
     popover().within(() => {
       cy.findByText("Gesamtsumme").should("exist");

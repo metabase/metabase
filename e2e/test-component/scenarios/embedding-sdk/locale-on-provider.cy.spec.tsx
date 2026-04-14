@@ -89,18 +89,16 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
   });
 
-  it("when locale=en-ZZ it should be loaded as a region-specific locale", () => {
-    // This used to cover `zh-TW` (a real region-specific locale). We now use the
-    // pseudo-locale `en-ZZ` to verify the same code path without depending on
-    // fragile real-language strings that change when Crowdin updates come in.
-    setup({ locale: "en-ZZ" });
+  it("when locale=zh-TW, it should be used used since it's available", () => {
+    // Very specific test case, so using en-ZZ isn't as useful
+    setup({ locale: "zh-TW" });
 
-    cy.request("/app/locales/en_ZZ.json").then((response) => {
+    cy.request("/app/locales/zh_TW.json").then((response) => {
       expect(response.status).to.eq(200);
     });
 
     getSdkRoot().within(() => {
-      cy.findByText("[zz] Summarize").should("exist");
+      cy.findByText("匯總(Summarize)").should("exist");
     });
   });
 

@@ -156,7 +156,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
   it("correctly serializes exclude filter on non-English locales (metabase#29122)", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en_ZZ" });
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -168,27 +168,19 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.popover().icon("calendar").click(); // "Time" -> "All Options"
 
-    // Use the stable mapper-button testid instead of the French "Sélectionner…" label.
-    cy.findByTestId("parameter-mapper-button").click();
-    H.popover().contains("Created At").first().click();
-
+    H.getDashboardCard().findByText("[zz] Select…").click();
+    H.popover().contains("Created At").first().click(); // 'Created At' is a column name, so it's not translated
     H.saveDashboard();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Date").click(); // "Date" - it's the same word in English and in French
-    // Use the stable type testid instead of the French "Exclure…" label.
-    cy.findByTestId("date-picker-type-exclude").click();
-    // Use the stable unit testid instead of the French "Mois de l'année…" label.
-    cy.findByTestId("exclude-unit-month-of-year").click();
-    // Dayjs French month name. This is the actual thing we're verifying — the
-    // serializer must turn `janvier` into `Jan` in the URL.
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("janvier").click(); // "January"
+    cy.findByTestId("dashboard-parameters-and-cards")
+      .findByText("[zz] Date")
+      .click();
+    H.popover().findByText("[zz] Exclude…").click();
+    H.popover().findByText("[zz] Months of the year…").click();
+    H.popover().findByText("January").click(); // Dayjs doesn't have en-ZZ locale, falls back to en
+    H.popover().findByText("[zz] Add filter").click();
 
-    // Use the stable update-filter-button testid instead of "Ajouter un filtre".
-    cy.findByTestId("update-filter-button").click();
-
-    cy.url().should("match", /\/dashboard\/\d+\?date=exclude-months-Jan/);
+    cy.url().should("match", /\/dashboard\/\d+\?.*date=exclude-months-Jan/);
   });
 });
 

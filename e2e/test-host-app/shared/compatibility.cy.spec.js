@@ -59,7 +59,6 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      // Use the stable test id rather than the Spanish "Filtro" label.
       cy.findByTestId("filter-dropdown-button").click();
     });
 
@@ -69,7 +68,6 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
       .within(() => {
         // "Started At" is the column display name from the database, stable across locales.
         cy.findByText("Started At").click();
-        // Stable test id for "Relative date range…" instead of the Spanish label.
         cy.findByTestId("date-picker-type-relative").click();
       });
 
@@ -90,7 +88,6 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      // Use the stable test id rather than the Spanish "Filtro" label.
       cy.findByTestId("filter-dropdown-button").click();
     });
     cy.get('[data-element-id="mantine-popover"]')
@@ -99,7 +96,6 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
       .within(() => {
         // "Started At" is the column display name from the database, stable across locales.
         cy.findByText("Started At").click();
-        // Stable test id for "Fixed date range…" instead of the Spanish label.
         cy.findByTestId("date-picker-type-specific").click();
       });
 

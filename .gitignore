@@ -56,7 +56,7 @@ cypress.env.json
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
-# Pseudo-locale generated at build time by `bin/build/src/i18n/pseudo_locale.clj` — see UXW-3460.
+# Pseudo-locale generated at build time
 /locales/en-ZZ.po
 /logs
 /modules/drivers/*/resources/namespaces.edn

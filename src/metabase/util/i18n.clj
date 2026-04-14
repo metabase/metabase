@@ -83,16 +83,18 @@
       (= "true" (System/getenv "MB_ENABLE_TEST_LOCALES"))))
 
 (defn available-locales-with-names
-  "Returns all locale abbreviations and their full names. Test-only pseudo-locales are hidden unless we're in dev/test
-  mode or `MB_ENABLE_TEST_LOCALES=true`."
+  "Returns all locale abbreviations and their full names. Test-only pseudo-locales (e.g. `en_ZZ`) are injected when
+  we're in dev/test mode or `MB_ENABLE_TEST_LOCALES=true`, and hidden otherwise. The pseudo-locale `.po` file is only
+  generated at build time when the env var is set (see `i18n.create-artifacts`), so `locales.clj` in a production JAR
+  will not list it — this function is responsible for adding it at runtime when appropriate."
   []
-  (let [show-test? (show-test-locales?)]
-    (for [locale-name (i18n.impl/available-locale-names)
+  (let [show-test?   (show-test-locales?)
+        locale-names (cond-> (i18n.impl/available-locale-names)
+                       show-test? (into test-only-locales))]
+    (for [locale-name locale-names
           ;; Abbreviation must be normalized or the language picker will show incorrect saved value
           ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
-          :let  [normalized (normalized-locale-string locale-name)]
-          :when (or show-test?
-                    (not (contains? test-only-locales normalized)))]
+          :let [normalized (normalized-locale-string locale-name)]]
       [normalized (get locale-display-name-overrides normalized (.getDisplayName (locale locale-name)))])))
 
 (def ^:private included-locales
