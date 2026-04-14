@@ -601,6 +601,7 @@ describe("scenarios > data studio > datamodel", () => {
         );
 
         cy.log("change field name");
+        TableSection.clickFieldsTab();
         TableSection.getFieldNameInput("Tax")
           .clear()
           .type("Analyst Tax")
@@ -665,6 +666,7 @@ describe("scenarios > data studio > datamodel", () => {
           tableId: ORDERS_ID,
         });
 
+        TableSection.clickFieldsTab();
         TableSection.getFieldDescriptionInput("Total").clear().blur();
         cy.wait("@updateField");
         verifyAndCloseToast("Description of Total updated");
@@ -698,6 +700,7 @@ describe("scenarios > data studio > datamodel", () => {
           tableId: ORDERS_ID,
         });
 
+        TableSection.clickFieldsTab();
         cy.log("change field name from table section");
         TableSection.getFieldNameInput("Tax")
           .clear()
@@ -775,6 +778,7 @@ describe("scenarios > data studio > datamodel", () => {
           tableId: PRODUCTS_ID,
         });
 
+        TableSection.clickFieldsTab();
         TableSection.getSortButton().click();
         TableSection.getSortOrderInput()
           .findByDisplayValue("database")
@@ -802,6 +806,7 @@ describe("scenarios > data studio > datamodel", () => {
           tableId: PRODUCTS_ID,
         });
 
+        TableSection.clickFieldsTab();
         TableSection.getSortButton().click();
         TableSection.getSortOrderInput()
           .findByLabelText("Alphabetical order")
@@ -834,6 +839,7 @@ describe("scenarios > data studio > datamodel", () => {
           tableId: PRODUCTS_ID,
         });
 
+        TableSection.clickFieldsTab();
         TableSection.getSortButton().click();
         TableSection.getSortOrderInput().findByLabelText("Auto order").click();
         cy.wait("@updateTable");
@@ -864,6 +870,7 @@ describe("scenarios > data studio > datamodel", () => {
           tableId: PRODUCTS_ID,
         });
 
+        TableSection.clickFieldsTab();
         TableSection.getSortButton().click();
         TableSection.getSortOrderInput()
           .findByDisplayValue("database")
@@ -909,6 +916,7 @@ describe("scenarios > data studio > datamodel", () => {
           tableId: PRODUCTS_ID,
         });
 
+        TableSection.clickFieldsTab();
         TableSection.getSortButton().click();
         TableSection.getSortOrderInput()
           .findByDisplayValue("database")
@@ -1212,13 +1220,6 @@ describe("scenarios > data studio > datamodel", () => {
         FieldSection.getPreviewButton().click();
         PreviewSection.get().scrollIntoView().should("be.visible");
 
-        TableSection.getSyncOptionsButton().click();
-        H.modal().should("be.visible");
-
-        cy.realPress("Escape");
-        H.modal().should("not.exist");
-        PreviewSection.get().should("be.visible");
-
         FieldSection.getFieldValuesButton().click();
         H.modal().should("be.visible");
 
@@ -1281,6 +1282,7 @@ describe("scenarios > data studio > datamodel", () => {
         TablePicker.getDatabase("Writable Postgres12").click();
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
+        TableSection.clickFieldsTab();
         TableSection.clickField("Name");
         FieldSection.getPreviewButton().click();
 
@@ -1338,12 +1340,15 @@ describe("scenarios > data studio > datamodel", () => {
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
       });
 
+      TableSection.clickDetailsTab();
       H.DataModel.TableSection.getVisibilityTypeInput().click();
       H.popover().findByText("Hidden").click();
       cy.wait("@updateTable");
+
+      H.DataModel.TableSection.clickFieldsTab();
+      H.DataModel.TableSection.clickField("Product ID");
 
       FieldSection.getPreviewButton().click();
       PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
@@ -1379,6 +1384,7 @@ describe("scenarios > data studio > datamodel", () => {
       "ensure that preview opened state was cleared and does not re-appear",
     );
     TablePicker.getTable("Orders").click();
+    TableSection.clickFieldsTab();
     TableSection.clickField("Subtotal");
     PreviewSection.get().should("not.exist");
     FieldSection.get().should("exist");

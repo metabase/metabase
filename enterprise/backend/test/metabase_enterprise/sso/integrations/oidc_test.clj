@@ -4,14 +4,15 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.config.core :as config]
+   [metabase.server.instance :as server.instance]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.encryption :as encryption]
    [methodical.core :as methodical]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,7 +87,7 @@
              (fn []
                (mt/with-temporary-setting-values
                  [oidc-providers [test-provider]
-                  site-url       (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+                  site-url       (format "http://localhost:%s" (server.instance/server-port))]
                  ~@body)))))))))
 
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
@@ -106,7 +107,7 @@
       (mt/with-additional-premium-features #{:sso-oidc}
         (mt/with-temporary-setting-values
           [oidc-providers [(assoc test-provider :enabled false)]
-           site-url           (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+           site-url           (format "http://localhost:%s" (server.instance/server-port))]
           (with-ensure-encryption!
             (with-successful-oidc!
               (let [response (mt/client-full-response :get 400 "/auth/sso/test-idp"
@@ -183,3 +184,206 @@
                    (:status (mt/client-full-response :get 400 "/auth/sso/test-idp"
                                                      {:request-options {:redirect-strategy :none}}
                                                      :redirect redirect-uri))))))))))
+
+;;; -------------------------------------------------- Group Sync Tests --------------------------------------------------
+
+(def ^:private ^:dynamic *group-sync-claims*
+  "Dynamic var to control what claims the group sync mock returns."
+  {:groups ["test-group"]})
+
+(def ^:private ^:dynamic *group-sync-email*
+  "Dynamic var to control the email returned by the group sync mock."
+  "oidc-group-user@example.com")
+
+;; Mock that returns claims with group membership
+(methodical/defmethod auth-identity/authenticate :provider/test-oidc-with-groups
+  [_provider request]
+  (if (some #(contains? request %) [:code :error :state])
+    {:success?    true
+     :claims      *group-sync-claims*
+     :user-data   {:email      *group-sync-email*
+                   :first_name "OIDC"
+                   :last_name  "GroupUser"}
+     :provider-id "test-oidc-provider-id"}
+    {:success?     :redirect
+     :redirect-url "https://test.idp.example.com/authorize"
+     :state        "test-state"
+     :nonce        "test-nonce"}))
+
+(methodical/prefer-method! #'auth-identity/authenticate :provider/test-oidc-with-groups :provider/oidc)
+
+(defmacro ^:private with-group-sync-oidc! [& body]
+  `(do
+     (derive :provider/custom-oidc :provider/test-oidc-with-groups)
+     (try
+       ~@body
+       (finally
+         (underive :provider/custom-oidc :provider/test-oidc-with-groups)))))
+
+(defn- do-with-group-sync-login!
+  "Helper that sets up the OIDC provider with group sync config, performs a login, and calls `f`
+   with the login result."
+  [provider-config claims email f]
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:audit-app}
+      (sso.test-setup/do-with-other-sso-types-disabled!
+       (fn []
+         (mt/with-additional-premium-features #{:sso-oidc}
+           (sso.test-setup/call-with-login-attributes-cleared!
+            (fn []
+              (mt/with-temporary-setting-values
+                [oidc-providers [provider-config]]
+                (binding [*group-sync-claims* claims
+                          *group-sync-email*  email]
+                  (with-group-sync-oidc!
+                    (with-redefs [oidc.state/validate-oidc-callback
+                                  (fn [_request _state _provider & _opts]
+                                    {:valid? true :nonce "test-nonce" :redirect "/"})]
+                      (let [result (auth-identity/login!
+                                    :provider/custom-oidc
+                                    {:oidc-provider-key "test-idp"
+                                     :code              "test-code"
+                                     :state             "test-state"})]
+                        (f result))))))))))))))
+
+(deftest oidc-group-sync-test
+  (testing "OIDC login with group sync enabled adds user to mapped groups"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name (str "OIDC Test Group " (random-uuid))}]
+      (let [provider-config (assoc test-provider
+                                   :group-sync {:enabled         true
+                                                :group-attribute "groups"
+                                                :group-mappings  {:test-group [group-id]}})]
+        (do-with-group-sync-login!
+         provider-config {:groups ["test-group"]} "oidc-group-user@example.com"
+         (fn [result]
+           (is (true? (:success? result)) (str "login result: " (pr-str result)))
+           (testing "user is added to the mapped group"
+             (let [user (t2/select-one :model/User :%lower.email "oidc-group-user@example.com")]
+               (is (some? user))
+               (is (contains?
+                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                    group-id))))))))))
+
+(deftest oidc-group-sync-disabled-test
+  (testing "Group sync disabled — should not sync even with mappings configured"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name (str "OIDC No-Sync Group " (random-uuid))}]
+      (let [email           (str "oidc-nosync-" (random-uuid) "@example.com")
+            provider-config (assoc test-provider
+                                   :group-sync {:enabled         false
+                                                :group-attribute "groups"
+                                                :group-mappings  {:test-group [group-id]}})]
+        (do-with-group-sync-login!
+         provider-config {:groups ["test-group"]} email
+         (fn [result]
+           (is (true? (:success? result)))
+           (testing "user is NOT added to the mapped group because sync is disabled"
+             (let [user (t2/select-one :model/User :%lower.email email)]
+               (is (some? user))
+               (is (not (contains?
+                         (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                         group-id)))))))))))
+
+(deftest oidc-group-sync-no-mappings-test
+  (testing "No mappings configured — should not add user to any extra groups"
+    (let [email           (str "oidc-nomap-" (random-uuid) "@example.com")
+          provider-config (assoc test-provider
+                                 :group-sync {:enabled         true
+                                              :group-attribute "groups"
+                                              :group-mappings  {}})]
+      (do-with-group-sync-login!
+       provider-config {:groups ["test-group"]} email
+       (fn [result]
+         (is (true? (:success? result)))
+         (testing "user exists but only has the All Users group"
+           (let [user (t2/select-one :model/User :%lower.email email)]
+             (is (some? user))
+             ;; All Users group (id=1) is the only group
+             (is (= #{1} (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user)))))))))))
+
+(deftest oidc-group-sync-single-string-value-test
+  (testing "Single group value (string instead of array) should still work"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name (str "OIDC String Group " (random-uuid))}]
+      (let [email           (str "oidc-strgrp-" (random-uuid) "@example.com")
+            provider-config (assoc test-provider
+                                   :group-sync {:enabled         true
+                                                :group-attribute "groups"
+                                                :group-mappings  {:single-group [group-id]}})]
+        (do-with-group-sync-login!
+         provider-config {:groups "single-group"} email
+         (fn [result]
+           (is (true? (:success? result)))
+           (testing "user is added to the mapped group even with a string claim value"
+             (let [user (t2/select-one :model/User :%lower.email email)]
+               (is (some? user))
+               (is (contains?
+                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                    group-id))))))))))
+
+(deftest oidc-group-sync-removal-test
+  (testing "Group removal — user removed from old mapped groups on re-login"
+    (mt/with-temp [:model/PermissionsGroup {group-a-id :id} {:name (str "OIDC Group A " (random-uuid))}
+                   :model/PermissionsGroup {group-b-id :id} {:name (str "OIDC Group B " (random-uuid))}]
+      (let [email           (str "oidc-removal-" (random-uuid) "@example.com")
+            provider-config (assoc test-provider
+                                   :group-sync {:enabled         true
+                                                :group-attribute "groups"
+                                                :group-mappings  {:group-a [group-a-id]
+                                                                  :group-b [group-b-id]}})]
+        ;; First login: user has both groups
+        (do-with-group-sync-login!
+         provider-config {:groups ["group-a" "group-b"]} email
+         (fn [result]
+           (is (true? (:success? result)))
+           (let [user (t2/select-one :model/User :%lower.email email)]
+             (is (some? user))
+             (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
+               (is (contains? group-ids group-a-id))
+               (is (contains? group-ids group-b-id))))))
+        ;; Second login: user only has group-a — should be removed from group-b
+        (do-with-group-sync-login!
+         provider-config {:groups ["group-a"]} email
+         (fn [result]
+           (is (true? (:success? result)))
+           (testing "user is removed from group-b but still in group-a"
+             (let [user      (t2/select-one :model/User :%lower.email email)
+                   group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
+               (is (contains? group-ids group-a-id))
+               (is (not (contains? group-ids group-b-id)))))))))))
+
+(deftest oidc-group-sync-custom-attribute-test
+  (testing "Non-default group attribute — using a custom claim name"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name (str "OIDC Custom Attr Group " (random-uuid))}]
+      (let [email           (str "oidc-custom-attr-" (random-uuid) "@example.com")
+            provider-config (assoc test-provider
+                                   :group-sync {:enabled         true
+                                                :group-attribute "roles"
+                                                :group-mappings  {:admin-role [group-id]}})]
+        (do-with-group-sync-login!
+         provider-config {:roles ["admin-role"]} email
+         (fn [result]
+           (is (true? (:success? result)))
+           (testing "user is added to the mapped group via custom claim attribute"
+             (let [user (t2/select-one :model/User :%lower.email email)]
+               (is (some? user))
+               (is (contains?
+                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                    group-id))))))))))
+
+(deftest oidc-group-sync-string-keys-in-claims-test
+  (testing "Claims with string keys (not keyword keys) should still work"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name (str "OIDC StrKey Group " (random-uuid))}]
+      (let [email           (str "oidc-strkey-" (random-uuid) "@example.com")
+            provider-config (assoc test-provider
+                                   :group-sync {:enabled         true
+                                                :group-attribute "groups"
+                                                :group-mappings  {:my-team [group-id]}})]
+        (do-with-group-sync-login!
+         provider-config {"groups" ["my-team"]} email
+         (fn [result]
+           (is (true? (:success? result)))
+           (testing "user is added to the mapped group even with string-keyed claims"
+             (let [user (t2/select-one :model/User :%lower.email email)]
+               (is (some? user))
+               (is (contains?
+                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                    group-id))))))))))

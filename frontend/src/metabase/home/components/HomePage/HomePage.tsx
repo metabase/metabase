@@ -1,13 +1,13 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";
@@ -30,7 +30,9 @@ const useDashboardRedirect = () => {
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
 
-  useEffect(() => {
+  // This redirect must live inside a useLayoutEffect to prevent the browser from painting a frame of <HomeContent>
+  // before firing the redirect (metabase#69917)
+  useLayoutEffect(() => {
     if (dashboardId && !isLoading && !dashboard?.archived) {
       dispatch(
         replace({

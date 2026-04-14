@@ -111,7 +111,7 @@ We recommend using the `ojdbc8.jar` JAR.
 
 ## Adding the Oracle JDBC Driver JAR to the Metabase plugins directory
 
-In your Metabase directory (the directory where you keep and run your metabase.jar), create a directory called `plugins` (if it doesn't already exist.
+In your Metabase directory (the directory where you keep and run your metabase.jar), create a directory called `plugins` (if it doesn't already exist).
 
 Move the JAR you just downloaded (`ojdbc8.jar`) into the plugins directory, and restart Metabase. Metabase will automatically make the Oracle driver available when it starts back up.
 
@@ -131,9 +131,9 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 
 The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../installation-and-operation/running-metabase-on-docker.md#adding-external-dependencies-or-plugins) for more details.
 
-## Writeable connection
+## Writable connection
 
-Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
+Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
 ## Danger zone
 

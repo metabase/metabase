@@ -199,7 +199,7 @@
                                                   :source {:type "query"
                                                            :query (mt/native-query {:query "SELECT 1"})}
                                                   :target {:type "table"
-                                                           :name "test_table"}}
+                                                           :name (mt/random-name)}}
                      :model/RecentViews _ (recent-view c1 now)]
         (appdb.scoring-test/with-index-contents
           [{:model "card"      :id c1 :name "test card recent"}

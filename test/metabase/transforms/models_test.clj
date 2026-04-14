@@ -4,12 +4,12 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.models.transforms.transform :as transform.model]
-   [metabase.models.transforms.transform-job :as transform-job]
-   [metabase.models.transforms.transform-run :as transform-run]
-   [metabase.models.transforms.transform-tag :as transform-tag]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform :as transform.model]
+   [metabase.transforms.models.transform-job :as transform-job]
+   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -325,3 +325,51 @@
         (let [run (transform-run/start-run! transform-id {:run_method "manual"})]
           (is (= transform-name (:transform_name run)))
           (is (= entity-id (:transform_entity_id run))))))))
+
+(deftest checkpoint-reset-on-filter-field-change-test
+  (testing "Changing checkpoint-filter-field-id resets stored checkpoint"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Transform {transform-id :id}
+                     {:source {:type "query"
+                               :query {:database db-id
+                                       :type "native"
+                                       :native {:query "SELECT 1"
+                                                :template-tags {}}}
+                               :source-incremental-strategy {:type "checkpoint"
+                                                             :checkpoint-filter-field-id 100}}
+                      :target {:type "table-incremental"
+                               :schema "public"
+                               :name "test_incr"
+                               :db_id db-id}
+                      :last_checkpoint_value "42"}]
+        (testing "checkpoint is present before update"
+          (let [t (t2/select-one :model/Transform transform-id)]
+            (is (= "42" (:last_checkpoint_value t)))))
+
+        (testing "changing checkpoint-filter-field-id resets checkpoint"
+          (t2/update! :model/Transform transform-id
+                      {:source {:type "query"
+                                :query {:database db-id
+                                        :type "native"
+                                        :native {:query "SELECT 1"
+                                                 :template-tags {}}}
+                                :source-incremental-strategy {:type "checkpoint"
+                                                              :checkpoint-filter-field-id 200}}})
+          (let [t (t2/select-one :model/Transform transform-id)]
+            (is (nil? (:last_checkpoint_value t)))))
+
+        (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
+          ;; Set checkpoint again
+          (t2/update! :model/Transform transform-id
+                      {:last_checkpoint_value "99"})
+          (t2/update! :model/Transform transform-id
+                      {:source {:type "query"
+                                :query {:database db-id
+                                        :type "native"
+                                        :native {:query "SELECT 2"
+                                                 :template-tags {}}}
+                                :source-incremental-strategy {:type "checkpoint"
+                                                              :checkpoint-filter-field-id 200}}})
+          (let [t (t2/select-one :model/Transform transform-id)]
+            (is (= "99" (:last_checkpoint_value t)))))))))

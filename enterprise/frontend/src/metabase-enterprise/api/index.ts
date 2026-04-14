@@ -1,4 +1,4 @@
-export * from "./ai-entity-analysis";
+export * from "./ai-controls";
 export * from "./api";
 export * from "./audit-info";
 export * from "./billing-info";

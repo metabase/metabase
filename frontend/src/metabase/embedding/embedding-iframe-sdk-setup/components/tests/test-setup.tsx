@@ -29,6 +29,7 @@ export const setup = (options?: {
   showSimpleEmbedTerms?: boolean;
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
+  hasEmailSetup?: boolean;
 }) => {
   const { enterprisePlugins } = options ?? {};
 
@@ -52,6 +53,7 @@ export const setup = (options?: {
     "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
+    "jwt-enabled-and-configured": options?.jwtReady ?? false,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
@@ -65,7 +67,9 @@ export const setup = (options?: {
   );
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
-  setupNotificationChannelsEndpoints({});
+  setupNotificationChannelsEndpoints(
+    options?.hasEmailSetup ? { email: { configured: true } as any } : {},
+  );
 
   renderWithProviders(
     <SdkIframeEmbedSetupModal

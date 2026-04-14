@@ -18,8 +18,6 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getGroupNameLocalized } from "metabase/lib/groups";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -28,6 +26,9 @@ import {
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
+import { getGroupNameLocalized } from "metabase/utils/groups";
+import { useSelector } from "metabase/utils/redux";
+import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
@@ -71,6 +72,13 @@ import {
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
+
+    PLUGIN_TENANTS.useListActiveTenants = () => {
+      const { data, isLoading, error } = useListTenantsQuery({
+        status: "active",
+      });
+      return { data: data?.data, isLoading, error };
+    };
 
     // Register tenant collection permissions tabs and routes
     PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({

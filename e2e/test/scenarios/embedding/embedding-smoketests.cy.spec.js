@@ -46,7 +46,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedded-analytics-js",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedding-methods",
           );
       });
     });

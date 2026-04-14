@@ -20,7 +20,7 @@ jobs:
           github.event.label.name == 'triple-backport'
         )
       )
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:

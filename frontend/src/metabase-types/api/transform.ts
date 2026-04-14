@@ -23,12 +23,14 @@ export type TransformOwner = Pick<
   "id" | "email" | "first_name" | "last_name"
 >;
 
+export type TransformType = "native" | "python" | "mbql";
+
 export type Transform = {
   id: TransformId;
   name: string;
   description: string | null;
   source: TransformSource;
-  source_type: "native" | "python" | "mbql";
+  source_type: TransformType;
   target: TransformTarget;
   collection_id: CollectionId | null;
   created_at: string;
@@ -46,6 +48,8 @@ export type Transform = {
   owner_email?: string | null;
   owner?: TransformOwner | null;
 
+  last_checkpoint_value?: string | null;
+
   // hydrated fields
   collection?: Collection | null;
   tag_ids?: TransformTagId[];
@@ -57,14 +61,18 @@ export type Transform = {
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
 
-export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
+export type PythonTransformTableEntry = {
+  alias: string;
+  table_id: ConcreteTableId;
+  schema?: SchemaName | null;
+  database_id: DatabaseId;
+};
+
+export type PythonTransformTableAliases = PythonTransformTableEntry[];
 
 export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
-  // For native queries
-  "checkpoint-filter"?: string;
-  // For MBQL and Python queries
-  "checkpoint-filter-unique-key"?: string;
+  "checkpoint-filter-field-id": number;
 };
 
 export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;
@@ -131,6 +139,10 @@ export type TransformRun = {
   end_time: string | null;
   message: string | null;
   run_method: TransformRunMethod;
+
+  checkpoint_filter_field_id?: number | null;
+  checkpoint_lo_value?: string | null;
+  checkpoint_hi_value?: string | null;
 
   // hydrated fields
   transform?: Transform;
@@ -241,6 +253,7 @@ export type ListTransformsRequest = {
   "last-run-start-time"?: string;
   "last-run-statuses"?: TransformRunStatus[];
   "tag-ids"?: TransformTagId[];
+  "database-id"?: DatabaseId;
 };
 
 export type ListTransformJobsRequest = {
@@ -291,21 +304,6 @@ export type GetPythonLibraryRequest = {
 export type UpdatePythonLibraryRequest = {
   path: string;
   source: string;
-};
-
-export type ExtractColumnsFromQueryRequest = {
-  query: DatasetQuery;
-};
-
-export type ExtractColumnsFromQueryResponse = {
-  columns: string[];
-};
-
-export type CheckQueryComplexityRequest = string;
-
-export type QueryComplexity = {
-  is_simple: boolean;
-  reason: string;
 };
 
 export type InspectorFieldStats = {

@@ -1,0 +1,1 @@
+export { TransformInspectorUpsellPage } from "./TransformInspectorUpsellPage";

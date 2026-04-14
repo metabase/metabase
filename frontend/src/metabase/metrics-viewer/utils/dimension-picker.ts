@@ -13,17 +13,15 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
-import { getDimensionIcon, getDimensionsByType } from "./tabs";
+import type { MetricSlot } from "./metric-slots";
+import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
 
 // ── Dimension picker ──
 
 export interface AvailableDimension {
-  dimensionId: string;
-  label: string;
   icon: IconName;
-  sourceIds: MetricSourceId[];
-  tabType: MetricsViewerTabType;
   group?: DimensionGroup;
+  tabInfo: TabInfo;
 }
 
 export interface AvailableDimensionsResult {
@@ -39,34 +37,36 @@ interface DimensionEntry {
   tabType: MetricsViewerTabType;
   group?: DimensionGroup;
   sourceId: MetricSourceId;
+  slotIndex: number;
 }
 
 function collectAllDimensionEntries(
-  sourceOrder: MetricSourceId[],
+  metricSlots: MetricSlot[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  existingTabIds: Set<string>,
+  existingTabDimensionIds: Set<string>,
 ): DimensionEntry[] {
   const entries: DimensionEntry[] = [];
 
-  for (const sourceId of sourceOrder) {
-    const def = definitionsBySourceId[sourceId];
+  for (const slot of metricSlots) {
+    const def = definitionsBySourceId[slot.sourceId];
     if (!def) {
       continue;
     }
 
     for (const [id, info] of getDimensionsByType(def)) {
-      if (existingTabIds.has(id)) {
+      if (existingTabDimensionIds.has(id)) {
         continue;
       }
 
       entries.push({
-        dimension: info.dimension,
+        dimension: info.dimensionMetadata,
         id,
         label: info.displayName,
-        icon: getDimensionIcon(info.dimension),
-        tabType: info.type,
+        icon: getDimensionIcon(info.dimensionMetadata),
+        tabType: info.dimensionType,
         group: info.group,
-        sourceId,
+        sourceId: slot.sourceId,
+        slotIndex: slot.slotIndex,
       });
     }
   }
@@ -76,16 +76,16 @@ function collectAllDimensionEntries(
 
 function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
   const groups: DimensionEntry[][] = [];
+  const groupKeys: DimensionEntry[] = [];
 
   for (const entry of entries) {
-    const match = groups.find((group) =>
-      group.some((existing) =>
-        LibMetric.isSameSource(existing.dimension, entry.dimension),
-      ),
+    const groupIndex = groupKeys.findIndex((key) =>
+      LibMetric.isSameSource(key.dimension, entry.dimension),
     );
-    if (match) {
-      match.push(entry);
+    if (groupIndex !== -1) {
+      groups[groupIndex].push(entry);
     } else {
+      groupKeys.push(entry);
       groups.push([entry]);
     }
   }
@@ -95,19 +95,19 @@ function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
 
 export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
-  existingTabIds: Set<string>,
+  metricSlots: MetricSlot[],
+  existingTabDimensionIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = { shared: [], bySource: {} };
 
-  if (sourceOrder.length === 0) {
+  if (metricSlots.length === 0) {
     return result;
   }
 
   const entries = collectAllDimensionEntries(
-    sourceOrder,
+    metricSlots,
     definitionsBySourceId,
-    existingTabIds,
+    existingTabDimensionIds,
   );
   const groups = groupBySource(entries);
   const loadedSourceCount = new Set(entries.map((entry) => entry.sourceId))
@@ -120,34 +120,38 @@ export function getAvailableDimensionsForPicker(
 
     if (hasMultipleSources && uniqueSources.length >= 2) {
       result.shared.push({
-        dimensionId: first.id,
-        label: first.label,
         icon: first.icon,
-        tabType: first.tabType,
-        sourceIds: uniqueSources,
         group: first.group,
+        tabInfo: {
+          type: first.tabType,
+          label: first.label,
+          dimensionMapping: Object.fromEntries(
+            group.map((entry) => [entry.slotIndex, entry.id]),
+          ),
+        },
       });
     } else {
       for (const entry of group) {
         const arr = (result.bySource[entry.sourceId] ??= []);
         arr.push({
-          dimensionId: entry.id,
-          label: entry.label,
           icon: entry.icon,
-          tabType: entry.tabType,
-          sourceIds: [entry.sourceId],
           group: entry.group,
+          tabInfo: {
+            type: entry.tabType,
+            label: entry.label,
+            dimensionMapping: { [entry.slotIndex]: entry.id },
+          },
         });
       }
     }
   }
 
   result.shared.sort((first, second) =>
-    first.label.localeCompare(second.label),
+    first.tabInfo.label.localeCompare(second.tabInfo.label),
   );
-  for (const sourceId of sourceOrder) {
-    result.bySource[sourceId]?.sort((first, second) =>
-      first.label.localeCompare(second.label),
+  for (const slot of metricSlots) {
+    result.bySource[slot.sourceId]?.sort((first, second) =>
+      first.tabInfo.label.localeCompare(second.tabInfo.label),
     );
   }
 
@@ -159,13 +163,6 @@ export function getAvailableDimensionsForPicker(
 export interface SourceDisplayInfo {
   type: "metric" | "measure";
   name: string;
-}
-
-export function getSourceDisplayName(
-  sourceId: MetricSourceId,
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>,
-): string {
-  return sourceDataById[sourceId]?.name ?? sourceId;
 }
 
 // ── Dimension picker sections ──
@@ -212,7 +209,7 @@ export function buildDimensionPickerSections({
         name: sectionName,
         items: dimensions.map((dimension) => ({
           ...dimension,
-          name: dimension.label,
+          name: dimension.tabInfo.label,
         })),
       });
       return;
@@ -225,7 +222,7 @@ export function buildDimensionPickerSections({
         name,
         items: groupDimensions.map((dimension) => ({
           ...dimension,
-          name: dimension.label,
+          name: dimension.tabInfo.label,
         })),
       });
     }
@@ -242,7 +239,7 @@ export function buildDimensionPickerSections({
     }
 
     if (hasMultipleSources) {
-      const sourceName = getSourceDisplayName(sourceId, sourceDataById);
+      const sourceName = sourceDataById[sourceId]?.name ?? sourceId;
       splitByGroup(sourceDimensions, sourceName);
     } else {
       splitByGroup(sourceDimensions);

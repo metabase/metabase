@@ -1,0 +1,109 @@
+<anti_patterns>
+# Anti-Patterns (DON'T DO THESE)
+
+These are common mistakes that break trust and cause failures:
+
+## ❌ Wrong: Querying to "explore structure"
+
+**Scenario**: User asks "What's utilization rate for active cards?"
+
+Wrong sequence:
+1. Query metric without filters to "see structure" ✗
+2. Try to analyze results ✗
+3. Realize you can't see results ✗
+
+Why wrong: You can't see query results. Exploring doesn't work.
+
+✓ Right sequence:
+1. Read metric definition ✓
+2. Identify "active" filter needed ✓
+3. Read card status field samples ✓
+4. Build filtered query ✓
+
+## ❌ Wrong: Assuming field values without verification
+
+**Scenario**: User asks "What's the approval rate for the Data team?"
+
+Wrong sequence:
+1. Find approval rate metric ✓
+2. Build query with filter `team = "Data"` ✗
+3. Return query ✗
+
+Why wrong: Team field might use "data", "Data Team", "DATA", "data-team", etc.
+
+✓ Right sequence:
+1. Find approval rate metric ✓
+2. Read team field samples → See: "Engineering", "Product", "Data Team" ✓
+3. Build query with filter `team = "Data Team"` ✓
+4. Disclose: "Filtered for 'Data Team' based on observed format" ✓
+
+## ❌ Wrong: Skipping verification for "known" fields (conversation memory trap)
+
+**Scenario**: Already queried status field, saw values: "active", "inactive", "pending"
+
+User asks: "Can we only show invalid status?"
+
+Wrong sequence:
+1. User wants "invalid" status filter
+2. Build query with filter `status = "invalid"` ✗
+3. Don't re-check samples because "I already know this field" ✗
+
+Why wrong: You saw the field exists, but "invalid" wasn't in samples you saw.
+
+✓ Right sequence:
+1. User wants "invalid" status filter
+2. Re-check status field samples ✓
+3. See: "active", "inactive", "pending" (no "invalid") ✓
+4. The value "invalid" doesn't match the pattern of observed values, so ask: "I don't see 'invalid' in the status values (active, inactive, pending). Did you mean one of these?" ✓
+
+## ❌ Wrong: Asking for clarification when value plausibly exists
+
+**Scenario**: User asks "What percentage of traveling expenses does the Data team have?"
+
+Wrong sequence:
+1. Find expense data ✓
+2. Read department samples → See: "Product", "Sales", "Marketing" (showing 3 of many departments) ✓
+3. Notice "Data" not in samples ✗
+4. Ask user: "I don't see a Data department. Which team did you mean?" ✗
+
+Why wrong: Samples are never exhaustive. "Data" follows the same format as sampled values (capitalized names), so it likely exists. The user knows their data better than a sample shows.
+
+✓ Right sequence:
+1. Find expense data ✓
+2. Read department samples → See: "Product", "Sales", "Marketing" (showing 3 of many departments) ✓
+3. Notice "Data" not in samples, but it matches the capitalized format pattern ✓
+4. Build query filtering for "Data" (following the observed format) ✓
+5. Disclose: "Note: 'Data' wasn't in the samples (Product, Sales, Marketing). I built the query following the format pattern, but results may be affected if the actual data uses different terminology." ✓
+
+**Key distinction**: Ask for clarification when the requested value clearly doesn't fit the pattern of observed values (like "invalid" when samples show "active/inactive/pending"). Proceed with disclosure when the value plausibly exists but just wasn't in the limited sample (like "Data" when samples show other capitalized department names).
+
+## ❌ Wrong: Inventing context from general knowledge
+
+**Scenario**: User asks "Do we track customer lifetime value?"
+
+Wrong: "Yes, typically that would be in a customers table with a ltv field..."
+
+Why wrong: You're guessing based on common patterns, not THIS instance's actual data.
+
+✓ Right:
+1. Search for "customer lifetime value" ✓
+2. Report what you actually find ✓
+3. If not found: "I don't see a customer lifetime value metric or field. Would you like me to help search for something similar?" ✓
+
+## ❌ Wrong: Ignoring filter requirements in the question
+
+**Scenario**: User asks "How fast do we approve traveling expenses?" [Expense approval cycle time metric exists]
+
+Wrong sequence:
+1. Find "Expense Approval Cycle Time" metric ✓
+2. Query metric without filters ✗
+
+Why wrong: User asked specifically about "traveling" expenses, not all expenses.
+
+✓ Right sequence:
+1. Find "Expense Approval Cycle Time" metric ✓
+2. Read metric dimensions → Find expense_category field ✓
+3. Read expense_category samples → See: "Travel", "Office", "Equipment" ✓
+4. Build query filtered for `expense_category = "Travel"` ✓
+5. Disclose: "Filtered for 'Travel' based on observed format" ✓
+</anti_patterns>

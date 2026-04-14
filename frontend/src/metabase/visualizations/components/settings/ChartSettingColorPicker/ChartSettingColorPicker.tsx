@@ -4,9 +4,9 @@ import type { PillSize } from "metabase/common/components/ColorPill";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getAccentColors } from "metabase/lib/colors/groups";
-import type { AccentColorOptions } from "metabase/lib/colors/types";
 import { Box, type BoxProps } from "metabase/ui";
+import { getAccentColors } from "metabase/ui/colors/groups";
+import type { AccentColorOptions } from "metabase/ui/colors/types";
 
 interface ChartSettingColorPickerProps extends BoxProps {
   className?: string;

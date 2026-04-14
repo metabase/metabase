@@ -2,7 +2,6 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { type DispatchFn, connect } from "metabase/lib/redux";
 import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
@@ -12,6 +11,7 @@ import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
+import { type DispatchFn, connect } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -184,6 +184,7 @@ class TagEditorParamInner extends Component<
         default: undefined,
         dimension: undefined,
         alias: undefined,
+        "emit-alias": type === "table" ? true : undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
         "table-id": undefined,
       });
@@ -299,6 +300,13 @@ class TagEditorParamInner extends Component<
     }
   };
 
+  setEmitAlias = (emitAlias: boolean) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag["emit-alias"] !== emitAlias) {
+      setTemplateTag({ ...tag, "emit-alias": emitAlias });
+    }
+  };
+
   setAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
@@ -371,6 +379,7 @@ class TagEditorParamInner extends Component<
             database={database}
             databases={databases}
             onChange={this.setTableId}
+            onChangeEmitAlias={this.setEmitAlias}
           />
         )}
 

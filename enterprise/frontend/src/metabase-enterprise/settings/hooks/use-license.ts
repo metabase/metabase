@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { reload } from "metabase/lib/dom";
 import { SettingsApi, StoreApi } from "metabase/services";
+import { reload } from "metabase/utils/dom";
 import type { TokenStatus } from "metabase-types/api";
 
 export const LICENSE_ACCEPTED_URL_HASH = "#activated";
@@ -40,8 +40,12 @@ export const useLicense = (onActivated?: () => void) => {
         window.location.href += LICENSE_ACCEPTED_URL_HASH;
       }
       reload();
-    } catch {
-      setError(INVALID_TOKEN_ERROR);
+    } catch (e) {
+      if ((e as any).status === 503) {
+        setError(UNABLE_TO_VALIDATE_TOKEN);
+      } else {
+        setError(INVALID_TOKEN_ERROR);
+      }
     } finally {
       setIsUpdating(false);
     }

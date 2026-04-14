@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { t } from "ttag";
 
 import { setEditingDashcardId } from "metabase/dashboard/actions";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import type { ActionDashboardCard } from "metabase-types/api";
 
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";

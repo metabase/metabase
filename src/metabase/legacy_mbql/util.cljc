@@ -354,7 +354,7 @@
 
   Note that the optional options map is in different positions for `:contains`, `:does-not-contain`, `:starts-with` and
   `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
-  Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
+  Multi-argument forms use MBQL 5 style with the options at index 1, **even if there are no options**:
   `[:contains {} field x y z]`."
   {:deprecated "0.57.0"}
   [m]
@@ -611,8 +611,8 @@
    (aggregation-at-index query index 0))
 
   ([query         :- ::mbql.s/Query
-    index         :- ::lib.schema.common/int-greater-than-or-equal-to-zero
-    nesting-level :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    index         :- nat-int?
+    nesting-level :- nat-int?]
    (if (zero? nesting-level)
      (or (nth (get-in query [:query :aggregation]) index)
          (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))

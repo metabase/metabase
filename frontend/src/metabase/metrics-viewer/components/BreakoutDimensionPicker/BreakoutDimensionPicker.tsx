@@ -15,10 +15,10 @@ import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import { getDimensionsByType } from "../../utils/tabs";
-import { DimensionBinningPicker } from "../DimensionBinningPicker";
-import { DimensionTemporalUnitPicker } from "../DimensionTemporalUnitPicker";
 
 import S from "./BreakoutDimensionPicker.module.css";
+import { DimensionBinningPicker } from "./DimensionBinningPicker";
+import { DimensionTemporalUnitPicker } from "./DimensionTemporalUnitPicker";
 
 interface BreakoutDimensionPickerProps {
   definition: MetricDefinition;
@@ -43,6 +43,7 @@ export function BreakoutDimensionPicker({
   const sections: Section<DimensionOption>[] = useMemo(() => {
     const items: DimensionOption[] = [...dimensions.values()].map((dim) => ({
       ...dim,
+      dimension: dim.dimensionMetadata,
       selected: currentBreakoutDimensionName === dim.name,
     }));
 

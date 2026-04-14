@@ -7,14 +7,14 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.transforms.job-run :as transforms.job-run]
-   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.notification.seed :as notification.seed]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.jobs :as jobs]
+   [metabase.transforms.models.job-run :as transforms.job-run]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.transforms.util :as transforms.u]
@@ -92,6 +92,15 @@
   (testing "job with no tags — empty set"
     (mt/with-temp [:model/TransformJob job {:name "job-5" :schedule "0 0 * * * ? *"}]
       (is (= #{} (#'jobs/job-transform-ids (:id job)))))))
+
+(deftest run-job-skips-empty-transforms-test
+  (testing "run-job! returns nil and creates no job run when there are no transforms to execute"
+    (mt/with-temp [:model/TransformTag tag {:name "empty-tag"}
+                   :model/TransformJob job {:name "empty-job" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+      (let [result (jobs/run-job! (:id job) {:run-method :cron})]
+        (is (nil? result))
+        (is (= 0 (t2/count :model/TransformJobRun :job_id (:id job))))))))
 
 (deftest next-transform-test
   (let [ordering {1 #{2 3}

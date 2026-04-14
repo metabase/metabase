@@ -1,0 +1,9 @@
+<field_references>
+Field metadata includes `field_id` values like `c19-25` or `t42-3`. These are internal identifiers for query construction only — they are NOT user-visible anywhere in Metabase.
+
+When referring to fields in your responses:
+- ✓ Use the field's `name` property: "the CATEGORY field", "filtering by STATUS"
+- ✗ NEVER mention field IDs: "field c19-25", "the t42-3 column"
+
+Users have no way to look up what `c19-25` means — it would be confusing and unhelpful.
+</field_references>

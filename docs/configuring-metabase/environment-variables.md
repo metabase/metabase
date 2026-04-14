@@ -589,8 +589,6 @@ Allow these space delimited origins to embed Metabase interactive.
 
 ### `MB_EMBEDDING_APP_ORIGINS_SDK`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: ``
 - [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
@@ -902,7 +900,7 @@ Key to retrieve the JWT user's tenant attributes.
 - Default: `false`
 - [Configuration file name](./config-file.md): `jwt-enabled`
 
-Is JWT authentication configured and enabled?
+Is JWT authentication enabled?
 
 When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.
@@ -1204,6 +1202,30 @@ The custom illustration for the login page.
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
+
+### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
+
+- Type: string
+- Default: ``
+- [Configuration file name](./config-file.md): `mcp-apps-cors-custom-origins`
+
+Custom CORS origins for self-hosted MCP clients, space-separated.
+
+### `MB_MCP_APPS_CORS_ENABLED_CLIENTS`
+
+- Type: csv
+- Default: `[]`
+- [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
+
+Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+
+### `MB_METABOT_SLACK_SIGNING_SECRET`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
+
+Signing secret for verifying requests from the Metabot Slack app.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
@@ -1889,8 +1911,6 @@ The name of the channel where bug reports should be posted.
 
 ### `MB_SLACK_CONNECT_ATTRIBUTE_TEAM_ID`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: `https://slack.com/team_id`
 - [Configuration file name](./config-file.md): `slack-connect-attribute-team-id`
@@ -1899,17 +1919,13 @@ Slack OIDC claim for the team/workspace ID.
 
 ### `MB_SLACK_CONNECT_AUTHENTICATION_MODE`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
-- Default: `sso`
+- Default: `link-only`
 - [Configuration file name](./config-file.md): `slack-connect-authentication-mode`
 
-Controls whether Slack can be used for SSO login or just account linking. Valid values: "sso" (default) or "link-only".
+Controls whether Slack can be used for SSO login or just account linking. Valid values: "sso" or "link-only" (default).
 
 ### `MB_SLACK_CONNECT_CLIENT_ID`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
@@ -1919,8 +1935,6 @@ Client ID for your Slack app. Get this from https://api.slack.com/apps.
 
 ### `MB_SLACK_CONNECT_CLIENT_SECRET`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `slack-connect-client-secret`
@@ -1929,8 +1943,6 @@ Client Secret for your Slack app.
 
 ### `MB_SLACK_CONNECT_ENABLED`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `slack-connect-enabled`
@@ -1938,8 +1950,6 @@ Client Secret for your Slack app.
 Is Slack Connect authentication configured and enabled?
 
 ### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: boolean
 - Default: `true`
@@ -2469,12 +2479,25 @@ Default: `""`
 
 When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
 
-- `"true"` generates a timestamped output file like `metabase-2026_01_15.jfr`
-- Any other non-empty value is used as the output filename (`.jfr` extension is appended if missing)
+- `"true"` generates a timestamped output file like `metabase-20260115_143000.jfr`
+- A value ending in `.jfr` is used as the output filename
+- Any other non-empty value is treated as a directory path. A new timestamped JFR file is written to that directory every 30 minutes (e.g., `metabase-20260115_143000.jfr`). Data is only written at the end of each 30-minute interval.
 - `""` or `"false"` disables monitoring (the default)
 
 The performance recording stores only method signature calls and other code execution metrics.
 It does not store any sensitive information such as environment variables, system properties, or other machine information.
+
+### `MB_MONITOR_PERFORMANCE_SAVE_RATE`
+
+Type: integer<br>
+Default: mode-specific (5 minutes for single-file mode, 30 minutes for rolling mode)
+
+Override the interval (in minutes) at which JFR recording data is saved to disk. Only applies when [MB_MONITOR_PERFORMANCE](#mb_monitor_performance) is enabled.
+
+- In single-file mode, the default is `5` minutes.
+- In rolling directory mode, the default is `30` minutes.
+
+Setting this value overrides the default for whichever mode is active.
 
 ### `MB_NO_SURVEYS`
 

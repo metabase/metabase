@@ -1,0 +1,5 @@
+.advisoryList {
+  > :not(:last-child) {
+    margin-bottom: var(--mantine-spacing-md);
+  }
+}

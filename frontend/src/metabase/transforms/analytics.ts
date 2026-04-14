@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import type {
   InspectorCardId,
   InspectorLensId,
@@ -6,7 +6,8 @@ import type {
   TransformJobId,
 } from "metabase-types/api";
 
-import type { LensKey } from "./pages/TransformInspectPage/types";
+/** Lens ID concatenated with params */
+type LensKey = string;
 
 export function trackTransformTriggerManualRun({
   transformId,
@@ -43,12 +44,15 @@ export function trackTransformCreate({
 
 export function trackTransformCreated({
   transformId,
+  isIncremental,
 }: {
   transformId: TransformId;
+  isIncremental: boolean;
 }) {
   trackSimpleEvent({
     event: "transform_created",
     target_id: transformId,
+    event_detail: isIncremental ? "incremental" : undefined,
   });
 }
 
@@ -67,6 +71,21 @@ export function trackTransformRunTagsUpdated({
     event_detail: added ? "tag_added" : "tag_removed",
     target_id: transformId,
     result,
+  });
+}
+
+export function trackTransformJobCreated({
+  result,
+  jobId,
+}: {
+  result: "success" | "failure";
+  jobId?: TransformJobId;
+}) {
+  trackSimpleEvent({
+    event: "transform_job_created",
+    triggered_from: "transform_job_new",
+    result,
+    target_id: jobId ?? null,
   });
 }
 

@@ -1,0 +1,458 @@
+databaseChangeLog:
+
+  # 1. Create the dependency_status table
+  - changeSet:
+      id: v60.2026-04-02T00:00:00
+      author: ericnormand
+      comment: Create dependency_status table for async dependency calculation tracking
+      changes:
+        - createTable:
+            tableName: dependency_status
+            remarks: Tracks dependency calculation status for entities, analogous to analysis_finding
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(254)
+                  remarks: The type of the entity (card, transform, snippet, etc.)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: The ID of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis that was performed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs dependency recalculation
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fail_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Number of consecutive failed dependency calculation attempts
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_retry_at
+                  type: ${timestamp_type}
+                  remarks: Earliest time at which a failed entity can be retried (null means immediately processable)
+              - column:
+                  name: terminal
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity has exceeded max retries and should not be retried until modified
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: dependency_status
+
+  # 2. Unique constraint on (entity_type, entity_id)
+  - changeSet:
+      id: v60.2026-04-02T00:00:01
+      author: ericnormand
+      comment: Unique constraint to prevent duplicate dependency_status entries
+      changes:
+        - addUniqueConstraint:
+            tableName: dependency_status
+            columnNames: entity_type, entity_id
+            constraintName: idx_unique_dependency_status
+      rollback:
+        - dropUniqueConstraint:
+            tableName: dependency_status
+            constraintName: idx_unique_dependency_status
+
+  # 3. Index on stale column (partial on postgres, full on others)
+  - changeSet:
+      id: v60.2026-04-02T00:00:02
+      author: ericnormand
+      comment: Add partial index on dependency_status.stale for efficient polling
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale)
+      rollback:
+        - dropIndex:
+            tableName: dependency_status
+            indexName: idx_dependency_status_stale
+
+  # 4-11. Migrate data from entity tables to dependency_status
+  # All entities are migrated. Entities with version > 0 (already analyzed) get stale=false.
+  # Entities with version = 0 (never analyzed) get stale=true so the backfill picks them up.
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:03
+      author: ericnormand
+      comment: Migrate dependency_analysis_version from report_card to dependency_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
+              SELECT 'card', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM report_card
+      rollback:
+        - sql:
+            sql: DELETE FROM dependency_status WHERE entity_type = 'card'
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:04
+      author: ericnormand
+      comment: Migrate dependency_analysis_version from transform to dependency_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
+              SELECT 'transform', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM transform
+      rollback:
+        - sql:
+            sql: DELETE FROM dependency_status WHERE entity_type = 'transform'
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:05
+      author: ericnormand
+      comment: Migrate dependency_analysis_version from native_query_snippet to dependency_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
+              SELECT 'snippet', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM native_query_snippet
+      rollback:
+        - sql:
+            sql: DELETE FROM dependency_status WHERE entity_type = 'snippet'
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:06
+      author: ericnormand
+      comment: Migrate dependency_analysis_version from report_dashboard to dependency_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
+              SELECT 'dashboard', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM report_dashboard
+      rollback:
+        - sql:
+            sql: DELETE FROM dependency_status WHERE entity_type = 'dashboard'
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:07
+      author: ericnormand
+      comment: Migrate dependency_analysis_version from document to dependency_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
+              SELECT 'document', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM document
+      rollback:
+        - sql:
+            sql: DELETE FROM dependency_status WHERE entity_type = 'document'
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:08
+      author: ericnormand
+      comment: Migrate dependency_analysis_version from sandboxes to dependency_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
+              SELECT 'sandbox', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM sandboxes
+      rollback:
+        - sql:
+            sql: DELETE FROM dependency_status WHERE entity_type = 'sandbox'
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:09
+      author: ericnormand
+      comment: Migrate dependency_analysis_version from segment to dependency_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
+              SELECT 'segment', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM segment
+      rollback:
+        - sql:
+            sql: DELETE FROM dependency_status WHERE entity_type = 'segment'
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:10
+      author: ericnormand
+      comment: Migrate dependency_analysis_version from measure to dependency_status
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
+              SELECT 'measure', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM measure
+      rollback:
+        - sql:
+            sql: DELETE FROM dependency_status WHERE entity_type = 'measure'
+
+  # 12-17. Drop indexes on dependency_analysis_version (for tables that have them)
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:11
+      author: ericnormand
+      comment: Drop dependency_analysis_version index from report_card
+      changes:
+        - dropIndex:
+            tableName: report_card
+            indexName: idx_report_card_dependency_analysis_version
+      rollback:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:12
+      author: ericnormand
+      comment: Drop dependency_analysis_version index from transform
+      changes:
+        - dropIndex:
+            tableName: transform
+            indexName: idx_transform_dependency_analysis_version
+      rollback:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:13
+      author: ericnormand
+      comment: Drop dependency_analysis_version index from native_query_snippet
+      changes:
+        - dropIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_dependency_analysis_version
+      rollback:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:14
+      author: ericnormand
+      comment: Drop dependency_analysis_version index from report_dashboard
+      changes:
+        - dropIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_dependency_analysis_version
+      rollback:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:15
+      author: ericnormand
+      comment: Drop dependency_analysis_version index from document
+      changes:
+        - dropIndex:
+            tableName: document
+            indexName: idx_document_dependency_analysis_version
+      rollback:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:16
+      author: ericnormand
+      comment: Drop dependency_analysis_version index from sandboxes
+      changes:
+        - dropIndex:
+            tableName: sandboxes
+            indexName: idx_sandboxes_dependency_analysis_version
+      rollback:
+        - createIndex:
+            tableName: sandboxes
+            indexName: idx_sandboxes_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+
+  # 18-25. Drop dependency_analysis_version columns from all 8 entity tables
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:17
+      author: ericnormand
+      comment: Drop dependency_analysis_version column from report_card
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: dependency_analysis_version
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:18
+      author: ericnormand
+      comment: Drop dependency_analysis_version column from transform
+      changes:
+        - dropColumn:
+            tableName: transform
+            columnName: dependency_analysis_version
+      rollback:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:19
+      author: ericnormand
+      comment: Drop dependency_analysis_version column from native_query_snippet
+      changes:
+        - dropColumn:
+            tableName: native_query_snippet
+            columnName: dependency_analysis_version
+      rollback:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:20
+      author: ericnormand
+      comment: Drop dependency_analysis_version column from report_dashboard
+      changes:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: dependency_analysis_version
+      rollback:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:21
+      author: ericnormand
+      comment: Drop dependency_analysis_version column from document
+      changes:
+        - dropColumn:
+            tableName: document
+            columnName: dependency_analysis_version
+      rollback:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:22
+      author: ericnormand
+      comment: Drop dependency_analysis_version column from sandboxes
+      changes:
+        - dropColumn:
+            tableName: sandboxes
+            columnName: dependency_analysis_version
+      rollback:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:23
+      author: ericnormand
+      comment: Drop dependency_analysis_version column from segment
+      changes:
+        - dropColumn:
+            tableName: segment
+            columnName: dependency_analysis_version
+      rollback:
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-04-02T00:00:24
+      author: ericnormand
+      comment: Drop dependency_analysis_version column from measure
+      changes:
+        - dropColumn:
+            tableName: measure
+            columnName: dependency_analysis_version
+      rollback:
+        - addColumn:
+            tableName: measure
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false

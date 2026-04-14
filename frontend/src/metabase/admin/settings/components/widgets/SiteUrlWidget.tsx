@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { useAdminSetting } from "metabase/api/utils";
 import { InputWithSelectPrefix } from "metabase/common/components/InputWithSelectPrefix";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import type { GenericErrorResponse } from "metabase/lib/errors";
 import { Box, Text } from "metabase/ui";
+import type { GenericErrorResponse } from "metabase/utils/errors";
 
 import { SettingHeader } from "../SettingHeader";
 

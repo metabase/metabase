@@ -1,0 +1,22 @@
+name: size_y
+display_name: Size Y
+created_at: '2023-09-21T13:22:50.069446Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_dashboardcard]
+database_type: int4
+base_type: type/Integer
+effective_type: type/Integer
+dimensions: []
+position: 8
+custom_position: 0
+database_position: 8
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_dashboardcard, model: Table}
+- {id: size_y, model: Field}
+database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

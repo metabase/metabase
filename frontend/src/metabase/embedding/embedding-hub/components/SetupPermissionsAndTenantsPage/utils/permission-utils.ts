@@ -35,8 +35,11 @@ type SandboxedTableConfig = {
 
 type DatabasePermissionGraph = Record<
   string,
-  string | Record<string, Record<TableId, string>>
+  string | Record<string, string | Record<TableId, string>>
 >;
+
+/** All tables grouped by schema for each database */
+export type AllSchemaTables = Record<DatabaseId, Record<string, TableId[]>>;
 
 /**
  * Builds the permission graph structure for the API call.
@@ -44,6 +47,8 @@ type DatabasePermissionGraph = Record<
 export function buildPermissionsGraph(
   groupId: GroupId,
   options: UpdateTenantDataAccessOptions,
+  allSchemaTables?: AllSchemaTables,
+  allDatabaseIds?: DatabaseId[],
 ): Record<GroupId, Record<DatabaseId, DatabasePermissionGraph>> {
   const { impersonatedDatabaseIds = [], sandboxedTables = [] } = options;
 
@@ -73,14 +78,63 @@ export function buildPermissionsGraph(
 
     const viewData = dbPerms["view-data"] as Record<
       string,
-      Record<TableId, string>
+      string | Record<TableId, string>
     >;
 
     if (!viewData[schema]) {
       viewData[schema] = {};
     }
 
-    viewData[schema][tableId as TableId] = "sandboxed";
+    (viewData[schema] as Record<TableId, string>)[tableId as TableId] =
+      "sandboxed";
+  }
+
+  // Block non-selected tables and schemas within databases that have sandboxed tables
+  if (allSchemaTables) {
+    for (const [dbIdStr, schemas] of Object.entries(allSchemaTables)) {
+      const databaseId = Number(dbIdStr) as DatabaseId;
+
+      if (!groupGraph[databaseId]) {
+        continue;
+      }
+
+      const dbPerms = groupGraph[databaseId];
+      if (!dbPerms["view-data"] || typeof dbPerms["view-data"] === "string") {
+        continue;
+      }
+
+      const viewData = dbPerms["view-data"] as Record<
+        string,
+        string | Record<TableId, string>
+      >;
+
+      for (const [schema, tableIds] of Object.entries(schemas)) {
+        if (!viewData[schema]) {
+          // Schema has no sandboxed tables — block the entire schema
+          viewData[schema] = "blocked";
+        } else if (typeof viewData[schema] === "object") {
+          // Schema has sandboxed tables — block all non-selected tables
+          const schemaPerms = viewData[schema] as Record<TableId, string>;
+          for (const tableId of tableIds) {
+            if (!schemaPerms[tableId]) {
+              schemaPerms[tableId] = "blocked";
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Block entire databases that have no sandboxed tables and are not impersonated
+  if (allDatabaseIds) {
+    for (const databaseId of allDatabaseIds) {
+      if (!groupGraph[databaseId]) {
+        groupGraph[databaseId] = {
+          "view-data": "blocked",
+          "create-queries": "no",
+        };
+      }
+    }
   }
 
   return { [groupId]: groupGraph };

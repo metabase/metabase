@@ -7,8 +7,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Icon, Loader, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type {
   TransformId,
   TransformJobId,

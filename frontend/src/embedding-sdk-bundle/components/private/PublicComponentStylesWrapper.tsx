@@ -62,4 +62,13 @@ export const SCOPED_CSS_RESET = css`
   :where(.mb-wrapper) *:where(svg) {
     display: inline;
   }
+
+  // Mobile Safari sets the opacity of disabled inputs/textareas to 0.4 which we don't want
+  // https://github.com/metabase/metabase/issues/49170
+  @supports (-webkit-touch-callout: none) {
+    :where(.mb-wrapper) *:where(input),
+    :where(.mb-wrapper) *:where(textarea) {
+      opacity: 1;
+    }
+  }
 `;

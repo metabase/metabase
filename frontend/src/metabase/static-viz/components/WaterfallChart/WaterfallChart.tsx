@@ -3,7 +3,7 @@ import { init } from "echarts/core";
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
+import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 
@@ -29,7 +29,7 @@ export function WaterfallChart({
     [],
     renderingContext,
   );
-  const chartMeasurements = getChartMeasurements(
+  const chartLayout = getChartLayout(
     chartModel,
     settings,
     false,
@@ -40,7 +40,7 @@ export function WaterfallChart({
   const option = getWaterfallChartOption(
     chartModel,
     WIDTH,
-    chartMeasurements,
+    chartLayout,
     null,
     [],
     settings,

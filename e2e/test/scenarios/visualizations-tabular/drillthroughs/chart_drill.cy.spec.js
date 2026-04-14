@@ -53,7 +53,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     H.queryBuilderMain().within(() => {
-      H.echartsContainer().findByText("June 2022"); // more granular axis labels
+      H.echartsContainer().findByText("June 5, 2022"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {

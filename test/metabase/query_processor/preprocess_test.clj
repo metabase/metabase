@@ -14,10 +14,10 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -551,7 +551,7 @@
 
 ;;; adapted from [[metabase.query-processor.explicit-joins-test/test-31769]]
 (deftest ^:parallel test-31769
-  (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
+  (testing "Make sure queries built with Lib that have source Cards with joins work correctly (#31769) (#33083)"
     (let [mp    (lib.tu.mocks-31769/mock-metadata-provider meta/metadata-provider meta/id)
           query (lib.tu.mocks-31769/query mp)]
       (is (=? {:stages [{:source-card 1}

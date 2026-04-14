@@ -3,13 +3,13 @@ import { t } from "ttag";
 import { findWhere } from "underscore";
 
 import { useUpdateSettingsMutation } from "metabase/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   getAvailableLocales,
   getLocale,
   getUser,
 } from "metabase/setup/selectors";
 import { Select } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { updateLocale } from "../../actions";
 import { getLocales } from "../../utils";

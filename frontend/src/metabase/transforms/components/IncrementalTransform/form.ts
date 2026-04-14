@@ -1,5 +1,6 @@
 import * as Yup from "yup";
 
+import * as Errors from "metabase/utils/errors";
 import type {
   Transform,
   TransformSource,
@@ -10,18 +11,22 @@ import type {
 export type IncrementalSettingsFormValues = {
   incremental: boolean;
   sourceStrategy: "checkpoint";
-  checkpointFilter: string | null;
-  checkpointFilterUniqueKey: string | null;
+  checkpointFilterFieldId: string | null; // String because Mantine Select requires string values
   targetStrategy: "append";
 };
 
 export const VALIDATION_SCHEMA = Yup.object({
   incremental: Yup.boolean().required(),
   sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
-  // For native queries, use checkpointFilter (plain string)
-  checkpointFilter: Yup.string().nullable().defined(),
-  // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
-  checkpointFilterUniqueKey: Yup.string().nullable().defined(),
+  checkpointFilterFieldId: Yup.string()
+    .nullable()
+    .defined()
+    .when(["incremental", "sourceStrategy"], {
+      is: (incremental: boolean, sourceStrategy: "checkpoint") =>
+        incremental && sourceStrategy === "checkpoint",
+      then: (schema) => schema.required(Errors.required),
+      otherwise: (schema) => schema.nullable().defined(),
+    }),
   targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
 });
 
@@ -30,8 +35,7 @@ export const getInitialValues = (
 ): IncrementalSettingsFormValues => ({
   incremental: false,
   sourceStrategy: "checkpoint",
-  checkpointFilter: null,
-  checkpointFilterUniqueKey: null,
+  checkpointFilterFieldId: null,
   targetStrategy: "append",
   ...defaults,
 });
@@ -42,22 +46,18 @@ export const getIncrementalSettingsFromTransform = (
   const isIncremental = transform.target.type === "table-incremental";
   const strategy = transform.source["source-incremental-strategy"];
 
-  // Read both fields from the strategy, whichever is present
-  const checkpointFilter =
+  const checkpointFilterFieldId =
     strategy?.type === "checkpoint"
-      ? (strategy["checkpoint-filter"] ?? null)
-      : null;
-
-  const checkpointFilterUniqueKey =
-    strategy?.type === "checkpoint"
-      ? (strategy["checkpoint-filter-unique-key"] ?? null)
+      ? (strategy["checkpoint-filter-field-id"] ?? null)
       : null;
 
   return {
     incremental: isIncremental,
     sourceStrategy: "checkpoint",
-    checkpointFilter: isIncremental ? checkpointFilter : null,
-    checkpointFilterUniqueKey: isIncremental ? checkpointFilterUniqueKey : null,
+    checkpointFilterFieldId:
+      isIncremental && checkpointFilterFieldId != null
+        ? String(checkpointFilterFieldId)
+        : null,
     targetStrategy: "append",
   };
 };
@@ -87,19 +87,17 @@ export const buildIncrementalSource = (
     };
   }
 
-  // Build strategy fields based on which checkpoint field is present
-  const strategyFields = formValues.checkpointFilter
-    ? { "checkpoint-filter": formValues.checkpointFilter }
-    : formValues.checkpointFilterUniqueKey
-      ? { "checkpoint-filter-unique-key": formValues.checkpointFilterUniqueKey }
-      : {};
-
   return {
     ...source,
-    "source-incremental-strategy": {
-      type: formValues.sourceStrategy,
-      ...strategyFields,
-    },
+    "source-incremental-strategy":
+      formValues.checkpointFilterFieldId != null
+        ? {
+            type: formValues.sourceStrategy,
+            "checkpoint-filter-field-id": Number(
+              formValues.checkpointFilterFieldId,
+            ),
+          }
+        : undefined,
   };
 };
 

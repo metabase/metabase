@@ -66,122 +66,38 @@
                       (is (= (:id user) user_id))
                       (is (= {:add-on {:product-type "metabase-ai"}} details)))))))))))))
 
-(deftest ^:sequential post-python-execution-test
-  (testing "POST /api/ee/cloud-add-ons/python-execution"
-    (testing "requires superuser"
-      (mt/with-premium-features #{}
-        (is (=? "You don't have permissions to do that."
-                (mt/user-http-request :rasta :post 403 "ee/cloud-add-ons/python-execution" {})))))
-    (testing "does not require terms of service"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting}
-          (with-redefs [premium-features/token-status (constantly {:store-users [{:email (:email user)}]})
-                        hm.client/call (constantly nil)]
-            (testing "succeeds without terms_of_service"
-              (is (=? {}
-                      (mt/user-http-request user :post 200 "ee/cloud-add-ons/python-execution" {}))))
-            (testing "succeeds with terms_of_service false"
-              (is (=? {}
-                      (mt/user-http-request user :post 200 "ee/cloud-add-ons/python-execution"
-                                            {:terms_of_service false}))))
-            (testing "succeeds with terms_of_service true"
-              (is (=? {}
-                      (mt/user-http-request user :post 200 "ee/cloud-add-ons/python-execution"
-                                            {:terms_of_service true}))))))))
-    (testing "requires token feature 'hosting'"
-      (mt/with-premium-features #{}
-        (is (=? "Can only access Store API for Metabase Cloud instances."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/python-execution" {})))))
-    (testing "not eligible if already has 'transforms-python'"
-      (mt/with-premium-features #{:hosting :transforms-python}
-        (is (=? "Can only purchase add-ons for eligible subscriptions."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/python-execution" {})))))
-    (testing "requires current user being a store user"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting}
-          (is (=? "Only Metabase Store users can purchase add-ons."
-                  (mt/user-http-request user :post 403 "ee/cloud-add-ons/python-execution" {}))))))))
-
 (deftest ^:sequential post-transforms-test
-  (testing "POST /api/ee/cloud-add-ons/transforms"
-    (testing "requires superuser"
-      (mt/with-premium-features #{}
-        (is (=? "You don't have permissions to do that."
-                (mt/user-http-request :rasta :post 403 "ee/cloud-add-ons/transforms" {})))))
-    (testing "requires token feature 'hosting'"
-      (mt/with-premium-features #{}
-        (is (=? "Can only access Store API for Metabase Cloud instances."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms" {})))))
-    (testing "not eligible if already has 'transforms'"
-      (mt/with-premium-features #{:hosting :transforms-basic}
-        (is (=? "Can only purchase add-ons for eligible subscriptions."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms" {})))))
-    (testing "requires current user being a store user"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting}
-          (is (=? "Only Metabase Store users can purchase add-ons."
-                  (mt/user-http-request user :post 403 "ee/cloud-add-ons/transforms" {}))))))
-    (testing "succeeds when all conditions are met"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting}
-          (with-redefs [premium-features/token-status (constantly {:store-users [{:email (:email user)}]})
-                        hm.client/call (constantly nil)]
-            (is (=? {}
-                    (mt/user-http-request user :post 200 "ee/cloud-add-ons/transforms" {})))))))))
-
-(deftest ^:sequential post-transforms-basic-test
-  (testing "POST /api/ee/cloud-add-ons/transforms-basic"
-    (testing "requires superuser"
-      (mt/with-premium-features #{}
-        (is (=? "You don't have permissions to do that."
-                (mt/user-http-request :rasta :post 403 "ee/cloud-add-ons/transforms-basic" {})))))
-    (testing "requires token feature 'hosting'"
-      (mt/with-premium-features #{}
-        (is (=? "Can only access Store API for Metabase Cloud instances."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms-basic" {})))))
-    (testing "not eligible if already has 'transforms'"
-      (mt/with-premium-features #{:hosting :transforms-basic}
-        (is (=? "Can only purchase add-ons for eligible subscriptions."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms-basic" {})))))
-    (testing "requires current user being a store user"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting}
-          (is (=? "Only Metabase Store users can purchase add-ons."
-                  (mt/user-http-request user :post 403 "ee/cloud-add-ons/transforms-basic" {}))))))
-    (testing "succeeds when all conditions are met"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting}
-          (with-redefs [premium-features/token-status (constantly {:store-users [{:email (:email user)}]})
-                        hm.client/call (constantly nil)]
-            (is (=? {}
-                    (mt/user-http-request user :post 200 "ee/cloud-add-ons/transforms-basic" {})))))))))
-
-(deftest ^:sequential post-transforms-advanced-test
-  (testing "POST /api/ee/cloud-add-ons/transforms-advanced"
-    (testing "requires superuser"
-      (mt/with-premium-features #{}
-        (is (=? "You don't have permissions to do that."
-                (mt/user-http-request :rasta :post 403 "ee/cloud-add-ons/transforms-advanced" {})))))
-    (testing "requires token feature 'hosting'"
-      (mt/with-premium-features #{}
-        (is (=? "Can only access Store API for Metabase Cloud instances."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms-advanced" {})))))
-    (testing "not eligible if already has 'transforms-python'"
-      (mt/with-premium-features #{:hosting :transforms-python}
-        (is (=? "Can only purchase add-ons for eligible subscriptions."
-                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms-advanced" {})))))
-    (testing "requires current user being a store user"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting}
-          (is (=? "Only Metabase Store users can purchase add-ons."
-                  (mt/user-http-request user :post 403 "ee/cloud-add-ons/transforms-advanced" {}))))))
-    (testing "succeeds when all conditions are met"
-      (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting}
-          (with-redefs [premium-features/token-status (constantly {:store-users [{:email (:email user)}]})
-                        hm.client/call (constantly nil)]
-            (is (=? {}
-                    (mt/user-http-request user :post 200 "ee/cloud-add-ons/transforms-advanced" {})))))))))
+  (doseq [[product-type feature] [["python-execution"            :transforms-python]
+                                  ["transforms"                  :transforms-basic]
+                                  ["transforms-basic"            :transforms-basic]
+                                  ["transforms-basic-metered"    :transforms-basic]
+                                  ["transforms-advanced"         :transforms-python]
+                                  ["transforms-advanced-metered" :transforms-python]]]
+    (testing (str "POST /api/ee/cloud-add-ons/" product-type)
+      (testing "requires superuser"
+        (mt/with-premium-features #{}
+          (is (=? "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :post 403 (str "ee/cloud-add-ons/" product-type) {})))))
+      (testing "requires token feature 'hosting'"
+        (mt/with-premium-features #{}
+          (is (=? "Can only access Store API for Metabase Cloud instances."
+                  (mt/user-http-request :crowberto :post 400 (str "ee/cloud-add-ons/" product-type) {})))))
+      (testing (str "not eligible if already has '" (name feature) "'")
+        (mt/with-premium-features #{:hosting feature}
+          (is (=? "Can only purchase add-ons for eligible subscriptions."
+                  (mt/user-http-request :crowberto :post 400 (str "ee/cloud-add-ons/" product-type) {})))))
+      (testing "requires current user being a store user"
+        (mt/with-temp [:model/User user {:is_superuser true}]
+          (mt/with-premium-features #{:hosting}
+            (is (=? "Only Metabase Store users can purchase add-ons."
+                    (mt/user-http-request user :post 403 (str "ee/cloud-add-ons/" product-type) {}))))))
+      (testing "succeeds when all conditions are met"
+        (mt/with-temp [:model/User user {:is_superuser true}]
+          (mt/with-premium-features #{:hosting}
+            (with-redefs [premium-features/token-status (constantly {:store-users [{:email (:email user)}]})
+                          hm.client/call (constantly nil)]
+              (is (=? {}
+                      (mt/user-http-request user :post 200 (str "ee/cloud-add-ons/" product-type) {}))))))))))
 
 (deftest ^:sequential get-plans-test
   (testing "GET /api/ee/cloud-add-ons/plans"

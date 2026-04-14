@@ -47,14 +47,16 @@
   (with-open [tar (-> (io/input-stream archive)
                       (GzipCompressorInputStream.)
                       (TarArchiveInputStream.))]
-    (let [tar-entries (entries tar)]
+    (let [tar-entries (entries tar)
+          dst-path    (.toPath dst)]
       (count
        (for [^TarArchiveEntry e tar-entries
              :let [actual-name (last (.split (.getName e) "/"))]
              ;; skip hidden files
              :when (not (str/starts-with? actual-name "."))]
-         (let [f (io/file dst (.getName e))]
+         (let [f (.toFile (.resolveIn e dst-path))]
            (if (.isFile e)
-             (io/copy tar f)
+             (do (io/make-parents f)
+                 (io/copy tar f))
              (.mkdirs f))
            true))))))

@@ -1,0 +1,91 @@
+[ {
+  "type" : "message_start",
+  "message" : {
+    "model" : "claude-sonnet-4-5-20250929",
+    "id" : "msg_01NSbAHc6fiJS5e1c6UPdKho",
+    "type" : "message",
+    "role" : "assistant",
+    "content" : [ ],
+    "stop_reason" : null,
+    "stop_sequence" : null,
+    "usage" : {
+      "input_tokens" : 13,
+      "cache_creation_input_tokens" : 0,
+      "cache_read_input_tokens" : 0,
+      "cache_creation" : {
+        "ephemeral_5m_input_tokens" : 0,
+        "ephemeral_1h_input_tokens" : 0
+      },
+      "output_tokens" : 2,
+      "service_tier" : "standard"
+    }
+  }
+}, {
+  "type" : "content_block_start",
+  "index" : 0,
+  "content_block" : {
+    "type" : "text",
+    "text" : ""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : "I don"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : "'t experience feelings in the way you "
+  }
+}, {
+  "type" : "ping"
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : "do, but I'm functioning well and ready to help!"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " I'm curious though – how are *you* feeling today? Is"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " there something specific on your mind or something"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " I can assist you with?"
+  }
+}, {
+  "type" : "content_block_stop",
+  "index" : 0
+}, {
+  "type" : "message_delta",
+  "delta" : {
+    "stop_reason" : "end_turn",
+    "stop_sequence" : null
+  },
+  "usage" : {
+    "input_tokens" : 13,
+    "cache_creation_input_tokens" : 0,
+    "cache_read_input_tokens" : 0,
+    "output_tokens" : 52
+  }
+}, {
+  "type" : "message_stop"
+} ]

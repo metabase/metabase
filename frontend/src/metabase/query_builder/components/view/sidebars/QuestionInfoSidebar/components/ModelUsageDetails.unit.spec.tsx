@@ -14,7 +14,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Card, Collection, Database, Settings } from "metabase-types/api";

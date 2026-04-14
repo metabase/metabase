@@ -36,7 +36,7 @@ export const BulletListNodeView = ({ node, editor, getPos }: NodeViewProps) => {
     isHovered,
     hovered,
     setHovered,
-    threads,
+    unresolvedCommentsCount,
     document,
     shouldShowMenus,
     setReferenceElement,
@@ -67,7 +67,7 @@ export const BulletListNodeView = ({ node, editor, getPos }: NodeViewProps) => {
           ref={commentsRefs.setFloating}
           show={isOpen || hovered}
           style={commentsFloatingStyles}
-          threads={threads}
+          unresolvedCommentsCount={unresolvedCommentsCount}
         />
       )}
     </>

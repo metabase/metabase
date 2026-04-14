@@ -2,12 +2,12 @@ import { useMemo } from "react";
 
 import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Timeline } from "metabase/common/components/Timeline";
-import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
+import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
@@ -51,7 +51,7 @@ export function QuestionActivityTimeline({
   }
 
   return (
-    <Timeline
+    <RevisionHistoryTimeline
       events={events}
       data-testid="saved-question-history-list"
       revert={(revision) => dispatch(revertToRevision(question.id(), revision))}

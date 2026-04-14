@@ -21,8 +21,10 @@ export const checkboxOverrides = {
       input: CheckboxStyles.input,
       icon: CheckboxStyles.icon,
       label: CheckboxStyles.label,
+      labelWrapper: CheckboxStyles.labelWrapper,
       description: CheckboxStyles.description,
       inner: CheckboxStyles.inner,
+      error: CheckboxStyles.error,
     },
     vars: (_theme, { size }) => {
       return {

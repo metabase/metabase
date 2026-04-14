@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { getUrlTarget } from "metabase/lib/dom";
+import { getUrlTarget } from "metabase/utils/dom";
 
 import S from "./ExternalLink.module.css";
 
@@ -20,6 +20,7 @@ export const ExternalLink = forwardRef(function ExternalLink(
   return (
     <a
       ref={ref}
+      role="link"
       href={href}
       className={`${S.LinkRoot} ${className || CS.link}`}
       target={target}

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { getCurrentTask } from "metabase-enterprise/remote_sync/selectors";
 
 export const SetupConflictInfo = () => {

@@ -595,11 +595,9 @@
   [{:keys [metadata], :as _args} :- ::parsed-args]
   (let [scope            (:scope metadata)
         scope-middleware (cond
-                           (string? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
                            (= scope :unchecked) []
-                           :else (do (when (some? scope)
-                                       (log/warnf "Unrecognized :scope value %s — expected a string or :unchecked" (pr-str scope)))
-                                     ['metabase.api.macros.scope/ensure-scopes-checked]))]
+                           (some? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
+                           :else ['metabase.api.macros.scope/ensure-scopes-checked])]
     (cond-> (vec scope-middleware)
       (:multipart metadata)
       (conj 'ring.middleware.multipart-params/wrap-multipart-params))))
@@ -829,9 +827,11 @@
        (resolve-handler))))
 
   ([nmspace & middleware :- [:sequential {:min 1} ::middleware]]
-   (apply-middleware
-    (ns-handler nmspace)
-    middleware)))
+   (let [handler (ns-handler nmspace)]
+     (open-api/handler-with-open-api-spec
+      (apply-middleware handler middleware)
+      (fn [prefix]
+        (open-api/open-api-spec handler prefix))))))
 
 (extend-protocol open-api/OpenAPISpec
   clojure.lang.Namespace

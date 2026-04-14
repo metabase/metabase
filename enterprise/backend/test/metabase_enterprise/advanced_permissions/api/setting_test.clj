@@ -75,13 +75,13 @@
                                 slack/channel-exists? (constantly true)
                                 slack/refresh-channels-and-usernames! (constantly true)
                                 slack/refresh-channels-and-usernames-when-needed! (constantly true)]
-                    (mt/with-temporary-setting-values [slack-app-token nil
-                                                       slack-token     "fake-token"]
+                    (mt/with-temporary-setting-values [slack-app-token nil]
                       (mt/user-http-request user :put status "slack/settings" {:slack-app-token "fake-token"})))))
 
               (get-manifest [user status]
                 (testing (format "get slack manifest %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "slack/manifest")))]
+                  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+                    (mt/user-http-request user :get status "slack/manifest"))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}

@@ -301,9 +301,10 @@ describe("scenarios > models metadata", () => {
 
     cy.findAllByTestId("header-cell")
       .contains("Products → Price")
-      .trigger("mousedown")
-      .trigger("mousemove", { clientX: 600, clientY: 0 })
-      .trigger("mouseup");
+      .closest("[data-testid='header-cell']")
+      .as("dragHeader");
+
+    H.moveDnDKitElementByAlias("@dragHeader", { horizontal: 600 });
 
     cy.findAllByTestId("header-cell")
       .contains("Products → Vendor")

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { ObjectWithModel } from "metabase/lib/icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Group, Icon, Text } from "metabase/ui";
+import type { ObjectWithModel } from "metabase/utils/icon";
 import type { Collection } from "metabase-types/api";
 
 export const CollectionAuthorityLevelDisplay = ({

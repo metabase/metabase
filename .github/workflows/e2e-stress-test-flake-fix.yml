@@ -31,11 +31,16 @@ on:
         type: boolean
         required: false
         default: true
+      fail_fast:
+        description: "Stop running remaining tests after the first failure"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   determine-test-type:
     name: Determine test type
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       type: ${{ steps.detect.outputs.type }}
@@ -53,7 +58,7 @@ jobs:
   workflow-summary:
     name: Stress test inputs
     needs: [determine-test-type]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -67,12 +72,13 @@ jobs:
           echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `enable_network_throttling`: "${{ inputs.enable_network_throttling }}"' >> $GITHUB_STEP_SUMMARY
+          echo '- `fail_fast`: "${{ inputs.fail_fast }}"' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
   stress-test-flake-fix:
     needs: [determine-test-type]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     name: Stress test E2E flake fix
     env:
@@ -144,10 +150,13 @@ jobs:
         env:
           GREP: ${{ github.event.inputs.grep }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          FAIL_FAST: ${{ inputs.fail_fast }}
+          SPEC: ${{ github.event.inputs.spec }}
+          BURN_IN: ${{ github.event.inputs.burn_in }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
-          --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }} \
+          --spec "${SPEC}" \
+          --env burn="${BURN_IN}" \
           --config-file e2e/support/cypress-stress-test.config.js
 
       - name: Upload Cypress Artifacts upon failure

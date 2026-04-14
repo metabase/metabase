@@ -97,27 +97,25 @@
                 scope-key (get-in model-spec [:removal :scope-key])
                 ;; Get non-entity_id conditions from spec
                 other-conditions (into [] cat (dissoc removal-conds :entity_id))]]
-    (if scope-key
-      ;; Collection-scoped: delete only within synced collections
-      (when (seq synced-collection-ids)
-        (if entity-id-where
-          (apply t2/delete! model-key
-                 {:where [:and
-                          [:in scope-key synced-collection-ids]
-                          entity-id-where]}
-                 other-conditions)
-          (apply t2/delete! model-key
-                 scope-key [:in synced-collection-ids]
-                 other-conditions)))
-      ;; Global: delete by entity_id
-      (if entity-id-where
-        (apply t2/delete! model-key
-               {:where entity-id-where}
-               other-conditions)
-        ;; No entity_id conditions - delete all (respecting other spec conditions if any)
-        (if (seq other-conditions)
-          (apply t2/delete! model-key other-conditions)
-          (t2/delete! model-key))))))
+    (let [conditions (cond-> []
+                       (and scope-key (seq synced-collection-ids))
+                       (conj [:in scope-key synced-collection-ids])
+
+                       entity-id-where
+                       (conj entity-id-where)
+
+                       (and (not scope-key) (seq other-conditions))
+                       (into (for [[k v] (partition 2 other-conditions)]
+                               [:= k v])))
+          where-clause (when (seq conditions)
+                         (if (= 1 (count conditions))
+                           (first conditions)
+                           (into [:and] conditions)))]
+      (cond
+        ;; Scoped models with no collections to scope to — nothing to delete
+        (and scope-key (empty? synced-collection-ids)) nil
+        where-clause (t2/delete! model-key {:where where-clause})
+        :else        (t2/delete! model-key)))))
 
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
@@ -242,8 +240,7 @@
         (let [snapshot-version (source.p/version snapshot)
               last-imported-version (remote-sync.task/last-version)
               first-import? (nil? last-imported-version)
-              path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
-                            #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
+              path-filters (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
               base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
               has-transforms? (snapshot-has-transforms? base-ingestable)
               {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)
@@ -314,8 +311,7 @@
           (if-let [models (spec/extract-entities-for-export)]
             (do
               (remote-sync.task/update-progress! task-id 0.3)
-              (let [all-delete-prefixes (spec/build-all-removal-paths)
-                    written-version (source/store! models all-delete-prefixes snapshot task-id message)]
+              (let [written-version (source/store! models snapshot task-id message)]
                 (remote-sync.task/set-version! task-id written-version))
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
               {:status :success

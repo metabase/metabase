@@ -1,4 +1,4 @@
-import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
+import api, { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -352,6 +352,7 @@ export const UserApi = {
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
 };
 
+// TODO: move to all functions to RTK (metabase/api/util.ts)
 export const UtilApi = {
   password_check: POST("/api/session/password-check"),
   random_token: GET("/api/util/random_token"),
@@ -365,6 +366,10 @@ export const UtilApi = {
 
     return href;
   },
+};
+
+export const FrontendErrorsApi = {
+  report: POST("/api/frontend-errors"),
 };
 
 export const ActionsApi = {

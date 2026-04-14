@@ -16,11 +16,15 @@ import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import api from "metabase/lib/api";
+import api from "metabase/utils/api";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
+const registerDashboardVisualizationsOnce = _.once(
+  registerDashboardVisualizations,
+);
 
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
@@ -111,7 +115,7 @@ export const useInitDataInternal = ({
     }
 
     if (isGuestEmbed) {
-      dispatch(initGuestEmbed());
+      dispatch(initGuestEmbed(authConfig));
     } else {
       dispatch(initAuth({ ...authConfig, isLocalHost }));
     }
@@ -119,5 +123,6 @@ export const useInitDataInternal = ({
 
   useMount(function registerVisualizations() {
     registerVisualizationsOnce();
+    registerDashboardVisualizationsOnce();
   });
 };

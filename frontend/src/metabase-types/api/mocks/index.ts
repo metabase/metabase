@@ -1,6 +1,5 @@
 export * from "./actions";
 export * from "./activity";
-export * from "./ai-sql-fixer";
 export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
@@ -36,6 +35,7 @@ export * from "./segment";
 export * from "./series";
 export * from "./session";
 export * from "./settings";
+export * from "./slack";
 export * from "./snippets";
 export * from "./store";
 export * from "./support-access-grants";

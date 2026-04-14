@@ -13,8 +13,8 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import { getQuestion } from "metabase/query_builder/selectors";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings, User } from "metabase-types/api";
 import {
   createMockCard,

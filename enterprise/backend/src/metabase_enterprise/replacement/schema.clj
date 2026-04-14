@@ -11,7 +11,7 @@
   [:or ::lib.schema.id/card ::lib.schema.id/table])
 
 (mr/def ::source-entity-type
-  [:enum :card :table])
+  [:enum :card :table :transform])
 
 (mr/def ::run-id
   pos-int?)
@@ -44,7 +44,7 @@
    [:semantic_type  [:maybe :string]]])
 
 (mr/def ::error-type
-  [:enum :cycle-detected :database-mismatch :incompatible-implicit-joins])
+  [:enum :cycle-detected :database-mismatch :incompatible-implicit-joins :affects-gtap-policies])
 
 (mr/def ::column-mapping
   [:map

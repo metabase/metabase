@@ -10,8 +10,6 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { canUserCreateQueries } from "metabase/selectors/user";
@@ -27,13 +25,10 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
-import {
-  BrowseContainer,
-  BrowseHeader,
-  BrowseMain,
-  BrowseSection,
-} from "../components/BrowseContainer.styled";
+import S from "../components/BrowseContainer.module.css";
 
 import { MetricsTable } from "./MetricsTable";
 import { trackNewMetricInitiated } from "./analytics";
@@ -58,9 +53,7 @@ export function BrowseMetrics() {
       type: "library-metrics",
     });
 
-  const newMetricLink = Urls.newQuestion({
-    mode: "query",
-    cardType: "metric",
+  const newMetricLink = Urls.newMetric({
     collectionId: libraryMetricCollection?.id,
   });
 
@@ -70,9 +63,21 @@ export function BrowseMetrics() {
   const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 
   return (
-    <BrowseContainer aria-labelledby={titleId}>
-      <BrowseHeader role="heading" data-testid="browse-metrics-header">
-        <BrowseSection>
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+      aria-labelledby={titleId}
+    >
+      <Flex
+        className={S.browseHeader}
+        direction="column"
+        role="heading"
+        data-testid="browse-metrics-header"
+      >
+        <Flex maw="64rem" mx="auto" w="100%">
           <Flex
             w="100%"
             h="2.25rem"
@@ -112,10 +117,10 @@ export function BrowseMetrics() {
               )}
             </Group>
           </Flex>
-        </BrowseSection>
-      </BrowseHeader>
-      <BrowseMain>
-        <BrowseSection>
+        </Flex>
+      </Flex>
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%">
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <MetricsEmptyState
@@ -133,9 +138,9 @@ export function BrowseMetrics() {
               </DelayedLoadingAndErrorWrapper>
             )}
           </Stack>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 }
 

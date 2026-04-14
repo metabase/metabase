@@ -283,36 +283,21 @@
                         {:query query}))))))
 
 (defn- has-perm-for-db?
-  "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
-  [perm-type required-perm gtap-perms db-id]
-  (or
-   (perms/at-least-as-permissive? perm-type
-                                  (perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
-                                  required-perm)
-   (when gtap-perms
-     (perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
+  [perm-type required-perm db-id]
+  (perms/at-least-as-permissive? perm-type
+                                 (perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                 required-perm))
 
 (defn- has-perm-for-table?
-  "Checks that the current user has the permissions for tables specified in `table-id->perm`. This can be satisfied via
-  the user's permissions stored in the database, or permissions in `gtap-table-perms` which are supplied by the
-  `sandboxing` QP middleware when sandboxing is in effect. Returns true if access is allowed, otherwise false."
-  [perm-type table-id->required-perm gtap-table-perms db-id]
-  (let [table-id->has-perm?
-        (into {} (for [[table-id required-perm] table-id->required-perm]
-                   [table-id (boolean
-                              (or (perms/user-has-permission-for-table?
-                                   api/*current-user-id*
-                                   perm-type
-                                   required-perm
-                                   db-id
-                                   table-id)
-                                  (when-let [gtap-perm (if (keyword? gtap-table-perms)
-                                                         ;; gtap-table-perms can be a keyword representing the DB permission...
-                                                         gtap-table-perms
-                                                         ;; ...or a map from table IDs to table permissions
-                                                         (get gtap-table-perms table-id))]
-                                    (perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
-    (every? true? (vals table-id->has-perm?))))
+  [perm-type table-id->required-perm db-id]
+  (every? (fn [[table-id required-perm]]
+            (perms/user-has-permission-for-table?
+             api/*current-user-id*
+             perm-type
+             required-perm
+             db-id
+             table-id))
+          table-id->required-perm))
 
 (defn- card
   [database-id card-id]
@@ -354,18 +339,15 @@
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
-  [{{gtap-perms :gtaps} :query-permissions/perms, db-id :database :as _query} perm-type required-perms]
+  [{db-id :database :as _query} perm-type required-perms]
   (boolean
    (if-let [db-or-table-perms (perm-type required-perms)]
-     ;; In practice, `view-data` will be defined at the table-level, and `create-queries` will either be table-level
-     ;; or :query-builder-and-native for the entire DB. But we should enforce whatever `required-perms` are provided,
-     ;; in case that ever changes.
      (cond
        (keyword? db-or-table-perms)
-       (has-perm-for-db? perm-type db-or-table-perms (perm-type gtap-perms) db-id)
+       (has-perm-for-db? perm-type db-or-table-perms db-id)
 
        (map? db-or-table-perms)
-       (has-perm-for-table? perm-type db-or-table-perms (perm-type gtap-perms) db-id)
+       (has-perm-for-table? perm-type db-or-table-perms db-id)
 
        :else
        (throw (ex-info (tru "Invalid permissions format") required-perms)))
@@ -384,19 +366,13 @@
                                 {:card-id card-id}))))))
 
 (defn check-data-perms
-  "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
-  user has perms for the query, and throws an exception otherwise (exceptions can be disabled by setting
-  `throw-exceptions?` to `false`).
-
-  If the [:gtap :query-permissions/perms] path is present in the query, these perms are implicitly granted to the current user."
-  [{{gtap-perms :gtaps} :query-permissions/perms, :as query} required-perms & {:keys [throw-exceptions?]
-                                                                               :or   {throw-exceptions? true}}]
+  "Checks whether the current user has sufficient view data and query permissions to run `query`."
+  [query required-perms & {:keys [throw-exceptions?]
+                           :or   {throw-exceptions? true}}]
   (try
-    ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]
-      (let [paths-excluding-gtap-paths (set/difference paths (:paths gtap-perms))]
-        (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths-excluding-gtap-paths)
-            (throw (perms-exception paths)))))
+      (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths)
+          (throw (perms-exception paths))))
 
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
@@ -437,17 +413,18 @@
   queries they wouldn't be allowed to run!"
   [query :- :map]
   {:pre [(map? query)]}
-  (when-not (can-run-query? query)
-    (let [required-perms (try
-                           (required-perms-for-query query :throw-exceptions? true)
-                           (catch Throwable e
-                             e))]
-      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                      {:status-code    403
-                       :query          query
-                       :required-perms (if (instance? Throwable required-perms)
-                                         :error
-                                         required-perms)
-                       :actual-perms   @api/*current-user-permissions-set*}
-                      (when (instance? Throwable required-perms)
-                        required-perms))))))
+  (let [query (dissoc query :query-permissions/perms)]
+    (when-not (can-run-query? query)
+      (let [required-perms (try
+                             (required-perms-for-query query :throw-exceptions? true)
+                             (catch Throwable e
+                               e))]
+        (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                        {:status-code    403
+                         :query          query
+                         :required-perms (if (instance? Throwable required-perms)
+                                           :error
+                                           required-perms)
+                         :actual-perms   @api/*current-user-permissions-set*}
+                        (when (instance? Throwable required-perms)
+                          required-perms)))))))

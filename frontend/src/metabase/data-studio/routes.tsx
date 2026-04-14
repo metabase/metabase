@@ -2,7 +2,6 @@ import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
 import { IndexRoute, Route } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -11,11 +10,13 @@ import {
 } from "metabase/plugins";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
+import * as Urls from "metabase/utils/urls";
 import type { State } from "metabase-types/store";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
+import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
@@ -70,7 +71,7 @@ export function getDataStudioRoutes(
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
-            component={DependenciesSectionLayout}
+            component={DependencyDiagnosticsSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
