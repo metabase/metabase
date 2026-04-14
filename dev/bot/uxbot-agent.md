@@ -8,7 +8,7 @@
 
 **You MUST NOT:**
 - Read source code files (no `Read`, `Grep`, or `Glob` on source files)
-- Use the Clojure REPL or `clj-nrepl-eval`
+- Use the Clojure REPL (`./bin/mage -bot-repl-eval`, `clj-nrepl-eval`, raw `nc` to a socket REPL, or any other REPL access)
 - Query the database directly
 - Read server logs
 - Use `./bin/mage -bot-api-call` or any API calls

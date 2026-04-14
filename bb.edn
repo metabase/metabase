@@ -771,6 +771,20 @@
    :task (task! (println (.format (java.time.LocalDateTime/now)
                                   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss"))))}
 
+  -bot-repl-eval
+  {:doc "Evaluate Clojure code against the best-available REPL (nREPL first, socket REPL fallback)"
+   :examples [["./bin/mage -bot-repl-eval '(+ 1 2)'" "Auto-discover and eval"]
+              ["./bin/mage -bot-repl-eval --type socket '(metabase.config/current-version)'" "Force socket REPL"]
+              ["./bin/mage -bot-repl-eval --port 50666 '(+ 1 2)'" "Force a specific port"]]
+   :requires [[mage.bot.repl-eval :as repl-eval]]
+   :arg-schema [:? [:string {:name "code"}]]
+   :options [[nil "--code CODE" "Clojure code to eval (alternative to positional arg)"]
+             [nil "--port PORT" "Override discovery and use this port"]
+             [nil "--host HOST" "Override discovery and use this host (socket REPL only)"]
+             [nil "--type TYPE" "Force backend: 'nrepl' or 'socket'. Default: auto-detect."]
+             [nil "--refresh" "Ignore .bot/repl.env cache and re-run discovery"]]
+   :task (task! (repl-eval/repl-eval! parsed))}
+
   -bot-api-call
   {:doc "Make an API call to the local Metabase instance"
    :examples [["./bin/mage -bot-api-call /api/health" "Health check"]

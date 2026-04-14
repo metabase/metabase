@@ -269,12 +269,14 @@ For each finding from Phase 2 with confidence MEDIUM or above. Also, spend extra
 2. Save the full response to `{{OUTPUT_DIR}}/output/` as JSON files by redirecting stdout
 3. Check response codes, body structure, error messages
 
-### Backend Logic Issues (use REPL via `clj-nrepl-eval -p $NREPL_PORT`)
-For Clojure-heavy changes, the REPL is often the most powerful verification tool. Use `clj-nrepl-eval -p $NREPL_PORT` to:
+### Backend Logic Issues (use REPL via `./bin/mage -bot-repl-eval`)
+For Clojure-heavy changes, the REPL is often the most powerful verification tool. Use `./bin/mage -bot-repl-eval '<form>'` to:
 - Call functions directly to verify their behavior (e.g., `(settings/get :some-setting)`)
 - Test edge cases that are hard to trigger via the API (e.g., nil inputs, empty collections, type coercions)
 - Verify database state after operations (e.g., `(t2/select-one :model/Setting :key "some-key")`)
 - Test internal functions that aren't exposed via API endpoints
+
+The wrapper auto-discovers the right backend (nREPL in local mode, socket REPL in PR-env mode) and caches it to `.bot/repl.env`, so only the first call pays the discovery cost. **Do not call `clj-nrepl-eval` directly** — it only works in local mode and silently fails in PR-env mode.
 
 **When to prefer the REPL over API calls:**
 - The finding involves internal function behavior, not an API endpoint
@@ -282,7 +284,7 @@ For Clojure-heavy changes, the REPL is often the most powerful verification tool
 - You want to test a specific function in isolation with controlled inputs
 - The code path is only reachable through internal calls, not the API
 
-**REPL expression rules:** Send one expression per eval call. Multi-expression evals frequently timeout. Split into separate calls.
+**REPL expression rules:** Send one top-level form per call. Multi-form evals frequently timeout (and are unsupported by the socket REPL backend). To evaluate multiple forms together, wrap them in `(do ...)`.
 
 **Log capture during reproduction:** Before reproducing a backend issue, increase the log level for the relevant namespace (see "Log Access" section below). After reproduction, capture the logs to the output directory as evidence. Reset the log level when done.
 

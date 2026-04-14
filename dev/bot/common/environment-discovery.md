@@ -34,11 +34,7 @@ If `./bin/mage -bot-server-info` prints `MODE=pr-env` in a "Remote PR Environmen
 
 - **API calls** — use `./bin/mage -bot-api-call` exactly as you would locally. It transparently detects PR-env mode, sends requests to `BASE_URL` from `-bot-server-info`, and authenticates using the cached session token. You do not need to pass `--api-key` or `--base-url`. If the session expires, the wrapper refreshes it automatically on a 401.
 - **Browser testing** — Playwright MCP should navigate to `BASE_URL` from `-bot-server-info`, not `http://localhost:*`. The preview site is served over HTTPS; there is no local frontend running.
-- **REPL access** — `clj-nrepl-eval` does NOT work in PR-env mode. The remote instance exposes a **socket REPL** (not nREPL) on `repl.coredev.metabase.com` at port equal to the PR number. Use it via `nc`:
-  ```bash
-  echo '(+ 1 2)' | nc -q 1 repl.coredev.metabase.com <PR_NUM>
-  ```
-  Send **one form per connection** — the socket REPL is not session-managed like nREPL. To evaluate multiple forms together, wrap them in `(do ...)`. Use `-bot-server-info` to get `SOCKET_REPL_HOST` and `SOCKET_REPL_PORT`.
+- **REPL access** — use `./bin/mage -bot-repl-eval '<code>'` as usual. It detects PR-env mode automatically and routes the eval through the remote socket REPL at `repl.coredev.metabase.com:<PR_NUM>`. `clj-nrepl-eval` does NOT work in PR-env mode; the wrapper is your only REPL path. Send **one top-level form per call** — the socket REPL is not session-managed like nREPL. To evaluate multiple forms together, wrap them in `(do ...)`.
 - **Database access** — there is no local database. Query data through API endpoints (`/api/dataset`, `/api/card/<id>/query`, `/api/user`, etc.) instead of via Toucan2 in the REPL.
 - **Logs** — use `/api/logger/logs` (admin API) instead of REPL-based `(logger/messages)`.
 - **Backend restart** — you cannot restart the backend. If you hit a configuration issue that requires a restart, STOP and tell the user.
@@ -71,36 +67,46 @@ Use `http://localhost:$MB_JETTY_PORT` for all API calls and browser navigation. 
 
 ## REPL Access
 
-The backend runs an nREPL server.
+The backend runs a Clojure REPL — either nREPL or a socket REPL, depending on the mode. Use `./bin/mage -bot-repl-eval '<code>'` as the single canonical wrapper; it auto-detects the right backend and falls back automatically:
 
-The nREPL port is reported by `./bin/mage -bot-server-info` under "nREPL Servers" as `NREPL_PORT=<port>`. `-bot-server-info` tries `clj-nrepl-eval --discover-ports` first, then falls back to reading `.nrepl-port` in the project root. If it still reports `NREPL_PORT=NONE`, there is no running REPL — **STOP and tell the user** to start the backend before continuing.
+```bash
+./bin/mage -bot-repl-eval '(+ 1 2)'
+```
 
-Use nREPL for:
+**Auto-detect order:**
+1. **nREPL** via `clj-nrepl-eval` — used when `.nrepl-port` or `clj-nrepl-eval --discover-ports` finds a server. Normal case in local-dev mode.
+2. **Socket REPL** via a direct TCP connection — used when nREPL isn't available. The socket REPL host/port comes from `MB_SOCKET_REPL_PORT` in local mode, or from `REPL_HOST`/`REPL_PORT` in `.bot/pr-env.env` in PR-env mode (`repl.coredev.metabase.com:<PR_NUM>`).
+3. **Error** if neither is available — STOP and tell the user.
+
+You can force a specific backend with `--type nrepl` or `--type socket`, or override discovery with `--port` / `--host`.
+
+Use the REPL for:
 - Evaluating Clojure expressions against the running backend
 - Requiring namespaces with `:reload` to pick up code changes
 - Testing functions interactively
 - Checking compilation
 
-Send **one expression per eval call**. Multi-expression evals frequently timeout. Split into separate (parallel if independent) calls.
+**Send one expression per eval call** in socket REPL mode — the socket REPL is stateless per-connection and returns output by reading until a short timeout. In nREPL mode multiple statements in a single call are fine, but for consistency and parallelizability, one form per call is still the best default. To evaluate multiple forms together, wrap them in `(do ...)`.
 
-```bash
-clj-nrepl-eval -p $DISCOVERED_PORT "(+ 1 2)"
-```
+**Do not use `clj-nrepl-eval` directly.** It only speaks nREPL and will fail silently or hang in PR-env mode. Use `-bot-repl-eval` instead, and let it pick the backend.
+
+If the wrapper itself reports "No REPL available", run `./bin/mage -bot-server-info` to see what discovery found, then decide whether to STOP or retry after waiting.
 
 
 
 ## Database Access
 
-The app database connection URI is in `MB_DB_CONNECTION_URI` (from `-bot-server-info`). Always interact with the database through Clojure JDBC via the REPL — do NOT use `psql`, `mysql`, or other CLI database tools.
+In **local-dev mode**, the app database connection URI is in `MB_DB_CONNECTION_URI` (from `-bot-server-info`). Always interact with the database through Clojure JDBC via the REPL — do NOT use `psql`, `mysql`, or other CLI database tools.
 
-```clojure
-;; Query the app database
-(require '[toucan2.core :as t2])
-(t2/select :model/Card :id 1)
-
-;; Raw SQL when needed
-(t2/query "SELECT id, name FROM report_card LIMIT 5")
+```bash
+./bin/mage -bot-repl-eval '(do (require (quote [toucan2.core :as t2])) (t2/select :model/Card :id 1))'
 ```
+
+```bash
+./bin/mage -bot-repl-eval '(do (require (quote [toucan2.core :as t2])) (t2/query "SELECT id, name FROM report_card LIMIT 5"))'
+```
+
+In **PR-env mode** there is no direct database access — query data through API endpoints (`/api/dataset`, `/api/card/<id>/query`, `/api/user`, etc.) instead. The socket REPL can still run Clojure forms that hit the database, but you'll only have access to the running instance's connection, not a separate psql/mysql shell.
 
 ## Log Access
 
