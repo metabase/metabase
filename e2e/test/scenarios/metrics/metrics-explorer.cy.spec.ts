@@ -492,13 +492,19 @@ describe("scenarios > metrics > explorer", () => {
         "Expand formula editor and create expression with second metric instance",
       );
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput()
-        .clear()
-        .type("Count of orders, Count of orders + Count of products");
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      H.MetricsViewer.searchResults().findByText("Count of orders").click();
+      cy.wait("@getMetric");
+
+      H.MetricsViewer.searchInput().type(" + Count of products");
+
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
       H.MetricsViewer.searchInput().type(", Count of orders");
+      H.MetricsViewer.searchResults().findByText("Count of orders").click();
+      cy.wait("@getMetric");
+
       cy.findByTestId("run-expression-button").click();
 
       cy.wait("@dataset");
