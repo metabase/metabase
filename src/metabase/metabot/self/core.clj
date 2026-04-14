@@ -573,7 +573,11 @@
                                                  :provider   provider
                                                  :error-code :provider-api-error)
                                           e)))
-      :else             (throw e))))
+      :else             (throw (ex-info (tru "{0} API request failed: {1}" provider (ex-message e))
+                                        {:api-error  true
+                                         :provider   provider
+                                         :error-code :provider-request-failed}
+                                        e)))))
 
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."

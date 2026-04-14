@@ -602,6 +602,26 @@
       (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
              (:usage msg))))))
 
+(deftest strip-tool-output-bloat-test
+  (testing "strips transient keys from tool-output results, keeping only :output"
+    (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-1"
+             :result {:output            "<result>XML</result>"
+                      :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
+                      :structured-output {:result-type :search :data [{:id 1}]}
+                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+  (testing "leaves non-tool-output parts untouched"
+    (let [text-part {:type :text :text "hello"}]
+      (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
+  (testing "handles result with no :output key"
+    (is (= {:type :tool-output :id "call-2" :result {}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-2"
+             :result {:structured-output {:some "data"}}})))))
+
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."
   []

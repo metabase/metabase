@@ -6,6 +6,10 @@ import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
 import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import type {
   Collection,
@@ -19,10 +23,6 @@ import {
   createMockCollectionItem,
   createMockDashboard,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import ActionMenu, { getParentEntityLink } from "./ActionMenu";
 

@@ -190,7 +190,7 @@
                                             (some? output)    "output-available"
                                             :else             "input-available")
                               :input      (:arguments part)}
-                       (some? (:result output)) (assoc :output (:result output))
+                       (some? (:result output)) (assoc :output (:output (:result output)))
                        has-err?                 (assoc :errorText (error->text (:error output)))))
                    :data      {:type (str "data-" (or (:data-type part) "data"))
                                :data (:data part)}
