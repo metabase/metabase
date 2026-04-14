@@ -1099,6 +1099,57 @@
                :from           [:parents]
                :select         [:name :table_id]})))
 
+;;; ## Field batch cache
+;; On first miss, loads all fields from the same table in one query.
+;; Subsequent lookups for fields on the same table are cache hits.
+;; Parent chains are walked in memory instead of per-field recursive CTEs.
+
+(defn- batch-load-fields-for-table
+  "Given a `table-id`, load all fields from that table. Returns a map of {field-id -> field-row}
+  where each field-row has :id, :name, :parent_id, :table_id."
+  [table-id]
+  (into {}
+        (map (fn [f] [(:id f) f]))
+        (t2/select :model/Field
+                   {:from   [:metabase_field]
+                    :select [:id :name :parent_id :table_id]
+                    :where  [:= :table_id table-id]})))
+
+(defn field-name-chain
+  "Walk the parent_id chain for `field-id` using `lookup-fn`, returning field names from root to leaf.
+  Public because [[metabase.models.serialization.resolve.db]] uses it for batch-cached field export."
+  [field-id lookup-fn]
+  (loop [id field-id
+         names ()]
+    (if-let [field (lookup-fn id)]
+      (if (:parent_id field)
+        (recur (:parent_id field) (cons (:name field) names))
+        (cons (:name field) names))
+      names)))
+
+(defn make-field-cache
+  "Create a batch-loading field cache. Returns a lookup function (fn [field-id] -> field-row-or-nil).
+  On first miss for a field, loads all fields from that field's table.
+  Public because [[with-cache]] is a macro that expands in other namespaces."
+  []
+  (let [cache (atom {})]   ; {field-id -> field-row-or-::missing}
+    (fn [field-id]
+      (let [cached (get @cache field-id ::not-found)]
+        (if (not= cached ::not-found)
+          (when (not= cached ::missing) cached)
+          ;; Cache miss: find this field's table, then bulk load
+          (let [field-row (t2/select-one :model/Field
+                                         {:from   [:metabase_field]
+                                          :select [:id :name :parent_id :table_id]
+                                          :where  [:= :id field-id]})]
+            (if field-row
+              (let [siblings (batch-load-fields-for-table (:table_id field-row))]
+                (swap! cache merge siblings)
+                (get siblings field-id))
+              (do
+                (swap! cache assoc field-id ::missing)
+                nil))))))))
+
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
 
@@ -1115,7 +1166,8 @@
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
-  [[*import-field-fk*]] is the inverse."
+  [[*import-field-fk*]] is the inverse.
+  When called within [[with-cache]], uses a batch-loading cache instead of per-field recursive CTEs."
   [field-id :- [:maybe ::lib.schema.id/field]]
   (when field-id
     (let [fields                      (field-hierarchy field-id)
@@ -1911,7 +1963,7 @@
    :import-with-context (compose* (maybe-lift outer-xform :import :import-with-context)
                                   (maybe-lift inner-xform :import :import-with-context))})
 
-;;; ## Memoizing appdb lookups
+;;; ## Cached resolvers
 
 (defmacro with-cache
   "Runs body with resolvers bound to cached (memoized) versions for performance."

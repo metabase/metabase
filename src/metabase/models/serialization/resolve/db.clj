@@ -126,20 +126,32 @@
     (import-table-fk [_ path]                (import-table-fk path))
     (import-field-fk [this path]             (import-field-fk this path))))
 
+(defn- batch-cached-export-field-fk
+  "Batch-cached version of [[export-field-fk]]. On first miss for a field, loads all fields
+  from that field's table, then walks parent chains in memory."
+  [field-cache-fn export-table-fk-fn field-id]
+  (when field-id
+    (when-let [field (field-cache-fn field-id)]
+      (let [table-ref  (export-table-fk-fn (:table_id field))
+            name-chain (serdes/field-name-chain field-id field-cache-fn)]
+        (when table-ref
+          (into table-ref name-chain))))))
+
 (defn cached-export-resolver
-  "Returns a database-backed export resolver with memoized lookups."
+  "Returns a database-backed export resolver with memoized lookups.
+  Field FK lookups use a batch-loading cache that loads all fields from a table on first miss."
   []
   (let [export-fk*       (memoize export-fk)
         export-fk-keyed* (memoize export-fk-keyed)
         export-user*     (memoize export-user)
         export-table-fk* (memoize export-table-fk)
-        export-field-fk* (memoize export-field-fk)]
+        field-cache      (serdes/make-field-cache)]
     (reify resolve/SerdesExportResolver
       (export-fk       [_ id model]       (export-fk* id model))
       (export-fk-keyed [_ id model field] (export-fk-keyed* id model field))
       (export-user     [this id]          (export-user* this id))
       (export-table-fk [_ table-id]       (export-table-fk* table-id))
-      (export-field-fk [this field-id]    (export-field-fk* this field-id)))))
+      (export-field-fk [_ field-id]       (batch-cached-export-field-fk field-cache export-table-fk* field-id)))))
 
 (defn cached-import-resolver
   "Returns a database-backed import resolver with memoized lookups."
