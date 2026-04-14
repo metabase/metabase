@@ -1,4 +1,4 @@
-const RESTRICTED_CONSOLE_PATTERNS = [
+const RESTRICTED_CONSOLE_PATTERNS: RegExp[] = [
   /UNSAFE_component.*Visualization/,
   /UNSAFE_component.*DashboardGrid/,
   /Warning: React does not recognize the `.*?` prop on a DOM element/,
@@ -11,7 +11,7 @@ const RESTRICTED_CONSOLE_PATTERNS = [
 const originalConsoleError = console.error;
 
 // Override console.error to only fail tests on specific patterns
-console.error = (...args) => {
+console.error = (...args: unknown[]) => {
   originalConsoleError(...args);
 
   // parse `null` as a string, otherwise, it will get dropped with `join()`
