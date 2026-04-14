@@ -1,8 +1,4 @@
-import zlib from "zlib";
-
-import { CompressionRspackPlugin } from "compression-rspack-plugin";
-
-import { IS_DEV_MODE } from "../constants.js";
+const { IS_DEV_MODE } = require("../constants");
 
 const SHOULD_COMPRESS =
   "COMPRESSION" in process.env
@@ -11,8 +7,19 @@ const SHOULD_COMPRESS =
 
 const COMPRESSION_ASSET_TEST = /\.(js|css|svg)$/;
 
-export const COMPRESSION_CONFIG = SHOULD_COMPRESS
-  ? [
+function getCompressionConfig() {
+  if (!SHOULD_COMPRESS) {
+    return [];
+  }
+
+  try {
+    // load these modules conditionally so storybook doesn't choke on them
+    const zlib = require("zlib");
+    const {
+      CompressionRspackPlugin,
+    } = require("./plugins/CompressionRspackPlugin");
+
+    return [
       new CompressionRspackPlugin({
         algorithm: "gzip",
         test: COMPRESSION_ASSET_TEST,
@@ -31,5 +38,10 @@ export const COMPRESSION_CONFIG = SHOULD_COMPRESS
           },
         },
       }),
-    ]
-  : [];
+    ];
+  } catch (e) {
+    return [];
+  }
+}
+
+module.exports.COMPRESSION_CONFIG = getCompressionConfig();
