@@ -318,7 +318,7 @@
                               :lib/expression-name "yiy"}
                              "aggregation_2"]]}]}
                 query)))
-      (testing "Second stage field ref identifier keeps its sticky name after first aggregation is removed."
+      (testing "Second stage field ref identifier keeps its name after first aggregation is removed."
         (is (=? {:stages [{:lib/type :mbql.stage/mbql,
                            :aggregation [[:sum {} [:field {} (meta/id :orders :subtotal)]]]
                            :breakout [[:field {} (meta/id :orders :user-id)]]}
