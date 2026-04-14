@@ -154,7 +154,6 @@
                                              :visualization_settings {}}]}
                   (dashboard-card/retrieve-dashboard-card (:id dashboard-card)))))))))
 
-; TODO
 (deftest update-dashboard-card!-test
   (testing (str "update-dashboard-card! basic update. We are testing multiple things here: 1. ability to update all "
                 "the normal attributes for size/position 2. ability to update series and ensure proper ordering 3. "

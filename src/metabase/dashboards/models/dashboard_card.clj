@@ -85,9 +85,7 @@
          :dashboard_id)
    :visualization_settings
    :row :col
-   :created_at
-   ; TODO
-   ])
+   :created_at])
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 

@@ -297,7 +297,6 @@
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
               (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
 
-; TODO
 (deftest ^:parallel identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]

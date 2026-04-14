@@ -39,7 +39,6 @@
         (is (= (set known-models)
                (set (map name (v2.entity-ids/toucan-models)))))))))
 
-; TODO
 (deftest ^:parallel every-model-is-supported-test-2
   (testing "Serialization support\n"
     (let [should-have-entity-id (set (concat serdes.models/data-model serdes.models/content))
