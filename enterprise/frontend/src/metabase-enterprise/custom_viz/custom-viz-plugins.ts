@@ -43,7 +43,7 @@ const loadedPlugins = new Map<
   { identifier: string; commit: string | null; etag: string | null }
 >();
 
-const failedPlugins = new Map<CustomVizPluginId, CustomVizPlugin["resolved_commit"]>();
+const failedPluginCommits = new Map<CustomVizPluginId, CustomVizPlugin["resolved_commit"]>();
 
 /**
  * Hook that fetches the list of active custom visualization plugins.
@@ -78,7 +78,7 @@ function useCustomVizDevReload(
       return;
     }
 
-    const identifier = display!.slice("custom:".length);
+    const identifier = display.slice("custom:".length);
     const plugin = plugins.find((p) => p.identifier === identifier);
     if (!plugin?.dev_bundle_url) {
       return;
@@ -204,8 +204,8 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   // of spinning forever.
   const knownCommits = matchedPlugin
     ? [
-        loadedPlugins.get(matchedPlugin?.id)?.commit,
-        failedPlugins.get(matchedPlugin?.id),
+        loadedPlugins.get(matchedPlugin.id)?.commit,
+        failedPluginCommits.get(matchedPlugin.id),
       ]
     : [];
   const isReady = knownCommits.includes(matchedPlugin?.resolved_commit);
@@ -340,17 +340,17 @@ export async function loadCustomVizPlugin(
       commit: plugin.resolved_commit,
       etag: null,
     });
-    failedPlugins.delete(plugin.id);
+    failedPluginCommits.delete(plugin.id);
 
     return identifier;
   } catch (error) {
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
-    if (!failedPlugins.has(plugin.id)) {
+    if (!failedPluginCommits.has(plugin.id)) {
       onInfo?.(
         t`The "${plugin.display_name}" visualization is currently unavailable.`,
       );
     }
-    failedPlugins.set(plugin.id, plugin.resolved_commit);
+    failedPluginCommits.set(plugin.id, plugin.resolved_commit);
     return null;
   }
 }
