@@ -68,27 +68,23 @@ function setup({ channel }: { channel: Channel }) {
   return { spy };
 }
 
-describe("SlackChannelField stale channel_id prevention", () => {
-  it("does not carry over old channel_id when user changes to a different known channel", async () => {
+describe("SlackChannelField channel_id storage", () => {
+  it("stores channel_id when user selects a known channel", async () => {
     const { spy } = setup({
-      channel: {
-        channel_type: "slack",
-        details: { channel: "#general", channel_id: "C001" },
-      },
+      channel: { channel_type: "slack", details: { channel: "" } },
     });
 
     const input = screen.getByPlaceholderText("Pick a user or channel...");
-    await userEvent.clear(input);
-    await userEvent.type(input, "#random");
+    await userEvent.type(input, "#general");
 
     const lastCall = spy.mock.calls[spy.mock.calls.length - 1];
     const [propName, details] = lastCall;
     expect(propName).toBe("details");
-    expect(details.channel).toBe("#random");
-    expect(details.channel_id).toBe("C002");
+    expect(details.channel).toBe("#general");
+    expect(details.channel_id).toBe("C001");
   });
 
-  it("strips channel_id when user types an unknown channel name", async () => {
+  it("omits channel_id when user types an unknown channel name", async () => {
     const { spy } = setup({
       channel: {
         channel_type: "slack",
@@ -105,5 +101,24 @@ describe("SlackChannelField stale channel_id prevention", () => {
     expect(propName).toBe("details");
     expect(details.channel).toBe("#private-stuff");
     expect(details).not.toHaveProperty("channel_id");
+  });
+
+  it("updates channel_id when user switches from one known channel to another", async () => {
+    const { spy } = setup({
+      channel: {
+        channel_type: "slack",
+        details: { channel: "#general", channel_id: "C001" },
+      },
+    });
+
+    const input = screen.getByPlaceholderText("Pick a user or channel...");
+    await userEvent.clear(input);
+    await userEvent.type(input, "#random");
+
+    const lastCall = spy.mock.calls[spy.mock.calls.length - 1];
+    const [propName, details] = lastCall;
+    expect(propName).toBe("details");
+    expect(details.channel).toBe("#random");
+    expect(details.channel_id).toBe("C002");
   });
 });
