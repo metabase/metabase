@@ -609,6 +609,7 @@ export type VisualizationDefinition = {
   iconName: IconName;
   iconUrl?: string;
   hasEmptyState?: boolean;
+  isDev?: boolean; // is custom viz in dev mode
 
   maxMetricsSupported?: number;
   maxDimensionsSupported?: number;
