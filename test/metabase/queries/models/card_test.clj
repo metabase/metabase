@@ -760,7 +760,7 @@
               ;; snake-cased form of :name + (lib/model-preserved-keys false) — the closed set
               ;; of keys a non-native model export is allowed to emit
               allowed   #{:name :description :display_name :semantic_type :visibility_type
-                          :fk_target_field_id :settings :lib/source-display-name}
+                          :fk_target_field_id :settings}
               leaked    (into #{} (mapcat #(remove allowed (keys %))) cols)]
           (is (seq cols))
           (is (= #{} leaked)
