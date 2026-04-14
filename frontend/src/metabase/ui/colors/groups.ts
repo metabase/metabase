@@ -124,22 +124,37 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
 // Maps aggregation display names to legacy column names (e.g. "Sum of Price" → "sum",
 // "Count" → "count"). This is needed to get the same preferred color and the same
 // color hash as before aggregation columns switched to generic names.
+// The strings below must match the translations produced by
+// `count-aggregation-no-arg-display-name-fns`, `count-aggregation-display-name-fns`
+// and `unary-aggregation-display-name-fns` in src/metabase/lib/aggregation.cljc.
 export function getPreferredColorKey(name: string): string | undefined {
-  const mapping: [string, string][] = [
+  // No-argument aggregation names — matched exactly.
+  const exactMapping = [
     [t`Count`, "count"],
     [t`Cumulative count`, "count"],
-    [t`Average`, "avg"],
-    [t`Cumulative sum`, "sum"],
-    [t`Distinct values`, "count"],
-    [t`Max`, "max"],
-    [t`Median`, "median"],
-    [t`Min`, "min"],
-    [t`Standard deviation`, "stddev"],
-    [t`Sum`, "sum"],
-    [t`Variance`, "var"],
+  ];
+  // Aggregation names that include a column argument — matched as a prefix,
+  // since the argument is substituted into "{0}".
+  const prefixMapping = [
+    [t`Average of ${""}`, "avg"],
+    [t`Cumulative sum of ${""}`, "sum"],
+    [t`Distinct values of ${""}`, "count"],
+    [t`Max of ${""}`, "max"],
+    [t`Median of ${""}`, "median"],
+    [t`Min of ${""}`, "min"],
+    [t`Standard deviation of ${""}`, "stddev"],
+    [t`Sum of ${""}`, "sum"],
+    [t`Variance of ${""}`, "var"],
+    [t`Count of ${""}`, "count"],
+    [t`Cumulative count of ${""}`, "count"],
   ];
 
-  for (const [prefix, key] of mapping) {
+  for (const [exact, key] of exactMapping) {
+    if (name === exact) {
+      return key;
+    }
+  }
+  for (const [prefix, key] of prefixMapping) {
     if (name.startsWith(prefix)) {
       return key;
     }

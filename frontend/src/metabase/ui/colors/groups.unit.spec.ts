@@ -43,12 +43,19 @@ describe("groups", () => {
       expect(getPreferredColorKey(name)).toBe(expected);
     });
 
-    it.each(["aggregation", "Discount %", "Revenue", "foo"])(
-      'should return undefined for "%s"',
-      (name) => {
-        expect(getPreferredColorKey(name)).toBeUndefined();
-      },
-    );
+    it.each([
+      "aggregation",
+      "Discount %",
+      "Revenue",
+      "foo",
+      "Count Inverted",
+      "Sum Total",
+      "Average Rating Score",
+      "Maximum",
+      "Minimum",
+    ])('should return undefined for "%s"', (name) => {
+      expect(getPreferredColorKey(name)).toBeUndefined();
+    });
   });
 
   describe("getDeduplicatedColorKeys", () => {
