@@ -486,7 +486,14 @@
                                                   :metadata    {:signing_secret_version 1}}]
               (is (nil? (#'slackbot/slack-id->user-id slack-id))))))
 
-        (testing "identity with no version (legacy) is rejected"
+        (testing "legacy identity with no version is accepted before any rotation"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id}]
+              (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
+
+        (testing "legacy identity with no version is rejected after rotation"
           (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
             (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
                                                   :provider    "slack-connect"
@@ -708,6 +715,35 @@
     (testing "non-admin returns 403"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "metabot/slack/settings" creds))))))
+
+(deftest put-slack-settings-signing-secret-version-test
+  (testing "resaving the same signing secret does not increment the version"
+    (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true
+                                       server.settings/slack-connect-signing-secret-version 7]
+      (mt/with-temporary-raw-setting-values [slack-connect-client-id "old-id"
+                                             slack-connect-client-secret "old-secret"
+                                             metabot-slack-signing-secret "same-signing-secret"]
+        (is (= {:ok true}
+               (mt/user-http-request :crowberto :put 200 "metabot/slack/settings"
+                                     {:slack-connect-client-id "new-id"
+                                      :slack-connect-client-secret "new-secret"
+                                      :metabot-slack-signing-secret "same-signing-secret"})))
+        (is (= 7
+               (server.settings/slack-connect-signing-secret-version))))))
+
+  (testing "changing the signing secret increments the version"
+    (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true
+                                       server.settings/slack-connect-signing-secret-version 7]
+      (mt/with-temporary-raw-setting-values [slack-connect-client-id "old-id"
+                                             slack-connect-client-secret "old-secret"
+                                             metabot-slack-signing-secret "old-signing-secret"]
+        (is (= {:ok true}
+               (mt/user-http-request :crowberto :put 200 "metabot/slack/settings"
+                                     {:slack-connect-client-id "new-id"
+                                      :slack-connect-client-secret "new-secret"
+                                      :metabot-slack-signing-secret "new-signing-secret"})))
+        (is (= 8
+               (server.settings/slack-connect-signing-secret-version)))))))
 
 (deftest feedback-modal-view-test
   (testing "positive feedback modal has no issue type dropdown"

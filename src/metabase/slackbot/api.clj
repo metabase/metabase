@@ -72,9 +72,18 @@
 
 ;; ------------------------- AUTHENTICATION ------------------------------
 
+(defn- current-signing-secret-version
+  []
+  (or (server.settings/slack-connect-signing-secret-version) 0))
+
+(defn- auth-identity-signing-secret-version
+  [identity]
+  (or (get-in identity [:metadata :signing_secret_version]) 0))
+
 (defn- slack-id->user-id
   "Look up a Metabase user ID from Slack user ID. Only returns a match if the identity was created under the current
-  signing secret version, so that rotating the secret automatically invalidates existing identity links."
+  signing secret version, so that rotating the secret automatically invalidates existing identity links. Legacy
+  identities without an explicit version are treated as version 0."
   [slack-user-id]
   (let [identity (t2/select-one [:model/AuthIdentity :user_id :metadata]
                                 :provider "slack-connect"
@@ -82,8 +91,8 @@
                                 {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
                                  :where    [:= :user.is_active true]
                                  :order-by [[:created_at :desc]]})]
-    (when (= (:signing_secret_version (:metadata identity))
-             (server.settings/slack-connect-signing-secret-version))
+    (when (= (auth-identity-signing-secret-version identity)
+             (current-signing-secret-version))
       (:user_id identity))))
 
 (defn- slack-user-authorize-link
@@ -452,7 +461,10 @@
                         metabot-slack-signing-secret)
         all-unset? (and (nil? slack-connect-client-id)
                         (nil? slack-connect-client-secret)
-                        (nil? metabot-slack-signing-secret))]
+                        (nil? metabot-slack-signing-secret))
+        signing-secret-changed? (and all-set?
+                                     (not= metabot-slack-signing-secret
+                                           (server.settings/unobfuscated-metabot-slack-signing-secret)))]
     ;; all values must be set together or unset together
     (when-not (or all-set? all-unset?)
       (throw (ex-info (tru "Must provide client id, client secret and signing secret together.")
@@ -461,9 +473,9 @@
                         :slack-connect-client-secret  slack-connect-client-secret
                         :metabot-slack-signing-secret metabot-slack-signing-secret
                         :slack-connect-enabled        (boolean all-set?)})
-    (when all-set?
+    (when signing-secret-changed?
       (server.settings/slack-connect-signing-secret-version!
-       (inc (server.settings/slack-connect-signing-secret-version))))
+       (inc (current-signing-secret-version))))
     {:ok true}))
 
 ;; ------------------------- FEEDBACK BUTTONS ------------------------------
