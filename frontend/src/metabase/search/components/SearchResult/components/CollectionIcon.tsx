@@ -1,9 +1,9 @@
-import { getIcon } from "metabase/lib/icon";
 import {
   DEFAULT_ICON_SIZE,
   LARGE_ICON_SIZE,
 } from "metabase/search/components/SearchResult/components";
 import { Icon } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 
 import type { IconComponentProps } from "./ItemIcon";
 

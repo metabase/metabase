@@ -26,14 +26,15 @@
 
 (defn- check-entities!
   "Process entities, draining all stale entities before returning.
-  Returns true if the full batch was used (more work may remain)."
+  Continues looping as long as there are stale entities — this is important because
+  [[deps.findings/analyze-and-propagate!]] marks immediate dependents stale during processing,
+  which need to be picked up in subsequent waves."
   []
   (when (premium-features/has-feature? :dependencies)
     (loop []
-      (let [used-full-batch? (process-one-batch!)]
-        (if (and used-full-batch? (deps.analysis-finding/has-stale-entities?))
-          (recur)
-          used-full-batch?)))))
+      (process-one-batch!)
+      (when (deps.analysis-finding/has-stale-entities?)
+        (recur)))))
 
 (declare schedule-next-run!)
 
@@ -70,7 +71,8 @@
     (log/info "Not starting dependency entity check job because the batch size is not positive")))
 
 (defn trigger-entity-check-job!
-  "Trigger the DependencyEntityCheck job to run immediately.
-  Use this when entities have been marked stale and need re-analysis."
+  "Trigger the DependencyEntityCheck job to run after a brief delay.
+  The 1-second delay ensures the calling transaction has committed before
+  the job checks for stale entities."
   []
-  (schedule-next-run! 0))
+  (schedule-next-run! 1))

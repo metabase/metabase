@@ -1045,10 +1045,10 @@ describe("issue 69160", () => {
       .first()
       .as("param");
 
-    cy.get("@param").trigger("pointerdown", 5, 5, options).wait(200);
-    cy.get("@param").trigger("pointermove", 20, 20, options).wait(200);
-    cy.get("@param").trigger("pointermove", 200, 0, options).wait(200);
-    cy.get("@param").trigger("pointerup", options).wait(200);
+    cy.get("@param").trigger("mousedown", 5, 5, options).wait(200);
+    cy.get("@param").trigger("mousemove", 20, 20, options).wait(200);
+    cy.get("@param").trigger("mousemove", 200, 0, options).wait(200);
+    cy.get("@param").trigger("mouseup", options).wait(200);
 
     cy.findByTestId("native-query-top-bar")
       .findAllByRole("textbox")

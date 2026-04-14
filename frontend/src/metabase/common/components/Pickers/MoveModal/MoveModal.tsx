@@ -183,6 +183,7 @@ export const MoveModal = ({
         hasRootCollection: true,
         hasConfirmButtons: true,
         canCreateCollections: true,
+        canCreateDashboards: canMoveToDashboard ?? false,
         hasPersonalCollections: true,
         confirmButtonText: t`Move`,
       }}
@@ -336,6 +337,7 @@ export const BulkMoveModal = ({
         hasRootCollection: true,
         hasConfirmButtons: true,
         canCreateCollections: true,
+        canCreateDashboards: canMoveToDashboard,
         confirmButtonText: t`Move`,
       }}
       isDisabledItem={shouldDisableItem}
@@ -346,7 +348,7 @@ export const BulkMoveModal = ({
   );
 };
 
-const isSameDestination = (
+export const isSameDestination = (
   movingItem: OmniPickerCollectionItem,
   movingTarget: OmniPickerCollectionItem,
 ) => {
@@ -359,6 +361,7 @@ const isSameDestination = (
 
   if (
     movingTarget.model === "collection" &&
+    !movingItem.dashboard_id &&
     movingItem.collection?.id === movingTarget.id
   ) {
     return true;

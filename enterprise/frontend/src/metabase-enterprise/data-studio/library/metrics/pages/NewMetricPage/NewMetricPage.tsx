@@ -3,8 +3,8 @@ import { Link, type Route } from "react-router";
 import { t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import * as Urls from "metabase/lib/urls";
 import { NewMetricPage } from "metabase/metrics/pages/NewMetricPage";
+import * as Urls from "metabase/utils/urls";
 
 import { dataStudioMetricUrls } from "../../urls";
 

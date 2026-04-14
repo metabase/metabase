@@ -9,7 +9,6 @@ import {
   getEngineLogo,
   getEngineOptions,
 } from "metabase/databases/utils/engine";
-import { useSelector } from "metabase/lib/redux";
 import {
   Button,
   Center,
@@ -22,6 +21,7 @@ import {
   Text,
   useCombobox,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "./DatabaseEngineList.module.css";
 

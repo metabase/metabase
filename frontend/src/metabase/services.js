@@ -1,4 +1,4 @@
-import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
+import api, { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";

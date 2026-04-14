@@ -9,7 +9,6 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import * as Urls from "metabase/lib/urls";
 import type { CheckDependenciesFormProps } from "metabase/plugins";
 import {
   Anchor,
@@ -22,6 +21,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import visualizations from "metabase/visualizations";
 import type {
   Card as ApiCard,

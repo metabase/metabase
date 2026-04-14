@@ -1,5 +1,5 @@
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isWithinIframe } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 type InternalEmbeddingConfig = {
   isPublicEmbedding: boolean;

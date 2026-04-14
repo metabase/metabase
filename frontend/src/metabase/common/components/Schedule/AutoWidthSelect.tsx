@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { SelectProps } from "metabase/ui";
 import { Select } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
 import { getLongestSelectLabel, measureTextWidthSafely } from "./utils";

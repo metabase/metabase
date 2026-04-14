@@ -1,5 +1,5 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
 import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import { updateMetadata } from "metabase/utils/redux/metadata";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,
@@ -184,7 +184,10 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("database")]),
+        invalidateTags(error, [
+          listTag("database"),
+          listTag("embedding-hub-checklist"),
+        ]),
     }),
     updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
       query: ({ id, ...body }) => ({

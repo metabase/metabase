@@ -1,4 +1,4 @@
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { IS_EMBED_PREVIEW } from "metabase/utils/embed";
 
 /**
  * The only point of putting this into its own function

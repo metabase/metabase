@@ -1,13 +1,11 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import type {
-  CustomSMTPSetupClickedEvent,
-  CustomSMTPSetupSuccessEvent,
-} from "metabase-types/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+
+type SMTPSetupEventDetail = "self-hosted" | "cloud";
 
 export function trackSMTPSetupClick({
   eventDetail,
 }: {
-  eventDetail: CustomSMTPSetupClickedEvent["event_detail"];
+  eventDetail: SMTPSetupEventDetail;
 }) {
   trackSimpleEvent({
     event: "custom_smtp_setup_clicked",
@@ -18,7 +16,7 @@ export function trackSMTPSetupClick({
 export function trackSMTPSetupSuccess({
   eventDetail,
 }: {
-  eventDetail: CustomSMTPSetupSuccessEvent["event_detail"];
+  eventDetail: SMTPSetupEventDetail;
 }) {
   trackSimpleEvent({
     event: "custom_smtp_setup_success",

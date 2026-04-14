@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import type { Document } from "metabase-types/api";
 
 export const trackDocumentCreated = (document: Document) => {

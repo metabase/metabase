@@ -3,10 +3,10 @@ import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { MetabaseReduxContext, connect } from "metabase/lib/redux";
+import type { State } from "metabase/redux/store";
+import type { AdminPath } from "metabase/redux/store/admin";
 import { getSetting } from "metabase/selectors/settings";
-import type { State } from "metabase-types/store";
-import type { AdminPath } from "metabase-types/store/admin";
+import { MetabaseReduxContext, connect } from "metabase/utils/redux";
 
 export const createAdminRouteGuard = (routeKey: string) => {
   const Wrapper = connectedReduxRedirect<any, State>({

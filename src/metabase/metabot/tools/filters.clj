@@ -20,7 +20,7 @@
 ;;; URL Generation for Auto-Navigation
 
 (defn- query->url-hash
-  "Convert an MLv2/MBQL query to a base64-encoded URL hash."
+  "Convert an MBQL 4 (legacy) or MBQL 5 query to a base64-encoded URL hash."
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (let [dataset-query (if (and (map? query) (:lib/type query))

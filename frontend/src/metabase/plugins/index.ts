@@ -74,6 +74,7 @@ export {
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";
+export { PLUGIN_METABOT } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -145,6 +146,7 @@ export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
 } from "./oss/writable-connection";
+export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
@@ -177,12 +179,14 @@ import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embed
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
 import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
+import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
+import { reinitialize as reinitializeSecurityCenter } from "./oss/security-center";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
 import { reinitialize as reinitializeSmtpOverride } from "./oss/smtp-override";
@@ -217,12 +221,14 @@ export function reinitialize() {
   reinitializeEmbeddingSdk();
   reinitializeEntities();
   reinitializeLibrary();
+  reinitializeMetabot();
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();
   reinitializeRemoteSync();
   reinitializeReplacement();
   reinitializeResourceDownloads();
+  reinitializeSecurityCenter();
   reinitializeSemanticSearch();
   reinitializeSettings();
   reinitializeSmtpOverride();

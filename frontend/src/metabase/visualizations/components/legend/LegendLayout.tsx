@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { HoveredObject } from "metabase/visualizations/types";
 
 import { Legend } from "./Legend";

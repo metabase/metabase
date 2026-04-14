@@ -21,9 +21,6 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
-import { isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 import {
@@ -32,6 +29,9 @@ import {
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { isSmallScreen } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Bookmark, Collection } from "metabase-types/api";
 
 import {

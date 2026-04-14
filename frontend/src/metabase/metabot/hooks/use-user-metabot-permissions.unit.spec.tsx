@@ -3,12 +3,12 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { UserMetabotPermissionsResponse } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { useUserMetabotPermissions } from "./use-user-metabot-permissions";
 

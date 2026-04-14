@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import { Center, Icon, SegmentedControl } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { VisualizationDisplay } from "metabase-types/api";
+
+import { trackVisualizerDataChanged } from "../analytics";
 
 import S from "./VisualizationPicker.module.css";
 
@@ -45,11 +46,7 @@ export function VisualizationPicker({
             <Center
               key={i}
               onClick={() => {
-                trackSimpleEvent({
-                  event: "visualizer_data_changed",
-                  event_detail: "visualizer_viz_type_changed",
-                  triggered_from: "visualizer-modal",
-                });
+                trackVisualizerDataChanged("visualizer_viz_type_changed");
 
                 onChange(o.value);
               }}

@@ -795,35 +795,36 @@
                     {:row-count 3, :table-name "Orders", :type :drill-thru/underlying-records}]}))
 
 (deftest ^:parallel available-drill-thrus-test-13
-  (testing "Header drills on an aggregation column"
+  (testing "Aggregated columns should get column-filter and sort drills, not distribution and summarize-column (#34223, #34341)"
     (lib.drill-thru.tu/test-available-drill-thrus
-     {:click-type  :header
-      :query-type  :aggregated
-      :column-name "aggregation"
-      :query-kinds [:mbql]
-      :expected    [{:type :drill-thru/column-filter}
-                    {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+     {:click-type   :header
+      :query-type   :aggregated
+      :column-name  "aggregation"
+      :query-kinds  [:mbql]
+      :expected     [{:type :drill-thru/column-filter}
+                     {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-14
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
-       {:click-type  :header
-        :query-type  :aggregated
-        :column-name "PRODUCT_ID"
-        :expected    [{:type :drill-thru/column-filter}
-                      {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+  (testing "Breakout columns in aggregated query should get column-filter and sort drills (#34223, #34341)"
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type   :header
+      :query-type   :aggregated
+      :column-name  "PRODUCT_ID"
+      :query-kinds  [:mbql]
+      :expected     [{:type :drill-thru/column-filter}
+                     {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-15
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
-       {:click-type  :header
-        :query-type  :aggregated
-        :column-name "CREATED_AT"
-        :expected    [{:type            :drill-thru/column-filter}
-                      {:type            :drill-thru/sort
-                       :sort-directions [:asc :desc]}]})))
+  (testing "Breakout columns in aggregated query should get column-filter and sort drills (#34223, #34341)"
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type   :header
+      :query-type   :aggregated
+      :column-name  "CREATED_AT"
+      :query-kinds  [:mbql]
+      :expected     [{:type            :drill-thru/column-filter}
+                     {:type            :drill-thru/sort
+                      :sort-directions [:asc :desc]}
+                     {:type            :drill-thru/column-extract}]})))
 
 (deftest ^:parallel available-drill-thrus-no-column-drills-for-nil-dimension-values-test
   (testing "column header drills should not be returned when dimensions have nil values (#49740, #51741)"

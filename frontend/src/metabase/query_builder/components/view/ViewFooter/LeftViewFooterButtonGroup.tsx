@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { ButtonGroup } from "metabase/common/components/ButtonGroup";
 import { ViewButton } from "metabase/common/components/ViewButton";
 import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
 import {
@@ -13,8 +12,9 @@ import {
   onOpenChartSettings,
   onOpenChartType,
 } from "metabase/redux/query-builder";
+import type { QueryBuilderUIControls } from "metabase/redux/store";
 import { Group } from "metabase/ui";
-import type { QueryBuilderUIControls } from "metabase-types/store";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import S from "./LeftViewFooterButtonGroup.module.css";
 

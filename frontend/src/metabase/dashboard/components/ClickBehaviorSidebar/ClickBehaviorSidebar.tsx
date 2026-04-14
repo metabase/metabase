@@ -8,7 +8,7 @@ import {
   type DashboardContextReturned,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { isTableDisplay } from "metabase/lib/click-behavior";
+import { isTableDisplay } from "metabase/utils/click-behavior";
 import {
   canSaveClickBehavior,
   clickBehaviorIsValid,

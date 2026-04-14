@@ -15,14 +15,14 @@ dataset_query:
   stages:
   - aggregation:
     - - percentile
-      - {name: Percentile 90 of query running time, display-name: Percentile 90 of query running time}
+      - {display-name: Percentile 90 of query running time, name: Percentile 90 of query running time}
       - - field
         - {base-type: type/Float, lib/uuid: cbe9f766-ff31-4f4e-91ae-efa67c301945}
         - running_time_seconds
       - 0.9
     breakout:
     - - field
-      - {temporal-unit: week, base-type: type/DateTimeWithLocalTZ, lib/uuid: 30dc418a-70e4-4e3b-8b6d-ed8f943bcc0c}
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week, lib/uuid: 30dc418a-70e4-4e3b-8b6d-ed8f943bcc0c}
       - started_at
     - - field
       - {base-type: type/Boolean, lib/uuid: c108e07d-2f7f-4788-a286-3d8879e34c0f}

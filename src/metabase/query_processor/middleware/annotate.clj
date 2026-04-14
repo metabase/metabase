@@ -156,7 +156,7 @@
 ;;;;
 
 ;;; These are only for convenience for drivers that used to use stuff in annotate directly -- we can remove it once we
-;;; convert drivers to MLv2
+;;; convert drivers to MBQL 5.
 (p/import-vars
  [metabase.query-processor.middleware.annotate.legacy-helper-fns
   aggregation-name

@@ -1,7 +1,7 @@
 import cx from "classnames";
 
-import { checkNotNull } from "metabase/lib/types";
 import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import visualizations from "metabase/visualizations";
 import type { CardDisplayType } from "metabase-types/api";
 

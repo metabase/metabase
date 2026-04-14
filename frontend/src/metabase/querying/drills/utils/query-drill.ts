@@ -1,4 +1,4 @@
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { ClickAction } from "metabase/visualizations/types";
 import type { DrillThruDisplayInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
