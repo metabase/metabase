@@ -48,9 +48,12 @@
   (keys (get-in @store [:index kind])))
 
 (defn exists?
-  "Is `ref` of `kind` known to the store?"
+  "Is `ref` of `kind` known to the store?
+   Databases are checked via the schema source (not the assets index)."
   [store kind ref]
-  (contains? (get-in @store [:index kind]) ref))
+  (if (= kind :database)
+    (contains? (set (source/all-database-names (:schema-source @store))) ref)
+    (contains? (get-in @store [:index kind]) ref)))
 
 (defn index-kind-of
   "Return the kind of an entity-id in the index, or nil if not found."

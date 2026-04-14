@@ -715,13 +715,11 @@
 
 (defn- make-sources-and-index
   "Build schema and assets sources from `schema-dir` and `export-dir`,
-   and a merged file index."
+   and a merged assets index (cards, dashboards, segments, etc.)."
   [export-dir schema-dir]
   (let [schema-source (serdes/make-database-source schema-dir)
         assets-source (serdes/make-source export-dir)
-        schema-index  (serdes/source-index schema-source)
-        assets-index  (serdes/source-index assets-source)
-        index         (merge schema-index (select-keys assets-index [:card :dashboard :collection :document :measure :segment :snippet :transform :duplicates]))]
+        index         (serdes/source-index assets-source)]
     {:schema-source schema-source :assets-source assets-source :index index}))
 
 (defn check

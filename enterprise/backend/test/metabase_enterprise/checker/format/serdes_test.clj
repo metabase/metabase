@@ -259,6 +259,61 @@
       (is (nil? (:field index)) "fields should NOT be in the index"))))
 
 ;;; ===========================================================================
+;;; Cache shape and lazy resolution
+;;; ===========================================================================
+
+(def ^:private not-indexed :metabase-enterprise.checker.format.serdes/not-indexed)
+
+(deftest schema-model-shape-test
+  (testing "schema model starts with ::not-indexed for each schema, populates lazily"
+    (with-temp-dir
+      (fn [dir]
+        (write-yaml! dir "databases" "db" "db.yaml" {:name "DB" :engine "h2"})
+        (write-yaml! dir "databases" "db" "schemas" "s1" "tables" "t1" "t1.yaml"
+                     {:name "T1" :schema "s1"})
+        (write-yaml! dir "databases" "db" "schemas" "s1" "tables" "t1" "fields" "f1.yaml"
+                     {:name "F1" :base_type "type/Integer"})
+        (write-yaml! dir "databases" "db" "schemas" "s2" "tables" "t2" "t2.yaml"
+                     {:name "T2" :schema "s2"})
+        (write-yaml! dir "databases" "db" "schemas" "s2" "tables" "t2" "fields" "f2.yaml"
+                     {:name "F2" :base_type "type/Text"})
+        (let [source (serdes/make-database-source (str dir "/databases"))]
+          ;; Initial: db-file set, all schemas ::not-indexed
+          (is (=? {"DB" {:db-file string?
+                         :schemas {"s1" not-indexed
+                                   "s2" not-indexed}}}
+                  @(.-schema-model source)))
+          ;; After resolving a table in s1: s1 indexed with tables, s2 untouched
+          (source/resolve-table source ["DB" "s1" "T1"])
+          (is (=? {"DB" {:schemas {"s1" {"T1" {:table-file string?
+                                               :fields     not-indexed}}
+                                   "s2" not-indexed}}}
+                  @(.-schema-model source)))
+          ;; After resolving fields for T1: T1 fields indexed, s2 still untouched
+          (source/fields-for-table source ["DB" "s1" "T1"])
+          (is (=? {"DB" {:schemas {"s1" {"T1" {:table-file string?
+                                               :fields     {"F1" string?}}}
+                                   "s2" not-indexed}}}
+                  @(.-schema-model source))))))))
+
+(deftest case-insensitive-schema-resolution-test
+  (testing "schemas with different casing on disk vs YAML resolve correctly"
+    (with-temp-dir
+      (fn [dir]
+        ;; Dir name is lowercase, YAML schema is uppercase (H2 convention)
+        (write-yaml! dir "databases" "db" "db.yaml" {:name "DB" :engine "h2"})
+        (write-yaml! dir "databases" "db" "schemas" "public" "tables" "orders" "orders.yaml"
+                     {:name "ORDERS" :schema "PUBLIC"})
+        (write-yaml! dir "databases" "db" "schemas" "public" "tables" "orders" "fields" "id.yaml"
+                     {:name "ID" :base_type "type/Integer"})
+        (let [source (serdes/make-database-source (str dir "/databases"))]
+          ;; Resolve by real names (uppercase) — schema re-keys from "public" to "PUBLIC"
+          (is (some? (source/resolve-table source ["DB" "PUBLIC" "ORDERS"])))
+          (is (some? (source/resolve-field source ["DB" "PUBLIC" "ORDERS" "ID"])))
+          (is (=? {"DB" {:schemas {"PUBLIC" {"ORDERS" {:fields {"ID" string?}}}}}}
+                  @(.-schema-model source))))))))
+
+;;; ===========================================================================
 ;;; Segments and measures — indexed from export dir, NOT schema dir
 ;;; ===========================================================================
 
@@ -327,11 +382,11 @@
             (is (= "dup-id" (:ref (first (:duplicates index)))))))))))
 
 (deftest source-index-accessor-test
-  (testing "source-index returns the index from a SerdesSource"
+  (testing "source-index returns the assets index (no databases — those are in the schema model)"
     (let [source (serdes/make-source (fixtures-path))
           index  (serdes/source-index source)]
       (is (map? index))
-      (is (contains? index :database))
+      (is (not (contains? index :database)) "databases are in the schema model, not the assets index")
       (is (contains? index :card)))))
 
 (deftest all-card-ids-test
