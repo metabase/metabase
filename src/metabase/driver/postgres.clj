@@ -59,7 +59,7 @@
   postgres.ddl/keep-me
   sql.pg-ops/keep-me)
 
-(driver/register! :postgres, :parent :sql-jdbc)
+(driver/register! :postgres, :parent #{:sql-jdbc :sql-mbql5})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -756,11 +756,11 @@
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name opts :as clause]]
+  [driver [_ opts id-or-name]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)]
+        identifier    (parent-method driver [:field id-or-name opts])]
     (cond
       (= (:database-type stored-field) "money")
       (pg-conversion identifier :numeric)
