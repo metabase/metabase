@@ -416,7 +416,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.log("Remove both groupings from the popup");
     popover().within(() => {
-      cy.findAllByLabelText("close icon").last().click();
+      cy.findAllByLabelText("close icon").should("have.length", 2).last().click();
     });
 
     popover().within(() => {
