@@ -86,7 +86,9 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       cy.findAllByTestId("advisory-card").should("have.length", 3);
       securityCenterContent().within(() => {
         cy.findByText("Critical RCE vulnerability").should("be.visible");
-        cy.findByText("SQL injection in query builder").should("be.visible");
+        cy.findByText("SQL injection in query builder")
+          .scrollIntoView()
+          .should("be.visible");
         cy.findByText("SSRF in GeoJSON endpoint")
           .scrollIntoView()
           .should("be.visible");
@@ -98,7 +100,6 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
         .first()
         .within(() => {
           cy.findByText("Critical RCE vulnerability").should("exist");
-          cy.findByTestId("affected-status").should("have.text", "Affected");
         });
     });
 
@@ -109,7 +110,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       H.activateToken("pro-self-hosted");
       cy.visit("/admin/security-center");
       securityCenterContent().within(() => {
-        cy.findByText(/up to date/).should("be.visible");
+        cy.findByText(/No known security issues/).should("be.visible");
       });
     });
   });
@@ -126,15 +127,6 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     it("should filter by severity", () => {
       cy.findByTestId("severity-filter").click();
       cy.findByRole("option", { name: "Critical" }).click();
-      cy.findAllByTestId("advisory-card").should("have.length", 1);
-      securityCenterContent().within(() => {
-        cy.findByText("Critical RCE vulnerability").should("be.visible");
-      });
-    });
-
-    it("should filter by affected status", () => {
-      cy.findByTestId("status-filter").click();
-      cy.findByRole("option", { name: "Affected" }).click();
       cy.findAllByTestId("advisory-card").should("have.length", 1);
       securityCenterContent().within(() => {
         cy.findByText("Critical RCE vulnerability").should("be.visible");
@@ -181,7 +173,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       cy.findByTestId("show-acknowledged-filter").click();
       cy.findAllByTestId("advisory-card")
         .first()
-        .findByTestId("acknowledged-badge")
+        .findByTestId("acknowledge-button")
         .should("have.text", "Dismissed");
     });
 
@@ -193,6 +185,29 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
 
       // After dismissing, the card should disappear
       cy.findAllByTestId("advisory-card").should("have.length", 2);
+    });
+
+    it("should dismiss all non-affecting advisories with 'Dismiss all'", () => {
+      cy.intercept("POST", "/api/ee/security-center/acknowledge").as(
+        "acknowledgeAll",
+      );
+
+      securityCenterContent().findByText("Dismiss all").click();
+      cy.wait("@acknowledgeAll").then(({ request }) => {
+        expect(request.body.advisory_ids).to.include("TEST-002");
+        expect(request.body.advisory_ids).to.include("TEST-003");
+        expect(request.body.advisory_ids).to.not.include("TEST-001");
+      });
+
+      // The non-affecting cards should disappear (dismissed are hidden by default)
+      cy.findAllByTestId("advisory-card").should("have.length", 1);
+    });
+
+    it("should not show 'Dismiss all' when all non-affecting advisories are dismissed", () => {
+      securityCenterContent().findByText("Dismiss all").click();
+
+      // After dismissing all, the button should disappear
+      securityCenterContent().findByText("Dismiss all").should("not.exist");
     });
   });
 

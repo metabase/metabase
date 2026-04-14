@@ -239,10 +239,9 @@ describe("SecurityCenterPage", () => {
     // Dismissed advisories are hidden by default — enable the checkbox first
     await userEvent.click(screen.getByTestId("show-acknowledged-filter"));
 
-    expect(screen.queryByTestId("acknowledge-button")).not.toBeInTheDocument();
-    expect(screen.getByTestId("acknowledged-badge")).toHaveTextContent(
-      "Dismissed",
-    );
+    const button = screen.getByTestId("acknowledge-button");
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent("Dismissed");
   });
 
   it("hides dismissed advisories by default", async () => {
