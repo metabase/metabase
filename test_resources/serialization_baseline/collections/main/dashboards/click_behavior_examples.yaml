@@ -15,57 +15,6 @@ serdes/meta:
   label: click_behavior_examples
   model: Dashboard
 dashcards:
-- entity_id: NSyK1LJldomowKbt0HpuE
-  card_id: ciG63nSLHKRTImt5iWEte
-  created_at: '2026-04-02T02:59:02.778668Z'
-  row: 9
-  col: 12
-  size_x: 12
-  size_y: 8
-  inline_parameters: []
-  parameter_mappings: []
-  series: []
-  visualization_settings:
-    column_settings: null
-  serdes/meta:
-    - id: c0R_gvn90vURE5hdxK3f0
-      model: Dashboard
-    - id: NSyK1LJldomowKbt0HpuE
-      model: DashboardCard
-- entity_id: RasgF0LvnoJlu7ModLrqv
-  card_id: dYD1j3pQtJdctg8duByUL
-  created_at: '2026-04-02T02:59:02.778668Z'
-  row: 9
-  col: 0
-  size_x: 12
-  size_y: 8
-  inline_parameters: []
-  parameter_mappings: []
-  series: []
-  visualization_settings:
-    column_settings: null
-  serdes/meta:
-    - id: c0R_gvn90vURE5hdxK3f0
-      model: Dashboard
-    - id: RasgF0LvnoJlu7ModLrqv
-      model: DashboardCard
-- entity_id: iMNmMMABHvbbiVT3ufez6
-  card_id: UEWVldEEZ-3sYUjjN54qz
-  created_at: '2026-04-02T02:59:02.778668Z'
-  row: 0
-  col: 18
-  size_x: 6
-  size_y: 9
-  inline_parameters: []
-  parameter_mappings: []
-  series: []
-  visualization_settings:
-    column_settings: null
-  serdes/meta:
-  - id: c0R_gvn90vURE5hdxK3f0
-    model: Dashboard
-  - id: iMNmMMABHvbbiVT3ufez6
-    model: DashboardCard
 - entity_id: qaAe9ro4JL3ahgLLne-jG
   card_id: Wo5d6IV8lb63wex29uh6H
   created_at: '2026-04-02T02:59:02.778668Z'
@@ -92,6 +41,57 @@ dashcards:
     - id: c0R_gvn90vURE5hdxK3f0
       model: Dashboard
     - id: qaAe9ro4JL3ahgLLne-jG
+      model: DashboardCard
+- entity_id: iMNmMMABHvbbiVT3ufez6
+  card_id: UEWVldEEZ-3sYUjjN54qz
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 0
+  col: 18
+  size_x: 6
+  size_y: 9
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c0R_gvn90vURE5hdxK3f0
+    model: Dashboard
+  - id: iMNmMMABHvbbiVT3ufez6
+    model: DashboardCard
+- entity_id: RasgF0LvnoJlu7ModLrqv
+  card_id: dYD1j3pQtJdctg8duByUL
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 9
+  col: 0
+  size_x: 12
+  size_y: 8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+    - id: c0R_gvn90vURE5hdxK3f0
+      model: Dashboard
+    - id: RasgF0LvnoJlu7ModLrqv
+      model: DashboardCard
+- entity_id: NSyK1LJldomowKbt0HpuE
+  card_id: ciG63nSLHKRTImt5iWEte
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 9
+  col: 12
+  size_x: 12
+  size_y: 8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+    - id: c0R_gvn90vURE5hdxK3f0
+      model: Dashboard
+    - id: NSyK1LJldomowKbt0HpuE
       model: DashboardCard
 tabs: []
 width: fixed
