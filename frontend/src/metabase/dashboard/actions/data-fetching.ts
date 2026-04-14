@@ -321,15 +321,15 @@ export const fetchCardDataAction = createAsyncThunk<
     };
 
     // make the actual request
+    // @ts-expect-error: Is this still in use?
     if (datasetQuery.type === "endpoint") {
-      result = await fetchDataOrError(
-        MetabaseApi.datasetEndpoint(
-          {
-            endpoint: datasetQuery.endpoint,
-            parameters: datasetQuery.parameters,
-          },
-          queryOptions,
-        ),
+      // @ts-expect-error: Is this still in use?
+      const endpoint = datasetQuery.endpoint as string;
+      // @ts-expect-error: Is this still in use?
+      const parameters = datasetQuery.parameters;
+
+      result = await fetchDataOrError<Dataset>(
+        MetabaseApi.datasetEndpoint({ endpoint, parameters }, queryOptions),
       );
     } else if (dashboardType === "public") {
       result = (await fetchDataOrError(

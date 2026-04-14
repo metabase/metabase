@@ -14,6 +14,8 @@ import type {
   UnsavedCard,
   DashboardParameterMapping,
   VirtualDashCardParameterMapping,
+  Parameter,
+  LegacyDatasetQuery,
 } from "metabase-types/api";
 
 import { clone } from "metabase/utils/clone";
@@ -147,7 +149,10 @@ function cardVisualizationIsEquivalent(cardA: Card, cardB: Card) {
   );
 }
 
-export function cardQueryIsEquivalent(cardA: Card, cardB: Card) {
+export function cardQueryIsEquivalent(
+  cardA: Card<LegacyDatasetQuery>,
+  cardB: Card<LegacyDatasetQuery>,
+) {
   const datasetQueryA = clone(cardA.dataset_query);
   datasetQueryA.parameters ??= [];
 
@@ -161,7 +166,10 @@ export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {
   return _.isEqual(cardA.parameters || [], cardB.parameters || []);
 }
 
-export function cardIsEquivalent(cardA: Card, cardB: Card) {
+export function cardIsEquivalent(
+  cardA: Card<LegacyDatasetQuery>,
+  cardB: Card<LegacyDatasetQuery>,
+) {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
     cardVisualizationIsEquivalent(cardA, cardB)
@@ -172,7 +180,7 @@ export function cardIsEquivalent(cardA: Card, cardB: Card) {
 // Query builder uses `Question.getResults` which contains similar logic.
 export function applyParameters(
   card: Card,
-  parameters: UiParameter[],
+  parameters: Parameter[] | null | undefined,
   parameterValues: ParameterValuesMap = {},
   parameterMappings:
     | ActionParametersMapping[]
@@ -180,7 +188,8 @@ export function applyParameters(
     | VirtualDashCardParameterMapping[] = [],
   { sparse = false } = {},
 ) {
-  const datasetQuery = clone(card.dataset_query);
+  // TODO(romeovs): This cast is a hack, this function only works with LegacyDatasetQuery
+  const datasetQuery = clone(card.dataset_query) as LegacyDatasetQuery;
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
     const value = parameterValues[parameter.id];
