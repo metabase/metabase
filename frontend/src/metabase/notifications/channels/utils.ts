@@ -1,4 +1,4 @@
-import type { SlackChannelOption } from "metabase-types/api";
+import type { SlackChannelId, SlackChannelOption } from "metabase-types/api";
 
 export function getDisplayNames(options: SlackChannelOption[]): string[] {
   return options.map((o) => o.displayName);
@@ -7,6 +7,6 @@ export function getDisplayNames(options: SlackChannelOption[]): string[] {
 export function findChannelId(
   options: SlackChannelOption[],
   displayName: string,
-): string | undefined {
+): SlackChannelId | undefined {
   return options.find((o) => o.displayName === displayName)?.id;
 }
