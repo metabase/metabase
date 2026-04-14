@@ -1290,6 +1290,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.serialization.resolve
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -2741,6 +2742,18 @@
                     :model/QueryCache
                     :model/QueryExecution}}
 
+  enterprise/checker
+  {:team "Graphy"
+   ;; todo: add ability to prevent usage (transitive even) of app db
+   :api  #{}
+   :uses #{lib
+           models
+           query-processor
+           sql-tools
+           util
+           enterprise/dependencies}
+   :model-imports #{:model/Database}}
+
   enterprise/cloud-add-ons
   {:team "Cloud"
    :api  #{metabase-enterprise.cloud-add-ons.api}
@@ -2836,7 +2849,8 @@
 
   enterprise/dependencies
   {:team "Graphy"
-   :api  #{metabase-enterprise.dependencies.api
+   :api  #{metabase-enterprise.dependencies.analysis
+           metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
