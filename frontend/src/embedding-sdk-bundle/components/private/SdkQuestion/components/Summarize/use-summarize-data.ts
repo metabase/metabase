@@ -10,6 +10,7 @@ import {
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../context";
+import { hasAggregationWithoutBreakoutOnPrevStage } from "../../utils/stages";
 
 export interface SDKAggregationItem extends AggregationItem {
   stageIndex: number;
@@ -88,20 +89,3 @@ export const useSummarizeData = () => {
 
   return aggregationItems;
 };
-
-/**
- * Matches the notebook editor's logic: a stage is hidden when
- * the previous stage has aggregations but no breakouts.
- * See `getQuestionSteps` in notebook/utils/steps.ts.
- */
-function hasAggregationWithoutBreakoutOnPrevStage(
-  query: Lib.Query,
-  stageIndex: number,
-) {
-  if (stageIndex >= 1) {
-    const hasAggregations = Lib.aggregations(query, stageIndex - 1).length > 0;
-    const hasBreakouts = Lib.breakouts(query, stageIndex - 1).length > 0;
-    return hasAggregations && !hasBreakouts;
-  }
-  return false;
-}

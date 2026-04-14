@@ -416,7 +416,6 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.log("Remove both groupings from the popup");
     popover().within(() => {
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByLabelText("close icon").last().click();
     });
 
