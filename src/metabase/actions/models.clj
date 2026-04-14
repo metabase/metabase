@@ -447,22 +447,22 @@
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :model_id               (serdes/fk :model/Card)
-               :query                  (serdes/nested :model/QueryAction :action_id opts)
-               :http                   (serdes/nested :model/HTTPAction :action_id opts)
-               :implicit               (serdes/nested :model/ImplicitAction :action_id opts)
+               :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by (juxt :created_at :name)} opts))
+               :http                   (serdes/nested :model/HTTPAction :action_id (merge {:sort-by (juxt :created_at :name)} opts))
+               :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by (juxt :created_at :name)} opts))
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :parameter_mappings     {:export serdes/export-parameter-mappings
                                         :import serdes/import-parameter-mappings}
                :visualization_settings {:export serdes/export-visualization-settings
                                         :import serdes/import-visualization-settings}}
-   :defaults {:archived false}})
+   :defaults  {:archived false}})
 
 (defmethod serdes/dependencies "Action" [action]
   (set
    (concat
-    ;; other stuff is implicitly referenced through a Card
+      ;; other stuff is implicitly referenced through a Card
     [[{:model "Card" :id (:model_id action)}]]
-    ;; this method is called on ingested data before transformation, and so here it always will be a string
+      ;; this method is called on ingested data before transformation, and so here it always will be a string
     (when (= (:type action) "query")
       (let [{:keys [database_id dataset_query]} (first (:query action))]
         (concat

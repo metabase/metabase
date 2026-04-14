@@ -409,7 +409,7 @@
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by :position} opts))
+               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :created_at :position)} opts))
                :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by (juxt :created_at :row :col)} opts))}
    :coerce    {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
    :defaults  {:archived                false

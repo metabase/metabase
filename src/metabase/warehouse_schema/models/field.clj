@@ -465,17 +465,17 @@
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id opts)}
-   :defaults {:active                     true
-              :database_is_auto_increment false
-              :database_required          false
-              :is_defective_duplicate     false
-              :json_unfolding             false
-              :preview_display            true}})
+               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :created_at :name)} opts))}
+   :defaults  {:active                     true
+               :database_is_auto_increment false
+               :database_required          false
+               :is_defective_duplicate     false
+               :json_unfolding             false
+               :preview_display            true}})
 
 (defmethod serdes/storage-path "Field" [field _]
   (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))
-        field-name    (str/join "." (map :id fields))]
+        field-name (str/join "." (map :id fields))]
     (conj (serdes/storage-path-prefixes path)
           {:label "fields"}
           {:label field-name :key field-name})))
