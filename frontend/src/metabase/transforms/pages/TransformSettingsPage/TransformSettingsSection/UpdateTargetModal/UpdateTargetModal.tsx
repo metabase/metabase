@@ -65,9 +65,15 @@ type EditTransformValues = {
   schema: string | null;
 };
 
-const EDIT_TRANSFORM_SCHEMA = Yup.object({
+// `$supportsSchemas` is threaded in via `FormProvider`'s `validationContext`; see `LoginForm.tsx`.
+export const EDIT_TRANSFORM_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
-  schema: Yup.string().nullable(),
+  schema: Yup.string()
+    .nullable()
+    .when("$supportsSchemas", {
+      is: true,
+      then: (schema) => schema.required(Errors.required),
+    }),
 });
 
 type UpdateTargetFormProps = {
@@ -106,6 +112,11 @@ function UpdateTargetForm({
   const error = databaseError ?? schemasError;
   const supportsSchemas = database && hasFeature(database, "schemas");
 
+  const validationContext = useMemo(
+    () => ({ supportsSchemas: Boolean(supportsSchemas) }),
+    [supportsSchemas],
+  );
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -127,6 +138,7 @@ function UpdateTargetForm({
     <FormProvider
       initialValues={initialValues}
       validationSchema={EDIT_TRANSFORM_SCHEMA}
+      validationContext={validationContext}
       onSubmit={handleSubmit}
     >
       {({ dirty }) => (
