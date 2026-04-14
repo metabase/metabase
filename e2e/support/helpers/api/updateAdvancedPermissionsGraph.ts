@@ -1,7 +1,7 @@
 import type {
   AdvancedPermissionsGraph,
   AdvancedPermissionsGroups,
-} from "metabase/api";
+} from "metabase-types/api";
 
 export function updateAdvancedPermissionsGraph(
   groupsPermissionsObject: AdvancedPermissionsGroups,
