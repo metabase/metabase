@@ -4,6 +4,7 @@ import { routerMiddleware, routerReducer as routing } from "react-router-redux";
 import { peopleListenerMiddleware } from "metabase/admin/people/people-listener-middleware";
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
+import { sessionListenerMiddleware } from "metabase/redux/session-listener-middleware";
 import { userListenerMiddleware } from "metabase/redux/user-listener-middleware";
 
 export function getStore(reducers, history, initialState) {
@@ -22,6 +23,7 @@ export function getStore(reducers, history, initialState) {
         serializableCheck: false,
       }).concat([
         Api.middleware,
+        sessionListenerMiddleware.middleware,
         userListenerMiddleware.middleware,
         peopleListenerMiddleware.middleware,
         ...(history ? [routerMiddleware(history)] : []),

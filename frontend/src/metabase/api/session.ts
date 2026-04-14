@@ -1,4 +1,3 @@
-import { loadSettings } from "metabase/redux/settings";
 import {
   isValidColorScheme,
   setUserColorSchemeAfterUpdate,
@@ -39,9 +38,8 @@ export const sessionApi = Api.injectEndpoints({
         url: sessionPropertiesPath,
       }),
       providesTags: ["session-properties"],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+      onQueryStarted: (_, { queryFulfilled }) =>
         handleQueryFulfilled(queryFulfilled, (data) => {
-          dispatch(loadSettings(data));
           // compatibility layer for legacy settings on the window object
           MetabaseSettings.setAll(data);
 

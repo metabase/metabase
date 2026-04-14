@@ -26,6 +26,7 @@ import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import { sessionListenerMiddleware } from "metabase/redux/session-listener-middleware";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { userListenerMiddleware } from "metabase/redux/user-listener-middleware";
@@ -200,6 +201,7 @@ export function getTestStoreAndWrapper({
 
   const storeMiddleware = _.compact([
     Api.middleware,
+    sessionListenerMiddleware.middleware,
     userListenerMiddleware.middleware,
     peopleListenerMiddleware.middleware,
     history && routerMiddleware(history),
