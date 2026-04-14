@@ -51,6 +51,23 @@ function metabaseVizExternals() {
   };
 }
 
+/**
+ * Vite plugin that copies metabase-plugin.json to dist/ after the build.
+ */
+function metabaseCopyManifest() {
+  return {
+    name: "metabase-copy-manifest",
+    closeBundle() {
+      const manifestSrc = resolve(__dirname, "metabase-plugin.json");
+      if (existsSync(manifestSrc)) {
+        cpSync(manifestSrc, resolve(__dirname, "dist/metabase-plugin.json"));
+      } else {
+        throw new Error("metabase-plugin.json missing");
+      }
+    },
+  };
+}
+
 const DEV_PORT = 5174;
 
 /**
@@ -190,12 +207,6 @@ function metabaseDevServer() {
     },
 
     closeBundle() {
-      // Copy metabase-plugin.json to dist/ so it's served as a static file
-      const manifestSrc = resolve(__dirname, "metabase-plugin.json");
-      if (existsSync(manifestSrc)) {
-        cpSync(manifestSrc, resolve(__dirname, "dist/metabase-plugin.json"));
-      }
-
       for (const client of clients) {
         client.write("data: reload\n\n");
       }
@@ -209,7 +220,11 @@ function metabaseDevServer() {
 const isWatch = process.argv.includes("--watch");
 
 export default defineConfig({
-  plugins: [metabaseVizExternals(), ...(isWatch ? [metabaseDevServer()] : [])],
+  plugins: [
+    metabaseVizExternals(),
+    metabaseCopyManifest(),
+    ...(isWatch ? [metabaseDevServer()] : []),
+  ],
   publicDir: "public",
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
