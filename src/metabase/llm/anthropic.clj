@@ -5,7 +5,6 @@
    using tool_use for structured output."
   (:require
    [clj-http.client :as http]
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.util :as u]
@@ -78,37 +77,6 @@
       (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
                       {:type :llm-not-configured})))
     api-key))
-
-(def ^:private list-models*
-  "Memoized implementation of list-models with 5-minute TTL."
-  (memoize/ttl
-   (fn [{:keys [api-key api-url api-version]}]
-     (try
-       (let [url (str api-url "/v1/models")
-             response (http/get url
-                                {:headers {"x-api-key"         api-key
-                                           "anthropic-version" api-version}})
-             body (json/decode+kw (:body response))
-             models (reverse (sort-by :created_at (:data body)))]
-         {:models (map #(select-keys % [:id :display_name]) models)})
-       (catch Exception e
-         (handle-api-error e))))
-   :ttl/threshold (* 5 60 1000)))
-
-(defn list-models
-  "Send a list models request to Anthropic.
-   Returns a map with :models. Results are cached for 5 minutes."
-  ([]
-   (list-models {:api-key (get-api-key-or-throw)}))
-  ([{:keys [api-key api-url api-version]
-     :or   {api-url     (llm.settings/llm-anthropic-api-base-url)
-            api-version (llm.settings/llm-anthropic-api-version)}}]
-   (when (str/blank? api-key)
-     (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
-                     {:type :llm-not-configured})))
-   (list-models* {:api-key     api-key
-                  :api-url     api-url
-                  :api-version api-version})))
 
 (defn chat-completion
   "Send a chat completion request to Anthropic.

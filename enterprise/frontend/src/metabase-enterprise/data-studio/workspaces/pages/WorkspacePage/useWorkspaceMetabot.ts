@@ -3,8 +3,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import type {
@@ -26,6 +24,8 @@ import {
 import { metabotActions } from "metabase/metabot/state/reducer";
 import { getMetabotState } from "metabase/metabot/state/selectors";
 import { getIsWorkspace } from "metabase/selectors/routing";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import type {
   DatabaseId,

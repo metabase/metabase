@@ -87,6 +87,11 @@ export class Scalar extends Component<
         },
       ]) => cols.length < 2,
     }),
+    // used by metrics viewer to set the color, overrides "scalar.segments"
+    "scalar.color": {
+      hidden: true,
+      getDefault: () => undefined,
+    },
     "scalar.segments": {
       get section() {
         return t`Conditional colors`;
@@ -205,8 +210,9 @@ export class Scalar extends Component<
       segmentIsValid(segment, { allowOpenEnded: true }),
     );
 
-    const color = getColor(value, segments);
-    const tooltipContent = getTooltipContent(segments);
+    const explicitColor = settings["scalar.color"];
+    const color = explicitColor ?? getColor(value, segments);
+    const tooltipContent = explicitColor ? null : getTooltipContent(segments);
 
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
@@ -259,6 +265,7 @@ export class Scalar extends Component<
             >
               <ScalarValue
                 color={color}
+                disableHover={!!explicitColor}
                 fontFamily={fontFamily}
                 gridSize={gridSize}
                 height={Math.max(height - PADDING * 2, 0)}

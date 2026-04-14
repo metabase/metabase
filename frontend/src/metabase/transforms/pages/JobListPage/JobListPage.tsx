@@ -10,8 +10,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -25,6 +23,8 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { TransformJob } from "metabase-types/api";
 
 export const JobListPage = () => {

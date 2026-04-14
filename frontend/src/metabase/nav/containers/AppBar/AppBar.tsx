@@ -6,7 +6,6 @@ import {
   getSidebarOpen,
 } from "metabase/documents/selectors";
 import { Collections } from "metabase/entities/collections";
-import { connect } from "metabase/lib/redux";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
@@ -23,6 +22,7 @@ import {
 } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 
 import AppBar from "../../components/AppBar";

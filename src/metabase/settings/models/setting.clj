@@ -197,10 +197,10 @@
    [:namespace   :symbol]
 
    ;; description is validated via the macro, not schema
-   ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
-   ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:description :any]
 
+   ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
+   ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:doc     :any]
    [:default :any]
 

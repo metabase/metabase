@@ -4,10 +4,10 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import { isNullOrUndefined } from "metabase/lib/types";
-import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Ellipsified, Group, Stack, Text } from "metabase/ui";
+import { isNullOrUndefined } from "metabase/utils/types";
+import { dependencyGraph } from "metabase/utils/urls/dependencies";
 import type { Table } from "metabase-types/api";
 
 interface Props {

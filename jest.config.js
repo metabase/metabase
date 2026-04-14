@@ -29,13 +29,13 @@ const baseConfig = {
      * We want to exclude the SDK from the main app's bundle to reduce the bundle size.
      */
     "sdk-iframe-embedding-ee-plugins":
-      "<rootDir>/frontend/src/metabase/lib/noop.ts",
-    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.ts",
+      "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Imports which are only applicable to the embedding sdk.
      * As we use SDK components in new iframe embedding, we need to import them here.
      **/
-    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.ts",
+    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Docs snippets are loaded as raw text (asset/source) in rspack.
      * In Jest, mock them as plain strings.
@@ -49,6 +49,8 @@ const baseConfig = {
     // - Flat: node_modules/<pkg>/ where <pkg> is NOT in esmPackages
     // - Bun:  node_modules/.bun/<pkg>@<ver>/ where <pkg> is NOT in esmPackages
     `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
+    // CLJS files are already compiled CJS — skip transform entirely
+    "<rootDir>/target/cljs_dev/",
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",

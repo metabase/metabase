@@ -9,7 +9,6 @@ import {
   useSearchMeasureDimensionValuesQuery,
   useSearchMetricDimensionValuesQuery,
 } from "metabase/api";
-import { parseNumber } from "metabase/lib/number";
 import {
   FieldValuePicker,
   type UseGetFieldValuesArgs,
@@ -20,6 +19,7 @@ import {
   type UseSearchFieldValuesResult,
 } from "metabase/querying/common/components/FieldValuePicker";
 import type { ComboboxProps } from "metabase/ui";
+import { parseNumber } from "metabase/utils/number";
 import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 

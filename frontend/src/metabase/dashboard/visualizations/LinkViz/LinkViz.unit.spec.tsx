@@ -14,7 +14,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import * as iframeUtils from "metabase/utils/iframe";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   LinkCardSettings,
@@ -317,7 +317,7 @@ describe("LinkViz", () => {
 
     it("sets embedded entity links to not open in new tabs", () => {
       // here, we're mocking this appearing in an iframe
-      jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+      jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
 
       setup({
         isEditing: false,

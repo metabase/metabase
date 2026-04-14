@@ -2,8 +2,8 @@ import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import { useCallback, useMemo } from "react";
 
 import { datasetApi } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useDispatch } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import type { DatasetQuery } from "metabase-types/api";
 
 import type { RowCellsWithPkValue } from "../api/types";

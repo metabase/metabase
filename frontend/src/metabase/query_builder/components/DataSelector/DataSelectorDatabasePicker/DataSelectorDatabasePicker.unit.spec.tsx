@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 

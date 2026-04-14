@@ -9,7 +9,7 @@ import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { isQuestionCard } from "metabase/lib/dashboard";
+import { isQuestionCard } from "metabase/utils/dashboard";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { createEmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";

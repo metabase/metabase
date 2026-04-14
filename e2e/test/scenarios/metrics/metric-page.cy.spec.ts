@@ -42,6 +42,12 @@ describe("scenarios > metrics > metric page", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should display scalar metric, edit name and description, explore link, and more menu actions", () => {
@@ -208,7 +214,13 @@ describe("scenarios > metrics > metric page", () => {
       cy.findAllByText(/^By /).should("have.length", 4);
 
       cy.findByText("Show more").scrollIntoView().click();
+    });
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_page_show_more_clicked",
+    });
+
+    H.MetricPage.overviewPage().within(() => {
       cy.findByText("By Name").should("exist");
       cy.findByText("By Source").should("exist");
       cy.findByText("By Title").should("exist");
@@ -364,6 +376,7 @@ describe("scenarios > metrics > metric page", () => {
 
     it("should show the Dependencies tab with dependency graph in EE", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+        H.waitForBackfillComplete();
         H.visitMetric(metric.id);
       });
 

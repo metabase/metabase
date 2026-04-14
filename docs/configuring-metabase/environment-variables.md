@@ -900,7 +900,7 @@ Key to retrieve the JWT user's tenant attributes.
 - Default: `false`
 - [Configuration file name](./config-file.md): `jwt-enabled`
 
-Is JWT authentication configured and enabled?
+Is JWT authentication enabled?
 
 When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.
