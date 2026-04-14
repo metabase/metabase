@@ -6,6 +6,8 @@
    [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------ OSS Stubs ------------------------------------------------
 
 (deftest oss-resolve-bundle-test

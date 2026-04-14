@@ -2,14 +2,14 @@
   "Tests for custom viz integration in the render pipeline (card type detection and static viz)."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as card]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.util :as render.util]
    [metabase.custom-viz-plugin.core :as custom-viz-plugin]
-   [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Display Type Detection ------------------------------------------------
 
@@ -97,13 +97,13 @@
       (let [bundle-content "function customViz(){}"
             asset-bytes    (.getBytes "fake-png-data")]
         (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/bundle-resolve"
-                                                         :identifier   "bundle-resolve"
-                                                         :display_name "Bundle Resolve"
-                                                         :status       :active
-                                                         :enabled      true
-                                                         :manifest     {:name "bundle-resolve"
-                                                                        :icon "icon.png"
-                                                                        :assets ["icon.png"]}}]
+                                                        :identifier   "bundle-resolve"
+                                                        :display_name "Bundle Resolve"
+                                                        :status       :active
+                                                        :enabled      true
+                                                        :manifest     {:name "bundle-resolve"
+                                                                       :icon "icon.png"
+                                                                       :assets ["icon.png"]}}]
           (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content bundle-content :hash "abc"})
                         custom-viz-plugin/asset-paths    (constantly ["icon.png"])
                         custom-viz-plugin/resolve-asset  (fn [plugin-id asset-name]

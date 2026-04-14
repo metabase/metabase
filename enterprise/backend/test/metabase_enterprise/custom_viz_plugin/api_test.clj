@@ -1,13 +1,15 @@
 (ns metabase-enterprise.custom-viz-plugin.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.custom-viz-plugin.api :as custom-viz-plugin.api]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 ;; private fn under test
-(def ^:private parse-repo-name @#'metabase-enterprise.custom-viz-plugin.api/parse-repo-name)
+(def ^:private parse-repo-name @#'custom-viz-plugin.api/parse-repo-name)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -350,8 +352,8 @@
 (deftest list-filters-incompatible-versions-test
   (mt/with-premium-features #{:custom-viz}
     (testing "/list excludes plugins with incompatible metabase_version"
-      (with-redefs [metabase.config.core/mb-version-info {:tag "v1.60.0"}
-                    metabase.config.core/is-dev?         false]
+      (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                    config/is-dev?         false]
         (mt/with-temp [:model/CustomVizPlugin _ {:repo_url          "https://github.com/test/compat-viz"
                                                  :identifier        "compat-viz"
                                                  :display_name      "Compatible"

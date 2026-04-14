@@ -14,9 +14,9 @@
 (deftest timestamped-test
   (testing "CustomVizPlugin gets auto-populated timestamps"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/ts-test"
-                                                     :identifier   "ts-test"
-                                                     :display_name "ts-test"
-                                                     :status       :active}]
+                                                    :identifier   "ts-test"
+                                                    :display_name "ts-test"
+                                                    :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
         (is (some? (:created_at plugin)))
         (is (some? (:updated_at plugin)))))))
@@ -24,9 +24,9 @@
 (deftest permissions-test
   (testing "read requires superuser"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/perm-test"
-                                                     :identifier   "perm-test"
-                                                     :display_name "perm-test"
-                                                     :status       :active}]
+                                                    :identifier   "perm-test"
+                                                    :display_name "perm-test"
+                                                    :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
         (binding [api/*is-superuser?* true]
           (is (true? (mi/can-read? plugin))))
@@ -34,9 +34,9 @@
           (is (false? (mi/can-read? plugin)))))))
   (testing "write requires superuser"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/perm-test-2"
-                                                     :identifier   "perm-test-2"
-                                                     :display_name "perm-test-2"
-                                                     :status       :active}]
+                                                    :identifier   "perm-test-2"
+                                                    :display_name "perm-test-2"
+                                                    :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
         (binding [api/*is-superuser?* true]
           (is (true? (mi/can-write? plugin))))
@@ -51,10 +51,10 @@
 (deftest to-json-strips-access-token-test
   (testing "JSON serialization never includes access_token"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/json-test"
-                                                     :identifier   "json-test"
-                                                     :display_name "json-test"
-                                                     :status       :active
-                                                     :access_token "secret-token"}]
+                                                    :identifier   "json-test"
+                                                    :display_name "json-test"
+                                                    :status       :active
+                                                    :access_token "secret-token"}]
       (let [plugin   (t2/select-one :model/CustomVizPlugin :id id)
             json-str (json/encode plugin)]
         (is (not (re-find #"secret-token" json-str)))))))
@@ -62,9 +62,9 @@
 (deftest status-keyword-transform-test
   (testing "status is stored as string and returned as keyword"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/status-test"
-                                                     :identifier   "status-test"
-                                                     :display_name "status-test"
-                                                     :status       :active}]
+                                                    :identifier   "status-test"
+                                                    :display_name "status-test"
+                                                    :status       :active}]
       (is (= :active (:status (t2/select-one :model/CustomVizPlugin :id id))))
       (t2/update! :model/CustomVizPlugin id {:status :error})
       (is (= :error (:status (t2/select-one :model/CustomVizPlugin :id id)))))))
@@ -88,7 +88,6 @@
       (is (= [{:label "custom_viz_plugins"} {:label "my-viz"}]
              (serdes/storage-path entity nil))))))
 
-
 (deftest hash-fields-test
   (testing "hash-fields is [:identifier]"
     (is (= [:identifier]
@@ -97,9 +96,9 @@
 (deftest load-find-local-test
   (testing "load-find-local finds plugin by identifier"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/find-local"
-                                                     :identifier   "find-local"
-                                                     :display_name "find-local"
-                                                     :status       :active}]
+                                                    :identifier   "find-local"
+                                                    :display_name "find-local"
+                                                    :status       :active}]
       (let [found (serdes/load-find-local [{:model "CustomVizPlugin" :id "find-local"}])]
         (is (some? found))
         (is (= id (:id found)))))))
