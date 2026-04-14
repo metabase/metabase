@@ -30,17 +30,16 @@
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
 (defn- normalize-mb-version
-  "Strip the leading `v` and edition prefix (`0.` OSS, `1.` EE) from a Metabase version
-   tag so it matches the public `vNN` branding used in plugin manifests.
-   e.g. `v1.60.1-SNAPSHOT` → `60.1-SNAPSHOT`."
+  "Strip the leading `v` from a Metabase version tag so it can be coerced to a semver.
+   e.g. `v1.60.1-SNAPSHOT` → `1.60.1-SNAPSHOT`."
   [^String version]
-  (str/replace version #"^v?[01]\." ""))
+  (str/replace version #"^v" ""))
 
 (defn compatible?
   "Check whether a plugin with the given metabase_version range string is compatible with the
-   current Metabase version. Uses npm/node-semver range syntax against the public major (e.g.
-   \">=59\", \"^59\", \">=59 <61\"). Returns true if no range is specified, or if the current
-   version satisfies the range. In dev mode (no version info), always returns true."
+   current Metabase version. Uses npm/node-semver range syntax against the full edition-prefixed
+   version (e.g. \">=1.60.0\", \"^1.60\", \">=1.59 <1.61\"). Returns true if no range is specified,
+   or if the current version satisfies the range. In dev mode (no version info), always returns true."
   [{:keys [metabase_version]}]
   (let [current-version (:tag config/mb-version-info)]
     (if (or config/is-dev? (nil? current-version) (str/blank? metabase_version))
