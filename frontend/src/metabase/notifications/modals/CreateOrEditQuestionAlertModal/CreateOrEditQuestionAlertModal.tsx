@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
@@ -162,9 +163,9 @@ export const CreateOrEditQuestionAlertModal = ({
     useGetChannelInfoQuery();
   const { data: hookChannels } = useListChannelsQuery();
 
-  const [createNotification, { isLoading: isCreating }] =
+  const [createNotification, { isLoading: isCreating, error: errorCreating }] =
     useCreateNotificationMutation();
-  const [updateNotification, { isLoading: isUpdating }] =
+  const [updateNotification, { isLoading: isUpdating, error: errorUpdating }] =
     useUpdateNotificationMutation();
   const [sendUnsavedNotification, { isLoading }] =
     useSendUnsavedNotificationMutation();
@@ -304,6 +305,16 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const isValid = alertIsValid(notification, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
+  const hasError = errorCreating || errorUpdating;
+
+  const submitButtonLabel = match({
+    hasError,
+    isEditMode,
+    hasChanges,
+  })
+    .with({ hasError: P.nonNullable }, () => t`Save failed`)
+    .with({ isEditMode: true, hasChanges: true }, () => t`Save changes`)
+    .otherwise(() => t`Done`);
 
   return (
     <Modal
@@ -434,11 +445,12 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
+            bg={hasError ? "error" : "brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}
           >
-            {isEditMode && hasChanges ? t`Save changes` : t`Done`}
+            {submitButtonLabel}
           </Button>
         </Flex>
       </Flex>
