@@ -408,16 +408,21 @@ export const originalCard = createReducer<Card | null>(null, (builder) => {
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       INITIALIZE_QB,
       (_state, action) =>
-        action.payload.originalCard ? structuredClone(action.payload.originalCard) : null,
+        action.payload.originalCard
+          ? structuredClone(action.payload.originalCard)
+          : null,
     )
     .addCase<string, { type: string; payload: Card }>(
       RELOAD_CARD,
-      (_state, action) => (action.payload.id ? structuredClone(action.payload) : null),
+      (_state, action) =>
+        action.payload.id ? structuredClone(action.payload) : null,
     )
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       SET_CARD_AND_RUN,
       (_state, action) =>
-        action.payload.originalCard ? structuredClone(action.payload.originalCard) : null,
+        action.payload.originalCard
+          ? structuredClone(action.payload.originalCard)
+          : null,
     )
     .addCase<string, { type: string; payload: Card }>(
       API_CREATE_QUESTION,
