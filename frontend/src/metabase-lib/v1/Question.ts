@@ -27,7 +27,7 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import { isTransientId } from "metabase-lib/v1/queries/utils/card";
+import { isTransientCardId } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   CardDisplayType,
@@ -160,10 +160,10 @@ class Question {
 
     const card = question.card();
     const { id, original_card_id } = card;
-    if (isTransientId(id)) {
+    if (isTransientCardId(id)) {
       question = question.setCard(_.omit(question.card(), "id"));
     }
-    if (isTransientId(original_card_id)) {
+    if (isTransientCardId(original_card_id)) {
       question = question.setCard(_.omit(question.card(), "original_card_id"));
     }
 

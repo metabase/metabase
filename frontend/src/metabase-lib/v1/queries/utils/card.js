@@ -106,6 +106,6 @@ export function applyParameters(
   return datasetQuery;
 }
 
-export function isTransientId(id) {
+export function isTransientCardId(id) {
   return id != null && typeof id === "string" && isNaN(parseInt(id));
 }

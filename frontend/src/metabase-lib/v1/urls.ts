@@ -4,7 +4,7 @@ import * as Lib from "metabase-lib";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/utils/template-tags";
-import { isTransientId } from "metabase-lib/v1/queries/utils/card";
+import { isTransientCardId } from "metabase-lib/v1/queries/utils/card";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import type Question from "./Question";
@@ -106,7 +106,7 @@ export function getAutomaticDashboardUrl(
     : "";
 
   const query = question.datasetQuery();
-  if (questionId != null && !isTransientId(questionId)) {
+  if (questionId != null && !isTransientCardId(questionId)) {
     return `auto/dashboard/question/${questionId}${cellQuery}`;
   } else {
     const adHocQuery = utf8_to_b64url(JSON.stringify(query));
@@ -127,7 +127,7 @@ export function getComparisonDashboardUrl(
     : "";
 
   const query = question.datasetQuery();
-  if (questionId != null && !isTransientId(questionId)) {
+  if (questionId != null && !isTransientCardId(questionId)) {
     return `auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
   } else {
     const adHocQuery = utf8_to_b64url(JSON.stringify(query));
