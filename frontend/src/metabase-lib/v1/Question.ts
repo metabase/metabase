@@ -27,7 +27,7 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import { isTransientCardId } from "metabase-lib/v1/queries/utils/card";
+import { isTransientCardId } from "metabase/utils/card";
 import type {
   Card,
   CardDisplayType,

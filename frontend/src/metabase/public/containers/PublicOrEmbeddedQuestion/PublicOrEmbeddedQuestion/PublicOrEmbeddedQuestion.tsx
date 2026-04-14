@@ -18,7 +18,7 @@ import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import { applyParameters } from "metabase-lib/v1/queries/utils/card";
+import { applyParameters } from "metabase/utils/card";
 import type {
   Card,
   Dataset,

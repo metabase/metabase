@@ -27,10 +27,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import {
-  cardIsEquivalent,
-  cardQueryIsEquivalent,
-} from "metabase-lib/v1/queries/utils/card";
+import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/utils/card";
 import type {
   Card,
   DashboardTabId,

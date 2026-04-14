@@ -5,7 +5,22 @@ import _ from "underscore";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
-import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type {
+  ActionParametersMapping,
+  Card,
+  CardId,
+  ParameterValuesMap,
+  UnsavedCard,
+  DashboardParameterMapping,
+  VirtualDashCardParameterMapping,
+} from "metabase-types/api";
+
+import { clone } from "metabase/utils/clone";
+import Question from "metabase-lib/v1/Question";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
+import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
@@ -115,4 +130,112 @@ export function parseHash(hash?: string) {
   }
 
   return { options, serializedCard };
+}
+
+export function isNative(card: Card) {
+  if (!card) {
+    return false;
+  }
+  const question = Question.create({ dataset_query: card.dataset_query });
+  return question.isNative();
+}
+
+function cardVisualizationIsEquivalent(cardA: Card, cardB: Card) {
+  return _.isEqual(
+    _.pick(cardA, "display", "visualization_settings"),
+    _.pick(cardB, "display", "visualization_settings"),
+  );
+}
+
+export function cardQueryIsEquivalent(cardA: Card, cardB: Card) {
+  const datasetQueryA = clone(cardA.dataset_query);
+  datasetQueryA.parameters ??= [];
+
+  const datasetQueryB = clone(cardB.dataset_query);
+  datasetQueryB.parameters ??= [];
+
+  return Lib.areLegacyQueriesEqual(datasetQueryA, datasetQueryB);
+}
+
+export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {
+  return _.isEqual(cardA.parameters || [], cardB.parameters || []);
+}
+
+export function cardIsEquivalent(cardA: Card, cardB: Card) {
+  return (
+    cardQueryIsEquivalent(cardA, cardB) &&
+    cardVisualizationIsEquivalent(cardA, cardB)
+  );
+}
+
+// NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
+// Query builder uses `Question.getResults` which contains similar logic.
+export function applyParameters(
+  card: Card,
+  parameters: UiParameter[],
+  parameterValues: ParameterValuesMap = {},
+  parameterMappings:
+    | ActionParametersMapping[]
+    | DashboardParameterMapping[]
+    | VirtualDashCardParameterMapping[] = [],
+  { sparse = false } = {},
+) {
+  const datasetQuery = clone(card.dataset_query);
+  datasetQuery.parameters = [];
+  for (const parameter of parameters || []) {
+    const value = parameterValues[parameter.id];
+
+    const cardId = card.id || card.original_card_id;
+    const mapping = _.findWhere(
+      parameterMappings,
+      cardId != null
+        ? {
+            card_id: cardId,
+            parameter_id: parameter.id,
+          }
+        : // NOTE: this supports transient dashboards where cards don't have ids
+          // BUT will not work correctly with multiseries dashcards since
+          // there's no way to identify which card the mapping applies to.
+          {
+            parameter_id: parameter.id,
+          },
+    );
+
+    const queryParameter: UiParameter = {
+      type: parameter.type,
+      value: normalizeParameterValue(parameter.type, value),
+      id: parameter.id,
+      name: parameter.name,
+      slug: parameter.slug,
+    };
+
+    const options =
+      deriveFieldOperatorFromParameter(parameter)?.optionsDefaults;
+
+    if (options) {
+      queryParameter.options = options;
+    }
+
+    if (mapping) {
+      // mapped target, e.x. on a dashboard
+      queryParameter.target = mapping.target;
+      datasetQuery.parameters.push(queryParameter);
+    } else if (parameter.target) {
+      // inline target, e.x. on a card
+      queryParameter.target = parameter.target;
+      datasetQuery.parameters.push(queryParameter);
+    }
+
+    if (sparse) {
+      // @ts-expect-error: These items will be backfilled by the API
+      delete queryParameter.type;
+      delete queryParameter.target;
+    }
+  }
+
+  return datasetQuery;
+}
+
+export function isTransientCardId(id: CardId) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }

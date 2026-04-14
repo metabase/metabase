@@ -8,7 +8,7 @@ import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameter
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
-} from "metabase-lib/v1/queries/utils/card";
+} from "metabase/utils/card";
 import type { Card, Parameter } from "metabase-types/api";
 
 type BlankQueryOptions = {
