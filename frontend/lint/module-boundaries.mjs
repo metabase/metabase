@@ -75,6 +75,7 @@ const elements = [
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
+    "frontend/src/metabase/store.js",
   ].map((path) =>
     createElement({
       type: "app",

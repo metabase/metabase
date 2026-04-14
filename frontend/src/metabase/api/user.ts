@@ -1,5 +1,3 @@
-import { storeTemporaryPassword } from "metabase/admin/people/people";
-import { userUpdated } from "metabase/redux/user";
 import type {
   CreateUserRequest,
   ListUsersRequest,
@@ -18,7 +16,6 @@ import {
   provideUserListTags,
   provideUserTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const userApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -58,13 +55,6 @@ export const userApi = Api.injectEndpoints({
           listTag("tenant"),
           listTag("permissions-group"),
         ]),
-      onQueryStarted: (request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (user) => {
-          if (request.password) {
-            const payload = { id: user.id, password: request.password };
-            dispatch(storeTemporaryPassword(payload));
-          }
-        }),
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
       query: ({ id, old_password, password }) => ({
@@ -72,9 +62,6 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}/password`,
         body: { old_password, password },
       }),
-      onQueryStarted: ({ id, password }, { dispatch }) => {
-        dispatch(storeTemporaryPassword({ id, password }));
-      },
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
@@ -110,11 +97,6 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
-      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (user) => {
-          // used to keep current user state in sync
-          dispatch(userUpdated(user));
-        }),
     }),
     getPasswordResetUrl: builder.mutation<
       { password_reset_url: string },

@@ -19,6 +19,7 @@ import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
+import { peopleListenerMiddleware } from "metabase/admin/people/people-listener-middleware";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
@@ -27,6 +28,7 @@ import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import { userListenerMiddleware } from "metabase/redux/user-listener-middleware";
 import { RouterProvider } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -198,6 +200,8 @@ export function getTestStoreAndWrapper({
 
   const storeMiddleware = _.compact([
     Api.middleware,
+    userListenerMiddleware.middleware,
+    peopleListenerMiddleware.middleware,
     history && routerMiddleware(history),
   ]);
 
