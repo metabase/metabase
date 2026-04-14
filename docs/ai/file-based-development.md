@@ -142,7 +142,7 @@ Import your changes via the API, or set up [remote sync](../installation-and-ope
 
 ## Deleting content
 
-Since imports and exports _don't_ delete content, if you want to delete content, you'll need to delete that content in the Metabase application itself, then update the YAML files as well.
+Since imports and exports _don't_ delete content, you'll need to delete that content in the Metabase application itself, then update the YAML files as well.
 
 1. Delete the content in your production Metabase (in the app's UI itself).
 2. Export from your production Metabase to your repo.
