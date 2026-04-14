@@ -105,3 +105,10 @@ x.com")
   "Get the unobfuscated value of [[metabot-slack-signing-secret]]."
   []
   (setting/get-value-of-type :string :metabot-slack-signing-secret))
+
+(defsetting slack-connect-signing-secret-version
+  (deferred-tru "Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value.")
+  :type       :integer
+  :visibility :internal
+  :default    0
+  :export?    false)

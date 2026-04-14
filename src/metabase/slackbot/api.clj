@@ -11,6 +11,7 @@
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
+   [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
@@ -72,15 +73,18 @@
 ;; ------------------------- AUTHENTICATION ------------------------------
 
 (defn- slack-id->user-id
-  "Look up a Metabase user ID from Slack user ID."
+  "Look up a Metabase user ID from Slack user ID. Only returns a match if the identity was created under the current
+  signing secret version, so that rotating the secret automatically invalidates existing identity links."
   [slack-user-id]
-  (t2/select-one-fn :user_id
-                    :model/AuthIdentity
-                    :provider "slack-connect"
-                    :provider_id slack-user-id
-                    {:join  [[:core_user :user] [:= :user.id :auth_identity.user_id]]
-                     :where [:= :user.is_active true]
-                     :order-by [[:created_at :desc]]}))
+  (let [identity (t2/select-one [:model/AuthIdentity :user_id :metadata]
+                                :provider "slack-connect"
+                                :provider_id slack-user-id
+                                {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
+                                 :where    [:= :user.is_active true]
+                                 :order-by [[:created_at :desc]]})]
+    (when (= (:signing_secret_version (:metadata identity))
+             (server.settings/slack-connect-signing-secret-version))
+      (:user_id identity))))
 
 (defn- slack-user-authorize-link
   "Link to page where user can initiate SSO auth flow to authorize slackbot"
@@ -457,6 +461,9 @@
                         :slack-connect-client-secret  slack-connect-client-secret
                         :metabot-slack-signing-secret metabot-slack-signing-secret
                         :slack-connect-enabled        (boolean all-set?)})
+    (when all-set?
+      (server.settings/slack-connect-signing-secret-version!
+       (inc (server.settings/slack-connect-signing-secret-version))))
     {:ok true}))
 
 ;; ------------------------- FEEDBACK BUTTONS ------------------------------

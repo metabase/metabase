@@ -5,6 +5,7 @@
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.server.settings :as server.settings]
    [metabase.slackbot.api :as slackbot]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.persistence :as slackbot.persistence]
@@ -459,6 +460,36 @@
 
         (testing "returns nil when no AuthIdentity exists"
           (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))
+
+(deftest slack-id->user-id-signing-secret-version-test
+  (testing "slack-id->user-id respects signing secret version"
+    (let [slack-id "U12345VERSION"]
+      (mt/with-temp [:model/User {user-id :id} {:email     "version-test@example.com"
+                                                :is_active true}]
+        (testing "identity created under current version is accepted"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id}]
+              (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
+
+        (testing "identity created under old version is rejected after rotation"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id}]
+              ;; simulate signing secret rotation
+              (server.settings/slack-connect-signing-secret-version! 2)
+              (is (nil? (#'slackbot/slack-id->user-id slack-id))))))
+
+        (testing "identity with no version (legacy) is rejected"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
+            (mt/with-temp [:model/AuthIdentity {identity-id :id} {:user_id     user-id
+                                                                  :provider    "slack-connect"
+                                                                  :provider_id slack-id}]
+              ;; clear the version that before-insert stamped, to simulate a legacy row
+              (t2/update! :model/AuthIdentity identity-id {:metadata nil})
+              (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))))
 
 (deftest channel-message-without-mention-no-auth-test
   (testing "POST /events with channel message (no @mention) from unlinked user should NOT send auth message"

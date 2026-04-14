@@ -151,8 +151,8 @@
                           :user_id user-id
                           :provider provider-name)
       (t2/insert! :model/AuthIdentity
-                  {:user_id user-id
-                   :provider provider-name
+                  {:user_id     user-id
+                   :provider    provider-name
                    :provider_id provider-id}))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
