@@ -37,9 +37,16 @@ export function ThemeCard({
       bdrs="md"
       h="42px"
     >
-      <Stack gap="sm">
+      <Stack gap="xs">
         <Group gap={4} justify="space-between" wrap="nowrap">
-          <Text size="xs" fw={500} style={{ fontFamily }} truncate>
+          <Text
+            size="xs"
+            h={12}
+            fw={500}
+            style={{ fontFamily }}
+            truncate
+            title={name}
+          >
             {name}
           </Text>
           {icon}

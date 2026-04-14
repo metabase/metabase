@@ -63,12 +63,27 @@ function setup({
 
 describe("ThemeSelectorSection", () => {
   describe("with saved themes", () => {
-    it("renders theme cards and a Custom card", () => {
+    it("renders Default Theme, saved theme cards, and a Custom card", () => {
       setup();
 
+      expect(
+        screen.getByTestId("theme-card-Default Theme"),
+      ).toBeInTheDocument();
       expect(screen.getByTestId("theme-card-Dark Theme")).toBeInTheDocument();
       expect(screen.getByTestId("theme-card-Ocean Theme")).toBeInTheDocument();
       expect(screen.getByTestId("theme-card-Custom")).toBeInTheDocument();
+    });
+
+    it("selects Default Theme by default and sets no theme", async () => {
+      const { onThemeChange } = setup();
+
+      // No theme change should have been called on initial render
+      expect(onThemeChange).not.toHaveBeenCalled();
+
+      // Default Theme card should be rendered
+      expect(
+        screen.getByTestId("theme-card-Default Theme"),
+      ).toBeInTheDocument();
     });
 
     it("does not show color inputs by default", () => {
@@ -88,13 +103,12 @@ describe("ThemeSelectorSection", () => {
       expect(appliedTheme.colors).toBeDefined();
     });
 
-    it("deselects theme when clicking the same card again", async () => {
+    it("clears theme when clicking Default Theme after a saved theme", async () => {
       const { onThemeChange } = setup();
 
       await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
-      await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
+      await userEvent.click(screen.getByTestId("theme-card-Default Theme"));
 
-      expect(onThemeChange).toHaveBeenCalledTimes(2);
       expect(onThemeChange).toHaveBeenLastCalledWith(undefined);
     });
 
@@ -108,13 +122,13 @@ describe("ThemeSelectorSection", () => {
       expect(screen.getByText("Background color")).toBeInTheDocument();
     });
 
-    it("hides color inputs when Custom card is deselected", async () => {
+    it("hides color inputs when switching from Custom to Default Theme", async () => {
       setup();
 
       await userEvent.click(screen.getByTestId("theme-card-Custom"));
       expect(screen.getByText("Brand color")).toBeInTheDocument();
 
-      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+      await userEvent.click(screen.getByTestId("theme-card-Default Theme"));
       expect(screen.queryByText("Brand color")).not.toBeInTheDocument();
     });
 

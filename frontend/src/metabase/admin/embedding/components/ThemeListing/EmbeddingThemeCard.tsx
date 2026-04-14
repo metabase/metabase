@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ActionIcon, Card, Group, Icon, Menu, Text } from "metabase/ui";
+import { ActionIcon, Card, Flex, Icon, Menu, Text } from "metabase/ui";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 
 import { EmbeddingThemeCardPreview } from "./EmbeddingThemeCardPreview";
@@ -25,15 +25,18 @@ export function EmbeddingThemeCard({
     >
       <EmbeddingThemeCardPreview theme={theme.settings} />
 
-      <Group align="center" justify="space-between" px="md" py="sm">
-        <Text fz="lg">{theme.name}</Text>
+      <Flex align="center" justify="space-between" px="md" py="sm">
+        <Text fz="lg" truncate="end" title={theme.name}>
+          {theme.name}
+        </Text>
 
         <EmbeddingThemeActionMenu
           theme={theme}
+          onEdit={onEdit}
           onDuplicate={onDuplicate}
           onDelete={onDelete}
         />
-      </Group>
+      </Flex>
     </Card>
   );
 }
@@ -42,8 +45,10 @@ const EmbeddingThemeActionMenu = ({
   theme,
   onDuplicate,
   onDelete,
+  onEdit,
 }: {
   theme: Omit<EmbeddingTheme, "settings">;
+  onEdit: (id: number) => void;
   onDuplicate: (id: number) => void;
   onDelete: (id: number) => void;
 }) => {
@@ -60,6 +65,14 @@ const EmbeddingThemeActionMenu = ({
       </Menu.Target>
 
       <Menu.Dropdown>
+        <Menu.Item
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onEdit(theme.id);
+          }}
+        >
+          {t`Edit`}
+        </Menu.Item>
         <Menu.Item
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();

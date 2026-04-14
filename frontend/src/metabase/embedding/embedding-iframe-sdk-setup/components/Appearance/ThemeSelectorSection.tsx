@@ -15,9 +15,9 @@ import { ColorCustomizationSection } from "./ColorCustomizationSection";
 import { ThemeCard, getThemeColors } from "./ThemeCard";
 
 type ThemeSelection =
+  | { type: "default" }
   | { type: "saved"; themeId: number }
-  | { type: "custom" }
-  | null;
+  | { type: "custom" };
 
 interface ThemeSelectorSectionProps {
   savedThemes: EmbeddingTheme[];
@@ -35,9 +35,16 @@ export const ThemeSelectorSection = ({
   onColorReset,
 }: ThemeSelectorSectionProps) => {
   const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
-  const [selection, setSelection] = useState<ThemeSelection>(null);
+  const [selection, setSelection] = useState<ThemeSelection>({
+    type: "default",
+  });
 
-  const isCustomSelected = selection?.type === "custom";
+  const isCustomSelected = selection.type === "custom";
+
+  const handleDefaultClick = () => {
+    setSelection({ type: "default" });
+    onThemeChange(undefined);
+  };
 
   const handleThemeCardClick = (themeId: number) => {
     const savedTheme = savedThemes.find((t) => t.id === themeId);
@@ -45,30 +52,17 @@ export const ThemeSelectorSection = ({
       return;
     }
 
-    const isAlreadySelected =
-      selection?.type === "saved" && selection.themeId === themeId;
-
-    if (isAlreadySelected) {
-      setSelection(null);
-      onThemeChange(undefined);
-    } else {
-      setSelection({ type: "saved", themeId });
-      const nonDefaultSettings = stripDefaultThemeSettings(
-        savedTheme.settings,
-        defaultThemeSettings,
-      );
-      onThemeChange(nonDefaultSettings);
-    }
+    setSelection({ type: "saved", themeId });
+    const nonDefaultSettings = stripDefaultThemeSettings(
+      savedTheme.settings,
+      defaultThemeSettings,
+    );
+    onThemeChange(nonDefaultSettings);
   };
 
   const handleCustomClick = () => {
-    if (isCustomSelected) {
-      setSelection(null);
-      onThemeChange(undefined);
-    } else {
-      setSelection({ type: "custom" });
-      onThemeChange(undefined);
-    }
+    setSelection({ type: "custom" });
+    onThemeChange(undefined);
   };
 
   const hasThemes = savedThemes.length > 0;
@@ -105,45 +99,12 @@ export const ThemeSelectorSection = ({
             gridTemplateColumns: "1fr 1fr",
           }}
         >
-          {savedThemes.map((savedTheme) => (
-            <ThemeCard
-              key={savedTheme.id}
-              name={savedTheme.name}
-              colors={getThemeColors(savedTheme.settings.colors)}
-              fontFamily={savedTheme.settings.fontFamily}
-              isSelected={
-                selection?.type === "saved" &&
-                selection.themeId === savedTheme.id
-              }
-              onClick={() => handleThemeCardClick(savedTheme.id)}
-            />
-          ))}
-          {savedThemes.map((savedTheme) => (
-            <ThemeCard
-              key={savedTheme.id}
-              name={savedTheme.name}
-              colors={getThemeColors(savedTheme.settings.colors)}
-              fontFamily={savedTheme.settings.fontFamily}
-              isSelected={
-                selection?.type === "saved" &&
-                selection.themeId === savedTheme.id
-              }
-              onClick={() => handleThemeCardClick(savedTheme.id)}
-            />
-          ))}
-          {savedThemes.map((savedTheme) => (
-            <ThemeCard
-              key={savedTheme.id}
-              name={savedTheme.name}
-              colors={getThemeColors(savedTheme.settings.colors)}
-              fontFamily={savedTheme.settings.fontFamily}
-              isSelected={
-                selection?.type === "saved" &&
-                selection.themeId === savedTheme.id
-              }
-              onClick={() => handleThemeCardClick(savedTheme.id)}
-            />
-          ))}
+          <ThemeCard
+            name={t`Default Theme`}
+            colors={[]}
+            isSelected={selection.type === "default"}
+            onClick={handleDefaultClick}
+          />
           {savedThemes.map((savedTheme) => (
             <ThemeCard
               key={savedTheme.id}
