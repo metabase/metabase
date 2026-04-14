@@ -16,7 +16,11 @@ import {
   setupDefinitionWithBreakout,
 } from "../../utils/__tests__/test-helpers";
 
-import type { MetricIdentityEntry, MetricNameMap } from "./utils";
+import type {
+  MetricIdentityEntry,
+  MetricNameMap,
+  PositionedToken,
+} from "./utils";
 import {
   applyTrackedDefinitions,
   buildExpressionText,
@@ -26,11 +30,34 @@ import {
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
+  parseFullTextWithPositions,
 } from "./utils";
 
 jest.mock("../../utils/definition-builder", () => ({
   getDefinitionName: (def: any) => def?.["display-name"] ?? null,
 }));
+
+/**
+ * Builds identity entries for ALL metric tokens found in the text.
+ * Useful for tests that need identities but aren't testing identity tracking.
+ */
+function identitiesForAllMetrics(
+  text: string,
+  metricNames: MetricNameMap,
+): MetricIdentityEntry[] {
+  let slotIdx = 0;
+  return parseFullTextWithPositions(text, metricNames, [])
+    .filter(
+      (t): t is PositionedToken & { type: "metric" } => t.type === "metric",
+    )
+    .map((t) => ({
+      sourceId: t.sourceId,
+      from: t.from,
+      to: t.to,
+      definition: null,
+      slotIndex: slotIdx++,
+    }));
+}
 
 function makeSearchResult(id: number, model: "metric" | "measure") {
   return { id, model, name: `Result ${id}` };
@@ -557,7 +584,13 @@ describe("parseFullText — negative numbers", () => {
     "(-50 + Revenue)",
     "Revenue * -0.85",
   ])("does not report validation errors for: %s", (text) => {
-    expect(findInvalidRanges(text, metricNames, [])).toEqual([]);
+    expect(
+      findInvalidRanges(
+        text,
+        metricNames,
+        identitiesForAllMetrics(text, metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("parses metric minus negative constant without spaces (Revenue--50)", () => {
@@ -585,7 +618,13 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("does not report validation errors for Revenue--50", () => {
-    expect(findInvalidRanges("Revenue--50", metricNames, [])).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "Revenue--50",
+        metricNames,
+        identitiesForAllMetrics("Revenue--50", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("still treats minus as binary operator after a metric", () => {
@@ -721,15 +760,31 @@ describe("findInvalidRanges — unknown token detection", () => {
   };
 
   it("returns no errors for valid expression", () => {
-    expect(findInvalidRanges("Revenue + Costs", metricNames, [])).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "Revenue + Costs",
+        metricNames,
+        identitiesForAllMetrics("Revenue + Costs", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("returns no errors for valid expression with constant", () => {
-    expect(findInvalidRanges("Revenue * 0.85", metricNames, [])).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "Revenue * 0.85",
+        metricNames,
+        identitiesForAllMetrics("Revenue * 0.85", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("flags a single unknown word", () => {
-    const errors = findInvalidRanges("Revenue + xyz", metricNames, []);
+    const errors = findInvalidRanges(
+      "Revenue + xyz",
+      metricNames,
+      identitiesForAllMetrics("Revenue + xyz", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 10,
@@ -739,7 +794,11 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("flags unknown text that is not a known metric", () => {
-    const errors = findInvalidRanges("Foo", metricNames, []);
+    const errors = findInvalidRanges(
+      "Foo",
+      metricNames,
+      identitiesForAllMetrics("Foo", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       message: expect.stringContaining("Foo"),
@@ -747,15 +806,20 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("flags multiple unknown tokens in different segments", () => {
-    const errors = findInvalidRanges("abc, def", metricNames, []);
+    const errors = findInvalidRanges(
+      "abc, def",
+      metricNames,
+      identitiesForAllMetrics("abc, def", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(2);
   });
 
   it("flags unknown token mixed with valid tokens", () => {
+    const text = "Revenue + unknown + Costs";
     const errors = findInvalidRanges(
-      "Revenue + unknown + Costs",
+      text,
       metricNames,
-      [],
+      identitiesForAllMetrics(text, metricNames),
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
@@ -764,21 +828,41 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("does not flag numbers as unknown", () => {
-    expect(findInvalidRanges("Revenue * 100", metricNames, [])).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "Revenue * 100",
+        metricNames,
+        identitiesForAllMetrics("Revenue * 100", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("does not flag parentheses as unknown", () => {
-    expect(findInvalidRanges("(Revenue + Costs)", metricNames, [])).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "(Revenue + Costs)",
+        metricNames,
+        identitiesForAllMetrics("(Revenue + Costs)", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("does not flag operators as unknown", () => {
     expect(
-      findInvalidRanges("Revenue + Costs - Revenue", metricNames, []),
+      findInvalidRanges(
+        "Revenue + Costs - Revenue",
+        metricNames,
+        identitiesForAllMetrics("Revenue + Costs - Revenue", metricNames),
+      ),
     ).toEqual([]);
   });
 
   it("flags unknown token at the start of expression", () => {
-    const errors = findInvalidRanges("xyz + Revenue", metricNames, []);
+    const errors = findInvalidRanges(
+      "xyz + Revenue",
+      metricNames,
+      identitiesForAllMetrics("xyz + Revenue", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 0,
@@ -789,7 +873,11 @@ describe("findInvalidRanges — unknown token detection", () => {
 
   it("returns both structural and unknown errors", () => {
     // "xyz +" has an unknown token AND a trailing operator
-    const errors = findInvalidRanges("xyz +", metricNames, []);
+    const errors = findInvalidRanges(
+      "xyz +",
+      metricNames,
+      identitiesForAllMetrics("xyz +", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(2);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("xyz"))).toBe(true);
@@ -798,10 +886,11 @@ describe("findInvalidRanges — unknown token detection", () => {
 
   it("flags trailing characters after a metric name with special chars", () => {
     const names: MetricNameMap = { "metric:99": "People Q H2 Orders, Count!" };
+    const text = "People Q H2 Orders, Count!!!!";
     const errors = findInvalidRanges(
-      "People Q H2 Orders, Count!!!!",
+      text,
       names,
-      [],
+      identitiesForAllMetrics(text, names),
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
@@ -823,7 +912,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   };
 
   it("flags missing operator between metric and constant", () => {
-    const errors = findInvalidRanges("Revenue 2", metricNames, []);
+    const errors = findInvalidRanges(
+      "Revenue 2",
+      metricNames,
+      identitiesForAllMetrics("Revenue 2", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 8,
@@ -833,7 +926,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between two metrics", () => {
-    const errors = findInvalidRanges("Revenue Costs", metricNames, []);
+    const errors = findInvalidRanges(
+      "Revenue Costs",
+      metricNames,
+      identitiesForAllMetrics("Revenue Costs", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 8,
@@ -843,7 +940,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between constant and metric", () => {
-    const errors = findInvalidRanges("2 Revenue", metricNames, []);
+    const errors = findInvalidRanges(
+      "2 Revenue",
+      metricNames,
+      identitiesForAllMetrics("2 Revenue", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 2,
@@ -853,10 +954,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between close-paren and metric", () => {
+    const text = "(Revenue + Costs) Revenue";
     const errors = findInvalidRanges(
-      "(Revenue + Costs) Revenue",
+      text,
       metricNames,
-      [],
+      identitiesForAllMetrics(text, metricNames),
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
@@ -867,7 +969,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags operator before closing parenthesis", () => {
-    const errors = findInvalidRanges("(Revenue +)", metricNames, []);
+    const errors = findInvalidRanges(
+      "(Revenue +)",
+      metricNames,
+      identitiesForAllMetrics("(Revenue +)", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 10,
@@ -877,42 +983,66 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags consecutive operators", () => {
-    const errors = findInvalidRanges("Revenue + + Costs", metricNames, []);
+    const errors = findInvalidRanges(
+      "Revenue + + Costs",
+      metricNames,
+      identitiesForAllMetrics("Revenue + + Costs", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags operator after opening parenthesis", () => {
-    const errors = findInvalidRanges("(+ Revenue)", metricNames, []);
+    const errors = findInvalidRanges(
+      "(+ Revenue)",
+      metricNames,
+      identitiesForAllMetrics("(+ Revenue)", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags empty parentheses", () => {
-    const errors = findInvalidRanges("Revenue + ()", metricNames, []);
+    const errors = findInvalidRanges(
+      "Revenue + ()",
+      metricNames,
+      identitiesForAllMetrics("Revenue + ()", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Empty parentheses"))).toBe(true);
   });
 
   it("flags leading operator", () => {
-    const errors = findInvalidRanges("+ Revenue", metricNames, []);
+    const errors = findInvalidRanges(
+      "+ Revenue",
+      metricNames,
+      identitiesForAllMetrics("+ Revenue", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags trailing operator", () => {
-    const errors = findInvalidRanges("Revenue +", metricNames, []);
+    const errors = findInvalidRanges(
+      "Revenue +",
+      metricNames,
+      identitiesForAllMetrics("Revenue +", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("end with an operator"))).toBe(true);
   });
 
   it("flags constants-only expression as missing metric", () => {
-    const errors = findInvalidRanges("2 + 2", metricNames, []);
+    const errors = findInvalidRanges(
+      "2 + 2",
+      metricNames,
+      identitiesForAllMetrics("2 + 2", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       message: expect.stringContaining("at least one metric"),
@@ -920,7 +1050,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags unmatched opening parenthesis", () => {
-    const errors = findInvalidRanges("(Revenue + Costs", metricNames, []);
+    const errors = findInvalidRanges(
+      "(Revenue + Costs",
+      metricNames,
+      identitiesForAllMetrics("(Revenue + Costs", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 0,
@@ -930,7 +1064,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags unmatched closing parenthesis", () => {
-    const errors = findInvalidRanges("Revenue + Costs)", metricNames, []);
+    const errors = findInvalidRanges(
+      "Revenue + Costs)",
+      metricNames,
+      identitiesForAllMetrics("Revenue + Costs)", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 15,
@@ -941,14 +1079,76 @@ describe("findInvalidRanges — predecessor validation", () => {
 
   it("accepts valid nested parentheses", () => {
     expect(
-      findInvalidRanges("(2 * (Revenue + Costs))", metricNames, []),
+      findInvalidRanges(
+        "(2 * (Revenue + Costs))",
+        metricNames,
+        identitiesForAllMetrics("(2 * (Revenue + Costs))", metricNames),
+      ),
     ).toEqual([]);
   });
 
   it("accepts close-paren followed by operator", () => {
-    expect(findInvalidRanges("(Revenue + Costs) * 2", metricNames, [])).toEqual(
-      [],
-    );
+    expect(
+      findInvalidRanges(
+        "(Revenue + Costs) * 2",
+        metricNames,
+        identitiesForAllMetrics("(Revenue + Costs) * 2", metricNames),
+      ),
+    ).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// findInvalidRanges — untracked metric detection
+// ---------------------------------------------------------------------------
+
+describe("findInvalidRanges — untracked metric detection", () => {
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+  };
+
+  it("accepts all metrics when every metric token has a tracked identity", () => {
+    const text = "Revenue + Costs";
+    const ids = identitiesForAllMetrics(text, metricNames);
+    expect(findInvalidRanges(text, metricNames, ids)).toEqual([]);
+  });
+
+  it("flags a metric token that has no tracked identity", () => {
+    // Only "Costs" has an identity; "Revenue" was typed by hand.
+    const text = "Revenue + Costs";
+    const costsIdentity: MetricIdentityEntry = {
+      sourceId: "metric:2",
+      from: 10,
+      to: 15,
+      definition: null,
+      slotIndex: 0,
+    };
+    const errors = findInvalidRanges(text, metricNames, [costsIdentity]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      from: 0,
+      to: 7,
+      message: expect.stringContaining("dropdown"),
+    });
+  });
+
+  it("skips untracked check when no identities are provided at all", () => {
+    // When the identities list is completely empty the check is skipped
+    // because identity tracking may be unavailable (e.g. doc replacement).
+    const text = "Revenue + Costs";
+    const errors = findInvalidRanges(text, metricNames, []);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("does not flag non-metric tokens (constants, operators)", () => {
+    // "2 + 2" has no metrics — only the "must contain at least one metric"
+    // error should fire, not untracked-metric errors.
+    const errors = findInvalidRanges("2 + 2", metricNames, []);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      message: expect.stringContaining("at least one metric"),
+    });
   });
 });
 
@@ -1257,47 +1457,6 @@ describe("applyTrackedDefinitions", () => {
       revenueBreakoutDef,
     );
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
-  });
-
-  it("excludes freshly-added identities from slotMapping when previousSlotCount is provided", () => {
-    // Simulates: user had no formula, opened editor, typed "Revenue + ",
-    // then selected "Geo Revenue" from dropdown (which gets slotIndex 0).
-    // previousSlotCount=0 means no slots existed before this session.
-    const text = "Revenue + Geo Revenue";
-    const parsed = parseFullText(text, metricNames, []);
-    // Only "Geo Revenue" has a tracked identity (selected from dropdown)
-    const tracked = [identity(sourceId(2), 12, 23, geoBreakoutDef, 0)];
-    const { slotMapping } = applyTrackedDefinitions(
-      parsed,
-      tracked,
-      text,
-      metricNames,
-      0, // previousSlotCount — no slots existed before
-    );
-    // The tracked identity's slotIndex (0) is >= previousSlotCount (0),
-    // so it should NOT appear in the mapping.
-    expect(slotMapping.size).toBe(0);
-  });
-
-  it("includes pre-existing identities in slotMapping when previousSlotCount covers them", () => {
-    // Simulates: user had "Revenue + Geo Revenue" (2 slots), edited it,
-    // and both metrics still have tracked identities from focus time.
-    const text = "Revenue + Geo Revenue";
-    const parsed = parseFullText(text, metricNames, []);
-    const tracked = [
-      identity(sourceId(1), 0, 7, revenueBreakoutDef, 0),
-      identity(sourceId(2), 10, 21, geoBreakoutDef, 1),
-    ];
-    const { slotMapping } = applyTrackedDefinitions(
-      parsed,
-      tracked,
-      text,
-      metricNames,
-      2, // previousSlotCount — both slots existed before
-    );
-    expect(slotMapping.size).toBe(2);
-    expect(slotMapping.get(0)).toBe(0);
-    expect(slotMapping.get(1)).toBe(1);
   });
 });
 

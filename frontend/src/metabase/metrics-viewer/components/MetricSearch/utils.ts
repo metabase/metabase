@@ -821,6 +821,10 @@ export function findInvalidRanges(
   const separators = findSeparatorCommaPositions(text, allTokens);
   const segments = groupTokensBySegment(allTokens, separators);
 
+  const identityPositions = new Set(
+    identities.map((id) => getPositionKey(id.from, id.to)),
+  );
+
   const invalid: ErrorRange[] = [];
 
   for (const itemTokens of segments) {
@@ -936,6 +940,26 @@ export function findInvalidRanges(
       }
     }
 
+    // Metric tokens matched by greedy name matching but without a tracked
+    // identity (i.e. not selected from the dropdown) must be rejected —
+    // they lack the definition needed for dimension assignment.
+    // Skip when the identities list is completely empty — this means identity
+    // tracking is unavailable (e.g. full doc replacement wiped the RangeSet).
+    if (identityPositions.size > 0) {
+      for (const token of itemTokens) {
+        if (
+          token.type === "metric" &&
+          !identityPositions.has(getPositionKey(token.from, token.to))
+        ) {
+          itemInvalid.push({
+            from: token.from,
+            to: token.to,
+            message: t`Select this metric from the dropdown`,
+          });
+        }
+      }
+    }
+
     const hasMetric = itemTokens.some((tok) => tok.type === "metric");
     if (!hasMetric && itemInvalid.length === 0) {
       itemInvalid.push({
@@ -953,9 +977,9 @@ export function findInvalidRanges(
 
 export function filterSearchResults<T extends SearchResultLike>(
   results: T[],
-  selectedMetricIds: Set<number>,
-  selectedMeasureIds: Set<number>,
-  excludeMetric: ExcludeMetric | undefined,
+  selectedMetricIds?: Set<number>,
+  selectedMeasureIds?: Set<number>,
+  excludeMetric?: ExcludeMetric,
 ): T[] {
   return results.filter((result) => {
     const isAlreadySelected =
