@@ -6,7 +6,6 @@ var __customVizPlugin__ = (function () {
 
   function createPlugin(factoryProps) {
     var locale = factoryProps.locale;
-    console.log("DEMO VIZ", locale);
 
     function VisualizationComponent(props) {
       var series = props.series;
@@ -121,13 +120,6 @@ var __customVizPlugin__ = (function () {
       },
       minSize: { width: 1, height: 1 },
       defaultSize: { width: 2, height: 2 },
-      isSensible: function (dataset) {
-        return (
-          dataset.cols.length === 1 &&
-          dataset.rows.length === 1 &&
-          typeof dataset.rows[0][0] === "number"
-        );
-      },
       checkRenderable: function (series, settings) {
         if (series.length !== 1) {
           throw new Error("Only 1 series is supported");

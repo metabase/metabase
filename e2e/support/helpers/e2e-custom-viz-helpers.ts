@@ -15,7 +15,7 @@ export const CUSTOM_VIZ_FIXTURE_PATH =
 export const CUSTOM_VIZ_IDENTIFIER = "custom-viz-repo";
 
 // Frontend display type: "custom:{identifier}"
-export const CUSTOM_VIZ_DISPLAY = "custom:" + CUSTOM_VIZ_IDENTIFIER;
+export const CUSTOM_VIZ_DISPLAY = `custom:${CUSTOM_VIZ_IDENTIFIER}` as const;
 
 // Second repo for multi-plugin tests
 export const CUSTOM_VIZ_REPO_PATH_2 =
