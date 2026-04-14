@@ -6,7 +6,8 @@
   (:require
    [clj-http.client :as http]
    [metabase.sso.settings :as sso.settings]
-   [metabase.util.http :as u.http]))
+   [metabase.util.http :as u.http]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,6 +22,8 @@
    Throws `ex-info` if the URL is blocked."
   [url]
   (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) url)
+    (log/warnf "OIDC request to %s blocked by network restrictions (oidc-allowed-networks = %s)"
+               url (sso.settings/oidc-allowed-networks))
     (throw (ex-info "OIDC request blocked: address not allowed by network restrictions"
                     {:url url}))))
 
