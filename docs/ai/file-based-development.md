@@ -170,7 +170,7 @@ Use git to restore your changes. Avoid re-exporting from your production to "res
 
 ### 9. Commit your changes
 
-If all looks good, commit your changes. If you get any errors, provide the error info to the agent in the same session and it should iron out any issues.
+If all looks good, commit your changes. If you get any errors, give the error info to the agent in the same session and the agent should iron out any issues.
 
 ### 10. Import to your production Metabase
 
@@ -178,15 +178,11 @@ Import your changes via the API, or set up [remote sync](../installation-and-ope
 
 ## Deleting content
 
-Since imports and exports _don't_ delete content, you'll need to delete that content in the Metabase application itself, then update the YAML files as well.
+Since imports and exports _don't_ delete content, you'll need to delete that content in the Metabase application itself, AND update the YAML files as well.
 
 1. Delete the content in your production Metabase (in the app's UI itself).
 2. Export from your production Metabase to your repo.
 3. Commit the changes so that the YAML files are updated. That way Metabase won't recreate the deleted items the next time you import your changes.
-
-## Don't use file-based development for transforms
-
-Create and edit [transforms](../data-studio/transforms/transforms-overview.md) directly in the Metabase UI, not through serialized YAML files.
 
 ## Further reading
 
