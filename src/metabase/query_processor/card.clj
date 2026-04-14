@@ -267,7 +267,7 @@
     ;; Append any template-tag parameters not already present in card.parameters
     (into merged-parameters
           (remove #(contains? parameter-ids (:id %)))
-          template-tag-parameters))
+          template-tag-parameters)))
 
 (mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."
