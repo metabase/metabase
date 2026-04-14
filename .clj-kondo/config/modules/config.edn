@@ -2798,6 +2798,7 @@
            metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            config
+           events
            models
            premium-features
            server
