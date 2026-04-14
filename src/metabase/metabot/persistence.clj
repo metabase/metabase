@@ -94,6 +94,20 @@
                      (throw (ex-info "Unrecognized v1-external-ai-service entry type" {:entry entry})))))
          vec)))
 
+(def ^:private non-storable-part-types
+  "Transient parts that are not persisted in message history.
+
+  stream lifecycle and step boundaries (`:start`, `:finish`, `:start-step`,
+  `:finish-step`, `:abort`) are control-flow signals with no history value.
+  `:error` is emitted when the agent loop throws — it signals failure, not
+  conversation content.
+  `:usage` and `:message-metadata` carry token/metadata that live in the
+  dedicated `usage` column instead. `:tool-input-start` is the eager signal
+  whose content is fully contained in the final `:tool-input` part.
+  `:data` parts are not persisted yet — they will be stored in a future
+  change, but today they are dropped."
+  #{:start :start-step :finish :finish-step :abort :error :usage :message-metadata :data :tool-input-start})
+
 (defn migrate-v1-native->v2
   "Migrate a v1-native data array (native-agent origin, `:type`-keyed) to v2 format.
    Merges separate tool-input/tool-output entries into unified tool-{name} parts.
@@ -187,20 +201,6 @@
                              (:type part) (assoc :type (name (:type part)))
                              (:text part) (assoc :text (:text part)))]
                      (if (seq m) m part))))))))
-
-(def ^:private non-storable-part-types
-  "Transient parts that are not persisted in message history.
-
-  stream lifecycle and step boundaries (`:start`, `:finish`, `:start-step`,
-  `:finish-step`, `:abort`) are control-flow signals with no history value.
-  `:error` is emitted when the agent loop throws — it signals failure, not
-  conversation content.
-  `:usage` and `:message-metadata` carry token/metadata that live in the
-  dedicated `usage` column instead. `:tool-input-start` is the eager signal
-  whose content is fully contained in the final `:tool-input` part.
-  `:data` parts are not persisted yet — they will be stored in a future
-  change, but today they are dropped."
-  #{:start :start-step :finish :finish-step :abort :error :usage :message-metadata :data :tool-input-start})
 
 (defn parts->storable-content
   "Drop transient/lifecycle parts and convert what remains to v2 storage format."
