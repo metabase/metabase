@@ -60,4 +60,4 @@
    advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
   [advisory-ids user-id]
   (let [advisories (t2/select :model/SecurityAdvisory :advisory_id [:in (set advisory-ids)] :acknowledged_at nil)]
-    (mapv #(acknowledge! % user-id) unacked)))
+    (mapv #(acknowledge! % user-id) advisories)))
