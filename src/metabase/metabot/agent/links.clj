@@ -50,6 +50,14 @@
            (.getBytes "UTF-8")
            codecs/bytes->b64-str)))
 
+(defn query-and-viz-link
+  "Generate a question link for query and chart type. Chart type"
+  [query chart-type]
+  (pseudo-card->link
+   {:dataset_query query
+    :displayIsLocked true
+    :display (keyword chart-type)}))
+
 (defn- resolve-query-link
   "Resolve a metabase://query/{id} link to a /question# URL."
   [query-id queries-state]
