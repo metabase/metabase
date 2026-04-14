@@ -16,10 +16,8 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   alt?: string;
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, keyof IconProps>;
 
-function resolveIconMaskColor(
-  color: EntityIconProps["color"] | undefined = "brand",
-): string {
-  if (color === "inherit") {
+function resolveIconMaskColor(color: EntityIconProps["color"]): string {
+  if (!color || color === "inherit") {
     return "currentColor";
   }
   return maybeColor(color) ?? "currentColor";
