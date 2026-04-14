@@ -134,14 +134,13 @@
                           (persistence/migrate-v1-external-ai-service->v2
                            [{:_type "FINISH_MESSAGE" :role "assistant" :usage {}}]))))
 
-  (testing "user-message rows (v1 by data_version, v2 by shape) pass through unchanged"
-    (is (= [{:role "user" :content "Do we have data on orders"}]
+  (testing "user-message rows are converted to v2 text format"
+    (is (= [{:type "text" :text "Do we have data on orders"}]
            (persistence/migrate-v1->v2
             [{:role "user" :content "Do we have data on orders"}]))))
 
-  (testing "empty data throws as unrecognized"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
-                          (persistence/migrate-v1->v2 []))))
+  (testing "empty data passes through unchanged"
+    (is (= [] (persistence/migrate-v1->v2 []))))
 
   (testing "dispatcher still throws on truly unrecognized shapes"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"

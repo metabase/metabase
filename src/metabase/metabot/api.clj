@@ -42,32 +42,17 @@
 
 (defn- store-user-message!
   "Persist the incoming user message and upsert the conversation row."
-  [conversation-id profile-id messages]
-  (let [finish   (let [m (u/last messages)]
-                   (when (= (:_type m) :FINISH_MESSAGE)
-                     m))
-        state    (u/seek #(and (= (:_type %) :DATA)
-                               (= (:type %) "state"))
-                         messages)
-        messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)
-        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
+  [conversation-id profile-id prompt]
+  (let [ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (constantly (cond-> {:user_id    api/*current-user-id*}
-                                            state (assoc :state state))))
+                              (constantly {:user_id api/*current-user-id*}))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
-                 :data            messages
-                 :usage           (:usage finish)
-                 :role            (:role (first messages))
+                 :data            [{:type "text" :text prompt}]
+                 :role            :user
                  :profile_id      profile-id
-                 :total_tokens    (->> (vals (:usage finish))
-                                       ;; NOTE: this filter is supporting backward-compatible usage format, can be
-                                       ;; removed when ai-service does not give us `completionTokens` in `usage`
-                                       (filter map?)
-                                       (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))
+                 :total_tokens    0
                  :ai_proxied      (boolean ai-proxy?)
                  :data_version    2})))
 
@@ -193,19 +178,18 @@
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id profile_id message context history conversation_id state debug]}]
-  (let [message    (metabot.envelope/user-message message)
-        metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
+  (let [metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
-    (store-user-message! conversation_id profile-id [message])
+    (store-user-message! conversation_id profile-id message)
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
      {:metabot-id      metabot-id
       :profile-id      profile-id
-      :message         message
+      :message         (metabot.envelope/user-message message)
       :context         context
       :history         history
       :conversation-id conversation_id

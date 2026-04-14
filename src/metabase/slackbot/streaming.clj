@@ -169,7 +169,6 @@
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt stored-msg-id]}]
   (let [data-idx        (volatile! -1)
-        message         (metabot.envelope/user-message prompt)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
@@ -179,7 +178,9 @@
                           :capabilities               capabilities
                           :slack_channel_id           channel-id})
         messages        (conj (vec history) request-message)
-        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
+        _               (metabot.persistence/store-message! conversation-id "slackbot"
+                                                            [{:type "text" :text prompt}]
+                                                            :role          :user
                                                             :channel-id   channel-id
                                                             :slack-msg-id req-slack-msg-id
                                                             :ai-proxy?    (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))

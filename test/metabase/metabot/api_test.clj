@@ -75,7 +75,7 @@
               ;; Native agent stores parts in raw format
                   (is (=? [{:total_tokens 0
                             :role         :user
-                            :data         [{:role "user" :content (:content question)}]}
+                            :data         [{:type "text" :text (:content question)}]}
                            {:total_tokens pos-int?
                             :role         :assistant
                             :data         [{:type "text" :text "Hello from native agent!"}]}]

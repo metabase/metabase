@@ -28,8 +28,7 @@
 
 (defn- v1-user-message?
   "Returns true if `data` is a user message written as `data_version = 1`. User messages
-   were always stored in the same format regardless of v1-external-ai-service vs v1-native,
-   and that format is already valid v2 — passthrough only."
+   were always stored as `[{:role \"user\" :content \"...\"}]` regardless of origin."
   [data]
   (and (sequential? data)
        (seq data)
@@ -118,17 +117,23 @@
                       :errorText (get-in block [:error :message] "Unknown error")}
                      block)))))))
 
+(defn migrate-v1-user-message->v2
+  "Migrate a v1 user-message data array to v2 format.
+
+   v1: [{:role \"user\" :content \"Do we have data on orders\"}]
+   v2: [{:type \"text\" :text \"Do we have data on orders\"}]"
+  [data]
+  (mapv (fn [{:keys [content]}] {:type "text" :text content}) data))
+
 (defn migrate-v1->v2
-  "Migrate a v1 data array to v2 format. Dispatches to `migrate-v1-external-ai-service->v2`
-   or `migrate-v1-native->v2` based on the detected shape. `v1-user-message?` rows are
-   already valid v2 shape (backfilled to `data_version = 1`) and pass through unchanged.
-   Throws on any other shape."
+  "Migrate a v1 data array to v2 format. Dispatches to the appropriate migration
+   function based on the detected shape. Throws on unrecognized shapes."
   [data]
   (cond
     (empty? data)                   data ;; handle case were we previously wrote empty arrays to db when FE aborted mid request
     (v1-external-ai-service? data) (migrate-v1-external-ai-service->v2 data)
     (v1-native? data)              (migrate-v1-native->v2 data)
-    (v1-user-message? data) data
+    (v1-user-message? data)        (migrate-v1-user-message->v2 data)
     :else                   (throw (ex-info "Unrecognized v1 storage format" {:data data}))))
 
 (defn internal-parts->storable
