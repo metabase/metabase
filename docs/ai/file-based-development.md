@@ -42,7 +42,11 @@ git checkout -b your-branch-name
 
 ### 3. Export your production Metabase
 
-You'll first need to export your production Metabase:
+Always export before editing YAML files locally. If someone has updated a dashboard or question in the Metabase UI since your last export, and you edit and import stale local files, the import will overwrite those in-app changes. Re-export at the start of each editing session if the app may have changed since your last export.
+
+Your agent will also these serialized YAML files to find info about existing content, so the agent can know what you mean when you ask it to "add the new question to the Handsome collection."
+
+To export your Metabase:
 
 1. Create an [API key](../people-and-groups/api-keys.md).
 2. Assign the key to the Admin group.
@@ -57,7 +61,7 @@ You'll first need to export your production Metabase:
 
    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
 
-   The `data_model=false` query parameter excludes the data model from the export, since the data model payload can be large. Instead, your agent will use the MCP server to search for the metadata it needs to generate the YAML files. See [Serialization](../installation-and-operation/serialization.md) for other export options.
+   Be sure to set the `data_model=false` query parameter excludes the data model from the export, since the data model payload can be large. Instead, your agent will use the MCP server to search for the metadata it needs to generate the YAML files. See [Serialization](../installation-and-operation/serialization.md) for other export options.
 
    This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 
