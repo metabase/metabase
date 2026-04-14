@@ -71,7 +71,7 @@ Commit the initial exported set of YAML files. If your AI goes off the rails, yo
 
 ### 5. Use AI to edit or create new content
 
-Change into the directory with your serialized files and ask your agent to create whatever you want.
+Change into the directory with your serialized files and ask your agent to create whatever you want. Make sure your agent actually invokes the skills, otherwise the agent may not get the YAML format right.
 
 Example prompt:
 
@@ -84,7 +84,14 @@ Use the metabase-database-metadata and metabase-representation-format skills to 
 4. Add that question to the "AI-created dashboard".
 ```
 
-Make sure your agent actually invokes the skills, otherwise the agent may not get the YAML format right.
+Depending on how sophisticated your AI model is, you can also try more ambitious, open-ended requests:
+
+```
+Use the metabase-representation-format and metabase-database-metadata skills to analyze the data in the sample postgresql
+database. Look at the orders, people, reviews, and products tables.
+
+Create a dashboard with some questions that gives an overview of how the business is doing.
+```
 
 ### 6. Set up a development instance to check your work
 
