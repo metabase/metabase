@@ -14,8 +14,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedReader InputStream InputStreamReader OutputStream)
-   (java.net URI)))
+   (java.io BufferedReader InputStream InputStreamReader OutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -60,12 +59,14 @@
 
 (defn- parse-repo-name
   "Extract the repository name from a git URL.
-   E.g., 'https://github.com/user/custom-heatmap' -> 'custom-heatmap'
-         'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'"
+   Supports both HTTPS and SSH-style URLs:
+     'https://github.com/user/custom-heatmap'     -> 'custom-heatmap'
+     'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'
+     'git@github.com:user/custom-heatmap.git'     -> 'custom-heatmap'"
   [^String url]
-  (-> (.getPath (URI. url))
+  (-> url
       (str/replace #"\.git$" "")
-      (str/split #"/")
+      (str/split #"[/:]")
       last))
 
 (defn- plugin->response
