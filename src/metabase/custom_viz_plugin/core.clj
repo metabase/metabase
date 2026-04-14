@@ -15,7 +15,7 @@
   "Resolve a static asset for a plugin. Returns a byte array or nil.
    OSS: always returns nil."
   metabase-enterprise.custom-viz-plugin.core
-  [_plugin-id _asset-path]
+  [_plugin _asset-path]
   nil)
 
 (defenterprise asset-paths

@@ -244,11 +244,11 @@
    respond
    raise]
   (try
-    (let [_plugin      (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+    (let [plugin       (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
           dev?         (cache/resolve-dev-bundle id)
-          bytes        (cache/resolve-asset id path)]
+          bytes        (cache/resolve-asset plugin path)]
       (if bytes
         (respond {:status  200
                   :headers (cond-> {"Content-Type" content-type}

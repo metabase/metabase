@@ -106,8 +106,8 @@
                                                                        :assets ["icon.png"]}}]
           (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content bundle-content :hash "abc"})
                         custom-viz-plugin/asset-paths    (constantly ["icon.png"])
-                        custom-viz-plugin/resolve-asset  (fn [plugin-id asset-name]
-                                                           (when (and (= plugin-id id) (= asset-name "icon.png"))
+                        custom-viz-plugin/resolve-asset  (fn [plugin asset-name]
+                                                           (when (and (= (:id plugin) id) (= asset-name "icon.png"))
                                                              asset-bytes))
                         custom-viz-plugin/asset-content-type (fn [name]
                                                                (when (= name "icon.png") "image/png"))]
