@@ -276,6 +276,7 @@
 (mr/def ::grounded-values
   [:map
    {:closed true}
-   [:dimensions {:optional true} ::dim-name->matching-fields]
-   [:metrics    {:optional true} [:sequential ::grounded-metric]]
-   [:filters    {:optional true} [:sequential ::grounded-filter]]])
+   [:dimensions        {:optional true} ::dim-name->matching-fields]
+   [:filter-dimensions {:optional true} ::dim-name->matching-fields]
+   [:metrics           {:optional true} [:sequential ::grounded-metric]]
+   [:filters           {:optional true} [:sequential ::grounded-filter]]])

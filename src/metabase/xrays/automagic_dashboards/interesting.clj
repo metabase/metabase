@@ -455,14 +455,15 @@
                               [:dimension-specs [:maybe [:sequential ::ads/dimension-template]]]
                               [:metric-specs    [:maybe [:sequential ::ads/metric-template]]]
                               [:filter-specs    [:maybe [:sequential ::ads/filter-template]]]]]
-  (let [dims      (->> (find-dimensions context dimension-specs)
-                       (add-field-self-reference context)
-                       score-and-filter-matches)
+  (let [all-dims  (->> (find-dimensions context dimension-specs)
+                       (add-field-self-reference context))
+        dims      (score-and-filter-matches all-dims)
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)
                       (grounded-metrics dims))
         set-score (fn [score metrics]
                     (map #(assoc % :metric-score score) metrics))]
     {:dimensions dims
+     :filter-dimensions all-dims
      :metrics    (concat (set-score 50 metrics)
                          (let [entity (-> context :root :entity)]
                            ;; metric x-rays talk about "this" in the template

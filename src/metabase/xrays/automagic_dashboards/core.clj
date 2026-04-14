@@ -483,6 +483,7 @@
     :keys               [dashboard_filters]
     :as                 dashboard-template}
    {grounded-dimensions :dimensions
+    filter-dimensions   :filter-dimensions
     grounded-metrics    :metrics
     grounded-filters    :filters} :- ::ads/grounded-values]
   (let [card-templates  (interesting/normalize-seq-of-maps :card template-cards)
@@ -492,12 +493,13 @@
                          grounded-dimensions
                          grounded-filters
                          grounded-metrics)
-        empty-dashboard (make-dashboard root dashboard-template)]
+        empty-dashboard (make-dashboard root dashboard-template)
+        ;; Use unfiltered dimensions for dashboard filters — filter candidates
+        ;; need less aggressive filtering than card breakout dimensions.
+        dims-for-filters (or filter-dimensions grounded-dimensions)]
     (assoc empty-dashboard
-           ;; Adds the filters that show at the top of the dashboard
-           ;; Why do we need (or do we) the last remove form?
            :filters (->> dashboard_filters
-                         (mapcat (comp :matches grounded-dimensions))
+                         (mapcat (comp :matches dims-for-filters))
                          (remove (comp (singular-cell-dimension-field-ids root) id-or-name)))
            :cards dashcards)))
 
