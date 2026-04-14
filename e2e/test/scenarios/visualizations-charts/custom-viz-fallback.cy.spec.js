@@ -13,8 +13,8 @@ describe("custom visualization fallback", () => {
         name: "Custom Viz Unavailable Bundle Test",
         dataset_query: {
           type: "query",
-          query: { "source-table": 1, aggregation: [["count"]] },
-          database: 1,
+          query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+          database: SAMPLE_DB_ID,
         },
         display: H.CUSTOM_VIZ_DISPLAY,
         visualization_settings: {},
