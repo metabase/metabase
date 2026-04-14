@@ -240,8 +240,12 @@
 (deftest parse-repo-name-test
   (testing "extracts repo name from HTTPS URL"
     (is (= "custom-heatmap" (parse-repo-name "https://github.com/user/custom-heatmap"))))
-  (testing "strips .git suffix"
+  (testing "strips .git suffix from HTTPS URL"
     (is (= "custom-heatmap" (parse-repo-name "https://github.com/user/custom-heatmap.git"))))
+  (testing "extracts repo name from SSH git URL"
+    (is (= "custom-heatmap" (parse-repo-name "git@github.com:user/custom-heatmap.git"))))
+  (testing "SSH URL without .git suffix"
+    (is (= "custom-heatmap" (parse-repo-name "git@github.com:user/custom-heatmap"))))
   (testing "handles nested paths"
     (is (= "my-viz" (parse-repo-name "https://gitlab.com/org/subgroup/my-viz"))))
   (testing "handles trailing slash"
