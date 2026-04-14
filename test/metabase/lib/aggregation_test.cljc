@@ -911,6 +911,17 @@
       (is (= (keep-indexed #(when (not= %1 pos) %2) all-aggregates)
              (aggregate-column-names query3 pos))))))
 
+(deftest ^:parallel aggregate-overrides-clause-name-test
+  (testing "lib/aggregate ignores any :name on the aggregation clause and assigns a unique aggregation name"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate (lib/with-expression-name (lib/count) "my-custom-name"))
+                    (lib/aggregate (lib/with-expression-name
+                                     (lib/sum (meta/field-metadata :venues :price))
+                                     "another-name")))]
+      (is (=? [[:count {:name "aggregation"}]
+               [:sum {:name "aggregation_2"} [:field {} (meta/id :venues :price)]]]
+              (lib/aggregations query))))))
+
 (deftest ^:parallel aggregation-ref-type-of-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/aggregate (lib/distinct (meta/field-metadata :venues :price))))]

@@ -476,8 +476,8 @@
           ;; Preserve sticky aggregation :name when replacing
           replacement (cond-> replacement
                         (and (= [:aggregation] location)
-                                (lib.options/clause-name target)
-                                (not (lib.options/clause-name replacement)))
+                             (lib.options/clause-name target)
+                             (not (lib.options/clause-name replacement)))
                         (lib.options/with-clause-name (lib.options/clause-name target)))
           query (loop [query (tweak-expression unmodified-query stage-number target replacement)]
                   (let [explanation (mr/explain ::lib.schema/query query)

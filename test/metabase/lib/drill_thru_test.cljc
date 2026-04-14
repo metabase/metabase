@@ -794,15 +794,15 @@
                                                                  {:name "≠"}]}
                     {:row-count 3, :table-name "Orders", :type :drill-thru/underlying-records}]}))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-13
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
-       {:click-type  :header
-        :query-type  :aggregated
-        :column-name "count"
-        :expected    [{:type :drill-thru/column-filter}
-                      {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+  (testing "Header drills on an aggregation column"
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :header
+      :query-type  :aggregated
+      :column-name "aggregation"
+      :query-kinds [:mbql]
+      :expected    [{:type :drill-thru/column-filter}
+                    {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
 
 ;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-14
