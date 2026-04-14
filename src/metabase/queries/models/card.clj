@@ -1262,12 +1262,18 @@
     (let [native?   (lib/native? (:dataset_query card))
           keep-keys (into #{:name}
                           (map u/->snake_case_en)
-                          (lib/model-preserved-keys native?))]
+                          (lib/model-preserved-keys native?))
+          slim      (mapv #(select-keys % keep-keys) metadata)
+          ;; collect all FK ids that need portablization across all columns ↓
+          fk-ids    (cond->> (mapv :fk_target_field_id slim)
+                      native? (concat (mapv :id slim)))
+          unique    (distinct (filter some? fk-ids))
+          ;; one batched call to resolve all of them ↓
+          fk->path  (zipmap unique (serdes/*export-field-fks* unique))]
       (mapv (fn [m]
-              (-> (select-keys m keep-keys)
-                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
-                  (cond-> native? (m/update-existing :id serdes/*export-field-fk*))))
-            metadata))
+              (cond-> (m/update-existing m :fk_target_field_id fk->path)
+                native? (m/update-existing :id fk->path)))
+            slim))
     ::serdes/skip))
 
 (defn- import-result-metadata [metadata]

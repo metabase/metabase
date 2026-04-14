@@ -59,6 +59,7 @@
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
+   [humilia.core :as humilia]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -1031,14 +1032,54 @@
         ;; Need to break a circular dependency here.
         (:id ((resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
 
+;;; ## FK resolution caches
+;;;
+;;; These atoms back the batch FK resolvers (`*export-database-fks*`, `*export-table-fks*`,
+;;; `*export-field-fks*`). [[with-cache]] rebinds each to a fresh `(atom {})` for the duration
+;;; of an export, so cross-card lookups are deduplicated. Outside `with-cache` these are nil and
+;;; the batch resolvers fall through to per-call DB queries with no cross-call sharing.
+
+(def ^:dynamic *database-fk-cache*
+  "Atom holding `{db-id portable-name}`. Bound by [[with-cache]]; nil otherwise."
+  nil)
+
+(def ^:dynamic *table-fk-cache*
+  "Atom holding `{table-id [db-name schema table-name]}`. Bound by [[with-cache]]; nil otherwise."
+  nil)
+
+(def ^:dynamic *field-fk-cache*
+  "Atom holding `{field-id [db-name schema table-name & field-names]}`. Bound by [[with-cache]];
+  nil otherwise."
+  nil)
+
 ;;; ## Databases
 
-(defn ^:dynamic ^::cache *export-database-fk*
+(defn ^:dynamic *export-database-fks*
+  "Batch version. Given a coll of database ids, return a vector of portable db-names in input
+  order. Nils pass through. Cache-aware: hits served from [[*database-fk-cache*]], misses are
+  batched into one DB query and written back to the cache."
+  [db-ids]
+  (let [cache  *database-fk-cache*
+        cached (if cache @cache {})]
+    (vec
+     (humilia/partition-map
+      (fn [id] (cond (nil? id)             :nil
+                     (contains? cached id) :hit
+                     :else                 :miss))
+      {:nil  (fn [ids] (mapv (constantly nil) ids))
+       :hit  (fn [ids] (mapv cached ids))
+       :miss (fn [ids]
+               (let [unique (distinct ids)
+                     by-id  (t2/select-fn->fn :id :name :model/Database :id [:in unique])]
+                 (when cache (swap! cache into (zipmap unique (mapv by-id unique))))
+                 (mapv by-id ids)))}
+      db-ids))))
+
+(defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
-  [[*import-database-fk*]] is the inverse."
+  [[*import-database-fk*]] is the inverse. Singleton overlay on [[*export-database-fks*]]."
   [id]
-  (when id
-    (t2/select-one-fn :name [:model/Database :id :name] :id id)))
+  (first (*export-database-fks* [id])))
 
 (defn ^:dynamic ^::cache *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
@@ -1048,16 +1089,41 @@
 
 ;;; ## Tables
 
-(mu/defn ^:dynamic ^::cache *export-table-fk*
+(defn ^:dynamic *export-table-fks*
+  "Batch version. Given a coll of table ids, return a vector of `[db-name schema table-name]`
+  tuples in input order. Nils pass through. Recursively batches DB resolution via
+  [[*export-database-fks*]]."
+  [table-ids]
+  (let [cache  *table-fk-cache*
+        cached (if cache @cache {})]
+    (vec
+     (humilia/partition-map
+      (fn [id] (cond (nil? id)             :nil
+                     (contains? cached id) :hit
+                     :else                 :miss))
+      {:nil  (fn [ids] (mapv (constantly nil) ids))
+       :hit  (fn [ids] (mapv cached ids))
+       :miss (fn [ids]
+               (let [unique     (distinct ids)
+                     rows       (t2/select [:model/Table :id :db_id :name :schema]
+                                           :id [:in unique])
+                     by-id      (m/index-by :id rows)
+                     db-ids     (distinct (map :db_id rows))
+                     db-name-by (zipmap db-ids (*export-database-fks* db-ids))
+                     resolve    (fn [id]
+                                  (let [{:keys [db_id name schema]} (by-id id)]
+                                    [(db-name-by db_id) schema name]))]
+                 (when cache (swap! cache into (zipmap unique (mapv resolve unique))))
+                 (mapv resolve ids)))}
+      table-ids))))
+
+(mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
-  [[import-table-fk]] is the inverse."
+  [[import-table-fk]] is the inverse. Singleton overlay on [[*export-table-fks*]]."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
-          db-name                     (*export-database-fk* db_id)]
-      [db-name schema name])))
+  (first (*export-table-fks* [table-id])))
 
 (mu/defn ^:dynamic ^::cache *import-table-fk*
   "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
@@ -1128,18 +1194,44 @@
               [:= :name field]
               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
-(mu/defn ^:dynamic ^::cache *export-field-fk*
+(defn ^:dynamic *export-field-fks*
+  "Batch version. Given a coll of field ids, return a vector of `[db-name schema table-name & field-names]`
+  paths in input order. Nils pass through. Top-level fields (`parent_id` nil) are batched via one
+  SELECT plus the recursive [[*export-table-fks*]]; nested fields fall back to per-field
+  [[field-hierarchy]] (rare path) but still share the table batch."
+  [field-ids]
+  (let [cache  *field-fk-cache*
+        cached (if cache @cache {})]
+    (vec
+     (humilia/partition-map
+      (fn [id] (cond (nil? id)             :nil
+                     (contains? cached id) :hit
+                     :else                 :miss))
+      {:nil  (fn [ids] (mapv (constantly nil) ids))
+       :hit  (fn [ids] (mapv cached ids))
+       :miss (fn [ids]
+               (let [unique      (distinct ids)
+                     rows        (t2/select [:model/Field :id :name :parent_id :table_id]
+                                            :id [:in unique])
+                     by-id       (m/index-by :id rows)
+                     table-ids   (distinct (map :table_id rows))
+                     table-fk-by (zipmap table-ids (*export-table-fks* table-ids))
+                     resolve     (fn [id]
+                                   (let [{field-name :name :keys [parent_id table_id]} (by-id id)
+                                         [db schema table] (table-fk-by table_id)]
+                                     (if (nil? parent_id)
+                                       [db schema table field-name]
+                                       (into [db schema table] (map :name (field-hierarchy id))))))]
+                 (when cache (swap! cache into (zipmap unique (mapv resolve unique))))
+                 (mapv resolve ids)))}
+      field-ids))))
+
+(mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
-  [[*import-field-fk*]] is the inverse."
+  [[*import-field-fk*]] is the inverse. Singleton overlay on [[*export-field-fks*]]."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (when field-id
-    (let [{field-name :name :keys [parent_id table_id]} (t2/select-one [:model/Field :name :parent_id :table_id] :id field-id)]
-      (if (nil? parent_id)
-        (conj (*export-table-fk* table_id) field-name)
-        (let [fields                      (field-hierarchy field-id)
-              [db-name schema table-name] (*export-table-fk* table_id)]
-          (into [db-name schema table-name] (map :name fields)))))))
+  (first (*export-field-fks* [field-id])))
 
 (mu/defn ^:dynamic ^::cache *import-field-fk* :- [:maybe pos-int?]
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
@@ -1200,7 +1292,7 @@
      [:aggregation (_opts :guard map?) (uuid :guard string?)]
      uuid)))
 
-(declare export-mbql)
+(declare export-mbql*)
 
 (defn- export-mbql-map [m]
   (reduce-kv
@@ -1227,7 +1319,7 @@
        :lib/uuid                     (cond-> m
                                        (not (contains? *required-lib-uuids-for-export* v))
                                        (dissoc :lib/uuid))
-       #_else                        (update m k export-mbql)))
+       #_else                        (update m k export-mbql*)))
    m
    m))
 
@@ -1258,17 +1350,66 @@
     [:measure opts (id :guard pos-int?)]
     [:measure (export-mbql-map opts) (*export-fk* id 'Measure)]))
 
+(defn- export-mbql*
+  "Single-pass MBQL walker. Calls [[*export-field-fk*]], [[*export-table-fk*]], and
+  [[*export-database-fk*]] pointwise as it visits refs. Used by [[export-mbql]] under two different
+  bindings: a collecting binding for pass 1, and a lookup binding for pass 2."
+  [x]
+  (cond
+    (mbql-ref? x)   (export-mbql-ref x)
+    (sequential? x) (mapv export-mbql* x)
+    (map? x)        (export-mbql-map x)
+    :else           x))
+
+(defn- using-default-fk-fns?
+  "Are all three FK singletons currently bound to their root (default) implementations? When true,
+  it's safe for [[export-mbql]] to do its two-pass batching dance; when false (a caller has bound
+  one of them to a mock or alternate resolver), fall back to the legacy single-pass walk."
+  []
+  (and (identical? *export-database-fk* (.getRawRoot #'*export-database-fk*))
+       (identical? *export-table-fk*    (.getRawRoot #'*export-table-fk*))
+       (identical? *export-field-fk*    (.getRawRoot #'*export-field-fk*))))
+
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
-  inside it into portable references."
+  inside it into portable references.
+
+  When all three FK singletons are at their default bindings, runs a two-pass batch: pass 1 walks
+  collecting every id the tree references, one batched call to each plural primary
+  ([[*export-database-fks*]], [[*export-table-fks*]], [[*export-field-fks*]]) resolves them, and
+  pass 2 walks again substituting from the resolved lookup maps. Cross-call sharing via the
+  [[with-cache]] atoms means later invocations on related trees mostly hit the cache.
+
+  When any FK singleton has been rebound (test mocks, custom resolvers) the two-pass machinery is
+  skipped and the walker resolves pointwise via the rebound fns — preserving the legacy contract."
   [x]
   ;; if required UUIDs are already calculated don't recalculate when we recurse.
   (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
-    (cond
-      (mbql-ref? x)   (export-mbql-ref x)
-      (sequential? x) (mapv export-mbql x)
-      (map? x)        (export-mbql-map x)
-      :else           x)))
+    (if-not (using-default-fk-fns?)
+      (export-mbql* x)
+      (let [field-ids (volatile! (transient #{}))
+            table-ids (volatile! (transient #{}))
+            db-ids    (volatile! (transient #{}))
+            collect!  (fn [v! id] (when id (vswap! v! conj! id)) nil)]
+        ;; Pass 1: walk discarding the result, collecting every id the singleton FK fns would resolve.
+        (binding [*export-field-fk*    (partial collect! field-ids)
+                  *export-table-fk*    (partial collect! table-ids)
+                  *export-database-fk* (partial collect! db-ids)]
+          (export-mbql* x))
+        ;; Batch-resolve. The batch primaries write through to the dynamic caches under `with-cache`,
+        ;; so callers that re-enter `export-mbql` for related trees pick up the populated cache.
+        (let [field-ids* (persistent! @field-ids)
+              table-ids* (persistent! @table-ids)
+              db-ids*    (persistent! @db-ids)
+              field->fk  (zipmap field-ids* (*export-field-fks* field-ids*))
+              table->fk  (zipmap table-ids* (*export-table-fks* table-ids*))
+              db->fk     (zipmap db-ids*    (*export-database-fks* db-ids*))]
+          ;; Pass 2: walk again, this time substituting from the resolved maps. Falls back to the
+          ;; root singleton for anything pass 1 might have missed (defensive — shouldn't happen).
+          (binding [*export-field-fk*    #(if (contains? field->fk %) (field->fk %) (when % (first (*export-field-fks* [%]))))
+                    *export-table-fk*    #(if (contains? table->fk %) (table->fk %) (when % (first (*export-table-fks* [%]))))
+                    *export-database-fk* #(if (contains? db->fk    %) (db->fk %)    (when % (first (*export-database-fks* [%]))))]
+            (export-mbql* x)))))))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."
@@ -1936,12 +2077,18 @@
 ;;; ## Memoizing appdb lookups
 
 (defmacro with-cache
-  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
+  "Runs body with all functions marked with ::cache re-bound to memoized versions, and the
+  FK-resolution cache atoms ([[*database-fk-cache*]], [[*table-fk-cache*]], [[*field-fk-cache*]])
+  rebound to fresh empty atoms. The atom caches back the batch FK resolvers so cross-card lookups
+  in a single export are deduplicated."
   [& body]
   (let [ns* 'metabase.models.serialization]
-    `(binding ~(reduce into []
-                       (for [[var-sym var] (ns-interns ns*)
-                             :when (::cache (meta var))
-                             :let [fq-sym (symbol (name ns*) (name var-sym))]]
-                         [fq-sym `(memoize ~fq-sym)]))
+    `(binding [*database-fk-cache* (atom {})
+               *table-fk-cache*    (atom {})
+               *field-fk-cache*    (atom {})
+               ~@(reduce into []
+                         (for [[var-sym var] (ns-interns ns*)
+                               :when (::cache (meta var))
+                               :let [fq-sym (symbol (name ns*) (name var-sym))]]
+                           [fq-sym `(memoize ~fq-sym)]))]
        ~@body)))
