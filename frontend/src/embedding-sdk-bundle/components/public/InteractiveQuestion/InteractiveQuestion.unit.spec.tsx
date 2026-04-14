@@ -37,6 +37,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { reinitialize } from "metabase/plugins";
+import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
 import type { CardId, CollectionType, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -51,7 +52,6 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockNotification } from "metabase-types/api/mocks/notification";
-import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 

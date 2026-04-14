@@ -23,6 +23,8 @@ export function getSourceErrorMessage(
   switch (error) {
     case "incompatible-implicit-joins":
       return t`The original table can't be referenced by a foreign key by another table.`;
+    case "affects-gtap-policies":
+      return t`This table has sandboxing policies that block this replacement.`;
     default:
       return undefined;
   }

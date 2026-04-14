@@ -16,6 +16,12 @@ import {
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import type {
+  ClickBehaviorSidebarState,
+  EditParameterSidebarState,
+  State,
+  StoreDashboard,
+} from "metabase/redux/store";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
@@ -42,12 +48,6 @@ import type {
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
-import type {
-  ClickBehaviorSidebarState,
-  EditParameterSidebarState,
-  State,
-  StoreDashboard,
-} from "metabase-types/store";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {

@@ -5,9 +5,9 @@ import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
-import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
