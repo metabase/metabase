@@ -75,7 +75,7 @@ export class VisualizationResult extends Component {
     const noResults = datasetContainsNoResults(result.data);
     if (noResults && !isRunning && !renderEmptyMessage) {
       const supportsRowsPresentAlert =
-        getAlertType(question) === ALERT_TYPE_ROWS;
+        !isEmbeddingSdk() && getAlertType(question) === ALERT_TYPE_ROWS;
 
       const supportsBackToPreviousResult =
         !isEmbeddingSdk() || !!onNavigateBack;
