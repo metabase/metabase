@@ -670,7 +670,7 @@ export const fetchDashboardCardData =
                 parameterValues,
                 dashcard?.parameter_mappings ?? undefined,
               );
-              return !equals(
+              return !_.isEqual(
                 getDatasetQueryParams(lastResult.json_query),
                 getDatasetQueryParams(datasetQuery),
               );
