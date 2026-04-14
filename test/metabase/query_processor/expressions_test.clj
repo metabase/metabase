@@ -1211,7 +1211,9 @@
                                   (lib/order-by orders-id :asc)
                                   (lib/order-by products-id :asc)
                                   (lib/limit 3))]
-        (is (= [[1 "2019-02-12T21:40:27.892Z" 9 "2019-02-07T08:26:25.647Z"]
-                [1 "2019-02-12T21:40:27.892Z" 137 "2019-02-16T22:36:43.143Z"]
-                [1 "2019-02-12T21:40:27.892Z" 188 "2019-02-07T19:03:43.752Z"]]
-               (mt/formatted-rows [int identity int identity] (qp/process-query query))))))))
+        (is (= [[1 "2019-02-12T21:40:27Z" 9 "2019-02-07T08:26:25Z"]
+                [1 "2019-02-12T21:40:27Z" 137 "2019-02-16T22:36:43Z"]
+                [1 "2019-02-12T21:40:27Z" 188 "2019-02-07T19:03:43Z"]]
+               (mt/formatted-rows
+                [int u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str]
+                (qp/process-query query))))))))
