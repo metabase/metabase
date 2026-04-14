@@ -1,3 +1,5 @@
+import type { GroupId } from "./group";
+
 export type AdvancedPermissionValue = "yes" | "no";
 
 export type AdvancedPermissionsGraphRevision = number;
@@ -8,10 +10,7 @@ export type AdvancedPermissions = {
   subscription?: AdvancedPermissionValue;
 };
 
-export type AdvancedPermissionsGroups = Record<
-  AdvancedPermissionsGraphRevision,
-  AdvancedPermissions
->;
+export type AdvancedPermissionsGroups = Record<GroupId, AdvancedPermissions>;
 
 export type AdvancedPermissionsGraph = {
   groups: AdvancedPermissionsGroups;

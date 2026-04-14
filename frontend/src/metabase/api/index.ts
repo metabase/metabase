@@ -1,6 +1,5 @@
 export * from "./action";
 export * from "./activity";
-export * from "./advanced-permission";
 export * from "./ai-entity-analysis";
 export * from "./analytics";
 export * from "./api";
