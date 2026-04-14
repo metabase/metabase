@@ -16,6 +16,15 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   alt?: string;
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, keyof IconProps>;
 
+function resolveIconMaskColor(
+  color: EntityIconProps["color"] | undefined = "brand",
+): string {
+  if (color === "inherit") {
+    return "currentColor";
+  }
+  return maybeColor(color) ?? "currentColor";
+}
+
 /**
  * Renders either a custom visualization icon (via iconUrl) or a standard
  * Metabase Icon (via name).  Drop-in replacement for `<Icon {...iconData} />`
@@ -25,13 +34,13 @@ export function EntityIcon({
   iconUrl,
   name = "unknown",
   size = "1rem",
-  color = "brand",
+  color,
   style,
   alt = "",
   ...rest
 }: EntityIconProps) {
   if (iconUrl) {
-    const bg = color === "inherit" ? "currentColor" : maybeColor(color);
+    const backgroundColor = resolveIconMaskColor(color);
 
     return (
       <span
@@ -44,7 +53,7 @@ export function EntityIcon({
           verticalAlign: "middle",
           width: size,
           height: size,
-          backgroundColor: bg,
+          backgroundColor,
           maskImage: `url(${iconUrl})`,
           maskSize: "contain",
           maskRepeat: "no-repeat",
