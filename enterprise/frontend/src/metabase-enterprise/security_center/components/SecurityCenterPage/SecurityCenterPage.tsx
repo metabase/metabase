@@ -46,6 +46,7 @@ export function SecurityCenterPage() {
     lastCheckedAt,
     isError,
     acknowledgeAdvisory,
+    acknowledgeAdvisories,
   } = useSecurityAdvisories(isPolling);
   const [syncAdvisories, { isLoading: isSyncing }] =
     useSyncSecurityAdvisoriesMutation();
@@ -184,6 +185,7 @@ export function SecurityCenterPage() {
               className={S.list}
               advisories={filtered}
               onAcknowledge={acknowledgeAdvisory}
+              onAcknowledgeAll={acknowledgeAdvisories}
             />
           </Stack>
           <NotificationChannelConfigModal

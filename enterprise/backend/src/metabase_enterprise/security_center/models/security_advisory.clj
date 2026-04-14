@@ -54,3 +54,11 @@
                             :event_detail (name (:severity advisory))})
     (-> (t2/select-one :model/SecurityAdvisory :id (:id advisory))
         (t2/hydrate :acknowledged_by_user))))
+
+(defn acknowledge-many!
+  "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged
+   advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
+  [advisory-ids user-id]
+  (let [advisories (t2/select :model/SecurityAdvisory :advisory_id [:in (set advisory-ids)])
+        unacked    (remove :acknowledged_at advisories)]
+    (mapv #(acknowledge! % user-id) unacked)))

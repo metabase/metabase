@@ -12,6 +12,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import type {
   Advisory,
@@ -61,21 +62,8 @@ export function AdvisoryCard({
               <Text size="sm" c="success" fw={500}>
                 {t`Your instance is not affected`}
               </Text>
-              <Icon
-                name="check_filled"
-                color="var(--mb-color-success)"
-                size={20}
-              />
+              <Icon name="check_filled" c="success" size={20} />
             </Group>
-          )}
-          {acknowledged && (
-            <Badge
-              color="brand"
-              variant="light"
-              data-testid="acknowledged-badge"
-            >
-              {t`Dismissed`}
-            </Badge>
           )}
         </Group>
 
@@ -103,13 +91,27 @@ export function AdvisoryCard({
 
         <Group gap="md" mt="sm">
           {!acknowledged && onAcknowledge && (
+            <Tooltip
+              label={t`Clicking on Dismiss just hides the notification and you can view this later by toggling 'Show dismissed'`}
+            >
+              <Button
+                variant="outline"
+                color="text-secondary"
+                onClick={() => onAcknowledge(advisory.advisory_id)}
+                data-testid="acknowledge-button"
+              >
+                {t`Dismiss`}
+              </Button>
+            </Tooltip>
+          )}
+          {acknowledged && (
             <Button
               variant="outline"
               color="text-secondary"
-              onClick={() => onAcknowledge(advisory.advisory_id)}
+              disabled
               data-testid="acknowledge-button"
             >
-              {t`Dismiss`}
+              {t`Dismissed`}
             </Button>
           )}
           {advisory.advisory_url && (

@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
-import { Badge, Box, Group, Title } from "metabase/ui";
+import AdvisoriesEmpty from "assets/img/advisories-empty.svg";
+import { Badge, Box, Button, Card, Group, Text, Title } from "metabase/ui";
 import type { Advisory, AdvisoryId } from "metabase-types/api";
 
-import { sortAdvisories } from "../../utils";
+import { isAcknowledged, sortAdvisories } from "../../utils";
 import { AdvisoryCard } from "../AdvisoryCard/AdvisoryCard";
 
 import S from "./AdvisoryList.module.css";
@@ -13,6 +13,7 @@ import S from "./AdvisoryList.module.css";
 interface AdvisoryListProps {
   advisories: Advisory[];
   onAcknowledge?: (advisoryId: AdvisoryId) => void;
+  onAcknowledgeAll?: (advisoryIds: AdvisoryId[]) => void;
   className?: string;
 }
 
@@ -42,18 +43,25 @@ function AdvisorySection({
 export function AdvisoryList({
   advisories,
   onAcknowledge,
+  onAcknowledgeAll,
   className,
 }: AdvisoryListProps) {
   const { affecting, notAffecting } = sortAdvisories(advisories);
+  const undismissedNotAffecting = notAffecting.filter(
+    (a) => !isAcknowledged(a),
+  );
 
   if (advisories.length === 0) {
     return (
-      <Box className={cx(className, S.root, S.emptyRoot)}>
-        <EmptyState
-          icon="shield_outline"
-          message={t`Your instance is up to date — no known security issues affect your configuration.`}
-        />
-      </Box>
+      <Card className={cx(className, S.root, S.emptyRoot)}>
+        <img src={AdvisoriesEmpty} />
+        <Text maw={256} ta="center">
+          {
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+            t`No known security issues that impact your Metabase version`
+          }
+        </Text>
+      </Card>
     );
   }
 
@@ -76,7 +84,22 @@ export function AdvisoryList({
       )}
       {notAffecting.length > 0 && (
         <Box>
-          <Title order={4} mb="md">{t`Other alerts`}</Title>
+          <Group align="normal">
+            <Title order={4} mb="md">
+              {t`Other alerts`}
+            </Title>
+            {onAcknowledgeAll && undismissedNotAffecting.length > 0 && (
+              <Button
+                variant="subtle"
+                size="compact-xs"
+                onClick={() =>
+                  onAcknowledgeAll(
+                    undismissedNotAffecting.map((a) => a.advisory_id),
+                  )
+                }
+              >{t`Dismiss all`}</Button>
+            )}
+          </Group>
           <AdvisorySection
             advisories={notAffecting}
             isAffecting={false}
