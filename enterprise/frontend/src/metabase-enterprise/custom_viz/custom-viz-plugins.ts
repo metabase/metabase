@@ -43,7 +43,7 @@ const loadedPlugins = new Map<
   { identifier: string; commit: string | null; etag: string | null }
 >();
 
-const failedPlugins = new Map<number, string | null>();
+const failedPlugins = new Map<CustomVizPluginId, CustomVizPlugin["resolved_commit"]>();
 
 /**
  * Hook that fetches the list of active custom visualization plugins.
