@@ -10,11 +10,6 @@ import type { CreateCollectionProperties } from "metabase/collections/components
 import { Tree } from "metabase/common/components/tree";
 import { useSetting } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
-import {
-  tenantSpecificCollections,
-  tenantUsersPersonalCollections,
-} from "metabase/lib/urls";
 import {
   PaddedSidebarLink,
   SidebarHeading,
@@ -23,6 +18,11 @@ import {
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import {
+  tenantSpecificCollections,
+  tenantUsersPersonalCollections,
+} from "metabase/utils/urls";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 import type { Collection } from "metabase-types/api";

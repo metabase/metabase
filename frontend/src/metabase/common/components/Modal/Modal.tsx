@@ -1,6 +1,6 @@
 import type { WindowModalProps } from "metabase/common/components/Modal/WindowModal";
 import { WindowModal } from "metabase/common/components/Modal/WindowModal";
-import { useDisableCommandPalette } from "metabase/palette/hooks/useDisableCommandPalette";
+import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
 
 export type ModalProps = WindowModalProps;
 

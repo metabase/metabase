@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import {
   type FormatNumberOptions,
   formatNumber,
-} from "metabase/lib/formatting";
+} from "metabase/utils/formatting";
 import { useListAddOnsQuery } from "metabase-enterprise/api";
 import type { GetCloudAddOnsResponse } from "metabase-types/api";
 

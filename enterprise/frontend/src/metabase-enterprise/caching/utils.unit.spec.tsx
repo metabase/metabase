@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { CardType } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
 

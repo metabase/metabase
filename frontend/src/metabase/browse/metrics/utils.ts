@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/utils/formatting";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Dataset, SortingOptions } from "metabase-types/api";
 

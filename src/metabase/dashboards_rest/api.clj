@@ -310,7 +310,7 @@
                              (when card
                                (let [dataset-query (or (:dataset_query card)
                                                        (t2/select-one-fn :dataset_query :model/Card :id (:id card)))
-                                     download-level (when dataset-query
+                                     download-level (when (seq dataset-query)
                                                       (perms/download-perms-level dataset-query api/*current-user-id*))]
                                  (assoc card :download_perms (case download-level
                                                                :no :none
@@ -318,6 +318,15 @@
                                                                :one-million-rows :full
                                                                :full :full
                                                                :none)))))))))))
+
+(defn- apply-card-permission-filters
+  "Apply collection-permission-aware filtering to dashboard cards. Hides details of
+   cards the current user cannot read and sets download permission levels."
+  [dashboard]
+  (-> dashboard
+      hide-unreadable-cards
+      add-query-average-durations
+      set-download-perms-on-dashcards))
 
 ;; TODO: This indirect memoization by *dashboard-load-id* could probably be turned into a macro for reuse elsewhere.
 (defn- get-dashboard*
@@ -330,10 +339,8 @@
         api/read-check
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
-        hide-unreadable-cards
-        add-query-average-durations
-        (api/present-in-trash-if-archived-directly (collection/trash-collection-id))
-        set-download-perms-on-dashcards)))
+        apply-card-permission-filters
+        (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
 (def ^:private get-dashboard-fn
   (memoize/ttl (fn [dashboard-load-id]
@@ -1057,6 +1064,8 @@
         (track-dashcard-and-tab-events! dashboard @changes-stats)
         (-> dashboard
             hydrate-dashboard-details
+            collection.root/hydrate-root-collection
+            apply-card-permission-filters
             (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))))
 
 (def ^:private DashUpdates

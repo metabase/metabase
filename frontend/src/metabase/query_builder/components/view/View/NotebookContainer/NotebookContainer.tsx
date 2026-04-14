@@ -5,7 +5,6 @@ import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setNotebookNativePreviewSidebarWidth } from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
 import {
@@ -14,6 +13,7 @@ import {
 } from "metabase/querying/notebook/components/Notebook";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Flex, rem } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { canShowNativePreview } from "../../ViewHeader/utils";
 

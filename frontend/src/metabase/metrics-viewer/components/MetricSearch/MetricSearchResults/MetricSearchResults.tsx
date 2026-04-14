@@ -1,8 +1,8 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { getIcon } from "metabase/lib/icon";
 import { Box, Repeat, Skeleton, Stack, Text } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 
 import type { MetricOrMeasureResult } from "../../../hooks/use-metric-measure-search";
 import { MetricResultItem } from "../MetricResultItem";

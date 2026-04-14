@@ -14,7 +14,6 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Questions } from "metabase/entities/questions";
-import { connect } from "metabase/lib/redux";
 import {
   rememberLastUsedDatabase,
   runOrCancelQuestionOrSelectedQuery,
@@ -23,6 +22,7 @@ import {
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { Flex } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 
 import { DatasetEditor } from "../../../DatasetEditor";

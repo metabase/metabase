@@ -15,7 +15,7 @@ import {
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
-import { defer } from "metabase/lib/promise";
+import { defer } from "metabase/utils/promise";
 
 const { H } = cy;
 

@@ -1,8 +1,8 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { formatNullable } from "metabase/lib/formatting/nullable";
-import { isNotNull } from "metabase/lib/types";
+import { formatNullable } from "metabase/utils/formatting/nullable";
+import { isNotNull } from "metabase/utils/types";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {
   CartesianChartColumns,

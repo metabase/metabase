@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -196,10 +197,11 @@
                           :dataset_query (lib/query mp (lib.metadata/card mp old-id))
                           :type          :question
                           :name          "Child Card"}]
-            (mt/with-model-cleanup [:model/Dependency]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               ;; populate dependencies
               (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
               (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
+              (deps.test/synchronously-run-backfill!)
 
               (testing "child card initially points to old model"
                 (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
@@ -214,6 +216,7 @@
                                    (start-run! [_])
                                    (succeed-run! [_])
                                    (fail-run! [_ _]))]
+                #_{:clj-kondo/ignore [:unresolved-var]}
                 (replacement.runner/run-swap-source! [:card old-id] [:card new-id] progress)
 
                 (testing "child card's source-card is updated to new model"
@@ -254,9 +257,10 @@
                           :dataset_query (lib/query mp (lib.metadata/card mp old-id))
                           :type          :question
                           :name          "Child 2"}]
-            (mt/with-model-cleanup [:model/Dependency]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               (doseq [card [old-card child-1 child-2]]
                 (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
+              (deps.test/synchronously-run-backfill!)
 
               (let [original-swap! replacement.source-swap/swap-source!]
                 (with-redefs [replacement.source-swap/swap-source!

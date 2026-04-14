@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 
 import type { RegularClickAction } from "./types";
 

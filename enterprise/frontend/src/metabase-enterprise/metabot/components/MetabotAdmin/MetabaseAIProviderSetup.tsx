@@ -4,8 +4,6 @@ import { jt, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
-import { formatNumber } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import {
   Anchor,
@@ -22,6 +20,8 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
+import { useSelector } from "metabase/utils/redux";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useGetMetabotUsageQuery } from "../../../api";
