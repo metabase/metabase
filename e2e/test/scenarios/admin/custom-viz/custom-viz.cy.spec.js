@@ -1,7 +1,5 @@
 const { H } = cy;
 
-const PLUGIN_ICON_SELECTOR = "img[src*='icon.svg']";
-
 describe("admin > custom visualizations", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
@@ -73,7 +71,7 @@ describe("admin > custom visualizations", () => {
           H.visitCustomVizSettings();
 
           // Icon from manifest
-          cy.get("main").find(PLUGIN_ICON_SELECTOR).should("be.visible");
+          H.getCustomVizPluginIcon("demo-viz").should("be.visible");
 
           // Display name from manifest
           cy.get("main").findByText("demo-viz").should("be.visible");
