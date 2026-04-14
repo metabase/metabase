@@ -187,8 +187,6 @@ export const ComponentProvider = memo(function ComponentProvider({
     reduxStoreRef.current = props.reduxStore ?? getSdkStore();
   }
 
-  console.log("trigger ci");
-
   return (
     <MetabaseReduxProvider store={reduxStoreRef.current!}>
       <METABOT_SDK_EE_PLUGIN.MetabotProvider>
