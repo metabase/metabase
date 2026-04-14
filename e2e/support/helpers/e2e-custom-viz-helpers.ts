@@ -142,5 +142,5 @@ export function visitCustomVizEditForm(id: number) {
 // -- UI helpers --
 
 export function getAddVisualizationLink() {
-  return cy.findByRole("link", { name: /Add visualization/ });
+  return cy.findByRole("link", { name: /Add/ });
 }
