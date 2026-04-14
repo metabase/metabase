@@ -42,7 +42,7 @@ git checkout -b your-branch-name
 
 ### 3. Export your production Metabase
 
-You'll need to first export your
+You'll first need to export your production Metabase:
 
 1. Create an [API key](../people-and-groups/api-keys.md).
 2. Assign the key to the Admin group.
@@ -57,14 +57,14 @@ You'll need to first export your
 
    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
 
-   The `data_model=false` query parameter excludes from the export, since the data model payload can be really large. Instead, your agent will use the MCP server to searh for the metadata it needs to generate the YAML files. See [Serialization](../installation-and-operation/serialization.md) for other export options.
+   The `data_model=false` query parameter excludes the data model from the export, since the data model payload can be large. Instead, your agent will use the MCP server to search for the metadata it needs to generate the YAML files. See [Serialization](../installation-and-operation/serialization.md) for other export options.
 
    This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 
-4. Unzip the compressed file:
+4. Extract the archive:
 
    ```sh
-   tar -xvf metabase_data.tgz
+   tar -xzf metabase_data.tgz
    ```
 
 ### 4. Commit the export
