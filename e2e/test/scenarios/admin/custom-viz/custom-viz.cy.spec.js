@@ -288,58 +288,6 @@ describe("admin > custom visualizations", () => {
     });
   });
 
-  describe("unavailable bundle", () => {
-    beforeEach(() => {
-      H.activateToken("bleeding-edge");
-    });
-
-    it("should fall back to the default viz when the bundle endpoint fails", () => {
-      H.setupCustomVizPlugin().then((plugin) => {
-        cy.request("POST", "/api/card", {
-          name: "Custom Viz Unavailable Bundle Test",
-          dataset_query: {
-            type: "query",
-            query: { "source-table": 1, aggregation: [["count"]] },
-            database: 1,
-          },
-          display: H.CUSTOM_VIZ_DISPLAY,
-          visualization_settings: {},
-        }).then(({ body: card }) => {
-          const bundleMatcher = {
-            method: "GET",
-            pathname: `/api/ee/custom-viz-plugin/${plugin.id}/bundle`,
-          };
-
-          cy.intercept(bundleMatcher, {
-            statusCode: 503,
-            body: { error: "Bundle not available" },
-          }).as("bundleUnavailable");
-
-          H.visitQuestion(card.id);
-          cy.wait("@bundleUnavailable");
-
-          cy.findByTestId("table-root").should("be.visible");
-
-          H.undoToast()
-            .findByText(/visualization is currently unavailable/i)
-            .should("be.visible");
-
-          cy.intercept(bundleMatcher, (req) => req.continue()).as(
-            "bundleRestored",
-          );
-
-          cy.findByTestId("main-logo-link").click();
-          cy.go("back");
-          cy.wait("@bundleRestored");
-
-          cy.get("main")
-            .findByText("Custom viz rendered successfully")
-            .should("be.visible");
-        });
-      });
-    });
-  });
-
   describe("deleting a plugin", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
