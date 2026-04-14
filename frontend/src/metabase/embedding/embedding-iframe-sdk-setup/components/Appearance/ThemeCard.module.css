@@ -1,0 +1,22 @@
+.card {
+  border: 1px solid var(--mb-color-border);
+  padding: 8px;
+  min-width: 120px;
+  flex: 1;
+}
+
+.cardSelected {
+  border: 2px solid var(--mb-color-brand);
+  padding: 7px;
+}
+
+.colorBar {
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.colorSegment {
+  flex: 1;
+  height: 5px;
+  min-width: 8px;
+}

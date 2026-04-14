@@ -1,10 +1,9 @@
-import { useCallback, useState } from "react";
-import { t } from "ttag";
+import { useEffect, useRef, useState } from "react";
 
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { ActionIcon, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import { Stack, Text } from "metabase/ui";
 import { originalColors, staticVizOverrides } from "metabase/ui/colors";
 
 import { getConfigurableThemeColors } from "../../utils/theme-colors";
@@ -19,13 +18,13 @@ const defaultMetabaseColorsWithoutAlpha = {
 interface ColorCustomizationSectionProps {
   theme?: { colors?: Partial<MetabaseColors> };
   onColorChange: (colors: Partial<MetabaseColors>) => void;
-  onColorReset?: () => void;
+  noTitle?: boolean;
 }
 
 export const ColorCustomizationSection = ({
   theme,
   onColorChange,
-  onColorReset,
+  noTitle,
 }: ColorCustomizationSectionProps) => {
   const applicationColors = useSetting("application-colors");
 
@@ -34,34 +33,17 @@ export const ColorCustomizationSection = ({
     Record<string, string>
   >({});
 
-  const resetColors = useCallback(() => {
-    setColorPreviewValues({});
-    onColorReset?.();
-  }, [onColorReset]);
-
-  // If some of the colors are set, then `theme.colors` would be no longer empty.
-  // This also matches when the `theme` key is shown in the code snippets.
-  const hasColorChanged = !!theme?.colors;
+  // Clear preview values when theme colors are reset externally.
+  const prevColorsRef = useRef(theme?.colors);
+  useEffect(() => {
+    if (prevColorsRef.current && !theme?.colors) {
+      setColorPreviewValues({});
+    }
+    prevColorsRef.current = theme?.colors;
+  }, [theme?.colors]);
 
   return (
-    <BaseAppearanceSection
-      icons={
-        <>
-          {hasColorChanged && (
-            <Tooltip label={t`Reset colors`}>
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                onClick={resetColors}
-                aria-label={t`Reset colors`}
-              >
-                <Icon name="revert" c="brand" />
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </>
-      }
-    >
+    <BaseAppearanceSection noTitle={noTitle}>
       {getConfigurableThemeColors().map(({ key, name, originalColorKey }) => {
         // Use the default from appearance settings. If not set, use the default Metabase color.
         const originalColor =

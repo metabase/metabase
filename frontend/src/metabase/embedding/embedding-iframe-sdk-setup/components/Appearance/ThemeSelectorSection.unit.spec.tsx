@@ -1,0 +1,175 @@
+import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen, within } from "__support__/ui";
+import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
+
+import { ThemeSelectorSection } from "./ThemeSelectorSection";
+
+const SAVED_THEMES: EmbeddingTheme[] = [
+  {
+    id: 1,
+    name: "Dark Theme",
+    settings: {
+      colors: {
+        brand: "#BB86FC",
+        "text-primary": "#FFFFFF",
+        background: "#121212",
+      },
+      fontFamily: "Inter",
+    },
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: 2,
+    name: "Ocean Theme",
+    settings: {
+      colors: {
+        brand: "#0077B6",
+        "text-primary": "#023E8A",
+        background: "#CAF0F8",
+      },
+    },
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
+  },
+];
+
+function setup({
+  savedThemes = SAVED_THEMES,
+  theme = undefined,
+  onThemeChange = jest.fn(),
+  onColorChange = jest.fn(),
+  onColorReset = jest.fn(),
+}: {
+  savedThemes?: EmbeddingTheme[];
+  theme?: Parameters<typeof ThemeSelectorSection>[0]["theme"];
+  onThemeChange?: jest.Mock;
+  onColorChange?: jest.Mock;
+  onColorReset?: jest.Mock;
+} = {}) {
+  const utils = renderWithProviders(
+    <ThemeSelectorSection
+      savedThemes={savedThemes}
+      theme={theme}
+      onThemeChange={onThemeChange}
+      onColorChange={onColorChange}
+      onColorReset={onColorReset}
+    />,
+  );
+
+  return { ...utils, onThemeChange, onColorChange, onColorReset };
+}
+
+describe("ThemeSelectorSection", () => {
+  describe("with saved themes", () => {
+    it("renders theme cards and a Custom card", () => {
+      setup();
+
+      expect(screen.getByTestId("theme-card-Dark Theme")).toBeInTheDocument();
+      expect(screen.getByTestId("theme-card-Ocean Theme")).toBeInTheDocument();
+      expect(screen.getByTestId("theme-card-Custom")).toBeInTheDocument();
+    });
+
+    it("does not show color inputs by default", () => {
+      setup();
+
+      expect(screen.queryByText("Brand color")).not.toBeInTheDocument();
+    });
+
+    it("applies theme when a saved theme card is clicked", async () => {
+      const { onThemeChange } = setup();
+
+      await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
+
+      expect(onThemeChange).toHaveBeenCalledTimes(1);
+      const appliedTheme = onThemeChange.mock.calls[0][0];
+      // Should contain non-default colors from the theme
+      expect(appliedTheme.colors).toBeDefined();
+    });
+
+    it("deselects theme when clicking the same card again", async () => {
+      const { onThemeChange } = setup();
+
+      await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
+      await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
+
+      expect(onThemeChange).toHaveBeenCalledTimes(2);
+      expect(onThemeChange).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it("shows color inputs when Custom card is clicked", async () => {
+      setup();
+
+      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+
+      expect(screen.getByText("Brand color")).toBeInTheDocument();
+      expect(screen.getByText("Text color")).toBeInTheDocument();
+      expect(screen.getByText("Background color")).toBeInTheDocument();
+    });
+
+    it("hides color inputs when Custom card is deselected", async () => {
+      setup();
+
+      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+      expect(screen.getByText("Brand color")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+      expect(screen.queryByText("Brand color")).not.toBeInTheDocument();
+    });
+
+    it("shows pencil icon on Custom card when no colors are set", () => {
+      setup({ theme: undefined });
+
+      const editButton = within(
+        screen.getByTestId("theme-card-Custom"),
+      ).getByLabelText(`pencil icon`);
+
+      expect(editButton).toBeInTheDocument();
+    });
+
+    it("shows revert icon on Custom card when colors are set", () => {
+      setup({ theme: { colors: { brand: "#FF0000" } } });
+
+      expect(screen.getByLabelText("Reset colors")).toBeInTheDocument();
+    });
+
+    it("calls onColorReset when revert icon is clicked", async () => {
+      const { onColorReset } = setup({
+        theme: { colors: { brand: "#FF0000" } },
+      });
+
+      await userEvent.click(screen.getByLabelText("Reset colors"));
+
+      expect(onColorReset).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not toggle Custom card when revert icon is clicked", async () => {
+      const { onThemeChange } = setup({
+        theme: { colors: { brand: "#FF0000" } },
+      });
+
+      // First select Custom
+      await userEvent.click(screen.getByTestId("theme-card-Custom"));
+      onThemeChange.mockClear();
+
+      // Click the revert icon — should NOT deselect custom
+      await userEvent.click(screen.getByLabelText("Reset colors"));
+
+      // onThemeChange should not have been called (stopPropagation)
+      expect(onThemeChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("without saved themes", () => {
+    it("shows color inputs directly without theme cards", () => {
+      setup({ savedThemes: [] });
+
+      expect(screen.getByText("Brand color")).toBeInTheDocument();
+      expect(screen.getByText("Text color")).toBeInTheDocument();
+      expect(screen.getByText("Background color")).toBeInTheDocument();
+
+      expect(screen.queryByTestId("theme-card-Custom")).not.toBeInTheDocument();
+    });
+  });
+});

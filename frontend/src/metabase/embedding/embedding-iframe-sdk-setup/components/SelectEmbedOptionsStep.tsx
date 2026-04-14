@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
 import type {
@@ -26,8 +27,9 @@ import { UPSELL_CAMPAIGN_BEHAVIOR } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getBehaviorDocsUrlParams } from "../utils/get-behavior-docs-url-params";
 
-import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
+import { BaseAppearanceSection } from "./Appearance/BaseAppearanceSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
+import { ThemeSelectorSection } from "./Appearance/ThemeSelectorSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
 import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
@@ -330,6 +332,8 @@ const AppearanceSection = () => {
 
   const { theme } = settings;
 
+  const { data: savedThemes } = useListEmbeddingThemesQuery();
+
   const updateThemePreset = useCallback(
     (preset: MetabaseThemePreset) => {
       updateSettings({ theme: { preset } } satisfies Partial<typeof settings>);
@@ -374,23 +378,30 @@ const AppearanceSection = () => {
 
   return (
     <Card p="md">
-      {isSimpleEmbedFeatureAvailable ? (
-        <ColorCustomizationSection
-          theme={theme}
-          onColorChange={updateColors}
-          onColorReset={() =>
-            updateSettings({ theme: undefined } satisfies Partial<
-              typeof settings
-            >)
-          }
-        />
-      ) : (
-        <SimpleThemeSwitcherSection
-          preset={theme?.preset}
-          onPresetChange={updateThemePreset}
-        />
-      )}
-
+      <BaseAppearanceSection>
+        {isSimpleEmbedFeatureAvailable ? (
+          <ThemeSelectorSection
+            savedThemes={savedThemes ?? []}
+            theme={theme}
+            onThemeChange={(nextTheme) =>
+              updateSettings({
+                theme: nextTheme,
+              } satisfies Partial<typeof settings>)
+            }
+            onColorChange={updateColors}
+            onColorReset={() =>
+              updateSettings({ theme: undefined } satisfies Partial<
+                typeof settings
+              >)
+            }
+          />
+        ) : (
+          <SimpleThemeSwitcherSection
+            preset={theme?.preset}
+            onPresetChange={updateThemePreset}
+          />
+        )}
+      </BaseAppearanceSection>
       {appearanceSection && <Divider mt="lg" mb="md" />}
       {appearanceSection}
     </Card>

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
-import _ from "underscore";
 
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { USER_SETTINGS_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
@@ -18,21 +17,17 @@ import {
   getResourceIdFromSettings,
 } from "../utils/get-default-sdk-iframe-embed-setting";
 
+/**
+ * Currently no settings are persisted across page refreshes.
+ * Theme was previously persisted but is now session-only.
+ */
 const getSettingsToPersist = ({
-  isSimpleEmbedFeatureAvailable,
-  settings,
+  settings: _settings,
 }: {
   isSimpleEmbedFeatureAvailable: boolean;
   settings: Partial<SdkIframeEmbedSetupSettings>;
-}): Partial<Pick<SdkIframeEmbedSetupSettings, "theme">> => {
-  const keys = [];
-
-  // We don't allow theme change when `simple embedding` feature is not available.
-  if (isSimpleEmbedFeatureAvailable) {
-    keys.push("theme");
-  }
-
-  return _.pick(settings, keys);
+}): Record<string, never> => {
+  return {};
 };
 
 const usePersistedSettings = ({
