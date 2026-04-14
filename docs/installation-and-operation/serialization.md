@@ -167,66 +167,13 @@ See [Export options](#export-options) for the full list.
 
 ### Example of a serialized question
 
-Questions are stored as YAML files inside their parent collection folder. Here's an example YAML file for a metric saved to the Library:
+Questions are stored as YAML files inside their parent collection folder. For examples and a complete spec, see the [Metabase Representation Format](https://github.com/metabase/representations).
 
-```yml
-name: Product count
-entity_id: xK9mProdCount0000ab01
-created_at: "2026-04-06T20:00:00Z"
-creator_id: admin@example.com
-display: scalar
-collection_id: librarylibrarymetrics
-query_type: query
-database_id: Sample PostgreSQL
-table_id:
-  - Sample PostgreSQL
-  - public
-  - products
-parameters: []
-parameter_mappings: []
-dataset_query:
-  database: Sample PostgreSQL
-  stages:
-    - aggregation:
-        - - count
-          - {}
-      source-table:
-        - Sample PostgreSQL
-        - public
-        - products
-      lib/type: mbql.stage/mbql
-  lib/type: mbql/query
-result_metadata:
-  - base_type: type/Integer
-    display_name: Count
-    effective_type: type/Integer
-    field_ref:
-      - aggregation
-      - 0
-    name: count
-    semantic_type: type/Quantity
-    source: aggregation
-    lib/deduplicated-name: count
-    lib/desired-column-alias: count
-    lib/original-name: count
-    lib/source: source/aggregations
-    lib/source-column-alias: count
-visualization_settings:
-  column_settings: null
-card_schema: 23
-serdes/meta:
-  - id: xK9mProdCount0000ab01
-    label: product_count
-    model: Card
-metabase_version: v1.60.1
-type: metric
-```
-
-Some things to keep in mind:
+Some things to keep in mind when reading or editing exported YAML:
 
 - To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
 - To keep exported files compact, Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Top-level fields with `null` values are also omitted.
-- Fields prefixed with `lib/` in the example (like `lib/type`, `lib/source`) are internal metadata that Metabase generates during export. You don't need to provide or edit them when hand-writing YAML — see the [Metabase Representation Format spec](https://github.com/metabase/representations) for which fields are required vs. informational.
+- Fields prefixed with `lib/` (like `lib/type`, `lib/source`) are internal metadata that Metabase generates during export. You don't need to provide or edit them when hand-writing YAML — see the [Metabase Representation Format spec](https://github.com/metabase/representations) for which fields are required vs. informational.
 
 ### Metabase uses Entity IDs to identify Metabase items
 
@@ -275,7 +222,7 @@ Metabase serializes databases and tables in the `databases` directory. It will i
 
 Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by Entity IDs](#metabase-uses-entity-ids-to-identify-metabase-items)).
 
-For example, in the [Example of a serialized question](#example-of-a-serialized-question), there are several YAML keys that reference the database by name:
+For example, exported YAML has several keys that reference the database by name:
 
 ```yaml
 database_id: Sample PostgreSQL
@@ -288,7 +235,7 @@ dataset_query:
 
 Metabase will read the imported YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-metabase-items) to figure out which items to create or overwrite. Imports _only_ create or overwrite items; they never delete items from the target instance.
 
-- If you import an item with an `entity_id` that doesn't exist in your target Metabase, Metabase will create a new item.
+- If you import an item with an [`entity_id`](#metabase-uses-entity-ids-to-identify-metabase-items) that doesn't exist in your target Metabase, Metabase will create a new item.
 - If you import an item with an `entity_id` that already exists in your target Metabase, the import will overwrite the existing item. In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
 - If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
 - All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the import. For example, if an exported YAML has the field `collection_id: onou5H28Wvy3kWnjxxdKQ`, then the collection `onou5H28Wvy3kWnjxxdKQ` must already exist in the target instance, or there must be a YAML file with the export of a collection that has this ID.
@@ -326,10 +273,10 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export export_
 API (include collections 1 and 2):
 
 ```
-http://localhost:3000/api/ee/serialization/export?collection=1&collection=2
+POST http://localhost:3000/api/ee/serialization/export?collection=1&collection=2
 ```
 
-### Exclude all collections
+### Skip all collections
 
 - **CLI:** `-C, --no-collections`
 - **API:** `all_collections=false`
@@ -340,7 +287,7 @@ Default: Collections are included, unless you explicitly specify a subset with [
 
 Excludes all content in collections from the export. Useful when you only want to export settings, data model, or other non-collection content.
 
-### Exclude settings
+### Skip settings
 
 - **CLI:** `-S, --no-settings`
 - **API:** `settings=false`
@@ -351,7 +298,7 @@ Default: Settings are included.
 
 Excludes the `settings.yaml` file that contains [site-wide settings](#general-metabase-settings-that-are-exported).
 
-### Exclude data model
+### Skip data model
 
 - **CLI:** `-D, --no-data-model`
 - **API:** `data_model=false`
@@ -360,7 +307,7 @@ Type: Boolean.
 
 Default: Data model is included.
 
-Excludes [Table Metadata](../data-modeling/metadata-editing.md) settings, which admins define in the **Table Metadata** tab of Admin settings. Excluding the data model is useful for subsequent exports where you only want content changes.
+Excludes [table metadata](../data-studio/data-structure.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
 
 ### Include field values
 
@@ -408,6 +355,8 @@ There are two endpoints:
 
 > We use `POST`, not `GET`, for the `/export` endpoint. The export operation does not modify your Metabase, but it's long and intensive, so we use `POST` to prevent accidental exports.
 
+> The `/export` endpoint streams its response, so long exports won't time out. The `/import` endpoint is still synchronous — for very large imports, the request can time out before the import finishes. If that happens, check the server logs to see whether the import completed on the backend.
+
 See [How export works](#how-export-works), [How import works](#how-import-works), [Export options](#export-options), and [Serialization best practices](#serialization-best-practices) for general information about serialization.
 
 ### Passing export options via the API
@@ -415,19 +364,19 @@ See [How export works](#how-export-works), [How import works](#how-import-works)
 Append options as URL query parameters. For example, to exclude all collections:
 
 ```
-http://localhost:3000/api/ee/serialization/export?all_collections=false
+POST http://localhost:3000/api/ee/serialization/export?all_collections=false
 ```
 
 To combine multiple options, chain them with `&`. For example, to exclude both settings and the data model:
 
 ```
-http://localhost:3000/api/ee/serialization/export?data_model=false&settings=false
+POST http://localhost:3000/api/ee/serialization/export?data_model=false&settings=false
 ```
 
 To select specific collections, repeat the `collection` parameter:
 
 ```
-http://localhost:3000/api/ee/serialization/export?collection=1&collection=2
+POST http://localhost:3000/api/ee/serialization/export?collection=1&collection=2
 ```
 
 See [Export options](#export-options) for the full list.
