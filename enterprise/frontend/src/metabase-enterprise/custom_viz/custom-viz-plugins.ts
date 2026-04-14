@@ -244,13 +244,7 @@ export async function loadCustomVizPlugin(
     }
     const res = await fetch(bundleUrl.href, { cache: "no-store" });
     if (!res.ok) {
-      if (!failedPlugins.has(plugin.id)) {
-        onInfo?.(
-          t`The "${plugin.display_name}" visualization is currently unavailable. Showing a fallback.`,
-        );
-      }
-      failedPlugins.set(plugin.id, plugin.resolved_commit);
-      return null;
+      throw new Error(`HTTP ${res.status}`);
     }
 
     const text = await res.text();
