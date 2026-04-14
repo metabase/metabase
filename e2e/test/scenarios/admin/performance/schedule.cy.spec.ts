@@ -1,5 +1,5 @@
 import type { ScheduleComponentType } from "metabase/common/components/Schedule/strings";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { CacheableModel } from "metabase-types/api";
 
 import { interceptPerformanceRoutes } from "./helpers/e2e-performance-helpers";

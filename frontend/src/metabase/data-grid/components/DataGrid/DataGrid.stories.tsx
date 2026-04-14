@@ -8,13 +8,13 @@ import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
-import { Checkbox, Flex } from "metabase/ui";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { Checkbox, Flex } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 
 import { DataGrid } from "./DataGrid";
 import classes from "./DataGrid.module.css";

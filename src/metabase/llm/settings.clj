@@ -123,12 +123,21 @@
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url
-  (deferred-tru "Base URL for the LLM proxy. When set, all LLM requests are routed through this proxy and authenticated with the instance token instead of provider API keys.")
-  :feature          :metabase-ai-provider
+  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key.")
+  :feature          :metabase-ai-managed
   :encryption       :no
   :visibility       :internal
   :default          nil
   :export?          false
+  :doc              false)
+
+(defsetting llm-proxy-configured?
+  (deferred-tru "Whether the LLM proxy is configured for the managed Metabase AI service.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :export?          false
+  :setter           :none
+  :getter           #(boolean (some? (llm-proxy-base-url)))
   :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------

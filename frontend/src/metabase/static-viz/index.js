@@ -2,19 +2,19 @@ import "./mock-environment";
 import "fast-text-encoding";
 
 import { setPlatformAPI } from "echarts/core";
+import "metabase/utils/dayjs";
 import React from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import ReactDOMServer from "react-dom/server";
 
 import enterpriseOverrides from "ee-overrides";
-import "metabase/lib/dayjs";
-import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
-import { updateStartOfWeek } from "metabase/lib/i18n";
-import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
+import { formatValue as internalFormatValue } from "metabase/utils/formatting/value";
+import { updateStartOfWeek } from "metabase/utils/i18n";
+import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import {
@@ -119,6 +119,7 @@ export function initializeContext(options) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set("application-colors", options.applicationColors);
   MetabaseSettings.set("custom-formatting", options.customFormatting);
+  MetabaseSettings.set("site-locale", options.locale ?? "en");
   if (typeof enterpriseOverrides === "function") {
     enterpriseOverrides();
   }

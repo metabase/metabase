@@ -8,12 +8,6 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Pulses } from "metabase/entities/pulses";
 import {
-  NEW_PULSE_TEMPLATE,
-  cleanPulse,
-  createChannel,
-} from "metabase/lib/pulse";
-import { connect } from "metabase/lib/redux";
-import {
   AddEditEmailSidebar,
   AddEditSlackSidebar,
 } from "metabase/notifications/AddEditSidebar/AddEditSidebar";
@@ -30,8 +24,15 @@ import {
   getEditingPulse,
   getPulseFormInput,
 } from "metabase/notifications/pulse/selectors";
+import type { DraftDashboardSubscription, State } from "metabase/redux/store";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
+import {
+  NEW_PULSE_TEMPLATE,
+  cleanPulse,
+  createChannel,
+} from "metabase/utils/pulse";
+import { connect } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -45,7 +46,6 @@ import type {
   SubscriptionSupportingCard,
   User,
 } from "metabase-types/api";
-import type { DraftDashboardSubscription, State } from "metabase-types/store";
 
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 

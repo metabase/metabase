@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { question } from "metabase/lib/urls";
+import { question } from "metabase/utils/urls";
 
 const CARD_ID_ROW_IDX = 0;
 

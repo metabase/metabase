@@ -1,6 +1,6 @@
 import * as Yup from "yup";
 
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 
 export const COLLECTION_FORM_SCHEMA = Yup.object({
   name: Yup.string()

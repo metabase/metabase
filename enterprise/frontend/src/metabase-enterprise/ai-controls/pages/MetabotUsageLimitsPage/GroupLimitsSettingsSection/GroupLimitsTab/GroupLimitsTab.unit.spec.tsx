@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupUpdateAIControlsGroupLimitEndpoint } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
   GroupInfo,
   MetabotGroupLimit,
@@ -17,8 +17,13 @@ const adminGroup = createMockGroup({
   name: "Administrators",
   magic_group_type: "admin",
 });
-const marketingGroup = createMockGroup({
+const allUsersGroup = createMockGroup({
   id: 2,
+  name: "All Users",
+  magic_group_type: "all-internal-users",
+});
+const marketingGroup = createMockGroup({
+  id: 3,
   name: "Marketing",
   magic_group_type: null,
 });
@@ -33,6 +38,8 @@ type SetupOpts = Partial<{
   variant: "regular-groups" | "tenant-groups";
   hasError: boolean;
   isLoading: boolean;
+  allUsersGroupProp: GroupInfo;
+  allUsersGroupLimit: number | null | undefined;
 }>;
 
 function setup({
@@ -44,6 +51,8 @@ function setup({
   variant = "regular-groups",
   hasError = false,
   isLoading = false,
+  allUsersGroupProp = undefined,
+  allUsersGroupLimit = undefined,
 }: SetupOpts = {}) {
   setupUpdateAIControlsGroupLimitEndpoint();
 
@@ -57,6 +66,8 @@ function setup({
       limitPeriod={limitPeriod}
       limitType={limitType}
       variant={variant}
+      allUsersGroup={allUsersGroupProp}
+      allUsersGroupLimit={allUsersGroupLimit}
     />,
   );
 }
@@ -99,8 +110,8 @@ describe("GroupLimitsTab", () => {
   it("populates inputs from existing group limits", () => {
     setup({
       groupLimits: [
-        { group_id: 1, max_usage: 100 },
-        { group_id: 2, max_usage: 50 },
+        { group_id: adminGroup.id, max_usage: 100 },
+        { group_id: marketingGroup.id, max_usage: 50 },
       ],
     });
 
@@ -152,5 +163,125 @@ describe("GroupLimitsTab", () => {
     setup({ limitPeriod: "weekly", limitType: "tokens" });
 
     expect(screen.getByText(/each week/)).toBeInTheDocument();
+  });
+
+  it("shows error when value exceeds the instance limit", async () => {
+    setup({ instanceLimit: 100 });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const adminsGroupInput = screen.getByLabelText(
+      /Max tokens per user for Administrators/,
+    );
+    await userEvent.type(adminsGroupInput, "200");
+
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(
+        /Can't be higher than the instance limit/,
+      );
+    });
+  });
+
+  describe("'All Users' group override warning icons", () => {
+    it("shows info icon next to a group's input when 'All Users' has a higher limit", () => {
+      // All Users limit = 500 (unlimited from perspective of Marketing which has 100)
+      setup({
+        groups: [allUsersGroup, marketingGroup],
+        groupLimits: [
+          { group_id: allUsersGroup.id, max_usage: 500 },
+          { group_id: marketingGroup.id, max_usage: 100 },
+        ],
+        allUsersGroupProp: allUsersGroup,
+        allUsersGroupLimit: 500,
+      });
+
+      const marketingRow = screen.getByRole("row", { name: /Marketing/ });
+      expect(
+        within(marketingRow).getByRole("img", { name: "Group limit warning" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows info icon when 'All Users' limit is unlimited (null) and group has a limit set", () => {
+      setup({
+        groups: [allUsersGroup, marketingGroup],
+        groupLimits: [{ group_id: marketingGroup.id, max_usage: 100 }],
+        allUsersGroupProp: allUsersGroup,
+        allUsersGroupLimit: null, // unlimited
+      });
+
+      const marketingRow = screen.getByRole("row", { name: /Marketing/ });
+      expect(
+        within(marketingRow).getByRole("img", { name: "Group limit warning" }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show info icon when group has no limit set (unlimited input)", () => {
+      // Marketing has no limit — no icon, nothing to override
+      setup({
+        groups: [allUsersGroup, marketingGroup],
+        groupLimits: [],
+        allUsersGroupProp: allUsersGroup,
+        allUsersGroupLimit: null,
+      });
+
+      const marketingRow = screen.getByRole("row", { name: /Marketing/ });
+      expect(
+        within(marketingRow).queryByRole("img", {
+          name: "Group limit warning",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not show info icon when 'All Users' limit equals the group's limit", () => {
+      setup({
+        groups: [allUsersGroup, marketingGroup],
+        groupLimits: [
+          { group_id: allUsersGroup.id, max_usage: 100 },
+          { group_id: marketingGroup.id, max_usage: 100 },
+        ],
+        allUsersGroupProp: allUsersGroup,
+        allUsersGroupLimit: 100,
+      });
+
+      const marketingRow = screen.getByRole("row", { name: /Marketing/ });
+      expect(
+        within(marketingRow).queryByRole("img", {
+          name: "Group limit warning",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not show info icon when 'All Users' limit is lower than the group's limit", () => {
+      setup({
+        groups: [allUsersGroup, marketingGroup],
+        groupLimits: [
+          { group_id: allUsersGroup.id, max_usage: 50 },
+          { group_id: marketingGroup.id, max_usage: 100 },
+        ],
+        allUsersGroupProp: allUsersGroup,
+        allUsersGroupLimit: 50,
+      });
+
+      const marketingRow = screen.getByRole("row", { name: /Marketing/ });
+      expect(
+        within(marketingRow).queryByRole("img", {
+          name: "Group limit warning",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not show info icon on the 'All Users' row itself", () => {
+      setup({
+        groups: [allUsersGroup, marketingGroup],
+        groupLimits: [{ group_id: marketingGroup.id, max_usage: 100 }],
+        allUsersGroupProp: allUsersGroup,
+        allUsersGroupLimit: null,
+      });
+
+      const allUsersRow = screen.getByRole("row", { name: /All Users/ });
+      expect(
+        within(allUsersRow).queryByRole("img", { name: "Group limit warning" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

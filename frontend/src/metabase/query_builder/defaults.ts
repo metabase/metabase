@@ -2,7 +2,7 @@ import type {
   QueryBuilderLoadingControls,
   QueryBuilderQueryStatus,
   QueryBuilderUIControls,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 
 export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   dataReferenceStack: null,

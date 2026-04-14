@@ -1,7 +1,6 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { getIcon } from "metabase/lib/icon";
-import { Ellipsified } from "metabase/ui";
-import { Box, Icon, Menu, type MenuItemProps } from "metabase/ui";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import { Box, Ellipsified, Icon, Menu, type MenuItemProps } from "metabase/ui";
 
 import type {
   MiniPickerCollectionItem,
@@ -24,6 +23,7 @@ export const MiniPickerItem = ({
   onClick?: () => void;
   isFolder?: boolean;
 } & MenuItemProps) => {
+  const getIcon = useGetIcon();
   return (
     <Box px="sm" py="2px">
       <Menu.Item

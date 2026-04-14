@@ -24,7 +24,6 @@ export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
 export interface StaticSkeletonIconProps {
   name: IconName;
   iconUrl?: string;
-  iconDarkUrl?: string;
 }
 
 const StaticSkeleton = ({
@@ -45,7 +44,10 @@ const StaticSkeleton = ({
             <EntityIcon
               {...icon}
               size="1.5rem"
-              color="text-secondary"
+              // Use the raw CSS var rather than the `text-secondary` ColorName
+              // so Loki visual snapshots resolve it via stylesheets instead of
+              // inlining a theme value that differs between runs.
+              color="var(--mb-color-text-secondary)"
               style={{ display: "block" }}
             />
             {tooltip && (

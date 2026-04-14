@@ -2627,7 +2627,7 @@
                    :repo_url     "https://github.com/example/test-viz-plugin"
                    :display_name "Test Plugin"
                    :identifier   "test-plugin"
-                   :manifest     "{}"
+                   :manifest     {}
                    :created_at   string?}
                   ser))
           (is (not (contains? ser :id)))

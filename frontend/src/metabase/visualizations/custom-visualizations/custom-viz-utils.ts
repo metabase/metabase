@@ -1,5 +1,5 @@
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { formatValue as internalFormatValue } from "metabase/utils/formatting/value";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,

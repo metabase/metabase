@@ -15,11 +15,11 @@ import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
-import { getIcon } from "metabase/lib/icon";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../MainNavbar.styled";
@@ -80,6 +80,7 @@ const BookmarkItem = ({
   onSelect,
   onDeleteBookmark,
 }: BookmarkItemProps) => {
+  const getIcon = useGetIcon();
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
 

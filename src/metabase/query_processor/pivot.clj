@@ -24,7 +24,6 @@
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -380,7 +379,7 @@
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
         metadata-provider             (or (:lib/metadata query)
                                           (lib-be/application-database-metadata-provider (:database query)))
-        mlv2-query                    (lib/query metadata-provider query)
+        mbql5-query                    (lib/query metadata-provider query)
         breakouts                     (into []
                                             (map-indexed (fn [i col]
                                                            (cond-> col
@@ -390,12 +389,12 @@
                                                              ;; match a column that has a join-alias but whose source is a
                                                              ;; model
                                                              (contains? col :lib/card-id) (assoc :lib/source :source/card))))
-                                            (concat (lib/breakouts-metadata mlv2-query)
-                                                    (lib/aggregations-metadata mlv2-query)))
+                                            (concat (lib/breakouts-metadata mbql5-query)
+                                                    (lib/aggregations-metadata mbql5-query)))
         index-in-breakouts            (fn index-in-breakouts [legacy-ref]
                                         (try
                                           (::idx (lib.equality/find-column-for-legacy-ref
-                                                  mlv2-query
+                                                  mbql5-query
                                                   -1
                                                   legacy-ref
                                                   breakouts))
@@ -505,18 +504,17 @@
   ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
-   (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
-     (qp.setup/with-qp-setup [query query]
-       (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
-             rff         (or rff qp.reducible/default-rff)
-             pivot-opts  (or
-                          (pivot-options query (get query :viz-settings))
-                          (pivot-options query (get-in query [:info :visualization-settings]))
-                          (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
-             pivot-limit (pivot-query-max-rows query)
-             query       (-> query
-                             (assoc-in [:middleware :pivot-options] pivot-opts)
-                             (assoc-in [:constraints :max-results] pivot-limit)
-                             add-canonical-col-info)
-             all-queries (generate-queries query pivot-opts)]
-         (process-multiple-queries all-queries rff pivot-limit))))))
+   (qp.setup/with-qp-setup [query query]
+     (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
+           rff         (or rff qp.reducible/default-rff)
+           pivot-opts  (or
+                        (pivot-options query (get query :viz-settings))
+                        (pivot-options query (get-in query [:info :visualization-settings]))
+                        (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+           pivot-limit (pivot-query-max-rows query)
+           query       (-> query
+                           (assoc-in [:middleware :pivot-options] pivot-opts)
+                           (assoc-in [:constraints :max-results] pivot-limit)
+                           add-canonical-col-info)
+           all-queries (generate-queries query pivot-opts)]
+       (process-multiple-queries all-queries rff pivot-limit)))))

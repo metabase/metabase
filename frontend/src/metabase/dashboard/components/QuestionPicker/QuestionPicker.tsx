@@ -8,20 +8,20 @@ import { Input } from "metabase/common/components/Input";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { getCrumbs } from "metabase/lib/collections";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { getIcon } from "metabase/lib/icon";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
 import { Button, Flex, Icon } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { connect, useDispatch, useSelector } from "metabase/utils/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
@@ -37,6 +37,7 @@ function QuestionPickerInner({
   onSelect,
   collectionsById,
 }: QuestionPickerInnerProps) {
+  const getIcon = useGetIcon();
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;
@@ -50,7 +51,11 @@ function QuestionPickerInner({
   );
 
   const collection = collectionsById[currentCollectionId];
-  const crumbs = getCrumbs(collection, collectionsById, setCurrentCollectionId);
+  const crumbs = getCollectionBreadCrumbs(
+    collection,
+    collectionsById,
+    setCurrentCollectionId,
+  );
 
   const handleSearchTextChange: React.ChangeEventHandler<HTMLInputElement> = (
     e,

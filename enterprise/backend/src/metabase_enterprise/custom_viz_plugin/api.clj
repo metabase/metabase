@@ -1,6 +1,7 @@
 (ns metabase-enterprise.custom-viz-plugin.api
   "/api/ee/custom-viz-plugin endpoints."
   (:require
+   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
@@ -9,17 +10,13 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.server.streaming-response :as sr]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedReader InputStream InputStreamReader OutputStream)
-   (java.net HttpURLConnection URI)))
+   (java.io BufferedReader InputStream InputStreamReader OutputStream)))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
@@ -29,10 +26,9 @@
    [:repo_url        ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:identifier      ms/NonBlankString]
-   [:status          [:enum "pending" "active" "error"]]
+   [:status          [:enum :pending :active :error]]
    [:enabled         :boolean]
    [:icon            {:optional true} [:maybe :string]]
-   [:icon_dark       {:optional true} [:maybe :string]]
    [:error_message   {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
@@ -49,7 +45,6 @@
    [:identifier      ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:icon            {:optional true} [:maybe :string]]
-   [:icon_dark       {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
@@ -64,44 +59,32 @@
 
 (defn- parse-repo-name
   "Extract the repository name from a git URL.
-   E.g., 'https://github.com/user/custom-heatmap' -> 'custom-heatmap'
-         'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'"
+   Supports both HTTPS and SSH-style URLs:
+     'https://github.com/user/custom-heatmap'     -> 'custom-heatmap'
+     'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'
+     'git@github.com:user/custom-heatmap.git'     -> 'custom-heatmap'"
   [^String url]
   (-> url
       (str/replace #"\.git$" "")
-      (str/split #"/")
+      (str/split #"[/:]")
       last))
 
-(defn- parse-manifest-json
-  "Parse the manifest JSON string stored in the DB into a map for the response."
-  [manifest-str]
-  (when manifest-str
-    (try
-      (json/decode+kw manifest-str)
-      (catch Exception _ nil))))
-
 (defn- plugin->response
-  "Convert a plugin record to API response format (keyword status -> string)."
+  "Convert a plugin record to API response format."
   [plugin]
-  (-> plugin
-      (update :status name)
-      (update :manifest parse-manifest-json)
-      (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))
-      (assoc :dev_only (dev-only-plugin? plugin))))
+  (assoc plugin :dev_only (dev-only-plugin? plugin)))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon icon_dark resolved_commit manifest]}]
-  (let [dev-url (cache/resolve-dev-bundle id)]
-    (cond-> {:id              id
-             :identifier      identifier
-             :display_name    display_name
-             :icon            icon
-             :icon_dark       icon_dark
-             :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
-             :resolved_commit resolved_commit
-             :manifest        (parse-manifest-json manifest)}
-      dev-url (assoc :dev_bundle_url dev-url))))
+  [{:keys [id identifier display_name icon resolved_commit manifest dev_bundle_url]}]
+  (cond-> {:id              id
+           :identifier      identifier
+           :display_name    display_name
+           :icon            icon
+           :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
+           :resolved_commit resolved_commit
+           :manifest        manifest}
+    dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
@@ -116,6 +99,9 @@
                                                       [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [identifier (parse-repo-name repo_url)
+        _          (api/check-400
+                    (not (t2/exists? :model/CustomVizPlugin :repo_url repo_url))
+                    (format "A custom visualization with repo URL \"%s\" already exists." repo_url))
         _          (api/check-400
                     (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
                     (format "A custom visualization with identifier \"%s\" already exists." identifier))
@@ -148,14 +134,15 @@
                                            "metabase-plugin.json is missing a \"name\" field."
                                            "Could not fetch metabase-plugin.json from the dev server.")
                                          {:status-code 400})))
+        sentinel-url (str "dev://local/" identifier)
+        _            (api/check-400
+                      (not (t2/exists? :model/CustomVizPlugin :repo_url sentinel-url))
+                      (format "A custom visualization with repo URL \"%s\" already exists." sentinel-url))
         _            (api/check-400
                       (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))
-        sentinel-url (str "dev://local/" identifier)
-        manifest-str (when manifest (json/encode manifest))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
-        icon-dark    (:iconDark manifest)
         version-str  (get-in manifest [:metabase :version])
         plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                             :repo_url        sentinel-url
@@ -165,8 +152,7 @@
                                                             :enabled         true
                                                             :dev_bundle_url  dev_bundle_url
                                                             :icon            icon
-                                                            :icon_dark       icon-dark
-                                                            :manifest        manifest-str
+                                                            :manifest        manifest
                                                             :metabase_version version-str))]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
     (plugin->response plugin)))
@@ -182,8 +168,8 @@
    Plugins with incompatible Metabase version requirements are excluded."
   []
   (let [plugins (t2/select [:model/CustomVizPlugin
-                            :id :identifier :display_name :icon :icon_dark :resolved_commit
-                            :manifest :metabase_version]
+                            :id :identifier :display_name :icon :resolved_commit
+                            :manifest :metabase_version :dev_bundle_url]
                            :status :active
                            :enabled true
                            {:order-by [[:display_name :asc]]})]
@@ -245,31 +231,6 @@
     (catch Throwable e
       (raise e))))
 
-(defn- asset-content-type
-  "Return the MIME content type for an allowed asset file, or nil if not recognized.
-   Allows image files and JSON files (for locale translations)."
-  [^String path]
-  (cond
-    (str/ends-with? path ".json")
-    "application/json"
-
-    :else
-    (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
-      (when (and ct (str/starts-with? ct "image/"))
-        ct))))
-
-(defn- validate-asset-path
-  "Validate that an asset path is a simple filename (no directory traversal).
-   Returns the normalized path or throws on invalid input."
-  ^String [^String raw-path]
-  (let [root     (.toPath (java.io.File. "/"))
-        resolved (.normalize (.resolve root raw-path))
-        normalized (str (.relativize root resolved))]
-    (when (or (str/blank? normalized)
-              (not (.startsWith resolved root)))
-      (throw (ex-info "Invalid asset path" {:status-code 400 :path raw-path})))
-    normalized))
-
 (api.macros/defendpoint :get "/:id/asset" :- :any
   "Serve a static image asset from the plugin's cached assets.
    The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
@@ -283,22 +244,20 @@
    respond
    raise]
   (try
-    (let [asset-path   (validate-asset-path path)
-          content-type (asset-content-type asset-path)]
-      (when-not content-type
-        (throw (ex-info "Unsupported asset type" {:status-code 404})))
-      (let [_plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-            dev?    (cache/resolve-dev-bundle id)
-            bytes   (cache/resolve-asset id asset-path)]
-        (if bytes
-          (respond {:status  200
-                    :headers (cond-> {"Content-Type" content-type}
-                               dev?       (assoc "Cache-Control" "no-store")
-                               (not dev?) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
-                    :body    (java.io.ByteArrayInputStream. bytes)})
-          (respond {:status  404
-                    :headers {"Content-Type" "application/json"}
-                    :body    "{\"error\": \"Asset not found\"}"}))))
+    (let [_plugin      (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+          content-type (or (manifest/asset-content-type path)
+                           (throw (ex-info "Unsupported asset type" {:status-code 404})))
+          dev?         (cache/resolve-dev-bundle id)
+          bytes        (cache/resolve-asset id path)]
+      (if bytes
+        (respond {:status  200
+                  :headers (cond-> {"Content-Type" content-type}
+                             dev?       (assoc "Cache-Control" "no-store")
+                             (not dev?) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
+                  :body    (java.io.ByteArrayInputStream. bytes)})
+        (respond {:status  404
+                  :headers {"Content-Type" "application/json"}
+                  :body    "{\"error\": \"Asset not found\"}"})))
     (catch Throwable e
       (raise e))))
 
@@ -329,25 +288,21 @@
                                              "Connection"         "keep-alive"
                                              "X-Accel-Buffering"  "no"}}
                              [^OutputStream os canceled-chan]
-        (let [uri  (URI. sse-url)
-              conn ^HttpURLConnection (.openConnection (.toURL uri))]
-          (.setRequestMethod conn "GET")
-          (.setRequestProperty conn "Accept" "text/event-stream")
-          (.setConnectTimeout conn 5000)
-          (.setReadTimeout conn 0)
-          (try
-            (with-open [^InputStream is (.getInputStream conn)
+        (try
+          (let [resp (http/get sse-url {:as               :stream
+                                        :socket-timeout   0
+                                        :connection-timeout 5000
+                                        :headers          {"Accept" "text/event-stream"}})]
+            (with-open [^InputStream is (:body resp)
                         rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
               (loop []
                 (when-not (a/poll! canceled-chan)
                   (when-let [line (.readLine rdr)]
                     (.write os (.getBytes (str line "\n") "UTF-8"))
                     (.flush os)
-                    (recur)))))
-            (catch Exception e
-              (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e)))
-            (finally
-              (.disconnect conn))))))))
+                    (recur))))))
+          (catch Exception e
+            (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))))))))
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the bundle from the git repository.
@@ -361,13 +316,11 @@
                          (throw (ex-info "No dev server URL configured" {:status-code 404})))
             manifest (or (cache/fetch-dev-manifest dev-url)
                          (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
-            manifest-str (json/encode manifest)
             version-str  (get-in manifest [:metabase :version])]
         (t2/update! :model/CustomVizPlugin id
                     {:display_name     (or (:name manifest) (:identifier plugin))
                      :icon             (:icon manifest)
-                     :icon_dark        (:iconDark manifest)
-                     :manifest         manifest-str
+                     :manifest         manifest
                      :metabase_version version-str}))
       (cache/fetch-and-update! plugin))
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))

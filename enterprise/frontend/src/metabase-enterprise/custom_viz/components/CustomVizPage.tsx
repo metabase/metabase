@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import {
   SettingsPageWrapper,
@@ -13,14 +14,15 @@ import {
 } from "metabase/api";
 import {
   Form,
+  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 type Props = {
   params?: {
@@ -32,6 +34,7 @@ type FormState = {
   repoUrl: string;
   accessToken: string;
   pinnedVersion: string;
+  acknowledgedRisk: boolean;
 };
 
 export function CustomVizPage({ params }: Props) {
@@ -39,18 +42,32 @@ export function CustomVizPage({ params }: Props) {
   const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
   const { data: plugins } = useListAllCustomVizPluginsQuery();
   const plugin = pluginId ? plugins?.find((p) => p.id === pluginId) : undefined;
-  const isEdit = pluginId != null;
+  const isEdit = pluginId !== undefined;
 
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
+
+  const validationSchema = useMemo(
+    () =>
+      isEdit
+        ? undefined
+        : Yup.object({
+            acknowledgedRisk: Yup.boolean().oneOf(
+              [true],
+              t`You must acknowledge the security risk before proceeding.`,
+            ),
+          }),
+    [isEdit],
+  );
 
   const initialValues = useMemo<FormState>(
     () => ({
       repoUrl: plugin?.repo_url ?? "",
       accessToken: "",
       pinnedVersion: plugin?.pinned_version ?? "",
+      acknowledgedRisk: isEdit,
     }),
-    [plugin],
+    [plugin, isEdit],
   );
 
   const handleSubmit = useCallback(
@@ -103,7 +120,11 @@ export function CustomVizPage({ params }: Props) {
     >
       <SettingsSection>
         <Box bdrs="md" bg="background-primary">
-          <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
+          <FormProvider
+            initialValues={initialValues}
+            validationSchema={validationSchema}
+            onSubmit={handleSubmit}
+          >
             {({ dirty }) => (
               <Form>
                 <Stack gap="lg">
@@ -132,6 +153,12 @@ export function CustomVizPage({ params }: Props) {
                     description={t`Branch, tag, or commit SHA to pin to.`}
                     placeholder="main"
                   />
+                  {!isEdit && (
+                    <FormCheckbox
+                      name="acknowledgedRisk"
+                      label={t`I understand that custom visualizations can execute arbitrary code and should only be added from trusted sources.`}
+                    />
+                  )}
                   <FormErrorMessage />
                   <Group gap="sm" justify="flex-end">
                     <Button variant="default" onClick={handleCancel}>

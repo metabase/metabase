@@ -3,19 +3,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
-import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import type { DocumentLinkedEntityPickerItemValue } from "metabase/rich_text_editing/tiptap/extensions/shared/LinkedEntityPickerModal/types";
+import { modelToUrl } from "metabase/utils/urls/modelToUrl";
 import type {
   MentionableUser,
   RecentItem,
   SearchResult,
 } from "metabase-types/api";
 
-import {
-  buildSearchModelMenuItems,
-  entityToUrlableModel,
-  getBrowseAllItemIndex,
-} from "./suggestionUtils";
+import { useBuildSearchModelMenuItems } from "./suggestionHooks";
+import { entityToUrlableModel, getBrowseAllItemIndex } from "./suggestionUtils";
 import type { SuggestionModel, SuggestionPickerModalType } from "./types";
 import { type EntitySearchOptions, useEntitySearch } from "./useEntitySearch";
 
@@ -75,6 +72,7 @@ export function useEntitySuggestions({
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [modal, setModal] = useState<SuggestionPickerModalType>(null);
+  const buildSearchModelMenuItems = useBuildSearchModelMenuItems();
   const [selectedSearchModel, setSelectedSearchModel] =
     useState<SuggestionModel | null>(
       searchModels?.length === 1 ? searchModels[0] : null,
@@ -173,7 +171,12 @@ export function useEntitySuggestions({
           filteredSearchModels,
           handleSearchModelSelect,
         );
-  }, [filteredSearchModels, selectedSearchModel, handleSearchModelSelect]);
+  }, [
+    filteredSearchModels,
+    selectedSearchModel,
+    handleSearchModelSelect,
+    buildSearchModelMenuItems,
+  ]);
 
   const hasSearchModels = (searchModels?.length ?? 0) > 0;
   const hasMatchingFilteredModels = (filteredSearchModels?.length ?? 0) > 0;

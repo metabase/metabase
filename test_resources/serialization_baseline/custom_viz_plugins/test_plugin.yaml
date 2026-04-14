@@ -1,7 +1,7 @@
 repo_url: https://github.com/example/test-viz-plugin
 display_name: Test Plugin
 identifier: test-plugin
-manifest: '{}'
+manifest: {}
 created_at: '2026-04-02T01:50:04.994996Z'
 serdes/meta:
 - id: test-plugin

@@ -1,11 +1,11 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { combineReducers } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_ADMIN_ALLOWED_PATH_GETTERS } from "metabase/plugins";
+import type { AdminPath, AdminPathKey } from "metabase/redux/store";
 import { refreshCurrentUser } from "metabase/redux/user";
-import type { AdminPath, AdminPathKey } from "metabase-types/store";
+import { combineReducers } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 
 export const getAdminPaths: () => AdminPath[] = () => {
   const items: AdminPath[] = [
@@ -53,6 +53,11 @@ export const getAdminPaths: () => AdminPath[] = () => {
       name: t`Tools`,
       path: "/admin/tools",
       key: "tools",
+    },
+    {
+      name: t`Custom visualizations`,
+      path: "/admin/settings/custom-visualizations",
+      key: "custom-visualizations",
     },
   ];
 

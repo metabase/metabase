@@ -1,7 +1,16 @@
 import cx from "classnames";
+import { t } from "ttag";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Badge,
+  Center,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { VisualizationDisplay } from "metabase-types/api";
 
@@ -25,9 +34,7 @@ export const ChartTypeOption = ({
 
   const displayName = visualization?.getUiName() ?? visualizationType;
   const iconName = visualization?.iconName;
-  const hasCustomIcon = !!(
-    visualization?.iconUrl || visualization?.iconDarkUrl
-  );
+  const hasCustomIcon = !!visualization?.iconUrl;
 
   return (
     <Center pos="relative" data-testid="chart-type-option">
@@ -61,7 +68,6 @@ export const ChartTypeOption = ({
           <EntityIcon
             name={iconName ?? "unknown"}
             iconUrl={visualization?.iconUrl}
-            iconDarkUrl={visualization?.iconDarkUrl}
             alt={displayName}
             c={isSelected ? "white" : "brand"}
             size={20}
@@ -102,6 +108,14 @@ export const ChartTypeOption = ({
         >
           {displayName}
         </Text>
+
+        {visualization?.isDev && (
+          <Tooltip
+            label={t`This is a development version of the visualization`}
+          >
+            <Badge variant="outline">{t`dev`}</Badge>
+          </Tooltip>
+        )}
       </Stack>
     </Center>
   );

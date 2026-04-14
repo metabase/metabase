@@ -19,9 +19,9 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
-import * as Errors from "metabase/lib/errors";
 import { Group, Icon, Tooltip } from "metabase/ui";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import * as Errors from "metabase/utils/errors";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
 import {
@@ -138,6 +138,7 @@ function CopyDashboardForm({
 
         {!hideShallowCopy && (
           <FormCheckbox
+            mt="1rem"
             name="is_shallow_copy"
             label={
               <Group align="center" gap="xs">
@@ -153,7 +154,7 @@ function CopyDashboardForm({
           />
         )}
 
-        <FormFooter>
+        <FormFooter mt="1.5rem">
           <FormErrorMessage inline />
           {!!onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { ObjectWithModel } from "metabase/lib/icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Group, Icon, Text } from "metabase/ui";
+import type { ObjectWithModel } from "metabase/utils/icon";
 import type { Collection } from "metabase-types/api";
 
 export const CollectionAuthorityLevelDisplay = ({
@@ -11,13 +11,15 @@ export const CollectionAuthorityLevelDisplay = ({
 }: {
   collection: Collection;
 }) => {
-  const iconProps = useMemo(() => {
-    const icon = PLUGIN_COLLECTIONS.getIcon({
-      ...collection,
-      model: "collection",
-    } as ObjectWithModel);
-    return icon;
-  }, [collection]);
+  const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
+  const iconProps = useMemo(
+    () =>
+      getIcon({
+        ...collection,
+        model: "collection",
+      } as unknown as ObjectWithModel),
+    [collection, getIcon],
+  );
 
   if (collection.authority_level !== "official") {
     return null;

@@ -8,6 +8,7 @@ type MyVizSettings = {
   apiKey?: string;
   custom?: boolean;
   threshold?: number;
+  metricsColumn?: string;
 };
 
 export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
@@ -46,6 +47,27 @@ export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
         getProps(_series, _settings) {
           return {};
         },
+      }),
+      metricsColumn: defineSetting({
+        id: "metricsColumn",
+        title: "Metrics column",
+        widget: "field",
+        persistDefault: true,
+        index: 0,
+        group: "Metrics",
+        section: "Data",
+        getDefault: (series) => series[0]?.data.cols[0]?.name,
+        isValid: (series, settings) =>
+          series[0]?.data.cols.some(
+            (col) => col.name === settings.metricsColumn,
+          ) ?? false,
+        getProps: (series) => ({
+          columns: series[0]?.data.cols ?? [],
+          options: (series[0]?.data.cols ?? []).map((col) => ({
+            name: col.display_name,
+            value: col.name,
+          })),
+        }),
       }),
     },
     VisualizationComponent: MyVizComponent,

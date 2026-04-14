@@ -5,21 +5,22 @@ import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 import type {
   CreateDefineSetting,
   CustomVisualizationSettingDefinition,
+  CustomVisualizationSettings,
 } from "./viz-settings";
 
 /**
  * Export this function to define a custom visualization.
  */
 export type CreateCustomVisualization<
-  CustomVisualizationSettings extends Record<string, unknown>,
+  TSettings extends Record<string, unknown>,
 > = (
-  props: CreateCustomVisualizationProps<CustomVisualizationSettings>,
-) => CustomVisualization<CustomVisualizationSettings>;
+  props: CreateCustomVisualizationProps<TSettings>,
+) => CustomVisualization<TSettings>;
 
 export type CreateCustomVisualizationProps<
-  CustomVisualizationSettings extends Record<string, unknown>,
+  TSettings extends Record<string, unknown>,
 > = {
-  defineSetting: ReturnType<CreateDefineSetting<CustomVisualizationSettings>>;
+  defineSetting: ReturnType<CreateDefineSetting<TSettings>>;
 
   /**
    * Returns a URL for a static asset declared in the plugin manifest.
@@ -34,7 +35,7 @@ export type CreateCustomVisualizationProps<
   locale: string;
 };
 
-export type CustomVisualization<CustomVisualizationSettings> = {
+export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   /**
    * A unique visualization identifier. It's not shown in the UI.
    */
@@ -51,7 +52,7 @@ export type CustomVisualization<CustomVisualizationSettings> = {
   canSavePng?: boolean;
 
   /**
-   * Set to true to disable the default visulization header.
+   * Set to true to disable the default visualization header.
    */
   noHeader?: boolean;
 
@@ -69,8 +70,8 @@ export type CustomVisualization<CustomVisualizationSettings> = {
    * Visualization settings definitions.
    */
   settings?: Record<
-    keyof CustomVisualizationSettings,
-    CustomVisualizationSettingDefinition<CustomVisualizationSettings>
+    keyof TSettings,
+    CustomVisualizationSettingDefinition<TSettings>
   >;
 
   /**
@@ -78,29 +79,32 @@ export type CustomVisualization<CustomVisualizationSettings> = {
    */
   checkRenderable: (
     series: Series,
-    settings: CustomVisualizationSettings,
+    settings: CustomVisualizationSettings<TSettings>,
   ) => void | never;
 
   /**
    * Component that renders the visualization.
    */
-  VisualizationComponent: ComponentType<
-    CustomVisualizationProps<CustomVisualizationSettings>
-  >;
+  VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
 
   /**
    * Component that renders the visualization.
    */
   StaticVisualizationComponent?: ComponentType<
-    CustomStaticVisualizationProps<CustomVisualizationSettings>
+    CustomStaticVisualizationProps<TSettings>
   >;
 };
 
-export type BaseWidgetProps<TValue, CustomVisualizationSettings> = {
+export type BaseWidgetProps<
+  TValue,
+  TSettings extends Record<string, unknown>,
+> = {
   id: string;
   value: TValue | undefined;
   onChange: (value?: TValue | null) => void;
-  onChangeSettings: (settings: Partial<CustomVisualizationSettings>) => void;
+  onChangeSettings: (
+    settings: Partial<CustomVisualizationSettings<TSettings>>,
+  ) => void;
 };
 
 export type VisualizationGridSize = {
@@ -115,17 +119,21 @@ export type VisualizationGridSize = {
   height: number;
 };
 
-export type CustomVisualizationProps<CustomVisualizationSettings> = {
+export type CustomVisualizationProps<
+  TSettings extends Record<string, unknown>,
+> = {
   width: number | null;
 
   height: number | null;
 
   series: Series;
 
-  settings: CustomVisualizationSettings;
+  settings: CustomVisualizationSettings<TSettings>;
+
+  colorScheme: "light" | "dark";
 
   onClick: (
-    clickObject: ClickObject<CustomVisualizationSettings> | null,
+    clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
   ) => void;
 
   onHover: (hoverObject?: HoverObject | null) => void;
@@ -138,19 +146,17 @@ export interface RenderingContext {
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
-  // theme: VisualizationTheme;
 }
 
-// Equivalent of StaticVisualizationProps
-export type CustomStaticVisualizationProps<CustomVisualizationSettings> = {
+export type CustomStaticVisualizationProps<
+  TSettings extends Record<string, unknown>,
+> = {
   series: Series;
+  settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
-  isStorybook?: boolean;
-  settings: CustomVisualizationSettings;
-  hasDevWatermark?: boolean;
 };
 
-export type ClickObject<CustomVisualizationSettings> = {
+export type ClickObject<TSettings extends Record<string, unknown>> = {
   value?: RowValue;
   column?: Column;
   dimensions?: ClickObjectDimension[];
@@ -158,7 +164,7 @@ export type ClickObject<CustomVisualizationSettings> = {
   element?: Element;
   // seriesIndex?: number;
   // cardId?: CardId;
-  settings?: CustomVisualizationSettings;
+  settings?: CustomVisualizationSettings<TSettings>;
   // columnShortcuts?: boolean;
   origin?: {
     row: RowValue[];
@@ -193,4 +199,16 @@ export type HoverObject = {
   dimensions?: HoveredDimension[];
   element?: Element;
   event?: MouseEvent;
+};
+
+declare const ClickBehaviorSymbol: unique symbol;
+
+/**
+ * Opaque/engine-owned click behavior config.
+ *
+ * This is intentionally not a structural type: custom visualization authors
+ * should treat it as an opaque value (pass through only).
+ */
+export type ClickBehavior = {
+  readonly [ClickBehaviorSymbol]: "ClickBehavior";
 };

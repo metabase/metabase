@@ -31,12 +31,14 @@ import { initializePlugin as initializeEmbeddingIframeSdk } from "./embedding_if
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
 import { initializePlugin as initializeFeatureLevelPermissions } from "./feature_level_permissions";
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
+import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
 import { initializePlugin as initializeSandboxes } from "./sandboxes";
+import { initializePlugin as initializeSecurityCenter } from "./security_center";
 import { initializePlugin as initializeSemanticSearch } from "./semantic_search";
 import { initializePlugin as initializeSharing } from "./sharing";
 import { initializePlugin as initializeSmtpOverride } from "./smtp-override";
@@ -80,6 +82,7 @@ export function initializePlugins() {
   initializeModeration();
   initializeAdvancedPermissions();
   initializeAuditApp();
+  initializeMetabot();
   initializeModelPersistence();
   initializeFeatureLevelPermissions();
   initializeApplicationPermissions();
@@ -92,6 +95,7 @@ export function initializePlugins() {
   initializeDatabaseReplication();
   initializeTableEditing();
   initializeDependencies();
+  initializeSecurityCenter();
   initializeSemanticSearch();
   initializeTransforms();
   initializeTransformsInspector();

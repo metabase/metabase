@@ -10,7 +10,6 @@ import {
 } from "metabase/api";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
-import { handleActions } from "metabase/lib/redux";
 import { REVERT_TO_REVISION } from "metabase/query_builder/actions";
 import {
   INITIALIZE,
@@ -21,6 +20,11 @@ import {
   reset,
 } from "metabase/redux/dashboard";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/redux/query-builder";
+import type {
+  DashboardSidebarName,
+  StoreDashboard,
+} from "metabase/redux/store/dashboard";
+import { handleActions } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -31,10 +35,6 @@ import type {
   ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
-import type {
-  DashboardSidebarName,
-  StoreDashboard,
-} from "metabase-types/store/dashboard";
 
 import {
   CLOSE_SIDEBAR,

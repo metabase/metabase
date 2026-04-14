@@ -52,27 +52,30 @@
 (deftest call-llm-tool-choice-test
   (testing "passes required tool choice to LLM providers"
     (let [captured (atom nil)]
-      (mt/with-dynamic-fn-redefs [http/request (fn [opts]
-                                                 (when (:body opts)
-                                                   (reset! captured (json/decode+kw (:body opts))))
-                                                 (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
-        (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
-                                           llm-openrouter-api-key "sk-or-v1-test-key"
-                                           llm-openai-api-key     "sk-test-key"]
-          (doseq [[model expected] [["anthropic/test-model"  {:type "any"}]
-                                    ["openrouter/test-model" "required"]
-                                    ["openai/test-model"     "required"]]]
-            (try
-              (run! identity (self/call-llm model
-                                            nil
-                                            []
-                                            {"search" (get test-util/TOOLS "get-time")}
-                                            {:tag "agent"}
-                                            {:tool-choice "required"}))
-              (catch Exception e
-                (when-not (::skip (ex-data e))
-                  (throw e))))
-            (is (= expected (:tool_choice @captured)))))))))
+      (mt/with-premium-features #{:metabase-ai-managed}
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured (json/decode+kw (:body opts))))
+                                                   (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
+                                             llm-proxy-base-url     "http://proxy.example"
+                                             llm-openrouter-api-key "sk-or-v1-test-key"
+                                             llm-openai-api-key     "sk-test-key"]
+            (doseq [[model expected] [["anthropic/test-model"   {:type "any"}]
+                                      ["metabase/anthropic/claude-sonnet-4-6" {:type "any"}]
+                                      ["openrouter/test-model" "required"]
+                                      ["openai/test-model"     "required"]]]
+              (try
+                (run! identity (self/call-llm model
+                                              nil
+                                              []
+                                              {"search" (get test-util/TOOLS "get-time")}
+                                              {:tag "agent"}
+                                              {:tool-choice "required"}))
+                (catch Exception e
+                  (when-not (::skip (ex-data e))
+                    (throw e))))
+              (is (= expected (:tool_choice @captured))))))))))
 
 ;;; utils tests
 

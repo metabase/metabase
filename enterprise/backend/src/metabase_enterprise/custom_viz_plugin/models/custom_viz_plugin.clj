@@ -10,7 +10,8 @@
 
 (t2/deftransforms :model/CustomVizPlugin
   {:access_token mi/transform-encrypted-json
-   :status       mi/transform-keyword})
+   :status       mi/transform-keyword
+   :manifest     mi/transform-json})
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
@@ -38,7 +39,7 @@
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name {:keys [include-custom-viz-token]}]
   {:copy      [:repo_url :display_name :identifier
-               :pinned_version :resolved_commit :enabled :icon :icon_dark
+               :pinned_version :resolved_commit :enabled :icon
                :manifest :metabase_version]
    :skip      [:dev_bundle_url :error_message]
    :defaults  {:enabled true}

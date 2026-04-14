@@ -1,6 +1,8 @@
 import type {
   CreateCustomVisualizationProps,
   CustomVisualizationSettingDefinition,
+  ClickObject as CustomVizClickObject,
+  HoverObject as CustomVizHoverObject,
 } from "custom-viz/src/types";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
@@ -9,6 +11,8 @@ import { useListCustomVizPluginsQuery } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { useColorScheme } from "metabase/ui";
+import type { IconData } from "metabase/utils/icon";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
@@ -18,9 +22,13 @@ import type {
   Visualization,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
-import type { CustomVizPluginRuntime } from "metabase-types/api";
+import type {
+  CustomVizPluginRuntime,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 
 // ---------------------------------------------------------------------------
@@ -44,11 +52,11 @@ export function useCustomVizPlugins({
   const { token, uuid } = useEmbeddingEntityContext();
   const isPublicOrStaticEmbed = Boolean(token || uuid);
   const shouldLoad = enabled && !isPublicOrStaticEmbed;
-  const { data: plugins } = useListCustomVizPluginsQuery(undefined, {
+  const { data: plugins, isLoading } = useListCustomVizPluginsQuery(undefined, {
     skip: !shouldLoad,
   });
 
-  return plugins;
+  return { plugins, isLoading };
 }
 
 /**
@@ -112,7 +120,7 @@ function useCustomVizDevReload(
 export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
 } {
-  const plugins = useCustomVizPlugins();
+  const { plugins } = useCustomVizPlugins();
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
@@ -286,30 +294,30 @@ export async function loadCustomVizPlugin(
     }: Omit<VisualizationProps, "width" | "height"> & {
       width: number | null;
       height: number | null;
-    }) =>
-      React.createElement(vizDef.VisualizationComponent, {
+    }) => {
+      const { resolvedColorScheme } = useColorScheme();
+      return React.createElement(vizDef.VisualizationComponent, {
         ...rest,
-        onClick: onVisualizationClick,
-        onHover: onHoverChange,
+        colorScheme: resolvedColorScheme,
+        onClick: onVisualizationClick as unknown as (
+          clickObject: CustomVizClickObject<Record<string, unknown>> | null,
+        ) => void,
+        onHover: onHoverChange as unknown as (
+          hoverObject?: CustomVizHoverObject | null,
+        ) => void,
       });
+    };
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
       Wrapper,
     ) as Visualization;
-    Object.assign(Component, {
+    applyDefaultVisualizationProps(Component, vizDef, {
       identifier,
       getUiName: () => plugin.display_name,
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
-      iconDarkUrl: getPluginAssetUrl(plugin.id, plugin.icon_dark),
-      minSize: vizDef.minSize,
-      defaultSize: vizDef.defaultSize,
-      checkRenderable: vizDef.checkRenderable,
-      settings: vizDef.settings,
-      hidden: false,
-      noHeader: false,
-      canSavePng: false,
-    } satisfies Partial<Record<keyof Visualization, unknown>>);
+      isDev: Boolean(plugin.dev_bundle_url),
+    });
 
     // Use registerVisualization for first load; overwrite directly for updates
     // (registerVisualization throws on duplicate identifiers).
@@ -332,5 +340,31 @@ export async function loadCustomVizPlugin(
     return null;
   }
 }
+
+export const useCustomVizPluginsIcon = () => {
+  const { plugins, isLoading } = useCustomVizPlugins();
+
+  return useCallback(
+    (
+      display: VisualizationDisplay,
+    ): { icon: IconData | undefined; isLoading: boolean } => {
+      if (isLoading) {
+        return { icon: undefined, isLoading: true };
+      }
+      const currentPlugin = plugins?.find(
+        (plugin) => getCustomPluginIdentifier(plugin) === display,
+      );
+      const icon: IconData | undefined = currentPlugin
+        ? {
+            name: "unknown",
+            iconUrl: getPluginAssetUrl(currentPlugin.id, currentPlugin.icon),
+          }
+        : undefined;
+
+      return { icon, isLoading: false };
+    },
+    [plugins, isLoading],
+  );
+};
 
 export { getCustomPluginIdentifier, getPluginAssetUrl };

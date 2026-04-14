@@ -268,6 +268,24 @@
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openrouter"))))))
 
+(deftest settings-get-returns-metabase-models-without-api-key-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+    (with-redefs [metabot.self/list-models (fn
+                                             ([provider]
+                                              (is false (str "unexpected list-models call: " provider)))
+                                             ([provider opts]
+                                              (is (= "anthropic" provider))
+                                              (is (= {:ai-proxy? true} opts))
+                                              {:models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                                                        {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
+      (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
+              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "metabase"))))))
+
 (deftest settings-put-updates-provider-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
                                      llm.settings/llm-openai-api-key      "sk-valid"]
@@ -288,6 +306,48 @@
                                    {:provider "openai"
                                     :model    "gpt-4.1-mini"})))
       (is (= "openai/gpt-4.1-mini"
+             (metabot.settings/llm-metabot-provider))))))
+
+(deftest settings-put-updates-metabase-provider-without-api-key-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]
+    (with-redefs [metabot.self/list-models (fn
+                                             ([provider]
+                                              (is false (str "unexpected list-models call: " provider)))
+                                             ([provider opts]
+                                              (is (= "anthropic" provider))
+                                              (is (= {:ai-proxy? true} opts))
+                                              {:models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                                                        {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
+      (is (= {:value  "metabase/anthropic/claude-opus-4-1"
+              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+             (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                   {:provider "metabase"
+                                    :model    "anthropic/claude-opus-4-1"})))
+      (is (= "metabase/anthropic/claude-opus-4-1"
+             (metabot.settings/llm-metabot-provider))))))
+
+(deftest settings-put-defaults-empty-metabase-model-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]
+    (with-redefs [metabot.self/list-models (fn
+                                             ([provider]
+                                              (is false (str "unexpected list-models call: " provider)))
+                                             ([provider opts]
+                                              (is (= "anthropic" provider))
+                                              (is (= {:ai-proxy? true} opts))
+                                              {:models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                                                        {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
+      (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
+              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+             (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                   {:provider "metabase"
+                                    :model    ""})))
+      (is (= "metabase/anthropic/claude-sonnet-4-6"
              (metabot.settings/llm-metabot-provider))))))
 
 (deftest settings-put-verifies-and-saves-api-keys-test
@@ -369,6 +429,15 @@
   (mt/user-http-request :rasta :put 403 "metabot/settings"
                         {:provider "anthropic"
                          :model    "claude-haiku-4-5"}))
+
+(deftest metabot-provider-without-api-key-is-configured-test
+  (mt/with-premium-features #{:metabase-ai-managed}
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"
+                                       llm.settings/llm-proxy-base-url      "https://proxy.example.com"
+                                       llm.settings/llm-anthropic-api-key    nil
+                                       llm.settings/llm-openai-api-key       nil
+                                       llm.settings/llm-openrouter-api-key   nil]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
 
 (deftest endpoints-require-authentication-test
   (testing "Metabot v3 endpoints require authentication"
@@ -533,6 +602,26 @@
       (is (false? (:ai_proxied msg)))
       (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
              (:usage msg))))))
+
+(deftest strip-tool-output-bloat-test
+  (testing "strips transient keys from tool-output results, keeping only :output"
+    (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-1"
+             :result {:output            "<result>XML</result>"
+                      :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
+                      :structured-output {:result-type :search :data [{:id 1}]}
+                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+  (testing "leaves non-tool-output parts untouched"
+    (let [text-part {:type :text :text "hello"}]
+      (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
+  (testing "handles result with no :output key"
+    (is (= {:type :tool-output :id "call-2" :result {}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-2"
+             :result {:structured-output {:some "data"}}})))))
 
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."

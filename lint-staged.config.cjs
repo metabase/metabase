@@ -12,7 +12,7 @@ module.exports = {
     "node ./bin/verify-doc-links",
   ],
   "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,jsx}": [
-    "eslint --max-warnings 0 --fix",
+    "eslint --no-warn-ignored --max-warnings 0 --fix",
     "prettier --write",
   ],
   "**/*.{clj,cljc,cljs,bb}": [

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsDashCardsLoadingComplete } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 
 import { useDashCardAnalysis } from "../../hooks/useDashCardAnalysis";
 import { AIAnalysisContentWrapper } from "../AIAnalysisContentWrapper/AIAnalysisContentWrapper";

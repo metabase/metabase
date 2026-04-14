@@ -1,4 +1,5 @@
-import { getIcon } from "metabase/lib/icon";
+import { renderHook } from "@testing-library/react";
+
 import type { CollectionItemModel } from "metabase-types/api";
 
 import {
@@ -9,15 +10,15 @@ import {
 } from "./types";
 import {
   getCollectionType,
-  getEntityPickerIcon,
   getItemFunctions,
   getNamespacesFromModels,
   getValidCollectionItemModels,
   isSelectedItem,
+  useGetEntityPickerIcon,
 } from "./utils";
 
-jest.mock("metabase/lib/icon", () => ({
-  getIcon: jest.fn(),
+jest.mock("metabase/hooks/use-icon", () => ({
+  useGetIcon: () => jest.fn().mockReturnValue({ name: "unknown" }),
 }));
 
 describe("EntityPicker utils", () => {
@@ -25,9 +26,17 @@ describe("EntityPicker utils", () => {
     jest.clearAllMocks();
   });
 
-  describe("getEntityPickerIcon", () => {
+  describe("useGetEntityPickerIcon", () => {
+    const setupHook = (mockReturn: { name: string; color?: string }) => {
+      const mockGetIcon = jest.fn().mockReturnValue(mockReturn);
+      jest.requireMock("metabase/hooks/use-icon").useGetIcon = () =>
+        mockGetIcon;
+      const { result } = renderHook(() => useGetEntityPickerIcon());
+      return { getEntityPickerIcon: result.current, mockGetIcon };
+    };
+
     it("should return the icon from getIcon", () => {
-      (getIcon as jest.Mock).mockReturnValue({
+      const { getEntityPickerIcon, mockGetIcon } = setupHook({
         name: "table",
         color: "text-dark",
       });
@@ -38,13 +47,17 @@ describe("EntityPicker utils", () => {
         c: "text-dark",
         color: undefined,
       });
-      expect(getIcon).toHaveBeenCalledWith(item, { isTenantUser: undefined });
+      expect(mockGetIcon).toHaveBeenCalledWith(item, {
+        isTenantUser: undefined,
+      });
     });
 
     it("should set color to text-primary-inverse if selected and no color present", () => {
-      (getIcon as jest.Mock).mockReturnValue({ name: "table" });
+      const { getEntityPickerIcon } = setupHook({ name: "table" });
       const item = { id: 1, model: "table" } as OmniPickerItem;
-      const result = getEntityPickerIcon(item, { isSelected: true });
+      const result = getEntityPickerIcon(item, {
+        isSelected: true,
+      });
       expect(result).toEqual({
         name: "table",
         c: "text-primary-inverse",
@@ -53,12 +66,14 @@ describe("EntityPicker utils", () => {
     });
 
     it("should change folder icon to folder_filled if selected", () => {
-      (getIcon as jest.Mock).mockReturnValue({
+      const { getEntityPickerIcon } = setupHook({
         name: "folder",
         color: "text-yellow",
       });
       const item = { id: 1, model: "collection" } as OmniPickerItem;
-      const result = getEntityPickerIcon(item, { isSelected: true });
+      const result = getEntityPickerIcon(item, {
+        isSelected: true,
+      });
       expect(result).toEqual({
         name: "folder_filled",
         c: "text-yellow",

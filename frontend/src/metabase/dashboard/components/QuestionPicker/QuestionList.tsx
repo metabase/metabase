@@ -17,16 +17,16 @@ import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Search } from "metabase/entities/search";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
-import { getIcon } from "metabase/lib/icon";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type { CardId, CollectionId } from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
+import { trackVisualizeAnotherWayClicked } from "./analytics";
 
 interface QuestionListProps {
   searchText: string;
@@ -43,6 +43,7 @@ export function QuestionList({
   hasCollections,
   showOnlyPublicCollections,
 }: QuestionListProps) {
+  const getIcon = useGetIcon();
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
@@ -161,10 +162,7 @@ export function QuestionList({
                 size="41px"
                 aria-label={t`Visualize another way`}
                 onClick={() => {
-                  trackSimpleEvent({
-                    event: "visualize_another_way_clicked",
-                    triggered_from: "question-list",
-                  });
+                  trackVisualizeAnotherWayClicked();
                   setVisualizerModalCardId(Number(item.id));
                 }}
               >

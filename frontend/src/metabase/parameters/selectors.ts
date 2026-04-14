@@ -1,4 +1,4 @@
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 export const getParameterValuesCache = (state: State) => {
   return state.parameters.parameterValuesCache;

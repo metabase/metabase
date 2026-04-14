@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { updateQuestion } from "metabase/query_builder/actions";
 import {
@@ -20,6 +19,7 @@ import {
   onOpenChartSettings,
   setUIControls,
 } from "metabase/redux/query-builder";
+import { useDispatch } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationDisplay } from "metabase-types/api";
@@ -36,7 +36,7 @@ export const ChartTypeSidebar = ({
 }: ChartTypeSidebarProps) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const customVizPlugins = PLUGIN_CUSTOM_VIZ.useCustomVizPlugins();
+  const { plugins: customVizPlugins } = PLUGIN_CUSTOM_VIZ.useCustomVizPlugins();
   const [pluginsLoaded, setPluginsLoaded] = useState(false);
 
   const onInfo = useCallback(

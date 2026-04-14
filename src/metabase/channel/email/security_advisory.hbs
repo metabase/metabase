@@ -1,0 +1,21 @@
+{{> metabase/channel/email/_header.hbs }}
+  <div style="padding-bottom: 2em; padding-top: 1em; text-align: center;">
+    <img style="max-height: 40px; max-width: 100%;" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo"/>
+  </div>
+  <div style="text-align: center; margin: 0 auto; max-width: 500px">
+    <div style="text-align: left">
+      <div style="display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #fff; background-color: {{payload.custom.severity_color}}; margin-bottom: 16px;">
+        {{payload.custom.severity_label}}
+      </div>
+      <h2 style="font-weight: normal; color: #4C545B; line-height: 34px; margin-top: 12px;">Security Advisory: {{payload.event_info.object.title}}</h2>
+      <p style="line-height: 22px; color: #4C545B;">{{payload.event_info.object.description}}</p>
+      <p style="line-height: 22px; color: #4C545B;"><strong>Status:</strong> {{payload.custom.status_label}}</p>
+      <p style="line-height: 22px; color: #4C545B;"><strong>Remediation:</strong> {{payload.event_info.object.remediation}}</p>
+      {{#if payload.event_info.object.advisory_url}}
+      <p style="line-height: 22px;"><a href="{{payload.event_info.object.advisory_url}}" style="color: {{context.application_color}};">Read full advisory</a></p>
+      {{/if}}
+      <p style="line-height: 22px; margin-top: 24px; margin-bottom: 32px; font-size: 13px; color: #696E73;">This notification will repeat until the advisory is acknowledged by an admin.</p>
+    </div>
+    <a style="{{context.style.button}}" href="{{payload.custom.security_center_url}}">Go to Security Center</a>
+  </div>
+{{> metabase/channel/email/_footer.hbs }}
