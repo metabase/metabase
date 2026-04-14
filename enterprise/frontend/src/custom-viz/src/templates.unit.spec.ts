@@ -4,7 +4,6 @@ import { version } from "../package.json";
 
 import {
   generateGitignore,
-  generateIconDarkSvg,
   generateIconSvg,
   generateIndexTsx,
   generateManifest,
@@ -110,7 +109,6 @@ describe("generateManifest", () => {
   it("produces valid JSON with expected fields", () => {
     const manifest = JSON.parse(generateManifest("my-viz"));
     expect(manifest).toHaveProperty("icon");
-    expect(manifest).toHaveProperty("iconDark");
     expect(manifest).toHaveProperty("assets");
     expect(manifest).toHaveProperty("metabase.version");
   });
@@ -127,10 +125,6 @@ describe("static templates", () => {
 
   it("icon.svg is an SVG", () => {
     expect(generateIconSvg()).toContain("<svg");
-  });
-
-  it("icon-dark.svg is an SVG", () => {
-    expect(generateIconDarkSvg()).toContain("<svg");
   });
 
   it("vite config contains externals plugin", () => {
