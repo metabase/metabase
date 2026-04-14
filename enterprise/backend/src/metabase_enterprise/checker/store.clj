@@ -27,8 +27,8 @@
 
    `schema-source` is a SchemaSource for resolving databases/tables/fields.
    `assets-source` is an AssetsSource for resolving cards/snippets/transforms/segments.
-   `index` is a file index: `{kind {ref file-path}}` where kind is
-   :database, :table, :field, :card, etc."
+   `index` is a file index: `{kind {ref file-path}}` — databases from the schema
+   source, cards/dashboards/collections/transforms/segments/measures from assets."
   [schema-source assets-source index]
   (atom {:schema-source   schema-source
          :assets-source   assets-source

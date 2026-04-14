@@ -264,7 +264,9 @@
      :db-name->dir db-name->dir}))
 
 (defn index-stats
-  "Get statistics about a file index."
+  "Get statistics about a file index.
+   Note: tables and fields are resolved on demand and won't appear in the index
+   for schema-dir sources. They will be 0 for `build-database-dir-index` results."
   [index]
   {:databases      (count (:database index))
    :tables         (count (:table index))
