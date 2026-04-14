@@ -4,11 +4,11 @@ import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
-import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/common/components/Modal";
 import { Option, Select } from "metabase/common/components/Select";
+import { useAdminSetting } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";

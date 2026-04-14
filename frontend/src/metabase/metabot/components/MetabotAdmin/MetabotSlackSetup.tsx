@@ -11,10 +11,14 @@ import {
   useGetSlackAppInfoQuery,
   useGetSlackManifestQuery,
 } from "metabase/api/slack";
-import { useAdminSetting, useAdminSettings } from "metabase/api/utils/settings";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import {
+  useAdminSetting,
+  useAdminSettings,
+  useDocsUrl,
+  useSetting,
+} from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,

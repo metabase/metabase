@@ -1,8 +1,11 @@
 import { t } from "ttag";
 
 import { UpsellEmailWhitelabelPill } from "metabase/admin/upsells";
-import { useAdminSetting } from "metabase/api/utils";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import {
+  useAdminSetting,
+  useHasTokenFeature,
+  useSetting,
+} from "metabase/common/hooks";
 import { Box, Icon, TextInput } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { Box, Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 

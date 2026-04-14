@@ -5,7 +5,7 @@ import {
   BasicAdminSettingInput,
   SetByEnvVar,
 } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 
 import { FontFilesWidget } from "./FontFilesWidget";

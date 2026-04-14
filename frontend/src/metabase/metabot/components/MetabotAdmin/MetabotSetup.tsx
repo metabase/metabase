@@ -9,12 +9,12 @@ import {
   useGetMetabotSettingsQuery,
   useUpdateMetabotSettingsMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import {
-  getErrorMessage,
   useAdminSetting,
   useAdminSettings,
-} from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+  useSetting,
+} from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Badge,

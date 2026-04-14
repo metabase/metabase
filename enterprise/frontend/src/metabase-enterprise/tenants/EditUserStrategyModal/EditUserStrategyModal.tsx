@@ -3,9 +3,8 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
+import { useAdminSetting, useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";

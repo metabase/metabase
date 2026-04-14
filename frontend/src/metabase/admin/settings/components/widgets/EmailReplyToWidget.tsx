@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { Stack } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";

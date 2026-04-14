@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { FormTextInput } from "metabase/forms";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
 

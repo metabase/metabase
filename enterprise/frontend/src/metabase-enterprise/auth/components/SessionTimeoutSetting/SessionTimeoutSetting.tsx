@@ -6,8 +6,7 @@ import {
   BasicAdminSettingInput,
   SetByEnvVar,
 } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useAdminSetting, useHasTokenFeature } from "metabase/common/hooks";
 import { Flex, Select, Stack, Text, TextInput } from "metabase/ui";
 import type { TimeoutValue } from "metabase-types/api";
 

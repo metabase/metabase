@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { InputWithSelectPrefix } from "metabase/common/components/InputWithSelectPrefix";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useAdminSetting, useHasTokenFeature } from "metabase/common/hooks";
 import { Box, Text } from "metabase/ui";
 import type { GenericErrorResponse } from "metabase/utils/errors";
 

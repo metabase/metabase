@@ -13,7 +13,7 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import { useAdminSetting, useAdminSettings } from "./settings";
+import { useAdminSetting, useAdminSettings } from "./use-admin-setting";
 
 const TestComponent = () => {
   const { value, settingDetails, updateSetting, isLoading } =

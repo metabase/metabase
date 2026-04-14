@@ -2,9 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyButton } from "metabase/common/components/CopyButton";
+import { useAdminSetting } from "metabase/common/hooks";
 import { UtilApi } from "metabase/services";
 import { Box, Button, Flex, TextInputBlurChange } from "metabase/ui";
 

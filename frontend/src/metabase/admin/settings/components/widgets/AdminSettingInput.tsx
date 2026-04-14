@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useAdminSetting, useDocsUrl } from "metabase/common/hooks";
 import {
   Box,
   type BoxProps,

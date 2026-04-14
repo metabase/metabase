@@ -8,8 +8,8 @@ import {
   BasicAdminSettingInput,
   SetByEnvVar,
 } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
 import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
+import { useAdminSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type {

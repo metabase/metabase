@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
   type CurrencyStyle,

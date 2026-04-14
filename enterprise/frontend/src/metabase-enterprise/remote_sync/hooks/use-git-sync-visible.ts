@@ -1,4 +1,4 @@
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSelector } from "metabase/utils/redux";
 

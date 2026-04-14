@@ -2,6 +2,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useGetSettingsQuery } from "metabase/api/session";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useUpdateSettingMutation,
+  useUpdateSettingsMutation,
+} from "metabase/api/settings";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { useToast } from "metabase/common/hooks";
 import type {
   EnterpriseSettingKey,
@@ -9,15 +16,6 @@ import type {
   EnterpriseSettings,
   SettingDefinition,
 } from "metabase-types/api";
-
-import { useGetSettingsQuery } from "../session";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useUpdateSettingMutation,
-  useUpdateSettingsMutation,
-} from "../settings";
-
-import { getErrorMessage } from "./errors";
 
 /**
  * One hook to get setting values and mutators for a given setting

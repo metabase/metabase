@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { TextInput } from "metabase/ui";
 import type { GenericErrorResponse } from "metabase/utils/errors";
 

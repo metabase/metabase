@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
+import { useAdminSetting } from "metabase/common/hooks";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { Stack } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";

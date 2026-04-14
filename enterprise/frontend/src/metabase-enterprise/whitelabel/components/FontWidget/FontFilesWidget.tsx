@@ -2,7 +2,7 @@ import type { FocusEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { Stack, Text, TextInput } from "metabase/ui";
 import type { FontFile } from "metabase-types/api";
 

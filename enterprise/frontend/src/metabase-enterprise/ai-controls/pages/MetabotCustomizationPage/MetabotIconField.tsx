@@ -2,7 +2,7 @@ import cx from "classnames";
 import { type ChangeEvent, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,

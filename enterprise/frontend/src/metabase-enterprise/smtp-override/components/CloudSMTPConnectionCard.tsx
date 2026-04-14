@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { trackSMTPSetupClick } from "metabase/admin/settings/components/Email/analytics";
-import { useAdminSetting } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import { useAdminSetting, useSetting } from "metabase/common/hooks";
 import {
   Box,
   Button,

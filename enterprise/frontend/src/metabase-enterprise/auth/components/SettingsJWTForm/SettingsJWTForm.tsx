@@ -9,8 +9,8 @@ import { AdminSettingInput } from "metabase/admin/settings/components/widgets/Ad
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useAdminSetting } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { Box, Stack, Switch, Text, TextInput } from "metabase/ui";
 
 const getMcpClients = () =>

@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { EnterpriseSettingKey } from "metabase-types/api";

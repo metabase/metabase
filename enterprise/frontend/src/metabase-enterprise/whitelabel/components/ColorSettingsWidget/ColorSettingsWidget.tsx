@@ -1,7 +1,7 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/common/hooks";
 import { useMantineTheme } from "metabase/ui";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 

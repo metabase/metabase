@@ -3,8 +3,9 @@ import { c, jt, t } from "ttag";
 
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useUpdateMetabotSettingsMutation } from "metabase/api";
-import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
+import { getErrorMessage } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useAdminSetting } from "metabase/common/hooks";
 import { Box, Button, Flex, TextInput } from "metabase/ui";
 
 import {
