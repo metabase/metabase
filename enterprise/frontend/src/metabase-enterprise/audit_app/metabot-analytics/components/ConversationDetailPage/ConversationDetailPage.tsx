@@ -117,16 +117,12 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         </div>
       </Flex>
 
-      <SimpleGrid cols={4} mt="lg">
+      <SimpleGrid cols={3} mt="lg">
         <StatCard
           label={t`Total tokens`}
           value={totalTokens.toLocaleString()}
         />
-        <StatCard
-          label={t`Cost`}
-          value={`$${(totalTokens * 0.0001).toFixed(2)}`}
-        />
-        <StatCard label={t`Queries generated`} value={String(queries.length)} />
+        <StatCard label={t`Queries run`} value="—" />
         <StatCard label={t`Messages`} value={String(messageCount)} />
       </SimpleGrid>
 
