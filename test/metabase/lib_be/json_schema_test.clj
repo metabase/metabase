@@ -5,8 +5,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.lib-be.json-schema :as js]
-   [metabase.lib.test-util.generators :as gen]
-   [metabase.test :as mt]
    [metabase.util.json :as json-util])
   (:import (java.io File)))
 
@@ -63,8 +61,9 @@
           (is-valid? schema-file simple-query))
         (testing "representation examples validate"
           (let [examples-dir "../representations/examples/v1/collections/main/queries"]
+            ;; skip these tests when you don't have a representations checkout
             (when (.exists (File. examples-dir))
-              (doseq [f (take 1 (.listFiles (File. examples-dir)))]
+              (doseq [f (.listFiles (File. examples-dir))]
                 (let [query (:dataset_query (yaml/parse-string (slurp f)))]
                   (is-valid? schema-file query))))))
         ;; If you don't have the jv validator installed, don't worry about it

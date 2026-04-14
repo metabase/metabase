@@ -7,7 +7,7 @@
 
 (mr/def ::database
   "Valid Database ID"
-  [:or pos-int? string?])
+  pos-int?)
 
 (def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.

@@ -16,6 +16,9 @@
   one or zero children, which doesn't make any sense. These should be
   collapsed down. Empty conditions should be removed from these as well.
 
+  We're also just working around a few straight up bugs in Malli's own JSON
+  schema compiler.
+
   Our malli schema for what constitutes a valid JSON schema is a little stricter
   about what the keys have to look like; for instance types must always be
   keywords despite the fact that we're emitting them as JSON in the end so
@@ -28,7 +31,6 @@
    [metabase.lib.schema :as schema]
    [metabase.util :as u]
    [metabase.util.json :as json-util]
-   [metabase.util.malli :as mu]
    [metabase.util.performance :as mp]))
 
 (defn- collapse-branches [schema k]
@@ -59,38 +61,47 @@
         (collapse-branches :allOf)
         (collapse-branches :anyOf)
         (collapse-branches :oneOf)
-        (m/update-existing :properties update-properties)
-        ;; :metabase.api.open-api/parameter.schema wants this, but jv doesn't
-        ;; (m/update-existing :type keyword)
-        )
+        (m/update-existing :properties update-properties))
     node))
 
-(defn- fix-type [schema new-type]
+(defn- replace-int-type [schema new-type]
   (dissoc (merge schema new-type) :minimum))
 
 (defn- update-ids
-  "internal MBQL uses pos-int for a bunch of IDs which are string/string-tuple."
+  "internal MBQL uses pos-int for a bunch of IDs which need to be string/string-tuple."
   [definitions]
   (-> definitions
-      (update "metabase.lib.schema.id.table" fix-type
+      (update "metabase.lib.schema.id.table" replace-int-type
               {:type "array"
                :prefixItems [{:type "string"} ; db name
                              {:anyOf [{:type "string"} {:type "null"}]} ; schema
                              {:type "string"}] ; table name
                :items false})
-      (update "metabase.lib.schema.id.field" fix-type
+      (update "metabase.lib.schema.id.field" replace-int-type
               {:type "array"
                :prefixItems [{:type "string"} ; db name
                              {:anyOf [{:type "string"} {:type "null"}]} ; schema
                              {:type "string"}] ; table name
                :items {:type "string"}})
-      (update "metabase.lib.schema.id.database" fix-type {:type "string"})
-      (update "metabase.lib.schema.id.card" fix-type {:type "string"})
-      (update "metabase.lib.schema.id.segment" fix-type {:type "string"})
-      (update "metabase.lib.schema.id.measure" fix-type {:type "string"})
-      (update "metabase.lib.schema.id.snippet" fix-type {:type "string"})))
+      (update "metabase.lib.schema.id.database" replace-int-type {:type "string"})
+      (update "metabase.lib.schema.id.card" replace-int-type {:type "string"})
+      (update "metabase.lib.schema.id.segment" replace-int-type {:type "string"})
+      (update "metabase.lib.schema.id.measure" replace-int-type {:type "string"})
+      (update "metabase.lib.schema.id.snippet" replace-int-type {:type "string"})))
 
-(mu/defn make-schema :- map? ; :metabase.api.open-api/parameter.schema
+;; due to a bug in malli, :cat schemas get compiled to an empty schema. this
+;; wouldn't normally cause false negatives (just false positives) but there are
+;; cases when a :cat schema lands in a :oneOf schema where it can't be allowed
+;; to pass both branches; in that case a false positive becomes a false negative.
+;; we should fix this in malli, but for the time being, we work around it.
+(defn- remove-one-of-cat [definitions]
+  (assoc definitions
+         "metabase.lib.schema.expression.boolean" {}
+         "metabase.lib.schema.expression.expression" {}
+         "metabase.lib.schema.expression.orderable" {}
+         "metabase.lib.schema.mbql-clause.clause" {}))
+
+(defn make-schema
   "Generate a schema from Malli and apply fixes."
   []
   ;; here we generate a json schema and then make some modifications to adjust
@@ -99,17 +110,24 @@
   ;; all over the place so it would be hard to swap them all with our new
   ;; "externalized" field-id schema. if we turn it into json-schema then there's
   ;; only one place that those swaps need to happen.
-  (let [schema (mjs/transform ::schema/query
-                              ;; TODO: this makes the validator hate it, but
-                              ;; it's required for the malli schema above to
-                              ;; validate; what gives?
-                              #_{::mjs/definitions-path "#/components/schemas/"})]
-    (mp/postwalk walk (update schema :definitions update-ids))))
+  (let [schema (-> (mjs/transform ::schema/query)
+                   ;; many of the updates are done below in `walk` if they need
+                   ;; to work at any nesting level, but definitions are top-level
+                   ;; and can be adjusted immediately.
+                   (update :definitions update-ids)
+                   (update :definitions remove-one-of-cat)
+                   ;; this one breaks because the first oneOf branch is supposed to be for
+                   ;; UUIDs and the second branch falls back to any non-blank string, but a
+                   ;; UUID-shaped string will match both branches, so just check the latter.
+                   (update :definitions assoc
+                           "metabase.lib.schema.template-tag.id"
+                           {"$ref" "#/definitions/metabase.lib.schema.common.non-blank-string"}))]
+    (mp/postwalk walk schema)))
 
-(defn print-schema
+(defn write-schema
   "Print JSON Schema for MBQL5 queries, or write to a file if given."
   [{:keys [file]}]
   (let [json (json-util/encode (make-schema) {:pretty true})]
     (spit (or file "/dev/stdout") json)))
 
-(comment (print-schema {:file "schema.json"}))
+(comment (write-schema {:file "schema.json"}))
