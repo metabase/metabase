@@ -54,14 +54,6 @@
         (str/trim model)))
     (catch Exception _ nil)))
 
-(def ^:private schema-model->kind
-  "Map serdes/meta model names to index kinds for schema directory entities."
-  {"Database" :database
-   "Table"    :table
-   "Field"    :field
-   "Measure"  :measure
-   "Segment"  :segment})
-
 (defn- read-yaml-name
   "Read the `name:` field from a YAML file using regex (fast).
    Falls back to `fallback` if the file doesn't exist or can't be read."
@@ -257,7 +249,7 @@
    Returns a seq of [db-name schema table-name] refs."
   [^File databases-dir db-name->dir db-name]
   (let [^File db (db-dir databases-dir db-name->dir db-name)
-        result   (transient [])]
+        result   (volatile! [])]
     ;; With schema: <db>/schemas/<schema>/tables/<table>/
     (let [^File schemas-dir (io/file db "schemas")]
       (when (.isDirectory schemas-dir)
@@ -268,14 +260,14 @@
             (when (.isDirectory tables-dir)
               (doseq [^File td (.listFiles tables-dir)
                       :when (.isDirectory td)]
-                (conj! result [db-name schema-name (.getName td)])))))))
+                (vswap! result conj [db-name schema-name (.getName td)])))))))
     ;; Without schema: <db>/tables/<table>/
     (let [^File tables-dir (io/file db "tables")]
       (when (.isDirectory tables-dir)
         (doseq [^File td (.listFiles tables-dir)
                 :when (.isDirectory td)]
-          (conj! result [db-name nil (.getName td)]))))
-    (persistent! result)))
+          (vswap! result conj [db-name nil (.getName td)]))))
+    @result))
 
 (defn- list-field-paths
   "List field paths for a table by reading its fields/ directory.
