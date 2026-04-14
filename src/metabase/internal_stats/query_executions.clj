@@ -4,34 +4,44 @@
    [metabase.internal-stats.util :as u]
    [toucan2.core :as t2]))
 
+(def ^:private sdk-embed-condition
+  [:= :embedding_client "embedding-sdk-react"])
+
+(def ^:private simple-embed-condition
+  [:= :embedding_client "embedding-simple"])
+
+(def ^:private interactive-embed-condition
+  [:or
+   [:= :embedding_client "embedding-iframe-full-app"]
+   ;; legacy for backwards compatibility
+   [:and [:= :embedding_client "embedding-iframe"]
+    [:!= :executor_id nil]]])
+
+(def ^:private static-embed-condition
+  [:or
+   [:= :embedding_client "embedding-iframe-static"]
+   ;; legacy for backwards compatibility
+   [:and [:= :embedding_client "embedding-iframe"]
+    [:= :executor_id nil]]])
+
+(def ^:private public-link-condition
+  [:or
+   [:= :embedding_client "embedding-public"]
+   [:like :context "public-%"]])
+
 (def ^:private query-execution-statistics
   [:model/QueryExecution
-   [(u/count-case [:= :embedding_client "embedding-sdk-react"]) :sdk_embed]
-   [(u/count-case [:= :embedding_client "embedding-simple"]) :simple_embed]
-   [(u/count-case [:and [:= :embedding_client "embedding-iframe"]
-                   [:!= :executor_id nil]])
-    :interactive_embed]
-   [(u/count-case [:and [:= :embedding_client "embedding-iframe"]
-                   [:= :executor_id nil]])
-    :static_embed]
-   [(u/count-case [:and
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-sdk-react"]]
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-simple"]]
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-iframe"]]
-                   [:like :context "public-%"]])
-    :public_link]
-   [(u/count-case [:and
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-sdk-react"]]
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-simple"]]
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-iframe"]]
-                   [:not [:like :context "public-%"]]])
-    :internal]])
+   [(u/count-case sdk-embed-condition)         :sdk_embed]
+   [(u/count-case interactive-embed-condition) :interactive_embed]
+   [(u/count-case static-embed-condition)      :static_embed]
+   [(u/count-case public-link-condition)       :public_link]
+   [(u/count-case simple-embed-condition)      :simple_embed]
+   ;; fallthru: if a row does NOT match the above, it will match this condition and be counted internal.
+   [(u/count-case [:not [:or sdk-embed-condition
+                         interactive-embed-condition
+                         simple-embed-condition
+                         static-embed-condition
+                         public-link-condition]]) :internal]])
 
 (defn query-executions-all-time-and-last-24h
   "Calculate query executions for the entire available history and over the last 24 hours from now."
