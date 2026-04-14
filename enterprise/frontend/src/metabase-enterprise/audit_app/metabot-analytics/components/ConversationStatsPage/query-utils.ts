@@ -100,29 +100,32 @@ export function applyUsageStatsAggregation(
  */
 export function getChartTitle(
   metric: UsageStatsMetric,
-  dimension: "day" | "user" | "profile" | "source" | "ip_address",
+  dimension: "day" | "user" | "group" | "profile" | "source" | "ip_address",
 ): string {
   const titles = {
     conversations: {
       day: t`Conversations by day`,
-      user: t`Conversations by user`,
+      user: t`Users with most conversations`,
+      group: t`Groups with most conversations`,
       profile: t`Conversations by profile`,
       source: t`Conversations by source`,
-      ip_address: t`Conversations by IP address`,
+      ip_address: t`IP addresses with most conversations`,
     },
     messages: {
       day: t`Messages by day`,
-      user: t`Messages by user`,
+      user: t`Users with most messages`,
+      group: t`Groups with most messages`,
       profile: t`Messages by profile`,
       source: t`Messages by source`,
-      ip_address: t`Messages by IP address`,
+      ip_address: t`IP addresses with most messages`,
     },
     tokens: {
       day: t`Tokens by day`,
-      user: t`Tokens by user`,
+      user: t`Users with most tokens`,
+      group: t`Groups with most tokens`,
       profile: t`Tokens by profile`,
       source: t`Tokens by source`,
-      ip_address: t`Tokens by IP address`,
+      ip_address: t`IP addresses with most tokens`,
     },
   };
   return titles[metric][dimension];

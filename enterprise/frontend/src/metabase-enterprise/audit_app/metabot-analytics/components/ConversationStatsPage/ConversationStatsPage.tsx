@@ -18,9 +18,9 @@ import {
 
 import S from "./ConversationStatsPage.module.css";
 import { ConversationsByDayChart } from "./ConversationsByDayChart";
+import { ConversationsByGroupChart } from "./ConversationsByGroupChart";
 import { ConversationsByIPAddressChart } from "./ConversationsByIPAddressChart";
 import { ConversationsByProfileBarChart } from "./ConversationsByProfileBarChart";
-import { ConversationsByProfileChart } from "./ConversationsByProfileChart";
 import { ConversationsBySourceChart } from "./ConversationsBySourceChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
 import type { UsageStatsMetric } from "./query-utils";
@@ -99,20 +99,10 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     [navigateToConversations, userOptions],
   );
 
-  const handleProfileClick = useCallback(
-    (value: unknown) => {
-      if (value == null) {
-        return;
-      }
-      navigateToConversations({ profile: String(value) });
-    },
-    [navigateToConversations],
-  );
-
   return (
     <SettingsPageWrapper mt="sm">
       <Flex align="center" justify="space-between">
-        <Title order={1} display="flex" style={{ alignItems: "center" }}>
+        <Title order={2} display="flex" style={{ alignItems: "center" }}>
           {t`Usage stats`}
         </Title>
 
@@ -162,15 +152,11 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         />
       </SimpleGrid>
       <SimpleGrid cols={3} spacing="lg">
+        <ConversationsByGroupChart dateFilter={dateFilter} metric={metric} />
         <ConversationsByUserChart
           dateFilter={dateFilter}
           metric={metric}
           onDimensionClick={handleUserClick}
-        />
-        <ConversationsByProfileChart
-          dateFilter={dateFilter}
-          metric={metric}
-          onDimensionClick={handleProfileClick}
         />
         <ConversationsByIPAddressChart
           dateFilter={dateFilter}

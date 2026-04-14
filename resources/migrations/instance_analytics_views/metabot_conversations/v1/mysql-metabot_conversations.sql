@@ -19,7 +19,16 @@ SELECT
        AND mm.role = 'assistant'
        AND mm.deleted_at IS NULL
      ORDER BY mm.created_at
-     LIMIT 1)                                                         AS model
+     LIMIT 1)                                                         AS model,
+    (SELECT pg.name
+     FROM permissions_group_membership pgm
+     JOIN permissions_group pg ON pg.id = pgm.group_id
+     WHERE pgm.user_id = c.user_id
+       AND pg.id != 1
+     ORDER BY pg.name
+     LIMIT 1)                                                         AS group_name,
+    ''                                                                AS source,
+    ''                                                                AS ip_address
 FROM metabot_conversation c
 LEFT JOIN core_user u
     ON u.id = c.user_id
