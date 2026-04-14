@@ -205,8 +205,10 @@
    query-params :- :map]
   (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id   (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        parsed-qp      (api.embed.common/parse-query-params query-params)
-        cards-raw      (:cards parsed-qp)
+        ;; Extract cards before parse-query-params, which drops non-parameter keys
+        ;; when the `parameters` JSON key is present
+        cards-raw      (:cards query-params)
+        parsed-qp      (api.embed.common/parse-query-params (dissoc query-params :cards))
         cards-parsed   (cond-> cards-raw (string? cards-raw) json/decode+kw)
         cards          (some->> cards-parsed
                                 (mapv (fn [{:keys [dashcard_id card_id]}]
@@ -217,7 +219,7 @@
        :dashboard-id     dashboard-id
        :embedding-params (t2/select-one-fn :embedding_params :model/Dashboard :id dashboard-id)
        :token-params     (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
-       :query-params     (dissoc parsed-qp :cards)
+       :query-params     parsed-qp
        :cards            cards))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -527,17 +527,14 @@ function getBatchRequestConfig(
   }
   if (dashboardType === "embed") {
     const qs = new URLSearchParams();
-    // Embed uses slug-based parameter values
+    // Match per-card embed behavior: pass slug values as JSON in a `parameters`
+    // query param so arrays and types are preserved (parse-query-params decodes it)
     if (dashboardParameters) {
       const slugValues = getParameterValuesBySlug(
         dashboardParameters,
         parameterValues,
       );
-      for (const [slug, value] of Object.entries(slugValues)) {
-        if (value != null) {
-          qs.set(slug, String(value));
-        }
-      }
+      qs.set("parameters", JSON.stringify(slugValues));
     }
     if (cards.length > 0) {
       qs.set("cards", JSON.stringify(cards));
