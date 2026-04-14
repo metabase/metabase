@@ -109,7 +109,7 @@ describe("SecurityCenterPage", () => {
     expect(within(cards[2]).getByText("Low not affected")).toBeInTheDocument();
   });
 
-  it("shows affected status on cards", () => {
+  it("shows 'not affected' badge on non-affecting cards", () => {
     const advisories = [
       createAdvisory({ advisory_id: "1", match_status: "active" }),
       createAdvisory({ advisory_id: "2", match_status: "not_affected" }),
@@ -117,9 +117,9 @@ describe("SecurityCenterPage", () => {
 
     setup(advisories);
 
-    const statuses = screen.getAllByTestId("affected-status");
-    expect(statuses[0]).toHaveTextContent("Affected");
-    expect(statuses[1]).toHaveTextContent("Not affected");
+    expect(
+      screen.getByText("Your instance is not affected"),
+    ).toBeInTheDocument();
   });
 
   it("renders external links with correct targets", () => {

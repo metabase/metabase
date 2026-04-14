@@ -21,7 +21,6 @@ const makeAdvisory = (overrides: Partial<Advisory>): Advisory => ({
 
 const ALL_PASS_FILTER: AdvisoryFilter = {
   severity: "all",
-  status: "all",
   showAcknowledged: true,
 };
 
@@ -215,24 +214,6 @@ describe("filterAdvisories", () => {
     expect(result[0].advisory_id).toBe("1");
   });
 
-  it("should filter by affected status", () => {
-    const result = filterAdvisories(advisories, {
-      ...ALL_PASS_FILTER,
-      status: "affected",
-    });
-    expect(result.every((a) => a.match_status === "active")).toBe(true);
-    expect(result).toHaveLength(2);
-  });
-
-  it("should filter by not-affected status", () => {
-    const result = filterAdvisories(advisories, {
-      ...ALL_PASS_FILTER,
-      status: "not-affected",
-    });
-    expect(result.every((a) => a.match_status !== "active")).toBe(true);
-    expect(result).toHaveLength(2);
-  });
-
   it("should hide acknowledged advisories when showAcknowledged is false", () => {
     const result = filterAdvisories(advisories, {
       ...ALL_PASS_FILTER,
@@ -244,8 +225,7 @@ describe("filterAdvisories", () => {
 
   it("should combine multiple filters", () => {
     const result = filterAdvisories(advisories, {
-      severity: "all",
-      status: "affected",
+      severity: "critical",
       showAcknowledged: false,
     });
     expect(result).toHaveLength(1);

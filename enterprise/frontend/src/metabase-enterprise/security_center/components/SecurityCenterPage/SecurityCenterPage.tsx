@@ -34,7 +34,6 @@ import S from "./SecurityCenterPage.module.css";
 
 const DEFAULT_FILTER: AdvisoryFilter = {
   severity: "all",
-  status: "all",
   showAcknowledged: false,
 };
 
@@ -117,8 +116,6 @@ export function SecurityCenterPage() {
   const targetVersion = getTargetUpgradeVersion(advisories);
   const filtered = filterAdvisories(advisories, filter);
 
-  const nothingToShow = filtered.length === 0 || advisories.length === 0;
-
   if (isError) {
     return (
       <Box className={S.root}>
@@ -183,23 +180,11 @@ export function SecurityCenterPage() {
               filter={filter}
               onChange={setFilter}
             />
-            {nothingToShow ? (
-              <EmptyState
-                className={S.emptyState}
-                icon="shield_outline"
-                message={
-                  advisories.length === 0
-                    ? t`Your instance is up to date — no known security issues affect your configuration.`
-                    : t`Nothing match your filters.`
-                }
-              />
-            ) : (
-              <AdvisoryList
-                className={S.list}
-                advisories={filtered}
-                onAcknowledge={acknowledgeAdvisory}
-              />
-            )}
+            <AdvisoryList
+              className={S.list}
+              advisories={filtered}
+              onAcknowledge={acknowledgeAdvisory}
+            />
           </Stack>
           <NotificationChannelConfigModal
             opened={settingsOpen}

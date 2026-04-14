@@ -1,7 +1,8 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { Box, Title } from "metabase/ui";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Badge, Box, Group, Title } from "metabase/ui";
 import type { Advisory, AdvisoryId } from "metabase-types/api";
 
 import { sortAdvisories } from "../../utils";
@@ -17,9 +18,11 @@ interface AdvisoryListProps {
 
 function AdvisorySection({
   advisories,
+  isAffecting,
   onAcknowledge,
 }: {
   advisories: Advisory[];
+  isAffecting: boolean;
   onAcknowledge?: (advisoryId: AdvisoryId) => void;
 }) {
   return (
@@ -28,6 +31,7 @@ function AdvisorySection({
         <AdvisoryCard
           key={advisory.advisory_id}
           advisory={advisory}
+          isAffecting={isAffecting}
           onAcknowledge={onAcknowledge}
         />
       ))}
@@ -42,13 +46,30 @@ export function AdvisoryList({
 }: AdvisoryListProps) {
   const { affecting, notAffecting } = sortAdvisories(advisories);
 
+  if (advisories.length === 0) {
+    return (
+      <Box className={cx(className, S.root, S.emptyRoot)}>
+        <EmptyState
+          icon="shield_outline"
+          message={t`Your instance is up to date — no known security issues affect your configuration.`}
+        />
+      </Box>
+    );
+  }
+
   return (
     <Box className={cx(className, S.root)}>
       {affecting.length > 0 && (
         <Box>
-          <Title order={4} mb="md">{t`Affecting your instance`}</Title>
+          <Group gap="sm" mb="md" align="center">
+            <Badge size="sm" className={S.countBadge}>
+              {affecting.length}
+            </Badge>
+            <Title order={4}>{t`Affecting your instance`}</Title>
+          </Group>
           <AdvisorySection
             advisories={affecting}
+            isAffecting
             onAcknowledge={onAcknowledge}
           />
         </Box>
@@ -58,6 +79,7 @@ export function AdvisoryList({
           <Title order={4} mb="md">{t`Other alerts`}</Title>
           <AdvisorySection
             advisories={notAffecting}
+            isAffecting={false}
             onAcknowledge={onAcknowledge}
           />
         </Box>

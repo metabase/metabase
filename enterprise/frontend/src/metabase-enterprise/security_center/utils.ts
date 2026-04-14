@@ -28,12 +28,6 @@ export function filterAdvisories(
     if (filter.severity !== "all" && a.severity !== filter.severity) {
       return false;
     }
-    if (filter.status === "affected" && !isAffected(a)) {
-      return false;
-    }
-    if (filter.status === "not-affected" && isAffected(a)) {
-      return false;
-    }
     if (!filter.showAcknowledged && isAcknowledged(a)) {
       return false;
     }
