@@ -148,6 +148,14 @@
   "Given a `MetadataProvider` built by [[metadata-for]] and a card ID, tries to compile that card to e.g. SQL."
   [metadata-provider card-id]
   (mu/disable-enforcement
+    (-> (lib.metadata/card metadata-provider card-id)
+        :dataset-query
+        qp.compile/compile)))
+
+(defn compile-card-time
+  "Given a `MetadataProvider` built by [[metadata-for]] and a card ID, tries to compile that card to e.g. SQL."
+  [metadata-provider card-id]
+  (mu/disable-enforcement
     (let [dataset-query (-> (lib.metadata/card metadata-provider card-id)
                             :dataset-query)
           start (System/nanoTime)
@@ -166,7 +174,7 @@
                          (for [[idx card-id] (map-indexed vector card-ids)]
                            (try
                              (let [mp (metadata-for my-ctx {:card [card-id]})
-                                   elapsed-ms (compile-card mp card-id)
+                                   elapsed-ms (compile-card-time mp card-id)
                                    card-num (inc idx)
                                    card-pct (-> card-num (/ num-cards) (* 100) double)]
                                (when (= 0 (mod card-num 10))
