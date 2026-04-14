@@ -391,12 +391,19 @@
       (is (false? (:is_db_routed ei))))))
 
 (deftest query-execution-parameters-test
-  (testing "parameters is JSON-encoded when present"
-    (let [params [{:type "text/single" :value "foo"}]
-          ei     (#'process-userland-query/query-execution-info
-                  (make-test-query :parameters params))]
-      (is (string? (:parameters ei)))
-      (is (= params (json/decode+kw (:parameters ei))))))
+  (testing "parameters is JSON-encoded when PII retention enabled"
+    (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+      (let [params [{:type "text/single" :value "foo"}]
+            ei     (#'process-userland-query/query-execution-info
+                    (make-test-query :parameters params))]
+        (is (string? (:parameters ei)))
+        (is (= params (json/decode+kw (:parameters ei)))))))
+  (testing "parameters is nil when PII retention disabled"
+    (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+      (let [params [{:type "text/single" :value "foo"}]
+            ei     (#'process-userland-query/query-execution-info
+                    (make-test-query :parameters params))]
+        (is (nil? (:parameters ei))))))
   (testing "parameters is nil when absent"
     (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
       (is (nil? (:parameters ei))))))
