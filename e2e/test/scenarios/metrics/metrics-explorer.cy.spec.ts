@@ -412,7 +412,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
-      cy.wait("@getMetric");
       cy.wait("@dataset");
     });
 
@@ -634,8 +633,8 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Set up: two instances of Count of orders with an expression");
       cy.findByTestId("metrics-formula-input").click();
 
-      H.MetricsViewer.searchInput().type(", Count of orders");
-      cy.findByTestId("run-expression-button").click();
+      addMetric("Count of orders");
+      cy.wait("@dataset");
 
       H.MetricsViewer.searchBarPills().should("have.length", 2);
 
@@ -727,9 +726,12 @@ describe("scenarios > metrics > explorer", () => {
     it("should show an expression dimension pill with per-metric accordion", () => {
       cy.log("Create expression: Count of orders + Count of products");
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(
-        ", Count of orders + Count of products",
-      );
+
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      H.MetricsViewer.searchResults().findByText("Count of orders").click();
+      cy.wait("@getMetric");
+
+      H.MetricsViewer.searchInput().type(" + Count of products");
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
