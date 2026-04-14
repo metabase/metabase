@@ -426,7 +426,7 @@
             (-> settings
                 (m/update-existing :click_behavior normalize-click-behavior)
                 (m/update-existing :column_settings
-                                   (fn [cs] (into {} (map (fn [[k v]] [k (m/update-existing v :click_behavior normalize-click-behavior)])) cs)))))]
+                                   (fn [cs] (update-vals cs #(m/update-existing % :click_behavior normalize-click-behavior))))))]
     (->
      viz-settings
      (dissoc "column_settings")
