@@ -1,19 +1,20 @@
-import { t } from "ttag";
-
 import type { DateFilterValue } from "metabase/querying/common/types";
 
 import { BreakoutChart } from "./BreakoutChart";
+import { type UsageStatsMetric, getChartTitle } from "./query-utils";
 
 type Props = {
   dateFilter: DateFilterValue;
+  metric: UsageStatsMetric;
 };
 
-export function ConversationsByProfileChart({ dateFilter }: Props) {
+export function ConversationsByProfileChart({ dateFilter, metric }: Props) {
   return (
     <BreakoutChart
       dateFilter={dateFilter}
       breakoutColumn="model"
-      title={t`Profiles with most conversations`}
+      title={getChartTitle(metric, "profile")}
+      metric={metric}
     />
   );
 }

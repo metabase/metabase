@@ -11,13 +11,19 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { VIEW_CONVERSATIONS } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
 
-import { applyDateFilter, findColumn } from "./query-utils";
+import {
+  type UsageStatsMetric,
+  applyDateFilter,
+  applyUsageStatsAggregation,
+  findColumn,
+} from "./query-utils";
 
 type Props = {
   dateFilter: DateFilterValue;
   breakoutColumn: string;
   title: string;
   display?: VisualizationDisplay;
+  metric: UsageStatsMetric;
 };
 
 export function BreakoutChart({
@@ -25,6 +31,7 @@ export function BreakoutChart({
   breakoutColumn,
   title,
   display = "row",
+  metric,
 }: Props) {
   const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
 
@@ -35,20 +42,24 @@ export function BreakoutChart({
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
 
     q = applyDateFilter(q, dateFilter);
-    q = Lib.aggregateByCount(q, 0);
+    const { query: aggregated, orderColumnName } = applyUsageStatsAggregation(
+      q,
+      metric,
+    );
+    q = aggregated;
 
     const col = findColumn(q, breakoutColumn, Lib.breakoutableColumns);
     if (col) {
       q = Lib.breakout(q, 0, col);
     }
 
-    const countCol = findColumn(q, "count", Lib.orderableColumns);
-    if (countCol) {
-      q = Lib.orderBy(q, 0, countCol, "desc");
+    const orderCol = findColumn(q, orderColumnName, Lib.orderableColumns);
+    if (orderCol) {
+      q = Lib.orderBy(q, 0, orderCol, "desc");
     }
 
     return q;
-  }, [provider, table, dateFilter, breakoutColumn]);
+  }, [provider, table, dateFilter, breakoutColumn, metric]);
 
   const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
 

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
@@ -11,13 +10,20 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { VIEW_CONVERSATIONS } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
 
-import { applyDateFilter, findColumn } from "./query-utils";
+import {
+  type UsageStatsMetric,
+  applyDateFilter,
+  applyUsageStatsAggregation,
+  findColumn,
+  getChartTitle,
+} from "./query-utils";
 
 type Props = {
   dateFilter: DateFilterValue;
+  metric: UsageStatsMetric;
 };
 
-export function ConversationsByDayChart({ dateFilter }: Props) {
+export function ConversationsByDayChart({ dateFilter, metric }: Props) {
   const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
 
   const query = useMemo(() => {
@@ -27,7 +33,8 @@ export function ConversationsByDayChart({ dateFilter }: Props) {
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
 
     q = applyDateFilter(q, dateFilter);
-    q = Lib.aggregateByCount(q, 0);
+    const { query: aggregated } = applyUsageStatsAggregation(q, metric);
+    q = aggregated;
 
     const createdAtCol = findColumn(q, "created_at", Lib.breakoutableColumns);
     if (createdAtCol) {
@@ -43,7 +50,7 @@ export function ConversationsByDayChart({ dateFilter }: Props) {
     }
 
     return q;
-  }, [provider, table, dateFilter]);
+  }, [provider, table, dateFilter, metric]);
 
   const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
 
@@ -77,7 +84,9 @@ export function ConversationsByDayChart({ dateFilter }: Props) {
 
   return (
     <Card withBorder p="md" h={350}>
-      <Text fw="bold" mb="sm">{t`Conversations by day`}</Text>
+      <Text fw="bold" mb="sm">
+        {getChartTitle(metric, "day")}
+      </Text>
       <Visualization rawSeries={rawSeries} isDashboard />
     </Card>
   );

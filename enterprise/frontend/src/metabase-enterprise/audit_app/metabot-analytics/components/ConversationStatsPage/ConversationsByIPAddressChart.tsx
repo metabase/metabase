@@ -1,19 +1,20 @@
-import { t } from "ttag";
-
 import type { DateFilterValue } from "metabase/querying/common/types";
 
 import { BreakoutChart } from "./BreakoutChart";
+import { type UsageStatsMetric, getChartTitle } from "./query-utils";
 
 type Props = {
   dateFilter: DateFilterValue;
+  metric: UsageStatsMetric;
 };
 
-export function ConversationsByIPAddressChart({ dateFilter }: Props) {
+export function ConversationsByIPAddressChart({ dateFilter, metric }: Props) {
   return (
     <BreakoutChart
       dateFilter={dateFilter}
       breakoutColumn="ip_address"
-      title={t`IP addresses with most conversations`}
+      title={getChartTitle(metric, "ip_address")}
+      metric={metric}
     />
   );
 }

@@ -5,7 +5,7 @@ import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useGetDatabaseMetadataQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { Flex, SimpleGrid, Skeleton, Title } from "metabase/ui";
+import { Flex, SimpleGrid, Skeleton, Tabs, Title } from "metabase/ui";
 
 import { AUDIT_DB_ID } from "../../constants";
 import {
@@ -15,12 +15,14 @@ import {
   useFilterOptions,
 } from "../ConversationFilters";
 
+import S from "./ConversationStatsPage.module.css";
 import { ConversationsByDayChart } from "./ConversationsByDayChart";
 import { ConversationsByIPAddressChart } from "./ConversationsByIPAddressChart";
 import { ConversationsByProfileBarChart } from "./ConversationsByProfileBarChart";
 import { ConversationsByProfileChart } from "./ConversationsByProfileChart";
 import { ConversationsBySourceChart } from "./ConversationsBySourceChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
+import type { UsageStatsMetric } from "./query-utils";
 
 const DEFAULT_DATE_FILTER: DateFilterValue = {
   type: "relative",
@@ -33,6 +35,7 @@ export function ConversationStatsPage() {
   const [dateValue, setDateValue] = useState(DEFAULT_DATE);
   const [user, setUser] = useState<string | null>(null);
   const [group, setGroup] = useState<string | null>(DEFAULT_GROUP);
+  const [metric, setMetric] = useState<UsageStatsMetric>("conversations");
 
   const dateFilter: DateFilterValue = useMemo(() => {
     if (!dateValue) {
@@ -69,6 +72,27 @@ export function ConversationStatsPage() {
         />
       </Flex>
 
+      <Tabs
+        variant="pills"
+        value={metric}
+        onChange={(val) => setMetric(val as UsageStatsMetric)}
+      >
+        <Tabs.List className={S.metricTabs}>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="conversations"
+          >{t`Conversations`}</Tabs.Tab>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="tokens"
+          >{t`Tokens`}</Tabs.Tab>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="messages"
+          >{t`Messages`}</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
+
       {isLoadingMetadata ? (
         <>
           <Skeleton h={350} />
@@ -79,15 +103,27 @@ export function ConversationStatsPage() {
         </>
       ) : (
         <>
-          <ConversationsByDayChart dateFilter={dateFilter} />
+          <ConversationsByDayChart dateFilter={dateFilter} metric={metric} />
           <SimpleGrid cols={2} spacing="lg">
-            <ConversationsBySourceChart dateFilter={dateFilter} />
-            <ConversationsByProfileBarChart dateFilter={dateFilter} />
+            <ConversationsBySourceChart
+              dateFilter={dateFilter}
+              metric={metric}
+            />
+            <ConversationsByProfileBarChart
+              dateFilter={dateFilter}
+              metric={metric}
+            />
           </SimpleGrid>
           <SimpleGrid cols={3} spacing="lg">
-            <ConversationsByUserChart dateFilter={dateFilter} />
-            <ConversationsByProfileChart dateFilter={dateFilter} />
-            <ConversationsByIPAddressChart dateFilter={dateFilter} />
+            <ConversationsByUserChart dateFilter={dateFilter} metric={metric} />
+            <ConversationsByProfileChart
+              dateFilter={dateFilter}
+              metric={metric}
+            />
+            <ConversationsByIPAddressChart
+              dateFilter={dateFilter}
+              metric={metric}
+            />
           </SimpleGrid>
         </>
       )}
