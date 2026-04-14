@@ -1,6 +1,7 @@
 (ns metabase.task-history.api
   "/api/task endpoints"
   (:require
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
@@ -13,7 +14,9 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Duration Instant)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -39,15 +42,93 @@
                     [:id ms/PositiveInt]]]
   (api/check-404 (api/read-check :model/TaskHistory id)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(mr/def ::TaskInfoQueryParams
+  [:maybe
+   [:map
+    [:start {:optional true} ms/NonBlankString]
+    [:end   {:optional true} ms/NonBlankString]]])
+
+(mr/def ::FiringRow
+  [:map
+   [:at          :string]
+   [:job_key     :string]
+   [:trigger_key :string]
+   [:description {:optional true} [:maybe :string]]
+   [:schedule    {:optional true} [:maybe :string]]
+   [:timezone    {:optional true} [:maybe :string]]])
+
+(mr/def ::FiringsTruncation
+  [:map
+   [:job_key      :string]
+   [:trigger_key  :string]
+   [:truncated    :boolean]])
+
+(mr/def ::FiringsMeta
+  [:map
+   [:truncations             [:sequential ::FiringsTruncation]]
+   [:global_cap_exhausted    :boolean]
+   [:max_firings_per_trigger :int]
+   [:max_firings_global      :int]])
+
+(mr/def ::TaskInfoResponse
+  [:map
+   [:scheduler    [:maybe [:sequential :string]]]
+   [:jobs         [:maybe [:sequential :any]]]
+   [:firings      {:optional true} [:sequential ::FiringRow]]
+   [:firings_meta {:optional true} ::FiringsMeta]])
+
+(def ^:private max-firings-window-ms (* 14 24 60 60 1000))
+
+(defn- ^Instant query-str->instant [s]
+  (let [parsed (u.date/parse s)]
+    (api/check-400 parsed (tru "{0} must be a valid ISO-8601 timestamp." s))
+    (cond
+      (instance? Instant parsed)
+      parsed
+
+      (t/zoned-date-time? parsed)
+      (.toInstant ^java.time.ZonedDateTime parsed)
+
+      (t/offset-date-time? parsed)
+      (.toInstant ^java.time.OffsetDateTime parsed)
+
+      (t/local-date-time? parsed)
+      (.toInstant (.atOffset ^java.time.LocalDateTime parsed java.time.ZoneOffset/UTC))
+
+      (t/local-date? parsed)
+      (.toInstant (.atStartOfDay ^java.time.LocalDate parsed java.time.ZoneOffset/UTC))
+
+      :else
+      (api/check-400 false (tru "Unsupported timestamp format; use an ISO-8601 date or datetime.")))))
+
+(defn- validate-firings-window! [^Instant start ^Instant end]
+  (api/check-400 (.isBefore start end) (tru "`start` must be strictly before `end`."))
+  (let [^Duration dur (Duration/between start end)]
+    (api/check-400 (<= (.toMillis dur) max-firings-window-ms)
+                   (tru "Time window between `start` and `end` must be at most 14 days."))))
+
 (api.macros/defendpoint :get "/info"
-  "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
-  []
+  :- ::TaskInfoResponse
+  "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers).
+
+  Optional query parameters `start` and `end` (ISO-8601, both required together) add a `:firings` projection: trigger
+  fire instants in the half-open interval `[start, end)` (`end` is exclusive), capped for safety."
+  [_route-params
+   {:keys [start end]} :- ::TaskInfoQueryParams]
   (perms/check-has-application-permission :monitoring)
-  (task/scheduler-info))
+  (let [base (task/scheduler-info)]
+    (cond
+      (and start end)
+      (let [start-i (query-str->instant start)
+            end-i   (query-str->instant end)]
+        (validate-firings-window! start-i end-i)
+        (merge base (task/scheduled-firings-between start-i end-i)))
+
+      (or start end)
+      (api/check-400 false (tru "Both `start` and `end` query parameters are required to load scheduled firings."))
+
+      :else
+      base)))
 
 ;;; TODO -- this is not necessarily a 'task history' thing and maybe belongs in the `task` module's API rather than
 ;;; here... maybe a problem for another day.

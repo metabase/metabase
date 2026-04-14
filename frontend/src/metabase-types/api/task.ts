@@ -59,9 +59,39 @@ export type Job = {
   triggers: Trigger[];
 };
 
+export type TaskScheduleFiring = {
+  at: string;
+  job_key: string;
+  trigger_key: string;
+  description?: string | null;
+  schedule?: string | null;
+  timezone?: string | null;
+};
+
+export type TaskScheduleFiringTruncation = {
+  job_key: string;
+  trigger_key: string;
+  truncated: boolean;
+};
+
+export type TaskScheduleFiringsMeta = {
+  truncations: TaskScheduleFiringTruncation[];
+  global_cap_exhausted: boolean;
+  max_firings_per_trigger: number;
+  max_firings_global: number;
+};
+
 export type TaskInfo = {
-  scheduler: string[];
-  jobs: Job[];
+  scheduler: string[] | null;
+  jobs: Job[] | null;
+  firings?: TaskScheduleFiring[];
+  firings_meta?: TaskScheduleFiringsMeta;
+};
+
+/** Query params for `GET /api/task/info` when loading projected Quartz firings. */
+export type TaskInfoScheduleParams = {
+  start: string;
+  end: string;
 };
 
 export type TaskRunType = "subscription" | "alert" | "sync" | "fingerprint";

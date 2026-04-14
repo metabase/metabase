@@ -28,13 +28,17 @@
    [metabase.task.job-factory :as job-factory]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
+   (java.time Instant)
+   (java.util Date)
    (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobListener
                JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey
-               TriggerListener)))
+               TriggerListener)
+   (org.quartz.spi OperableTrigger)))
 
 (set! *warn-on-reflection* true)
 
@@ -339,6 +343,105 @@
   []
   {:scheduler (some-> (scheduler) .getMetaData .getSummary str/split-lines)
    :jobs      (jobs-info)})
+
+(def ^:private max-firings-window-days 14)
+
+(def ^:private max-firings-per-trigger 400)
+
+(def ^:private max-firings-global 25000)
+
+(defn- ^Date instant->date ^Date [^Instant i]
+  (Date/from i))
+
+(defn- firing-in-window? [^Date fire ^Date window-start ^Date window-end]
+  (let [t (.getTime fire)]
+    (and (not (< t (.getTime window-start)))
+         (< t (.getTime window-end)))))
+
+(defn- firing-row [job-key ^Trigger trigger ^Date fire]
+  (merge {:at           (u.date/format (.toInstant fire))
+          :job_key      job-key
+          :trigger_key  (-> ^Trigger trigger .getKey .getName)
+          :description  (.getDescription trigger)}
+         (when (instance? CronTrigger trigger)
+           (let [^CronTrigger ct trigger]
+             {:schedule (.getCronExpression ct)
+              :timezone (.getID (.getTimeZone ct))}))))
+
+(defn- safe-next-fire-time!
+  [^OperableTrigger trigger ^Date cursor job-key]
+  (try
+    (.getFireTimeAfter trigger cursor)
+    (catch Throwable e
+      (log/warnf e "Could not compute next fire time for trigger %s of job %s"
+                 (-> ^Trigger trigger .getKey .getName)
+                 job-key)
+      nil)))
+
+(defn- collect-firings-for-trigger!
+  [job-key ^OperableTrigger trigger ^Date window-start ^Date window-end per-cap ^clojure.lang.IRef remaining-global]
+  (let [cursor-init (Date. (dec (.getTime window-start)))]
+    (loop [out        (transient [])
+           ^Date cursor cursor-init
+           truncated? false]
+      (cond
+        (>= (count out) per-cap)
+        {:rows (persistent! out) :truncated? true}
+
+        (<= (long @remaining-global) 0)
+        {:rows (persistent! out) :truncated? true}
+
+        :else
+        (if-let [^Date next (safe-next-fire-time! trigger cursor job-key)]
+          (if (>= (.getTime next) (.getTime window-end))
+            {:rows (persistent! out) :truncated? truncated?}
+            (if-not (firing-in-window? next window-start window-end)
+              (recur out next truncated?)
+              (do
+                (vswap! remaining-global dec)
+                (recur (conj! out (firing-row job-key trigger next))
+                       next
+                       truncated?))))
+          {:rows (persistent! out) :truncated? truncated?})))))
+
+(mu/defn scheduled-firings-between
+  "Project Quartz trigger firings in the half-open window `[start, end)` (`end` exclusive), using each trigger's
+  live `OperableTrigger` definition. Returns `{:firings [...] :firings-meta ...}`. Assumes `start` is strictly before
+  `end` and that the window length does not exceed [[max-firings-window-days]] (caller should validate)."
+  [start :- (ms/InstanceOfClass Instant)
+   end :- (ms/InstanceOfClass Instant)]
+  (if-not (scheduler)
+    {:firings      []
+     :firings_meta {:truncations             []
+                    :global_cap_exhausted    false
+                    :max_firings_per_trigger max-firings-per-trigger
+                    :max_firings_global      max-firings-global}}
+    (let [window-start (instant->date start)
+          window-end   (instant->date end)
+          remaining    (volatile! max-firings-global)
+          truncations  (volatile! [])
+          all-rows     (volatile! [])]
+      (doseq [^JobKey jk (sort-by #(.getName ^JobKey %) (.getJobKeys ^Scheduler (scheduler) nil))
+              :let [job-name (.getName jk)]]
+        (doseq [^Trigger trig (try (qs/get-triggers-of-job (scheduler) jk)
+                                   (catch Throwable e
+                                     (log/warnf e "Error listing triggers for job %s" job-name)
+                                     []))]
+          (when (instance? OperableTrigger trig)
+            (let [{:keys [rows truncated?]} (collect-firings-for-trigger!
+                                             job-name ^OperableTrigger trig window-start window-end
+                                             max-firings-per-trigger remaining)]
+              (when (seq rows)
+                (vswap! all-rows into rows))
+              (when truncated?
+                (vswap! truncations conj {:job_key      job-name
+                                          :trigger_key (-> ^Trigger trig .getKey .getName)
+                                          :truncated   true}))))))
+      {:firings      (vec (sort-by :at @all-rows))
+       :firings_meta {:truncations             @truncations
+                      :global_cap_exhausted    (<= (long @remaining) 0)
+                      :max_firings_per_trigger max-firings-per-trigger
+                      :max_firings_global      max-firings-global}})))
 
 (defmacro rerun-on-error
   "Retry the current Job if an exception is thrown by the enclosed code."

@@ -16,7 +16,7 @@ import { useDispatch } from "metabase/utils/redux";
 import type { Job } from "metabase-types/api";
 
 interface SchedulerInfoProps {
-  scheduler?: string[];
+  scheduler?: string[] | null;
 }
 
 const SchedulerInfo = ({ scheduler }: SchedulerInfoProps) => {
@@ -30,7 +30,7 @@ const SchedulerInfo = ({ scheduler }: SchedulerInfoProps) => {
 };
 
 interface JobsTableProps {
-  jobs?: Job[];
+  jobs?: Job[] | null;
 }
 
 const JobsTable = ({ jobs }: JobsTableProps) => {
@@ -80,7 +80,7 @@ interface JobInfoAppProps {
 }
 
 export const JobInfoApp = ({ children }: JobInfoAppProps) => {
-  const { data, error, isFetching } = useGetTasksInfoQuery();
+  const { data, error, isFetching } = useGetTasksInfoQuery(undefined);
 
   return (
     <SettingsPageWrapper title={t`Scheduler Info`}>

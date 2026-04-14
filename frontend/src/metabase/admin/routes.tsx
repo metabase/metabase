@@ -33,6 +33,7 @@ import {
 } from "metabase/admin/settings/components/EmbeddingSettings";
 import { Help } from "metabase/admin/tools/components/Help";
 import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
+import { JobSchedulePage } from "metabase/admin/tools/components/JobSchedulePage/JobSchedulePage";
 import { JobTriggersModal } from "metabase/admin/tools/components/JobTriggersModal";
 import { LogLevelsModal } from "metabase/admin/tools/components/LogLevelsModal";
 import { Logs } from "metabase/admin/tools/components/Logs";
@@ -292,6 +293,7 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
+            <Route path="schedule" component={JobSchedulePage} />
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

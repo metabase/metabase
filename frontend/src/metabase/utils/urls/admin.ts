@@ -165,6 +165,10 @@ export function adminToolsJobs() {
   return "/admin/tools/jobs";
 }
 
+export function adminToolsSchedule() {
+  return "/admin/tools/schedule";
+}
+
 export function adminToolsLogs() {
   return "/admin/tools/logs";
 }

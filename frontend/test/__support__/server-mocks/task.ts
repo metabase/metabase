@@ -4,6 +4,7 @@ import type {
   ListTaskRunsResponse,
   ListTasksResponse,
   Task,
+  TaskInfo,
   TaskRunExtended,
 } from "metabase-types/api";
 
@@ -24,6 +25,13 @@ export function setupUniqueTasksEndpoint(
   options?: UserRouteConfig,
 ) {
   fetchMock.get(`path:/api/task/unique-tasks`, tasks, options);
+}
+
+export function setupTaskInfoEndpoint(
+  response: TaskInfo,
+  options?: UserRouteConfig,
+) {
+  fetchMock.get(/\/api\/task\/info(\?.*)?$/, response, options);
 }
 
 export function setupTaskRunsEndpoints(
