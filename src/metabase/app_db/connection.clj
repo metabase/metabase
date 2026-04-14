@@ -164,7 +164,11 @@
 
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
-            (let [savepoint (.setSavepoint connection)]
+            (let [savepoint          (.setSavepoint connection)
+                  commit-snapshot    (when (and *after-commit* (> *transaction-depth* 1))
+                                       @*after-commit*)
+                  state-snapshot     (when (and *transaction-state* (> *transaction-depth* 1))
+                                       @*transaction-state*)]
               (try
                 (let [result (f connection)]
                   (when (= *transaction-depth* 1)
@@ -184,6 +188,12 @@
                 (catch Throwable txn-e
                   (try
                     (.rollback connection savepoint)
+                    ;; Restore after-commit and transaction-state to pre-savepoint values
+                    ;; so callbacks/state from the rolled-back savepoint are discarded
+                    (when commit-snapshot
+                      (reset! *after-commit* commit-snapshot))
+                    (when state-snapshot
+                      (reset! *transaction-state* state-snapshot))
                     (catch Exception rollback-e
                       (throw (ex-info
                               (str "Error rolling back after previous error: " (ex-message txn-e))
