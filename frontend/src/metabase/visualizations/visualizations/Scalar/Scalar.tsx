@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Tooltip } from "metabase/ui";
+import { Stack, Text, Tooltip } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
@@ -87,11 +87,6 @@ export class Scalar extends Component<
         },
       ]) => cols.length < 2,
     }),
-    // used by metrics viewer to set the color, overrides "scalar.segments"
-    "scalar.color": {
-      hidden: true,
-      getDefault: () => undefined,
-    },
     "scalar.segments": {
       get section() {
         return t`Conditional colors`;
@@ -122,6 +117,11 @@ export class Scalar extends Component<
       ],
       readDependencies: ["scalar.field"],
     }),
+    // used by metrics viewer
+    "scalar.label": {
+      hidden: true,
+      getDefault: () => undefined,
+    },
     // LEGACY scalar settings, now handled by column level settings
     "scalar.locale": {
       // title: t`Separator style`,
@@ -210,9 +210,8 @@ export class Scalar extends Component<
       segmentIsValid(segment, { allowOpenEnded: true }),
     );
 
-    const explicitColor = settings["scalar.color"];
-    const color = explicitColor ?? getColor(value, segments);
-    const tooltipContent = explicitColor ? null : getTooltipContent(segments);
+    const color = getColor(value, segments);
+    const tooltipContent = getTooltipContent(segments);
 
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
@@ -220,7 +219,10 @@ export class Scalar extends Component<
       formatOptions,
     );
 
-    const isClickable = onVisualizationClick != null;
+    const label = settings["scalar.label"];
+    const isMetricsViewer = label !== undefined;
+
+    const isClickable = onVisualizationClick != null && !isMetricsViewer;
 
     const handleClick = () => {
       if (this._scalar == null) {
@@ -259,13 +261,15 @@ export class Scalar extends Component<
             py="xs"
             disabled={!tooltipContent}
           >
-            <Box
+            <Stack
               onClick={handleClick}
               ref={(scalar) => (this._scalar = scalar)}
+              align="center"
+              gap="xs"
             >
               <ScalarValue
                 color={color}
-                disableHover={!!explicitColor}
+                disableHover={isMetricsViewer}
                 fontFamily={fontFamily}
                 gridSize={gridSize}
                 height={Math.max(height - PADDING * 2, 0)}
@@ -273,7 +277,12 @@ export class Scalar extends Component<
                 value={displayValue as string}
                 width={Math.max(width - PADDING, 0)}
               />
-            </Box>
+              {label && (
+                <Text fz={16} ta="center" style={{ whiteSpace: "pre-wrap" }}>
+                  {label}
+                </Text>
+              )}
+            </Stack>
           </Tooltip>
         </ScalarValueContainer>
       </ScalarWrapper>
