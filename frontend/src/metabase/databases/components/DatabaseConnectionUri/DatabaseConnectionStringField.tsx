@@ -231,5 +231,5 @@ function ConnectionStringDescription({
 }
 
 function hasNonUndefinedValue(map: Map<string, string | boolean | undefined>) {
-  return Array.from(map.values()).some((value) => value !== undefined);
+  return map.values().some((value) => value !== undefined);
 }

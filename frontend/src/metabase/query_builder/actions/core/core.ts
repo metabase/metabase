@@ -15,7 +15,6 @@ import {
   setParameterValue,
 } from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
-import { clone } from "metabase/utils/clone";
 import { shouldOpenInBlankWindow } from "metabase/utils/dom";
 import { entityCompatibleQuery } from "metabase/utils/entities";
 import { createThunkAction } from "metabase/utils/redux";
@@ -107,7 +106,7 @@ export const setCardAndRun = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     // clone
-    const card = clone(nextCard);
+    const card = structuredClone(nextCard);
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage

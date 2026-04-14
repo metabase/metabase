@@ -40,6 +40,6 @@ module.exports = {
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js",
   ],
-  testEnvironment: "jest-environment-jsdom",
+  testEnvironment: "jest-fixed-jsdom",
   testTimeout: 30000,
 };

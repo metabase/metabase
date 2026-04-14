@@ -45,7 +45,7 @@ const getMetricValue = (
 
 const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
   const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
-  return Array.from(keys).reduce<MetricDatum>((datum, metricKey) => {
+  return keys.values().reduce<MetricDatum>((datum, metricKey) => {
     datum[metricKey] = sumMetric(left[metricKey], right[metricKey]);
     return datum;
   }, {});
@@ -203,8 +203,9 @@ const getBreakoutSeries = (
   dimension: ColumnDescriptor,
   settings: ComputedVisualizationSettings,
 ): Series<GroupedDatum, SeriesInfo>[] => {
-  return Array.from(breakoutValues.entries()).map(
-    ([breakoutKey, displayValue]) => {
+  return breakoutValues
+    .entries()
+    .map(([breakoutKey, displayValue]) => {
       const customName = settings?.series_settings?.[breakoutKey]?.title;
       return {
         seriesKey: breakoutKey,
@@ -223,8 +224,8 @@ const getBreakoutSeries = (
           breakoutValue: breakoutKey,
         },
       };
-    },
-  );
+    })
+    .toArray();
 };
 
 const getMultipleMetricSeries = (

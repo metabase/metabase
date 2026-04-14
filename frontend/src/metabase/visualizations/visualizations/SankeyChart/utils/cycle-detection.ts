@@ -53,9 +53,11 @@ export const hasCyclicFlow = (
   const visited = new Set<RowValue>();
   const pathNodes = new Set<RowValue>();
 
-  return Array.from(graph.keys()).some(
-    (node) =>
-      !visited.has(node) &&
-      detectCycleFromNode(node, graph, visited, pathNodes),
-  );
+  return graph
+    .keys()
+    .some(
+      (node) =>
+        !visited.has(node) &&
+        detectCycleFromNode(node, graph, visited, pathNodes),
+    );
 };

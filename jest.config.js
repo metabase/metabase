@@ -95,7 +95,7 @@ const baseConfig = {
     "/target/cljs_release/",
     "/frontend/test/",
   ],
-  testEnvironment: "jest-environment-jsdom",
+  testEnvironment: "jest-fixed-jsdom",
 };
 
 /** @type {import('jest').Config} */

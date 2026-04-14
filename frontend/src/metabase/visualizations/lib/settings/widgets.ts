@@ -8,7 +8,7 @@ const toWidgetValue = new Map<unknown, string>([
 ]);
 
 const fromWidgetValue = new Map<string, unknown>(
-  Array.from(toWidgetValue.entries()).map(([key, value]) => [value, key]),
+  toWidgetValue.entries().map(([key, value]) => [value, key]),
 );
 
 export const encodeWidgetValue = (value: unknown): string => {
