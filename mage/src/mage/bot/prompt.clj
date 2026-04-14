@@ -18,6 +18,25 @@
                    [(subs s 0 idx) (subs s (inc idx))])))
              set-args)))
 
+(defn- parse-set-from-file-args
+  "Parse --set-from-file KEY=path arguments by reading the referenced file
+   and producing a map of {\"KEY\" \"<file contents>\"}. Missing files become
+   empty strings with a warning."
+  [args]
+  (into {}
+        (keep (fn [s]
+                (when-let [idx (str/index-of s "=")]
+                  (when (pos? idx)
+                    (let [k    (subs s 0 idx)
+                          path (subs s (inc idx))
+                          f    (java.io.File. ^String path)]
+                      (if (.exists f)
+                        [k (slurp f)]
+                        (do
+                          (println (c/yellow "Warning: --set-from-file path does not exist: " path))
+                          [k ""])))))))
+        args))
+
 (defn- resolve-file-includes
   "Replace all {{FILE:path}} placeholders with the contents of the referenced files.
    Paths are relative to the project root."
@@ -35,11 +54,14 @@
 (defn generate-prompt!
   "Fill a template with placeholders and write to output.
    Expects --template, --output, and one or more --set KEY=VALUE options.
+   Also supports --set-from-file KEY=path to read a value from a file
+   (useful for multi-line values you'd otherwise have to shell-escape).
    Also resolves {{FILE:path}} includes."
   [{:keys [options]}]
-  (let [template-path (:template options)
-        output-path   (:output options)
-        set-args      (:set options)]
+  (let [template-path  (:template options)
+        output-path    (:output options)
+        set-args       (:set options)
+        set-file-args  (:set-from-file options)]
     (when (str/blank? template-path)
       (println (c/red "--template is required"))
       (u/exit 1))
@@ -49,7 +71,8 @@
     (when-not (.exists (java.io.File. ^String template-path))
       (println (c/red "Template not found: " template-path))
       (u/exit 1))
-    (let [replacements (parse-set-args (or set-args []))
+    (let [replacements (merge (parse-set-from-file-args (or set-file-args []))
+                              (parse-set-args (or set-args [])))
           template     (slurp template-path)
           ;; First resolve {{FILE:...}} includes
           with-files   (resolve-file-includes template)

@@ -584,6 +584,27 @@ To save responses to the output directory for evidence, redirect stdout:
 ./bin/mage -bot-api-call /api/<endpoint> --api-key $ADMIN_API_KEY > {{OUTPUT_DIR}}/output/api-<name>.json
 ```
 
+### Output format and piping to jq/python
+
+By default `-bot-api-call` prints a diagnostic preamble to **stderr** (`GET /api/... (port 3000)` and `Status: 200`) and the response body to **stdout**. Example:
+
+```
+$ ./bin/mage -bot-api-call /api/health
+GET /api/health (port 3000)         # stderr
+Status: 200                          # stderr
+{                                    # stdout (pretty-printed JSON)
+  "status": "ok"
+}
+```
+
+Because stdout and stderr are separate streams, **most piping works out of the box**: `./bin/mage -bot-api-call /api/user/current | jq .email` will succeed because only the JSON goes to stdout. If you're redirecting stdout to a file, the file will contain only the body.
+
+If a consumer can't handle any stderr chatter at all, pass `--raw` to suppress the preamble entirely:
+
+```bash
+./bin/mage -bot-api-call /api/health --raw | python3 -c 'import sys,json; print(json.load(sys.stdin))'
+```
+
 
 ## Important Rules
 

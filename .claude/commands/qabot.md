@@ -13,9 +13,8 @@ Then read:
 
 ### 2. Generate agent prompt
 
-Save multi-line context values to temp files under `.bot/qabot/<timestamp>/tmp/` using the `Write` tool, then reference them with `$(cat ...)`.
+Reference the discover-dir files directly via `--set-from-file` — no need to copy them into `{{OUTPUT_DIR}}/tmp/` or shell-escape them:
 
-Run:
 ```
 ./bin/mage -bot-generate-prompt \
   --template dev/bot/qabot-agent.md \
@@ -23,11 +22,11 @@ Run:
   --set "TIMESTAMP=<timestamp>" \
   --set "OUTPUT_DIR=.bot/qabot/<timestamp>" \
   --set "LINEAR_ISSUE_ID=<resolved-id-or-empty>" \
-  --set "LINEAR_CONTEXT=$(cat .bot/qabot/<timestamp>/tmp/linear-context.txt)" \
-  --set "PR_CONTEXT=$(cat .bot/qabot/<timestamp>/tmp/pr-context.txt)"
+  --set-from-file "LINEAR_CONTEXT=.bot/qabot/discover/linear-context.txt" \
+  --set-from-file "PR_CONTEXT=.bot/qabot/discover/pr-context.txt"
 ```
 
-**Shell escaping:** Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions. Do NOT write to `/tmp` — use `.bot/qabot/<timestamp>/tmp/` so everything stays within the project directory and matches the `Write(./**)` permission.
+`--set-from-file KEY=PATH` reads the file and inlines its contents as the template variable value. If the file doesn't exist (e.g., the discover step didn't find a Linear issue or PR), the variable becomes an empty string — that's expected and fine.
 
 ### 3. Execute
 

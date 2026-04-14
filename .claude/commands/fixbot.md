@@ -12,9 +12,8 @@ Then read:
 
 ### 2. Generate agent prompt
 
-Save LINEAR_CONTEXT to `.bot/fixbot/<TIMESTAMP>/tmp/linear-context.txt` using the `Write` tool.
+Reference the discover-dir file directly via `--set-from-file` — no need to copy it into `<TIMESTAMP>/tmp/` or shell-escape it:
 
-Run:
 ```
 ./bin/mage -bot-generate-prompt \
   --template dev/bot/fixbot-agent.md \
@@ -22,10 +21,8 @@ Run:
   --set "ISSUE_ID=<ISSUE_ID>" \
   --set "BRANCH_NAME=<branch-name>" \
   --set "APP_DB=<postgres|mysql|mariadb>" \
-  --set "LINEAR_CONTEXT=$(cat .bot/fixbot/<TIMESTAMP>/tmp/linear-context.txt)"
+  --set-from-file "LINEAR_CONTEXT=.bot/fixbot/discover/linear-context.txt"
 ```
-
-**Shell escaping:** The LINEAR_CONTEXT value contains quotes and special characters. Since it was already written to a temp file via the `Write` tool, the `$(cat ...)` substitution handles it safely.
 
 ### 3. Execute
 

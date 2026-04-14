@@ -6,7 +6,7 @@ The user provided: `$ARGUMENTS`
 
 UXBot always uses postgres. No external context gathering needed.
 
-Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — use the current date/time you already know to construct it directly.
+Generate a timestamp in `YYYYMMDD-HHMMSS` format. If you know the current wall-clock time, construct it directly. Otherwise run `./bin/mage -bot-timestamp` — it prints exactly one line in the required format with no extra output. Do NOT use `date` directly.
 
 Write the structured result to `.bot/uxbot/discover/result.env` using the `Write` tool:
 

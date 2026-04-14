@@ -661,6 +661,8 @@
    :options [[nil "--template FILE" "Template file path"]
              [nil "--output FILE" "Output file path"]
              [nil "--set KEY=VALUE" "Set a template variable (can be repeated)"
+              :multi true :default [] :update-fn conj]
+             [nil "--set-from-file KEY=PATH" "Set a template variable from a file's contents (can be repeated)"
               :multi true :default [] :update-fn conj]]
    :task (task! (bot-prompt/generate-prompt! parsed))}
 
@@ -763,6 +765,12 @@
    :requires [[mage.bot.preflight :as preflight]]
    :task (task! (preflight/preflight-health! parsed))}
 
+  -bot-timestamp
+  {:doc "Print the current wall-clock time as YYYYMMDD-HHMMSS (no other output)"
+   :examples [["./bin/mage -bot-timestamp" "Print e.g. 20260413-143022"]]
+   :task (task! (println (.format (java.time.LocalDateTime/now)
+                                  (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss"))))}
+
   -bot-api-call
   {:doc "Make an API call to the local Metabase instance"
    :examples [["./bin/mage -bot-api-call /api/health" "Health check"]
@@ -773,7 +781,8 @@
    :options [[nil "--method METHOD" "HTTP method (GET, POST, PUT, DELETE)" :default "GET"]
              [nil "--api-key KEY" "API key for x-api-key header"]
              [nil "--body JSON" "JSON request body"]
-             [nil "--pretty BOOL" "Pretty-print JSON (default true)" :default "true"]]
+             [nil "--pretty BOOL" "Pretty-print JSON (default true)" :default "true"]
+             [nil "--raw" "Suppress diagnostic preamble on stderr (pure-body stdout for jq/python piping)"]]
    :task (task! (api-call/api-call! parsed))}
 
   -bot-git-readonly

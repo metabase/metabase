@@ -168,20 +168,23 @@
       (let [ref         (or branch-ref branch-name)
             workmux-cmd (str "workmux add " ref
                              " --name " session-name
-                             " -P " prompt-file
-                             "; exit")]
+                             " -P " prompt-file)]
         (if in-tmux?
           ;; Already inside tmux — run workmux directly; it creates a new window
           ;; in the current session.
           (shell/sh "workmux" "add" ref
                     "--name" session-name
                     "-P" prompt-file)
-          ;; Not inside tmux — create a detached session and run workmux in the
-          ;; initial window. The `; exit` suffix causes the initial shell to
-          ;; terminate once workmux has created its own window (window 1), so
-          ;; we end up with just the bot panes and no leftover zsh window.
-          ;; NOTE: `workmux add --session` was tried instead, but it hangs when
-          ;; run from a non-interactive subprocess (no tty).
+          ;; Not inside tmux — create a detached session and send the workmux
+          ;; command to its initial shell. This leaves an extra zsh window (0)
+          ;; alongside the bot window (1); the user switches to window 1 after
+          ;; attaching. We tried two alternatives, both of which failed:
+          ;;   1. `workmux add --session` — hangs when run from a non-interactive
+          ;;      subprocess because it tries to attach and has no tty.
+          ;;   2. Appending `; exit` to the workmux-cmd so window 0 self-destructs
+          ;;      after workmux creates window 1 — racy: window 0 exits before
+          ;;      workmux has fully registered window 1, and tmux tears down the
+          ;;      whole session. Keep window 0 alive to avoid the race.
           (do
             (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
             (shell/sh "nohup" "bash" "-c"
@@ -192,7 +195,7 @@
             (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
             (println)
             (println "Attach to it with:")
-            (println (str "  tmux attach -t " session-name)))))
+            (println (str "  tmux attach -t " session-name " (then switch to window 1 with Ctrl-b 1)")))))
 
       (finally
         ;; When not in tmux, workmux add was launched async via send-keys;

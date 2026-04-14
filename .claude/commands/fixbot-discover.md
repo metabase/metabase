@@ -41,7 +41,7 @@ From the issue description/comments:
 
 ### 5. Generate timestamp
 
-Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — use the current date/time you already know to construct it directly.
+Generate a timestamp in `YYYYMMDD-HHMMSS` format. If you know the current wall-clock time, construct it directly. Otherwise run `./bin/mage -bot-timestamp` — it prints exactly one line in the required format with no extra output. Do NOT use `date` directly.
 
 ### 6. Write result
 

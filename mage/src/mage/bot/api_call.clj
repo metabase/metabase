@@ -46,16 +46,19 @@
      --method       HTTP method (default GET)
      --api-key      API key for x-api-key header (local mode; overrides remote session if given)
      --body         JSON request body (for POST/PUT)
-     --pretty       Pretty-print JSON output (default true)"
+     --pretty       Pretty-print JSON output (default true)
+     --raw          Suppress the GET/Status diagnostic preamble so stdout is only the
+                    response body (suitable for piping into jq/python/etc)"
   [{:keys [arguments options]}]
   (let [api-path (first arguments)]
     (when (str/blank? api-path)
-      (println (c/red "Usage: ./bin/mage -bot-api-call /api/<path> [--method GET|POST|PUT|DELETE] [--api-key <key>] [--body '{...}']"))
+      (println (c/red "Usage: ./bin/mage -bot-api-call /api/<path> [--method GET|POST|PUT|DELETE] [--api-key <key>] [--body '{...}'] [--raw]"))
       (u/exit 1))
 
     (let [method     (keyword (str/lower-case (or (:method options) "GET")))
           api-key    (:api-key options)
           body       (:body options)
+          raw?       (:raw options)
           path       (if (str/starts-with? api-path "/") api-path (str "/" api-path))
           remote?    (pr-env/pr-env-active?)
           url        (if remote? (remote-url path) (local-url path))
@@ -68,16 +71,18 @@
                        api-key (assoc "x-api-key" api-key)
                        session (assoc "X-Metabase-Session" session))]
 
-      ;; Print request info to stderr
-      (binding [*out* *err*]
-        (println (str (str/upper-case (name method)) " " path
-                      (if remote? " (remote PR env)" (str " (port " (discover-port) ")")))))
+      ;; Print request info to stderr unless --raw
+      (when-not raw?
+        (binding [*out* *err*]
+          (println (str (str/upper-case (name method)) " " path
+                        (if remote? " (remote PR env)" (str " (port " (discover-port) ")"))))))
 
       (let [first-response (do-request {:method method :url url :headers headers :body body})
             ;; In remote mode with session auth, retry once on 401 with a fresh token
             response       (if (and remote? session (= 401 (:status first-response)))
-                             (let [_ (binding [*out* *err*]
-                                       (println (c/yellow "Session token rejected (401) — refreshing and retrying")))
+                             (let [_ (when-not raw?
+                                       (binding [*out* *err*]
+                                         (println (c/yellow "Session token rejected (401) — refreshing and retrying"))))
                                    new-token (pr-env/refresh-session!)]
                                (do-request {:method  method
                                             :url     url
@@ -87,9 +92,10 @@
             status         (:status response)
             body-str       (:body response)]
 
-        ;; Print status to stderr
-        (binding [*out* *err*]
-          (println (str "Status: " status)))
+        ;; Print status to stderr unless --raw
+        (when-not raw?
+          (binding [*out* *err*]
+            (println (str "Status: " status))))
 
         ;; Print response body to stdout
         (when (seq body-str)

@@ -10,7 +10,7 @@ Parse as: `[linear-issue-id]`
 
 - If a Linear issue ID is provided (e.g., `MB-12345`), validate it looks like `[A-Z]+-[0-9]+`.
 - If not provided, try to detect from the current branch name:
-  - Pattern: `*/mb-NNNNN-*` or `*/MB-NNNNN-*` → extract `MB-NNNNN`
+  - Pattern: `*/<prefix>-NNNNN-*` (case-insensitive) where `<prefix>` is any 2-4 letter team prefix such as `MB`, `BOT`, `UXW`, `EMB`, `QB`, `DEV`, `GHY`, `GDGT` — Metabase uses multiple Linear projects, not just `MB`. Extract `<PREFIX>-NNNNN` in uppercase.
   - Also try the GitHub PR for this branch: `./bin/mage -bot-git-readonly gh pr view --json title,url,body` and look for Linear links in the body
 - If still not found, set LINEAR_ISSUE_ID to empty. Do NOT ask the user — this is a non-interactive discovery step.
 
@@ -40,7 +40,7 @@ If the log is empty (no commits beyond master), add `BRANCH_WARNING=no-local-com
 
 ### 4. Generate timestamp
 
-Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — use the current date/time you already know to construct it directly.
+Generate a timestamp in `YYYYMMDD-HHMMSS` format. If you know the current wall-clock time (not just the date), construct it directly. Otherwise, run `./bin/mage -bot-timestamp` — it prints exactly one line in the required format with no extra output, and is faster/more honest than inventing the HHMMSS part. Do NOT use `date` directly — it triggers permission prompts and its output is locale-dependent.
 
 ### 5. Write result
 
