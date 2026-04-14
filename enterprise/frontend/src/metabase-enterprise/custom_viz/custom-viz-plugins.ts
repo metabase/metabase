@@ -23,6 +23,8 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
 import type {
+  CustomVizPlugin,
+  CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -43,7 +45,10 @@ const loadedPlugins = new Map<
   { identifier: string; commit: string | null; etag: string | null }
 >();
 
-const failedPluginCommits = new Map<CustomVizPluginId, CustomVizPlugin["resolved_commit"]>();
+const failedPluginCommits = new Map<
+  CustomVizPluginId,
+  CustomVizPlugin["resolved_commit"]
+>();
 
 /**
  * Hook that fetches the list of active custom visualization plugins.
@@ -202,13 +207,22 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   // failure for the current commit. Failed plugins resolve to loading: false
   // so the visualization registry falls back to the default instead
   // of spinning forever.
-  const knownCommits = matchedPlugin
-    ? [
-        loadedPlugins.get(matchedPlugin.id)?.commit,
-        failedPluginCommits.get(matchedPlugin.id),
-      ]
-    : [];
-  const isReady = knownCommits.includes(matchedPlugin?.resolved_commit);
+  const isReady = (() => {
+    if (!matchedPlugin) {
+      return false;
+    }
+    const loadedCommit = loadedPlugins.get(matchedPlugin.id)?.commit;
+    const failedCommit = failedPluginCommits.get(matchedPlugin.id);
+    /**
+     * Commits may be null, so null === null is a valid case.
+     * Undefined indicates that the plugin hasn't been loaded yet.
+     */
+    if (loadedCommit === undefined && failedCommit === undefined) {
+      return false;
+    }
+    const resolvedCommit = matchedPlugin.resolved_commit;
+    return resolvedCommit === loadedCommit || resolvedCommit === failedCommit;
+  })();
 
   return { loading: needsCustomViz && !isReady };
 }
