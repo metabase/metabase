@@ -1983,10 +1983,9 @@
                                (= "CATEGORY_ID" (:name col)) (assoc :semantic_type :type/Category)))
                            base-cols)]
       (mt/with-temp
-        [:model/Card {card-id :id}
-         {:type            :model
-          :dataset_query   (mt/query venues)
-          :result_metadata overridden}]
+        [:model/Card {card-id :id} {:type            :model
+                                    :dataset_query   (mt/query venues)
+                                    :result_metadata overridden}]
         (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
               by-name   (u/index-by :name (:result_metadata extracted))]
           (is (every? #(re-matches #"Custom .*" (:display_name %))
