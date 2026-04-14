@@ -1,6 +1,6 @@
 ---
 title: File-based development
-summary: Use a combination of agent skills and serialization to develop Metabase content with agents on your local file system.
+summary: "Use a combination of agent skills, the Metabase MCP server, and serialization to develop Metabase content with agents on your local file system."
 ---
 
 # File-based development
