@@ -6,11 +6,21 @@
 (defn make-schema-source
   "Create an in-memory SchemaSource from maps of databases, tables, and fields."
   [{:keys [databases tables fields]}]
-  (reify
-    source/SchemaSource
-    (resolve-database [_ db-name]    (get databases db-name))
-    (resolve-table    [_ table-path] (get tables table-path))
-    (resolve-field    [_ field-path] (get fields field-path))))
+  (let [fields-by-table (reduce-kv (fn [m field-path _]
+                                     (let [table-path (subvec field-path 0 3)]
+                                       (update m table-path (fnil conj #{}) field-path)))
+                                   {}
+                                   fields)]
+    (reify
+      source/SchemaSource
+      (resolve-database    [_ db-name]    (get databases db-name))
+      (resolve-table       [_ table-path] (get tables table-path))
+      (resolve-field       [_ field-path] (get fields field-path))
+      (fields-for-table    [_ table-path] (get fields-by-table table-path))
+      (all-field-paths     [_]            (keys fields))
+      (all-database-names  [_]            (keys databases))
+      (all-table-paths     [_]            (keys tables))
+      (tables-for-database [_ db-name]    (filterv #(= (first %) db-name) (keys tables))))))
 
 (defn make-assets-source
   "Create an in-memory AssetsSource from maps of entities.

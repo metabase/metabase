@@ -9,6 +9,7 @@
    [metabase-enterprise.checker.format.serdes :as serdes-format]
    [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.semantic :as checker]
+   [metabase-enterprise.checker.source :as source]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.checker.test-helpers :as helpers]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
@@ -43,15 +44,16 @@
 ;;; ===========================================================================
 
 (deftest source-index-test
-  (testing "Source correctly indexes databases, tables, fields, and cards"
+  (testing "Source correctly indexes databases and cards; tables/fields are on-demand"
     (let [source (make-test-source)
-          index (serdes-format/source-index source)]
+          index  (serdes-format/source-index source)]
       (is (= 2 (count (:database index))) "Should have 2 databases (Test Database, SQLite DB)")
-      (is (= 4 (count (:table index))) "Should have 4 tables")
-      (is (= 11 (count (:field index))) "Should have 11 fields")
       (is (= 5 (count (:card index))) "Should have 5 cards")
       (is (contains? (:database index) "Test Database") "Should include Test Database")
-      (is (contains? (:database index) "SQLite DB") "Should include SQLite DB"))))
+      (is (contains? (:database index) "SQLite DB") "Should include SQLite DB")
+      ;; Tables and fields are resolved on demand, not pre-indexed
+      (is (= 4 (count (source/all-table-paths source))) "Should have 4 tables via source")
+      (is (= 11 (count (source/all-field-paths source))) "Should have 11 fields via source"))))
 
 (deftest simple-mbql-query-test
   (testing "Simple MBQL query on orders table validates successfully"
@@ -111,12 +113,12 @@
 (deftest schemaless-database-index-test
   (testing "Schema-less databases are indexed correctly with nil schema"
     (let [source (make-test-source)
-          index (serdes-format/source-index source)]
+          index  (serdes-format/source-index source)]
       ;; Should have both "Test Database" and "SQLite DB"
       (is (= 2 (count (:database index))) "Should have 2 databases")
-      ;; Test Database has 2 tables, SQLite DB has 2 tables = 4 total
-      (is (= 4 (count (:table index))) "Should have 4 tables")
-      (is (contains? (:database index) "SQLite DB") "Should include SQLite DB"))))
+      (is (contains? (:database index) "SQLite DB") "Should include SQLite DB")
+      ;; Tables are resolved on demand, not pre-indexed
+      (is (= 4 (count (source/all-table-paths source))) "Should have 4 tables via source"))))
 
 (deftest schemaless-query-test
   (testing "Query on schema-less database validates successfully"
