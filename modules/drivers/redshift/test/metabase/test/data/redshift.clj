@@ -96,8 +96,8 @@
 (def db-connection-details
   (delay {:host                    @host
           :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db)
-          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :db                      (tx/db-test-env-var :redshift :db "testdb")
+          :user                    (tx/db-test-env-var :redshift :user "metabase_ci")
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
           :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
