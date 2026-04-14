@@ -1969,11 +1969,12 @@
         (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
           (is (=? {:fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]}
                   (->> (:result_metadata ser)
-                       (u/seek #(= (:name %) "CATEGORY_ID"))))))))))
+                       (u/seek #(and (= (:name %) "CATEGORY_ID")
+                                     (= (:display_name %) "Category ID")))))))))))
 
 (deftest model-preserved-keys-extract-test
   (testing "model Card preserved-key overrides survive extract"
-    (let [base-cols (qp.preprocess/query->expected-cols (mt/query venues))
+    (let [base-cols  (qp.preprocess/query->expected-cols (mt/query venues))
           overridden (mapv (fn [col]
                              (cond-> (assoc col
                                             :display_name    (str "Custom " (:name col))
