@@ -37,6 +37,15 @@
                      (nil? (:_type %)))
                data)))
 
+(defn- error->text
+  "Coerce an error value to a string for :errorText.
+   Strings pass through; maps extract :message; anything else is stringified."
+  [error]
+  (cond
+    (string? error) error
+    (map? error)    (or (:message error) (pr-str error))
+    :else           (str error)))
+
 (defn- v1-external-ai-service-tool-call->parts
   "Split one v1-external-ai-service `TOOL_CALL` entry (which may batch multiple calls)
    into v2 tool parts, paired with matching results from `outputs` (keyed by `:tool_call_id`)."
@@ -57,11 +66,12 @@
   "Migrate a v1-external-ai-service data array (ai-service origin, `:_type`-keyed) to v2 format.
 
    Entry conversions:
-   - TEXT       -> {:type \"text\" :text <content>}
-   - ERROR      -> {:type \"error\" :errorText <content>} (matches AI SDK ErrorChunk)
-   - TOOL_CALL  -> one `tool-<name>` part per batched call, merged with matching TOOL_RESULT
-   - TOOL_RESULT -> stripped from output; merged into its paired TOOL_CALL
-   - DATA       -> {:type \"data-<type>\" :data <:value>}
+   - TEXT            -> {:type \"text\" :text <content>}
+   - TOOL_CALL       -> one `tool-<name>` part per batched call, merged with matching TOOL_RESULT
+   - TOOL_RESULT     -> stripped from output; merged into its paired TOOL_CALL
+   - DATA            -> {:type \"data-<type>\" :data <:value>}
+   - FINISH_MESSAGE  -> dropped (non-storable lifecycle signal)
+   - ERROR           -> dropped (non-storable lifecycle signal)
 
    v1-external-ai-service:
      [{:role \"assistant\" :_type \"TOOL_CALL\" :tool_calls [{:id \"tc1\" :name \"search\" :arguments \"{…}\"}]}
@@ -75,11 +85,12 @@
          (remove #(= "TOOL_RESULT" (:_type %)))
          (mapcat (fn [entry]
                    (case (:_type entry)
-                     "TEXT"      [{:type "text" :text (:content entry)}]
-                     "ERROR"     [{:type "error" :errorText (:content entry)}]
-                     "TOOL_CALL" (v1-external-ai-service-tool-call->parts entry outputs)
-                     "DATA"      [{:type (str "data-" (str/replace (:type entry) "_" "-"))
-                                   :data (:value entry)}]
+                     "TEXT"            [{:type "text" :text (:content entry)}]
+                     "TOOL_CALL"       (v1-external-ai-service-tool-call->parts entry outputs)
+                     "DATA"            [{:type (str "data-" (str/replace (:type entry) "_" "-"))
+                                         :data (:value entry)}]
+                     "FINISH_MESSAGE"  []
+                     "ERROR"           []
                      (throw (ex-info "Unrecognized v1-external-ai-service entry type" {:entry entry})))))
          vec)))
 
@@ -87,13 +98,15 @@
   "Migrate a v1-native data array (native-agent origin, `:type`-keyed) to v2 format.
    Merges separate tool-input/tool-output entries into unified tool-{name} parts.
    Text and user-message blocks pass through unchanged. Underscores in tool names
-   are kebab-cased inline.
+   are kebab-cased inline. Entries whose type is in `non-storable-part-types` are
+   dropped — they should never have been persisted.
 
    v1-native: [{:type \"tool-input\" :id \"tc1\" :function \"search\" :arguments {...}}
                {:type \"tool-output\" :id \"tc1\" :result {...}}]
    v2:        [{:type \"tool-search\" :toolCallId \"tc1\" :state \"output-available\" :input {...} :output {...}}]"
   [data]
-  (let [outputs (->> data
+  (let [data    (remove #(non-storable-part-types (keyword (:type %))) data)
+        outputs (->> data
                      (filter #(= "tool-output" (:type %)))
                      (into {} (map (fn [o] [(:id o) o]))))]
     (->> data
@@ -106,15 +119,15 @@
                               :toolCallId (:id block)
                               :toolName   (:function block)
                               :state      (cond
-                                            has-err?          "error"
+                                            has-err?          "output-error"
                                             (some? output)    "output-available"
                                             :else             "input-available")
                               :input      (:arguments block)}
                        (some? (:result output)) (assoc :output (:result output))
-                       has-err?                 (assoc :error (:error output))))
+                       has-err?                 (assoc :errorText (error->text (:error output)))))
                    (if (and (= "error" (:type block)) (map? (:error block)))
                      {:type      "error"
-                      :errorText (get-in block [:error :message] "Unknown error")}
+                      :errorText (error->text (:error block))}
                      block)))))))
 
 (defn migrate-v1-user-message->v2
@@ -159,12 +172,12 @@
                               :toolCallId (:id part)
                               :toolName   (:function part)
                               :state      (cond
-                                            has-err?          "error"
+                                            has-err?          "output-error"
                                             (some? output)    "output-available"
                                             :else             "input-available")
                               :input      (:arguments part)}
                        (some? (:result output)) (assoc :output (:result output))
-                       has-err?                 (assoc :error (:error output))))
+                       has-err?                 (assoc :errorText (error->text (:error output)))))
                    :data      {:type (str "data-" (or (:data-type part) "data"))
                                :data (:data part)}
                    ;; Pass through user messages and anything else unchanged
@@ -180,12 +193,14 @@
 
   stream lifecycle and step boundaries (`:start`, `:finish`, `:start-step`,
   `:finish-step`, `:abort`) are control-flow signals with no history value.
+  `:error` is emitted when the agent loop throws — it signals failure, not
+  conversation content.
   `:usage` and `:message-metadata` carry token/metadata that live in the
   dedicated `usage` column instead. `:tool-input-start` is the eager signal
   whose content is fully contained in the final `:tool-input` part.
   `:data` parts are not persisted yet — they will be stored in a future
   change, but today they are dropped."
-  #{:start :start-step :finish :finish-step :abort :usage :message-metadata :data :tool-input-start})
+  #{:start :start-step :finish :finish-step :abort :error :usage :message-metadata :data :tool-input-start})
 
 (defn parts->storable-content
   "Drop transient/lifecycle parts and convert what remains to v2 storage format."

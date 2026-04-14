@@ -19,24 +19,36 @@
 
 (deftest migrate-v1-native->v2-tool-error-test
   (let [input [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}]]
-    (testing "error state: carries :error, omits :output"
+    (testing "error state: carries :errorText, omits :output"
       (let [part (-> (persistence/migrate-v1-native->v2
                       (conj input {:type "tool-output" :id "tc1" :error "boom"}))
                      first)]
-        (is (= "error" (:state part)))
-        (is (= "boom" (:error part)))
+        (is (= "output-error" (:state part)))
+        (is (= "boom" (:errorText part)))
         (is (not (contains? part :output)))))
 
-    (testing "error state: preserves map-shaped :error"
-      (is (= {:message "bad"} (-> (persistence/migrate-v1-native->v2
-                                   (conj input {:type "tool-output" :id "tc1" :error {:message "bad"}}))
-                                  first :error))))
+    (testing "error state: extracts :message from map-shaped :error"
+      (is (= "bad" (-> (persistence/migrate-v1-native->v2
+                        (conj input {:type "tool-output" :id "tc1" :error {:message "bad"}}))
+                       first :errorText))))
 
     (testing "input-available when no matching tool-output exists"
       (let [part (first (persistence/migrate-v1-native->v2 input))]
         (is (= "input-available" (:state part)))
         (is (not (contains? part :output)))
-        (is (not (contains? part :error)))))))
+        (is (not (contains? part :errorText)))))
+
+    (testing "standalone error entries are filtered out as non-storable"
+      (is (= [{:type       "tool-search"
+               :toolCallId "tc1"
+               :toolName   "search"
+               :state      "output-available"
+               :input      {:q "x"}
+               :output     "result"}]
+             (persistence/migrate-v1-native->v2
+              (conj input
+                    {:type "tool-output" :id "tc1" :result "result"}
+                    {:type "error" :error {:message "Something went wrong"}})))))))
 
 (deftest migrate-v1-external-ai-service->v2-test
   (testing "TEXT entry becomes text part"
@@ -44,17 +56,15 @@
            (persistence/migrate-v1-external-ai-service->v2
             [{:role "assistant" :_type "TEXT" :content "hello"}]))))
 
-  (testing "ERROR entry becomes AI-SDK-shaped error part"
-    (is (= [{:type "error" :errorText "boom"}]
-           (persistence/migrate-v1-external-ai-service->v2
-            [{:role "assistant" :_type "ERROR" :content "boom"}]))))
+  (testing "ERROR entries are silently dropped"
+    (is (= [] (persistence/migrate-v1-external-ai-service->v2
+               [{:role "assistant" :_type "ERROR" :content "boom"}]))))
 
-  (testing "multiline ERROR content is preserved verbatim"
-    (is (= [{:type "error" :errorText "upstream provider error\nrequest id: abc-123"}]
+  (testing "ERROR mixed with content entries is dropped"
+    (is (= [{:type "text" :text "hello"}]
            (persistence/migrate-v1-external-ai-service->v2
-            [{:role   "assistant"
-              :_type  "ERROR"
-              :content "upstream provider error\nrequest id: abc-123"}]))))
+            [{:_type "TEXT" :content "hello"}
+             {:role "assistant" :_type "ERROR" :content "upstream provider error"}]))))
 
   (testing "TOOL_CALL with matching TOOL_RESULT merges into output-available tool part"
     (is (= [{:type       "tool-search"
@@ -129,10 +139,15 @@
           result   (persistence/migrate-v1->v2 v1-external-ai-service-data)]
       (is (= ["text" "tool-search" "data-navigate-to"] (mapv :type result)))))
 
-  (testing "throws on unrecognized v1-external-ai-service entry types"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1-external-ai-service entry type"
-                          (persistence/migrate-v1-external-ai-service->v2
-                           [{:_type "FINISH_MESSAGE" :role "assistant" :usage {}}]))))
+  (testing "FINISH_MESSAGE entries are silently dropped"
+    (is (= [] (persistence/migrate-v1-external-ai-service->v2
+               [{:_type "FINISH_MESSAGE" :role "assistant" :usage {}}]))))
+
+  (testing "FINISH_MESSAGE mixed with content entries is dropped"
+    (is (= [{:type "text" :text "hi"}]
+           (persistence/migrate-v1-external-ai-service->v2
+            [{:_type "TEXT" :content "hi"}
+             {:_type "FINISH_MESSAGE" :role "assistant" :usage {}}]))))
 
   (testing "user-message rows are converted to v2 text format"
     (is (= [{:type "text" :text "Do we have data on orders"}]
