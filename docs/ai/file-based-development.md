@@ -5,7 +5,7 @@ summary: "Use a combination of agent skills, the Metabase MCP server, and serial
 
 # File-based development
 
-{% include plans-blockquote.html feature="Serialization" %}
+{% include plans-blockquote.html feature="File-based development" %}
 
 You can use AI to generate YAML files that serialize content like questions and dashboards, then import those items into Metabase.
 
@@ -20,7 +20,7 @@ We provide a set of tools for creating and editing Metabase content [serialized]
 
 ## Prerequisites
 
-1. **Add the `metabase-representation-format` skill to your agent** so it understands the YAML schemas. See [Agent skills](https://github.com/metabase/agent-skills).
+1. **Add the `metabase-representation-format` skill to your agent** so the agent understands the YAML schemas. See [Agent skills](https://github.com/metabase/agent-skills).
 
 2. **Connect your agent to your Metabase's MCP server**. Your agent also needs a way to look up your database metadata (table names, fields, and sample values) so it can write questions and dashboards that point at real columns. Connect your agent to your Metabase's [MCP server](./mcp.md), which exposes tools like `search`, `get_table`, and `get_table_field_values`.
 
