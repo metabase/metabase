@@ -7,13 +7,19 @@
   Of course the queries can't be executed without a connection to the user's DWH, which is usually impossible."
   (:require
    [clj-http.client :as http]
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.lib.js.metadata :as lib.js.metadata]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.upload.core :as upload]
+   [metabase.upload.settings :as upload.settings]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 ;; XXX: INSTRUCTIONS:
 ;; - Log into the instance, open DevTools, and navigate to the problem question.
@@ -28,27 +34,25 @@
 (def ^:private my-ctx
   "Contains instance details, for passing to the various functions below."
   {:instance-url        "https://acustomer.metabaseapp.com"  ; No trailing slash.
-   #_#_:cookie-from-browser "COPY ME FROM YOUR curl COMMAND"
-   :api-key "an-api-key"
-   :database-id         332})
+   :cookie-from-browser "COPY ME FROM YOUR curl COMMAND"
+   :database-id         123})
 
-(defn- mk-headers [{:keys [cookie-from-browser api-key instance-url] :as _ctx}]
-  (cond-> {"accept" "application/json"
-           "accept-language" "en-US,en;q=0.9"
-           "cache-control" "no-cache"
-           "content-type" "application/json"
-           "pragma" "no-cache"
-           "priority" "u=1, i"
-           "referer" instance-url
-           "sec-ch-ua" "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\""
-           "sec-ch-ua-mobile" "?0"
-           "sec-ch-ua-platform" "\"macOS\""
-           "sec-fetch-dest" "empty"
-           "sec-fetch-mode" "cors"
-           "sec-fetch-site" "same-origin"
-           "user-agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"}
-    cookie-from-browser (assoc "cookie" cookie-from-browser)
-    api-key (assoc "x-api-key" api-key)))
+(defn- mk-headers [{:keys [cookie-from-browser instance-url] :as _ctx}]
+  {"accept" "application/json"
+   "accept-language" "en-US,en;q=0.9"
+   "cache-control" "no-cache"
+   "content-type" "application/json"
+   "cookie" cookie-from-browser
+   "pragma" "no-cache"
+   "priority" "u=1, i"
+   "referer" instance-url
+   "sec-ch-ua" "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\""
+   "sec-ch-ua-mobile" "?0"
+   "sec-ch-ua-platform" "\"macOS\""
+   "sec-fetch-dest" "empty"
+   "sec-fetch-mode" "cors"
+   "sec-fetch-site" "same-origin"
+   "user-agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"})
 
 (defn- instance-fetch [{:keys [instance-url] :as ctx} path]
   (let [headers  (mk-headers ctx)
@@ -144,52 +148,60 @@
   "Given a `MetadataProvider` built by [[metadata-for]] and a card ID, tries to compile that card to e.g. SQL."
   [metadata-provider card-id]
   (mu/disable-enforcement
-    (-> (lib.metadata/card metadata-provider card-id)
-        :dataset-query
-        qp.compile/compile)))
+    (let [dataset-query (-> (lib.metadata/card metadata-provider card-id)
+                            :dataset-query)
+          start (System/nanoTime)
+          _ (qp.compile/compile dataset-query)
+          elapsed-ms (/ (- (System/nanoTime) start) 1e6)]
+      elapsed-ms)))
 
-(comment
-
-  (require '[criterium.core :as crit])
-
-  (require '[toucan2.core :as t2])
-
-  (require '[clojure.data.csv :as csv]
-           '[clojure.java.io :as io])
-
-  (let [card-ids (keep #(when (> (:id %) 250) (:id %)) (t2/select :model/Card :type :question))
-        num-cards (count card-ids)
+(defn generate-card-compilation-analysis
+  "`csv-file-name` is the name of the csv file that the results will be saved to locally and uploaded to metabase.
+   `card-ids` are the ids of the cards from the instance you've configured in `my-ctx` that you want to analyze.
+   Use `criterium.core` for more statistically significiant benchmarking. It greatly increases the time to test many cards."
+  [csv-file-name card-ids]
+  (let [num-cards (count card-ids)
         _ (tap> (format "Processing %d cards" num-cards))
         card-stats (into {}
                          (for [[idx card-id] (map-indexed vector card-ids)]
-                           (let [mp (metadata-for my-ctx {:card [card-id]})
-                                 error-msg (atom "")
-                                 bench-result (crit/quick-benchmark*
-                                               (fn []
-                                                 (try
-                                                   (compile-card mp card-id)
-                                                   (catch Throwable t
-                                                     (when (empty? @error-msg)
-                                                       (reset! error-msg (.getMessage t)))
-                                                     nil)))
-                                               {})
-
-                                 card-stats (-> bench-result
-                                                (select-keys [:mean :lower-q :upper-q :execution-count :sample-count])
-                                                (update-vals #(if (vector? %) (* 1000 (first %)) %))
-                                                (assoc :error-msg @error-msg))
-                                 card-num (-> (inc idx) (/ num-cards) (* 100) double)]
-                             (tap> (format "Processed %.0f%% of %d cards"  card-num num-cards))
-                             [card-id card-stats])))
+                           (try
+                             (let [mp (metadata-for my-ctx {:card [card-id]})
+                                   elapsed-ms (compile-card mp card-id)
+                                   card-num (inc idx)
+                                   card-pct (-> card-num (/ num-cards) (* 100) double)]
+                               (when (= 0 (mod card-num 10))
+                                 (tap> (format "Processed %.0f%% of %d cards"  card-pct num-cards)))
+                               [card-id {:compilation_time elapsed-ms :error_msg ""}])
+                             (catch Throwable t
+                               (tap> (format "Error on card %d: %s" card-id (.getMessage t)))
+                               [card-id {:compilation_time 0.0 :error_msg (.getMessage t)}]))))
+        _ (tap> (format "Finished processing %d cards" num-cards))
         cols (-> card-stats vals first keys)
         header (into ["card_id"] (map name cols))
         rows (for [[card-id stats] card-stats]
                (into [(str card-id)]
                      (map #(str (get stats %)) cols)))]
-    (with-open [w (io/writer "card_analysis.csv")]
+    (with-open [w (io/writer csv-file-name)]
       (csv/write-csv w (cons header rows)))
-    card-stats)
+    (let [path (str (System/getProperty "user.dir") "/" csv-file-name)
+          file (java.io.File. path)
+          user  (t2/select-one :model/User :is_superuser true :is_active true)
+          {:keys [db_id schema_name table_prefix]} (upload.settings/uploads-settings)]
+      (binding [api/*current-user-id* (:id user)
+                api/*current-user* (delay user)
+                api/*is-superuser?* true
+                api/*current-user-permissions-set* (delay #{"/"})]
+        (upload/create-csv-upload!
+         {:collection-id nil
+          :filename (.getName file)
+          :file file
+          :db-id db_id
+          :schema-name schema_name
+          :table-prefix table_prefix}))
+      (tap> (format "Created and uploaded %s" path)))
+    card-stats))
 
+(comment
   ;; Example calls
   (let [card-id 456
         mp      (metadata-for my-ctx {:card [card-id]})]
@@ -197,4 +209,8 @@
 
   (let [card-id 456
         mp      (metadata-for my-ctx {:card [card-id]})]
-    (preprocess-card mp card-id)))
+    (preprocess-card mp card-id))
+
+  (let [csv-file-name "card_analysis.csv"
+        card-ids [123 456]]
+    (generate-card-compilation-analysis csv-file-name card-ids)))
