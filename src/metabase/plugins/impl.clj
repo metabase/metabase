@@ -127,7 +127,7 @@
      (for [^File file (classpath/system-classpath)
            :when      (and (.isDirectory file)
                            (not (.isHidden file))
-                           (str/includes? (str file) "modules/drivers")
+                           (str/includes? (str file) "components/driver-")
                            (or (str/ends-with? (str file) "resources")
                                (str/ends-with? (str file) "resources-ee")))
            :let       [manifest-file (io/file file "metabase-plugin.yaml")]

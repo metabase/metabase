@@ -114,7 +114,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.athena-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Athena driver is quarantined but you changed files in modules/drivers/athena/"
+        echo "::error::Athena driver is quarantined but you changed files in components/driver-athena/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Athena tests, add the label: break-quarantine-athena"
@@ -175,7 +175,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::BigQuery driver is quarantined but you changed files in modules/drivers/bigquery-cloud-sdk/"
+        echo "::error::BigQuery driver is quarantined but you changed files in components/driver-bigquery-cloud-sdk/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run BigQuery tests, add the label: break-quarantine-bigquery"
@@ -242,7 +242,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.clickhouse-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::ClickHouse driver is quarantined but you changed files in modules/drivers/clickhouse/"
+        echo "::error::ClickHouse driver is quarantined but you changed files in components/driver-clickhouse/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run ClickHouse tests, add the label: break-quarantine-clickhouse"
@@ -261,7 +261,7 @@ jobs:
     - name: Start ClickHouse in Docker
       uses: hoverkraft-tech/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
       with:
-        compose-file: "modules/drivers/clickhouse/docker-compose.yml"
+        compose-file: "components/driver-clickhouse/docker-compose.yml"
         down-flags: "--volumes"
         services: |
           clickhouse
@@ -315,7 +315,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.druid-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Druid driver is quarantined but you changed files in modules/drivers/druid/"
+        echo "::error::Druid driver is quarantined but you changed files in components/driver-druid/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Druid tests, add the label: break-quarantine-druid"
@@ -363,7 +363,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Druid JDBC driver is quarantined but you changed files in modules/drivers/druid-jdbc/"
+        echo "::error::Druid JDBC driver is quarantined but you changed files in components/driver-druid-jdbc/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Druid JDBC tests, add the label: break-quarantine-druid-jdbc"
@@ -411,7 +411,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Databricks driver is quarantined but you changed files in modules/drivers/databricks/"
+        echo "::error::Databricks driver is quarantined but you changed files in components/driver-databricks/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Databricks tests, add the label: break-quarantine-databricks"
@@ -460,7 +460,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Databricks driver is quarantined but you changed files in modules/drivers/databricks/"
+        echo "::error::Databricks driver is quarantined but you changed files in components/driver-databricks/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Databricks tests, add the label: break-quarantine-databricks"
@@ -727,7 +727,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.mongo-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::MongoDB driver is quarantined but you changed files in modules/drivers/mongo/"
+        echo "::error::MongoDB driver is quarantined but you changed files in components/driver-mongo/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run MongoDB tests, add the label: break-quarantine-mongo"
@@ -788,7 +788,7 @@ jobs:
       - name: Fail on quarantine conflict
         if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-quarantine-conflict == 'true' }}
         run: |
-          echo "::error::MongoDB SSL driver is quarantined but you changed files in modules/drivers/mongo/"
+          echo "::error::MongoDB SSL driver is quarantined but you changed files in components/driver-mongo/"
           echo ""
           echo "Your changes will NOT be tested because the driver is currently quarantined."
           echo "To run MongoDB SSL tests, add the label: break-quarantine-mongo-ssl"
@@ -859,7 +859,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::MongoDB Sharded Cluster driver is quarantined but you changed files in modules/drivers/mongo/"
+        echo "::error::MongoDB Sharded Cluster driver is quarantined but you changed files in components/driver-mongo/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run MongoDB Sharded Cluster tests, add the label: break-quarantine-mongo-sharded-cluster"
@@ -942,7 +942,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.oracle-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Oracle driver is quarantined but you changed files in modules/drivers/oracle/"
+        echo "::error::Oracle driver is quarantined but you changed files in components/driver-oracle/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Oracle tests, add the label: break-quarantine-oracle"
@@ -1109,7 +1109,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Presto JDBC driver is quarantined but you changed files in modules/drivers/presto-jdbc/"
+        echo "::error::Presto JDBC driver is quarantined but you changed files in components/driver-presto-jdbc/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Presto JDBC tests, add the label: break-quarantine-presto-jdbc"
@@ -1212,7 +1212,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.redshift-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Redshift driver is quarantined but you changed files in modules/drivers/redshift/"
+        echo "::error::Redshift driver is quarantined but you changed files in components/driver-redshift/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Redshift tests, add the label: break-quarantine-redshift"
@@ -1294,7 +1294,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Snowflake driver is quarantined but you changed files in modules/drivers/snowflake/"
+        echo "::error::Snowflake driver is quarantined but you changed files in components/driver-snowflake/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Snowflake tests, add the label: break-quarantine-snowflake"
@@ -1350,7 +1350,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.sparksql-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::SparkSQL driver is quarantined but you changed files in modules/drivers/sparksql/"
+        echo "::error::SparkSQL driver is quarantined but you changed files in components/driver-sparksql/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run SparkSQL tests, add the label: break-quarantine-sparksql"
@@ -1391,7 +1391,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.sqlite-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::SQLite driver is quarantined but you changed files in modules/drivers/sqlite/"
+        echo "::error::SQLite driver is quarantined but you changed files in components/driver-sqlite/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run SQLite tests, add the label: break-quarantine-sqlite"
@@ -1463,7 +1463,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.sqlserver-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::SQL Server driver is quarantined but you changed files in modules/drivers/sqlserver/"
+        echo "::error::SQL Server driver is quarantined but you changed files in components/driver-sqlserver/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run SQL Server tests, add the label: break-quarantine-sqlserver"
@@ -1590,7 +1590,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::Vertica driver is quarantined but you changed files in modules/drivers/vertica/"
+        echo "::error::Vertica driver is quarantined but you changed files in components/driver-vertica/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run Vertica tests, add the label: break-quarantine-vertica"

@@ -15,7 +15,7 @@
   "bin/build"
   "bin/lint-migrations-file"
   "bin/release-list"
-  "modules/drivers"
+  "components"
   ".clj-kondo/src"
   ".clj-kondo/test"
   #_"dev"]

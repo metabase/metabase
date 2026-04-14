@@ -18,18 +18,18 @@
 (def ^:private roots (into [] (map (partial str u/project-root-directory))
                            ["/src"
                             "/enterprise/backend/src"
-                            "/modules/drivers/bigquery-cloud-sdk/src"
-                            "/modules/drivers/druid/src"
-                            "/modules/drivers/druid-jdbc/src"
-                            "/modules/drivers/mongo/src"
-                            "/modules/drivers/oracle/src"
-                            "/modules/drivers/presto-jdbc/src"
-                            "/modules/drivers/redshift/src"
-                            "/modules/drivers/snowflake/src"
-                            "/modules/drivers/sparksql/src"
-                            "/modules/drivers/sqlite/src"
-                            "/modules/drivers/sqlserver/src"
-                            "/modules/drivers/vertica/src"]))
+                            "/components/driver-bigquery-cloud-sdk/src"
+                            "/components/driver-druid/src"
+                            "/components/driver-druid-jdbc/src"
+                            "/components/driver-mongo/src"
+                            "/components/driver-oracle/src"
+                            "/components/driver-presto-jdbc/src"
+                            "/components/driver-redshift/src"
+                            "/components/driver-snowflake/src"
+                            "/components/driver-sparksql/src"
+                            "/components/driver-sqlite/src"
+                            "/components/driver-sqlserver/src"
+                            "/components/driver-vertica/src"]))
 
 (def overrides
   "Location of i18n forms that grasp can not find."

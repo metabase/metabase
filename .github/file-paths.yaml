@@ -95,7 +95,7 @@ backend_sources: &backend_sources
   - "**deps.edn"
   - "enterprise/backend/src/**"
   - "src/**"
-  - "modules/drivers/{*,*/{*,!(test)/**}}"
+  - "components/{*,*/{*,!(test)/**}}"
   - "resources/**"
   - ".clj-kondo/**"
 
@@ -104,7 +104,7 @@ backend_specs: &backend_specs
   - "test/**"
   - "enterprise/backend/test/**"
   - "test_modules/**"
-  - "modules/drivers/*/test/**"
+  - "components/*/test/**"
   - "test_config/**"
   - "test_resources/**"
 

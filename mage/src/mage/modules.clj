@@ -206,7 +206,7 @@
   [git-ref]
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")
-                    (str/includes? filename "modules/drivers/"))
+                    (str/includes? filename "components/driver-"))
             (when-not *github-output-only?*
               (println (str "Running driver tests because " (pr-str filename) " was changed")))
             filename))
@@ -279,31 +279,31 @@
 (def ^:private driver-directory->drivers
   "Maps driver directory names to the driver keyword(s) they correspond to.
    Most directories map to a single driver, but some (like mongo) map to multiple test jobs."
-  {"athena" [:athena]
-   "bigquery-cloud-sdk" [:bigquery]
-   "clickhouse" [:clickhouse]
-   "databricks" [:databricks]
-   "druid" [:druid]
-   "druid-jdbc" [:druid-jdbc]
-   "mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
-   "oracle" [:oracle]
-   "presto-jdbc" [:presto-jdbc]
-   "redshift" [:redshift]
-   "snowflake" [:snowflake]
-   "sparksql" [:sparksql]
-   "sqlite" [:sqlite]
-   "sqlserver" [:sqlserver]
+  {"driver-athena" [:athena]
+   "driver-bigquery-cloud-sdk" [:bigquery]
+   "driver-clickhouse" [:clickhouse]
+   "driver-databricks" [:databricks]
+   "driver-druid" [:druid]
+   "driver-druid-jdbc" [:druid-jdbc]
+   "driver-mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
+   "driver-oracle" [:oracle]
+   "driver-presto-jdbc" [:presto-jdbc]
+   "driver-redshift" [:redshift]
+   "driver-snowflake" [:snowflake]
+   "driver-sparksql" [:sparksql]
+   "driver-sqlite" [:sqlite]
+   "driver-sqlserver" [:sqlserver]
    ;; starburst tests are currently disabled in drivers.yml
-   ;; "starburst" [:starburst]
-   "vertica" [:vertica]})
+   ;; "driver-starburst" [:starburst]
+   "driver-vertica" [:vertica]})
 
 (defn- drivers-with-file-changes
-  "Returns a set of driver keywords that have file changes in modules/drivers/<driver>/."
+  "Returns a set of driver keywords that have file changes in components/driver-<driver>/."
   [git-ref]
   (let [updated-files (u/updated-files (or git-ref "master"))]
     (into #{}
           (mapcat (fn [filename]
-                    (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
+                    (when-let [[_ dir-name] (re-matches #"components/([^/]+)/.*" filename)]
                       (get driver-directory->drivers dir-name))))
           updated-files)))
 
@@ -319,6 +319,7 @@
   (-> (read-ci-test-config)
       (get-in [:ignored :drivers] [])
       (->> (mapcat #(or (get driver-directory->drivers %)
+                        (get driver-directory->drivers (str "driver-" %))
                         [(keyword %)])))
       (set)))
 
@@ -350,7 +351,7 @@
    ## What counts as 'driver deps affected'?
 
    The driver module is considered affected when:
-   - Files in modules/drivers/* are changed (triggers all drivers)
+   - Files in components/driver-* are changed (triggers all drivers)
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
@@ -403,7 +404,7 @@
     (and (contains? cloud-drivers driver)
          (contains? particular-driver-changed? driver))
     {:should-run true
-     :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
+     :reason (str "driver files changed (components/driver-" (name driver) "/**)")}
 
     ;; Priority 8: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)

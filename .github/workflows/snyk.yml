@@ -31,7 +31,7 @@ jobs:
           name: pom-files
           path: |
             pom.xml
-            modules/drivers/*/pom.xml
+            components/*/pom.xml
 
   # Yarn/NPM projects that don't need pom files
   frontend-projects:
@@ -96,55 +96,55 @@ jobs:
             file: pom.xml
             category: main-backend-maven
           - name: Driver - Athena
-            file: modules/drivers/athena/pom.xml
+            file: components/driver-athena/pom.xml
             category: driver-athena
           - name: Driver - BigQuery Cloud SDK
-            file: modules/drivers/bigquery-cloud-sdk/pom.xml
+            file: components/driver-bigquery-cloud-sdk/pom.xml
             category: driver-bigquery-cloud-sdk
           - name: Driver - ClickHouse
-            file: modules/drivers/clickhouse/pom.xml
+            file: components/driver-clickhouse/pom.xml
             category: driver-clickhouse
           - name: Driver - Databricks
-            file: modules/drivers/databricks/pom.xml
+            file: components/driver-databricks/pom.xml
             category: driver-databricks
           - name: Driver - Druid
-            file: modules/drivers/druid/pom.xml
+            file: components/driver-druid/pom.xml
             category: driver-druid
           - name: Driver - Druid JDBC
-            file: modules/drivers/druid-jdbc/pom.xml
+            file: components/driver-druid-jdbc/pom.xml
             category: driver-druid-jdbc
           - name: Driver - Hive-like
-            file: modules/drivers/hive-like/pom.xml
+            file: components/driver-hive-like/pom.xml
             category: driver-hive-like
           - name: Driver - MongoDB
-            file: modules/drivers/mongo/pom.xml
+            file: components/driver-mongo/pom.xml
             category: driver-mongo
           - name: Driver - Oracle
-            file: modules/drivers/oracle/pom.xml
+            file: components/driver-oracle/pom.xml
             category: driver-oracle
           - name: Driver - Presto JDBC
-            file: modules/drivers/presto-jdbc/pom.xml
+            file: components/driver-presto-jdbc/pom.xml
             category: driver-presto-jdbc
           - name: Driver - Redshift
-            file: modules/drivers/redshift/pom.xml
+            file: components/driver-redshift/pom.xml
             category: driver-redshift
           - name: Driver - Snowflake
-            file: modules/drivers/snowflake/pom.xml
+            file: components/driver-snowflake/pom.xml
             category: driver-snowflake
           - name: Driver - SparkSQL
-            file: modules/drivers/sparksql/pom.xml
+            file: components/driver-sparksql/pom.xml
             category: driver-sparksql
           - name: Driver - SQLite
-            file: modules/drivers/sqlite/pom.xml
+            file: components/driver-sqlite/pom.xml
             category: driver-sqlite
           - name: Driver - SQL Server
-            file: modules/drivers/sqlserver/pom.xml
+            file: components/driver-sqlserver/pom.xml
             category: driver-sqlserver
           - name: Driver - Starburst
-            file: modules/drivers/starburst/pom.xml
+            file: components/driver-starburst/pom.xml
             category: driver-starburst
           - name: Driver - Vertica
-            file: modules/drivers/vertica/pom.xml
+            file: components/driver-vertica/pom.xml
             category: driver-vertica
     steps:
       - uses: actions/checkout@v4

@@ -11,7 +11,7 @@
    #_"e2e"
    "enterprise"
    "frontend"
-   "modules/drivers"
+   "components"
    "src"
    #_"test"])
 
@@ -52,4 +52,4 @@
                    "frontend/src/metabase/querying/expressions/tokenizer/lezer.js"
                    "frontend/src/metabase/static-viz/constants/char-sizes.ts"
                    "frontend/src/metabase/visualizations/lib/mapping_codes.ts"
-                   "modules/drivers/mongo/src/metabase/driver/mongo/operators.clj"])))
+                   "components/driver-mongo/src/metabase/driver/mongo/operators.clj"])))

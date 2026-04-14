@@ -12,7 +12,7 @@
   nil)
 
 (defn driver-project-dir
-  "e.g. \"/home/cam/metabase/modules/drivers/redshift\""
+  "e.g. \"/home/cam/metabase/components/driver-redshift\""
   ^String [driver]
   (or *driver-project-dir*
       (u/filename u/project-root-directory "modules" "drivers" (name driver))))
@@ -34,14 +34,14 @@
 (defn compiled-source-target-dir
   "Directory compiled source lives in, e.g.
 
-    \"/home/cam/metabase/modules/drivers/redshift/target/jar\""
+    \"/home/cam/metabase/components/driver-redshift/target/jar\""
   [driver]
   (u/filename (driver-project-dir driver) "target" "jar"))
 
 (defn driver-edn-filename
   "Driver deps.edn filename, e.g.
 
-    \"/home/cam/metabase/modules/drivers/redshift/deps.edn\""
+    \"/home/cam/metabase/components/driver-redshift/deps.edn\""
   [driver]
   (u/filename (driver-project-dir driver) "deps.edn"))
 

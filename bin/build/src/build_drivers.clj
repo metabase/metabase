@@ -22,7 +22,7 @@
        (map (comp keyword #(.getName ^File %)))))
 
 (defn build-drivers!
-  "Build `edition`(`:ee` or `:oss`) versions of *all* the drivers in `modules/drivers` in parallel."
+  "Build `edition`(`:ee` or `:oss`) versions of *all* the drivers in `components` in parallel."
   [edition]
   (let [edition (or edition :oss)]
     (assert (#{:oss :ee} edition))

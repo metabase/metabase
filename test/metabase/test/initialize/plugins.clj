@@ -36,7 +36,7 @@
   "Return the set of parents for `driver`. Based on the value of `:metabase.driver/parents` in its `deps.edn`
   file."
   [driver]
-  (let [driver-deps-edn-file (io/file (format "modules/drivers/%s/deps.edn" (name driver)))]
+  (let [driver-deps-edn-file (io/file (format "components/driver-%s/deps.edn" (name driver)))]
     (when (.exists driver-deps-edn-file)
       (let [edn (edn/read-string (slurp driver-deps-edn-file))]
         (:metabase.driver/parents edn)))))

@@ -40,7 +40,8 @@
 
 (mu/defn- drivers-source-roots :- [:sequential (ms/InstanceOfClass java.io.File)]
   []
-  (for [file (.listFiles (io/file (str (.getAbsolutePath (project-root-directory)) "/modules/drivers")))]
+  (for [^java.io.File file (.listFiles (io/file (str (.getAbsolutePath (project-root-directory)) "/components")))
+        :when (str/starts-with? (.getName file) "driver-")]
     (io/file file "src")))
 
 (mu/defn- find-source-files :- [:sequential (ms/InstanceOfClass java.io.File)]

@@ -118,7 +118,7 @@
 
 (defn- load-connection-properties
   [driver]
-  (let [manifest   (slurp (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml")))
+  (let [manifest   (slurp (str (io/file "components" (str "driver-" (name driver)) "resources/metabase-plugin.yaml")))
         properties (parse-connection-properties (parse-yaml-section manifest :driver))
         extras     (parse-yaml-section manifest :extra)]
     (.addMethod ^MultiFn driver/connection-properties driver (constantly properties))
