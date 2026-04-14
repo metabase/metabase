@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- insert-conversation!
-  [{:keys [conversation-id user-id created-at summary state slack-team-id slack-channel-id slack-thread-ts]}]
+  [{:keys [conversation-id user-id created-at summary state slack-team-id slack-channel-id slack-thread-ts ip-address]}]
   (t2/insert! :model/MetabotConversation
               (cond-> {:id      conversation-id
                        :user_id user-id}
@@ -17,7 +17,8 @@
                 state (assoc :state state)
                 slack-team-id (assoc :slack_team_id slack-team-id)
                 slack-channel-id (assoc :slack_channel_id slack-channel-id)
-                slack-thread-ts (assoc :slack_thread_ts slack-thread-ts))))
+                slack-thread-ts (assoc :slack_thread_ts slack-thread-ts)
+                ip-address (assoc :ip_address ip-address))))
 
 (defn- insert-message!
   [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at]}]
@@ -433,3 +434,76 @@
               (is (= permalink (:slack_permalink response)))))
           (finally
             (delete-conversations! [conversation-id])))))))
+
+(defn- with-ip-address-fixture!
+  "Seed conversations with varying IP-address state so we can assert both list
+   and detail `:ip_address` behavior without perturbing the list fixture."
+  [thunk]
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-ip@metabase.com"
+                                                   :first_name "IP"
+                                                   :last_name  "Tester"}]
+      (let [convo-web   (str (random-uuid))
+            convo-slack (str (random-uuid))
+            convo-null  (str (random-uuid))
+            jan-1       (offset-date-time "2026-03-01T00:00:00Z")
+            jan-2       (offset-date-time "2026-03-02T00:00:00Z")
+            jan-3       (offset-date-time "2026-03-03T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id convo-web
+                                 :user-id         test-user-id
+                                 :created-at      jan-1
+                                 :summary         "web conversation"
+                                 :ip-address      "1.2.3.4"})
+          (insert-conversation! {:conversation-id convo-slack
+                                 :user-id         test-user-id
+                                 :created-at      jan-2
+                                 :summary         "slack conversation"
+                                 :slack-team-id   "T123"
+                                 :slack-channel-id "C123"
+                                 :slack-thread-ts  "1712785577.123456"})
+          (insert-conversation! {:conversation-id convo-null
+                                 :user-id         test-user-id
+                                 :created-at      jan-3
+                                 :summary         "legacy conversation with no ip"})
+          (thunk {:test-user-id test-user-id
+                  :convo-web    convo-web
+                  :convo-slack  convo-slack
+                  :convo-null   convo-null})
+          (finally
+            (delete-conversations! [convo-web convo-slack convo-null])))))))
+
+(deftest list-conversations-ip-address-test
+  (with-ip-address-fixture!
+    (fn [{:keys [test-user-id convo-web convo-slack convo-null]}]
+      (let [response (mt/user-http-request :crowberto :get 200
+                                           (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+            by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
+        (is (= "1.2.3.4" (:ip_address (get by-id convo-web))))
+        (is (nil? (:ip_address (get by-id convo-slack)))
+            "Slack-originated conversations have no IP")
+        (is (nil? (:ip_address (get by-id convo-null)))
+            "legacy conversations without a captured IP surface as nil")))))
+
+(deftest list-conversations-ip-address-pagination-test
+  (testing "ip_address is correctly returned for rows on page 2"
+    (with-ip-address-fixture!
+      (fn [{:keys [test-user-id convo-slack]}]
+        ;; Default sort is created_at desc: [convo-null convo-slack convo-web].
+        ;; limit=1, offset=1 returns just convo-slack.
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s&limit=1&offset=1"
+                                                     test-user-id))]
+          (is (= [convo-slack] (map :conversation_id (:data response))))
+          (is (nil? (:ip_address (first (:data response))))))))))
+
+(deftest get-conversation-detail-ip-address-test
+  (with-ip-address-fixture!
+    (fn [{:keys [convo-web convo-slack convo-null]}]
+      (doseq [[convo expected] [[convo-web "1.2.3.4"]
+                                [convo-slack nil]
+                                [convo-null nil]]]
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations/%s" convo))]
+          (is (= expected (:ip_address response))
+              (format "expected ip_address=%s for %s" (pr-str expected) convo)))))))

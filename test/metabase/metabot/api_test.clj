@@ -159,7 +159,7 @@
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
                             metabot.context/create-context           identity
-                            api/store-native-parts!                  (fn [_conv-id _prof-id parts]
+                            api/store-native-parts!                  (fn [_conv-id _prof-id _ip parts]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -577,7 +577,7 @@
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
           (#'api/store-native-parts!
-           conv-id "internal"
+           conv-id "internal" nil
            [{:type :start :id "msg-1"}
             {:type :text :text "Hello"}
             ;; SSE usage parts carry bare model names (from provider API response)
@@ -692,9 +692,59 @@
                                 :history         []
                                 :conversation_id (str (random-uuid))
                                 :state           {}
-                                :debug           false})
+                                :debug           false}
+                               nil)
         (testing "metabot-id is included in the arguments"
           (is (some? (:metabot-id @captured-args))
               "metabot-id should not be nil")
           (is (= test-metabot-id (:metabot-id @captured-args))
               "metabot-id should match the input metabot_id"))))))
+
+(deftest streaming-request-captures-ip-address-test
+  (testing "streaming-request captures ip-address on initial insert and does not overwrite on later calls"
+    (mt/with-model-cleanup [:model/MetabotMessage
+                            [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            request-body    {:metabot_id      metabot.config/embedded-metabot-id
+                             :profile_id      nil
+                             :message         "hi"
+                             :context         {}
+                             :history         []
+                             :conversation_id conversation-id
+                             :state           {}
+                             :debug           false}]
+        (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                      api/native-agent-streaming-request    (constantly nil)]
+          (mt/with-test-user :rasta
+            (api/streaming-request request-body "1.2.3.4")
+            (testing "initial call stores the IP"
+              (is (= "1.2.3.4"
+                     (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))))
+
+            (api/streaming-request request-body "5.6.7.8")
+            (testing "subsequent calls do not overwrite the captured IP"
+              (is (= "1.2.3.4"
+                     (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))))))))))
+
+(deftest streaming-request-backfills-null-ip-address-test
+  (testing "streaming-request backfills ip_address on conversation rows that predate this feature"
+    (mt/with-model-cleanup [:model/MetabotMessage
+                            [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (t2/insert! :model/MetabotConversation
+                    {:id      conversation-id
+                     :user_id (mt/user->id :rasta)})
+        (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                      api/native-agent-streaming-request    (constantly nil)]
+          (mt/with-test-user :rasta
+            (api/streaming-request {:metabot_id      metabot.config/embedded-metabot-id
+                                    :profile_id      nil
+                                    :message         "hi"
+                                    :context         {}
+                                    :history         []
+                                    :conversation_id conversation-id
+                                    :state           {}
+                                    :debug           false}
+                                   "9.9.9.9")
+            (is (= "9.9.9.9"
+                   (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id))))))))))

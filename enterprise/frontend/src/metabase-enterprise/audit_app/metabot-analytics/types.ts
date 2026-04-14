@@ -20,6 +20,7 @@ export type ConversationSummary = {
   last_message_at: string | null;
   model: string | null;
   search_count: number;
+  ip_address: string | null;
   user: MetabotUserInfo | null;
 };
 
@@ -67,4 +68,5 @@ export type ConversationDetail = {
   chat_messages: MetabotChatMessage[];
   queries: GeneratedQuery[];
   search_count: number;
+  ip_address: string | null;
 };

@@ -124,7 +124,7 @@ export function ConversationsTable({
                 <Box component="td" ta="right">
                   {convo.search_count}
                 </Box>
-                <td>0.0.0.0</td>
+                <td>{convo.ip_address ?? "—"}</td>
               </tr>
             ))}
           </>

@@ -63,7 +63,8 @@
                                                                            :context         context
                                                                            :history         history
                                                                            :conversation_id conversation-id
-                                                                           :state           state})
+                                                                           :state           state}
+                                                                          nil)
                                                                          consume-streaming-response
                                                                          str/split-lines
                                                                          (metabot.u/aisdk->messages "assistant"))]

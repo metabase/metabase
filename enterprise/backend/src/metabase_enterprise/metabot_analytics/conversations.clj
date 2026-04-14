@@ -73,6 +73,7 @@
    :last_message_at         (:last_message_at row)
    :model                   (:model row)
    :search_count            (:search_count row 0)
+   :ip_address              (:ip_address row)
    :user                    (trim-user (:user row))})
 
 (defn- hydrate-search-counts
@@ -148,4 +149,5 @@
        :slack_permalink (slack-permalink conversation)
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
        :queries         (analytics.queries/messages->generated-queries messages)
-       :search_count    (analytics.queries/count-tool-invocations messages "search")})))
+       :search_count    (analytics.queries/count-tool-invocations messages "search")
+       :ip_address      (:ip_address conversation)})))
