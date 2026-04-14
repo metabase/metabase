@@ -79,7 +79,12 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
       ...prev,
       [tenant.id]: maxUsage,
     }));
-    debouncedSaveTenantLimit(tenant, maxUsage);
+    const isOverInstanceLimit =
+      maxUsage != null && instanceLimit != null && maxUsage > instanceLimit;
+
+    if (!isOverInstanceLimit) {
+      debouncedSaveTenantLimit(tenant, maxUsage);
+    }
   };
 
   const filteredTenants = useMemo(() => {
@@ -134,28 +139,44 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTenants.map((tenant) => (
-                      <tr key={tenant.id} className={S.BodyRow}>
-                        <td className={S.BodyCell}>{tenant.name}</td>
-                        <td className={S.BodyCell}>
-                          <TextInput
-                            placeholder={placeholder}
-                            value={localLimitsMap?.[tenant.id] ?? ""}
-                            onChange={(e) =>
-                              handleChange(tenant, e.target.value)
-                            }
-                            classNames={{ input: S.LimitInput }}
-                            type="number"
-                            min={1}
-                            aria-label={getInputLabel(
-                              tenant.name,
-                              limitType,
-                              limitPeriod,
-                            )}
-                          />
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredTenants.map((tenant) => {
+                      const inputValue = String(
+                        localLimitsMap?.[tenant.id] ?? "",
+                      );
+                      const maxUsage = sanitizeUsageLimitValue(inputValue);
+                      const isOverInstanceLimit =
+                        maxUsage != null &&
+                        instanceLimit != null &&
+                        maxUsage > instanceLimit;
+
+                      return (
+                        <tr key={tenant.id} className={S.BodyRow}>
+                          <td className={S.BodyCell}>{tenant.name}</td>
+                          <td className={S.BodyCell}>
+                            <TextInput
+                              placeholder={placeholder}
+                              value={inputValue}
+                              onChange={(e) =>
+                                handleChange(tenant, e.target.value)
+                              }
+                              classNames={{ input: S.LimitInput }}
+                              error={
+                                isOverInstanceLimit
+                                  ? t`Can't be higher than the instance limit`
+                                  : undefined
+                              }
+                              type="number"
+                              min={1}
+                              aria-label={getInputLabel(
+                                tenant.name,
+                                limitType,
+                                limitPeriod,
+                              )}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </Box>

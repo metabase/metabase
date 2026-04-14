@@ -25,6 +25,10 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as qbSelectors from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -43,10 +47,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
