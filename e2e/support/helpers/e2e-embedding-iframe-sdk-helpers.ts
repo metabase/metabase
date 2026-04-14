@@ -217,7 +217,9 @@ export function prepareSdkIframeEmbedTest({
   });
 
   cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
-  cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
+  cy.intercept("POST", "/api/dashboard/*/card-query-batch").as(
+    "getDashCardQuery",
+  );
   cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
 
   setupMockAuthProviders(enabledAuthMethods);

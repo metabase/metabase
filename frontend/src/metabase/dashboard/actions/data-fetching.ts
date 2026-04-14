@@ -681,14 +681,13 @@ export const fetchDashboardCardData =
         return;
       }
 
-      // Build parameters: dashboard-level params with current values
-      const batchParameters = (dashboard.parameters ?? [])
-        .filter((p) => parameterValues[p.id] != null)
-        .map((p) => ({
-          id: p.id,
-          type: p.type,
-          value: parameterValues[p.id],
-        }));
+      // Include cleared params too (value: null) so the server can delete
+      // their stored last-used value on filter reset.
+      const batchParameters = (dashboard.parameters ?? []).map((p) => ({
+        id: p.id,
+        type: p.type,
+        value: parameterValues[p.id] ?? null,
+      }));
 
       // Build cards array: unique (dashcard_id, card_id) pairs
       const cards = cardsNeedingFetch.map(({ card, dashcard }) => ({

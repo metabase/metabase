@@ -20,11 +20,17 @@
  *
  *    expect(spy.getCalls().length).to.eq(2);
  * });
+ *
+ * The spy fires on `before:response`, so it works with streaming/chunked
+ * responses (e.g. NDJSON) that never finish buffering — unlike the previous
+ * `req.continue(cb)` wrapper, which required a full response body before firing.
  */
 export function spyRequestFinished(name = "requestFinishedSpy") {
   const spy = cy.spy().as(name);
   return {
-    interceptor: (req: any) => req.continue((res: any) => spy(req, res)),
+    interceptor: (req: any) => {
+      req.on("before:response", (res: any) => spy(req, res));
+    },
     spy,
   };
 }

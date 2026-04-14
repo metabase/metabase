@@ -10,6 +10,7 @@ import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location"
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {
+    H.interceptDashboardCardRequests({ alias: "batchQuery" });
     H.restore();
     cy.signInAsAdmin();
 
