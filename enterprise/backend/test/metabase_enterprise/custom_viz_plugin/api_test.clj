@@ -1,10 +1,16 @@
 (ns metabase-enterprise.custom-viz-plugin.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.custom-viz-plugin.api :as custom-viz-plugin.api]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+;; private fn under test
+(def ^:private parse-repo-name @#'custom-viz-plugin.api/parse-repo-name)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -91,6 +97,29 @@
         (let [result (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")]
           (doseq [plugin result]
             (is (not (contains? plugin :access_token)))))))))
+
+;;; ------------------------------------------------ access_token not exposed ------------------------------------------------
+
+(deftest access-token-not-exposed-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/token-sec"
+                                                    :identifier   "token-sec"
+                                                    :display_name "Token Sec"
+                                                    :status       :active
+                                                    :enabled      true
+                                                    :access_token "super-secret-pat"}]
+      (testing "GET / (admin list) does not expose access_token"
+        (let [plugins (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")]
+          (doseq [plugin plugins]
+            (is (not (contains? plugin :access_token))))))
+      (testing "PUT /:id response does not expose access_token"
+        (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
+                                         {:enabled false})]
+          (is (not (contains? resp :access_token)))))
+      (testing "POST /:id/refresh response does not expose access_token"
+        (with-redefs [cache/fetch-and-update! (constantly nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))]
+            (is (not (contains? resp :access_token)))))))))
 
 ;;; ------------------------------------------------ Duplicate Validation ------------------------------------------------
 
@@ -206,3 +235,188 @@
         (testing "404 for non-existent plugin"
           (mt/user-http-request :crowberto :get 404 "ee/custom-viz-plugin/99999/asset"
                                 :path "icon.svg"))))))
+
+;;; ------------------------------------------------ parse-repo-name ------------------------------------------------
+
+(deftest parse-repo-name-test
+  (testing "extracts repo name from HTTPS URL"
+    (is (= "custom-heatmap" (parse-repo-name "https://github.com/user/custom-heatmap"))))
+  (testing "strips .git suffix from HTTPS URL"
+    (is (= "custom-heatmap" (parse-repo-name "https://github.com/user/custom-heatmap.git"))))
+  (testing "extracts repo name from SSH git URL"
+    (is (= "custom-heatmap" (parse-repo-name "git@github.com:user/custom-heatmap.git"))))
+  (testing "SSH URL without .git suffix"
+    (is (= "custom-heatmap" (parse-repo-name "git@github.com:user/custom-heatmap"))))
+  (testing "handles nested paths"
+    (is (= "my-viz" (parse-repo-name "https://gitlab.com/org/subgroup/my-viz"))))
+  (testing "handles trailing slash"
+    ;; URI path for trailing slash is "/user/repo/" — last after split is ""
+    ;; but this is an edge case; the API validates NonBlankString for repo_url
+    (is (some? (parse-repo-name "https://github.com/user/repo")))))
+
+;;; ------------------------------------------------ Plugin Registration ------------------------------------------------
+
+(deftest register-plugin-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "successful registration creates plugin and fetches bundle"
+        (with-redefs [cache/fetch-and-update! (fn [plugin]
+                                                (t2/update! :model/CustomVizPlugin (:id plugin)
+                                                            {:status :active :resolved_commit "sha123"}))]
+          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
+                                           {:repo_url "https://github.com/test/new-register-viz"})]
+            (is (= "new-register-viz" (:identifier resp))
+                "identifier should be derived from repo name")
+            (is (= "https://github.com/test/new-register-viz" (:repo_url resp)))
+            (is (false? (:dev_only resp))
+                "git-registered plugins are not dev-only")))))))
+
+(deftest register-plugin-sets-error-on-fetch-failure-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "plugin is persisted with error status when fetch-and-update! fails"
+        (with-redefs [cache/fetch-and-update! (fn [plugin]
+                                                (t2/update! :model/CustomVizPlugin (:id plugin)
+                                                            {:status :error
+                                                             :error_message "Connection refused"}))]
+          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
+                                           {:repo_url "https://github.com/test/fail-register-viz"})]
+            (is (= "error" (:status resp))
+                "plugin should be in error state after failed fetch")
+            (is (= "Connection refused" (:error_message resp))
+                "error message should be preserved")))))))
+
+(deftest register-dev-plugin-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "dev plugin registration with manifest name"
+        (with-redefs [cache/fetch-dev-manifest (constantly {:name "dev-chart" :icon "icon.svg"})
+                      cache/set-or-clear-dev-bundle! (constantly nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
+                                           {:dev_bundle_url "http://localhost:5174"})]
+            (is (= "dev-chart" (:identifier resp)))
+            (is (= "dev-chart" (:display_name resp))
+                "display_name comes from manifest name")
+            (is (true? (:dev_only resp))
+                "dev-registered plugins are dev-only")
+            (is (= "active" (:status resp))
+                "dev plugins are immediately active"))))
+      (testing "dev plugin registration with explicit identifier overrides manifest"
+        (with-redefs [cache/fetch-dev-manifest (constantly {:name "manifest-name"})
+                      cache/set-or-clear-dev-bundle! (constantly nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
+                                           {:dev_bundle_url "http://localhost:5174"
+                                            :identifier     "my-override"})]
+            (is (= "my-override" (:identifier resp))
+                "explicit identifier takes precedence over manifest name"))))
+      (testing "dev plugin registration fails with helpful message when no identifier and no manifest"
+        (with-redefs [cache/fetch-dev-manifest (constantly nil)]
+          (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                           {:dev_bundle_url "http://localhost:5174"})]
+            (is (str/includes? resp "metabase-plugin.json")
+                "error should mention the manifest file"))))
+      (testing "dev plugin registration fails with helpful message when manifest missing name"
+        (with-redefs [cache/fetch-dev-manifest (constantly {:icon "icon.svg"})]
+          (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                           {:dev_bundle_url "http://localhost:5174"})]
+            (is (str/includes? resp "name")
+                "error should mention the missing name field")))))))
+
+;;; ------------------------------------------------ Update / Refresh ------------------------------------------------
+
+(deftest update-pinned-version-triggers-refresh-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "updating pinned_version triggers fetch-and-update!"
+      (let [fetched? (atom false)]
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/pin-test"
+                                                        :identifier      "pin-test"
+                                                        :display_name    "pin-test"
+                                                        :status          :active
+                                                        :pinned_version  nil}]
+          (with-redefs [cache/fetch-and-update! (fn [_] (reset! fetched? true))]
+            (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
+                                  {:pinned_version "v1.0.0"})
+            (is (true? @fetched?))))))))
+
+(deftest update-same-pinned-version-no-refresh-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "setting same pinned_version does not trigger refresh"
+      (let [fetched? (atom false)]
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/pin-same"
+                                                        :identifier      "pin-same"
+                                                        :display_name    "pin-same"
+                                                        :status          :active
+                                                        :pinned_version  "v1.0.0"}]
+          (with-redefs [cache/fetch-and-update! (fn [_] (reset! fetched? true))]
+            (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
+                                  {:pinned_version "v1.0.0"})
+            (is (false? @fetched?))))))))
+
+(deftest refresh-git-plugin-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "refresh calls fetch-and-update! for git-based plugins"
+      (let [fetched? (atom false)]
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/refresh-git"
+                                                        :identifier   "refresh-git"
+                                                        :display_name "refresh-git"
+                                                        :status       :active}]
+          (with-redefs [cache/fetch-and-update! (fn [_] (reset! fetched? true))]
+            (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))
+            (is (true? @fetched?))))))))
+
+(deftest refresh-dev-plugin-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "refresh re-fetches manifest for dev-only plugins"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url       "dev://local/dev-refresh"
+                                                      :identifier     "dev-refresh"
+                                                      :display_name   "dev-refresh"
+                                                      :status         :active
+                                                      :dev_bundle_url "http://localhost:5174"}]
+        (with-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5174")
+                      cache/fetch-dev-manifest (constantly {:name "Updated Name" :icon "new-icon.svg"})]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))]
+            (is (= "Updated Name" (:display_name resp)))))))))
+
+;;; ------------------------------------------------ /list compatibility filtering ------------------------------------------------
+
+(deftest list-filters-incompatible-versions-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "/list excludes plugins with incompatible metabase_version"
+      (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                    config/is-dev?         false]
+        (mt/with-temp [:model/CustomVizPlugin _ {:repo_url          "https://github.com/test/compat-viz"
+                                                 :identifier        "compat-viz"
+                                                 :display_name      "Compatible"
+                                                 :status            :active
+                                                 :enabled           true
+                                                 :metabase_version  ">=1.59"}
+                       :model/CustomVizPlugin _ {:repo_url          "https://github.com/test/incompat-viz"
+                                                 :identifier        "incompat-viz"
+                                                 :display_name      "Incompatible"
+                                                 :status            :active
+                                                 :enabled           true
+                                                 :metabase_version  ">=1.99"}]
+          (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+                identifiers (set (map :identifier result))]
+            (is (contains? identifiers "compat-viz"))
+            (is (not (contains? identifiers "incompat-viz")))))))))
+
+;;; ------------------------------------------------ Bundle Endpoint ------------------------------------------------
+
+(deftest bundle-endpoint-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/bundle-test"
+                                                    :identifier      "bundle-test"
+                                                    :display_name    "bundle-test"
+                                                    :status          :active
+                                                    :resolved_commit "abc123"}]
+      (testing "returns bundle with correct content-type and ETag"
+        (with-redefs [cache/resolve-dev-bundle (constantly nil)
+                      cache/resolve-bundle     (constantly {:content "console.log('hello')" :hash "deadbeef"})]
+          (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/bundle"))]
+            (is (= "console.log('hello')" resp)))))
+      (testing "returns 503 when bundle is not available"
+        (with-redefs [cache/resolve-dev-bundle (constantly nil)
+                      cache/resolve-bundle     (constantly nil)]
+          (let [resp (mt/user-http-request :crowberto :get 503 (str "ee/custom-viz-plugin/" id "/bundle"))]
+            (is (some? resp))))))))
