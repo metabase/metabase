@@ -18,8 +18,25 @@ If any of these fail during setup or at any point, **STOP immediately** and tell
 - Playwright MCP tools unavailable or erroring → STOP
 - Backend server not responding to health check → STOP
 - API calls returning connection errors → STOP
-- nREPL not responding (`-bot-server-info` reports `NREPL_PORT=NONE` AND `.nrepl-port` is absent in the project root) → STOP
+- nREPL not responding (`-bot-server-info` reports `NREPL_PORT=NONE` AND `.nrepl-port` is absent in the project root) → STOP. **Exception:** in PR-env mode (see below) `NREPL_PORT=NONE` is expected and is NOT a STOP condition — use the socket REPL instead.
 - Linear API unreachable → continue without Linear context (optional)
+
+## Remote PR Environment Mode
+
+If `./bin/mage -bot-server-info` prints `MODE=pr-env` in a "Remote PR Environment" section, you are NOT running against a local dev server — you are running against a pre-deployed PR preview environment at a URL like `https://pr383713.coredev.metabase.com`. In this mode:
+
+- **API calls** — use `./bin/mage -bot-api-call` exactly as you would locally. It transparently detects PR-env mode, sends requests to `BASE_URL` from `-bot-server-info`, and authenticates using the cached session token. You do not need to pass `--api-key` or `--base-url`. If the session expires, the wrapper refreshes it automatically on a 401.
+- **Browser testing** — Playwright MCP should navigate to `BASE_URL` from `-bot-server-info`, not `http://localhost:*`. The preview site is served over HTTPS; there is no local frontend running.
+- **REPL access** — `clj-nrepl-eval` does NOT work in PR-env mode. The remote instance exposes a **socket REPL** (not nREPL) on `repl.coredev.metabase.com` at port equal to the PR number. Use it via `nc`:
+  ```bash
+  echo '(+ 1 2)' | nc -q 1 repl.coredev.metabase.com <PR_NUM>
+  ```
+  Send **one form per connection** — the socket REPL is not session-managed like nREPL. To evaluate multiple forms together, wrap them in `(do ...)`. Use `-bot-server-info` to get `SOCKET_REPL_HOST` and `SOCKET_REPL_PORT`.
+- **Database access** — there is no local database. Query data through API endpoints (`/api/dataset`, `/api/card/<id>/query`, `/api/user`, etc.) instead of via Toucan2 in the REPL.
+- **Logs** — use `/api/logger/logs` (admin API) instead of REPL-based `(logger/messages)`.
+- **Backend restart** — you cannot restart the backend. If you hit a configuration issue that requires a restart, STOP and tell the user.
+
+**Tailscale is required.** PR preview environments are only reachable from the Metabase Tailscale network. If API calls, Playwright navigation, or `nc` hang or time out, the most likely cause is a missing Tailscale connection — tell the user to check their Tailscale status. Do not spend time debugging network issues yourself.
 
 ## Output and Work Directory
 

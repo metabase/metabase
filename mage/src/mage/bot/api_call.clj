@@ -1,10 +1,12 @@
 (ns mage.bot.api-call
-  "Make HTTP API calls to the locally running Metabase instance.
-   Automatically discovers the Jetty port and handles auth headers."
+  "Make HTTP API calls to a Metabase instance — either the locally running
+   dev server or a remote PR preview environment, depending on whether
+   .bot/pr-env.env exists in the current worktree."
   (:require
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.string :as str]
+   [mage.bot.pr-env :as pr-env]
    [mage.color :as c]
    [mage.nvoxland.env :as bot-env]
    [mage.util :as u]))
@@ -17,12 +19,32 @@
   (or (bot-env/resolve-env "MB_JETTY_PORT")
       "3000"))
 
+(defn- local-url [path]
+  (str "http://localhost:" (discover-port) path))
+
+(defn- remote-url [path]
+  (let [env (pr-env/load-pr-env)]
+    (str (get env "BASE_URL") path)))
+
+(defn- do-request
+  "Perform one HTTP request. Returns the response map."
+  [{:keys [method url headers body]}]
+  (let [opts (cond-> {:headers headers :throw false}
+               body (assoc :body body))]
+    (try
+      (http/request (assoc opts :method method :uri url))
+      (catch Exception e
+        (println (c/red (str "Connection failed: " url)))
+        (let [msg (or (.getMessage e) (str (class e)))]
+          (println msg))
+        (u/exit 1)))))
+
 (defn api-call!
-  "Make an API call to the local Metabase instance.
+  "Make an API call to the local or remote Metabase instance.
    Options (from CLI):
      positional arg: API path (e.g. /api/card, /api/collection/root)
      --method       HTTP method (default GET)
-     --api-key      API key for x-api-key header
+     --api-key      API key for x-api-key header (local mode; overrides remote session if given)
      --body         JSON request body (for POST/PUT)
      --pretty       Pretty-print JSON output (default true)"
   [{:keys [arguments options]}]
@@ -31,35 +53,39 @@
       (println (c/red "Usage: ./bin/mage -bot-api-call /api/<path> [--method GET|POST|PUT|DELETE] [--api-key <key>] [--body '{...}']"))
       (u/exit 1))
 
-    (let [method  (keyword (str/lower-case (or (:method options) "GET")))
-          api-key (:api-key options)
-          body    (:body options)
-          port    (discover-port)
-          path    (if (str/starts-with? api-path "/") api-path (str "/" api-path))
-          url     (str "http://localhost:" port path)
-
-          headers (cond-> {"Content-Type" "application/json"
-                           "Accept"       "application/json"}
-                    api-key (assoc "x-api-key" api-key))
-
-          opts    (cond-> {:headers headers
-                           :throw   false}
-                    body (assoc :body body))]
+    (let [method     (keyword (str/lower-case (or (:method options) "GET")))
+          api-key    (:api-key options)
+          body       (:body options)
+          path       (if (str/starts-with? api-path "/") api-path (str "/" api-path))
+          remote?    (pr-env/pr-env-active?)
+          url        (if remote? (remote-url path) (local-url path))
+          session    (when (and remote? (not api-key))
+                       (or (pr-env/session-token)
+                           (pr-env/refresh-session!)))
+          base-hdr   {"Content-Type" "application/json"
+                      "Accept"       "application/json"}
+          headers    (cond-> base-hdr
+                       api-key (assoc "x-api-key" api-key)
+                       session (assoc "X-Metabase-Session" session))]
 
       ;; Print request info to stderr
       (binding [*out* *err*]
-        (println (str (str/upper-case (name method)) " " path " (port " port ")")))
+        (println (str (str/upper-case (name method)) " " path
+                      (if remote? " (remote PR env)" (str " (port " (discover-port) ")")))))
 
-      (let [response (try
-                       (http/request (assoc opts :method method :uri url))
-                       (catch Exception e
-                         (println (c/red (str "Connection failed: " url)))
-                         (let [msg (or (.getMessage e)
-                                       (str (class e)))]
-                           (println msg))
-                         (u/exit 1)))
-            status   (:status response)
-            body-str (:body response)]
+      (let [first-response (do-request {:method method :url url :headers headers :body body})
+            ;; In remote mode with session auth, retry once on 401 with a fresh token
+            response       (if (and remote? session (= 401 (:status first-response)))
+                             (let [_ (binding [*out* *err*]
+                                       (println (c/yellow "Session token rejected (401) — refreshing and retrying")))
+                                   new-token (pr-env/refresh-session!)]
+                               (do-request {:method  method
+                                            :url     url
+                                            :headers (assoc base-hdr "X-Metabase-Session" new-token)
+                                            :body    body}))
+                             first-response)
+            status         (:status response)
+            body-str       (:body response)]
 
         ;; Print status to stderr
         (binding [*out* *err*]

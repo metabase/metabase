@@ -1,29 +1,70 @@
 (ns mage.bot.server-info
   "Discover and print server configuration for bot agents.
    Finds MB_CONFIG_FILE_PATH from env, mise.local.toml, or .lein-env,
-   then prints the config YAML along with port/connection info."
+   then prints the config YAML along with port/connection info.
+   In PR-env mode (when .bot/pr-env.env exists), prints remote info instead."
   (:require
    [clojure.string :as str]
+   [mage.bot.pr-env :as pr-env]
    [mage.nvoxland.env :as bot-env]
    [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
-(defn server-info!
-  "Print server configuration for bot agents."
-  [& _]
+(defn- print-git-branch []
+  (println "## Git Branch")
+  (println)
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "git" "branch" "--show-current")]
+    (if (zero? exit)
+      (println (str/trim (str/join "" out)))
+      (println "unknown")))
+  (println))
+
+(defn- print-pr-env-info! []
+  (let [env     (pr-env/load-pr-env)
+        token   (pr-env/session-token)]
+    (print-git-branch)
+
+    (println "## Remote PR Environment")
+    (println)
+    (println "MODE=pr-env")
+    (println (str "BASE_URL=" (get env "BASE_URL")))
+    (println (str "PR_NUM=" (get env "PR_NUM")))
+    (println (str "USERNAME=" (get env "USERNAME")))
+    (println "SESSION_FILE=.bot/pr-env-session.txt")
+    (println (str "SESSION_TOKEN_PRESENT=" (if token "yes" "no")))
+    (println)
+    (println "API calls via `./bin/mage -bot-api-call` transparently target BASE_URL")
+    (println "using the cached session token — no code changes needed.")
+    (println)
+
+    (println "## REPL Access")
+    (println)
+    (println "NREPL_PORT=NONE")
+    (println (str "SOCKET_REPL_HOST=" (get env "REPL_HOST")))
+    (println (str "SOCKET_REPL_PORT=" (get env "REPL_PORT")))
+    (println "SOCKET_REPL_USAGE=echo '(+ 1 2)' | nc -q 1 "
+             (get env "REPL_HOST") " " (get env "REPL_PORT"))
+    (println)
+    (println "Remote PR envs expose a socket REPL, not nREPL. `clj-nrepl-eval`")
+    (println "will NOT work here. Send ONE form per connection via `nc`. Wrap")
+    (println "multi-form work in `(do ...)`.")
+    (println)
+
+    (println "## Network")
+    (println)
+    (println "PR preview environments are only reachable via the Metabase Tailscale")
+    (println "network. If API calls, Playwright navigation, or `nc` hang or time out,")
+    (println "the most likely cause is a missing Tailscale connection.")
+    (println)))
+
+(defn- server-info-local!
+  "Local-dev server info output. Unchanged from the pre-PR-env behavior."
+  []
   (let [resolved     (bot-env/resolve-all)
         config-path  (get resolved "MB_CONFIG_FILE_PATH")]
-
-    ;; Git branch
-    (println "## Git Branch")
-    (println)
-    (let [{:keys [exit out]} (shell/sh* {:quiet? true} "git" "branch" "--show-current")]
-      (if (zero? exit)
-        (println (str/trim (str/join "" out)))
-        (println "unknown")))
-    (println)
+    (print-git-branch)
 
     ;; MB_* environment variables section
     (println "## Environment Variables")
@@ -110,3 +151,12 @@
               (println (str "  " c)))
             (println)
             (println "You may need to check /api/setup or /api/session to determine the instance state.")))))))
+
+(defn server-info!
+  "Print server configuration for bot agents.
+   Selects between local-dev and remote PR-env output based on whether
+   .bot/pr-env.env exists in the current worktree."
+  [& _]
+  (if (pr-env/pr-env-active?)
+    (print-pr-env-info!)
+    (server-info-local!)))

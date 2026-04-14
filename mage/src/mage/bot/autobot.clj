@@ -113,11 +113,18 @@
 ;; Workmux config generation
 
 (defn- generate-workmux-config
-  "Generate the .workmux.yaml content from the common template for a given bot."
-  [bot-name app-db]
-  (-> (slurp (str u/project-root-directory "/dev/bot/workmux-template.yaml"))
-      (str/replace "{{BOT_NAME}}" bot-name)
-      (str/replace "{{APP_DB}}" app-db)))
+  "Generate the .workmux.yaml content from a template for a given bot.
+   In PR-env mode (when pr-env-url is non-nil), uses the slim PR-env template
+   instead of the full local-dev template."
+  [{:keys [bot-name app-db pr-env-url pr-num]}]
+  (let [template-path (if pr-env-url
+                        (str u/project-root-directory "/dev/bot/workmux-template-pr-env.yaml")
+                        (str u/project-root-directory "/dev/bot/workmux-template.yaml"))]
+    (cond-> (slurp template-path)
+      true        (str/replace "{{BOT_NAME}}" bot-name)
+      (not pr-env-url) (str/replace "{{APP_DB}}" app-db)
+      pr-env-url  (str/replace "{{PR_ENV_URL}}" pr-env-url)
+      pr-num      (str/replace "{{PR_NUM}}" pr-num))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Fresh launch (workmux add — creates new worktree)
@@ -297,19 +304,30 @@
 ;; Launch entry point
 
 (defn go!
-  "Launch a session. Takes --bot, --command, --base, and branch name."
+  "Launch a session. Takes --bot, --command, --base, --pr-env-url, and branch name."
   [{:keys [arguments options]}]
   (let [branch-name (first arguments)]
     (when (str/blank? branch-name)
-      (println (c/red "Usage: ./bin/mage -autobot-go <branch-name> --bot <name> --command <cmd>"))
+      (println (c/red "Usage: ./bin/mage -autobot-go <branch-name> --bot <name> --command <cmd> [--pr-env-url <url>]"))
       (u/exit 1))
     (let [branch-name  (str/trim branch-name)
           bot-name     (:bot options)
           command      (:command options)
           app-db       (or (:app-db options) "postgres")
           base-branch  (or (:base options) "origin/master")
+          pr-env-url   (:pr-env-url options)
+          pr-num       (when pr-env-url
+                         (second (re-find #"pr(\d+)" pr-env-url)))
           session-name (branch-to-session-name branch-name)
-          config       (generate-workmux-config (or bot-name "autobot") app-db)]
+          config       (generate-workmux-config
+                        {:bot-name    (or bot-name "autobot")
+                         :app-db      app-db
+                         :pr-env-url  pr-env-url
+                         :pr-num      pr-num})]
+      (when (and pr-env-url (str/blank? pr-num))
+        (println (c/red "Could not extract PR number from --pr-env-url: " pr-env-url))
+        (println (c/red "Expected format: https://pr<NUMBER>.coredev.metabase.com"))
+        (u/exit 1))
       (when (str/blank? bot-name)
         (println (c/red "--bot is required"))
         (u/exit 1))
@@ -346,7 +364,11 @@
             (do
               ;; Fresh launch: verify the branch exists somewhere before creating a worktree.
               ;; Returns the ref to pass to workmux (branch name if local, origin/<name> if remote-only).
-              (let [branch-ref (resolve-branch-ref! branch-name)]
+              (let [branch-ref (resolve-branch-ref! branch-name)
+                    info       (cond-> {"Bot" bot-name "Command" command}
+                                 (not pr-env-url) (assoc "App DB" app-db)
+                                 pr-env-url       (assoc "PR Env" pr-env-url
+                                                         "PR #"   pr-num))]
                 (launch-workmux-session!
                  {:session-name   session-name
                   :branch-name    branch-name
@@ -354,7 +376,7 @@
                   :base-branch    base-branch
                   :prompt-file    prompt-file
                   :workmux-config config
-                  :display-info   {"Bot" bot-name "App DB" app-db "Command" command}})))))))))
+                  :display-info   info})))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Result lookup
