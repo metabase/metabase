@@ -4,6 +4,8 @@ import type { Card, Dashboard, DashboardCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { createMockDataset } from "metabase-types/api/mocks";
 
+import { setupEmbedDashboardCardQueryBatchEndpointByToken } from "./dashcard";
+
 export function setupEmbedDashboardEndpoints(
   uuidOrToken: EntityToken,
   dashboard: Dashboard,
@@ -18,6 +20,12 @@ export function setupEmbedDashboardEndpoints(
         createMockDataset(),
       );
     });
+    setupEmbedDashboardCardQueryBatchEndpointByToken(
+      String(uuidOrToken),
+      dashcards
+        .filter(({ card_id }) => card_id != null)
+        .map(({ id, card_id }) => ({ id, card_id: card_id as number })),
+    );
   }
 }
 
