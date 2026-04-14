@@ -4,14 +4,12 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { useGetDatabaseMetadataQuery } from "metabase/api";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { Flex, SimpleGrid, Skeleton, Tabs, Title } from "metabase/ui";
+import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 
-import { AUDIT_DB_ID } from "../../constants";
 import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 import {
   type UrlState as ConversationsUrlState,
@@ -54,9 +52,6 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   }, [date]);
 
   const { userOptions, groupOptions } = useFilterOptions();
-  const { isLoading: isLoadingMetadata } = useGetDatabaseMetadataQuery({
-    id: AUDIT_DB_ID,
-  });
 
   const navigateToConversations = useCallback(
     (filterOverrides: Partial<ConversationsUrlState>) => {
@@ -154,54 +149,34 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         </Tabs.List>
       </Tabs>
 
-      {isLoadingMetadata ? (
-        <>
-          <Skeleton h={350} />
-          <SimpleGrid cols={2} spacing="lg">
-            <Skeleton h={350} />
-            <Skeleton h={350} />
-          </SimpleGrid>
-          <SimpleGrid cols={3} spacing="lg">
-            <Skeleton h={350} />
-            <Skeleton h={350} />
-            <Skeleton h={350} />
-          </SimpleGrid>
-        </>
-      ) : (
-        <>
-          <ConversationsByDayChart
-            dateFilter={dateFilter}
-            metric={metric}
-            onDimensionClick={handleDayClick}
-          />
-          <SimpleGrid cols={2} spacing="lg">
-            <ConversationsBySourceChart
-              dateFilter={dateFilter}
-              metric={metric}
-            />
-            <ConversationsByProfileBarChart
-              dateFilter={dateFilter}
-              metric={metric}
-            />
-          </SimpleGrid>
-          <SimpleGrid cols={3} spacing="lg">
-            <ConversationsByUserChart
-              dateFilter={dateFilter}
-              metric={metric}
-              onDimensionClick={handleUserClick}
-            />
-            <ConversationsByProfileChart
-              dateFilter={dateFilter}
-              metric={metric}
-              onDimensionClick={handleProfileClick}
-            />
-            <ConversationsByIPAddressChart
-              dateFilter={dateFilter}
-              metric={metric}
-            />
-          </SimpleGrid>
-        </>
-      )}
+      <ConversationsByDayChart
+        dateFilter={dateFilter}
+        metric={metric}
+        onDimensionClick={handleDayClick}
+      />
+      <SimpleGrid cols={2} spacing="lg">
+        <ConversationsBySourceChart dateFilter={dateFilter} metric={metric} />
+        <ConversationsByProfileBarChart
+          dateFilter={dateFilter}
+          metric={metric}
+        />
+      </SimpleGrid>
+      <SimpleGrid cols={3} spacing="lg">
+        <ConversationsByUserChart
+          dateFilter={dateFilter}
+          metric={metric}
+          onDimensionClick={handleUserClick}
+        />
+        <ConversationsByProfileChart
+          dateFilter={dateFilter}
+          metric={metric}
+          onDimensionClick={handleProfileClick}
+        />
+        <ConversationsByIPAddressChart
+          dateFilter={dateFilter}
+          metric={metric}
+        />
+      </SimpleGrid>
     </SettingsPageWrapper>
   );
 }
