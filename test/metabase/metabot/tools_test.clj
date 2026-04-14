@@ -35,77 +35,73 @@
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= tool-vars result)))))
 
-(deftest get-tools-for-profile-test
-  (testing "returns tools for embedding_next profile"
-    (let [tools (profiles/get-tools-for-profile :embedding_next #{})]
-      (is (map? tools))
-      (is (contains? tools "construct_notebook_query"))
-      (is (contains? tools "read_resource"))
-      (is (contains? tools "list_available_data_sources"))))
+(defn- tools-for-profile
+  [profile-id]
+  (profiles/get-tools-for-profile profile-id #{}))
 
-  (testing "returns tools for internal profile"
-    (let [tools (profiles/get-tools-for-profile :internal #{})]
-      (is (map? tools))
-      (is (>= (count tools) 5))
-      (is (contains? tools "search"))
-      (is (contains? tools "edit_chart"))
-      (is (contains? tools "create_chart"))
-      (is (contains? tools "create_dashboard_subscription"))))
+(deftest ^:parallel get-tools-for-internal-profile-test
+  (let [tools (tools-for-profile :internal)]
+    (is (map? tools))
+    (is (>= (count tools) 5))
+    (is (contains? tools "search"))
+    (is (contains? tools "edit_chart"))
+    (is (contains? tools "create_chart"))
+    (is (contains? tools "create_dashboard_subscription"))))
 
-  (testing "returns tools for transforms_codegen profile"
-    (let [tools (profiles/get-tools-for-profile :transforms_codegen #{})]
-      (is (map? tools))
-      (is (contains? tools "search"))
-      (is (contains? tools "list_available_fields"))
-      (is (contains? tools "todo_write"))
-      (is (contains? tools "todo_read"))))
+(deftest ^:parallel get-tools-for-transforms-codegen-profile-test
+  (let [tools (tools-for-profile :transforms_codegen)]
+    (is (map? tools))
+    (is (contains? tools "search"))
+    (is (contains? tools "list_available_fields"))
+    (is (contains? tools "todo_write"))
+    (is (contains? tools "todo_read"))))
 
-  (testing "returns tools for sql profile"
-    (let [tools (profiles/get-tools-for-profile :sql #{})]
-      (is (map? tools))
-      (is (contains? tools "search"))
-      (is (contains? tools "read_resource"))
-      (is (contains? tools "ask_for_sql_clarification"))))
+(deftest ^:parallel get-tools-for-sql-profile-test
+  (let [tools (tools-for-profile :sql)]
+    (is (map? tools))
+    (is (contains? tools "search"))
+    (is (contains? tools "read_resource"))
+    (is (contains? tools "ask_for_sql_clarification"))))
 
-  (testing "returns tools for nlq profile"
-    (let [tools (profiles/get-tools-for-profile :nlq #{})]
-      (is (map? tools))
-      (is (contains? tools "search"))
-      (is (contains? tools "construct_notebook_query"))
-      (is (contains? tools "create_chart"))))
+(deftest ^:parallel get-tools-for-nlq-profile-test
+  (let [tools (tools-for-profile :nlq)]
+    (is (map? tools))
+    (is (contains? tools "search"))
+    (is (contains? tools "construct_notebook_query"))
+    (is (contains? tools "create_chart"))))
 
-  (testing "returns tools for document_generate_content profile"
-    (let [tools (profiles/get-tools-for-profile :document-generate-content #{})]
-      (is (map? tools))
-      (is (contains? tools "document_schema_collect"))
-      (is (contains? tools "list_available_data_sources"))
-      (is (contains? tools "list_available_fields"))
-      (is (contains? tools "get_field_values"))
-      (is (contains? tools "document_construct_model_chart"))
-      (is (contains? tools "document_construct_sql_chart"))))
+(deftest ^:parallel get-tools-for-document-generate-content-profile-test
+  (let [tools (tools-for-profile :document-generate-content)]
+    (is (map? tools))
+    (is (contains? tools "document_schema_collect"))
+    (is (contains? tools "list_available_data_sources"))
+    (is (contains? tools "list_available_fields"))
+    (is (contains? tools "get_field_values"))
+    (is (contains? tools "document_construct_model_chart"))
+    (is (contains? tools "document_construct_sql_chart"))))
 
-  (testing "returns tools for slackbot profile"
-    (let [tools (profiles/get-tools-for-profile :slackbot #{})]
-      (is (map? tools))
-      (is (contains? tools "search"))
-      (is (contains? tools "construct_notebook_query"))
-      (is (contains? tools "list_available_fields"))
-      (is (contains? tools "get_field_values"))
-      (is (contains? tools "static_viz"))
-      (is (contains? tools "create_alert"))
-      (is (contains? tools "create_dashboard_subscription"))))
+(deftest ^:parallel get-tools-for-slackbot-profile-test
+  (let [tools (tools-for-profile :slackbot)]
+    (is (map? tools))
+    (is (contains? tools "search"))
+    (is (contains? tools "construct_notebook_query"))
+    (is (contains? tools "list_available_fields"))
+    (is (contains? tools "get_field_values"))
+    (is (contains? tools "static_viz"))
+    (is (contains? tools "create_alert"))
+    (is (contains? tools "create_dashboard_subscription"))))
 
-  (testing "returns empty map for unknown profile"
-    (let [tools (profiles/get-tools-for-profile :unknown-profile #{})]
-      (is (empty? tools))))
+(deftest ^:parallel get-tools-for-unknown-profile-test
+  (let [tools (tools-for-profile :unknown-profile)]
+    (is (empty? tools))))
 
-  (testing "returned tools are vars with correct metadata"
-    (let [tools (profiles/get-tools-for-profile :embedding_next #{})]
-      (doseq [[tool-name tool-var] tools]
-        (is (var? tool-var))
-        (is (string? tool-name))
-        (is (= tool-name (:tool-name (meta tool-var))))
-        (is (some? (:schema (meta tool-var))))))))
+(deftest ^:parallel get-tools-for-profile-metadata-test
+  (let [tools (tools-for-profile :embedding_next)]
+    (doseq [[tool-name tool-var] tools]
+      (is (var? tool-var))
+      (is (string? tool-name))
+      (is (= tool-name (:tool-name (meta tool-var))))
+      (is (some? (:schema (meta tool-var)))))))
 
 (deftest search-tool-test
   (testing "search-tool var has valid metadata"
