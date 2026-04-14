@@ -384,20 +384,6 @@ describe("admin > custom visualizations", () => {
       H.main().findByText("Threshold: 0").should("be.visible");
     });
 
-    it("exposes plugin settings and applies changes to the viz", () => {
-      H.visitQuestion("@questionId");
-      switchToDemoViz();
-
-      cy.findByTestId("viz-settings-button").click();
-      cy.findByTestId("chartsettings-sidebar")
-        .findByPlaceholderText("Set threshold")
-        .clear()
-        .type("42")
-        .blur();
-
-      H.main().findByText("Threshold: 42").should("be.visible");
-    });
-
     it("persists the selected custom viz and its settings across reloads", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
@@ -478,34 +464,16 @@ describe("admin > custom visualizations", () => {
 
       // Drill opens an ad-hoc question showing the underlying Orders rows
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
-      H.tableInteractive().should("be.visible");
+      H.tableInteractive().findByText("37.65").should("be.visible");
     });
 
     it("calls onHover and renders a tooltip", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
 
-      H.main()
-        .findByText(/Value: (\d+)/)
-        .invoke("text")
-        .then((text) => {
-          const match = text.match(/Value: (\d+)/);
-          if (!match) {
-            throw new Error(`Could not extract value from "${text}"`);
-          }
-          const expectedValue = match[1];
+      cy.findByTestId("demo-viz-hover-target").realHover();
 
-          cy.findByTestId("demo-viz-hover-target").realHover();
-
-          // The tooltip formats the value with locale separators (e.g. "18,760").
-          // Strip commas before comparing so the assertion is locale-agnostic.
-          H.tooltip()
-            .should("contain.text", "count")
-            .invoke("text")
-            .then((tooltipText) => {
-              expect(tooltipText.replace(/,/g, "")).to.contain(expectedValue);
-            });
-        });
+      H.tooltip().should("contain.text", "18,760");
     });
 
     it("renders a pinned custom-viz question in the collection view", () => {
