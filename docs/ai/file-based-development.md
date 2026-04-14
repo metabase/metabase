@@ -7,11 +7,11 @@ summary: "Use a combination of agent skills, the Metabase MCP server, and serial
 
 {% include plans-blockquote.html feature="File-based development" %}
 
-You can use AI to generate YAML files that serialize content like questions and dashboards, then import those items into Metabase.
+Metabase content like questions and dashboards can be serialized as YAML files. You can edit those YAML files directly, but the most productive workflow is to let an agent do the editing for you — this article focuses on that agent-driven workflow.
 
 ## The file-based toolkit
 
-We provide a set of tools for creating and editing Metabase content [serialized](../installation-and-operation/serialization.md) as YAML files.
+We provide a set of tools for using an AI agent to create and edit Metabase content [serialized](../installation-and-operation/serialization.md) as YAML files.
 
 - The [Metabase Representation Format](https://github.com/metabase/representations). This is a directory that includes a spec, schemas, and examples for all Metabase entities as YAML files: questions, dashboards, and so on.
 - The [`metabase-representation-format` agent skill](https://github.com/metabase/agent-skills) for working with these YAML files.
@@ -20,13 +20,28 @@ We provide a set of tools for creating and editing Metabase content [serialized]
 
 ## Prerequisites
 
-1. **Add the `metabase-representation-format` skill to your agent** so the agent understands the YAML schemas. See [Agent skills](https://github.com/metabase/agent-skills).
+### Set up a development Metabase
 
-2. **Connect your agent to your Metabase's MCP server**. Your agent also needs a way to look up your database metadata (table names, fields, and sample values) so it can write questions and dashboards that point at real columns. Connect your agent to your Metabase's [MCP server](./mcp.md), which exposes tools like `search`, `get_table`, and `get_table_field_values`.
+Set up a Metabase instance to check your work before pushing changes to production. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
 
-## Using AI to create Metabase content
+We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a [docker compose file](../installation-and-operation/running-metabase-on-docker.md), add these [environment variables](../configuring-metabase/environment-variables.md):
 
-Here's a basic workflow for creating Metabase content as YAML on your local machine, then importing that content into your development and production Metabases.
+```
+MB_LOAD_SAMPLE_CONTENT: "false"
+MB_INSTALL_ANALYTICS_DATABASE: "false"
+```
+
+### For agent-driven development
+
+If you want an agent to do the editing, you also need:
+
+1. **The `metabase-representation-format` skill added to your agent** so the agent understands the YAML schemas. See [Agent skills](https://github.com/metabase/agent-skills).
+
+2. **Your agent connected to your Metabase's MCP server**, so it can look up database metadata (table names, fields, and sample values) when writing questions and dashboards. The MCP server exposes tools like `search`, `get_table`, and `get_table_field_values`. See [MCP server](./mcp.md).
+
+## Example agent-driven workflow
+
+Here's an example workflow for using an agent to create Metabase content as YAML on your local machine, then importing that content into your development and production Metabases.
 
 ### 1. Create a git repo
 
@@ -44,7 +59,7 @@ git checkout -b your-branch-name
 
 Always export before editing YAML files locally. If someone has updated a dashboard or question in the Metabase UI since your last export, and you edit and import stale local files, the import will overwrite those in-app changes. Re-export at the start of each editing session if the app may have changed since your last export.
 
-Your agent will also these serialized YAML files to find info about existing content, so the agent can know what you mean when you ask it to "add the new question to the Handsome collection."
+Your agent will also read these serialized YAML files to find info about existing content, so the agent can know what you mean when you ask it to "add the new question to the Handsome collection."
 
 To export your Metabase:
 
@@ -70,6 +85,8 @@ To export your Metabase:
    ```sh
    tar -xzf metabase_data.tgz
    ```
+
+Instead of running this `curl` by hand every time, you can ask your agent to generate an `export.sh` script that wraps the `curl` and the `tar -xzf` extraction, so you can re-export with a single command.
 
 ### 4. Commit the export
 
@@ -133,18 +150,7 @@ jobs:
 
 That way your team catches schema issues on the PR, before anyone imports the changes into Metabase.
 
-### 7. Set up a development instance to check your work
-
-Set up a Metabase instance to check your work. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
-
-We also recommend turning off the sample content and usage analytics, so they don't pollute the data model. If you're using a [docker compose file](../installation-and-operation/running-metabase-on-docker.md), add these [environment variables](../configuring-metabase/environment-variables.md):
-
-```
-MB_LOAD_SAMPLE_CONTENT: "false"
-MB_INSTALL_ANALYTICS_DATABASE: "false"
-```
-
-### 8. Import the changes to your development Metabase
+### 7. Import the changes to your development Metabase
 
 Import your changes to your development Metabase, and check that the import works and the content is as expected.
 
@@ -166,23 +172,25 @@ curl -X POST \
 
 The `-o -` flag writes the import response to stdout, so you can see whether the import succeeded and check any warnings.
 
+Just like with export, you can ask your agent to generate an `import.sh` script that handles the `tar -czf` compression and the `curl` in one shot.
+
 Log in to this Metabase and check that the changes are as you expect.
 
 #### Did your AI go off the rails?
 
-Use git to restore your changes. Avoid re-exporting from your production to "reset" your directory. Exports will overwrite any edits you make to existing files, but exports _won't_ delete any new files your AI creates. So the best way to "reset" is to restore your YAMLs to the last known good commit.
+If you want to undo the agent's changes, use `git` to revert your YAML files to the last known-good commit. Don't try to undo the changes by re-exporting from your production Metabase: re-exporting will overwrite edits you made to existing files, but it _won't_ delete any new files the agent created, so your directory will still contain those unwanted files.
 
-### 9. Commit your changes
+### 8. Commit your changes
 
 If all looks good, commit your changes. If you get any errors, give the error info to the agent in the same session and the agent should iron out any issues.
 
-### 10. Import to your production Metabase
+### 9. Import to your production Metabase
 
-Import your changes via the API, or set up [remote sync](../installation-and-operation/remote-sync.md) so that your production instance pulls in the changes automatically.
+Import your changes via the API, push your changes to a remote git repository and set up [remote sync](../installation-and-operation/remote-sync.md) so that your production instance pulls in the changes automatically.
 
 ## Deleting content
 
-Since imports and exports _don't_ delete content, you'll need to delete that content in the Metabase application itself, AND update the YAML files as well.
+Since imports and exports _don't_ delete content, you'll need to delete that content in the Metabase application itself, then update the YAML files as well.
 
 1. Delete the content in your production Metabase (in the app's UI itself).
 2. Export from your production Metabase to your repo.
