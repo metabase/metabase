@@ -2,16 +2,14 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import {
+  findChannelId,
+  getDisplayNames,
+} from "metabase/notifications/channels/utils";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
-import type {
-  ChannelSpec,
-  NotificationHandlerSlack,
-  SlackChannelOption,
-} from "metabase-types/api";
-
-import { findChannelId, getDisplayNames } from "./SlackChannelField";
+import type { ChannelSpec, NotificationHandlerSlack } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";
 const CHANNEL_PREFIX = "#";
@@ -37,7 +35,7 @@ export const SlackChannelFieldNew = ({
   const channelField = channelSpec.fields?.find(
     (field) => field.name === CHANNEL_FIELD_NAME,
   );
-  const slackOptions = (channelField?.options ?? []) as SlackChannelOption[];
+  const slackOptions = channelField?.options ?? [];
   const displayNames = getDisplayNames(slackOptions);
   const value = channel.recipients[0]?.details.value ?? "";
 

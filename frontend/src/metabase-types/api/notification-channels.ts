@@ -13,7 +13,7 @@ export type SlackChannelOption = {
 type ChannelField = {
   name: string;
   displayName: string;
-  options?: string[] | SlackChannelOption[];
+  options?: SlackChannelOption[];
   required?: boolean;
 };
 
