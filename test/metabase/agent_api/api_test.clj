@@ -106,6 +106,36 @@
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
       (is (some #(seq (:field_values %)) (:fields table))))))
 
+(deftest get-table-details-field-types-test
+  (testing "Field metadata (base_type, effective_type, semantic_type, coercion_strategy) is returned correctly"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id, :name "t", :active true}
+                   :model/Field    _              {:table_id table-id, :name "id"
+                                                   :base_type :type/BigInteger
+                                                   :semantic_type :type/PK}
+                   :model/Field    _              {:table_id table-id, :name "name"
+                                                   :base_type :type/Text}
+                   :model/Field    _              {:table_id table-id, :name "created_at"
+                                                   :base_type :type/Text
+                                                   :effective_type :type/DateTime
+                                                   :coercion_strategy :Coercion/ISO8601->DateTime}]
+      (let [fields  (-> (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
+                        :fields)
+            by-name (m/index-by :name fields)]
+        (testing "base_type is always set"
+          (is (= "type/BigInteger" (get-in by-name ["id" :base_type])))
+          (is (= "type/Text"       (get-in by-name ["name" :base_type])))
+          (is (= "type/Text"       (get-in by-name ["created_at" :base_type]))))
+        (testing "semantic_type is returned when set"
+          (is (= "type/PK" (get-in by-name ["id" :semantic_type])))
+          (is (nil? (get-in by-name ["name" :semantic_type]))))
+        (testing "effective_type and coercion_strategy are returned when coerced"
+          (is (= "type/DateTime"               (get-in by-name ["created_at" :effective_type])))
+          (is (= "Coercion/ISO8601->DateTime" (get-in by-name ["created_at" :coercion_strategy]))))
+        (testing "effective_type is omitted when it equals base_type"
+          (is (not (contains? (get by-name "id") :effective_type)))
+          (is (not (contains? (get by-name "name") :effective_type))))))))
+
 (deftest get-metric-details-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
