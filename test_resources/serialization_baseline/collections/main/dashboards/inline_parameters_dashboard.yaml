@@ -29,7 +29,7 @@ dashcards:
   size_x: 24
   size_y: 1
   inline_parameters:
-    - d0000001-0000-0000-0000-000000000001
+  - d0000001-0000-0000-0000-000000000001
   parameter_mappings: []
   series: []
   visualization_settings:
@@ -38,10 +38,10 @@ dashcards:
     virtual_card:
       display: heading
   serdes/meta:
-    - id: eUXWiB6QAXkOc7P1ozoat
-      model: Dashboard
-    - id: yaY0FfjZyI9oEQQR5TZ3q
-      model: DashboardCard
+  - id: eUXWiB6QAXkOc7P1ozoat
+    model: Dashboard
+  - id: yaY0FfjZyI9oEQQR5TZ3q
+    model: DashboardCard
 - entity_id: v29EoQMk66PPR6a68pe_S
   created_at: '2026-04-02T02:59:02.778668Z'
   row: 1
