@@ -146,7 +146,7 @@
                   [:map {:closed true}
                    [:chart_id :string]]]]])
 
-(mu/defn ^{:tool-name    "navigate_user"
+(mu/defn ^{:tool-name    "navigate-user"
            :scope        scope/agent-viz-navigate
            :capabilities #{:frontend-navigate-user-v1}}
   navigate-user-tool

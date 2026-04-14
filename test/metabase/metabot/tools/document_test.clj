@@ -59,7 +59,7 @@
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
         (is (true? (:final-response? result)))
-        (is (= "document_construct_sql_chart" (:tool structured)))
+        (is (= "document-construct-sql-chart" (:tool structured)))
         (is (= "Test Name" (:name structured)))
         (is (= "Test Desc" (:description structured)))
         (is (= "bar" (:display structured)))
@@ -129,7 +129,7 @@
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
         (is (true? (:final-response? result)))
-        (is (= "document_construct_model_chart" (:tool structured)))
+        (is (= "document-construct-model-chart" (:tool structured)))
         (is (= "Test Name" (:name structured)))
         (is (= "Test Desc" (:description structured)))
         (is (= "bar" (:display structured)))

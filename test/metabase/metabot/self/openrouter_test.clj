@@ -70,10 +70,10 @@
               :content    nil
               :tool_calls [{:id       "call-1"
                             :type     "function"
-                            :function {:name      "todo_read"
+                            :function {:name      "todo-read"
                                        :arguments "{}"}}]}]
             (openrouter/parts->cc-messages
-             [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
+             [{:type :tool-input :id "call-1" :function "todo-read" :arguments nil}])))))
 
 (deftest ^:parallel parts->cc-messages-full-conversation-test
   (testing "full conversation with tool round-trip"

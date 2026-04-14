@@ -140,11 +140,11 @@
 
 (def ^:private tool-friendly-names
   "Map of tool names to user-friendly gerund descriptions for slackbot profile tools."
-  {"search"                   "Searching"
-   "construct_notebook_query" "Building query"
-   "list_available_fields"    "Finding available fields"
-   "get_field_values"         "Getting field values"
-   "static_viz"               "Running query"})
+  {"search"                    "Searching"
+   "construct-notebook-query"  "Building query"
+   "list-available-fields"     "Finding available fields"
+   "get-field-values"          "Getting field values"
+   "static-viz"                "Running query"})
 
 (def ^:private min-text-batch-size
   "Minimum characters to accumulate before considering a flush."

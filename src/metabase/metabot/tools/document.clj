@@ -83,7 +83,7 @@
     (catch Exception e
       (ex-message e))))
 
-(mu/defn ^{:tool-name "document_schema_collect"
+(mu/defn ^{:tool-name "document-schema-collect"
            :scope     scope/agent-document-read}
   document-schema-collect-tool
   "Collects the schema of a database in order to construct a SQL query.
@@ -137,7 +137,7 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "document_construct_sql_chart"
+(mu/defn ^{:tool-name "document-construct-sql-chart"
            :scope     scope/agent-document-create}
   document-construct-sql-chart-tool
   "Construct SQL-backed chart draft payload for document insertion."
@@ -159,7 +159,7 @@
         :else
         (if-let [query-error (check-query query)]
           (query-processing-error-result query-error)
-          (let [structured {:tool          "document_construct_sql_chart"
+          (let [structured {:tool          "document-construct-sql-chart"
                             :name          name
                             :description   description
                             :analysis      analysis
@@ -187,7 +187,7 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "document_construct_model_chart"
+(mu/defn ^{:tool-name "document-construct-model-chart"
            :scope     scope/agent-document-create}
   document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
@@ -202,7 +202,7 @@
           dataset-query (:query structured)]
       (if (map? dataset-query)
         {:output "Draft chart payload generated from model/notebook query."
-         :structured-output {:tool          "document_construct_model_chart"
+         :structured-output {:tool          "document-construct-model-chart"
                              :name          name
                              :description   description
                              :dataset_query dataset-query
@@ -212,7 +212,7 @@
                              :query         dataset-query
                              :result-type   :chart-draft}
          :final-response? true}
-        ;; Preserve tool error messaging from construct_notebook_query path.
+        ;; Preserve tool error messaging from construct-notebook-query path.
         (or result
             {:output "Failed to construct model chart draft."})))
     (catch Exception e

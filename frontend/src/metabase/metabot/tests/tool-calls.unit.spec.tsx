@@ -25,7 +25,7 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-input-available",
             toolCallId: "x",
-            toolName: "analyze_data",
+            toolName: "analyze-data",
             input: { query: "test" },
           };
           yield {
@@ -37,7 +37,7 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-input-available",
             toolCallId: "y",
-            toolName: "analyze_chart",
+            toolName: "analyze-chart",
             input: { query: "test" },
           };
           yield {
@@ -88,12 +88,12 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-input-start",
             toolCallId: "x",
-            toolName: "analyze_data",
+            toolName: "analyze-data",
           };
           yield {
             type: "tool-input-available",
             toolCallId: "x",
-            toolName: "analyze_data",
+            toolName: "analyze-data",
             input: { query: "test" },
           };
           yield {
@@ -105,12 +105,12 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-input-start",
             toolCallId: "y",
-            toolName: "analyze_chart",
+            toolName: "analyze-chart",
           };
           yield {
             type: "tool-input-available",
             toolCallId: "y",
-            toolName: "analyze_chart",
+            toolName: "analyze-chart",
             input: { query: "test" },
           };
           yield {
@@ -161,7 +161,7 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-input-available",
             toolCallId: "x",
-            toolName: "analyze_data",
+            toolName: "analyze-data",
             input: { query: "test" },
           };
           yield {
@@ -177,7 +177,7 @@ describe("metabot > tool calls", () => {
           yield {
             type: "tool-input-available",
             toolCallId: "y",
-            toolName: "analyze_chart",
+            toolName: "analyze-chart",
             input: { query: "test" },
           };
           yield {

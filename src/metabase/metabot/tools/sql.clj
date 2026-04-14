@@ -79,7 +79,7 @@
    [:database_id :int]
    [:sql_query :string]])
 
-(mu/defn ^{:tool-name    "create_sql_query"
+(mu/defn ^{:tool-name    "create-sql-query"
            :scope        scope/agent-sql-create
            :capabilities #{:permission-write-sql-queries}}
   create-sql-query-tool
@@ -109,7 +109,7 @@
         {:output (ex-message e)}
         {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name    "create_sql_query"
+(mu/defn ^{:tool-name    "create-sql-query"
            :scope        scope/agent-sql-create
            :capabilities #{:permission-write-sql-queries}}
   create-sql-query-code-edit-tool
@@ -148,7 +148,7 @@
                          [:new_string :string]
                          [:replace_all {:optional true} [:maybe :boolean]]]]]])
 
-(mu/defn ^{:tool-name    "edit_sql_query"
+(mu/defn ^{:tool-name    "edit-sql-query"
            :scope        scope/agent-sql-edit
            :capabilities #{:permission-write-sql-queries}}
   edit-sql-query-tool
@@ -191,7 +191,7 @@
    [:checklist :string]
    [:new_query :string]])
 
-(mu/defn ^{:tool-name    "replace_sql_query"
+(mu/defn ^{:tool-name    "replace-sql-query"
            :scope        scope/agent-sql-edit
            :capabilities #{:permission-write-sql-queries}}
   replace-sql-query-tool

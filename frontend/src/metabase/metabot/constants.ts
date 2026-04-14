@@ -38,49 +38,49 @@ export const METABOT_ERR_MSG = {
 };
 
 export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
-  get construct_notebook_query() {
+  get ["construct-notebook-query"]() {
     return t`Creating a query`;
   },
-  get analyze_data() {
+  get ["analyze-data"]() {
     return t`Analyzing the data`;
   },
-  get analyze_chart() {
+  get ["analyze-chart"]() {
     return t`Inspecting the visualization`;
   },
-  get list_available_fields() {
+  get ["list-available-fields"]() {
     return undefined;
   },
-  get search_data_sources() {
+  get ["search-data-sources"]() {
     return t`Checking available data sources`;
   },
   get search() {
     return t`Searching`;
   },
-  get search_metabase_documentation() {
+  get ["search-metabase-documentation"]() {
     return t`Consulting the docs`;
   },
-  get write_transform_python() {
+  get ["write-transform-python"]() {
     return t`Writing Python`;
   },
-  get write_transform_sql() {
+  get ["write-transform-sql"]() {
     return t`Writing SQL`;
   },
-  get todo_write() {
+  get ["todo-write"]() {
     return t`Planning`;
   },
-  get todo_read() {
+  get ["todo-read"]() {
     return t`Planning`;
   },
-  get search_transforms() {
+  get ["search-transforms"]() {
     return t`Searching transforms`;
   },
-  get get_transform_details() {
+  get ["get-transform-details"]() {
     return t`Getting transform details`;
   },
-  get get_field_values() {
+  get ["get-field-values"]() {
     return t`Retrieving table metadata`;
   },
-  get search_tables() {
+  get ["search-tables"]() {
     return t`Searching database tables`;
   },
 };

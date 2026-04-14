@@ -43,7 +43,7 @@
          x))
      normalized)))
 
-;; Query construction is handled by construct_notebook_query for parity with ai-service.
+;; Query construction is handled by construct-notebook-query for parity with ai-service.
 
 (def ^:private construct-field-schema
   [:map {:closed true}
@@ -179,7 +179,7 @@
    [:visualization {:optional true} construct-visualization-schema]])
 
 (def construct-query-schema
-  "Schema for the query parameter of construct_notebook_query.
+  "Schema for the query parameter of construct-notebook-query.
   Shared with the slackbot query tool variant."
   [:or construct-query-metric-schema construct-query-aggregate-schema construct-query-raw-schema])
 
@@ -242,7 +242,7 @@
     :else                 query-type))
 
 (def ^:private construct-notebook-query-args-schema
-  "Schema for the `construct_notebook_query` tool arguments.
+  "Schema for the `construct-notebook-query` tool arguments.
   Filter sub-schemas carry `:decode/tool` transforms for temporal value coercion."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
@@ -265,7 +265,7 @@
 
 (defn- structured->chart-xml
   "Render the full chart XML (matching Python Visualization.llm_representation)
-  for the construct_notebook_query tool result."
+  for the construct-notebook-query tool result."
   [structured chart-id chart-type]
   (llm-rep/visualization->xml
    {:chart-id               chart-id
@@ -317,7 +317,7 @@
         :limit (:limit normalized-query)})
       {:output (str "Unsupported query_type: " query-type)})))
 
-(mu/defn ^{:tool-name "construct_notebook_query"
+(mu/defn ^{:tool-name "construct-notebook-query"
            :decode    decode-tool-args
            :scope     scope/agent-notebook-create}
   construct-notebook-query-tool

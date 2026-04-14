@@ -278,7 +278,7 @@
     {:resources resources
      :output formatted}))
 
-(mu/defn ^{:tool-name "read_resource"
+(mu/defn ^{:tool-name "read-resource"
            :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns.

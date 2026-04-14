@@ -314,7 +314,7 @@
     [:maybe [:sequential [:enum "table" "model"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "sql_search.md"
+           :prompt    "sql-search.md"
            :scope     scope/agent-search}
   sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
@@ -329,7 +329,7 @@
     [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "nlq_search.md"
+           :prompt    "nlq-search.md"
            :scope     scope/agent-search}
   nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."
@@ -345,7 +345,7 @@
     [:maybe [:sequential [:enum "table" "model" "transform"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "transform_search"
+           :prompt    "transform-search.md"
            :scope     scope/agent-search}
   transform-search-tool
   "Search for transforms, tables, and models."

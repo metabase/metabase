@@ -50,8 +50,8 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   (some-> (get (shared/current-chart-configs-state) chart-config-id)
           stringify-series-keys))
 
-(mu/defn ^{:tool-name "analyze_chart"
-           :prompt    "analyze_chart"
+(mu/defn ^{:tool-name "analyze-chart"
+           :prompt    "analyze-chart"
            :scope     scope/agent-viz-read}
   analyze-chart-tool
   "Compute statistics and generate analysis context for a chart.

@@ -171,12 +171,12 @@
                                                :permission/metabot-nlq            :no
                                                :permission/metabot-other-tools    :yes})]
     (testing "NLQ sections included when permitted"
-      (is (re-find #"construct_notebook_query" with-nlq))
+      (is (re-find #"construct-notebook-query" with-nlq))
       (is (re-find #"Data Exploration Workflow" with-nlq))
       (is (re-find #"Request Modification Workflow" with-nlq))
       (is (re-find #"CSV File Uploads" with-nlq)))
     (testing "NLQ sections excluded when not permitted"
-      (is (not (re-find #"construct_notebook_query" without-nlq)))
+      (is (not (re-find #"construct-notebook-query" without-nlq)))
       (is (not (re-find #"Data Exploration Workflow" without-nlq)))
       (is (not (re-find #"Request Modification Workflow" without-nlq)))
       (is (not (re-find #"CSV File Uploads" without-nlq))))
@@ -189,11 +189,11 @@
                                                  :permission/metabot-nlq            :yes
                                                  :permission/metabot-other-tools    :no})]
     (testing "other-tools sections included when permitted"
-      (is (re-find #"static_viz" with-other))
+      (is (re-find #"static-viz" with-other))
       (is (re-find #"Visualization Titles" with-other))
       (is (re-find #"Visual Previews" with-other)))
     (testing "other-tools sections excluded when not permitted"
-      (is (not (re-find #"static_viz" without-other)))
+      (is (not (re-find #"static-viz" without-other)))
       (is (not (re-find #"Visualization Titles" without-other)))
       (is (not (re-find #"Visual Previews" without-other))))
     (testing "other-tools denial message present when not permitted"
@@ -205,8 +205,8 @@
       (is (re-find #"expert data analyst" rendered))
       (is (re-find #"business-validated insights" rendered)))
     (testing "NLQ and viz sections excluded"
-      (is (not (re-find #"construct_notebook_query" rendered)))
-      (is (not (re-find #"static_viz" rendered))))
+      (is (not (re-find #"construct-notebook-query" rendered)))
+      (is (not (re-find #"static-viz" rendered))))
     (testing "denial messages present"
       (is (re-find #"You cannot build custom queries" rendered))
       (is (re-find #"You cannot create inline visualizations" rendered)))))

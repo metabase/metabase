@@ -80,7 +80,7 @@
     (log/debug "Reading todos from memory" {:count (count todos)})
     {:structured-output {:todos todos
                          :todo_count (count todos)}
-     :instructions "You should call todo_write after reading this todo_list to make any updates."}))
+     :instructions "You should call todo-write after reading this todo_list to make any updates."}))
 
 (defn- format-todo-write-output
   [{:keys [todo_count]}]
@@ -109,7 +109,7 @@
                          [:status [:enum "pending" "in_progress" "completed" "cancelled"]]
                          [:priority [:enum "high" "medium" "low"]]]]]])
 
-(mu/defn ^{:tool-name "todo_write"
+(mu/defn ^{:tool-name "todo-write"
            :scope     scope/agent-todo-write}
   todo-write-tool
   "Create and manage a structured task list.
@@ -131,7 +131,7 @@
         {:output (ex-message e)}
         {:output (str "Failed to update todo list: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "todo_read"
+(mu/defn ^{:tool-name "todo-read"
            :scope     scope/agent-todo-read}
   todo-read-tool
   "Read the current todo list from memory.

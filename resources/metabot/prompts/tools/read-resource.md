@@ -1,4 +1,4 @@
-When using the read_resource tool, you have access to a unified interface for retrieving data about various Metabase resources using URI patterns.
+When using the read-resource tool, you have access to a unified interface for retrieving data about various Metabase resources using URI patterns.
 The URI pattern determines what information is returned - from basic summaries to detailed field-level data.
 
 You can request multiple resources in a single call by providing a list of URIs, up to a maximum of 5 at a time.
@@ -45,7 +45,7 @@ You can request multiple resources in a single call by providing a list of URIs,
 **Best Practices:**
 
 - Fetch a transform's details before modifying it so you have the current source query and target configuration.
-- Use the returned source type (`query` or `python`) to decide which write tool to call (`write_transform_sql` or `write_transform_python`).
+- Use the returned source type (`query` or `python`) to decide which write tool to call (`write-transform-sql` or `write-transform-python`).
 
 
 ## Dashboard resources

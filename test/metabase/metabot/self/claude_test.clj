@@ -133,10 +133,10 @@
     (is (=? [{:role    "assistant"
               :content [{:type  "tool_use"
                          :id    "call-1"
-                         :name  "todo_read"
+                         :name  "todo-read"
                          :input {}}]}]
             (claude/parts->claude-messages
-             [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
+             [{:type :tool-input :id "call-1" :function "todo-read" :arguments nil}])))))
 
 (deftest ^:parallel parts->claude-messages-error-result-test
   (testing "tool error is formatted as error string"

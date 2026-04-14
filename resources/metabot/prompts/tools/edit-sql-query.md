@@ -15,7 +15,7 @@ This will not execute the SQL query but only update the content of a SQL query
 - Global rename: {"edits": [{"old_string": "users", "new_string": "customers", "replace_all": true}]}
 
 **Best Practices:**
-- Use for small targeted changes (use replace_sql_query for major query changes)
+- Use for small targeted changes (use replace-sql-query for major query changes)
 - Include surrounding context (whitespace, adjacent lines) to make PartialEdit matches unique
 - Use replace_all=true only when you want to change ALL occurrences in PartialEdit
 - Copy exact text including all spaces, tabs, and newlines for PartialEdit

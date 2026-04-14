@@ -80,7 +80,7 @@
 ;;; Tool definitions
 ;;; ──────────────────────────────────────────────────────────────────
 
-(mu/defn ^{:tool-name "get_transform_details"
+(mu/defn ^{:tool-name "get-transform-details"
            :scope     scope/agent-transforms-read
            :capabilities #{:feature-transforms}}
   get-transform-details-tool
@@ -95,7 +95,7 @@
 (def ^:private python-lib-schema
   [:map {:closed true} [:path :string]])
 
-(defenterprise ^{:tool-name  "get_transform_python_library_details"
+(defenterprise ^{:tool-name  "get-transform-python-library-details"
                  :schema     [:=> [:cat python-lib-schema] :map]
                  :scope      scope/agent-transforms-read
                  :capabilities #{:feature-transforms :feature-transforms-python}}
@@ -150,7 +150,7 @@
                        "Do not provide when editing an existing transform with a transform_id.")}
     [:maybe :string]]])
 
-(mu/defn ^{:tool-name "write_transform_sql"
+(mu/defn ^{:tool-name "write-transform-sql"
            :scope scope/agent-transforms-write
            :capabilities #{:feature-transforms :permission-write-transforms}}
   write-transform-sql-tool
@@ -255,7 +255,7 @@
       [:schema :string]
       [:database_id :int]]]]])
 
-(defenterprise ^{:tool-name    "write_transform_python"
+(defenterprise ^{:tool-name    "write-transform-python"
                  :schema       [:=> [:cat write-transform-python-schema] :map]
                  :scope        scope/agent-transforms-write
                  :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}}

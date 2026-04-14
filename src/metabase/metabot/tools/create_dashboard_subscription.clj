@@ -96,7 +96,7 @@ Before calling the tool, ensure you have ALL of the following:
 
 If any required information is missing, ask the user for it rather than assuming or fabricating values.")
 
-(mu/defn ^{:tool-name           "create_dashboard_subscription"
+(mu/defn ^{:tool-name           "create-dashboard-subscription"
            :scope               scope/agent-dashboard-subscribe
            :system-instructions create-dashboard-subscription-system-instructions}
   slackbot-create-dashboard-subscription-tool

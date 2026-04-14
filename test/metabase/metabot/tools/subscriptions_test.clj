@@ -11,7 +11,7 @@
 (deftest create-dashboard-subscription-tool-schema-test
   (let [m (meta #'agent-subscriptions/create-dashboard-subscription-tool)]
     (testing "tool has correct :tool-name"
-      (is (= "create_dashboard_subscription" (:tool-name m))))
+      (is (= "create-dashboard-subscription" (:tool-name m))))
 
     (testing "tool var has expected metadata"
       (is (some? (:schema m)))

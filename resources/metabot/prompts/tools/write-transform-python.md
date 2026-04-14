@@ -39,7 +39,7 @@ When creating a new transform, you must provide:
 - Use mode="edit" for small targeted changes
 - Include surrounding context (whitespace, adjacent lines) to make PartialEdit matches unique
 - Use replace_all=true only when you want to change ALL occurrences in PartialEdit
-- Use the search_tables tool to find correct source_tables first - never guess or make up table IDs
+- Use the search tool to find correct source_tables first - never guess or make up table IDs
 - Use real database tables for source_tables. NEVER use metabase models or model IDs in source_tables.
 - Copy exact text including all spaces, tabs, and newlines for PartialEdit
 - Use this tool for any Python-related requests when a Python transform is present in the context
@@ -48,7 +48,7 @@ When creating a new transform, you must provide:
 - Take into account the Python environment you are working with if that information is
   available in the artifact. This will help you to use the correct syntax and functions
 - When creating new transforms, provide meaningful names and descriptions that clearly explain the transform's purpose
-- Use `get_transform_python_library_details` before writing any Python code to inspect the shared library.
+- Use `get-transform-python-library-details` before writing any Python code to inspect the shared library.
 - Use the shared library in your code by adding `import common` at the top of the file.
 - Keep `import common` at the top of the file even if it is currently unused.
 

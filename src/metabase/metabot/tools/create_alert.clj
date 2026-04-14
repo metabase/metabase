@@ -138,7 +138,7 @@ NEVER tell the user you have created an alert without actually calling the creat
    [:schedule schedule-schema]
    [:send_once {:optional true :default false} :boolean]])
 
-(mu/defn ^{:tool-name           "create_alert"
+(mu/defn ^{:tool-name           "create-alert"
            :scope               scope/agent-alert-create
            :system-instructions create-alert-system-instructions}
   create-alert-tool

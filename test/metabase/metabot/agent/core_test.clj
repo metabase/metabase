@@ -207,7 +207,7 @@
                       :chart-type :bar}
           parts [{:type :tool-output
                   :id "t1"
-                  :function "create_chart"
+                  :function "create-chart"
                   :result {:structured-output chart-data}}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-charts memory parts)]
@@ -291,7 +291,7 @@
                  [{:type :start :id "msg-2"}
                   {:type      :tool-input
                    :id        "call-construct-1"
-                   :function  "construct_notebook_query"
+                   :function  "construct-notebook-query"
                    :arguments {:reasoning     "User wants to see orders"
                                :query         {:query_type "raw"
                                                :source     {:table_id orders-table-id}
@@ -328,13 +328,13 @@
                           :function "search"
                           :result   {:structured-output {:total_count 1}}}
                          {:type :start}
-                         {:type :tool-input-start :function "construct_notebook_query"}
-                         {:type :tool-input :function "construct_notebook_query"}
+                         {:type :tool-input-start :function "construct-notebook-query"}
+                         {:type :tool-input :function "construct-notebook-query"}
                      ;; Cumulative usage after iteration 2: 100+200=300 prompt, 20+30=50 completion
                          {:type :usage :usage {:promptTokens 300 :completionTokens 50}}
                      ;; references real db id
                          {:type     :tool-output
-                          :function "construct_notebook_query"
+                          :function "construct-notebook-query"
                           :result   {:structured-output {:query {:database (mt/id)}}}}
                          {:type :data :data-type "navigate-to"}
                          {:type :start}
