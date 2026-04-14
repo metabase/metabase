@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { getUser } from "metabase/selectors/user";
-import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
 import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
@@ -17,6 +17,7 @@ import { HomeModelCard } from "../HomeModelCard";
 import S from "./HomeRecentSection.module.css";
 
 export const HomeRecentSection = () => {
+  const getIcon = useGetIcon();
   const { data: recentItems = [], isLoading, error } = useListRecentsQuery();
   const user = useSelector(getUser);
   const hasHelpCard =

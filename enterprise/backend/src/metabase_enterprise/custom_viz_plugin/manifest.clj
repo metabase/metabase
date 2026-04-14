@@ -40,7 +40,7 @@
       true
       (try
         (let [current (Semver/coerce current-version)]
-          (.satisfies current ^String metabase_version))
+          (.satisfies (.withClearedPreReleaseAndBuild current) ^String metabase_version))
         (catch SemverException e
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
           false)))))
@@ -82,11 +82,8 @@
   [manifest]
   (let [declared  (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
         icon-name (when-let [icon (:icon manifest)]
-                    (when (and (image-file? icon) (safe-relative-path? icon)) icon))
-        icon-dark-name (when-let [icon-dark (:iconDark manifest)]
-                         (when (and (image-file? icon-dark) (safe-relative-path? icon-dark)) icon-dark))]
-    (distinct (concat declared (when icon-name [icon-name])
-                      (when icon-dark-name [icon-dark-name])))))
+                    (when (and (image-file? icon) (safe-relative-path? icon)) icon))]
+    (distinct (concat declared (when icon-name [icon-name])))))
 
 (defn asset-content-type
   "Return the MIME content type for an allowed asset file, or nil if not recognized.

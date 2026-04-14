@@ -3,9 +3,9 @@ import { c } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 import { useSelector } from "metabase/utils/redux";
 
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
@@ -13,6 +13,7 @@ import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataS
 import type { QuestionSource } from "./types";
 
 export const QuestionSources = () => {
+  const getIcon = useGetIcon();
   /** Retrieve current question from the Redux store */
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
@@ -29,7 +30,7 @@ export const QuestionSources = () => {
       ...source,
       iconProps: getIcon({ model: source.model ?? "card" }),
     }));
-  }, [underlyingQuestion]);
+  }, [underlyingQuestion, getIcon]);
 
   if (!underlyingQuestion || !sourcesWithIcons.length) {
     return null;

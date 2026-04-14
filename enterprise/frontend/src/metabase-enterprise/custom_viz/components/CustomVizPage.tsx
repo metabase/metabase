@@ -42,20 +42,22 @@ export function CustomVizPage({ params }: Props) {
   const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
   const { data: plugins } = useListAllCustomVizPluginsQuery();
   const plugin = pluginId ? plugins?.find((p) => p.id === pluginId) : undefined;
-  const isEdit = pluginId != null;
+  const isEdit = pluginId !== undefined;
 
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
 
   const validationSchema = useMemo(
     () =>
-      Yup.object({
-        acknowledgedRisk: Yup.boolean().oneOf(
-          [true],
-          t`You must acknowledge the security risk before proceeding.`,
-        ),
-      }),
-    [],
+      isEdit
+        ? undefined
+        : Yup.object({
+            acknowledgedRisk: Yup.boolean().oneOf(
+              [true],
+              t`You must acknowledge the security risk before proceeding.`,
+            ),
+          }),
+    [isEdit],
   );
 
   const initialValues = useMemo<FormState>(
@@ -63,9 +65,9 @@ export function CustomVizPage({ params }: Props) {
       repoUrl: plugin?.repo_url ?? "",
       accessToken: "",
       pinnedVersion: plugin?.pinned_version ?? "",
-      acknowledgedRisk: false,
+      acknowledgedRisk: isEdit,
     }),
-    [plugin],
+    [plugin, isEdit],
   );
 
   const handleSubmit = useCallback(
@@ -151,10 +153,12 @@ export function CustomVizPage({ params }: Props) {
                     description={t`Branch, tag, or commit SHA to pin to.`}
                     placeholder="main"
                   />
-                  <FormCheckbox
-                    name="acknowledgedRisk"
-                    label={t`I understand that custom visualizations can execute arbitrary code and should only be added from trusted sources.`}
-                  />
+                  {!isEdit && (
+                    <FormCheckbox
+                      name="acknowledgedRisk"
+                      label={t`I understand that custom visualizations can execute arbitrary code and should only be added from trusted sources.`}
+                    />
+                  )}
                   <FormErrorMessage />
                   <Group gap="sm" justify="flex-end">
                     <Button variant="default" onClick={handleCancel}>

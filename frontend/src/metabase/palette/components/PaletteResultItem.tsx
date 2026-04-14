@@ -43,7 +43,6 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         <EntityIcon
           {...icon}
           iconUrl={item.iconUrl}
-          iconDarkUrl={item.iconDarkUrl}
           style={{
             flexBasis: "16px",
           }}

@@ -1,10 +1,10 @@
 import { match } from "ts-pattern";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
-import { getIcon } from "metabase/utils/icon";
 import { modelToUrl } from "metabase/utils/urls";
 
 import S from "../AIMarkdown.module.css";
@@ -22,6 +22,7 @@ export const MarkdownSmartLink = ({
   name: string;
   model: MetabaseProtocolEntityModel;
 }) => {
+  const getIcon = useGetIcon();
   const entityModel = match(model)
     .with("model", () => "dataset" as const)
     .with("question", () => "card" as const)

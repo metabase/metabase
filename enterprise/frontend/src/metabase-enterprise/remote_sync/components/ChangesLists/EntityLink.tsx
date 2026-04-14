@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Anchor, Group, Icon } from "metabase/ui";
-import { type IconData, type IconModel, getIcon } from "metabase/utils/icon";
+import type { IconData, IconModel } from "metabase/utils/icon";
 import { modelToUrl } from "metabase/utils/urls";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
@@ -14,6 +15,7 @@ interface EntityLinkProps {
 }
 
 export const EntityLink = ({ entity }: EntityLinkProps) => {
+  const getIcon = useGetIcon();
   const entityIcon = useMemo((): IconData => {
     if (entity.model === "field") {
       return { name: "field" };
@@ -24,7 +26,7 @@ export const EntityLink = ({ entity }: EntityLinkProps) => {
       id: entity.id,
       display: entity.display,
     });
-  }, [entity]);
+  }, [entity, getIcon]);
 
   const url = useMemo(() => modelToUrl(entity), [entity]);
   if (url == null) {

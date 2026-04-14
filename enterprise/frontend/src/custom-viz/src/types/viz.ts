@@ -148,15 +148,12 @@ export interface RenderingContext {
   fontFamily: string;
 }
 
-// Equivalent of StaticVisualizationProps
 export type CustomStaticVisualizationProps<
   TSettings extends Record<string, unknown>,
 > = {
   series: Series;
-  renderingContext: RenderingContext;
-  isStorybook?: boolean;
   settings: CustomVisualizationSettings<TSettings>;
-  hasDevWatermark?: boolean;
+  renderingContext: RenderingContext;
 };
 
 export type ClickObject<TSettings extends Record<string, unknown>> = {
