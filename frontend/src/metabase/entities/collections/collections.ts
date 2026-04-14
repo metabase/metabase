@@ -13,6 +13,7 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import type { Dispatch, GetState, ReduxAction } from "metabase/redux/store";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
@@ -28,7 +29,6 @@ import type {
   ListCollectionsTreeRequest,
   UpdateCollectionRequest,
 } from "metabase-types/api";
-import type { Dispatch, GetState, ReduxAction } from "metabase-types/store";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import getInitialCollectionId from "./getInitialCollectionId";

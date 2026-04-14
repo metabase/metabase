@@ -21,6 +21,7 @@ import {
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
@@ -49,7 +50,6 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   trackAutoApplyFiltersDisabled,

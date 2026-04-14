@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import type { Download } from "metabase/redux/store";
 import type { LongTaskStatus } from "metabase-types/api";
-import type { Download } from "metabase-types/store";
 
 import StatusSmall from "../StatusSmall";
 import { isErrored, isInProgress } from "../utils/downloads";

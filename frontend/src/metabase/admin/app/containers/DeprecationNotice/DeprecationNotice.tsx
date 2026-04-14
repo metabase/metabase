@@ -1,9 +1,9 @@
 import _ from "underscore";
 
 import { Databases } from "metabase/entities/databases";
+import type { State } from "metabase/redux/store";
 import { connect } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { State } from "metabase-types/store";
 
 import { disableNotice } from "../../actions";
 import DeprecationNotice from "../../components/DeprecationNotice";

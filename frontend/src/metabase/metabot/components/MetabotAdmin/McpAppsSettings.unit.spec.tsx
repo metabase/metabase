@@ -8,8 +8,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { McpAppsSettings } from "./McpAppsSettings";
 

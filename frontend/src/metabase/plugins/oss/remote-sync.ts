@@ -17,11 +17,11 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { State } from "metabase/redux/store";
 import type {
   RemoteSyncChangesResponse,
   RemoteSyncEntity,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];

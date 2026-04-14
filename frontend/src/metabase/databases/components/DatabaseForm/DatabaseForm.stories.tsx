@@ -2,7 +2,7 @@ import { ReduxProvider } from "__support__/storybook";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
 
 import { DatabaseForm } from "./DatabaseForm";
 import { TEST_ENGINES } from "./tests/setup";

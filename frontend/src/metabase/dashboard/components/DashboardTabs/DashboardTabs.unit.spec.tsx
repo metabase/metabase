@@ -16,10 +16,10 @@ import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { TEST_CARD } from "metabase/query_builder/containers/test-utils";
+import type { DashboardState, State } from "metabase/redux/store";
 import { useSelector } from "metabase/utils/redux";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
-import type { DashboardState, State } from "metabase-types/store";
 
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";

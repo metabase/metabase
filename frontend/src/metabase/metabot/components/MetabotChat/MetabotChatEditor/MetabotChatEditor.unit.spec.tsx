@@ -12,6 +12,7 @@ import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   createMockCard,
@@ -20,7 +21,6 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks/search";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotChatEditor } from "./MetabotChatEditor";
 

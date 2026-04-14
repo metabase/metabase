@@ -32,6 +32,7 @@ import {
   FIXED_METABOT_IDS,
 } from "metabase/metabot/constants";
 import { reinitialize } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { MetabotId, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,
@@ -39,7 +40,6 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotConfig } from "./MetabotConfig";
 import * as hooks from "./utils";

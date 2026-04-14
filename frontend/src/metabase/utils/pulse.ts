@@ -1,6 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import type { DashboardSubscriptionData } from "metabase/redux/store";
 import { getEmailDomain } from "metabase/utils/email";
 import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
 import { formatTimeWithUnit } from "metabase/utils/formatting/time";
@@ -21,7 +22,6 @@ import type {
   ScheduleSettings,
   User,
 } from "metabase-types/api";
-import type { DashboardSubscriptionData } from "metabase-types/store";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,

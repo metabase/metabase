@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import type { Dispatch } from "metabase/redux/store";
 import type {
   ActionDisplayType,
   DashboardId,
   DashboardTabId,
   WritebackAction,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 import { trackCardCreated } from "../analytics";
 import { createVirtualCard } from "../utils";

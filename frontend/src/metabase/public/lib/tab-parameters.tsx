@@ -1,6 +1,6 @@
+import type { SelectedTabId } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Dashboard } from "metabase-types/api";
-import type { SelectedTabId } from "metabase-types/store";
 
 export function getTabHiddenParameterSlugs({
   parameters,

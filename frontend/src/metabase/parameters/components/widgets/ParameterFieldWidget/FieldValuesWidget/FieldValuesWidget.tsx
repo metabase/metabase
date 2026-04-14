@@ -36,6 +36,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
+import type { State } from "metabase/redux/store";
 import {
   type ComboboxItem,
   Loader,
@@ -56,7 +57,6 @@ import type {
   ParameterValueOrArray,
   RowValue,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { Value as ValueComponent } from "../Value";
 

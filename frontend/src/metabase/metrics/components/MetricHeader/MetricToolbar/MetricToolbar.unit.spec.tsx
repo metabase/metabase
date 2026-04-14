@@ -4,6 +4,7 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { CollectionType, User } from "metabase-types/api";
 import {
   createMockCard,
@@ -11,7 +12,6 @@ import {
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { MetricToolbar } from "./MetricToolbar";
 

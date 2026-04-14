@@ -9,6 +9,16 @@ import {
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
+import type {
+  QueryBuilderState,
+  QueryBuilderUIControls,
+  Range,
+} from "metabase/redux/store";
+import {
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -36,16 +46,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import type {
-  QueryBuilderState,
-  QueryBuilderUIControls,
-  Range,
-} from "metabase-types/store";
-import {
-  createMockQueryBuilderState,
-  createMockQueryBuilderUIControlsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 registerVisualizations();
 

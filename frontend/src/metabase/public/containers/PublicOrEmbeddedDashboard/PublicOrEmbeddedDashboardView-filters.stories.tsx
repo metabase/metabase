@@ -15,6 +15,11 @@ import {
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { stableStringify } from "metabase/utils/objects";
 import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import { registerVisualization } from "metabase/visualizations";
@@ -38,11 +43,6 @@ import {
   createProductsCreatedAtField,
   createProductsRatingField,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 

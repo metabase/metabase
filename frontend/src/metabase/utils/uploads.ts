@@ -1,4 +1,4 @@
-import type { FileUpload } from "metabase-types/store/upload";
+import type { FileUpload } from "metabase/redux/store/upload";
 
 export const isUploadInProgress = (upload: FileUpload) =>
   upload.status === "in-progress";

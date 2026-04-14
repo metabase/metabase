@@ -3,6 +3,7 @@ import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import type { InviteInfo } from "metabase/redux/store";
 import {
   getDatabase,
   getDatabaseEngine,
@@ -13,7 +14,6 @@ import {
 import { Text } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { DatabaseData } from "metabase-types/api";
-import type { InviteInfo } from "metabase-types/store";
 
 import {
   skipDatabase,

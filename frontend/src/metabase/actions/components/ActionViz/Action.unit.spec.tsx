@@ -16,6 +16,7 @@ import {
   within,
 } from "__support__/ui";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   ActionDashboardCard,
@@ -33,7 +34,6 @@ import {
   createMockQueryAction,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { ActionProps } from "./Action";
 import Action from "./Action";

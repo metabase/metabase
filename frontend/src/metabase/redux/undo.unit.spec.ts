@@ -1,7 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 
 import { act } from "__support__/ui";
-import type { Dispatch } from "metabase-types/store";
+import type { Dispatch } from "metabase/redux/store";
 
 import {
   addUndo,

@@ -1,7 +1,6 @@
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-import type { EnterpriseState } from "metabase-enterprise/settings/types";
+import type { State } from "metabase/redux/store";
 import { createMockUser } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
 
 import { createMockAdminState } from "./admin";
 import { createMockAppState } from "./app";
@@ -23,9 +22,7 @@ import { createMockVisualizerState } from "./visualizer";
 export function createMockState<S extends Pick<SdkStoreState, "sdk">>(
   opts?: S,
 ): SdkStoreState;
-export function createMockState(
-  opts?: Partial<State> | Partial<EnterpriseState>,
-): State;
+export function createMockState(opts?: Partial<State>): State;
 export function createMockState(opts: any) {
   return {
     admin: createMockAdminState(),

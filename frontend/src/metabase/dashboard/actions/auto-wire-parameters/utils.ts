@@ -8,6 +8,7 @@ import {
   getMappingOptionByTarget,
   getParameterMappingOptions,
 } from "metabase/parameters/utils/mapping-options";
+import type { DashboardState } from "metabase/redux/store";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -24,7 +25,6 @@ import type {
   ParameterTarget,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { DashboardState } from "metabase-types/store";
 
 import type { SetMultipleDashCardAttributesOpts } from "../core";
 

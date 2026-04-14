@@ -2,10 +2,10 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Button, Divider, Flex, Text } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
-import type { State } from "metabase-types/store";
 
 import { SettingHeader } from "../SettingHeader";
 

@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { setupAnalyzeChartEndpoint } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
+import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type { AIEntityAnalysisResponse } from "metabase-types/api";
 import {
@@ -11,7 +12,6 @@ import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
 import { AIQuestionAnalysisSidebar } from "./AIQuestionAnalysisSidebar";
 

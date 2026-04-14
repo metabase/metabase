@@ -1,11 +1,11 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { setLocalization } from "metabase/utils/i18n";
-import { createMockParameter } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { setLocalization } from "metabase/utils/i18n";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import FormattedParameterValue, {
   type FormattedParameterValueProps,

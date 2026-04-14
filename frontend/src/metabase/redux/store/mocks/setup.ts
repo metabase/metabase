@@ -4,7 +4,7 @@ import type {
   SetupState,
   SubscribeInfo,
   UserInfo,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 
 export const createMockLocale = (opts?: Partial<Locale>): Locale => ({
   name: "English",

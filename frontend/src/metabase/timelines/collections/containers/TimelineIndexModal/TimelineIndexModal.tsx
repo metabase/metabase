@@ -1,6 +1,6 @@
 import { Timelines } from "metabase/entities/timelines";
+import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/utils/urls";
-import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import TimelineIndexModal from "../../components/TimelineIndexModal";

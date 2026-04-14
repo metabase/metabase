@@ -10,16 +10,16 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import ActionCreator from "../ActionCreator";
 

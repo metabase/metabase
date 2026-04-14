@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
+import type { StoreDashcard } from "metabase/redux/store";
 import type { DashboardId, Dataset } from "metabase-types/api";
-import type { StoreDashcard } from "metabase-types/store";
 
 export function setupDashcardQueryEndpoints(
   dashboardId: DashboardId,

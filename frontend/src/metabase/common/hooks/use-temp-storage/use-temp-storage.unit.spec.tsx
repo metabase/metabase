@@ -5,11 +5,11 @@ import type {
   TempStorage,
   TempStorageKey,
   TempStorageValue,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 import {
   createMockAppState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
 
 import { useTempStorage } from "./use-temp-storage";
 
