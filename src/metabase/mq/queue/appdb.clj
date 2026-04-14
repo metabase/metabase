@@ -18,6 +18,25 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private owner-id (str (random-uuid)))
+(def ^:private poll-state (mq.polling/make-poll-state))
+
+;; Stale processing recovery
+(def ^:private stale-processing-timeout-ms
+  "Messages in 'processing' status for longer than this are considered stale and recovered."
+  (* 10 60 1000))
+
+(def ^:private last-stale-check-ms (atom 0))
+
+;; Failed batch cleanup
+(def ^:private last-cleanup-ms (atom 0))
+
+;; Queue depth gauge
+(def ^:private last-depth-gauge-ms (atom 0))
+
+;; Heartbeat
+(def ^:private last-heartbeat-ms (atom 0))
+
 (defn- for-update-clause
   "Returns the FOR UPDATE clause for the current app DB.
   Uses SKIP LOCKED on PostgreSQL and MySQL to avoid blocking on rows locked by other nodes.
@@ -26,9 +45,6 @@
   (if (#{:postgres :mysql} (mdb/db-type))
     [:update :skip-locked]
     [:update]))
-
-(def ^:private owner-id (str (random-uuid)))
-(def ^:private poll-state (mq.polling/make-poll-state))
 
 ;;; ------------------------------------------- Fetch -------------------------------------------
 
@@ -76,13 +92,6 @@
                          :messages  (json/decode (:messages row))})
                       rows)))))))))
 
-;; Stale processing recovery
-(def ^:private stale-processing-timeout-ms
-  "Messages in 'processing' status for longer than this are considered stale and recovered."
-  (* 10 60 1000))
-
-(def ^:private last-stale-check-ms (atom 0))
-
 (defn- recover-stale-processing-batches!
   "Recovers processing batches whose heartbeat is older than the stale timeout.
   Returns the number of batches recovered."
@@ -108,9 +117,6 @@
         (swap! recovered inc)))
     @recovered))
 
-;; Failed batch cleanup
-(def ^:private last-cleanup-ms (atom 0))
-
 (defn- cleanup-failed-batches! []
   (let [threshold (Timestamp/from (.minusMillis (Instant/now) (* 7 24 60 60 1000)))
         deleted   (t2/delete! :queue_message_batch :status "failed" :status_heartbeat [:< threshold])]
@@ -118,18 +124,12 @@
       (log/infof "Cleaned up %d failed queue batches" deleted)
       (analytics/inc! :metabase-mq/appdb-cleanup-deleted {:transport "queue" :channel "all"} deleted))))
 
-;; Queue depth gauge
-(def ^:private last-depth-gauge-ms (atom 0))
-
 (defn- update-depth-gauges! []
   (doseq [{:keys [queue_name status cnt]}
           (t2/query {:select   [:queue_name :status [[:count :*] :cnt]]
                      :from     [:queue_message_batch]
                      :group-by [:queue_name :status]})]
     (analytics/set! :metabase-mq/appdb-queue-depth {:channel queue_name :status status} cnt)))
-
-;; Heartbeat
-(def ^:private last-heartbeat-ms (atom 0))
 
 (defn- update-heartbeats! []
   (doseq [channel (filter #(= "queue" (namespace %)) (mq.impl/busy-channels))]
@@ -147,7 +147,7 @@
   "One iteration of the polling loop: run periodic tasks, then try to process batches.
   Fetches one pending row per available queue and submits each for delivery.
   Returns true if any work was found."
-  []
+  [this]
   (mq.polling/periodically! last-stale-check-ms  (* 60 1000)       "stale batch recovery"  recover-stale-processing-batches!)
   (mq.polling/periodically! last-heartbeat-ms     (* 2 60 1000)     "heartbeat update"      update-heartbeats!)
   (mq.polling/periodically! last-cleanup-ms       (* 24 60 60 1000) "failed batch cleanup"  cleanup-failed-batches!)
@@ -156,44 +156,47 @@
    (when-let [available-queues (seq (remove mq.impl/channel-busy? (listener/queue-names)))]
      (when-let [batches (seq (fetch! available-queues))]
        (doseq [{:keys [batch-id queue messages]} batches]
-         (mq.impl/submit-delivery! queue messages batch-id :queue.backend/appdb {:batch-id batch-id}))
+         (mq.impl/submit-delivery! queue messages batch-id this {:batch-id batch-id}))
        true))))
 
-(defmethod q.backend/start! :queue.backend/appdb [_]
-  (mq.polling/start-polling! poll-state "Queue" 5000 poll-iteration!))
+(defrecord AppDbQueueBackend []
+  q.backend/QueueBackend
+  (publish! [_this queue messages]
+    (t2/insert! :queue_message_batch
+                {:queue_name (name queue)
+                 :messages   (json/encode messages)})
+    (when-not (mq.impl/channel-busy? queue)
+      (mq.polling/notify! poll-state)))
 
-(defmethod q.backend/shutdown! :queue.backend/appdb [_]
-  (mq.polling/stop-polling! poll-state "Queue"))
+  (batch-successful! [_this _queue-name batch-id]
+    (let [deleted (t2/delete! :queue_message_batch :id batch-id :owner owner-id)]
+      (when (= 0 deleted)
+        (log/warnf "Message %d was already deleted from the queue." batch-id))))
 
-(defmethod q.backend/publish! :queue.backend/appdb
-  [_ queue messages]
-  (t2/insert! :queue_message_batch
-              {:queue_name (name queue)
-               :messages   (json/encode messages)})
-  (when-not (mq.impl/channel-busy? queue)
-    (mq.polling/notify! poll-state)))
+  (batch-failed! [_this queue-name batch-id]
+    (let [row     (t2/select-one :queue_message_batch :id batch-id :owner owner-id)
+          updated (when row
+                    (if (>= (inc (:failures row)) (mq.settings/queue-max-retries))
+                      (do
+                        (log/warnf "Message %d has reached max failures (%d), marking as failed" batch-id (mq.settings/queue-max-retries))
+                        (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)})
+                        (t2/update! :queue_message_batch
+                                    {:id batch-id :owner owner-id}
+                                    {:status "failed" :failures [:+ :failures 1] :status_heartbeat (mi/now) :owner nil}))
+                      (do
+                        (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
+                        (t2/update! :queue_message_batch
+                                    {:id batch-id :owner owner-id}
+                                    {:status "pending" :failures [:+ :failures 1] :status_heartbeat (mi/now) :owner nil}))))]
+      (when (and row (= 0 updated))
+        (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" batch-id))))
 
-(defmethod q.backend/batch-successful! :queue.backend/appdb
-  [_ _queue-name batch-id]
-  (let [deleted (t2/delete! :queue_message_batch :id batch-id :owner owner-id)]
-    (when (= 0 deleted)
-      (log/warnf "Message %d was already deleted from the queue." batch-id))))
+  (start! [this]
+    (mq.polling/start-polling! poll-state "Queue" 5000 #(poll-iteration! this)))
 
-(defmethod q.backend/batch-failed! :queue.backend/appdb
-  [_ queue-name batch-id]
-  (let [row     (t2/select-one :queue_message_batch :id batch-id :owner owner-id)
-        updated (when row
-                  (if (>= (inc (:failures row)) (mq.settings/queue-max-retries))
-                    (do
-                      (log/warnf "Message %d has reached max failures (%d), marking as failed" batch-id (mq.settings/queue-max-retries))
-                      (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)})
-                      (t2/update! :queue_message_batch
-                                  {:id batch-id :owner owner-id}
-                                  {:status "failed" :failures [:+ :failures 1] :status_heartbeat (mi/now) :owner nil}))
-                    (do
-                      (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
-                      (t2/update! :queue_message_batch
-                                  {:id batch-id :owner owner-id}
-                                  {:status "pending" :failures [:+ :failures 1] :status_heartbeat (mi/now) :owner nil}))))]
-    (when (and row (= 0 updated))
-      (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" batch-id))))
+  (shutdown! [_this]
+    (mq.polling/stop-polling! poll-state "Queue")))
+
+(def backend
+  "Singleton instance of the appdb queue backend."
+  (->AppDbQueueBackend))

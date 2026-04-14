@@ -11,37 +11,40 @@
 (set! *warn-on-reflection* true)
 
 (defmacro ^:private with-memory-queue
-  [& body]
-  `(binding [q.backend/*backend*        :queue.backend/memory
-             listener/*listeners*        (atom {})
-             memory/*channels*           (atom {})
-             q.memory/*batch-registry*  (atom {})]
-     ~@body))
+  "Binds `qbe-sym` to a fresh `MemoryQueueBackend` backed by an isolated layer."
+  [[qbe-sym] & body]
+  `(let [layer# (memory/make-layer)
+         ~qbe-sym (q.memory/make-backend layer#)]
+     (binding [q.backend/*backend*  ~qbe-sym
+               listener/*listeners* (atom {})]
+       ~@body)))
 
 (defn- deliver-pending!
-  "Drains all pending memory channels and delivers messages synchronously on the current thread.
-  For queue channels, also registers batchs so ACK/NACK works."
-  []
-  (doseq [channel-name (concat (listener/queue-names) (listener/topic-names))]
-    (when-let [messages (#'memory/drain! channel-name)]
-      (if (= "queue" (namespace channel-name))
-        (let [batch-id (str (random-uuid))]
-          (#'memory/register-batch! batch-id messages)
-          (mq.impl/deliver! channel-name messages batch-id :queue.backend/memory))
-        (mq.impl/deliver! channel-name messages nil nil)))))
+  "Drains all pending memory channels for `qbe`'s layer and delivers messages
+  synchronously on the current thread. For queue channels, also registers batches so
+  ACK/NACK works."
+  [qbe]
+  (let [layer (:layer qbe)]
+    (doseq [channel-name (concat (listener/queue-names) (listener/topic-names))]
+      (when-let [messages (#'memory/drain! layer channel-name)]
+        (if (= "queue" (namespace channel-name))
+          (let [batch-id (str (random-uuid))]
+            (#'memory/register-batch! layer batch-id messages)
+            (mq.impl/deliver! channel-name messages batch-id qbe))
+          (mq.impl/deliver! channel-name messages nil nil))))))
 
 (deftest publish-test
-  (with-memory-queue
+  (with-memory-queue [qbe]
     (let [queue-name (keyword "queue" (str "publish-test-" (gensym)))]
       (testing "Publish lazily creates channel and adds messages"
-        (q.backend/publish! :queue.backend/memory queue-name ["test-message"])
-        (q.backend/publish! :queue.backend/memory queue-name ["test-message2"]))
+        (q.backend/publish! qbe queue-name ["test-message"])
+        (q.backend/publish! qbe queue-name ["test-message2"]))
 
       (testing "Publish to new queue lazily creates it"
-        (q.backend/publish! :queue.backend/memory :queue/new-queue ["test-message"])))))
+        (q.backend/publish! qbe :queue/new-queue ["test-message"])))))
 
 (deftest exclusive-memory-test
-  (with-memory-queue
+  (with-memory-queue [qbe]
     (let [queue-name :queue/exclusive-test
           call-count (atom 0)]
       (testing "Exclusive queue processes all messages"
@@ -49,11 +52,11 @@
                     {:exclusive true}
                     (fn [_msg]
                       (swap! call-count inc)))
-        (q.backend/publish! :queue.backend/memory queue-name ["msg1"])
-        (q.backend/publish! :queue.backend/memory queue-name ["msg2"])
-        (q.backend/publish! :queue.backend/memory queue-name ["msg3"])
-        (q.backend/publish! :queue.backend/memory queue-name ["msg4"])
-        (q.backend/publish! :queue.backend/memory queue-name ["msg5"])
+        (q.backend/publish! qbe queue-name ["msg1"])
+        (q.backend/publish! qbe queue-name ["msg2"])
+        (q.backend/publish! qbe queue-name ["msg3"])
+        (q.backend/publish! qbe queue-name ["msg4"])
+        (q.backend/publish! qbe queue-name ["msg5"])
         ;; Deliver synchronously — each drain picks up all pending messages
-        (deliver-pending!)
+        (deliver-pending! qbe)
         (is (= 5 @call-count) "All messages should be processed")))))

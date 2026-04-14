@@ -62,10 +62,10 @@
   q.sync/keep-me
   q.transport-impl/keep-me
   topic.appdb/keep-me
-  topic.transport-impl/keep-me
   topic.impl/keep-me
   topic.memory/keep-me
-  topic.sync/keep-me)
+  topic.sync/keep-me
+  topic.transport-impl/keep-me)
 
 (p/import-vars
  [mq.listener

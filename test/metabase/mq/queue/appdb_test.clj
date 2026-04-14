@@ -17,7 +17,7 @@
 (deftest publish-test
   (let [queue-name (keyword "queue" (str (gensym "publish-test-")))]
     (try
-      (q.backend/publish! :queue.backend/appdb queue-name ["test message"])
+      (q.backend/publish! q.appdb/backend queue-name ["test message"])
       (testing "Messages are persisted in the queue"
         (let [row (t2/select-one :queue_message_batch :queue_name (name queue-name))]
           (is (= ["test message"] (json/decode (:messages row))))
@@ -129,11 +129,11 @@
                                                  :messages (json/encode ["test-message"])
                                                  :status "processing"
                                                  :owner @#'q.appdb/owner-id})]
-        (q.backend/batch-successful! :queue.backend/appdb queue-name message-id)
+        (q.backend/batch-successful! q.appdb/backend queue-name message-id)
         (is (nil? (t2/select-one :queue_message_batch :id message-id)))))
 
     (testing "Message successful on non-existent message does not fail"
-      (is (nil? (q.backend/batch-successful! :queue.backend/appdb queue-name 99999))))))
+      (is (nil? (q.backend/batch-successful! q.appdb/backend queue-name 99999))))))
 
 ;; Note: no cleanup needed — batch-successful! deletes the row
 
@@ -147,7 +147,7 @@
                                                    :status "processing"
                                                    :failures 0
                                                    :owner @#'q.appdb/owner-id})]
-          (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
+          (q.backend/batch-failed! q.appdb/backend queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "pending" (:status updated-message)))
             (is (= 1 (:failures updated-message)))
@@ -161,7 +161,7 @@
                                                    :status "processing"
                                                    :failures 2
                                                    :owner @#'q.appdb/owner-id})]
-          (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
+          (q.backend/batch-failed! q.appdb/backend queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "pending" (:status updated-message)))
             (is (= 3 (:failures updated-message)))
@@ -174,14 +174,14 @@
                                                    :status "processing"
                                                    :failures (dec (mq.settings/queue-max-retries))
                                                    :owner @#'q.appdb/owner-id})]
-          (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
+          (q.backend/batch-failed! q.appdb/backend queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "failed" (:status updated-message)))
             (is (= (mq.settings/queue-max-retries) (:failures updated-message)))
             (is (nil? (:owner updated-message))))))
 
       (testing "Message failed on non-existent message does not fail"
-        (is (nil? (q.backend/batch-failed! :queue.backend/appdb queue-name 99999))))
+        (is (nil? (q.backend/batch-failed! q.appdb/backend queue-name 99999))))
 
       (testing "Message failed when being processed by another node is a no-op"
         (let [message-id (t2/insert-returning-pk! :queue_message_batch
@@ -190,7 +190,7 @@
                                                    :status "processing"
                                                    :owner "another-node"
                                                    :failures 0})]
-          (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
+          (q.backend/batch-failed! q.appdb/backend queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "processing" (:status updated-message)))
             (is (= 0 (:failures updated-message)))

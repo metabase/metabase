@@ -1,6 +1,7 @@
 (ns metabase.mq.queue.memory
-  "In-memory queue backend. Delegates storage and polling to the shared memory layer.
-  Provides queue-specific batch tracking for retry semantics."
+  "In-memory queue backend. Delegates storage and polling to a shared memory layer.
+  The layer holds the batch registry for retry tracking — each `MemoryQueueBackend`
+  carries a reference to its layer so tests can construct isolated instances."
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.mq.memory :as memory]
@@ -10,31 +11,42 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *batch-registry*
-  "Maps batch-id -> {:messages [...] :failures n} for retry tracking."
-  (atom {}))
+(defrecord MemoryQueueBackend [layer]
+  q.backend/QueueBackend
 
-(defmethod q.backend/publish! :queue.backend/memory [_ queue-name messages]
-  (memory/publish! queue-name messages))
+  (publish! [_this queue-name messages]
+    (memory/publish! layer queue-name messages))
 
-(defmethod q.backend/start! :queue.backend/memory [_]
-  (memory/start!))
+  (batch-successful! [_this _queue-name batch-id]
+    (swap! (:batch-registry layer) dissoc batch-id))
 
-(defmethod q.backend/shutdown! :queue.backend/memory [_]
-  (memory/shutdown!))
+  (batch-failed! [_this queue-name batch-id]
+    (let [registry (:batch-registry layer)]
+      (when-let [{:keys [messages failures]} (get @registry batch-id)]
+        (swap! registry dissoc batch-id)
+        (let [new-failures (inc failures)]
+          (if (>= new-failures (mq.settings/queue-max-retries))
+            (do
+              (log/warnf "Batch %s has reached max failures (%d), dropping" batch-id (mq.settings/queue-max-retries))
+              (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)}))
+            (do
+              (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
+              ;; Re-queue messages for retry
+              (memory/publish! layer queue-name messages)))))))
 
-(defmethod q.backend/batch-successful! :queue.backend/memory [_ _queue-name batch-id]
-  (swap! *batch-registry* dissoc batch-id))
+  (start! [this]
+    (reset! (:queue-backend layer) this)
+    (memory/start! layer))
 
-(defmethod q.backend/batch-failed! :queue.backend/memory [_ queue-name batch-id]
-  (when-let [{:keys [messages failures]} (get @*batch-registry* batch-id)]
-    (swap! *batch-registry* dissoc batch-id)
-    (let [new-failures (inc failures)]
-      (if (>= new-failures (mq.settings/queue-max-retries))
-        (do
-          (log/warnf "Batch %s has reached max failures (%d), dropping" batch-id (mq.settings/queue-max-retries))
-          (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)}))
-        (do
-          (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
-          ;; Re-queue messages for retry
-          (memory/publish! queue-name messages))))))
+  (shutdown! [_this]
+    (memory/shutdown! layer)))
+
+(defn make-backend
+  "Constructs a `MemoryQueueBackend`. With no args, wraps the process-wide
+  `memory/default-layer`. Tests can pass their own layer for isolation."
+  ([] (make-backend memory/default-layer))
+  ([layer] (->MemoryQueueBackend layer)))
+
+(def backend
+  "Singleton `MemoryQueueBackend` backed by `memory/default-layer`."
+  (make-backend))

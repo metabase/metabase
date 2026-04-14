@@ -26,6 +26,11 @@
   "Maximum number of messages to fetch in a single poll."
   100)
 
+;; Cleanup old messages
+(def ^:private last-cleanup-ms (atom 0))
+
+(def ^:private last-lag-gauge-ms (atom 0))
+
 (defn- current-max-id
   "Returns the current maximum id in topic_message_batch for the given topic, or 0."
   [topic-name]
@@ -46,17 +51,12 @@
 
 ;;; ------------------------------------------- Periodic tasks (run on polling thread) -------------------------------------------
 
-;; Cleanup old messages
-(def ^:private last-cleanup-ms (atom 0))
-
 (defn- cleanup-old-messages! []
   (let [threshold (Timestamp/from (.minusMillis (Instant/now) (* 60 60 1000)))
         deleted   (t2/delete! :topic_message_batch :created_at [:< threshold])]
     (when (pos? deleted)
       (log/infof "Cleaned up %d old topic messages" deleted)
       (analytics/inc! :metabase-mq/appdb-cleanup-deleted {:transport "topic" :channel "all"} deleted))))
-
-(def ^:private last-lag-gauge-ms (atom 0))
 
 (defn- update-lag-gauges! []
   (doseq [[topic-name offset] @offsets]
@@ -87,28 +87,31 @@
               (reset! found-work? true))))))
     @found-work?))
 
-(defmethod topic.backend/start! :topic.backend/appdb [_]
-  (mq.polling/start-polling! poll-state "Topic" 2000 poll-iteration!))
+(defrecord AppDbTopicBackend []
+  topic.backend/TopicBackend
+  (publish! [_this topic-name messages]
+    (t2/insert-returning-pk! :topic_message_batch
+                             {:topic_name (name topic-name)
+                              :messages   (json/encode messages)})
+    (when-not (mq.impl/channel-busy? topic-name)
+      (mq.polling/notify! poll-state)))
 
-(defmethod topic.backend/shutdown! :topic.backend/appdb [_]
-  (mq.polling/stop-polling! poll-state "Topic")
-  (reset! offsets {}))
+  (subscribe! [_this topic-name]
+    (let [offset (current-max-id topic-name)]
+      (swap! offsets assoc topic-name offset)
+      (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) offset)))
 
-(defmethod topic.backend/publish! :topic.backend/appdb
-  [_ topic-name messages]
-  (t2/insert-returning-pk! :topic_message_batch
-                           {:topic_name (name topic-name)
-                            :messages   (json/encode messages)})
-  (when-not (mq.impl/channel-busy? topic-name)
-    (mq.polling/notify! poll-state)))
+  (unsubscribe! [_this topic-name]
+    (swap! offsets dissoc topic-name)
+    (log/infof "Unsubscribed from topic %s" (name topic-name)))
 
-(defmethod topic.backend/subscribe! :topic.backend/appdb
-  [_ topic-name]
-  (let [offset (current-max-id topic-name)]
-    (swap! offsets assoc topic-name offset)
-    (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) offset)))
+  (start! [_this]
+    (mq.polling/start-polling! poll-state "Topic" 2000 poll-iteration!))
 
-(defmethod topic.backend/unsubscribe! :topic.backend/appdb
-  [_ topic-name]
-  (swap! offsets dissoc topic-name)
-  (log/infof "Unsubscribed from topic %s" (name topic-name)))
+  (shutdown! [_this]
+    (mq.polling/stop-polling! poll-state "Topic")
+    (reset! offsets {})))
+
+(def backend
+  "Singleton instance of the appdb topic backend."
+  (->AppDbTopicBackend))

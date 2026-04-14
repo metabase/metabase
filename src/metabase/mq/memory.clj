@@ -1,7 +1,8 @@
 (ns metabase.mq.memory
-  "Shared in-memory message store for the memory queue and topic backends.
-  Each channel gets a LinkedBlockingQueue. Uses the shared polling infrastructure
-  from mq.polling to drain non-busy channels and submit messages for delivery."
+  "Shared in-memory message store used by the memory queue and topic backends.
+  Each `layer` is a self-contained bundle of channel state, batch-registry, and a
+  poll thread — tests can construct isolated layers with [[make-layer]] instead of
+  rebinding dynamic vars."
   (:require
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
@@ -12,31 +13,42 @@
 
 (set! *warn-on-reflection* true)
 
+(declare poll-once!)
+
+(defn make-layer
+  "Creates a fresh memory layer. `:channels` is a map of channel-name →
+  LinkedBlockingQueue, `:batch-registry` tracks queue retries, `:queue-backend` is
+  populated when the queue backend's `start!` runs so the poll loop knows which
+  backend instance to hand to [[mq.impl/submit-delivery!]]."
+  []
+  {:channels       (atom {})
+   :batch-registry (atom {})
+   :queue-backend  (atom nil)
+   :poll-state     (mq.polling/make-poll-state)})
+
+(defonce ^{:doc "Process-wide singleton layer shared by the production memory backends."}
+  default-layer
+  (make-layer))
+
 ;;; ------------------------------------------- Channel state -------------------------------------------
-
-(def ^:dynamic *channels*
-  "channel-name -> LinkedBlockingQueue"
-  (atom {}))
-
-(def ^:private poll-state (mq.polling/make-poll-state))
 
 (defn- ensure-channel!
   "Ensures a LinkedBlockingQueue exists for the channel, creating one if needed. Returns the queue."
-  ^LinkedBlockingQueue [channel-name]
-  (or (get @*channels* channel-name)
+  ^LinkedBlockingQueue [{:keys [channels]} channel-name]
+  (or (get @channels channel-name)
       (let [new-q (LinkedBlockingQueue.)]
-        (-> (swap! *channels* (fn [chs]
-                                (if (contains? chs channel-name)
-                                  chs
-                                  (assoc chs channel-name new-q))))
+        (-> (swap! channels (fn [chs]
+                              (if (contains? chs channel-name)
+                                chs
+                                (assoc chs channel-name new-q))))
             (get channel-name)))))
 
 ;;; ------------------------------------------- Publish / Drain -------------------------------------------
 
 (defn publish!
   "Adds messages to the channel's queue and wakes the polling thread."
-  [channel-name messages]
-  (let [^LinkedBlockingQueue q (ensure-channel! channel-name)]
+  [{:keys [poll-state] :as layer} channel-name messages]
+  (let [^LinkedBlockingQueue q (ensure-channel! layer channel-name)]
     (doseq [msg messages]
       (.offer q msg)))
   (when-not (mq.impl/channel-busy? channel-name)
@@ -44,46 +56,45 @@
 
 (defn- drain!
   "Removes and returns all messages currently in the channel's queue, or nil if empty."
-  [channel-name]
-  (when-let [^LinkedBlockingQueue q (get @*channels* channel-name)]
+  [{:keys [channels]} channel-name]
+  (when-let [^LinkedBlockingQueue q (get @channels channel-name)]
     (when-not (.isEmpty q)
       (let [batch (ArrayList.)]
         (.drainTo q batch)
         (when-not (.isEmpty batch)
           (vec batch))))))
 
-;;; ------------------------------------------- Polling -------------------------------------------
-
-(def ^:private batch-registry
-  (delay (requiring-resolve 'metabase.mq.queue.memory/*batch-registry*)))
-
 (defn- register-batch!
-  "Registers a batch in the queue memory backend's batch registry for retry tracking."
-  [batch-id messages]
-  (swap! @@batch-registry assoc batch-id {:messages messages :failures 0}))
+  "Registers a batch in the layer's batch registry for retry tracking."
+  [{:keys [batch-registry]} batch-id messages]
+  (swap! batch-registry assoc batch-id {:messages messages :failures 0}))
+
+;;; ------------------------------------------- Polling -------------------------------------------
 
 (defn- poll-once!
   "Drains all non-busy channels and submits messages for delivery.
-   For queue channels, generates a batch-id and passes :queue.backend/memory as backend.
-   For topic channels, passes nil batch-id and nil backend (fire-and-forget)."
-  []
+  For queue channels, generates a batch-id and passes the layer's registered
+  queue backend. For topic channels, passes nil batch-id and nil backend."
+  [{:keys [queue-backend] :as layer}]
   (doseq [channel-name (remove mq.impl/channel-busy?
                                (concat (listener/queue-names) (listener/topic-names)))]
-    (when-let [messages (drain! channel-name)]
+    (when-let [messages (drain! layer channel-name)]
       (if (= "queue" (namespace channel-name))
         (let [batch-id (str (random-uuid))]
-          (register-batch! batch-id messages)
-          (mq.impl/submit-delivery! channel-name messages batch-id :queue.backend/memory
+          (register-batch! layer batch-id messages)
+          (mq.impl/submit-delivery! channel-name messages batch-id @queue-backend
                                     {:batch-id batch-id}))
         (mq.impl/submit-delivery! channel-name messages nil nil nil)))))
 
 (defn start!
-  "Starts the memory polling thread. Idempotent — second call is a no-op."
-  []
-  (mq.polling/start-polling! poll-state "Memory" 50 poll-once!))
+  "Starts the layer's polling thread. Idempotent — second call is a no-op."
+  [{:keys [poll-state] :as layer}]
+  (mq.polling/start-polling! poll-state "Memory" 50 #(poll-once! layer)))
 
 (defn shutdown!
   "Stops the polling thread and clears channel state."
-  []
+  [{:keys [poll-state channels batch-registry queue-backend]}]
   (mq.polling/stop-polling! poll-state "Memory")
-  (reset! *channels* {}))
+  (reset! channels {})
+  (reset! batch-registry {})
+  (reset! queue-backend nil))

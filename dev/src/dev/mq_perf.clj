@@ -30,7 +30,9 @@
    [metabase.mq.core :as mq]
    [metabase.mq.listener :as listener]
    [metabase.mq.publish-buffer :as publish-buffer]
+   [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.topic.appdb :as topic.appdb]
    [metabase.mq.topic.backend :as topic.backend]
    [toucan2.core :as t2])
   (:import
@@ -206,8 +208,8 @@
                (let [msgs (vec (for [j (range bs)]
                                  {:seq (+ (* i bs) j) :ts (System/currentTimeMillis)}))]
                  (if (= transport :queue)
-                   (q.backend/publish! :queue.backend/appdb channel msgs)
-                   (topic.backend/publish! :topic.backend/appdb channel msgs)))))
+                   (q.backend/publish! q.appdb/backend channel msgs)
+                   (topic.backend/publish! topic.appdb/backend channel msgs)))))
            (let [elapsed-ms (/ (- (System/nanoTime) start) 1e6)]
              (swap! results conj
                     [(str bs) (fmt (/ n (/ elapsed-ms 1000.0))) (fmt elapsed-ms)]))))

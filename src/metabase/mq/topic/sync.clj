@@ -7,12 +7,16 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod topic.backend/publish! :topic.backend/sync
-  [_ topic-name messages]
-  (mq.impl/handle! topic-name {} messages)
-  nil)
+(defrecord SyncTopicBackend []
+  topic.backend/TopicBackend
+  (publish!     [_this topic-name messages]
+    (mq.impl/handle! topic-name {} messages)
+    nil)
+  (subscribe!   [_this _topic-name] nil)
+  (unsubscribe! [_this _topic-name] nil)
+  (start!       [_this] nil)
+  (shutdown!    [_this] nil))
 
-(defmethod topic.backend/start! :topic.backend/sync [_] nil)
-(defmethod topic.backend/subscribe! :topic.backend/sync [_ _topic-name] nil)
-(defmethod topic.backend/unsubscribe! :topic.backend/sync [_ _topic-name] nil)
-(defmethod topic.backend/shutdown! :topic.backend/sync [_] nil)
+(def backend
+  "Singleton instance of the sync topic backend."
+  (->SyncTopicBackend))
