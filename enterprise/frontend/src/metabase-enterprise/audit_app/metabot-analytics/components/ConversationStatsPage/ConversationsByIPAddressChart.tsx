@@ -8,12 +8,12 @@ type Props = {
   dateFilter: DateFilterValue;
 };
 
-export function ConversationsByUserChart({ dateFilter }: Props) {
+export function ConversationsByIPAddressChart({ dateFilter }: Props) {
   return (
     <BreakoutChart
       dateFilter={dateFilter}
-      breakoutColumn="user_display_name"
-      title={t`Users with most conversations`}
+      breakoutColumn="ip_address"
+      title={t`IP addresses with most conversations`}
     />
   );
 }

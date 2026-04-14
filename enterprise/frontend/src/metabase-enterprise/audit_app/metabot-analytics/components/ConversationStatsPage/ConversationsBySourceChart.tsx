@@ -8,12 +8,13 @@ type Props = {
   dateFilter: DateFilterValue;
 };
 
-export function ConversationsByUserChart({ dateFilter }: Props) {
+export function ConversationsBySourceChart({ dateFilter }: Props) {
   return (
     <BreakoutChart
       dateFilter={dateFilter}
-      breakoutColumn="user_display_name"
-      title={t`Users with most conversations`}
+      breakoutColumn="source"
+      title={t`Conversations by source`}
+      display="bar"
     />
   );
 }

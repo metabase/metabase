@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { getUserName } from "metabase/utils/user";
 
-export const DEFAULT_DATE = "past30days~";
+export const DEFAULT_DATE = "past30days";
 export const DEFAULT_GROUP = "1"; // All Users group
 
 export function useFilterOptions() {
@@ -20,14 +20,15 @@ export function useFilterOptions() {
     [usersData],
   );
 
-  const groupOptions = useMemo(
-    () =>
-      (groupsData ?? []).map((g) => ({
-        value: String(g.id),
-        label: g.name,
-      })),
-    [groupsData],
-  );
+  const groupOptions = useMemo(() => {
+    const groups = (groupsData ?? []).map((g) => ({
+      value: String(g.id),
+      label: g.name,
+    }));
+    const defaultGroup = groups.find((g) => g.value === DEFAULT_GROUP);
+    const rest = groups.filter((g) => g.value !== DEFAULT_GROUP);
+    return defaultGroup ? [defaultGroup, ...rest] : groups;
+  }, [groupsData]);
 
   return {
     userOptions,

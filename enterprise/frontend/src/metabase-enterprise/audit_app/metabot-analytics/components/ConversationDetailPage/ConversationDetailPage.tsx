@@ -81,7 +81,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         size="sm"
         mt="md"
         onClick={() =>
-          dispatch(push("/admin/metabot/usage-stats/conversations"))
+          dispatch(push("/admin/metabot/usage-auditing/conversations"))
         }
         style={{ cursor: "pointer" }}
       >

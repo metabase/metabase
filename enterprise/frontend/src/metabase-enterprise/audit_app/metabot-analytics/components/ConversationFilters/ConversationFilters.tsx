@@ -13,11 +13,8 @@ type ConversationFiltersProps = {
   onUserChange: (val: string | null) => void;
   group: string | null;
   onGroupChange: (val: string | null) => void;
-  profile: string | null;
-  onProfileChange: (val: string | null) => void;
   userOptions: { value: string; label: string }[];
   groupOptions: { value: string; label: string }[];
-  profileOptions: { value: string; label: string }[];
 };
 
 export function ConversationFilters({
@@ -27,16 +24,13 @@ export function ConversationFilters({
   onUserChange,
   group,
   onGroupChange,
-  profile,
-  onProfileChange,
   userOptions,
   groupOptions,
-  profileOptions,
 }: ConversationFiltersProps) {
   const [dateOpened, setDateOpened] = useState(false);
 
   return (
-    <Flex gap="md" wrap="wrap" align="center">
+    <Flex gap="sm" wrap="wrap" align="center">
       <Popover
         opened={dateOpened}
         onChange={setDateOpened}
@@ -65,23 +59,15 @@ export function ConversationFilters({
         clearable
         searchable
         w={180}
+        bdrs="sm"
       />
       <Select
-        placeholder={t`User`}
-        data={userOptions}
-        value={user}
-        onChange={onUserChange}
-        clearable
+        data={[{ value: "", label: t`All users` }, ...userOptions]}
+        value={user ?? ""}
+        onChange={(val) => onUserChange(val === "" ? null : val)}
         searchable
         w={180}
-      />
-      <Select
-        placeholder={t`Profile`}
-        data={profileOptions}
-        value={profile}
-        onChange={onProfileChange}
-        clearable
-        w={150}
+        bdrs="sm"
       />
     </Flex>
   );

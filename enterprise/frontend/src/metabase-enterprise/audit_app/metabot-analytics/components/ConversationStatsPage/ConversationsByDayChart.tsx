@@ -59,7 +59,7 @@ export function ConversationsByDayChart({ dateFilter }: Props) {
       {
         card: createMockCard({
           dataset_query: jsQuery as any,
-          display: "bar",
+          display: "line",
           visualization_settings: {
             "graph.x_axis.scale": "timeseries",
             "graph.x_axis.title_text": "",

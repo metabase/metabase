@@ -13,7 +13,7 @@ export function ConversationsByProfileChart({ dateFilter }: Props) {
     <BreakoutChart
       dateFilter={dateFilter}
       breakoutColumn="model"
-      title={t`Conversations by profile`}
+      title={t`Profiles with most conversations`}
     />
   );
 }

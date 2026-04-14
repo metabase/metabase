@@ -38,7 +38,9 @@ export function ConversationsTable({
 
   const handleRowClick = (convo: ConversationSummary) => {
     dispatch(
-      push(`/admin/metabot/usage-stats/conversations/${convo.conversation_id}`),
+      push(
+        `/admin/metabot/usage-auditing/conversations/${convo.conversation_id}`,
+      ),
     );
   };
 
