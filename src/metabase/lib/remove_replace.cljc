@@ -474,11 +474,11 @@
   (mu/disable-enforcement
     (let [location (find-location unmodified-query stage-number target)
           ;; Preserve sticky aggregation :name when replacing
-          replacement (if (and (= [:aggregation] location)
-                               (lib.options/clause-name target)
-                               (not (lib.options/clause-name replacement)))
-                        (lib.options/with-clause-name replacement (lib.options/clause-name target))
-                        replacement)
+          replacement (cond-> replacement
+                        (and (= [:aggregation] location)
+                                (lib.options/clause-name target)
+                                (not (lib.options/clause-name replacement)))
+                        (lib.options/with-clause-name (lib.options/clause-name target)))
           query (loop [query (tweak-expression unmodified-query stage-number target replacement)]
                   (let [explanation (mr/explain ::lib.schema/query query)
                         error-paths (->> (:errors explanation)
