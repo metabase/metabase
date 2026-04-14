@@ -13,7 +13,7 @@
 (defn- accepts-encoding?
   "Returns true if the request Accept-Encoding header includes `encoding`."
   [request encoding]
-  (some-> (get-in request [:headers "accept-encoding"])
+  (some-> (response/get-header request "accept-encoding")
           (str/includes? encoding)))
 
 (defn- compressed-path
