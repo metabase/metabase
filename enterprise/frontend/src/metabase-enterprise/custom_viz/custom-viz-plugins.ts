@@ -140,15 +140,11 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       if (loadingRef.current === identifier) {
         return;
       }
-      const resolvedCommit = pluginToLoad.resolved_commit;
-      const cachedCommits = [
-        loadedPlugins.get(pluginToLoad.id)?.commit,
-        failedPlugins.get(pluginToLoad.id),
-      ];
-
+      const existing = loadedPlugins.get(pluginToLoad.id);
       if (
-        !pluginToLoad.dev_bundle_url &&
-        cachedCommits.includes(resolvedCommit)
+        existing &&
+        existing.commit === pluginToLoad.resolved_commit &&
+        !pluginToLoad.dev_bundle_url
       ) {
         return;
       }
