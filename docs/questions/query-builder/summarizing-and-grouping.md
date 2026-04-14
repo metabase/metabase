@@ -32,7 +32,7 @@ Adding a summarize step lets you choose how to aggregate the data from the previ
 
 Basic metrics include:
 
-- **Count of rows:** the total of number of rows in the table, after any filters have been applied. If you're looking at your `Orders` table and want to know how many orders were placed with a price greater than \$40, you’d filter by “Price greater than 40,” and then select `Count of rows`, because you want Metabase to count how many orders matched your filter.
+- **Count of rows:** the total number of rows in the table, after any filters have been applied. If you're looking at your `Orders` table and want to know how many orders were placed with a price greater than \$40, you’d filter by “Price greater than 40,” and then select `Count of rows`, because you want Metabase to count how many orders matched your filter.
 - **Sum of …:** the sum of all the values in a specific column.
 - **Average of …:** the average of all the values in a single column.
 - **Number of distinct values of…:** the number of unique values in all the cells of a single column. This is useful when trying to find out things like how many different _types_ of products were sold last month (not how many were sold in total).

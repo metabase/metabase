@@ -1,8 +1,8 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { t } from "ttag";
 
-import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
 import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import {
   EChartsTooltip,
   type EChartsTooltipRow,

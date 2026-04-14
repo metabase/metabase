@@ -253,6 +253,7 @@ export type ListTransformsRequest = {
   "last-run-start-time"?: string;
   "last-run-statuses"?: TransformRunStatus[];
   "tag-ids"?: TransformTagId[];
+  "database-id"?: DatabaseId;
 };
 
 export type ListTransformJobsRequest = {

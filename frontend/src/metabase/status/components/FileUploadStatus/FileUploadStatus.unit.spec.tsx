@@ -11,6 +11,7 @@ import {
   setupDatabasesEndpoints,
   setupNullGetUserKeyValueEndpoints,
   setupSearchEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
   act,
@@ -21,15 +22,15 @@ import {
 } from "__support__/ui";
 import { CollectionContent } from "metabase/collections/components/CollectionContent";
 import {
+  createMockSettingsState,
+  createMockState,
+  createMockUpload,
+} from "metabase/redux/store/mocks";
+import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-  createMockUpload,
-} from "metabase-types/store/mocks";
 
 import { FileUploadStatus } from "./FileUploadStatus";
 
@@ -67,6 +68,7 @@ const uploadedModel2 = createMockCollectionItem({
 });
 
 async function setupCollectionContent(overrides = {}) {
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
   setupSearchEndpoints([]);
   setupBookmarksEndpoints([]);

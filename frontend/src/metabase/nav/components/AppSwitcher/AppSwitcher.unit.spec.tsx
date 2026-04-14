@@ -5,6 +5,10 @@ import { Route } from "react-router";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+} from "metabase/redux/store/mocks";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
@@ -12,10 +16,6 @@ import {
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockAdminAppState,
-  createMockAdminState,
-} from "metabase-types/store/mocks";
 
 import { AppSwitcher } from "./AppSwitcher";
 

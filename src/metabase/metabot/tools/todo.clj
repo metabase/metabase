@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -108,7 +109,8 @@
                          [:status [:enum "pending" "in_progress" "completed" "cancelled"]]
                          [:priority [:enum "high" "medium" "low"]]]]]])
 
-(mu/defn ^{:tool-name "todo_write"}
+(mu/defn ^{:tool-name "todo_write"
+           :scope     scope/agent-todo-write}
   todo-write-tool
   "Create and manage a structured task list.
   Write or update the todo list with tasks for tracking progress.
@@ -129,7 +131,8 @@
         {:output (ex-message e)}
         {:output (str "Failed to update todo list: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "todo_read"}
+(mu/defn ^{:tool-name "todo_read"
+           :scope     scope/agent-todo-read}
   todo-read-tool
   "Read the current todo list from memory.
   Returns the list of todos that have been created during this conversation."

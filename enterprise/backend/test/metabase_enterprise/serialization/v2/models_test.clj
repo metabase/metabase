@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase-enterprise.impersonation.model]
+   [metabase-enterprise.impersonation.models]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
@@ -14,7 +14,7 @@
    [toucan2.core :as t2]))
 
 (comment
-  metabase-enterprise.impersonation.model/keep-me)
+  metabase-enterprise.impersonation.models/keep-me)
 
 (defn- parse-default-value
   "Parse a default value string into a Clojure value.

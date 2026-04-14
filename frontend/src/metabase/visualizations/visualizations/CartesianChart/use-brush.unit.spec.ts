@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject, RefObject } from "react";
 
-import { isTouchDevice } from "metabase/lib/browser";
+import { createMockMediaQueryList } from "__support__/ui";
 
 import {
   createZrenderMousedownEvent,
@@ -12,11 +12,15 @@ import {
 
 class PointerEventPolyfill extends MouseEvent {
   readonly pointerType: string;
+  readonly isPrimary: boolean;
+  readonly pointerId: number;
 
   constructor(type: string, init: PointerEventInit = {}) {
     super(type, init);
 
     this.pointerType = init.pointerType ?? "";
+    this.isPrimary = init.isPrimary ?? false;
+    this.pointerId = init.pointerId ?? 0;
   }
 }
 
@@ -50,16 +54,36 @@ const createMockContainerRef = () => {
 const firePointer = (
   element: HTMLElement,
   type: string,
-  { clientX = 0, clientY = 0 }: { clientX?: number; clientY?: number } = {},
+  {
+    clientX = 0,
+    clientY = 0,
+    isPrimary = true,
+    pointerId = 1,
+  }: {
+    clientX?: number;
+    clientY?: number;
+    isPrimary?: boolean;
+    pointerId?: number;
+  } = {},
 ) => {
   element.dispatchEvent(
     new PointerEvent(type, {
       clientX,
       clientY,
+      isPrimary,
+      pointerId,
       bubbles: true,
       cancelable: true,
     }),
   );
+};
+
+const mockMatchMedia = (results: Record<string, boolean>) => {
+  window.matchMedia = (query: string) =>
+    createMockMediaQueryList({
+      matches: results[query] ?? false,
+      media: query,
+    });
 };
 
 const simulateTouch = () => {
@@ -67,12 +91,20 @@ const simulateTouch = () => {
     value: 5,
     configurable: true,
   });
+  mockMatchMedia({
+    "(pointer: coarse)": true,
+    "(hover: hover)": false,
+  });
 };
 
 const simulateDesktop = () => {
   Object.defineProperty(navigator, "maxTouchPoints", {
     value: 0,
     configurable: true,
+  });
+  mockMatchMedia({
+    "(pointer: coarse)": false,
+    "(hover: hover)": true,
   });
 };
 
@@ -158,57 +190,6 @@ describe("use-brush", () => {
       expect(offsetY).toBe(150);
       expect(target).toBeNull();
       expect(event.preventDefault).toBeInstanceOf(Function);
-    });
-  });
-
-  describe("isTouchDevice", () => {
-    const originalMatchMedia = window.matchMedia;
-
-    afterEach(() => {
-      window.matchMedia = originalMatchMedia;
-    });
-
-    it("returns false when no touch support", () => {
-      simulateDesktop();
-      expect(isTouchDevice()).toBe(false);
-    });
-
-    it("returns true when coarse pointer and no hover", () => {
-      simulateDesktop();
-      window.matchMedia = jest.fn((query: string) => ({
-        matches: query === "(pointer: coarse)" || query === "(hover: none)",
-        media: query,
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      }));
-      expect(isTouchDevice()).toBe(true);
-    });
-
-    it("returns false when fine pointer even with hover none", () => {
-      simulateDesktop();
-      window.matchMedia = jest.fn((query: string) => ({
-        matches: query === "(hover: none)",
-        media: query,
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      }));
-      expect(isTouchDevice()).toBe(false);
-    });
-
-    it("returns true when maxTouchPoints > 0", () => {
-      Object.defineProperty(navigator, "maxTouchPoints", {
-        value: 1,
-        configurable: true,
-      });
-      expect(isTouchDevice()).toBe(true);
     });
   });
 
@@ -332,6 +313,106 @@ describe("use-brush", () => {
         el.dispatchEvent(touchmove);
 
         expect(touchmove.defaultPrevented).toBe(true);
+      });
+
+      it("cancels long press when a second finger touches (pinch-to-zoom)", () => {
+        const { el, dispatchAction } = setupTouchBrush();
+
+        // First finger down
+        firePointer(el, "pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          isPrimary: true,
+          pointerId: 1,
+        });
+
+        // Second finger down before timer fires
+        firePointer(el, "pointerdown", {
+          clientX: 200,
+          clientY: 100,
+          isPrimary: false,
+          pointerId: 2,
+        });
+
+        // Wait past the long press duration
+        act(() => jest.advanceTimersByTime(500));
+
+        expectBrushNotEnabled(dispatchAction);
+      });
+
+      it("deactivates brush when a second finger touches during active brush", () => {
+        const { el, dispatchAction } = setupTouchBrush();
+
+        // First finger down, wait for long press to activate brush
+        firePointer(el, "pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          isPrimary: true,
+          pointerId: 1,
+        });
+        act(() => jest.advanceTimersByTime(500));
+        expectBrushEnabled(dispatchAction);
+        dispatchAction.mockClear();
+
+        // Second finger down while brush is active
+        firePointer(el, "pointerdown", {
+          clientX: 200,
+          clientY: 100,
+          isPrimary: false,
+          pointerId: 2,
+        });
+        act(() => jest.runAllTimers());
+
+        expectBrushDisabled(dispatchAction);
+      });
+
+      it("does not freeze brush mode after second finger tap during active brush", () => {
+        const { el, dispatchAction } = setupTouchBrush();
+
+        // Long press activates brush
+        firePointer(el, "pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          isPrimary: true,
+          pointerId: 1,
+        });
+        act(() => jest.advanceTimersByTime(500));
+        expectBrushEnabled(dispatchAction);
+        dispatchAction.mockClear();
+
+        // Second finger tap while brush is active
+        firePointer(el, "pointerdown", {
+          clientX: 200,
+          clientY: 100,
+          isPrimary: false,
+          pointerId: 2,
+        });
+
+        // disableBrush must be deferred — calling it synchronously during
+        // the pointer event causes ECharts to get stuck with brush enabled.
+        expect(dispatchAction).not.toHaveBeenCalled();
+
+        act(() => jest.runAllTimers());
+        expectBrushDisabled(dispatchAction);
+        dispatchAction.mockClear();
+
+        // Both fingers released
+        firePointer(el, "pointerup", { isPrimary: false, pointerId: 2 });
+        firePointer(el, "pointerup", { isPrimary: true, pointerId: 1 });
+        act(() => jest.runAllTimers());
+
+        // Brush should not be re-enabled — no stuck brush mode
+        expectBrushNotEnabled(dispatchAction);
+
+        // A new long press should work normally
+        firePointer(el, "pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          isPrimary: true,
+          pointerId: 1,
+        });
+        act(() => jest.advanceTimersByTime(500));
+        expectBrushEnabled(dispatchAction);
       });
     });
   });

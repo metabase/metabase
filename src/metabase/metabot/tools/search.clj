@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -297,7 +298,8 @@
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]])
 
-(mu/defn ^{:tool-name "search"}
+(mu/defn ^{:tool-name "search"
+           :scope     scope/agent-search}
   search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
   [args :- search-schema]
@@ -312,7 +314,8 @@
     [:maybe [:sequential [:enum "table" "model"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "sql_search.md"}
+           :prompt    "sql_search.md"
+           :scope     scope/agent-search}
   sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
   [{:keys [database_id] :as args} :- sql-search-schema]
@@ -326,7 +329,8 @@
     [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "nql_search.md"}
+           :prompt    "nlq_search.md"
+           :scope     scope/agent-search}
   nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."
   [args :- nlq-search-schema]
@@ -341,7 +345,8 @@
     [:maybe [:sequential [:enum "table" "model" "transform"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "transform_search"}
+           :prompt    "transform_search"
+           :scope     scope/agent-search}
   transform-search-tool
   "Search for transforms, tables, and models."
   [{:keys [search_native_query] :as args} :- transform-search-schema]

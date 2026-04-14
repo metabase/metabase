@@ -16,7 +16,7 @@ You'll embed the full Metabase application in your app. Once logged in, people c
 
 ## Prerequisites
 
-{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true%}
 
 - You have an app that you can embed Metabase in.
 - You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://store.metabase.com/checkout/embedding). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).
@@ -73,7 +73,7 @@ We'll set up group synchronization later, but for now, be sure to click the **Sa
 
 Here you'll need to input some values for your SSO to work.
 
-You'll want to declare up two constants in your app:
+You'll want to declare up to two constants in your app:
 
 - `METABASE_JWT_SHARED_SECRET`, paste the JWT signing key that you got from your Metabase here.
 - `METABASE_SITE_URL`, which points to your Metabase instance's root path.

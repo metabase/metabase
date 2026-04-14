@@ -8,6 +8,8 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
@@ -28,7 +30,7 @@
       (ts/with-temp-dpc [:model/Collection parent {:name "Some Collection"}
                          :model/Collection child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]
         (let [export (into [] (extract/extract {:no-transforms true}))]
-          (storage/store! export dump-dir)
+          (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
             (is (= #{["main" "some_collection.yaml"]
                      ["main" "some_collection" "child_collection.yaml"]}
@@ -76,7 +78,7 @@
                          :model/Card        _c4         {:name "child card" :collection_id (:id child)}
                          :model/Dashboard   _d1         {:name "parent dash" :collection_id (:id parent)}]
         (let [export (into [] (extract/extract {:no-transforms true}))]
-          (storage/store! export dump-dir)
+          (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
             (is (= #{["main" "grandparent_collection.yaml"]
                      ["main" "grandparent_collection" "parent_collection.yaml"]
@@ -107,7 +109,7 @@
         (let [export (into [] (extract/extract {:no-settings   true
                                                 :no-data-model true
                                                 :no-transforms true}))]
-          (storage/store! export dump-dir)
+          (storage/store! export (storage.files/file-writer dump-dir))
           (testing "all snippet collections and snippets under collections/snippets/"
             (is (= #{["snippets" "grandparent_collection.yaml"]
                      ["snippets" "grandparent_collection" "parent_collection.yaml"]
@@ -127,7 +129,7 @@
                          :model/FieldValues _       {:field_id (:id website)}
                          :model/Table       _       {:name "Orders/Invoices" :db_id (:id db)}]
         (let [export (into [] (extract/extract {:include-field-values true}))]
-          (storage/store! export dump-dir)
+          (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
             (is (= #{["company__SLASH__organization_website.yaml"]
                      ["company__SLASH__organization_website___fieldvalues.yaml"]}
@@ -196,7 +198,7 @@
                                    (if (str/ends-with? fname "settings.yaml")
                                      (descend coll [:settings])
                                      (descend coll)))))]
-            (storage/store! export dump-dir)))))))
+            (storage/store! export (storage.files/file-writer dump-dir))))))))
 
 (deftest store-error-test
   (mt/with-empty-h2-app-db!
@@ -208,7 +210,7 @@
             (.setWritable (io/file parent-dir) false)
             (is (thrown-with-msg? Exception #"Destination path is not writeable: "
                                   (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
-                                                  dump-dir))))
+                                                  (storage.files/file-writer dump-dir)))))
           (testing "directory exists but is not writable"
             (.setWritable (io/file parent-dir) true)
             (.mkdirs (io/file dump-dir))
@@ -216,7 +218,7 @@
             (.setWritable (io/file dump-dir) false)
             (is (thrown-with-msg? Exception #"Destination path is not writeable: "
                                   (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
-                                                  dump-dir)))))))))
+                                                  (storage.files/file-writer dump-dir))))))))))
 
 (deftest nested-fields-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -227,7 +229,7 @@
             _f2 (ts/create! :model/Field :name "child" :table_id (:id t) :parent_id (:id f1))]
         (serdes/with-cache
           (-> (extract/extract {:no-settings true})
-              (storage/store! dump-dir)))
+              (storage/store! (storage.files/file-writer dump-dir))))
         (testing "we get correct names for nested fields"
           (is (= #{["parent.yaml"]
                    ["parent.child.yaml"]}
@@ -239,7 +241,7 @@
       (t2/delete! :model/PythonLibrary)
       (ts/with-temp-dpc [:model/PythonLibrary _lib {:path "common" :source "def test(): pass"}]
         (let [export (into [] (extract/extract {:no-settings true :no-data-model true}))]
-          (storage/store! export dump-dir)
+          (storage/store! export (storage.files/file-writer dump-dir))
           (testing "python library stored at top-level python_libraries/"
             (is (= #{["common.py.yaml"]}
                    (file-set (io/file dump-dir "python_libraries"))))))))))
@@ -255,7 +257,7 @@
                                                        :targets       [["Card" (:id card)]]}))
               ;; 66 is 'char-count * max-bytes / byte-count'
               card-filename (str/join (repeat 66 "ป"))]
-          (storage/store! export dump-dir)
+          (storage/store! export (storage.files/file-writer dump-dir))
           ;; we could also test loading here, but file names do not play significant part in how everything's loaded,
           ;; `:serdes/meta` does and that one is not shortened or anything
           (testing "the right files in the right places"
@@ -264,7 +266,7 @@
                 "collections form a tree, with same-named files")))))))
 
 (deftest ^:parallel resolve-path-test
-  (let [resolve-path @#'storage/resolve-path]
+  (let [resolve-path @#'storage.util/resolve-path]
     (testing "basic slugification"
       (let [fns (atom {})]
         (is (= ["my_collection" "some_card"]

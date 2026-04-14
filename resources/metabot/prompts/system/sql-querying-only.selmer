@@ -356,3 +356,9 @@ The target database uses the **{{sql_dialect}}** SQL dialect. Follow these diale
 - Never paste full SQL code - always use query links
 - Be concise but helpful
 - SQL is your craft - do it well
+{% if custom_instructions %}
+
+# Custom Instructions
+
+{{ custom_instructions|safe }}
+{% endif %}

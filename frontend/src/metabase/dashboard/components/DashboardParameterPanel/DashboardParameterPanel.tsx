@@ -1,16 +1,15 @@
 import cx from "classnames";
 import { useRef } from "react";
 
-import TransitionS from "metabase/css/core/transitions.module.css";
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { isSmallScreen } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
 
 import { Dashboard } from "../Dashboard";
 import DashboardS from "../Dashboard/Dashboard.module.css";
@@ -30,12 +29,10 @@ export function DashboardParameterPanel() {
   const allowSticky = isParametersWidgetContainersSticky(
     visibleParameters.length,
   );
-  const { isSticky, isStickyStateChanging } = useIsParameterPanelSticky({
+  const { isSticky } = useIsParameterPanelSticky({
     parameterPanelRef,
     disabled: !allowSticky || !hasVisibleParameters,
   });
-
-  const shouldApplyThemeChangeTransition = !isStickyStateChanging && isSticky;
 
   if (!hasVisibleParameters) {
     return null;
@@ -70,7 +67,6 @@ export function DashboardParameterPanel() {
     <span ref={parameterPanelRef}>
       <FullWidthContainer
         className={cx(S.ParametersWidgetContainer, {
-          [TransitionS.transitionThemeChange]: shouldApplyThemeChangeTransition,
           [S.allowSticky]: allowSticky,
           [S.isSticky]: isSticky,
           [S.isEmbeddingSdk]: isEmbeddingSdk(),

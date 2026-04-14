@@ -489,7 +489,7 @@
                                (fn [cols]
                                  (or (empty? cols)
                                      (apply distinct? (map ::field-ref cols))))]]
-  "Return metadata for columns returned by a pMBQL `query`.
+  "Return metadata for columns returned by a MBQL 5 `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
   name and base type). If provided these are merged with the columns the query is expected to return.

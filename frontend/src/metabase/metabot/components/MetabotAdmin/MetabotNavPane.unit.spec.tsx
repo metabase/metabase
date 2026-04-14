@@ -4,8 +4,8 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotNavPane } from "./MetabotNavPane";
 
@@ -74,5 +74,43 @@ describe("MetabotNavPane", () => {
 
     expect(await screen.findByText("Metabot")).toBeInTheDocument();
     expect(await screen.findByText("Embedded Metabot")).toBeInTheDocument();
+  });
+
+  it("should not show AI controls nav items by default", async () => {
+    setup({ isConfigured: true });
+
+    expect(await screen.findByText("Metabot")).toBeInTheDocument();
+    expect(screen.queryByText("Usage controls")).not.toBeInTheDocument();
+    expect(screen.queryByText("Customization")).not.toBeInTheDocument();
+    expect(screen.queryByText("System prompts")).not.toBeInTheDocument();
+  });
+
+  it("should show AI controls nav items when ai_controls plugin is enabled", async () => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({
+        ai_controls: true,
+      }),
+    });
+    setupEnterprisePlugins();
+    setup({ isConfigured: true });
+
+    expect(await screen.findByText("Metabot")).toBeInTheDocument();
+    expect(screen.getByText("Usage controls")).toBeInTheDocument();
+    expect(screen.getByText("Customization")).toBeInTheDocument();
+    expect(screen.getByText("System prompts")).toBeInTheDocument();
+  });
+
+  it("should not show AI controls nav items when metabot is not configured", async () => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({
+        ai_controls: true,
+      }),
+    });
+    setupEnterprisePlugins();
+    setup({ isConfigured: false });
+
+    expect(screen.queryByText("Usage controls")).not.toBeInTheDocument();
+    expect(screen.queryByText("Customization")).not.toBeInTheDocument();
+    expect(screen.queryByText("System prompts")).not.toBeInTheDocument();
   });
 });

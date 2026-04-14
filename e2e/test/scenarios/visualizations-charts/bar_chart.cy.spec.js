@@ -136,7 +136,10 @@ describe("scenarios > visualizations > bar chart", () => {
 
     it("should allow you to show/hide and reorder columns", () => {
       H.getDraggableElements().eq(0).as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: 100,
+        useMouseEvents: true,
+      });
 
       cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
       cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
@@ -176,7 +179,10 @@ describe("scenarios > visualizations > bar chart", () => {
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
       H.getDraggableElements().first().as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: 100,
+        useMouseEvents: true,
+      });
 
       H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 

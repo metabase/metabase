@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
+   [metabase.mcp.api :as mcp.api]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -11,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -481,9 +483,8 @@
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{"agent:search"} "get_table" {:id (mt/id :orders)}))]
       (is (=? {:isError true} result))
-      (is (= "Insufficient scope to call tool: get_table"
-             (-> result :content first :text))
-          "Error must not leak the required scope name")))
+      (is (str/includes? (-> result :content first :text) "Insufficient scope")
+          "Scope enforcement error from defendpoint middleware")))
   (testing "tool call with matching scope is not rejected by scope enforcement"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{"agent:table:read"} "get_table" {:id (mt/id :orders)}))]
@@ -492,9 +493,8 @@
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{} "get_table" {:id (mt/id :orders)}))]
       (is (=? {:isError true} result))
-      (is (= "Insufficient scope to call tool: get_table"
-             (-> result :content first :text))
-          "Error must not leak the required scope name"))))
+      (is (str/includes? (-> result :content first :text) "Insufficient scope")
+          "Scope enforcement error from defendpoint middleware"))))
 
 (deftest agent-api-preserves-token-scopes-test
   (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"
@@ -515,3 +515,22 @@
                      (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
         (is (not (:isError result))
             "Agent API should accept unrestricted scopes")))))
+
+;;; ------------------------------------------------- Throttling ---------------------------------------------------
+
+(deftest mcp-throttle-returns-429-test
+  (testing "MCP endpoint returns 429 with JSON-RPC error when rate-limited"
+    (let [[session-id _] (initialize!)]
+      ;; Replace throttler after initialization so the handshake doesn't consume attempts
+      (with-redefs [mcp.api/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)]
+        ;; First request succeeds (consumes the single attempt)
+        (is (= 200 (:status (mcp-request (jsonrpc-request "ping")
+                                         {"mcp-session-id" session-id}))))
+        ;; Second request should be throttled
+        (is (=? {:status  429
+                 :headers {"Retry-After" string?}
+                 :body    {:jsonrpc "2.0"
+                           :error   {:code    -32000
+                                     :message #(str/starts-with? % "Too many attempts!")}}}
+                (mcp-request (jsonrpc-request "ping")
+                             {"mcp-session-id" session-id})))))))

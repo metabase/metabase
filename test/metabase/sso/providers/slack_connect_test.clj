@@ -229,7 +229,7 @@
                          :state "test-state"
                          :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
                          :authenticated-user (delay user)
-                         :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false}}
+                         :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}}
                 result (auth-identity/login! :provider/slack-connect request)]
             (is (true? (:success? result)) "Login should succeed")
             (is (nil? (:session result)) "Result should not contain a session")
@@ -276,7 +276,7 @@
             (let [request {:code "test-code"
                            :state "test-state"
                            :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
-                           :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false}}
+                           :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}}
                   result (auth-identity/login! :provider/slack-connect request)]
               (is (true? (:success? result)) "Login should succeed")
               (is (some? (:user result)) "Result should contain a user")
@@ -327,7 +327,7 @@
             (let [request {:code "test-code"
                            :state "test-state"
                            :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
-                           :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false}}
+                           :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}}
                   result (auth-identity/login! :provider/slack-connect request)]
               (is (true? (:success? result)) "Login should succeed")
               ;; Verify AuthIdentity was created
@@ -375,7 +375,7 @@
                            :state "test-state"
                            :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
                            :authenticated-user (delay user)
-                           :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false}}
+                           :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}}
                   result (auth-identity/login! :provider/slack-connect request)]
               (is (true? (:success? result)) "Login should succeed")
               (is (nil? (:session result)) "No session should be created in link-only mode")

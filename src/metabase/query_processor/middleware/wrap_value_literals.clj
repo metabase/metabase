@@ -312,7 +312,7 @@
   {:deprecated "0.57.0"}
   [mbql :- [:cat :keyword [:* :any]]]
   (-> mbql
-      lib/->pMBQL
+      lib/->mbql5
       (as-> $mbql (binding [*type-info* (fn [_query _path clause]
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           (type-info-no-query clause))]

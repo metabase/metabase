@@ -3,13 +3,13 @@ import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 
-import { useDispatch } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import type { WrappedResult } from "metabase/search/types";
 import { Group, Icon, Loader } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import { isSyncCompleted } from "metabase/utils/syncing";
+import { modelToUrl } from "metabase/utils/urls";
 import type { SearchContext } from "metabase-types/api";
 
 import { InfoText } from "../InfoText";

@@ -1924,6 +1924,7 @@ LIMIT
         visitTransform: true,
       });
 
+      H.waitForBackfillComplete();
       H.DataStudio.Transforms.dependenciesTab().click();
       H.DataStudio.Dependencies.content()
         .should("contain", "Transform B")

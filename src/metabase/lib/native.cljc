@@ -190,7 +190,7 @@
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
 
-  Native in this sense means a pMBQL query with a first stage that is a native query."
+  Native in this sense means a MBQL 5 query with a first stage that is a native query."
   ([metadata-providerable     :- ::lib.schema.metadata/metadata-providerable
     sql-or-other-native-query :- ::common/non-blank-string]
    (native-query metadata-providerable sql-or-other-native-query nil nil))

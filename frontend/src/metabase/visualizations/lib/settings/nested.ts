@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { ChartNestedSettingSeriesProps } from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { chartSettingNestedSettings } from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 import type {

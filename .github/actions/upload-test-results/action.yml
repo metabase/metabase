@@ -7,9 +7,7 @@ inputs:
   output-name:
     required: true
     default: test
-  aws-access-key-id:
-    required: true
-  aws-secret-access-key:
+  role-to-assume:
     required: true
   aws-region:
     required: true
@@ -30,8 +28,7 @@ runs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ inputs.aws-access-key-id }}
-        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        role-to-assume: ${{ inputs.role-to-assume }}
         aws-region: ${{ inputs.aws-region }}
     - name: zip test results
       env:

@@ -46,12 +46,19 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:fields {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]
+    [:provides {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
   [attr-def]
   (and (map? attr-def) (:fn attr-def)))
+
+(defn function-attr-provides
+  "Returns the attr keys that a function attr provides when it returns a map.
+  Used to determine which filters a function attr satisfies."
+  [attr-def]
+  (:provides attr-def []))
 
 (defn collect-fn-attr-req-fields
   "Return set of required appdb fields declared in a spec's function attrs"
@@ -84,6 +91,7 @@
    :view-count              :int
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
+   :temporal-info           nil
    :display-type            :text
    :is-published            :boolean
    :source-type             :text})
@@ -108,8 +116,7 @@
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
-         :non-temporal-dim-ids
-         :has-temporal-dim
+         :temporal-info
          :is-published
          :source-type])
        distinct

@@ -47,7 +47,7 @@ Check out our guides for:
 
 Metabase will only export the following entities:
 
-- Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
+- Collections (but personal collections don't get exported unless you explicitly specify them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Saved questions
 - Transforms (including jobs)
@@ -78,11 +78,11 @@ Metabase will export its artifacts to a directory of YAML files. The export incl
     - timelines
   - databases
 
-  When serializing through the API, the export directory [will be a compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
+  When serializing through the API, the export directory [will be compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
 
 - A `settings.yaml` file that includes some [Metabase-wide settings](#general-metabase-settings-that-are-exported)
 
-Database connection details are not included by default, so you but you can [configure your export](#customize-what-gets-exported) to include them.
+Database connection details are not included by default, but you can [configure your export](#customize-what-gets-exported) to include them.
 
 ### General Metabase settings that are exported
 
@@ -341,7 +341,7 @@ It refers to the `CATEGORY` field in the `PRODUCTS` table in the `PUBLIC` schema
 
 ## How import works
 
-During import, Metabase will read the provided YAML files and create items according to the YAML specs. [Example of a serialized question](#example-of-a-serialized-question) how Metabase records information it needs to reconstruct an item.
+During import, Metabase will read the provided YAML files and create items according to the YAML specs. See [Example of a serialized question](#example-of-a-serialized-question) for how Metabase records information it needs to reconstruct an item.
 
 Metabase will not delete items from target instance during import, but it will overwrite items that already exist.
 

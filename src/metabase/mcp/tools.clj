@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as scope]
@@ -40,18 +41,13 @@
    - nil token-scopes → always matches (internal callers)
    - ::scope/unrestricted in token-scopes → always matches
    - nil tool-scope → only matches nil or unrestricted token-scopes
-   - wildcard scopes like \"agent:*\" match any tool scope starting with \"agent:\""
+   - Delegates wildcard/exact matching to [[api-scope/scope-matches?]]"
   [token-scopes tool-scope]
   (or (nil? token-scopes)
       (contains? token-scopes ::scope/unrestricted)
-      (when (some? tool-scope)
-        (or (contains? token-scopes tool-scope)
-            (some (fn [s]
-                    (when (string? s)
-                      (when-let [prefix (when (str/ends-with? s ":*")
-                                          (subs s 0 (dec (count s))))]
-                        (str/starts-with? tool-scope prefix))))
-                  token-scopes)))))
+      (when (and (some? tool-scope)
+                 (api-scope/scope-matches? token-scopes tool-scope))
+        true)))
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
@@ -189,14 +185,13 @@
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    `token-scopes` from the original MCP session are propagated to the synthetic
-   agent-api request so that scope restrictions are preserved.
-   Returns MCP content maps (text-content on success, error-content on failure)."
+   agent-api request so that scope restrictions are enforced by the agent API's
+   `defendpoint` middleware.
+   Returns MCP content on success, or error content on failure."
   [token-scopes tool-name arguments]
   (if-let [tool-def (get (tool-index) tool-name)]
-    (if-not (scope-matches? token-scopes (:scope tool-def))
-      (error-content (str "Insufficient scope to call tool: " tool-name))
-      (try
-        (dispatch-via-agent-api tool-def arguments token-scopes)
-        (catch Exception e
-          (error-content (or (ex-message e) "Internal error")))))
+    (try
+      (dispatch-via-agent-api tool-def arguments token-scopes)
+      (catch Exception e
+        (error-content (or (ex-message e) "Internal error"))))
     (error-content (str "Unknown tool: " tool-name))))

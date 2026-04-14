@@ -12,7 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useMetabotSQLSuggestion } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -57,7 +57,7 @@ export function useInlineSQLPrompt(
   question: Question,
   bufferId: string,
 ): UseInlineSqlEditResult {
-  const isEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseSqlGeneration: isEnabled } = useUserMetabotPermissions();
 
   const databaseId = question.databaseId();
 

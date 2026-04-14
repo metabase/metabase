@@ -939,7 +939,10 @@
     :enabled   (premium-features/enable-workspaces?)}
    {:name      :writable-connection
     :available (premium-features/enable-writable-connection?)
-    :enabled   (premium-features/enable-writable-connection?)}])
+    :enabled   (premium-features/enable-writable-connection?)}
+   {:name      :ai-controls
+    :available (premium-features/enable-ai-controls?)
+    :enabled   (premium-features/enable-ai-controls?)}])
 
 (defn- snowplow-features
   []

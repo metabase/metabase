@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { FIELD_VISIBILITY_TYPES } from "metabase/common/utils/fields";
 import {
   canIndexField,
   fieldHasIndex,
@@ -16,7 +17,6 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {

@@ -30,7 +30,7 @@ jobs:
           echo "team_name=${team_name^^}_SLACK_ISSUES_WEBHOOK_URL" >> "$GITHUB_OUTPUT"
       - name: Send the issue ${{ github.event.issue.number }} to Slack
         id: slack
-        uses: slackapi/slack-github-action@v1.23.0
+        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
         with:
           payload: |
             {

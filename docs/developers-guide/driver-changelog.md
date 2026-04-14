@@ -27,6 +27,8 @@ title: Driver interface changelog
 - Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
   update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
 
+- `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
+
 ## Metabase 0.60.0
 
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.

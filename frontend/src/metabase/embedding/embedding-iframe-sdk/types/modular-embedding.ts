@@ -90,6 +90,13 @@ export interface MetabaseDashboardAttributes {
    * @remarks Pro/Enterprise
    */
   "enable-entity-navigation"?: boolean;
+
+  /**
+   * Optional custom context string passed through to the guest token endpoint.
+   *
+   * @remarks Guest embed
+   */
+  "custom-context"?: string;
 }
 
 /**
@@ -186,6 +193,13 @@ export interface MetabaseQuestionAttributes {
    * @remarks Pro/Enterprise, Guest embed
    */
   "entity-types"?: ("model" | "table")[];
+
+  /**
+   * Optional custom context string passed through to the guest token endpoint.
+   *
+   * @remarks Guest embed
+   */
+  "custom-context"?: string;
 }
 
 /**
@@ -248,7 +262,7 @@ export interface MetabaseBrowserAttributes {
   "data-picker-entity-types"?: ("model" | "table")[];
 
   /**
-   * Whether to show the "New exploration" button.
+   * Whether to show the "New question" button.
    *
    * @defaultValue true
    */

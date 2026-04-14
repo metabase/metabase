@@ -3,6 +3,7 @@ import { type ReactNode, forwardRef } from "react";
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { SdkLoader } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkLoader";
+import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-plugins-ready";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getInitStatus,
@@ -20,6 +21,7 @@ export const PublicComponentWrapper = forwardRef<
 >(function PublicComponentWrapper({ children, className, style }, ref) {
   const initStatus = useSdkSelector(getInitStatus);
   const usageProblem = useSdkSelector(getUsageProblem);
+  const pluginsReady = useArePluginsReady();
 
   let content = children;
 
@@ -39,6 +41,11 @@ export const PublicComponentWrapper = forwardRef<
   // The SDK components should not load if there is a license error.
   if (usageProblem?.severity === "error") {
     content = null;
+  }
+
+  // Wait for EE plugins to be initialized before rendering children.
+  if (!pluginsReady && content === children) {
+    content = <SdkLoader />;
   }
 
   return (

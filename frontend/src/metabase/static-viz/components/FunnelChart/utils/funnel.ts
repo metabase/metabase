@@ -1,9 +1,9 @@
 import type { PolygonProps } from "@visx/shape/lib/shapes/Polygon";
 
-import { isNotNull } from "metabase/lib/types";
 import { CHAR_SIZES_FONT_WEIGHT } from "metabase/static-viz/constants/char-sizes";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { isNotNull } from "metabase/utils/types";
 import { truncateText } from "metabase/visualizations/lib/text";
 import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 

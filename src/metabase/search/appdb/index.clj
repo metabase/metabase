@@ -260,7 +260,8 @@
                         :updated_at :model_updated_at})
       (assoc :updated_at :%now)
       (update :display_data json/encode)
-      (update :legacy_input json/encode)
+      ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
+      (update :legacy_input #(if (string? %) % (json/encode %)))
       (dissoc :native_query)
       (merge (specialization/extra-entry-fields entity))))
 
