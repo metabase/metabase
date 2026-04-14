@@ -10,16 +10,25 @@
    [ring.util.mime-type :as mime]
    [ring.util.response :as response]))
 
+(def ^:private encoding->extension
+  {:gzip   "gz"
+   :brotli "br"})
+
+(def ^:private encoding->header
+  {:gzip   "gzip"
+   :brotli "br"})
+
 (defn- accepts-encoding?
   "Returns true if the request Accept-Encoding header includes `encoding`."
   [request encoding]
-  (some-> (response/get-header request "accept-encoding")
-          (str/includes? encoding)))
+  (when-let [accept-encoding (encoding->header encoding)]
+    (some-> (response/get-header request "accept-encoding")
+            (str/includes? accept-encoding))))
 
 (defn- compressed-path
   "Returns the path of the pre-compressed artifact for a given encoding."
   [resource-path encoding]
-  (str resource-path "." encoding))
+  (str resource-path "." (encoding->extension encoding)))
 
 (defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
@@ -29,7 +38,7 @@
   (when (accepts-encoding? request encoding)
     (some-> (response/resource-response (compressed-path resource-path encoding))
             (response/content-type (mime/ext-mime-type resource-path))
-            (assoc-in [:headers "Content-Encoding"] encoding)
+            (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
             (assoc-in [:headers "Vary"] "Accept-Encoding"))))
 
 (defn- uncompressed-resource
@@ -42,8 +51,8 @@
 (defn static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
   [request resource-path]
-  (or (compressed-resource request resource-path "br")
-      (compressed-resource request resource-path "gz")
+  (or (compressed-resource request resource-path :brotli)
+      (compressed-resource request resource-path :gzip)
       (uncompressed-resource resource-path)))
 
 (defn- add-wildcard [path]
