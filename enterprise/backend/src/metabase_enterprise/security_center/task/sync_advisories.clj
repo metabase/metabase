@@ -94,4 +94,7 @@
                     (cron/schedule
                      (cron/cron-schedule cron-str)
                      (cron/with-misfire-handling-instruction-do-nothing))))]
-      (task/schedule-task! job trigger))))
+      (task/schedule-task! job trigger)
+      ;; on first run of the feature, we sync immediately to seed advisories
+      (when-not (settings/security-center-last-synced-at)
+        (task/trigger-now! (jobs/key job-key))))))

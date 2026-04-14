@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupUpdateAIControlsGroupLimitEndpoint } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
   GroupInfo,
   MetabotGroupLimit,
@@ -163,6 +163,23 @@ describe("GroupLimitsTab", () => {
     setup({ limitPeriod: "weekly", limitType: "tokens" });
 
     expect(screen.getByText(/each week/)).toBeInTheDocument();
+  });
+
+  it("shows error when value exceeds the instance limit", async () => {
+    setup({ instanceLimit: 100 });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const adminsGroupInput = screen.getByLabelText(
+      /Max tokens per user for Administrators/,
+    );
+    await userEvent.type(adminsGroupInput, "200");
+
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(
+        /Can't be higher than the instance limit/,
+      );
+    });
   });
 
   describe("'All Users' group override warning icons", () => {

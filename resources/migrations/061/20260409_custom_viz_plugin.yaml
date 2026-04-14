@@ -99,12 +99,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: icon_dark
-                  type: varchar(254)
-                  remarks: Dark mode icon from plugin manifest - asset path for dark color scheme
-                  constraints:
-                    nullable: true
-              - column:
                   name: manifest
                   type: ${text.type}
                   remarks: JSON manifest from metabase-plugin.json in the plugin repository

@@ -16,6 +16,7 @@ import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/util
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   Box,
@@ -27,7 +28,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 import { useSelector } from "metabase/utils/redux";
 import type {
   CollectionItem,
@@ -417,6 +417,7 @@ const ItemList = ({ children }: { children: React.ReactNode[] }) => {
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
+  const getIcon = useGetIcon();
   const isTable = isTableInDb(item);
 
   const itemText = isTable

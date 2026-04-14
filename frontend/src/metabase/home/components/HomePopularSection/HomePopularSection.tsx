@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { useListPopularItemsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getIcon } from "metabase/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { getName } from "metabase/utils/name";
 import * as Urls from "metabase/utils/urls";
 import type { PopularItem } from "metabase-types/api";
@@ -15,6 +15,7 @@ import { HomeModelCard } from "../HomeModelCard";
 import S from "./HomePopularSection.module.css";
 
 export const HomePopularSection = (): JSX.Element => {
+  const getIcon = useGetIcon();
   const {
     data: popularItems = [],
     isLoading,

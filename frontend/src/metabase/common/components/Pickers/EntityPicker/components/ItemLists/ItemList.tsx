@@ -19,7 +19,7 @@ import { useSelector } from "metabase/utils/redux";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
-import { getEntityPickerIcon, isSelectedItem } from "../../utils";
+import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 import { ItemListLoader } from "../LoadingSpinner";
 
 const PickerColumn = ({
@@ -67,6 +67,7 @@ export function ItemList({
   }, [items, isHiddenItem]);
   const isCurrentLevel = path.length - 2 === pathIndex;
   const isTenantUser = useSelector(getIsTenantUser);
+  const getEntityPickerIcon = useGetEntityPickerIcon();
 
   const activeItemIndex = useMemo(() => {
     if (!filteredItems || !selectedItem) {

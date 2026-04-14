@@ -10,6 +10,7 @@ import {
   loadCustomVizPlugin,
   useAutoLoadCustomVizPlugin,
   useCustomVizPlugins,
+  useCustomVizPluginsIcon,
 } from "./custom-viz-plugins";
 import {
   customVizRegistry,
@@ -26,6 +27,7 @@ export function initializePlugin() {
       useCustomVizPlugins,
       loadCustomVizPlugin,
       getPluginAssetUrl,
+      useCustomVizPluginsIcon,
       isCustomVizDisplay,
       customVizRegistry,
       registerCustomVizPlugin,

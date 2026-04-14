@@ -9,10 +9,10 @@ import type {
 } from "metabase/collections/types";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Tooltip } from "metabase/ui";
 import { Flex, type IconName, Skeleton } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 import { modelToUrl } from "metabase/utils/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -93,6 +93,7 @@ function PinnedItemCard({
   onClick,
   iconForSkeleton,
 }: PinnedItemCardProps) {
+  const getIcon = useGetIcon();
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const iconData = iconForSkeleton
     ? { name: iconForSkeleton }

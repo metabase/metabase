@@ -1,14 +1,16 @@
-import type { CSSProperties, ImgHTMLAttributes } from "react";
+import type { CSSProperties, HTMLAttributes, ImgHTMLAttributes } from "react";
 
-import { Icon, type IconProps, useMantineTheme } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
+import { maybeColor } from "metabase/ui/utils/colors";
 import type { IconData } from "metabase/utils/icon";
 
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];
   iconUrl?: string;
-  iconDarkUrl?: string;
-  color?: ColorName | "inherit";
+  // `(string & {})` keeps `ColorName` autocompletion while still allowing
+  // arbitrary CSS color strings such as hex codes or CSS variables.
+  color?: ColorName | "inherit" | (string & {});
   size?: string | number;
   style?: CSSProperties;
   alt?: string;
@@ -21,27 +23,34 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
  */
 export function EntityIcon({
   iconUrl,
-  iconDarkUrl,
   name = "unknown",
   size = "1rem",
-  color,
+  color = "brand",
   style,
   alt = "",
   ...rest
 }: EntityIconProps) {
-  const theme = useMantineTheme();
-  const isDarkMode = theme.other.colorScheme === "dark";
-  const resolvedIconUrl = isDarkMode ? (iconDarkUrl ?? iconUrl) : iconUrl;
+  if (iconUrl) {
+    const bg = color === "inherit" ? "currentColor" : maybeColor(color);
 
-  if (resolvedIconUrl) {
-    // color is intentionally not applied — CSS color has no effect on <img>
     return (
-      <img
+      <span
+        role={alt ? "img" : undefined}
+        aria-label={alt || undefined}
         aria-hidden={alt ? undefined : "true"}
-        src={resolvedIconUrl}
-        alt={alt}
-        style={{ ...style, width: size, height: size }}
-        {...(rest as ImgHTMLAttributes<HTMLImageElement>)}
+        style={{
+          ...style,
+          display: "inline-block",
+          verticalAlign: "middle",
+          width: size,
+          height: size,
+          backgroundColor: bg,
+          maskImage: `url(${iconUrl})`,
+          maskSize: "contain",
+          maskRepeat: "no-repeat",
+          maskPosition: "center",
+        }}
+        {...(rest as HTMLAttributes<HTMLSpanElement>)}
       />
     );
   }

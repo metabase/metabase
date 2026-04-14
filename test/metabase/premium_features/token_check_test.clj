@@ -146,11 +146,13 @@
                            :hard-ttl        (t/seconds 1)})]
       (with-redefs [mdb/db-is-set-up? (constantly false)]
         (is (= {:valid false
+                :canonical? false
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token)))
         (dotimes [_ 50] (token-check/-check-token checker token))
         (is (= {:valid false
+                :canonical? false
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token))))
@@ -210,6 +212,7 @@
             (age-cache-entry! token (+ (u/hours->ms 36) 1000) local-cache)
             (Thread/sleep 60) ;; expire local-cached-token-checker
             (is (= {:valid         false
+                    :canonical?    false
                     :status        "Unable to validate token"
                     :error-details "network failure!"}
                    (token-check/check-token checker token)))))
@@ -582,6 +585,7 @@
           token   (tu/random-token)]
       ;; error-catching wraps it, so we get the error-details response
       (is (= {:valid false
+              :canonical? false
               :status "Unable to validate token"
               :error-details "MetaStore unreachable"}
              (token-check/-check-token checker token))))))

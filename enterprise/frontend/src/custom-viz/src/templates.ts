@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import { version } from "../package.json";
 
 import gitignoreTemplate from "./templates/.gitignore?raw";
-import iconDarkSvgTemplate from "./templates/icon-dark.svg?raw";
 import iconSvgTemplate from "./templates/icon.svg?raw";
 import indexTsxTemplate from "./templates/index.tsx?raw";
 import manifestTemplate from "./templates/metabase-plugin.json?raw";
@@ -56,10 +55,6 @@ export function generateManifest(name: string): string {
 
 export function generateIconSvg(): string {
   return iconSvgTemplate;
-}
-
-export function generateIconDarkSvg(): string {
-  return iconDarkSvgTemplate;
 }
 
 // Binary templates can't use ?raw imports, so we read them from disk.

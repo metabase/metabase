@@ -2745,6 +2745,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Dashboard
+                    :model/DatabaseRouter
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
@@ -3077,6 +3078,7 @@
                     :model/Field
                     :model/Measure
                     :model/PersistedInfo
+                    :model/Sandbox
                     :model/Segment
                     :model/Table
                     :model/Transform}}

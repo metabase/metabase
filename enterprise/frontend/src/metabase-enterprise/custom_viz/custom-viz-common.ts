@@ -13,7 +13,7 @@ export function applyDefaultVisualizationProps(
     identifier: string;
     getUiName: () => string;
     iconUrl?: string | undefined;
-    iconDarkUrl?: string | undefined;
+    isDev?: boolean;
   },
 ) {
   Object.assign(Component, {
@@ -24,6 +24,7 @@ export function applyDefaultVisualizationProps(
     hidden: false,
     minSize: vizDef.minSize,
     defaultSize: vizDef.defaultSize,
+    isDev: settings.isDev,
     ...settings,
   } satisfies Partial<Record<keyof Visualization, unknown>>);
 }

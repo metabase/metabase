@@ -1,7 +1,6 @@
 export interface CustomVizPluginManifest {
   name?: string;
   icon?: string;
-  iconDark?: string;
   metabase?: {
     version?: string;
   };
@@ -18,7 +17,6 @@ export interface CustomVizPlugin {
   status: "pending" | "active" | "error";
   enabled: boolean;
   icon: string | null;
-  icon_dark: string | null;
   error_message: string | null;
   pinned_version: string | null;
   resolved_commit: string | null;
@@ -35,7 +33,6 @@ export interface CustomVizPluginRuntime {
   identifier: string;
   display_name: string;
   icon: string | null;
-  icon_dark: string | null;
   bundle_url: string;
   resolved_commit: string | null;
   dev_bundle_url?: string | null;

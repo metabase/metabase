@@ -1,9 +1,9 @@
-import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
+import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
 import type { CustomVizPlugin } from "metabase-types/api";
 
 const { H } = cy;
 
-const PLUGIN_ICON_SELECTOR = "img[src*='icon.svg']";
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("admin > custom visualizations", () => {
   beforeEach(() => {
@@ -31,6 +31,25 @@ describe("admin > custom visualizations", () => {
           .findByText("Manage custom visualizations")
           .should("be.visible");
         H.getAddVisualizationLink().should("be.visible");
+      });
+
+      it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {
+        H.activateToken("bleeding-edge");
+        H.updateAdvancedPermissionsGraph({
+          [ALL_USERS_GROUP]: { setting: "yes" },
+        });
+        cy.signInAsNormalUser();
+
+        cy.visit("/admin/settings/custom-visualizations");
+        H.main().should(
+          "include.text",
+          "Sorry, you don’t have permission to see that.",
+        );
+
+        H.goToAdmin();
+        cy.findByTestId("admin-layout-sidebar")
+          .findByText("Custom visualizations")
+          .should("not.exist");
       });
     });
 
@@ -76,7 +95,7 @@ describe("admin > custom visualizations", () => {
           H.visitCustomVizSettings();
 
           // Icon from manifest
-          H.main().find(PLUGIN_ICON_SELECTOR).should("be.visible");
+          H.getCustomVizPluginIcon("demo-viz").should("be.visible");
 
           // Display name from manifest
           H.main().findByText("demo-viz").should("be.visible");
@@ -216,7 +235,6 @@ describe("admin > custom visualizations", () => {
           cy.findByLabelText(/Pinned version/)
             .clear()
             .type("main");
-          cy.findByLabelText(/I understand/).click();
 
           cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
             "pluginUpdate",

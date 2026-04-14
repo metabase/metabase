@@ -1,82 +1,15 @@
 import { match } from "ts-pattern";
 
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
-import { getIcon } from "metabase/utils/icon";
-import { getName } from "metabase/utils/name";
-import { type UrlableModel, modelToUrl } from "metabase/utils/urls/modelToUrl";
-import type {
-  Database,
-  MentionableUser,
-  RecentItem,
-  SearchResult,
-} from "metabase-types/api";
+import type { UrlableModel } from "metabase/utils/urls/modelToUrl";
+import type { MentionableUser, RecentItem } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import type { SuggestionModel } from "./types";
 
 export const filterRecents = (item: RecentItem, models: SuggestionModel[]) =>
   models.includes(item.model);
-
-export function buildSearchMenuItems(
-  searchResults: SearchResult[],
-  onSelect: (result: SearchResult) => void,
-): MenuItem[] {
-  return searchResults.map((result) => {
-    const iconData = getIcon({
-      model: result.model,
-      display: result.display,
-    });
-    const urlableModel = entityToUrlableModel(result, result.model);
-    const href = modelToUrl(urlableModel);
-    return {
-      icon: iconData.name,
-      iconUrl: iconData.iconUrl,
-      label: result.name,
-      id: result.id,
-      model: result.model,
-      href: href || undefined,
-      action: () => onSelect(result),
-    };
-  });
-}
-
-export function buildRecentsMenuItems(
-  recents: RecentItem[],
-  onSelect: (recent: RecentItem) => void,
-): MenuItem[] {
-  return recents.map((recent) => {
-    const iconData = getIcon(recent);
-    const urlableModel = entityToUrlableModel(recent, recent.model);
-    const href = modelToUrl(urlableModel);
-    return {
-      icon: iconData.name,
-      iconUrl: iconData.iconUrl,
-      label: getName(recent),
-      id: recent.id,
-      model: recent.model as SuggestionModel,
-      href: href || undefined,
-      action: () => onSelect(recent),
-    };
-  });
-}
-
-export function buildDbMenuItems(
-  dbs: Database[],
-  onSelect: (db: Database) => void,
-): MenuItem[] {
-  return dbs.map((db) => {
-    const iconData = getIcon({ model: "database" });
-    return {
-      icon: iconData.name,
-      label: db.name,
-      id: db.id,
-      model: "database",
-      action: () => onSelect(db),
-    };
-  });
-}
 
 export function buildUserMenuItems(
   users: MentionableUser[],
@@ -89,21 +22,6 @@ export function buildUserMenuItems(
       id: user.id,
       model: "user",
       action: () => onSelect(user),
-    };
-  });
-}
-
-export function buildSearchModelMenuItems(
-  searchModels: SuggestionModel[],
-  onSelect: (model: SuggestionModel) => void,
-): MenuItem[] {
-  return searchModels.map((model) => {
-    return {
-      icon: getIcon({ model }).name,
-      label: getTranslatedEntityName(model) || model,
-      model,
-      action: () => onSelect(model),
-      hasSubmenu: true,
     };
   });
 }

@@ -14,8 +14,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedReader InputStream InputStreamReader OutputStream)
-   (java.net URI)))
+   (java.io BufferedReader InputStream InputStreamReader OutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -30,7 +29,6 @@
    [:status          [:enum :pending :active :error]]
    [:enabled         :boolean]
    [:icon            {:optional true} [:maybe :string]]
-   [:icon_dark       {:optional true} [:maybe :string]]
    [:error_message   {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
@@ -47,7 +45,6 @@
    [:identifier      ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:icon            {:optional true} [:maybe :string]]
-   [:icon_dark       {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
@@ -62,12 +59,14 @@
 
 (defn- parse-repo-name
   "Extract the repository name from a git URL.
-   E.g., 'https://github.com/user/custom-heatmap' -> 'custom-heatmap'
-         'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'"
+   Supports both HTTPS and SSH-style URLs:
+     'https://github.com/user/custom-heatmap'     -> 'custom-heatmap'
+     'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'
+     'git@github.com:user/custom-heatmap.git'     -> 'custom-heatmap'"
   [^String url]
-  (-> (.getPath (URI. url))
+  (-> url
       (str/replace #"\.git$" "")
-      (str/split #"/")
+      (str/split #"[/:]")
       last))
 
 (defn- plugin->response
@@ -77,12 +76,11 @@
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon icon_dark resolved_commit manifest dev_bundle_url]}]
+  [{:keys [id identifier display_name icon resolved_commit manifest dev_bundle_url]}]
   (cond-> {:id              id
            :identifier      identifier
            :display_name    display_name
            :icon            icon
-           :icon_dark       icon_dark
            :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
            :resolved_commit resolved_commit
            :manifest        manifest}
@@ -145,7 +143,6 @@
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
-        icon-dark    (:iconDark manifest)
         version-str  (get-in manifest [:metabase :version])
         plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                             :repo_url        sentinel-url
@@ -155,7 +152,6 @@
                                                             :enabled         true
                                                             :dev_bundle_url  dev_bundle_url
                                                             :icon            icon
-                                                            :icon_dark       icon-dark
                                                             :manifest        manifest
                                                             :metabase_version version-str))]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
@@ -172,7 +168,7 @@
    Plugins with incompatible Metabase version requirements are excluded."
   []
   (let [plugins (t2/select [:model/CustomVizPlugin
-                            :id :identifier :display_name :icon :icon_dark :resolved_commit
+                            :id :identifier :display_name :icon :resolved_commit
                             :manifest :metabase_version :dev_bundle_url]
                            :status :active
                            :enabled true
@@ -324,7 +320,6 @@
         (t2/update! :model/CustomVizPlugin id
                     {:display_name     (or (:name manifest) (:identifier plugin))
                      :icon             (:icon manifest)
-                     :icon_dark        (:iconDark manifest)
                      :manifest         manifest
                      :metabase_version version-str}))
       (cache/fetch-and-update! plugin))

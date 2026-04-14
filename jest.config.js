@@ -69,6 +69,7 @@ const baseConfig = {
     "<rootDir>/target/cljs_release/.*",
     "<rootDir>/resources/frontend_client",
     "<rootDir>/.*/__mocks__",
+    "<rootDir>/enterprise/frontend/src/custom-viz",
   ],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
