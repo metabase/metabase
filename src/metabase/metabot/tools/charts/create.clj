@@ -27,6 +27,16 @@
         (.getBytes "UTF-8")
         codecs/bytes->b64-str)))
 
+(defn- query->url-hash-2
+  "Convert an MBQL 4 (legacy) or MBQL 5 query to a base64-encoded URL hash."
+  [query chart-type]
+  (-> {:displayIsLocked true
+       :display (keyword chart-type)
+       :dataset_query query}
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
+
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
   [{:keys [chart-id query-id chart-type]}]
@@ -80,7 +90,7 @@
 
     ;; Create the chart and generate navigation URL
     (let [chart-id (str (random-uuid))
-          results-url (str "/question#" (query->url-hash query))
+          results-url (str "/question#" (query->url-hash-2 query chart-type))
           chart-data {:chart-id chart-id
                       :query-id query-id
                       :chart-type chart-type}]
