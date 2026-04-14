@@ -1,15 +1,13 @@
-import { type ReactNode, useMemo } from "react";
+import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useListMetabotsQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import {
   FIXED_METABOT_ENTITY_IDS,
@@ -38,6 +36,18 @@ const AI_FEATURES_ENABLED_SECTION_ID = "ai-features-enabled";
 const DEFAULT_METABOT_PATH = `/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`;
 const EMBEDDED_METABOT_PATH = `/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`;
 
+const INTERNAL_METABOT = {
+  id: FIXED_METABOT_IDS.DEFAULT,
+  entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
+  name: "Metabot",
+} as MetabotInfo;
+
+const EMBEDDED_METABOT = {
+  id: FIXED_METABOT_IDS.EMBEDDED,
+  entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
+  name: "Embedded Metabot",
+} as MetabotInfo;
+
 export function AISettingsPage() {
   const {
     location: { pathname },
@@ -46,9 +56,7 @@ export function AISettingsPage() {
 
   const isConfigured = !!useSetting("llm-metabot-configured?");
   const hasEmbedding =
-    PLUGIN_EMBEDDING_SDK.isEnabled() ||
-    PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled() ||
-    true;
+    PLUGIN_EMBEDDING_SDK.isEnabled() || PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled();
 
   const {
     value: aiFeaturesEnabledValue,
@@ -67,26 +75,8 @@ export function AISettingsPage() {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: agentApiDocsUrl } = useDocsUrl("ai/agent-api");
 
-  const { data, isLoading, error } = useListMetabotsQuery();
-
-  const internalMetabot = useMemo(
-    () =>
-      data?.items?.find(
-        (metabot) => metabot.entity_id === FIXED_METABOT_ENTITY_IDS.DEFAULT,
-      ),
-    [data?.items],
-  );
-  const embeddedMetabot = useMemo(
-    () =>
-      data?.items?.find(
-        (metabot) => metabot.entity_id === FIXED_METABOT_ENTITY_IDS.EMBEDDED,
-      ),
-    [data?.items],
-  );
-
   const selectedTab = getSelectedMetabotTab(params.metabotId, pathname, {
     hasEmbedding,
-    hasEmbeddedMetabot: !!embeddedMetabot,
   });
 
   const handleAiFeaturesEnabledChange = async (checked: boolean) => {
@@ -114,12 +104,8 @@ export function AISettingsPage() {
           <DisabledSection disabled={!isConfigured}>
             <Stack gap="lg">
               <MetabotSettingsSection
-                embeddedMetabot={embeddedMetabot}
-                error={error}
                 hasEmbedding={hasEmbedding}
                 id={METABOT_SECTION_ID}
-                internalMetabot={internalMetabot}
-                isLoading={isLoading}
                 selectedTab={selectedTab}
               />
 
@@ -155,27 +141,17 @@ export function AISettingsPage() {
 }
 
 function MetabotSettingsSection({
-  embeddedMetabot,
-  error,
   hasEmbedding,
   id,
-  internalMetabot,
-  isLoading,
   selectedTab,
 }: {
-  embeddedMetabot?: MetabotInfo;
-  error: unknown;
   hasEmbedding: boolean;
   id: string;
-  internalMetabot?: MetabotInfo;
-  isLoading: boolean;
   selectedTab: MetabotTabValue;
 }) {
   const activeMetabot =
-    selectedTab === "embedded" && embeddedMetabot
-      ? embeddedMetabot
-      : internalMetabot;
-  const showTabs = hasEmbedding && !!embeddedMetabot;
+    selectedTab === "embedded" ? EMBEDDED_METABOT : INTERNAL_METABOT;
+  const showTabs = hasEmbedding;
 
   return (
     <SettingsSection id={id} title={t`Metabot settings`}>
@@ -202,18 +178,7 @@ function MetabotSettingsSection({
         </Tabs>
       )}
 
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        error={
-          error
-            ? t`Error fetching Metabots`
-            : !activeMetabot
-              ? t`Not found.`
-              : null
-        }
-      >
-        {activeMetabot && <MetabotSettingsPanel metabot={activeMetabot} />}
-      </LoadingAndErrorWrapper>
+      <MetabotSettingsPanel metabot={activeMetabot} />
     </SettingsSection>
   );
 }
@@ -280,17 +245,14 @@ function getSelectedMetabotTab(
   pathname: string,
   {
     hasEmbedding,
-    hasEmbeddedMetabot,
   }: {
     hasEmbedding: boolean;
-    hasEmbeddedMetabot: boolean;
   },
 ): MetabotTabValue {
   if (
     (metabotId === String(FIXED_METABOT_IDS.EMBEDDED) ||
       pathname === EMBEDDED_METABOT_PATH) &&
-    hasEmbedding &&
-    hasEmbeddedMetabot
+    hasEmbedding
   ) {
     return "embedded";
   }

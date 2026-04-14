@@ -47,14 +47,17 @@ describe("MetabotNavPane", () => {
     reinitialize();
   });
 
-  it("does not display the nav pane when all AI features are disabled", () => {
+  it("hides the ai controls items when all AI features are disabled", () => {
     setup({
       aiControlsEnabled: true,
       aiFeaturesEnabled: false,
       isConfigured: true,
     });
 
-    expect(screen.queryByText("AI Settings")).not.toBeInTheDocument();
+    expect(screen.getByText("AI Settings")).toBeInTheDocument();
+    expect(screen.queryByText("Usage controls")).not.toBeInTheDocument();
+    expect(screen.queryByText("Customization")).not.toBeInTheDocument();
+    expect(screen.queryByText("System prompts")).not.toBeInTheDocument();
   });
 
   it("displays the ai controls in a disabled state when not configured", async () => {

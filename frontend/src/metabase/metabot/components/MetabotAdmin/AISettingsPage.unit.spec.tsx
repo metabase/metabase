@@ -12,40 +12,20 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import {
-  setupMetabotPromptSuggestionsEndpoint,
-  setupMetabotsEndpoints,
-} from "__support__/server-mocks/metabot";
+import { setupMetabotPromptSuggestionsEndpoint } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  FIXED_METABOT_ENTITY_IDS,
-  FIXED_METABOT_IDS,
-} from "metabase/metabot/constants";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { reinitialize } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
-  createMockMetabotInfo,
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { AISettingsPage } from "./AISettingsPage";
-
-const defaultMetabots = [
-  createMockMetabotInfo({
-    id: FIXED_METABOT_IDS.DEFAULT,
-    entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
-    name: "Metabot",
-  }),
-  createMockMetabotInfo({
-    id: FIXED_METABOT_IDS.EMBEDDED,
-    entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
-    name: "Embedded Metabot",
-  }),
-];
 
 const defaultSeedCollections = [
   createMockCollection({ id: "root", name: "Our Analytics" }),
@@ -100,7 +80,6 @@ const setup = async ({
     }),
   ]);
   setupUpdateSettingEndpoint();
-  setupMetabotsEndpoints(defaultMetabots);
   setupCollectionByIdEndpoint({
     collections: defaultSeedCollections.map((c: any) => ({
       id: c.model_id,
@@ -111,9 +90,9 @@ const setup = async ({
   setupCollectionsEndpoints({ collections: [] });
   setupRecentViewsAndSelectionsEndpoints(defaultSeedCollections as any);
 
-  defaultMetabots.forEach((metabot) =>
+  [FIXED_METABOT_IDS.DEFAULT, FIXED_METABOT_IDS.EMBEDDED].forEach((metabotId) =>
     setupMetabotPromptSuggestionsEndpoint({
-      metabotId: metabot.id,
+      metabotId,
       prompts: [],
       paginationContext: {
         offset: 0,

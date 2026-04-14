@@ -149,7 +149,6 @@ async function setup({
 }: SetupOptions = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
-  let resolveUpdateRequest: (() => void) | null = null;
 
   const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
     anthropic: "**********45",
@@ -258,11 +257,7 @@ async function setup({
 
   fetchMock.put("path:/api/metabot/settings", (call) => {
     if (pauseUpdateResponse) {
-      return new Promise((resolve) => {
-        resolveUpdateRequest = () => {
-          resolve(handleMetabotSettingsUpdate(call));
-        };
-      });
+      return new Promise(() => undefined);
     }
 
     return handleMetabotSettingsUpdate(call);
@@ -369,7 +364,6 @@ async function setup({
   return {
     history,
     store,
-    resolveUpdateRequest: () => resolveUpdateRequest?.(),
   };
 }
 

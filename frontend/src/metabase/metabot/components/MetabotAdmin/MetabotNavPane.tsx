@@ -9,9 +9,9 @@ import { PLUGIN_AI_CONTROLS } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
 export function MetabotNavPane() {
-  const aiControlsNavItems = PLUGIN_AI_CONTROLS.useAiControlsNavItems();
+  const AiControlsNavItems = PLUGIN_AI_CONTROLS.AiControlsNavItems;
 
-  if (!aiControlsNavItems) {
+  if (!AiControlsNavItems) {
     return null;
   }
 
@@ -23,7 +23,9 @@ export function MetabotNavPane() {
           label={t`AI Settings`}
           path="/admin/metabot/"
         />
-        <Fragment key="ai-controls">{aiControlsNavItems}</Fragment>
+        <Fragment key="ai-controls">
+          <AiControlsNavItems />
+        </Fragment>
       </AdminNavWrapper>
     </Flex>
   );
