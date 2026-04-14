@@ -1105,7 +1105,8 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init
-           metabase.llm.settings}
+           metabase.llm.settings
+           metabase.llm.startup}
    :uses #{analytics
            api
            driver
@@ -1113,6 +1114,7 @@
            lib-be
            metabot
            models
+           premium-features
            request
            settings
            sql-tools
@@ -1939,7 +1941,8 @@
   settings
   {:team "DevEx"
    :api  #{metabase.settings.core
-           metabase.settings.init}
+           metabase.settings.init
+           metabase.settings.models.setting}
    :uses #{api
            app-db
            config

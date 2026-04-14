@@ -103,6 +103,7 @@ type MetabotSettingsUpdateBody = {
 
 type SetupOptions = {
   isHosted?: boolean;
+  hasDeprecatedMetabaseAiProvider?: boolean;
   llmProxyConfigured?: boolean;
   savedProviderValue?: string | null;
   isConfigured?: boolean;
@@ -125,6 +126,7 @@ type SetupOptions = {
 
 async function setup({
   isHosted = false,
+  hasDeprecatedMetabaseAiProvider = false,
   llmProxyConfigured = isHosted,
   savedProviderValue = "anthropic/claude-haiku-4-5",
   isConfigured = true,
@@ -168,6 +170,7 @@ async function setup({
       "metabase-ai-managed": tokenStatusFeatures.includes(
         "metabase-ai-managed",
       ),
+      "metabot-v3": hasDeprecatedMetabaseAiProvider,
     }),
     "token-status": createMockTokenStatus({
       features: tokenStatusFeatures,
@@ -233,6 +236,7 @@ async function setup({
         "metabase-ai-managed": refreshedTokenStatusFeatures.includes(
           "metabase-ai-managed",
         ),
+        "metabot-v3": hasDeprecatedMetabaseAiProvider,
       });
       sessionProperties["token-status"] = createMockTokenStatus({
         features: refreshedTokenStatusFeatures,
@@ -571,6 +575,7 @@ describe("MetabotSetup", () => {
     await setup({
       isHosted: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      tokenStatusFeatures: ["metabase-ai-managed"],
     });
 
     expect(
@@ -578,6 +583,23 @@ describe("MetabotSetup", () => {
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Disconnect" }),
+    ).toBeInTheDocument();
+  });
+
+  it("explains the legacy Metabase AI pricing migration", async () => {
+    await setup({
+      isHosted: true,
+      hasDeprecatedMetabaseAiProvider: true,
+      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+    });
+
+    expect(
+      await screen.findByText(
+        "You're on legacy tiered AI pricing today. On your next billing cycle, you'll switch to metered AI pricing. If you'd like to switch to a third-party AI provider and use their API, click Disconnect.",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Disconnect" }),
     ).toBeInTheDocument();
@@ -791,6 +813,7 @@ describe("MetabotSetup", () => {
     await setup({
       isHosted: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      tokenStatusFeatures: ["metabase-ai-managed"],
       metabasePricePerUnit: 4.25,
     });
 
@@ -803,6 +826,7 @@ describe("MetabotSetup", () => {
     await setup({
       isHosted: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      tokenStatusFeatures: ["metabase-ai-managed"],
       metabasePricePerUnit: 4.25,
       metabotUsageQuotas: [
         {
@@ -898,6 +922,7 @@ describe("MetabotSetup", () => {
     await setup({
       isHosted: true,
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      tokenStatusFeatures: ["metabase-ai-managed"],
     });
 
     await screen.findByText("Current billing cycle");

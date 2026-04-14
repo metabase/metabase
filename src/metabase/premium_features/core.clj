@@ -59,6 +59,7 @@
   enable-database-routing?
   enable-library?
   enable-metabase-ai-managed?
+  enable-metabot-v3?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
