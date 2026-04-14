@@ -148,7 +148,6 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       ) {
         return;
       }
-
       loadingRef.current = identifier;
       setLoading(true);
       try {
