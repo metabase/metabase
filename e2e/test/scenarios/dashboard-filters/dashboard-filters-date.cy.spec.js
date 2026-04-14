@@ -8,6 +8,7 @@ import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
+    H.interceptDashboardCardRequests({ alias: "batchQuery" });
 
     H.restore();
     cy.signInAsAdmin();

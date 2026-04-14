@@ -250,7 +250,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage explicit join", () => {
           QSHelpers.setup1stStageExplicitJoinFilter();
           QSHelpers.apply1stStageExplicitJoinFilter();
-          cy.wait(["@dashboardData", "@dashboardData"]);
+          cy.wait("@dashboardData");
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -378,7 +378,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage custom column", () => {
           QSHelpers.setup2ndStageCustomColumnFilter();
           QSHelpers.apply2ndStageCustomColumnFilter();
-          cy.wait(["@dashboardData", "@dashboardData"]);
+          cy.wait("@dashboardData");
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -398,7 +398,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage breakout", () => {
           QSHelpers.setup2ndStageBreakoutFilter();
           QSHelpers.apply2ndStageBreakoutFilter();
-          cy.wait(["@dashboardData", "@dashboardData"]);
+          cy.wait("@dashboardData");
 
           QSHelpers.verifyDashcardRowsCount({
             dashcardIndex: 0,

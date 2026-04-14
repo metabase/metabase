@@ -442,7 +442,7 @@ export function setup1stStageImplicitJoinFromSourceFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("16");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup1stStageImplicitJoinFromJoinFilter() {
@@ -467,7 +467,7 @@ export function setup1stStageImplicitJoinFromJoinFilter() {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup1stStageCustomColumnFilter() {
@@ -495,7 +495,7 @@ export function setup1stStageCustomColumnFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup1stStageAggregationFilter() {
@@ -523,7 +523,7 @@ export function setup1stStageAggregationFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup1stStageBreakoutFilter() {
@@ -548,7 +548,7 @@ export function setup1stStageBreakoutFilter() {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup2ndStageExplicitJoinFilter() {
@@ -575,7 +575,7 @@ export function setup2ndStageExplicitJoinFilter() {
       cy.findByPlaceholderText("Search the list").type("abe.gorczany");
       cy.button("Add filter").click();
     });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup2ndStageCustomColumnFilter() {

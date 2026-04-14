@@ -206,8 +206,9 @@
   (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id   (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         parsed-qp      (api.embed.common/parse-query-params query-params)
-        cards-json     (:cards parsed-qp)
-        cards          (some->> cards-json
+        cards-raw      (:cards parsed-qp)
+        cards-parsed   (cond-> cards-raw (string? cards-raw) json/decode+kw)
+        cards          (some->> cards-parsed
                                 (mapv (fn [{:keys [dashcard_id card_id]}]
                                         {:dashcard-id dashcard_id :card-id card_id})))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
