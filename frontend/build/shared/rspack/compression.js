@@ -19,6 +19,9 @@ function getCompressionConfig() {
       CompressionRspackPlugin,
     } = require("./plugins/CompressionRspackPlugin");
 
+    // eslint-disable-next-line no-console
+    console.log(`[Compression] Compressing assets`);
+
     return [
       new CompressionRspackPlugin({
         algorithm: "gzip",
