@@ -2,13 +2,13 @@ import { Route } from "react-router";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 
-import { ListItem } from "./ListItem";
+import { ListItem, type ListItemProps } from "./ListItem";
 
 const ITEM_NAME = "Table Foo";
 const ITEM_DESCRIPTION = "Nice table description.";
 const PLACEHOLDER_TEXT = "Placeholder text";
 
-function setup({ name, ...opts }) {
+function setup({ name, ...opts }: ListItemProps) {
   return renderWithProviders(
     <Route path="/" component={() => <ListItem name={name} {...opts} />} />,
     { withRouter: true },
@@ -34,12 +34,12 @@ describe("ListItem", () => {
   });
 
   it("should render with just the name", () => {
-    setup({ name: ITEM_NAME });
+    setup({ name: ITEM_NAME, disabled: true });
     expect(screen.getByText(ITEM_NAME)).toBeInTheDocument();
   });
 
   it("should display the placeholder if there's no description", () => {
-    setup({ name: ITEM_NAME, placeholder: PLACEHOLDER_TEXT });
+    setup({ name: ITEM_NAME, placeholder: PLACEHOLDER_TEXT, disabled: true });
 
     expect(screen.getByText(ITEM_NAME)).toBeInTheDocument();
     expect(screen.getByText(PLACEHOLDER_TEXT)).toBeInTheDocument();
@@ -50,6 +50,7 @@ describe("ListItem", () => {
       name: ITEM_NAME,
       description: ITEM_DESCRIPTION,
       placeholder: PLACEHOLDER_TEXT,
+      disabled: true,
     });
 
     expect(screen.getByText(ITEM_NAME)).toBeInTheDocument();

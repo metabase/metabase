@@ -23,6 +23,9 @@ describe("LastEditInfoLabel", () => {
   function setup({
     isLastEditedByCurrentUser = false,
     onClick = jest.fn(),
+  }: {
+    isLastEditedByCurrentUser?: boolean;
+    onClick?: jest.Mock | null;
   } = {}) {
     const testItem = {
       "last-edit-info": {
@@ -86,7 +89,7 @@ describe("LastEditInfoLabel", () => {
   it("should display last editor's name", () => {
     const { first_name, last_name } = TEST_USER;
     // Example: John Doe —> John D.
-    const expectedName = `${first_name} ${last_name.charAt(0)}.`;
+    const expectedName = `${first_name} ${last_name?.charAt(0)}.`;
 
     setup();
     expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
