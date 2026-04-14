@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -14,8 +15,11 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.canceling :as transforms.canceling]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -391,6 +395,26 @@
       (mt/with-temp [:model/Table table {:transform_id nil}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
+
+(deftest run-cancelable-transform!-binds-transform-timeout-test
+  (testing "run-cancelable-transform! binds *query-timeout-ms* to the transform timeout (GDGT-2173)"
+    (let [captured-timeout-ms (atom nil)]
+      (with-redefs [driver/schema-exists?                     (constantly true)
+                    driver/create-schema-if-needed!           (constantly nil)
+                    transforms-base.u/get-source-range-params (constantly nil)
+                    transforms-base.u/save-run-checkpoint-range! (constantly nil)
+                    transforms-base.u/save-watermark!         (constantly nil)
+                    transforms.canceling/chan-start-timeout-vthread! (constantly nil)
+                    transforms.canceling/chan-start-run!      (constantly nil)
+                    transforms.canceling/chan-end-run!        (constantly nil)
+                    transform-run/succeed-started-run!        (constantly nil)]
+        (mt/with-premium-features #{:transforms-basic}
+          (mt/with-temporary-setting-values [transform-timeout 90]
+            (transforms.u/run-cancelable-transform!
+             1 {:id 1} :h2 {:db-id 1 :conn-spec nil :output-schema "x"}
+             (fn [_cancel-chan _range-params]
+               (reset! captured-timeout-ms driver.settings/*query-timeout-ms*)))))
+        (is (= (u/minutes->ms 90) @captured-timeout-ms))))))
 
 (deftest ^:parallel massage-sql-query-test
   (testing "massage-sql-query sets disable-remaps? and disable-max-results?"

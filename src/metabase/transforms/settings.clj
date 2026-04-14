@@ -10,8 +10,9 @@
   :type       :integer
   :visibility :internal
   :default    (* 4 60)
-  :doc        "Each query executed by a transform is also subject to the MB_DB_QUERY_TIMEOUT_MINUTES timeout,
-  so make sure that value isn't lower, or it will timeout your transform."
+  :doc        "Controls the timeout for transform runs, including the queries they execute. This takes precedence
+  over MB_DB_QUERY_TIMEOUT_MINUTES for queries executed inside a transform, so transforms can run longer than regular
+  Metabase queries."
   :feature    :transforms-basic
   :export?    false
   :encryption :no

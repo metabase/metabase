@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
@@ -120,7 +121,8 @@
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
       (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
       (let [cancel-chan (a/promise-chan)
-            ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
+            ret (binding [qp.pipeline/*canceled-chan* cancel-chan
+                          driver.settings/*query-timeout-ms* (u/minutes->ms (transforms.settings/transform-timeout))]
                   (canceling/chan-start-run! run-id cancel-chan)
                   (run-transform! cancel-chan source-range-params))]
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
