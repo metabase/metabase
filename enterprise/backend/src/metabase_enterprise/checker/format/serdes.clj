@@ -54,18 +54,6 @@
         (str/trim model)))
     (catch Exception _ nil)))
 
-(defn- extract-serdes-meta
-  "Extract the entity-level serdes/meta path from a YAML file.
-   Returns a vector of {:id :model} maps, or nil if not found.
-   Parses the full YAML and reads the :serdes/meta key."
-  [^String file-path]
-  (try
-    (let [data (yaml/parse-string (slurp file-path))
-          meta-entries (:serdes/meta data)]
-      (when (seq meta-entries)
-        (vec meta-entries)))
-    (catch Exception _ nil)))
-
 (def ^:private schema-model->kind
   "Map serdes/meta model names to index kinds for schema directory entities."
   {"Database" :database
@@ -73,36 +61,6 @@
    "Field"    :field
    "Measure"  :measure
    "Segment"  :segment})
-
-(defn- serdes-meta->index-entry
-  "Convert a serdes/meta path to an index entry {:kind :ref :file}.
-   The last model in the path determines the kind.
-   The ref is built from the id values."
-  [meta-path file-path]
-  (let [last-entry (peek meta-path)
-        kind       (get schema-model->kind (:model last-entry))]
-    (when kind
-      (case kind
-        :database {:kind :database
-                   :ref  (:id last-entry)
-                   :file file-path}
-        :table    (let [ids (mapv :id meta-path)]
-                    {:kind :table
-                     :ref  (case (count ids)
-                             2 [(first ids) nil (second ids)]
-                             3 [(first ids) (second ids) (nth ids 2)]
-                             ids)
-                     :file file-path})
-        :field    (let [ids (mapv :id meta-path)]
-                    {:kind :field
-                     :ref  (case (count ids)
-                             3 [(first ids) nil (second ids) (nth ids 2)]
-                             4 [(first ids) (second ids) (nth ids 2) (nth ids 3)]
-                             ids)
-                     :file file-path})
-        (:measure :segment)
-        (when-let [entity-id (extract-entity-id file-path)]
-          {:kind kind :ref entity-id :file file-path})))))
 
 (defn- read-yaml-name
   "Read the `name:` field from a YAML file using regex (fast).
@@ -341,13 +299,13 @@
     (when-let [file (get-in index [:database db-name])]
       (load-yaml file)))
 
-  (resolve-table [_ [db schema table-name :as table-path]]
+  (resolve-table [_ [_db _schema _table-name :as table-path]]
     (let [^File td   (table-dir databases-dir db-name->dir table-path)
           ^File yaml (io/file td (str (.getName td) ".yaml"))]
       (when (.exists yaml)
         (load-yaml (.getPath yaml)))))
 
-  (resolve-field [_ [db schema table-name field :as field-path]]
+  (resolve-field [_ [db schema table-name field :as _field-path]]
     (let [^File td   (table-dir databases-dir db-name->dir [db schema table-name])
           ^File yaml (io/file td "fields" (str field ".yaml"))]
       (when (.exists yaml)
@@ -426,11 +384,6 @@
   [^SerdesSource source]
   (.-index source))
 
-(defn source-databases-dir
-  "Get the databases directory from a SerdesSource."
-  [^SerdesSource source]
-  (.-databases-dir source))
-
 ;;; ===========================================================================
 ;;; Enumeration
 ;;; ===========================================================================
@@ -439,18 +392,3 @@
   "Get all card entity-ids from source."
   [^SerdesSource source]
   (keys (:card (.-index source))))
-
-(defn all-database-names
-  "Get all database names from source."
-  [source]
-  (source/all-database-names source))
-
-(defn all-table-paths
-  "Get all table paths from source."
-  [source]
-  (source/all-table-paths source))
-
-(defn all-field-paths
-  "Get all field paths from source."
-  [source]
-  (source/all-field-paths source))

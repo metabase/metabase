@@ -362,7 +362,6 @@
           (let [errors (try
                          (deps.analysis/check-entity provider :transform transform-id)
                          (catch Exception e
-                           (tap> {:entity-id entity-id})
                            #{{:type :validation-exception-error :message (.getMessage e)}}))
                 {:keys [bad-refs native-errors]} (partition-errors errors)
                 native-errors (humanize-errors store native-errors)
@@ -772,60 +771,12 @@
 
 (comment
   ;; REPL workflow:
-  (def ctx (setup "test_resources/serialization_baseline/"
-                  "test_resources/serialization_baseline/databases"))
-  (check-one ctx "HiBFSt0BNx5s5MxVDLLKB" :verbose true)  ; snippet card
-  (check-one ctx "2u10n8GV6u0LFYrq8yV5p" :verbose true)  ; variables card
-  (check-one ctx "dShCrdNatveOrders0005" :verbose true)    ; native orders
-
-  ;; Full check:
-  (def r (check "/path/to/export" "/path/to/schemas"))
-  (summarize-results (:results r))
   (check "/Users/dan/projects/work/stats-remote-sync"
          "/tmp/metadata/metadata/databases")
   (setup
    "/Users/dan/projects/work/stats-remote-sync"
    "/Users/dan/projects/work/stats-remote-sync/databases")
 
-  (def src
-    (time
-     (metabase-enterprise.checker.format.serdes/make-database-source
-      "/tmp/metadata/metadata/databases")))
-
-  (time
-   (check-one (setup "/Users/dan/projects/work/stats-remote-sync"
-                     "/tmp/metadata/metadata/databases")
-              "2MNFkdc6EvgmUJU4E0ytF"))
-
-  (def ctx (time (setup "/Users/dan/projects/work/stats-remote-sync"
-                        "/tmp/metadata/metadata/databases")))
-
-  (time (check-one ctx "2MNFkdc6EvgmUJU4E0ytF"))
-
-  (require '[metabase-enterprise.checker.source :as source])
-  (first (source/all-table-paths src))
-  (source/fields-for-table src ["application_database__prod_"
-                                "public"
-                                "search_index__wdyysmgtxnmyjulddve4x__mbarchiv__1755030390"])
-
-  (def ctx (time (setup "/Users/dan/projects/work/stats-remote-sync"
-                        "/tmp/metadata/metadata/databases")))
-
-  (time (check-one ctx "2MNFkdc6EvgmUJU4E0ytF"))
-
-  (require '[metabase-enterprise.checker.provider :as provider] :reload)
-  ;; Wrap check-one to see where time goes
-  (let [ctx (setup "/Users/dan/projects/work/stats-remote-sync"
-                   "/tmp/metadata/metadata/databases")
-        store (:store ctx)
-        provider (:provider ctx)]
-    ;; Set up the database
-    (provider/set-database! provider "Analytics Data Warehouse")
-
-    ;; Time just the table loading
-    (time (count (metabase.lib.metadata.protocols/tables provider)))
-
-    ;; Time field loading for one table
-    (let [tables (metabase.lib.metadata.protocols/tables provider)]
-      (time (count (metabase.lib.metadata.protocols/metadatas-for-table
-                    provider :metadata/column (:id (first tables))))))))
+  (check-one (setup "/Users/dan/projects/work/stats-remote-sync"
+                    "/tmp/metadata/metadata/databases")
+             "2MNFkdc6EvgmUJU4E0ytF"))

@@ -26,11 +26,6 @@
         compiled    (qp.compile/compile-with-inline-parameters with-params)]
     (lib/native-query with-params (:query compiled))))
 
-(defn- has-card-template-tags?
-  "Returns true if the query has any card-type template tags."
-  [query]
-  (some #(= (:type %) :card) (lib/all-template-tags query)))
-
 (defn- has-substitutable-template-tags?
   "Returns true if the query has any card or table template tags that need
    placeholder substitution before compilation."

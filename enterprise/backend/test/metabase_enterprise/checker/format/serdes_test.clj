@@ -291,10 +291,10 @@
 
 (deftest measures-resolve-from-export-source-test
   (testing "measures can be resolved from the export source"
-    (let [source (serdes/make-source (fixtures-path))]
-      (let [m (source/resolve-measure source "total-revenue-measure")]
-        (is (some? m))
-        (is (= "Total Revenue" (:name m)))))))
+    (let [source (serdes/make-source (fixtures-path))
+          m      (source/resolve-measure source "total-revenue-measure")]
+      (is (some? m))
+      (is (= "Total Revenue" (:name m))))))
 
 ;;; ===========================================================================
 ;;; Temp file edge cases
