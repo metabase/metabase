@@ -191,7 +191,7 @@ function isWordChar(ch: string): boolean {
 export function getWordAtCursor(
   text: string,
   cursorPos: number,
-  metricNames?: MetricNameMap,
+  metricNames: MetricNameMap,
 ): { word: string; start: number; end: number } {
   // Build a set of metric names (lowercased) for quick lookup.
   let metricNamesLower: Set<string> | null = null;
@@ -361,7 +361,7 @@ export function traverseMetricTokens(
   metricNames: MetricNameMap,
   entities: MetricsViewerFormulaEntity[],
   visitor: (visit: MetricTokenVisit) => void,
-  identities: MetricIdentityEntry[] = [],
+  identities: MetricIdentityEntry[],
 ): void {
   const allTokens = parseFullTextWithPositions(text, metricNames, identities);
   const separators = findSeparatorCommaPositions(text, allTokens);
@@ -448,7 +448,7 @@ function stripPositions(token: PositionedToken): ExpressionSubToken | null {
 export function parseFullText(
   text: string,
   metricNames: MetricNameMap,
-  identities: MetricIdentityEntry[] = [],
+  identities: MetricIdentityEntry[],
 ): MetricsViewerFormulaEntity[] {
   const allTokens = parseFullTextWithPositions(text, metricNames, identities);
   const separators = findSeparatorCommaPositions(text, allTokens);
@@ -631,7 +631,7 @@ function consumeNumber(text: string, startIndex: number): number | null {
 export function parseFullTextWithPositions(
   text: string,
   metricNames: MetricNameMap,
-  identities: MetricIdentityEntry[] = [],
+  identities: MetricIdentityEntry[],
 ): PositionedToken[] {
   const sortedMetrics = Object.entries(metricNames)
     .map(([id, name]) => ({ id, name: (name ?? "").toLowerCase() }))
@@ -815,7 +815,7 @@ export type ErrorRange = { from: number; to: number; message: string };
 export function findInvalidRanges(
   text: string,
   metricNames: MetricNameMap,
-  identities: MetricIdentityEntry[] = [],
+  identities: MetricIdentityEntry[],
 ): ErrorRange[] {
   const allTokens = parseFullTextWithPositions(text, metricNames, identities);
   const separators = findSeparatorCommaPositions(text, allTokens);
@@ -953,9 +953,9 @@ export function findInvalidRanges(
 
 export function filterSearchResults<T extends SearchResultLike>(
   results: T[],
-  selectedMetricIds?: Set<number>,
-  selectedMeasureIds?: Set<number>,
-  excludeMetric?: ExcludeMetric,
+  selectedMetricIds: Set<number>,
+  selectedMeasureIds: Set<number>,
+  excludeMetric: ExcludeMetric | undefined,
 ): T[] {
   return results.filter((result) => {
     const isAlreadySelected =

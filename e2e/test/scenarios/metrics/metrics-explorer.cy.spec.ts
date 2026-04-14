@@ -791,8 +791,10 @@ describe("scenarios > metrics > explorer", () => {
       cy.log(
         "Create expression with only expression entity: Count of orders + Count of products",
       );
-      H.MetricsViewer.searchInput().clear();
-      H.MetricsViewer.searchInput().type("Count of orders + Count of products");
+
+      cy.findByTestId("metrics-formula-input").click();
+
+      H.MetricsViewer.searchInput().type(" + Count of products");
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 

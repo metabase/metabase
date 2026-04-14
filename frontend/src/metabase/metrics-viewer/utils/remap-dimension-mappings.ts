@@ -40,32 +40,20 @@ export function remapDimensionMappings(
   tabs: MetricsViewerTabState[],
   slotMapping: Map<number, number>,
   newEntities: MetricsViewerFormulaEntity[],
-  oldEntities?: MetricsViewerFormulaEntity[],
 ): MetricsViewerTabState[] {
   const newSlots = computeMetricSlots(newEntities);
-  const oldSlots = oldEntities ? computeMetricSlots(oldEntities) : [];
 
   return tabs.map((tab) => {
     const newMapping: Record<number, string | null> = {};
     let changed = false;
 
-    // 1. Remap existing entries from old slot index → new slot index.
-    //    Only carry over the dimension if the new slot has the same sourceId
-    //    as the old slot — a mismatched sourceId means the slot mapping is
-    //    incidental (e.g. an identity created during editing that doesn't
-    //    correspond to a real slot in the previous formula).
+    // 1. Remap existing entries from old slot index → new slot index
     for (const [oldKey, dimId] of getObjectEntries(tab.dimensionMapping)) {
       const oldSlotIndex = Number(oldKey);
       const newSlotIndex = slotMapping.get(oldSlotIndex);
       if (newSlotIndex == null) {
         changed = true;
         continue; // slot was removed
-      }
-      const newSlot = newSlots.find((s) => s.slotIndex === newSlotIndex);
-      const oldSlot = oldSlots.find((s) => s.slotIndex === oldSlotIndex);
-      if (newSlot && oldSlot && newSlot.sourceId !== oldSlot.sourceId) {
-        changed = true;
-        continue; // sourceId mismatch — don't carry over incompatible dimension
       }
       if (newSlotIndex !== oldSlotIndex) {
         changed = true;
