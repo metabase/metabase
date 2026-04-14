@@ -11,8 +11,6 @@ import _ from "underscore";
 
 import { useLazyGetTransformQuery } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { MetabotContext } from "metabase/metabot/context";
 import {
   type MetabotAgentEditSuggestionChatMessage,
@@ -33,6 +31,8 @@ import {
   Paper,
   Text,
 } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

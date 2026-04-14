@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { isDefaultGroup } from "metabase/lib/groups";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Stack, Text, TextInput } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
 import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type { GroupInfo } from "metabase-types/api";
@@ -107,7 +107,13 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
   const handleChange = (group: GroupInfo, inputValue: string) => {
     const maxUsage = sanitizeUsageLimitValue(inputValue);
     setLocalLimitsMap((prev) => ({ ...prev, [group.id]: maxUsage }));
-    debouncedSaveGroupLimit(group, maxUsage);
+
+    const isOverInstanceLimit =
+      Number(maxUsage || 0) > Number(instanceLimit || 0);
+
+    if (!isOverInstanceLimit) {
+      debouncedSaveGroupLimit(group, maxUsage);
+    }
   };
 
   return (
@@ -132,8 +138,16 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
               </thead>
               <tbody>
                 {groups.map((group) => {
+                  const inputValue = String(localLimitsMap?.[group.id] ?? "");
+                  const maxUsage = sanitizeUsageLimitValue(inputValue);
+                  const isOverInstanceLimit =
+                    maxUsage != null &&
+                    instanceLimit != null &&
+                    maxUsage > instanceLimit;
                   const showAllUsersOverrideTooltip =
-                    isAllUsersGroupOverridingLimit(group) && !!allUsersGroup;
+                    isAllUsersGroupOverridingLimit(group) &&
+                    !!allUsersGroup &&
+                    !isOverInstanceLimit;
 
                   return (
                     <tr key={group.id} className={S.BodyRow}>
@@ -142,7 +156,7 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
                         <div className={S.InputWrapper}>
                           <TextInput
                             placeholder={placeholder}
-                            value={localLimitsMap?.[group.id] ?? ""}
+                            value={inputValue}
                             onChange={(e) =>
                               handleChange(group, e.target.value)
                             }
@@ -153,13 +167,20 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
                               limitType,
                               group.name,
                             )}
+                            error={
+                              isOverInstanceLimit
+                                ? t`Can't be higher than the instance limit`
+                                : undefined
+                            }
+                            rightSection={
+                              showAllUsersOverrideTooltip ? (
+                                <AllUsersHigherAccessTooltipIcon
+                                  groupName={allUsersGroup.name}
+                                  variant="group-limits"
+                                />
+                              ) : undefined
+                            }
                           />
-                          {showAllUsersOverrideTooltip && (
-                            <AllUsersHigherAccessTooltipIcon
-                              groupName={allUsersGroup.name}
-                              variant="group-limits"
-                            />
-                          )}
                         </div>
                       </td>
                     </tr>

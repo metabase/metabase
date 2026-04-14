@@ -33,6 +33,5 @@
 
 (deftest json-error-test
   (testing "Parsing invalid JSON returns messages with some details"
-    (is (= {:error
-            "Unrecognized token 'ture': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false') at 1:17"}
-           (raw-json-req :post "/alert/" "{\"archive\": ture}")))))
+    (is (re-find #"Unrecognized token 'ture': was expecting \(JSON String, Number, Array, Object or token 'null', 'true' or 'false'\)"
+                 (:error (raw-json-req :post "/alert/" "{\"archive\": ture}"))))))

@@ -4,28 +4,53 @@ import type {
   CardDisplayType,
   ConcreteTableId,
   DimensionId,
+  MathOperator,
   TemporalUnit,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
+import type { SerializedDefinitionInfo } from "../utils/url-serialization";
 
 // ── Core types ──
 
 export type MetricsViewerDisplayType = Extract<
   CardDisplayType,
-  "line" | "area" | "bar" | "map" | "row" | "pie" | "scatter"
+  "line" | "area" | "bar" | "map" | "scatter" | "scalar"
 >;
 
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
+export type MetricExpressionId = `expression:${string}`;
 
-export type MetricsViewerTabType = DimensionType;
+export type MetricsViewerTabType = DimensionType | "scalar";
 
 export interface StoredMetricsViewerTab {
   id: string;
   type: MetricsViewerTabType;
   label: string;
-  dimensionsBySource: Record<MetricSourceId, DimensionId>;
+  dimensionBySlotIndex: Record<number, DimensionId>;
 }
+
+// ── Expression sub-tokens ──
+
+export type ExpressionMetricSubToken = {
+  type: "metric";
+  sourceId: MetricSourceId;
+  count: number;
+  definition?: MetricDefinition;
+  serializedDefinitionInfo?: SerializedDefinitionInfo;
+};
+
+/**
+ * Tokens that appear inside a single expression formula.
+ * These are the building blocks of an expression definition entry.
+ */
+export type ExpressionSubToken =
+  | ExpressionMetricSubToken
+  | { type: "constant"; value: number }
+  | { type: "operator"; op: MathOperator }
+  | { type: "open-paren" }
+  | { type: "close-paren" };
 
 // ── Definition types ──
 
@@ -44,6 +69,34 @@ export interface MetricsViewerDefinitionEntry {
   definition: MetricDefinition | null;
 }
 
+export type MetricDefinitionEntry = MetricsViewerDefinitionEntry & {
+  type: "metric";
+  serializedDefinitionInfo?: SerializedDefinitionInfo;
+};
+
+export type ExpressionDefinitionEntry = {
+  id: MetricExpressionId;
+  type: "expression";
+  name: string;
+  tokens: ExpressionSubToken[];
+};
+
+export type MetricsViewerFormulaEntity =
+  | MetricDefinitionEntry
+  | ExpressionDefinitionEntry;
+
+export function isMetricEntry(
+  entry: MetricsViewerFormulaEntity,
+): entry is MetricDefinitionEntry {
+  return entry.type === "metric";
+}
+
+export function isExpressionEntry(
+  entry: MetricsViewerFormulaEntity,
+): entry is ExpressionDefinitionEntry {
+  return entry.type === "expression";
+}
+
 // ── Tab state ──
 
 export interface MetricsViewerTabProjectionConfig {
@@ -57,21 +110,24 @@ export interface MetricsViewerTabState {
   type: MetricsViewerTabType;
   label: string | null;
   display: MetricsViewerDisplayType;
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>;
+  visualizationSettings?: Partial<VisualizationSettings>;
+  dimensionMapping: Record<number, DimensionId | null>;
   projectionConfig: MetricsViewerTabProjectionConfig;
 }
 
 // ── Page state ──
 
 export interface MetricsViewerPageState {
-  definitions: MetricsViewerDefinitionEntry[];
-  tabs: MetricsViewerTabState[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>; // pristine definitions for unique metrics used in formula
+  formulaEntities: MetricsViewerFormulaEntity[]; // specific items used in formula, definitions there contains filters
+  tabs: MetricsViewerTabState[]; // visualization settings for a tab
   selectedTabId: string | null;
 }
 
 export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
   return {
-    definitions: [],
+    definitions: {},
+    formulaEntities: [],
     tabs: [],
     selectedTabId: null,
   };
@@ -79,7 +135,23 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
 
 // ── Color mapping ──
 
-export type SourceColorMap = Partial<Record<MetricSourceId, string[]>>;
+/**
+ * A map of breakout display values to colors.
+ */
+export type BreakoutColorMap = Map<string, string>;
+
+/**
+ * Values are either BreakoutColorMap or a single color for non-breakout sources.
+ */
+export type SourceBreakoutColorMap = Record<
+  number,
+  BreakoutColorMap | string | undefined
+>;
+
+/**
+ * For consumers that expect an array of colors and don't care about breakout values.
+ */
+export type SourceColorMap = Record<number, string[]>;
 
 // ── Shared display types ──
 

@@ -548,6 +548,7 @@ describe("issue 25250", () => {
     H.getDraggableElements().contains("Product ID").as("dragElement");
     H.moveDnDKitElementByAlias("@dragElement", {
       vertical: -100,
+      useMouseEvents: true,
     });
     H.getDraggableElements().eq(0).should("contain", "Product ID");
   });

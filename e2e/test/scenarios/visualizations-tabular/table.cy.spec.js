@@ -1100,6 +1100,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       cy.findAllByTestId("formatting-rule-preview").eq(2).as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         vertical: -300,
+        useMouseEvents: true,
       });
 
       cy.findAllByTestId("formatting-rule-preview")

@@ -3,7 +3,7 @@ import { replace } from "react-router-redux";
 import type { LocationSensorState } from "react-use/lib/useLocation";
 import { match } from "ts-pattern";
 
-import type { DispatchFn } from "metabase/lib/redux";
+import type { DispatchFn } from "metabase/utils/redux";
 import type { Comment, CommentEntityType, EntityId } from "metabase-types/api";
 
 import type { CommentThread } from "./types";

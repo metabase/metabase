@@ -8,8 +8,8 @@ import { t } from "ttag";
 
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import resizeObserver from "metabase/lib/resize-observer";
 import { ActionIcon, Box, Icon, Modal, TextInput } from "metabase/ui";
+import resizeObserver from "metabase/utils/resize-observer";
 import type { RecentContexts } from "metabase-types/api";
 
 import { useLogRecentItem } from "../hooks";

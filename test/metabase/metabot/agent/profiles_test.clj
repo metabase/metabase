@@ -167,16 +167,41 @@
                           #'tools.transforms/write-transform-python-tool}]
     (testing "Available with features present"
       (with-redefs [premium-features/has-feature? (fn [feat]
-                                                    (if (#'profiles/relevant-features feat)
+                                                    (if (#{:transforms-basic :transforms-python} feat)
                                                       true
                                                       (orig-has-feature feat)))]
         (is (= transform-tools
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))
     (testing "Not available with missing features"
-      (with-redefs [premium-features/has-feature? (fn [feat]
-                                                    (if (#'profiles/relevant-features feat)
+      (with-redefs [premium-features/is-hosted? (constantly true)
+                    premium-features/has-feature? (fn [feat]
+                                                    (if (#{:transforms-basic :transforms-python} feat)
                                                       false
+                                                      (orig-has-feature feat)))]
+        (is (= #{}
+               (set (#'profiles/filter-by-capabilities transform-tools
+                                                       ["permission:write_transforms"]))))))
+    (testing "Sql tool available on self hosted instances"
+      (with-redefs [premium-features/is-hosted? (constantly false)
+                    premium-features/has-feature? (fn [feat]
+                                                    (if (#{:transforms-basic :transforms-python} feat)
+                                                      false
+                                                      (orig-has-feature feat)))]
+        (is (= #{#'tools.transforms/write-transform-sql-tool}
+               (set (#'profiles/filter-by-capabilities transform-tools
+                                                       ["permission:write_transforms"]))))))
+    (testing "Python transform tools not available when basic transforms are not available"
+      (with-redefs [premium-features/is-hosted? (constantly true)
+                    premium-features/has-feature? (fn [feat]
+                                                    (cond
+                                                      (#{:transforms-basic} feat)
+                                                      false
+
+                                                      (#{:transforms-python} feat)
+                                                      true
+
+                                                      :else
                                                       (orig-has-feature feat)))]
         (is (= #{}
                (set (#'profiles/filter-by-capabilities transform-tools

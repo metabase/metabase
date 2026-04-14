@@ -31,7 +31,7 @@ type MetabaseBrowserView =
   | { type: "collection"; id: SdkCollectionId }
   | { type: "dashboard"; id: number | string }
   | { type: "question" | "metric" | "model"; id: number | string }
-  | { type: "exploration" }
+  | { type: "new-question" }
   | { type: "create-dashboard" };
 
 const BREADCRUMB_HEIGHT = "3.5rem";
@@ -81,7 +81,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   const viewContent = hasNavigatedAway
     ? null
     : match(currentView)
-        .with({ type: "exploration" }, () => (
+        .with({ type: "new-question" }, () => (
           <Box px="xl" h="100%">
             <InteractiveQuestion
               questionId="new"
@@ -198,12 +198,12 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
         ))
         .otherwise(() => null);
 
-  const handleNewExploration = () => {
-    setCurrentView({ type: "exploration" });
+  const handleNewQuestion = () => {
+    setCurrentView({ type: "new-question" });
   };
 
-  // Only show "New exploration" button if user has write access and it's enabled
-  const showNewExplorationButton =
+  // Only show "New question" button if user has write access and it's enabled
+  const showNewQuestionButton =
     (settings.withNewQuestion ?? true) && canWriteToInitialCollection;
 
   // Only show "New dashboard" button if not read-only and user has write access
@@ -244,9 +244,9 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
           {currentView.type === "collection" && (
             <Group gap="sm">
-              {showNewExplorationButton && (
-                <Button justify="center" onClick={handleNewExploration}>
-                  {t`New exploration`}
+              {showNewQuestionButton && (
+                <Button justify="center" onClick={handleNewQuestion}>
+                  {t`New question`}
                 </Button>
               )}
 

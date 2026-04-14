@@ -78,12 +78,12 @@
 
   The frontend sends `type: \"adhoc\"` for *both* notebook (MBQL) and native SQL
   queries. We distinguish them by inspecting the query: a dataset-query with
-  `{:type \"native\"}` (or `:native`) is a native SQL query, as is an MLv2/MBQL 5
+  `{:type \"native\"}` (or `:native`) is a native SQL query, as is an MBQL 4 (legacy) or MBQL 5
   query with a single native stage."
   [item]
   (let [query (:query item)]
     (or (= "native" (normalize-context-type (:type query)))
-        ;; MLv2/MBQL 5: normalize and use lib to detect native queries
+        ;; MBQL 4/MBQL 5: normalize and use lib to detect native queries
         (when (and (map? query) (:database query))
           (try
             (lib/native-only-query? (lib-be/normalize-query query))

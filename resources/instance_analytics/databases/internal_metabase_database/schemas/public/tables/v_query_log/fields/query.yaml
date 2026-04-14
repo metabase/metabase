@@ -12,6 +12,7 @@ preview_display: false
 position: 22
 custom_position: 0
 database_position: 22
+has_field_values: auto-list
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}
 - {id: public, model: Schema}

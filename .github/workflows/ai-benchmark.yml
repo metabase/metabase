@@ -1,0 +1,21 @@
+name: AI Benchmark
+
+# Runs the ai-benchmark E2E test suite against a Metabase instance.
+#
+# NOTE: This is a stub. The real workflow — which builds the benchmark Docker
+# image, boots Metabase + Postgres with a preloaded data dump, runs the
+# benchmark suite, and uploads results as artifacts — is being developed on a
+# feature branch. This stub exists on master so that the "Run workflow" button
+# is available in the GitHub Actions UI, which lets us dispatch the real
+# workflow against feature branches during development.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  placeholder:
+    name: Placeholder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stub
+        run: echo "ai-benchmark workflow stub — real implementation pending"

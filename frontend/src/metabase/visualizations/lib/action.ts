@@ -2,9 +2,9 @@ import type { LocationDescriptorObject } from "history";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { open } from "metabase/lib/dom";
+import type { Dispatch } from "metabase/redux/store";
+import { open } from "metabase/utils/dom";
 import type Question from "metabase-lib/v1/Question";
-import type { Dispatch } from "metabase-types/store";
 
 import type {
   ClickAction,

@@ -139,7 +139,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   });
 
   it("should allow external URL click behaviors in the SDK (EMB-878)", () => {
-    // External click behaviour use the open() function in metabase/lib/dom creates temporary anchors and calls .click()
+    // External click behaviour use the open() function in metabase/utils/dom creates temporary anchors and calls .click()
     // To check that we call it, we stub the anchor element click
     stubAnchorClick();
 

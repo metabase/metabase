@@ -51,7 +51,7 @@ export const isSavedQuestionChanged = (
 };
 
 export function cleanQuestion(question: Question): Question {
-  // Converting a query to MLv2 and back performs a clean-up
+  // Converting a query to Lib/MBQL 5 and back performs a clean-up
   const cleanQuestion = question.setQuery(
     Lib.dropEmptyStages(question.query()),
   );

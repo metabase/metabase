@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { Radio } from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
-import { formatNumber } from "metabase/lib/formatting";
 import { LimitInput } from "metabase/querying/components/LimitInput";
+import { formatNumber } from "metabase/utils/formatting";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 interface CustomRowLimitProps {

@@ -9,8 +9,6 @@ import {
   updateCardEnableEmbedding,
 } from "metabase/api";
 import { TimelineEvents } from "metabase/entities/timeline-events";
-import type { Deferred } from "metabase/lib/promise";
-import { copy } from "metabase/lib/utils";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
   API_UPDATE_QUESTION,
@@ -51,6 +49,17 @@ import {
   ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
 import type {
+  ForeignKeyReference,
+  InitialChartSettingState,
+  QueryBuilderLoadingControls,
+  QueryBuilderParentEntityState,
+  QueryBuilderQueryStatus,
+  QueryBuilderUIControls,
+  Range,
+} from "metabase/redux/store";
+import { clone } from "metabase/utils/clone";
+import type { Deferred } from "metabase/utils/promise";
+import type {
   Card,
   CollectionItemModel,
   Dataset,
@@ -59,15 +68,6 @@ import type {
   ParameterValuesMap,
   TimelineEvent,
 } from "metabase-types/api";
-import type {
-  ForeignKeyReference,
-  InitialChartSettingState,
-  QueryBuilderLoadingControls,
-  QueryBuilderParentEntityState,
-  QueryBuilderQueryStatus,
-  QueryBuilderUIControls,
-  Range,
-} from "metabase-types/store";
 
 import {
   API_CREATE_QUESTION,
@@ -409,24 +409,24 @@ export const originalCard = createReducer<Card | null>(null, (builder) => {
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       INITIALIZE_QB,
       (_state, action) =>
-        action.payload.originalCard ? copy(action.payload.originalCard) : null,
+        action.payload.originalCard ? clone(action.payload.originalCard) : null,
     )
     .addCase<string, { type: string; payload: Card }>(
       RELOAD_CARD,
-      (_state, action) => (action.payload.id ? copy(action.payload) : null),
+      (_state, action) => (action.payload.id ? clone(action.payload) : null),
     )
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       SET_CARD_AND_RUN,
       (_state, action) =>
-        action.payload.originalCard ? copy(action.payload.originalCard) : null,
+        action.payload.originalCard ? clone(action.payload.originalCard) : null,
     )
     .addCase<string, { type: string; payload: Card }>(
       API_CREATE_QUESTION,
-      (_state, action) => copy(action.payload),
+      (_state, action) => clone(action.payload),
     )
     .addCase<string, { type: string; payload: Card }>(
       API_UPDATE_QUESTION,
-      (_state, action) => copy(action.payload),
+      (_state, action) => clone(action.payload),
     );
 });
 

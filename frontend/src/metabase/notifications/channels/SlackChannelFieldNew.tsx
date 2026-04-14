@@ -2,9 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { ChannelSpec, NotificationHandlerSlack } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";

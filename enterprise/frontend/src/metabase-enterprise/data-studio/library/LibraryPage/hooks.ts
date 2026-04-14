@@ -9,9 +9,9 @@ import type {
   TreeItem,
 } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
-import { getIcon } from "metabase/lib/icon";
-import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getIcon } from "metabase/utils/icon";
+import { useSelector } from "metabase/utils/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Collection, CollectionId } from "metabase-types/api";
 

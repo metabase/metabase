@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 export const PermissionsEditorSplitPermsMessage = () => {
   const dispatch = useDispatch();

@@ -223,7 +223,7 @@ function ExcludeValuePicker({
       <Stack p="md">
         <Checkbox
           checked={isAll}
-          label={<Text c="text-secondary">{t`Select all`}</Text>}
+          label={<Text c="text-secondary" lh="inherit">{t`Select all`}</Text>}
           onChange={(event) => handleToggleAll(event.target.checked)}
         />
         <Divider />
