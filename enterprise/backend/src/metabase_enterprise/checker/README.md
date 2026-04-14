@@ -202,9 +202,33 @@ and e2e tests against the baseline export at `test_resources/serialization_basel
    everything.
 3. **Provider** adapts the store into a `MetadataProvider` that `lib/query`
    understands. Converts raw YAML to lib metadata format, resolves portable refs
-   to integer IDs, normalizes MBQL.
+   to integer IDs, normalizes MBQL. Owns a mutable `current-db` atom set per
+   entity check.
 4. **Validation** runs query checks via `deps.analysis/check-entity` and
    structural checks on entity relationships.
+
+### On-demand indexing
+
+The schema directory can contain 500k+ field files. To avoid parsing them all
+at startup:
+
+- **Databases** (~40): indexed at startup by reading only the `name:` field
+  from each database YAML via fast regex (no full parse).
+- **Tables** (~22k): enumerated on demand by listing directories. Assigned
+  lightweight IDs from directory paths via `ensure-table-id!` (no YAML parse).
+  Full YAML is parsed only when table data is actually needed.
+- **Fields** (~500k): resolved on demand from `<table>/fields/` directories.
+  Never pre-indexed.
+- **Segments/measures**: indexed from the export dir only (walks table
+  directories for `segments/` and `measures/` subdirs). Not indexed in the
+  schema dir.
+
+Directory names are slugified (e.g. `analytics_data_warehouse` for
+"Analytics Data Warehouse"). A `db-name->dir` mapping built from database
+YAMLs handles the translation. Schema and table directory names match their
+real names.
+
+This brings setup time from ~64s to ~100ms.
 
 ### Running without an app DB
 
@@ -236,6 +260,25 @@ missing columns with source attribution back to the originating card or snippet.
 - **`checker.provider`** — adapts store to lib `MetadataProvider`, data conversion, MBQL normalization, reference resolution
 - **`checker.semantic`** — entity validation, result formatting, top-level API (`check`, `setup`, `check-one`)
 - **`checker.cli`** — CLI entrypoint and argument parsing
+
+## Performance
+
+- **Setup**: ~100ms (reads ~40 database YAMLs)
+- **Per entity**: ~1s average, cached after first access per database
+- **First entity per database**: ~5-8s (table directory listing + ID assignment)
+- **Complex native SQL**: 5-20s per entity (SQLGlot parsing bottleneck)
+- **Full run** (177 entities, 40 databases, 22k tables): ~90s
+
+### Parallelism
+
+The architecture is ready for multi-threaded entity checking:
+- The store (atom) is thread-safe
+- Sources are stateless/immutable
+- Each thread needs its own `provider` (owns mutable `current-db`)
+- Dynamic bindings (`mu.fn/*enforce*`, `qp.i/*skip-middleware*`) are per-thread
+
+To parallelize: create a provider per thread, replace the `for` in
+`check-entities` with `pmap` or a thread pool.
 
 ## Roadmap
 
@@ -291,6 +334,14 @@ both query issues found through different code paths. Consider merging them
 into a single `:query-issues` key. The other result keys (`:error` for fatal
 failures, `:unresolved` for missing schema refs) are genuinely different
 categories and should stay separate.
+
+### Table-type template tag validation
+
+Native queries with `{{table_one}}`-style template tags (type: table) currently
+get placeholder substitution — column validation is skipped because the actual
+table is unknown. The template tag contains a `table-id` that could be resolved
+via the provider to substitute the real table name, enabling full column
+validation against the schema.
 
 ### Schema mismatch false positives
 
