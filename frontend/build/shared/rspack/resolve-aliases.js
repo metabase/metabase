@@ -28,7 +28,7 @@ const E2E_PATH = ROOT_PATH + "/e2e";
 
 const isDevMode = IS_DEV_MODE;
 
-const resolveEnterprisePathOrNoop = (subpath) =>
+const resolveEnterprisePathOrNoop = (/** @type {string} */ subpath) =>
   process.env.MB_EDITION === "ee"
     ? ENTERPRISE_SRC_PATH + subpath
     : SRC_PATH + "/utils/noop";
