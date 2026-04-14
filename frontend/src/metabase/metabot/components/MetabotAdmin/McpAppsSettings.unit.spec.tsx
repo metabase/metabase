@@ -16,11 +16,14 @@ import { McpAppsSettings } from "./McpAppsSettings";
 const setup = async ({
   commonOrigins = [],
   customOrigins = "",
+  enabled = true,
 }: {
   commonOrigins?: string[];
   customOrigins?: string;
+  enabled?: boolean;
 } = {}) => {
   const settings = createMockSettings({
+    "mcp-enabled?": enabled,
     "mcp-apps-cors-enabled-clients": commonOrigins,
     "mcp-apps-cors-custom-origins": customOrigins,
   });
@@ -35,10 +38,30 @@ const setup = async ({
     }),
   });
 
-  await screen.findByText("Supported MCP clients");
+  await screen.findByText("MCP server");
 };
 
 describe("McpAppsSettings", () => {
+  it("shows a docs link for the MCP server", async () => {
+    await setup();
+
+    expect(screen.getByRole("link", { name: "Learn more" })).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/ai/mcp.html",
+    );
+  });
+
+  it("can toggle the MCP server", async () => {
+    await setup();
+
+    await userEvent.click(screen.getByRole("switch", { name: "MCP server" }));
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].url).toContain("/setting/mcp-enabled%3F");
+    expect(puts[0].body).toEqual({ value: false });
+  });
+
   it("should show all MCP client toggles", async () => {
     await setup();
 
@@ -77,5 +100,14 @@ describe("McpAppsSettings", () => {
     const [{ url, body }] = puts;
     expect(url).toContain("/setting/mcp-apps-cors-custom-origins");
     expect(body).toEqual({ value: "https://my-app.example.com" });
+  });
+
+  it("hides MCP client configuration when the MCP server is off", async () => {
+    await setup({ enabled: false });
+
+    expect(screen.queryByLabelText("Claude")).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("https://*.example.com"),
+    ).not.toBeInTheDocument();
   });
 });

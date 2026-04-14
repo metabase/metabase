@@ -6,6 +6,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
@@ -69,6 +70,19 @@
                     :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
+
+(deftest agent-api-enabled-setting-test
+  (testing "External Agent API routes return 403 when disabled"
+    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
+      (is (= "Agent API is not enabled."
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
+(deftest ai-features-enabled-setting-test
+  (testing "External Agent API routes return 403 when AI features are globally disabled"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
+                                           :agent-api-enabled?   "true"]
+      (is (= "AI features are not enabled."
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
 
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 

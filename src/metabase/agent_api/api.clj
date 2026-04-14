@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -854,6 +855,10 @@
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
+
+(def +agent-api-enabled
+  "Wrap routes so they may only be accessed when the Agent API is enabled."
+  agent-api.validation/+agent-api-enabled)
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
