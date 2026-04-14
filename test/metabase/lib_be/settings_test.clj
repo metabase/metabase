@@ -1,7 +1,7 @@
 (ns metabase.lib-be.settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.settings :as lib-be.settings :refer [chart-max-series]]
+   [metabase.lib-be.settings :as lib-be.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -28,7 +28,7 @@
                  (lib-be.settings/start-of-week))))))))
 
 (deftest chart-max-series-test
-  (mt/discard-setting-changes [chart-max-series]
+  (mt/discard-setting-changes [:chart-max-series]
     (testing "default value"
       (is (= 100 (lib-be.settings/chart-max-series))))
     (testing "env var override"

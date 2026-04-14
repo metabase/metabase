@@ -23,7 +23,7 @@ import type {
 
 import type { Extent } from "../types";
 
-/** Hard cap aligned with [[metabase.lib-be.settings/chart-max-series-upper-bound]] on the backend. */
+/** Hard cap aligned with backend `chart-max-series-upper-bound` (10k). */
 const CHART_MAX_SERIES_UPPER_BOUND = 10000;
 
 /**
