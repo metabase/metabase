@@ -1,5 +1,4 @@
-import type { ColumnTypes } from "custom-viz/src/types/column-types";
-import type { CreateCustomVisualization } from "custom-viz/src/types/viz";
+import type { ColumnTypes, CreateCustomVisualization } from "custom-viz";
 import React from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 
