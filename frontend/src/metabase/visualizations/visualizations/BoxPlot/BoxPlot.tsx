@@ -2,7 +2,7 @@ import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -13,7 +13,7 @@ import {
   getBoxPlotOption,
   getBoxPlotTooltipOption,
 } from "metabase/visualizations/echarts/boxplot";
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
+import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useClickedStateTooltipSync,
@@ -120,9 +120,9 @@ function BoxPlotInner({
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
-  const chartMeasurements = useMemo(
+  const cartesianLayout = useMemo(
     () =>
-      getChartMeasurements(
+      getChartLayout(
         { ...chartModel, dataset: chartModel.boxDataset },
         settings,
         false,
@@ -137,18 +137,12 @@ function BoxPlotInner({
     () =>
       getBoxPlotLayoutModel({
         chartModel,
-        chartMeasurements,
+        cartesianLayout,
         settings,
         chartWidth: chartSize.width,
         renderingContext,
       }),
-    [
-      chartModel,
-      chartMeasurements,
-      settings,
-      chartSize.width,
-      renderingContext,
-    ],
+    [chartModel, cartesianLayout, settings, chartSize.width, renderingContext],
   );
 
   const option = useMemo(() => {

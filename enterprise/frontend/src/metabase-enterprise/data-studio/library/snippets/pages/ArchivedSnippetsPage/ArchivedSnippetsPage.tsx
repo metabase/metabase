@@ -9,7 +9,6 @@ import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Card,
@@ -21,6 +20,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { CollectionItem } from "metabase-types/api";
 
 import { useColumnDef } from "./hooks/useColumnDef";

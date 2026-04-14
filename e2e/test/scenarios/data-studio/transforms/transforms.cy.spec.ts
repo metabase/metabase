@@ -668,6 +668,7 @@ LIMIT
     });
 
     it("should show the metabot button", () => {
+      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
       visitTransformListPage();
       cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
@@ -1383,11 +1384,13 @@ LIMIT
       getTransformsTargetContent()
         .findByText("Edit this table's metadata")
         .click();
+      H.DataModel.TableSection.clickFieldsTab();
       H.DataModel.TableSection.clickField("Name");
       H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
       cy.wait("@updateField");
 
       cy.log("verify query metadata");
+      cy.go("back");
       cy.go("back");
       cy.go("back");
       getTableLink().click();
@@ -1537,7 +1540,7 @@ LIMIT
           def transform(foo):
             return pd.DataFrame([{"foo": 42 }])
         `,
-            sourceTables: { foo: id },
+            sourceTables: pythonSourceTables("foo", id),
             visitTransform: true,
           });
         },
@@ -1575,7 +1578,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: pythonSourceTables("foo", id),
               visitTransform: true,
             });
           },
@@ -1615,7 +1618,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: pythonSourceTables("foo", id),
               visitTransform: true,
             });
           },
@@ -1651,7 +1654,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: pythonSourceTables("foo", id),
               visitTransform: true,
             });
           },
@@ -1921,6 +1924,7 @@ LIMIT
         visitTransform: true,
       });
 
+      H.waitForBackfillComplete();
       H.DataStudio.Transforms.dependenciesTab().click();
       H.DataStudio.Dependencies.content()
         .should("contain", "Transform B")
@@ -2589,10 +2593,9 @@ LIMIT
       cy.intercept("GET", "/api/transform/*").as("transformReload");
       cy.findByTestId("transform-history-list")
         .findByText(/created this/)
-        .parent()
-        .within(() => {
-          cy.findByTestId("question-revert-button").click();
-        });
+        .closest('[data-testid="revision-history-event"]')
+        .findByTestId("question-revert-button")
+        .click();
       cy.wait(["@revert", "@transformReload"]);
 
       cy.log("Verify transform was reverted");
@@ -2624,8 +2627,15 @@ LIMIT
       cy.log("visit transforms page");
       visitTransformListPage();
 
-      cy.log("'Create a transform' menu button is not displayed");
-      cy.button("Create a transform").should("not.exist");
+      cy.log("'Create a transform' button is disabled with tooltip");
+      cy.button("Create a transform").should("be.visible").and("be.disabled");
+      cy.button("Create a transform").realHover();
+      H.tooltip()
+        .should("be.visible")
+        .and(
+          "have.text",
+          "Transforms can't be created when Remote Sync is in read-only mode",
+        );
 
       cy.log("clicking Python library navigates to the library editor");
       getTransformsList().findByText("Python library").click();
@@ -2686,6 +2696,35 @@ LIMIT
         cy.findByRole("menuitem", { name: /Delete/ }).should("not.exist");
       });
     });
+
+    it("should show not found message on new transform pages", () => {
+      cy.log("visit new native transform page");
+      cy.visit("/data-studio/transforms/new/native");
+
+      cy.log("should show not found message");
+      cy.findByTestId("transform-query-editor").should("be.visible");
+      cy.findByTestId("transform-query-editor")
+        .findByText("We're a little lost...")
+        .should("be.visible");
+
+      cy.log("visit new python transform page");
+      cy.visit("/data-studio/transforms/new/python");
+
+      cy.log("should show not found message");
+      cy.findByTestId("transform-query-editor").should("be.visible");
+      cy.findByTestId("transform-query-editor")
+        .findByText("We're a little lost...")
+        .should("be.visible");
+
+      cy.log("visit new query transform page");
+      cy.visit("/data-studio/transforms/new/query");
+
+      cy.log("should show not found message");
+      cy.findByTestId("transform-query-editor").should("be.visible");
+      cy.findByTestId("transform-query-editor")
+        .findByText("We're a little lost...")
+        .should("be.visible");
+    });
   });
 });
 
@@ -2740,6 +2779,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
@@ -2756,6 +2796,14 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       H.DataStudio.Jobs.editor().button("Save").click();
       cy.wait("@createJob");
+
+      cy.log("verify transform_job_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_job_created",
+        triggered_from: "transform_job_new",
+        result: "success",
+      });
+
       H.undoToast().findByText("New job created").should("be.visible");
 
       H.DataStudio.Jobs.editor().within(() => {
@@ -2781,6 +2829,14 @@ describe("scenarios > admin > transforms > jobs", () => {
       H.popover().findByText("daily").click();
       H.DataStudio.Jobs.editor().button("Save").click();
       cy.wait("@createJob");
+
+      cy.log("verify transform_job_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_job_created",
+        triggered_from: "transform_job_new",
+        result: "success",
+      });
+
       H.undoToast().findByText("New job created").should("be.visible");
 
       H.DataStudio.Jobs.editor().within(() => {
@@ -3513,7 +3569,7 @@ describe(
             print("Hello, world!")
             return pd.DataFrame([{"foo": common.useful_calculation(40, 2) }])
         `,
-            sourceTables: { foo: id },
+            sourceTables: pythonSourceTables("foo", id),
             visitTransform: true,
           });
         },
@@ -3555,7 +3611,7 @@ describe(
               def transform(foo):
                 return pd.DataFrame([{"foo": 42}])
             `,
-            sourceTables: { foo: id },
+            sourceTables: pythonSourceTables("foo", id),
             visitTransform: true,
           });
         },
@@ -3829,6 +3885,20 @@ function createPythonTransform(opts: {
     targetSchema: TARGET_SCHEMA,
     ...opts,
   });
+}
+
+function pythonSourceTables(
+  alias: string,
+  tableId: number,
+): PythonTransformTableAliases {
+  return [
+    {
+      alias,
+      table_id: tableId,
+      database_id: WRITABLE_DB_ID,
+      schema: TARGET_SCHEMA,
+    },
+  ];
 }
 
 function visitTableQuestion({

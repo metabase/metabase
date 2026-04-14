@@ -12,7 +12,7 @@ import type {
   QuestionDetails,
 } from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
-import { METAKEY } from "metabase/lib/browser";
+import { METAKEY } from "metabase/utils/browser";
 
 const {
   ORDERS,

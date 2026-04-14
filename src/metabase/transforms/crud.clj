@@ -8,26 +8,16 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform :as transform.model]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;; TODO(FE-source-tables): Remove this function and all call sites when FE adopts the array format for source-tables.
-(defn source-tables-vec->map-for-fe
-  "Convert source-tables from internal vec format to legacy map format for FE compatibility.
-  Remove this when FE adopts the array format."
-  [transform]
-  (if (transforms-base.u/python-transform? transform)
-    (update-in transform [:source :source-tables]
-               transforms-base.u/source-tables-vec->alias-id-map)
-    transform))
 
 (defn check-database-feature
   "Check that the target database supports the required features for this transform."
@@ -76,10 +66,12 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids]}]
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
+    (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
+                                                                  (when database-id
+                                                                    [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
            (into []
@@ -87,8 +79,7 @@
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                       (map transforms.u/add-source-readable)
-                       (map source-tables-vec->map-for-fe))))))) ;; TODO(FE-source-tables): remove
+                       (map transforms.u/add-source-readable)))))))
 
 (defn get-transform
   "Get a specific transform."
@@ -99,8 +90,7 @@
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms-base.u/localize-run-timestamps)
         (assoc :table target-table)
-        transforms.u/add-source-readable
-        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
+        transforms.u/add-source-readable)))
 
 (defn create-transform!
   "Create new transform in the appdb.
@@ -161,8 +151,7 @@
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
-        transforms.u/add-source-readable
-        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
+        transforms.u/add-source-readable)))
 
 (defn delete-transform!
   "Delete a transform and publish the delete event."

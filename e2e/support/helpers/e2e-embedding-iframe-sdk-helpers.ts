@@ -26,6 +26,7 @@ export interface BaseEmbedTestPageOptions {
   // Passed to defineMetabaseConfig
   metabaseConfig?: {
     isGuest?: boolean;
+    guestEmbedProviderUri?: string;
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
@@ -318,6 +319,7 @@ export const getNewEmbedScriptTag = ({
 export const getNewEmbedConfigurationScript = ({
   instanceUrl = "http://localhost:4000",
   isGuest,
+  guestEmbedProviderUri,
   theme,
   apiKey,
   useExistingUserSession,
@@ -327,6 +329,7 @@ export const getNewEmbedConfigurationScript = ({
   const config = {
     instanceUrl,
     isGuest,
+    guestEmbedProviderUri,
     apiKey,
     useExistingUserSession,
     theme,

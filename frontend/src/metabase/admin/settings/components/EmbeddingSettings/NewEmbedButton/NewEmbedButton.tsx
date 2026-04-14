@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 export const NewEmbedButton = () => {
   const dispatch = useDispatch();

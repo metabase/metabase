@@ -3,15 +3,19 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Questions } from "metabase/entities/questions";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import { addUndo } from "metabase/redux/undo";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
   getPositionForNewDashCard,
-} from "metabase/lib/dashboard_grid";
-import { createThunkAction } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { loadMetadataForCard } from "metabase/questions/actions";
-import { addUndo } from "metabase/redux/undo";
+} from "metabase/utils/dashboard_grid";
+import { createThunkAction } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { getDefaultSize } from "metabase/visualizations";
 import {
   getCardIdsFromColumnValueMappings,
@@ -51,8 +55,6 @@ import {
   createVirtualCard,
   generateTemporaryDashcardId,
   hasInlineParameters,
-  isQuestionDashCard,
-  isVirtualDashCard,
 } from "../utils";
 
 import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field as ApiField, DatasetColumn } from "metabase-types/api";
 
 import {
   QueryColumnFingerprintInfo,
@@ -15,14 +15,14 @@ import { InfoContainer, Small } from "./ColumnInfo.styled";
 
 export type TableColumnInfoProps = {
   className?: string;
-  field: Field | DatasetColumn;
+  field: Field | DatasetColumn | ApiField;
   timezone?: string;
   showAllFieldValues?: boolean;
   showFingerprintInfo?: boolean;
 };
 
 /**
- * @deprecated prefer to use the MLv2 query props
+ * @deprecated prefer to use the Lib/MBQL 5 query props
  */
 export function TableColumnInfo({
   className,

@@ -131,7 +131,6 @@ const getDefaultReducers = () => ({
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
-  metabotPlugin: () => null,
   documents: () => null,
   remoteSyncPlugin: () => null,
 });
@@ -140,7 +139,6 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
-  metabotPlugin: any;
   documents: any;
   remoteSyncPlugin: any;
 } = getDefaultReducers();

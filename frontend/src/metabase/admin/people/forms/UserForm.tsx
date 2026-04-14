@@ -10,12 +10,12 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { Button } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import type { User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({

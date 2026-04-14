@@ -21,8 +21,10 @@ import {
   SuggestionPaper,
 } from "metabase/documents/components/Editor/shared/SuggestionPaper";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import { useSelector } from "metabase/lib/redux";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import {
+  useMetabotName,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -34,6 +36,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
@@ -102,7 +105,8 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const document = useSelector(getCurrentDocument);
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
+  const metabotName = useMetabotName();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
@@ -113,8 +117,8 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(isMetabotEnabled),
-    [isMetabotEnabled],
+    () => getAllCommandSections(isMetabotEnabled, metabotName),
+    [isMetabotEnabled, metabotName],
   );
 
   const allCommandOptions = useMemo(

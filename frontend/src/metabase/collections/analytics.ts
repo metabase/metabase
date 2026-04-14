@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import type { CollectionItem } from "metabase-types/api/collection";
 
 export const trackDataReferenceClicked = () => {

@@ -1,6 +1,6 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
@@ -13,9 +13,12 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.util :as lib.util]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]
    [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
@@ -237,6 +240,24 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn validate-impersonated-query*
+  "Validates a native query by parsing it and ensuring that it is a single select statement."
+  [driver query]
+  (update query :stages
+          (fn [stages]
+            (mapv (fn [stage]
+                    (if (lib.util/native-stage? stage)
+                      (let [{:keys [is-single-select? sql error]}
+                            (sql-tools/is-single-select-stmt? driver (:native stage))]
+                        (when error
+                          (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage)))
+                        (if is-single-select?
+                          (assoc stage :native sql)
+                          (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
+                                          {:sql (:native stage)}))))
+                      stage))
+                  stages))))
 
 (p/import-vars
  [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]

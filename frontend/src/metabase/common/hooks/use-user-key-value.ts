@@ -6,8 +6,8 @@ import {
   useGetUserKeyValueQuery,
   useUpdateKeyValueMutation,
 } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 import type { UserKeyValue } from "metabase-types/api";
 
 export interface UseUserKeyValueParams<T extends UserKeyValue> {

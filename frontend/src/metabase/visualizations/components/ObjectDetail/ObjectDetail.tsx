@@ -1,9 +1,9 @@
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
 import {
   closeObjectDetail,
   followForeignKey,
   loadObjectDetailFKReferences,
+  runQuestionQuery,
   viewNextObjectDetail,
   viewPreviousObjectDetail,
 } from "metabase/query_builder/actions";
@@ -18,6 +18,7 @@ import {
   getZoomedObjectId,
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type { State } from "metabase-types/store";
 
@@ -48,8 +49,8 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     question: getQuestion(state),
     table,
     tableForeignKeys: getTableForeignKeys(state),
-    tableForeignKeyReferences: getTableForeignKeyReferences(state),
-    zoomedRowID,
+    tableForeignKeyReferences: getTableForeignKeyReferences(state) ?? undefined,
+    zoomedRowID: zoomedRowID ?? undefined,
     zoomedRow,
     canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,
@@ -74,6 +75,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
+  onActionSuccess: () => dispatch(runQuestionQuery()),
 });
 type MapDispatchProps = ReturnType<typeof mapDispatchToProps>;
 

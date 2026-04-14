@@ -3,8 +3,8 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
-import type { DispatchFn } from "metabase/lib/redux";
-import { useDispatch } from "metabase/lib/redux";
+import type { DispatchFn } from "metabase/utils/redux";
+import { useDispatch } from "metabase/utils/redux";
 import type { SchemaName } from "metabase-types/api";
 
 import type { DataPickerValue } from "../DataPicker";
@@ -22,8 +22,18 @@ export const getOurAnalytics = (): MiniPickerFolderItem => ({
   model: "collection",
   id: "root" as any, // cmon typescript
   name: t`Our analytics`,
-  here: ["card"],
-  below: ["card"],
+  here: ["collection"],
+  below: [
+    "collection",
+    "dashboard",
+    "document",
+    "card",
+    "dataset",
+    "metric",
+    "table",
+    "snippet",
+    "transform",
+  ],
 });
 
 export function useGetPathFromValue({

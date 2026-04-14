@@ -979,9 +979,10 @@
 (deftest jwt-token-not-configured-test
   (testing "should not return a session token when jwt is not configured"
     (mt/with-temporary-setting-values
-      [jwt-enabled true
+      [jwt-enabled              true
        jwt-identity-provider-uri nil
-       jwt-shared-secret nil]
+       jwt-shared-secret        nil
+       slack-connect-enabled    false]
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)

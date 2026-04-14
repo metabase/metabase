@@ -2,17 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getEditingParameterInlineDashcard,
   getEmbeddedParameterVisibility,
 } from "metabase/dashboard/selectors";
-import { slugify } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import type { IconName } from "metabase/ui";
 import { Tabs } from "metabase/ui";
+import { slugify } from "metabase/utils/formatting";
+import { useSelector } from "metabase/utils/redux";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {

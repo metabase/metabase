@@ -31,7 +31,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { TimelineEventId } from "metabase-types/api";
 
-import type { ChartMeasurements } from "../../chart-measurements/types";
+import type { ChartLayout } from "../../layout/types";
 import { isCategoryAxis } from "../../model/guards";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
@@ -40,7 +40,7 @@ import type { TimelineEventsModel } from "../../timeline-events/types";
 
 const getLabelLayoutFn = (
   dataset: ChartDataset,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
 ): LabelLayoutOptionCallback => {
   return (params) => {
@@ -59,7 +59,7 @@ const getLabelLayoutFn = (
 
     const hasBottomSpace =
       rect.y + CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset <
-      chartMeasurements.bounds.bottom;
+      chartLayout.bounds.bottom;
 
     const barHeight = rect.height;
     const endSign = getNumberOr(end, 0) < 0 ? 1 : -1;
@@ -97,7 +97,7 @@ const computeWaterfallBarWidth = (
 export const buildEChartsWaterfallSeries = (
   chartModel: WaterfallChartModel,
   settings: ComputedVisualizationSettings,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
@@ -106,7 +106,7 @@ export const buildEChartsWaterfallSeries = (
   const [seriesModel] = seriesModels;
   const barWidth = computeWaterfallBarWidth(
     chartModel,
-    chartMeasurements.boundaryWidth,
+    chartLayout.boundaryWidth,
   );
 
   const buildLabelOption = () => ({
@@ -176,7 +176,7 @@ export const buildEChartsWaterfallSeries = (
       silent: true,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
       symbolSize: 0,
-      labelLayout: getLabelLayoutFn(dataset, chartMeasurements, settings),
+      labelLayout: getLabelLayoutFn(dataset, chartLayout, settings),
       encode: {
         y: WATERFALL_END_KEY,
         x: X_AXIS_DATA_KEY,
@@ -210,7 +210,7 @@ export const buildEChartsWaterfallSeries = (
 export const getWaterfallChartOption = (
   chartModel: WaterfallChartModel,
   chartWidth: number,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
@@ -229,7 +229,7 @@ export const getWaterfallChartOption = (
   const dataSeriesOptions = buildEChartsWaterfallSeries(
     chartModel,
     settings,
-    chartMeasurements,
+    chartLayout,
     chartWidth,
     chartModel.waterfallLabelFormatter,
     renderingContext,
@@ -243,17 +243,16 @@ export const getWaterfallChartOption = (
   const echartsDataset = [{ source: chartModel.transformedDataset }];
 
   return {
-    ...getSharedEChartsOptions(isAnimated),
+    ...getSharedEChartsOptions(isAnimated, renderingContext),
     grid: {
-      ...chartMeasurements.padding,
+      ...chartLayout.padding,
       outerBoundsMode: "none",
     },
     dataset: echartsDataset,
     series: seriesOption,
     ...buildAxes(
       chartModel,
-      chartWidth,
-      chartMeasurements,
+      chartLayout,
       settings,
       hasTimelineEvents,
       renderingContext,

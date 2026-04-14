@@ -3,16 +3,10 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Pulses } from "metabase/entities/pulses";
-import {
-  NEW_PULSE_TEMPLATE,
-  cleanPulse,
-  createChannel,
-} from "metabase/lib/pulse";
-import { connect } from "metabase/lib/redux";
 import {
   AddEditEmailSidebar,
   AddEditSlackSidebar,
@@ -32,6 +26,12 @@ import {
 } from "metabase/notifications/pulse/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
+import {
+  NEW_PULSE_TEMPLATE,
+  cleanPulse,
+  createChannel,
+} from "metabase/utils/pulse";
+import { connect } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -48,11 +48,6 @@ import type {
 import type { DraftDashboardSubscription, State } from "metabase-types/store";
 
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
-
-export const CHANNEL_ICONS: Record<string, string> = {
-  email: "mail",
-  slack: "slack",
-};
 
 const EDITING_MODES = {
   ADD_EMAIL: "add-edit-email",

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
-   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as ee-sso-settings]
+   [metabase.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]))
 
 (defn- select-sso-backend
@@ -10,10 +11,9 @@
       preferred-method (case preferred-method
                          "jwt"  :jwt
                          "saml" :saml
-                         "slack-connect"  :slack-connect
                          (throw (ex-info "Invalid auth method"
                                          {:preferred-method preferred-method
-                                          :available        [:jwt :saml :slack-connect]})))
+                                          :available        [:jwt :saml]})))
       (contains? (:params req) :jwt) :jwt
       :else :saml)))
 
@@ -23,16 +23,16 @@
   preferred_method parameter if provided."
   [req]
   (let [enabled-count (count (filter identity
-                                     [(sso-settings/saml-enabled)
-                                      (sso-settings/jwt-enabled)
+                                     [(ee-sso-settings/saml-enabled)
+                                      (ee-sso-settings/jwt-enabled-and-configured)
                                       (sso-settings/slack-connect-enabled)]))]
     (cond
       ;; Multiple SSO methods enabled - use preferred_method or selection logic
       (> enabled-count 1) (select-sso-backend req)
 
       ;; Single SSO method enabled
-      (sso-settings/saml-enabled) :saml
-      (sso-settings/jwt-enabled)  :jwt
+      (ee-sso-settings/saml-enabled) :saml
+      (ee-sso-settings/jwt-enabled-and-configured)  :jwt
       (sso-settings/slack-connect-enabled)  :slack-connect
 
       ;; No SSO method enabled

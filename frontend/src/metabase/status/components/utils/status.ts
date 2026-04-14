@@ -1,5 +1,5 @@
-import { isReducedMotionPreferred } from "metabase/lib/dom";
 import type { IconName } from "metabase/ui";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import type { LongTaskStatus } from "metabase-types/api";
 
 export const getIconName = (status: LongTaskStatus): IconName => {

@@ -250,6 +250,7 @@ export type WorkspaceOutputTableEntry = {
   schema: string;
   table: string;
   table_id: number | null;
+  active?: boolean;
 };
 
 export type WorkspaceOutputTable = {

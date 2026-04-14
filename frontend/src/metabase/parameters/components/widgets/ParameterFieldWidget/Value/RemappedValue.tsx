@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
 
 type RenderNormal = (opts: { value?: unknown; column?: Field }) => ReactNode;
@@ -91,6 +91,3 @@ const RemappedValue = ({ autoLoad = true, ...props }: RemappedValueProps) =>
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RemappedValue;
-
-// test version doesn't use metabase/hoc/Remapped which requires a redux store
-export const TestRemappedValue = RemappedValueContent;

@@ -4,8 +4,11 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
-import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
+import * as Urls from "metabase/utils/urls";
 import type { Transform, TransformId } from "metabase-types/api";
 
 type TransformTabsProps = {
@@ -35,6 +38,7 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
     {
       label: t`Inspect`,
       to: inspectUrl,
+      isGated: !PLUGIN_TRANSFORMS_PYTHON.isEnabled,
       isSelected: (pathname: string) => pathname.startsWith(inspectUrl),
     },
   ];

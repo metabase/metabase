@@ -3,9 +3,9 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import { isNotNull } from "metabase/utils/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Database as DatabaseType } from "metabase-types/api";
@@ -54,6 +54,7 @@ const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
   const entities = metadata
     .databasesList({ savedQuestions: false })
     .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as DatabaseType))
+    .filter((db) => !(db as DatabaseType).router_database_id)
     .map((database) => ({
       id: database.id,
       name: database.name,

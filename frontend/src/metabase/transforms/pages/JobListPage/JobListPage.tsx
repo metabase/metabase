@@ -4,19 +4,17 @@ import { t } from "ttag";
 
 import { useListTransformJobsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
   Card,
+  Ellipsified,
   Flex,
   Icon,
   Stack,
@@ -25,6 +23,8 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { TransformJob } from "metabase-types/api";
 
 export const JobListPage = () => {

@@ -11,11 +11,15 @@ import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 
 import { initAuth, refreshTokenAsync } from "./auth";
-import { initGuestEmbed } from "./guest-embed";
+import {
+  initGuestEmbed,
+  refreshGuestSession,
+  setGuestTokenFetchError,
+  setInitialGuestToken,
+} from "./guest-embed";
 const SET_IS_GUEST_EMBED = "sdk/SET_IS_GUEST_EMBED";
 const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
-const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 const SET_ERROR = "sdk/SET_ERROR";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
@@ -26,9 +30,6 @@ export const setMetabaseInstanceVersion = createAction<string>(
 );
 export const setMetabaseClientUrl = createAction<string>(
   SET_METABASE_CLIENT_URL,
-);
-export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
-  SET_LOADER_COMPONENT,
 );
 export const setErrorComponent = createAction<null | SdkErrorComponent>(
   SET_ERROR_COMPONENT,
@@ -52,12 +53,16 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
   SET_USAGE_PROBLEM,
 );
 
+const SET_PLUGINS_READY = "sdk/SET_PLUGINS_READY";
+export const setPluginsReady = createAction<boolean>(SET_PLUGINS_READY);
+
 const initialState: SdkState = {
   isGuestEmbed: null,
   metabaseInstanceUrl: "",
   metabaseInstanceVersion: null,
   token: {
     token: null,
+    rawToken: null,
     loading: false,
     error: null,
   },
@@ -68,6 +73,7 @@ const initialState: SdkState = {
   usageProblem: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
+  pluginsReady: false,
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -78,6 +84,7 @@ export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
     state.token = {
       token: action.payload,
+      rawToken: null,
       loading: false,
       error: null,
     };
@@ -151,5 +158,48 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setUsageProblem, (state, action) => {
     state.usageProblem = action.payload;
+  });
+
+  // Guest embed token management
+  builder.addCase(setGuestTokenFetchError, (state, action) => {
+    state.token = { ...state.token, loading: false, error: action.payload };
+  });
+
+  builder.addCase(setInitialGuestToken, (state, action) => {
+    state.token = {
+      ...state.token,
+      rawToken: action.payload,
+      loading: false,
+      error: null,
+    };
+  });
+
+  builder.addCase(refreshGuestSession.pending, (state) => {
+    state.token = {
+      ...state.token,
+      loading: true,
+    };
+  });
+
+  builder.addCase(refreshGuestSession.fulfilled, (state, action) => {
+    state.token = {
+      ...state.token,
+      rawToken: action.payload,
+      loading: false,
+      error: null,
+    };
+  });
+
+  builder.addCase(refreshGuestSession.rejected, (state, action) => {
+    const error = action.error;
+    state.token = {
+      ...state.token,
+      loading: false,
+      error,
+    };
+  });
+
+  builder.addCase(setPluginsReady, (state, action) => {
+    state.pluginsReady = action.payload;
   });
 });

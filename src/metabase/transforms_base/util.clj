@@ -7,14 +7,15 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-remaps :as remap]
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -28,6 +29,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -109,6 +111,16 @@
 
 ;;; ------------------------------------------------- Table Names -------------------------------------------------
 
+(defn- resolve-nil-schema
+  "When a table has nil schema, check if the physical table exists under the driver's
+   default schema. If so, return that schema. Otherwise return nil.
+   This handles the case where transforms create tables without explicit schema
+   but the driver needs a schema to find the table during sync."
+  [driver database table]
+  (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+    (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
+      default-schema)))
+
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [_driver {:keys [schema name]}]
@@ -173,14 +185,31 @@
                     lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
                     hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
+(defn- coerce-to-local-datetime
+  "Coerce a temporal value to LocalDateTime, stripping any timezone information."
+  [t]
+  (condp instance? t
+    OffsetDateTime (t/local-date-time t)
+    ZonedDateTime  (t/local-date-time t)
+    Instant        (t/local-date-time t (t/zone-id "UTC"))
+    t))
+
+(defn- maybe-coerce-temporal
+  [base-type t]
+  (cond-> t
+    (and (isa? base-type :type/DateTime)
+         (not (isa? base-type :type/DateTimeWithTZ)))
+    coerce-to-local-datetime))
+
 (defn- parse-checkpoint-value
-  "Parse a serialized checkpoint value string according to its base-type keyword."
+  "Parse a serialized checkpoint value string according to its base-type keyword.
+  For temporal types, coerces the result to match the column's base-type."
   [base-type s]
   (cond
-    (not (string? s)) s
+    (not (string? s))               (maybe-coerce-temporal base-type s)
     (isa? base-type :type/Float)    (bigdec s)
     (isa? base-type :type/Number)   (biginteger s)
-    (isa? base-type :type/Temporal) (u.date/parse s)
+    (isa? base-type :type/Temporal) (maybe-coerce-temporal base-type (u.date/parse s))
     :else (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
                           {:base-type base-type}))))
 
@@ -339,8 +368,17 @@
    (when-let [table (or (target-table (:id database) target)
                         (when create?
                           (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-     (sync/sync-table! table)
-     table)))
+     ;; If the table has nil schema, check if the physical table actually lives under
+     ;; the driver's default schema. If so, fix the Table record before syncing.
+     (let [table (if (nil? (:schema table))
+                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                         (-> (t2/select-one :model/Table (:id table))
+                             (t2/hydrate :db)))
+                     table)
+                   table)]
+       (sync/sync-table! table)
+       table))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
@@ -441,7 +479,6 @@
   "Post-processing steps after a transform has been executed successfully.
 
    Performs:
-   - Save watermark (if source-range-params provided)
    - Sync target table to AppDB
    - Set `transform_id` on the target table
    - Publish Metabase events (unless `:publish-events?` is false)
@@ -452,20 +489,13 @@
    to preserve the correct order of operations."
   [transform opts]
   (let [{:keys [target]} transform
-        {:keys [publish-events? source-range-params]
+        {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (t2/select-one :model/Database db-id)]
-    ;; Save watermark if source-range-params available
-    (when source-range-params
-      (save-watermark! (:id transform) source-range-params))
-    ;; Sync target table
-    (sync-target! target database)
-    ;; Mark the table as owned by this transform
-    (when-let [table (t2/select-one :model/Table
-                                    :db_id db-id
-                                    :schema (:schema target)
-                                    :name (:name target))]
+    ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
+    (when-let [table (sync-target! target database)]
+      (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
       (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
@@ -476,12 +506,12 @@
                                        :output-schema  (:schema target)
                                        :output-table   (qualified-table-name (:engine database) target)}}))))
 
-;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
+(defn output-table
+  "Return the output table created by a transform, looked up via `transform_id`."
+  [transform]
+  (t2/select-one :model/Table :transform_id (:id transform)))
 
-(mu/defn source-tables-vec->alias-id-map :- [:map-of :string [:maybe :int]]
-  "Convert source-table entries to `{alias -> table_id}` map."
-  [entries :- [:sequential ::source-table-entry]]
-  (into {} (map (juxt :alias :table_id)) entries))
+;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------
 
@@ -523,8 +553,8 @@
   "A source table entry in the array format. Combines alias with table reference."
   [:map
    [:alias :string]
-   [:database_id {:optional true} :int]
-   [:schema {:optional true} [:maybe :string]]
+   [:database_id :int]
+   [:schema [:maybe :string]]
    [:table {:optional true} :string]
    [:table_id {:optional true} [:maybe :int]]])
 
@@ -534,7 +564,7 @@
   For entries with only :database_id/:schema/:table, looks up :table_id.
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
-  [source-tables :- [:sequential ::source-table-entry]]
+  [source-tables :- [:sequential [:map [:alias :string]]]]
   (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)
@@ -557,32 +587,34 @@
               (and (:table_id entry) (not (:table entry)))
               (merge (int-id->metadata (:table_id entry)) entry)
 
-              ;; Has table metadata but no table_id — look it up
+              ;; Has table metadata but no table_id — look it up, upsert transform target if not found
               (missing-table-id? entry)
-              (assoc entry :table_id (ref-lookup (source-table-ref->key entry)))
+              (assoc entry :table_id (or (ref-lookup (source-table-ref->key entry))
+                                         (when (and (:database_id entry) (:table entry))
+                                           (table/upsert-transform-target-table!
+                                            (:database_id entry) (:schema entry) (:table entry)))))
 
               ;; Already fully populated
               :else entry))
           source-tables)))
 
-(mu/defn resolve-source-tables :- [:map-of :string :int]
-  "Resolve source-table entries to `{alias -> table_id}`. Throws if any table not found.
+(mu/defn resolve-source-tables :- [:sequential ::source-table-entry]
+  "Resolve source-table entries to entries with :table_id filled in. Throws if any table not found.
   For execute time — all entries must resolve to valid table IDs."
   [source-tables :- [:sequential ::source-table-entry]]
   (let [needs-lookup (filter missing-table-id? source-tables)
         lookup       (or (batch-lookup-table-ids needs-lookup) {})
-        resolved     (u/for-map [entry source-tables]
-                       [(:alias entry) (or (:table_id entry) (lookup (source-table-ref->key entry)))])
-        unresolved   (for [entry source-tables
-                           :let [table-id (or (:table_id entry) (lookup (source-table-ref->key entry)))]
-                           :when (nil? table-id)]
-                       {:alias (:alias entry)
-                        :table (if-let [schema (:schema entry)]
-                                 (str schema "." (:table entry))
-                                 (:table entry))
-                        :ref   entry})]
+        resolved     (mapv (fn [entry]
+                             (let [table-id (or (:table_id entry) (lookup (source-table-ref->key entry)))]
+                               (assoc entry :table_id table-id)))
+                           source-tables)
+        unresolved   (filter #(nil? (:table_id %)) resolved)]
     (when (seq unresolved)
-      (throw (ex-info (str "Tables not found: " (str/join ", " (map :table unresolved)))
+      (throw (ex-info (str "Tables not found: " (str/join ", " (map (fn [{:keys [schema table]}]
+                                                                      (if schema
+                                                                        (str schema "." table)
+                                                                        table))
+                                                                    unresolved)))
                       {:unresolved unresolved
                        :transform-message "Input table not found"})))
     resolved))
@@ -674,6 +706,16 @@
     identity))
 
 ;;; ------------------------------------------------- Misc -------------------------------------------------
+
+(defn upsert-target-table!
+  "Upsert a provisional table entry for a transform's target, creating it if it doesn't exist.
+  Returns the table ID.
+
+  Thin wrapper around [[metabase.warehouse-schema.models.table/upsert-transform-target-table!]] —
+  exists because the `models` module cannot depend on `warehouse-schema` directly, but can
+  depend on `transforms-base` (which is allowed to use `warehouse-schema`)."
+  [db-id schema table-name]
+  (table/upsert-transform-target-table! db-id schema table-name))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern."

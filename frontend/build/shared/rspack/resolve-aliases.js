@@ -31,7 +31,7 @@ const isDevMode = IS_DEV_MODE;
 const resolveEnterprisePathOrNoop = (subpath) =>
   process.env.MB_EDITION === "ee"
     ? ENTERPRISE_SRC_PATH + subpath
-    : SRC_PATH + "/lib/noop";
+    : SRC_PATH + "/utils/noop";
 
 /**
  * Shared resolve aliases used by both rspack.main.config.js and
@@ -76,7 +76,7 @@ const RESOLVE_ALIASES = {
     process.env.MB_EDITION === "ee"
       ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
       : SRC_PATH + "/plugins/noop",
-  "sdk-specific-imports": SRC_PATH + "/lib/noop",
+  "sdk-specific-imports": SRC_PATH + "/utils/noop",
 };
 
 module.exports = { RESOLVE_ALIASES };

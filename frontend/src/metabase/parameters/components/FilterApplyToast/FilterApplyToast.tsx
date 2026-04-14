@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { Toast } from "metabase/common/components/Toaster/Toaster";
 import { applyDraftParameterValues } from "metabase/dashboard/actions";
-import { setParameterValues } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getDraftParameterValues,
@@ -11,7 +10,8 @@ import {
   getIsAutoApplyFilters,
   getParameterValues,
 } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setParameterValues } from "metabase/redux/dashboard";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { getFilterChangeDescription } from "./utils";
 

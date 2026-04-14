@@ -108,9 +108,7 @@
                  {:lib/temporal-unit unit})
                (when lib.metadata.calculation/*propagate-binning-and-bucketing*
                  (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                   {:inherited-temporal-unit unit}))
-               (when-some [pivot-grouping? (:qp.pivot/pivot-grouping? opts)]
-                 {:qp.pivot/pivot-grouping? pivot-grouping?}))))))
+                   {:inherited-temporal-unit unit})))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
@@ -330,7 +328,7 @@
          expressionable (lib.common/->op-arg expressionable)]
      ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
      ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by
-     ;; the QP code, and it should be powered by MLv2 in due course.
+     ;; the QP code, and it should be powered by Lib in due course.
      #_(when (conflicting-name? query stage-number expression-name)
          (throw (ex-info "Expression name conflicts with a column in the same query stage"
                          {:expression-name expression-name})))
@@ -490,7 +488,7 @@
   4. Fields in Tables that are implicitly joinable."
 
   ([query :- ::lib.schema/query
-    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    expression-position :- [:maybe nat-int?]]
    (expressionable-columns query -1 expression-position))
 
   ([query        :- ::lib.schema/query
@@ -506,7 +504,7 @@
     ;; Clojure map, so there are plenty of possibilities to mess this up.)
     ;; Changing the legacy/wire format is probably the right way to go, but that's a bigger
     ;; endeavor.
-    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    expression-position :- [:maybe nat-int?]]
    (let [expr-name (when expression-position
                      (some-> (expressions query stage-number)
                              (nth expression-position nil)
@@ -547,7 +545,7 @@
 
 (mu/defn with-expression-name :- ::lib.schema.expression/expression
   "Return a new expression clause like `an-expression-clause` but with name `new-name`.
-  For expressions from the :expressions clause of a pMBQL query this sets the :lib/expression-name option,
+  For expressions from the :expressions clause of a MBQL 5 query this sets the :lib/expression-name option,
   for other expressions (for example named aggregation expressions) the :display-name option is set.
 
   Note that always setting :lib/expression-name would lead to confusion, because that option is used
@@ -694,9 +692,9 @@
   As a special case, it checks that window functions are not embedded in each other
   and in aggregation functions.
 
-  - `expr` is a pMBQL expression usually created from a legacy MBQL expression created
+  - `expr` is a MBQL 5 expression usually created from a legacy MBQL expression created
   using the custom column editor in the FE. It is expected to have been normalized and
-  converted using [[metabase.lib.convert/->pMBQL]].
+  converted using [[metabase.lib.convert/->mbql5]].
   - `expression-mode` specifies what type of thing `expr` is: an :expression (custom column),
   an :aggregation expression, or a :filter condition.
   - `expression-position` is only defined when editing an existing custom column, and in that case

@@ -222,7 +222,7 @@
 
 ;;; These are all legacy-style MBQL clauses FOR NOW, obviously at some point in the future we need to
 ;;; update [[metabase.lib.convert]] to convert `:parameters` back and forth and add UUIDs and what not. But parameters
-;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
+;;; is not ported to Lib yet, so conversion isn't implemented YET.
 
 (mr/def ::target.legacy-field-ref
   [:ref :metabase.legacy-mbql.schema/field])

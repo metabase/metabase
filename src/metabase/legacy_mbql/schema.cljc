@@ -391,8 +391,11 @@
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
+                        (assert ((some-fn nil? map?) opts) "Attempted to normalize an MBQL 5 :field clause as MBQL 4")
                         ;; if someone accidentally nests `:field` clauses fix it for them
-                        (if (sequential? id-or-name)
+                        (if (and (sequential? id-or-name)
+                                 ((some-fn keyword? string?) (first id-or-name))
+                                 (= (keyword (first id-or-name)) :field))
                           (let [[_tag id-or-name recursive-opts] (normalize-field id-or-name)]
                             [:field id-or-name (not-empty (merge recursive-opts opts))])
                           [:field id-or-name (not-empty opts)]))
@@ -645,7 +648,7 @@
   x [:ref ::ExpressionArg])
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
-;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
+;; aligns with the corresponding MBQL 5 schema and with the reference docs we publish.
 (defclause concat
   a    [:ref ::ExpressionArg]
   b    [:ref ::ExpressionArg]
@@ -2069,7 +2072,7 @@
     [:expressions  {:optional true} [:ref ::Expressions]]
     [:fields       {:optional true} [:ref ::Fields]]
     [:filter       {:optional true} [:ref ::Filter]]
-    [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    [:limit        {:optional true} nat-int?]
     [:order-by     {:optional true} [:ref ::OrderBys]]
     [:page         {:optional true} [:ref :metabase.lib.schema/page]]
     [:joins        {:optional true} [:ref ::Joins]]

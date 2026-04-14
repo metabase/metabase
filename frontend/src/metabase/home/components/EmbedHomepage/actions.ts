@@ -1,5 +1,5 @@
-import { updateSetting } from "metabase/admin/settings/settings";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { updateSetting } from "metabase/redux/settings";
+import { createAsyncThunk } from "metabase/utils/redux";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { trackEmbeddingHomepageDismissed } from "./analytics";

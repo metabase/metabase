@@ -1,4 +1,4 @@
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 

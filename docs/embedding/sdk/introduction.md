@@ -18,6 +18,12 @@ To give you an idea of what's possible with the SDK, we've put together example 
 
 Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
+## Modular embedding SDK playground
+
+![Modular embedding SDK playground](../images/embedding-sdk-playground.png)
+
+Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground.metabase.com/), no setup required. The playground lets you experiment with components, theming, and interactivity in your browser.
+
 ## Modular embedding SDK prerequisites
 
 - React application using React 18 or React 19.
@@ -123,7 +129,7 @@ The SDK doesn't support:
 
 Other limitations:
 
-- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- You can only have one dashboard per application page. You can, however, embed multiple questions on the same app page, or use [dashboard tabs](../../dashboards/introduction.md#dashboard-tabs) to create multiple different card layouts on one dashboard.
 - If you have Leaflet 1.x as a dependency in your app, you may run into compatibility issues. You can try using Leaflet 2.x instead.
 
 ## Issues, feature requests and support

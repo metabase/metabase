@@ -1,5 +1,5 @@
-import { isJWT } from "metabase/lib/utils";
-import { isUuid } from "metabase/lib/uuid";
+import { isJWT } from "metabase/utils/jwt";
+import { isUuid } from "metabase/utils/uuid";
 import type { DashboardCard } from "metabase-types/api";
 
 export const getDashcardTokenId = (dashcard: DashboardCard) =>

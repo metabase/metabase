@@ -171,7 +171,8 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     cy.findByPlaceholderText("Price").type("95").blur();
     cy.findByPlaceholderText("Rating").type("3.8").blur();
 
-    cy.findAllByRole("row")
+    cy.findByTestId("table-body")
+      .findAllByRole("row")
       .should("have.length", 2)
       // first line price
       .and("contain", "98.82")

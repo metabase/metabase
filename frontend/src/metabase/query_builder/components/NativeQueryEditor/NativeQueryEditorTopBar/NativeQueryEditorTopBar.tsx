@@ -1,9 +1,10 @@
 import { type PropsWithChildren, forwardRef } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
-import type { QueryModalType } from "metabase/query_builder/constants";
+import type { QueryModalType } from "metabase/querying/constants";
+import type { SidebarFeatures } from "metabase/querying/editor/types";
 import { Flex } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -19,7 +20,6 @@ import { ResponsiveParametersList } from "../../ResponsiveParametersList";
 import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
-import type { SidebarFeatures } from "../types";
 
 interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   question: Question;

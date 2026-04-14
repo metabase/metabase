@@ -1,7 +1,7 @@
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 
-import { parseNumberValue } from "metabase/lib/number";
+import { parseNumberValue } from "metabase/utils/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
@@ -19,7 +19,7 @@ import type {
 import { isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
-import type { ChartMeasurements } from "../chart-measurements/types";
+import type { ChartLayout } from "../layout/types";
 import { getScaledMinAndMax } from "../model/axis";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 
@@ -113,7 +113,7 @@ export const getDimensionTicksDefaultOption = (
 const getHistogramTicksOptions = (
   datasetLength: number,
   settings: ComputedVisualizationSettings,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   { theme }: RenderingContext,
 ) => {
   const { fontSize } = theme.cartesian.label;
@@ -122,8 +122,7 @@ const getHistogramTicksOptions = (
     return {};
   }
 
-  const histogramDimensionWidth =
-    chartMeasurements.boundaryWidth / datasetLength;
+  const histogramDimensionWidth = chartLayout.boundaryWidth / datasetLength;
   const options = { showMinLabel: false, showMaxLabel: true };
 
   if (settings["graph.x_axis.axis_enabled"] === "rotate-45") {
@@ -157,14 +156,13 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
 };
 
 const getCommonDimensionAxisOptions = (
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
-  const nameGap = getAxisNameGap(
-    chartMeasurements.ticksDimensions.xTicksHeight,
-  );
+  const nameGap = getAxisNameGap(chartLayout.ticksDimensions.xTicksHeight);
   const { getColor } = renderingContext;
+  const isSplitPanels = chartLayout.panelHeight != null;
   return {
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -184,7 +182,7 @@ const getCommonDimensionAxisOptions = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: getColor("border"),
+        color: getColor(isSplitPanels ? "border-strong" : "border"),
       },
     },
   };
@@ -192,9 +190,8 @@ const getCommonDimensionAxisOptions = (
 
 export const buildDimensionAxis = (
   chartModel: BaseCartesianChartModel,
-  width: number,
   settings: ComputedVisualizationSettings,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ): XAXisOption => {
@@ -204,7 +201,7 @@ export const buildDimensionAxis = (
     return buildNumericDimensionAxis(
       xAxisModel,
       settings,
-      chartMeasurements,
+      chartLayout,
       renderingContext,
     );
   }
@@ -212,10 +209,9 @@ export const buildDimensionAxis = (
   if (isTimeSeriesAxis(xAxisModel)) {
     return buildTimeSeriesDimensionAxis(
       xAxisModel,
-      width,
       hasTimelineEvents,
       settings,
-      chartMeasurements,
+      chartLayout,
       renderingContext,
     );
   }
@@ -227,7 +223,7 @@ export const buildDimensionAxis = (
       datasetLength: chartModel.transformedDataset.length,
     },
     settings,
-    chartMeasurements,
+    chartLayout,
     renderingContext,
   );
 };
@@ -235,7 +231,7 @@ export const buildDimensionAxis = (
 export const buildNumericDimensionAxis = (
   xAxisModel: NumericXAxisModel,
   settings: ComputedVisualizationSettings,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): XAXisOption => {
   const {
@@ -251,11 +247,7 @@ export const buildNumericDimensionAxis = (
   const axisPadding = interval / 2;
 
   return {
-    ...getCommonDimensionAxisOptions(
-      chartMeasurements,
-      settings,
-      renderingContext,
-    ),
+    ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "value",
     scale: true,
     axisLabel: {
@@ -281,21 +273,16 @@ export const buildNumericDimensionAxis = (
 
 export const buildTimeSeriesDimensionAxis = (
   xAxisModel: TimeSeriesXAxisModel,
-  width: number,
   hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): XAXisOption => {
   const { formatter, maxInterval, minInterval, canRender, xDomainPadded } =
-    getTicksOptions(xAxisModel, width);
+    getTicksOptions(xAxisModel, chartLayout);
 
   return {
-    ...getCommonDimensionAxisOptions(
-      chartMeasurements,
-      settings,
-      renderingContext,
-    ),
+    ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "time",
     axisLabel: {
       margin:
@@ -328,21 +315,17 @@ interface CategoricalAxisParams {
 export const buildCategoricalDimensionAxis = (
   { formatter, column, datasetLength }: CategoricalAxisParams,
   originalSettings: ComputedVisualizationSettings,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): XAXisOption => {
-  const autoAxisEnabled = chartMeasurements.axisEnabledSetting;
+  const autoAxisEnabled = chartLayout.axisEnabledSetting;
   const settings: ComputedVisualizationSettings = {
     ...originalSettings,
     "graph.x_axis.axis_enabled": autoAxisEnabled,
   };
 
   return {
-    ...getCommonDimensionAxisOptions(
-      chartMeasurements,
-      settings,
-      renderingContext,
-    ),
+    ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "category",
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
@@ -350,7 +333,7 @@ export const buildCategoricalDimensionAxis = (
       ...getHistogramTicksOptions(
         datasetLength,
         settings,
-        chartMeasurements,
+        chartLayout,
         renderingContext,
       ),
       interval: () => true,
@@ -429,7 +412,7 @@ export const buildMetricAxis = (
 
 const buildMetricsAxes = (
   chartModel: BaseCartesianChartModel,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): YAXisOption[] => {
@@ -441,7 +424,7 @@ const buildMetricsAxes = (
       buildMetricAxis(
         leftAxisModel,
         chartModel.yAxisScaleTransforms,
-        chartMeasurements.ticksDimensions.yTicksWidthLeft,
+        chartLayout.ticksDimensions.yTicksWidthLeft,
         settings,
         "left",
         true,
@@ -456,7 +439,7 @@ const buildMetricsAxes = (
       buildMetricAxis(
         rightAxisModel,
         chartModel.yAxisScaleTransforms,
-        chartMeasurements.ticksDimensions.yTicksWidthRight,
+        chartLayout.ticksDimensions.yTicksWidthRight,
         settings,
         "right",
         isOnlyAxis,
@@ -470,8 +453,7 @@ const buildMetricsAxes = (
 
 export const buildAxes = (
   chartModel: BaseCartesianChartModel,
-  width: number,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
@@ -479,15 +461,14 @@ export const buildAxes = (
   return {
     xAxis: buildDimensionAxis(
       chartModel,
-      width,
       settings,
-      chartMeasurements,
+      chartLayout,
       hasTimelineEvents,
       renderingContext,
     ),
     yAxis: buildMetricsAxes(
       chartModel,
-      chartMeasurements,
+      chartLayout,
       settings,
       renderingContext,
     ),

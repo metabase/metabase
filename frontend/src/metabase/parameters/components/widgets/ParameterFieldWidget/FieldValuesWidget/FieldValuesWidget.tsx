@@ -19,6 +19,7 @@ import {
 } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import {
   TokenField,
   parseStringValue,
@@ -29,9 +30,6 @@ import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { parseNumber } from "metabase/lib/number";
-import { connect, useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
@@ -41,10 +39,12 @@ import { addRemappings } from "metabase/redux/metadata";
 import {
   type ComboboxItem,
   Loader,
-  MultiAutocomplete,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
+import { parseNumber } from "metabase/utils/number";
+import { connect, useDispatch } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 import Field from "metabase-lib/v1/metadata/Field";
 import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -454,7 +454,7 @@ export const FieldValuesWidgetInner = forwardRef<
             checkedColor={checkedColor}
           />
         ) : multi ? (
-          <MultiAutocomplete
+          <MultiAutocompleteWithTranslation
             value={value.filter(isNotNull).map((value) => String(value))}
             data={options
               .filter((option) => getValue(option) != null)

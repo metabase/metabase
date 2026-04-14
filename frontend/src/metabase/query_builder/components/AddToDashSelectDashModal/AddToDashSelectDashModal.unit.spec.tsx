@@ -20,7 +20,7 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { checkNotNull, isNotNull } from "metabase/lib/types";
+import { checkNotNull, isNotNull } from "metabase/utils/types";
 import type {
   BaseEntityId,
   Card,
@@ -313,13 +313,13 @@ describe("AddToDashSelectDashModal", () => {
     jest.restoreAllMocks();
   });
 
-  it("should show loading", async () => {
+  it("should show the modal while loading", async () => {
     await setup({
       waitForContent: false,
       mostRecentlyViewedDashboard: DASHBOARD,
     });
 
-    expect(await screen.findByText("Loading...")).toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
   it("should render dashboards when opening the root collection (public collection)", async () => {
