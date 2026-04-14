@@ -1491,6 +1491,7 @@
            config
            events
            internal-stats
+           llm
            settings
            startup
            task

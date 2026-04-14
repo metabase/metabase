@@ -10,8 +10,9 @@
    [metabase.util.log :as log]
    [ring.util.response :as response])
   (:import
-   (java.net URLEncoder)
-   (java.nio.charset StandardCharsets)))
+   (java.net URLEncoder)))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -26,11 +27,11 @@
 (defn- invalidate-llm-proxy-token-cache!
   "Invalidation of the AI service's cached token status for the current instance token."
   []
-  (when-let [proxy-base-url (llm.settings/llm-proxy-base-url)]
-    (when-let [token (premium-features/premium-embedding-token)]
+  (when-let [service-base-url (llm.settings/ai-service-base-url)]
+    (when-let [^String token (premium-features/premium-embedding-token)]
       (try
-        (let [encoded-token (URLEncoder/encode token (.name StandardCharsets/UTF_8))
-              url (str (str/replace proxy-base-url #"/+$" "") "/v1/invalidate-token-cache/" encoded-token)
+        (let [encoded-token (URLEncoder/encode ^String token "UTF-8")
+              url (str (str/replace service-base-url #"/+$" "") "/v1/invalidate-token-cache/" encoded-token)
               response (http/post url {:throw-exceptions false})]
           (when-not (<= 200 (:status response) 299)
             (log/warnf "LLM proxy token cache invalidation failed with status %s" (:status response))))

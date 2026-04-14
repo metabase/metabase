@@ -131,6 +131,15 @@
   :export?          false
   :doc              false)
 
+(defsetting ai-service-base-url
+  (deferred-tru "Base URL for the managed Metabase AI service.")
+  :feature          :metabase-ai-managed
+  :encryption       :no
+  :visibility       :internal
+  :default          nil
+  :export?          false
+  :doc              false)
+
 (defsetting llm-proxy-configured?
   (deferred-tru "Whether the LLM proxy is configured for the managed Metabase AI service.")
   :encryption       :no
