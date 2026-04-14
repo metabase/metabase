@@ -351,6 +351,18 @@
             (is (false? (:is_writable table))
                 "Computed transform tables should have is_writable=false")))))))
 
+(deftest target-table-handles-nil-schema-test
+  (testing "target-table can find a Table row with schema=nil (GDGT-2144)"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table _table {:db_id  db-id
+                                        :schema nil
+                                        :name   "some_nil_schema_table"
+                                        :active true}]
+      (let [found (transforms-base.u/target-table db-id {:schema nil :name "some_nil_schema_table"})]
+        (is (some? found)
+            "target-table must find a Table row with schema=nil — otherwise schemas-less drivers (MySQL) would silently miss their targets")
+        (is (= "some_nil_schema_table" (:name found)))))))
+
 (deftest execute-sets-transform-id-on-target-table-test
   (testing "Executing a query transform sets transform_id on the target table"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
