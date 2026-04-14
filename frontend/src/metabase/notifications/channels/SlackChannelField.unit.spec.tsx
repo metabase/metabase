@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -8,6 +9,10 @@ import type {
   ChannelSpec,
   SlackChannelOption,
 } from "metabase-types/api";
+
+type OnChannelPropertyChange = ComponentProps<
+  typeof SlackChannelField
+>["onChannelPropertyChange"];
 
 const SLACK_OPTIONS: SlackChannelOption[] = [
   { displayName: "#general", id: "C001" },
@@ -30,11 +35,6 @@ const CHANNEL_SPEC: ChannelSpec = {
     },
   ],
 };
-
-type OnChannelPropertyChange = (
-  key: string,
-  value: Record<string, string | boolean>,
-) => void;
 
 function StatefulWrapper({
   initialChannel,
