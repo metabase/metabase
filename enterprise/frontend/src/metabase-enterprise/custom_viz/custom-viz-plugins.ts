@@ -1,6 +1,8 @@
 import type {
   CreateCustomVisualizationProps,
   CustomVisualizationSettingDefinition,
+  ClickObject as CustomVizClickObject,
+  HoverObject as CustomVizHoverObject,
 } from "custom-viz/src/types";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
@@ -297,8 +299,12 @@ export async function loadCustomVizPlugin(
       return React.createElement(vizDef.VisualizationComponent, {
         ...rest,
         colorScheme: resolvedColorScheme,
-        onClick: onVisualizationClick,
-        onHover: onHoverChange,
+        onClick: onVisualizationClick as unknown as (
+          clickObject: CustomVizClickObject<Record<string, unknown>> | null,
+        ) => void,
+        onHover: onHoverChange as unknown as (
+          hoverObject?: CustomVizHoverObject | null,
+        ) => void,
       });
     };
 

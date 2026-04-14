@@ -67,16 +67,18 @@ describe("useGetIcon", () => {
   });
 
   it("should return the default icon for an invalid model", () => {
-    // @ts-expect-error testing invalid model
     const getIcon = createGetIcon();
+    // @ts-expect-error testing invalid model
     expect(getIcon({ model: "pikachu" })).toEqual({ name: "unknown" });
   });
 
   describe("card display types", () => {
     it("should return the default icon for an invalid display type", () => {
-      // @ts-expect-error testing invalid display type
       const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "pikachu" })).toEqual({
+      expect(
+        // @ts-expect-error testing invalid display type
+        getIcon({ model: "card", display: "pikachu" }),
+      ).toEqual({
         name: "table2",
       });
     });

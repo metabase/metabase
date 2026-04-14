@@ -7,7 +7,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
-   (org.semver4j Semver SemverException)))
+   (org.semver4j Semver)))
 
 (set! *warn-on-reflection* true)
 
@@ -29,19 +29,28 @@
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
+(defn- normalize-mb-version
+  "Strip the leading `v` and edition prefix (`0.` OSS, `1.` EE) from a Metabase version
+   tag so it matches the public `vNN` branding used in plugin manifests.
+   e.g. `v1.60.1-SNAPSHOT` → `60.1-SNAPSHOT`."
+  [^String version]
+  (str/replace version #"^v?[01]\." ""))
+
 (defn compatible?
   "Check whether a plugin with the given metabase_version range string is compatible with the
-   current Metabase version. Uses npm/node-semver range syntax (e.g. \">=1.59\", \"^1.59\", \">=1.59 <1.61\").
-   Returns true if no range is specified, or if the current version satisfies the range.
-   In dev mode (no version info), always returns true."
+   current Metabase version. Uses npm/node-semver range syntax against the public major (e.g.
+   \">=59\", \"^59\", \">=59 <61\"). Returns true if no range is specified, or if the current
+   version satisfies the range. In dev mode (no version info), always returns true."
   [{:keys [metabase_version]}]
   (let [current-version (:tag config/mb-version-info)]
     (if (or config/is-dev? (nil? current-version) (str/blank? metabase_version))
       true
       (try
-        (let [current (Semver/coerce current-version)]
-          (.satisfies (.withClearedPreReleaseAndBuild current) ^String metabase_version))
-        (catch SemverException e
+        (if-let [current (Semver/coerce (normalize-mb-version current-version))]
+          (.satisfies (.withClearedPreReleaseAndBuild current) ^String metabase_version)
+          ;; Unknown/uncoercible current version (e.g. `vLOCAL_DEV` in CI) — be permissive.
+          true)
+        (catch Exception e
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
           false)))))
 

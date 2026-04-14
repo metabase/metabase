@@ -144,3 +144,12 @@ export function visitCustomVizEditForm(id: number) {
 export function getAddVisualizationLink() {
   return cy.findByRole("link", { name: /Add/ });
 }
+
+/**
+ * Finds the custom viz plugin icon, which `EntityIcon` renders as a
+ * CSS-masked `<span role="img" aria-label={display_name}>` rather than an
+ * `<img>` element — so plain `img[src*=...]` selectors don't match.
+ */
+export function getCustomVizPluginIcon(displayName: string) {
+  return cy.get("main").findByRole("img", { name: displayName });
+}

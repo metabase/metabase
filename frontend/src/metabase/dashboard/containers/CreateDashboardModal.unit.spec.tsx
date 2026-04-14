@@ -5,6 +5,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupCustomVizPluginListEndpoint,
   setupDatabasesEndpoints,
   setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
@@ -56,6 +57,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   setupRecentViewsAndSelectionsEndpoints([]);
   setupLibraryEndpoints();
   setupDatabasesEndpoints([]);
+  setupCustomVizPluginListEndpoint();
   const onClose = jest.fn();
 
   const settings = mockSettings({});

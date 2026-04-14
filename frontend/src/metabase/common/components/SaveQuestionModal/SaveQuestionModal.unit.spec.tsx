@@ -7,6 +7,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupCustomVizPluginListEndpoint,
   setupDashboardEndpoints,
   setupDatabasesEndpoints,
   setupLibraryEndpoints,
@@ -123,6 +124,7 @@ const setup = async (
   setupDashboardEndpoints(BAR_DASH);
   setupLibraryEndpoints();
   setupDatabasesEndpoints([]);
+  setupCustomVizPluginListEndpoint();
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(

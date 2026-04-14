@@ -4,8 +4,6 @@ const { H } = cy;
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-const PLUGIN_ICON_SELECTOR = "img[src*='icon.svg']";
-
 describe("admin > custom visualizations", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
@@ -96,7 +94,7 @@ describe("admin > custom visualizations", () => {
           H.visitCustomVizSettings();
 
           // Icon from manifest
-          cy.get("main").find(PLUGIN_ICON_SELECTOR).should("be.visible");
+          H.getCustomVizPluginIcon("demo-viz").should("be.visible");
 
           // Display name from manifest
           cy.get("main").findByText("demo-viz").should("be.visible");
@@ -209,6 +207,7 @@ describe("admin > custom visualizations", () => {
 
         // Refetch
         H.interceptPluginRefresh();
+        cy.findByText("demo-viz").should("be.visible").realHover();
         cy.findByRole("button", { name: /ellipsis/i }).click();
         H.popover().findByText("Re-fetch").click();
         cy.wait("@pluginRefresh").then(({ response }) => {
@@ -269,6 +268,7 @@ describe("admin > custom visualizations", () => {
             .should("be.visible");
 
           H.visitCustomVizSettings();
+          cy.findByText("demo-viz").should("be.visible").realHover();
           cy.findByRole("button", { name: /ellipsis/i }).click();
           H.popover().findByText("Disable").click();
 
@@ -309,6 +309,7 @@ describe("admin > custom visualizations", () => {
           H.visitCustomVizSettings();
 
           // Delete the plugin
+          cy.findByText("demo-viz").should("be.visible").realHover();
           cy.findByRole("button", { name: /ellipsis/i }).click();
           H.popover().findByText("Remove").click();
 

@@ -6,7 +6,7 @@ import {
   screen,
   getIcon as testGetIcon,
 } from "__support__/ui";
-import { getIcon } from "metabase/utils/icon";
+import { modelIconMap } from "metabase/utils/icon";
 import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
 import {
   createMockCollection,
@@ -99,7 +99,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
 describe("PinnedItemCard", () => {
   it("should show the item's icon", () => {
     setup();
-    expect(testGetIcon(getIcon(defaultItem).name)).toBeInTheDocument();
+    expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
   });
 
   it("should show the item's name", () => {

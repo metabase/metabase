@@ -2,13 +2,15 @@ import type { CSSProperties, HTMLAttributes, ImgHTMLAttributes } from "react";
 
 import { Icon, type IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
-import { color as colorValue } from "metabase/ui/utils/colors";
+import { maybeColor } from "metabase/ui/utils/colors";
 import type { IconData } from "metabase/utils/icon";
 
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];
   iconUrl?: string;
-  color?: ColorName | "inherit";
+  // `(string & {})` keeps `ColorName` autocompletion while still allowing
+  // arbitrary CSS color strings such as hex codes or CSS variables.
+  color?: ColorName | "inherit" | (string & {});
   size?: string | number;
   style?: CSSProperties;
   alt?: string;
@@ -29,7 +31,7 @@ export function EntityIcon({
   ...rest
 }: EntityIconProps) {
   if (iconUrl) {
-    const bg = color === "inherit" ? "currentColor" : colorValue(color);
+    const bg = color === "inherit" ? "currentColor" : maybeColor(color);
 
     return (
       <span
