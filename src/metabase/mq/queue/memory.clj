@@ -1,6 +1,6 @@
 (ns metabase.mq.queue.memory
   "In-memory queue backend. Delegates storage and polling to the shared memory layer.
-  Provides queue-specific bundle tracking for retry semantics."
+  Provides queue-specific batch tracking for retry semantics."
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.mq.memory :as memory]
@@ -10,8 +10,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *bundle-registry*
-  "Maps bundle-id -> {:messages [...] :failures n} for retry tracking."
+(def ^:dynamic *batch-registry*
+  "Maps batch-id -> {:messages [...] :failures n} for retry tracking."
   (atom {}))
 
 (defmethod q.backend/publish! :queue.backend/memory [_ queue-name messages]
@@ -23,16 +23,16 @@
 (defmethod q.backend/shutdown! :queue.backend/memory [_]
   (memory/shutdown!))
 
-(defmethod q.backend/bundle-successful! :queue.backend/memory [_ _queue-name bundle-id]
-  (swap! *bundle-registry* dissoc bundle-id))
+(defmethod q.backend/batch-successful! :queue.backend/memory [_ _queue-name batch-id]
+  (swap! *batch-registry* dissoc batch-id))
 
-(defmethod q.backend/bundle-failed! :queue.backend/memory [_ queue-name bundle-id]
-  (when-let [{:keys [messages failures]} (get @*bundle-registry* bundle-id)]
-    (swap! *bundle-registry* dissoc bundle-id)
+(defmethod q.backend/batch-failed! :queue.backend/memory [_ queue-name batch-id]
+  (when-let [{:keys [messages failures]} (get @*batch-registry* batch-id)]
+    (swap! *batch-registry* dissoc batch-id)
     (let [new-failures (inc failures)]
       (if (>= new-failures (mq.settings/queue-max-retries))
         (do
-          (log/warnf "Bundle %s has reached max failures (%d), dropping" bundle-id (mq.settings/queue-max-retries))
+          (log/warnf "Batch %s has reached max failures (%d), dropping" batch-id (mq.settings/queue-max-retries))
           (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)}))
         (do
           (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})

@@ -48,7 +48,7 @@
 
 (defn active-handler-metadata
   "Returns the metadata map for the active handler on the given channel, or nil.
-   Backends store backend-specific data here (e.g. queue backends store :bundle-id for heartbeats)."
+   Backends store backend-specific data here (e.g. queue backends store :batch-id for heartbeats)."
   [channel]
   (get-in @active-handlers [channel :metadata]))
 
@@ -80,11 +80,11 @@
 (defn handle!
   "Handles accumulated messages for a channel by invoking the registered listener.
    Processes each message/batch with error isolation — one failure doesn't block others.
-   For queues, bundles use all-or-nothing ACK semantics: if ANY message in the bundle
-   fails, the ENTIRE bundle is nacked and will be retried. This means successfully
+   For queues, batches use all-or-nothing ACK semantics: if ANY message in the batch
+   fails, the ENTIRE batch is nacked and will be retried. This means successfully
    processed messages may be re-delivered. Queue listeners MUST be idempotent.
    The :dedup-fn option on listeners helps mitigate duplicate processing on retry."
-  [channel message-bundles messages]
+  [channel message-batches messages]
   (swap! last-activity* assoc channel (System/nanoTime))
   (analytics/inc! :metabase-mq/messages-received
                   {:transport (namespace channel) :channel (name channel)}
@@ -110,29 +110,29 @@
                                                (namespace channel) (name channel))))))
                         (when-let [e @error]
                           (throw (ex-info "One or more messages failed" {} e)))))
-      :on-success   #(doseq [[bid backend] message-bundles]
-                       (q.backend/bundle-successful! backend channel bid))
+      :on-success   #(doseq [[bid backend] message-batches]
+                       (q.backend/batch-successful! backend channel bid))
       :on-error     (fn [_e]
-                      (doseq [[bid backend] message-bundles]
-                        (q.backend/bundle-failed! backend channel bid)))})))
+                      (doseq [[bid backend] message-batches]
+                        (q.backend/batch-failed! backend channel bid)))})))
 
 (defn deliver!
   "Called by backends when messages are ready for delivery.
    Passes messages directly to handle! for processing.
-   `bundle-id` and `backend` are optional — queues pass them for ACK/NACK, topics pass nil."
-  [channel messages bundle-id backend]
-  (handle! channel (if bundle-id {bundle-id backend} {}) messages))
+   `batch-id` and `backend` are optional — queues pass them for ACK/NACK, topics pass nil."
+  [channel messages batch-id backend]
+  (handle! channel (if batch-id {batch-id backend} {}) messages))
 
 (defn submit-delivery!
   "Submits a delivery to the shared worker pool for non-blocking processing.
    Returns true if submitted, false if the channel already has an active handler.
    `metadata` is an opaque map stored alongside the future — backends can use it for
-   backend-specific tracking (e.g. queues store {:bundle-id id} for heartbeat updates).
+   backend-specific tracking (e.g. queues store {:batch-id id} for heartbeat updates).
    Uses bound-fn to convey dynamic bindings to the worker thread.
    The busy-check and registration are atomic via a single swap!.
    A generation counter prevents a completed future's cleanup from clobbering a
    re-submission that won the slot between the finally and the dissoc."
-  [channel messages bundle-id backend metadata]
+  [channel messages batch-id backend metadata]
   (let [claimed? (atom false)
         gen      (Object.)]
     (swap! active-handlers
@@ -146,7 +146,7 @@
       (let [f (.submit ^ExecutorService @worker-pool
                        ^Callable (bound-fn []
                                    (try
-                                     (deliver! channel messages bundle-id backend)
+                                     (deliver! channel messages batch-id backend)
                                      (finally
                                        ;; Only remove if this generation still owns the slot
                                        (swap! active-handlers

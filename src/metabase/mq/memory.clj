@@ -54,27 +54,27 @@
 
 ;;; ------------------------------------------- Polling -------------------------------------------
 
-(def ^:private bundle-registry
-  (delay (requiring-resolve 'metabase.mq.queue.memory/*bundle-registry*)))
+(def ^:private batch-registry
+  (delay (requiring-resolve 'metabase.mq.queue.memory/*batch-registry*)))
 
-(defn- register-bundle!
-  "Registers a bundle in the queue memory backend's bundle registry for retry tracking."
-  [bundle-id messages]
-  (swap! @@bundle-registry assoc bundle-id {:messages messages :failures 0}))
+(defn- register-batch!
+  "Registers a batch in the queue memory backend's batch registry for retry tracking."
+  [batch-id messages]
+  (swap! @@batch-registry assoc batch-id {:messages messages :failures 0}))
 
 (defn- poll-once!
   "Drains all non-busy channels and submits messages for delivery.
-   For queue channels, generates a bundle-id and passes :queue.backend/memory as backend.
-   For topic channels, passes nil bundle-id and nil backend (fire-and-forget)."
+   For queue channels, generates a batch-id and passes :queue.backend/memory as backend.
+   For topic channels, passes nil batch-id and nil backend (fire-and-forget)."
   []
   (doseq [channel-name (remove mq.impl/channel-busy?
                                (concat (listener/queue-names) (listener/topic-names)))]
     (when-let [messages (drain! channel-name)]
       (if (= "queue" (namespace channel-name))
-        (let [bundle-id (str (random-uuid))]
-          (register-bundle! bundle-id messages)
-          (mq.impl/submit-delivery! channel-name messages bundle-id :queue.backend/memory
-                                    {:bundle-id bundle-id}))
+        (let [batch-id (str (random-uuid))]
+          (register-batch! batch-id messages)
+          (mq.impl/submit-delivery! channel-name messages batch-id :queue.backend/memory
+                                    {:batch-id batch-id}))
         (mq.impl/submit-delivery! channel-name messages nil nil nil)))))
 
 (defn start!

@@ -58,18 +58,18 @@
                   by-queue (into {} (map (juxt :queue identity)) results)]
               (is (= 2 (count results)))
               (testing "queue1 row"
-                (let [{:keys [bundle-id messages]} (get by-queue queue1)]
-                  (is (pos-int? bundle-id))
+                (let [{:keys [batch-id messages]} (get by-queue queue1)]
+                  (is (pos-int? batch-id))
                   (is (= ["data1"] messages))
                   (testing "Fetched row gets marked as processing"
-                    (let [updated-row (t2/select-one :queue_message_batch :id bundle-id)]
+                    (let [updated-row (t2/select-one :queue_message_batch :id batch-id)]
                       (is (= "processing" (:status updated-row)))
                       (is (not= (:created_at updated-row) (:status_heartbeat updated-row)))
                       (is (= 0 (:failures updated-row)))
                       (is (= @#'q.appdb/owner-id (:owner updated-row)))))))
               (testing "queue2 row"
-                (let [{:keys [bundle-id messages]} (get by-queue queue2)]
-                  (is (pos-int? bundle-id))
+                (let [{:keys [batch-id messages]} (get by-queue queue2)]
+                  (is (pos-int? batch-id))
                   (is (= ["data2"] messages))))))
           (testing "When everything valid is processing, return nil"
             (is (nil? (#'q.appdb/fetch! (listener/queue-names))))))
@@ -112,7 +112,7 @@
               (is (= ["normal-msg1"] messages))))
 
           (testing "After exclusive processing completes, next message can be fetched"
-            ;; Mark the processing row as done by deleting it (simulating bundle-successful!)
+            ;; Mark the processing row as done by deleting it (simulating batch-successful!)
             (t2/delete! :queue_message_batch :queue_name (name exclusive-q) :status "processing")
             (let [results (#'q.appdb/fetch! (listener/queue-names))
                   {:keys [queue messages]} (first results)]
@@ -129,13 +129,13 @@
                                                  :messages (json/encode ["test-message"])
                                                  :status "processing"
                                                  :owner @#'q.appdb/owner-id})]
-        (q.backend/bundle-successful! :queue.backend/appdb queue-name message-id)
+        (q.backend/batch-successful! :queue.backend/appdb queue-name message-id)
         (is (nil? (t2/select-one :queue_message_batch :id message-id)))))
 
     (testing "Message successful on non-existent message does not fail"
-      (is (nil? (q.backend/bundle-successful! :queue.backend/appdb queue-name 99999))))))
+      (is (nil? (q.backend/batch-successful! :queue.backend/appdb queue-name 99999))))))
 
-;; Note: no cleanup needed — bundle-successful! deletes the row
+;; Note: no cleanup needed — batch-successful! deletes the row
 
 (deftest message-failed-test
   (let [queue-name (keyword "queue" (str (gensym "failed-test-")))]
@@ -147,7 +147,7 @@
                                                    :status "processing"
                                                    :failures 0
                                                    :owner @#'q.appdb/owner-id})]
-          (q.backend/bundle-failed! :queue.backend/appdb queue-name message-id)
+          (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "pending" (:status updated-message)))
             (is (= 1 (:failures updated-message)))
@@ -161,7 +161,7 @@
                                                    :status "processing"
                                                    :failures 2
                                                    :owner @#'q.appdb/owner-id})]
-          (q.backend/bundle-failed! :queue.backend/appdb queue-name message-id)
+          (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "pending" (:status updated-message)))
             (is (= 3 (:failures updated-message)))
@@ -174,14 +174,14 @@
                                                    :status "processing"
                                                    :failures (dec (mq.settings/queue-max-retries))
                                                    :owner @#'q.appdb/owner-id})]
-          (q.backend/bundle-failed! :queue.backend/appdb queue-name message-id)
+          (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "failed" (:status updated-message)))
             (is (= (mq.settings/queue-max-retries) (:failures updated-message)))
             (is (nil? (:owner updated-message))))))
 
       (testing "Message failed on non-existent message does not fail"
-        (is (nil? (q.backend/bundle-failed! :queue.backend/appdb queue-name 99999))))
+        (is (nil? (q.backend/batch-failed! :queue.backend/appdb queue-name 99999))))
 
       (testing "Message failed when being processed by another node is a no-op"
         (let [message-id (t2/insert-returning-pk! :queue_message_batch
@@ -190,7 +190,7 @@
                                                    :status "processing"
                                                    :owner "another-node"
                                                    :failures 0})]
-          (q.backend/bundle-failed! :queue.backend/appdb queue-name message-id)
+          (q.backend/batch-failed! :queue.backend/appdb queue-name message-id)
           (let [updated-message (t2/select-one :queue_message_batch :id message-id)]
             (is (= "processing" (:status updated-message)))
             (is (= 0 (:failures updated-message)))
@@ -255,7 +255,7 @@
             original-heartbeat (:status_heartbeat (t2/select-one :queue_message_batch :id message-id))]
         (Thread/sleep 100) ; Ensure enough time passes for timestamp to differ
         (with-redefs [mq.impl/busy-channels          (constantly #{queue-name})
-                      mq.impl/active-handler-metadata (fn [_ch] {:bundle-id message-id})]
+                      mq.impl/active-handler-metadata (fn [_ch] {:batch-id message-id})]
           (#'q.appdb/update-heartbeats!))
         (testing "Heartbeat is updated after update-heartbeats!"
           (let [updated-heartbeat (:status_heartbeat (t2/select-one :queue_message_batch :id message-id))]

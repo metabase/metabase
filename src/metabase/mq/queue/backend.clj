@@ -20,16 +20,16 @@
   (fn [backend _queue-name _messages]
     backend))
 
-(defmulti bundle-successful!
-  "Mark a bundle as successfully processed"
-  {:arglists '([backend queue-name bundle-id])}
-  (fn [backend _queue-name _bundle-id]
+(defmulti batch-successful!
+  "Mark a batch as successfully processed"
+  {:arglists '([backend queue-name batch-id])}
+  (fn [backend _queue-name _batch-id]
     backend))
 
-(defmulti bundle-failed!
-  "Mark a bundle as failed and increment failure count"
-  {:arglists '([backend queue-name bundle-id])}
-  (fn [backend _queue-name _bundle-id]
+(defmulti batch-failed!
+  "Mark a batch as failed and increment failure count"
+  {:arglists '([backend queue-name batch-id])}
+  (fn [backend _queue-name _batch-id]
     backend))
 
 (defmulti start!

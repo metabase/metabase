@@ -34,7 +34,7 @@
 
 (defn- fetch!
   "Fetches the oldest pending row for each of the given queue names.
-  Returns a seq of maps with :bundle-id, :queue, and :messages keys, or nil if no messages are available.
+  Returns a seq of maps with :batch-id, :queue, and :messages keys, or nil if no messages are available.
   Selects one row per queue, marks them all as 'processing', and returns them — all within one transaction."
   [queue-names]
   (when (seq queue-names)
@@ -71,7 +71,7 @@
                                          :owner            owner-id}
                                 :where  [:in :id (mapv :id rows)]})
                 (mapv (fn [row]
-                        {:bundle-id (:id row)
+                        {:batch-id (:id row)
                          :queue     (keyword "queue" (:queue_name row))
                          :messages  (json/decode (:messages row))})
                       rows)))))))))
@@ -133,13 +133,13 @@
 
 (defn- update-heartbeats! []
   (doseq [channel (filter #(= "queue" (namespace %)) (mq.impl/busy-channels))]
-    (when-let [{:keys [bundle-id]} (mq.impl/active-handler-metadata channel)]
+    (when-let [{:keys [batch-id]} (mq.impl/active-handler-metadata channel)]
       (try
         (t2/update! :queue_message_batch
-                    {:id bundle-id :owner owner-id :status "processing"}
+                    {:id batch-id :owner owner-id :status "processing"}
                     {:status_heartbeat (mi/now)})
         (catch Exception e
-          (log/warnf e "Failed to update heartbeat for bundle %d" bundle-id))))))
+          (log/warnf e "Failed to update heartbeat for batch %d" batch-id))))))
 
 ;;; ------------------------------------------- Polling -------------------------------------------
 
@@ -155,8 +155,8 @@
   (boolean
    (when-let [available-queues (seq (remove mq.impl/channel-busy? (listener/queue-names)))]
      (when-let [batches (seq (fetch! available-queues))]
-       (doseq [{:keys [bundle-id queue messages]} batches]
-         (mq.impl/submit-delivery! queue messages bundle-id :queue.backend/appdb {:bundle-id bundle-id}))
+       (doseq [{:keys [batch-id queue messages]} batches]
+         (mq.impl/submit-delivery! queue messages batch-id :queue.backend/appdb {:batch-id batch-id}))
        true))))
 
 (defmethod q.backend/start! :queue.backend/appdb [_]
@@ -173,27 +173,27 @@
   (when-not (mq.impl/channel-busy? queue)
     (mq.polling/notify! poll-state)))
 
-(defmethod q.backend/bundle-successful! :queue.backend/appdb
-  [_ _queue-name bundle-id]
-  (let [deleted (t2/delete! :queue_message_batch :id bundle-id :owner owner-id)]
+(defmethod q.backend/batch-successful! :queue.backend/appdb
+  [_ _queue-name batch-id]
+  (let [deleted (t2/delete! :queue_message_batch :id batch-id :owner owner-id)]
     (when (= 0 deleted)
-      (log/warnf "Message %d was already deleted from the queue." bundle-id))))
+      (log/warnf "Message %d was already deleted from the queue." batch-id))))
 
-(defmethod q.backend/bundle-failed! :queue.backend/appdb
-  [_ queue-name bundle-id]
-  (let [row     (t2/select-one :queue_message_batch :id bundle-id :owner owner-id)
+(defmethod q.backend/batch-failed! :queue.backend/appdb
+  [_ queue-name batch-id]
+  (let [row     (t2/select-one :queue_message_batch :id batch-id :owner owner-id)
         updated (when row
                   (if (>= (inc (:failures row)) (mq.settings/queue-max-retries))
                     (do
-                      (log/warnf "Message %d has reached max failures (%d), marking as failed" bundle-id (mq.settings/queue-max-retries))
+                      (log/warnf "Message %d has reached max failures (%d), marking as failed" batch-id (mq.settings/queue-max-retries))
                       (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)})
                       (t2/update! :queue_message_batch
-                                  {:id bundle-id :owner owner-id}
+                                  {:id batch-id :owner owner-id}
                                   {:status "failed" :failures [:+ :failures 1] :status_heartbeat (mi/now) :owner nil}))
                     (do
                       (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
                       (t2/update! :queue_message_batch
-                                  {:id bundle-id :owner owner-id}
+                                  {:id batch-id :owner owner-id}
                                   {:status "pending" :failures [:+ :failures 1] :status_heartbeat (mi/now) :owner nil}))))]
     (when (and row (= 0 updated))
-      (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" bundle-id))))
+      (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" batch-id))))

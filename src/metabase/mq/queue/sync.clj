@@ -10,17 +10,17 @@
 (set! *warn-on-reflection* true)
 
 (defmethod q.backend/publish! :queue.backend/sync [_ queue-name messages]
-  (let [bundle-id (str (random-uuid))]
+  (let [batch-id (str (random-uuid))]
     (if (listener/get-listener queue-name)
       ;; Call handle! directly to bypass accumulation — the sync backend must
       ;; deliver immediately so that tests observe side-effects inline.
-      (mq.impl/handle! queue-name {bundle-id :queue.backend/sync} messages)
+      (mq.impl/handle! queue-name {batch-id :queue.backend/sync} messages)
       (log/warnf "No listener registered for queue %s, dropping %d message(s)" queue-name (count messages)))))
 
-(defmethod q.backend/bundle-successful! :queue.backend/sync [_ _queue-name _bundle-id]
+(defmethod q.backend/batch-successful! :queue.backend/sync [_ _queue-name _batch-id]
   nil)
 
-(defmethod q.backend/bundle-failed! :queue.backend/sync [_ _queue-name _bundle-id]
+(defmethod q.backend/batch-failed! :queue.backend/sync [_ _queue-name _batch-id]
   nil)
 
 (defmethod q.backend/shutdown! :queue.backend/sync [_]

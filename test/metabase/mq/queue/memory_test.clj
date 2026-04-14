@@ -15,19 +15,19 @@
   `(binding [q.backend/*backend*        :queue.backend/memory
              listener/*listeners*        (atom {})
              memory/*channels*           (atom {})
-             q.memory/*bundle-registry*  (atom {})]
+             q.memory/*batch-registry*  (atom {})]
      ~@body))
 
 (defn- deliver-pending!
   "Drains all pending memory channels and delivers messages synchronously on the current thread.
-  For queue channels, also registers bundles so ACK/NACK works."
+  For queue channels, also registers batchs so ACK/NACK works."
   []
   (doseq [channel-name (concat (listener/queue-names) (listener/topic-names))]
     (when-let [messages (#'memory/drain! channel-name)]
       (if (= "queue" (namespace channel-name))
-        (let [bundle-id (str (random-uuid))]
-          (#'memory/register-bundle! bundle-id messages)
-          (mq.impl/deliver! channel-name messages bundle-id :queue.backend/memory))
+        (let [batch-id (str (random-uuid))]
+          (#'memory/register-batch! batch-id messages)
+          (mq.impl/deliver! channel-name messages batch-id :queue.backend/memory))
         (mq.impl/deliver! channel-name messages nil nil)))))
 
 (deftest publish-test
