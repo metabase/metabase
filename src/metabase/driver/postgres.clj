@@ -608,17 +608,16 @@
     (h2x/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver value]
-  (let [[_ raw-value {base-type :base_type, database-type :database_type}] value]
-    (when (some? raw-value)
-      (condp #(isa? %2 %1) base-type
-        :type/PostgresBitString (h2x/cast :varbit raw-value)
-        :type/IPAddress    (h2x/cast :inet raw-value)
-        :type/PostgresEnum (if (quoted? database-type)
-                             (h2x/cast database-type raw-value)
-                             (h2x/quoted-cast database-type raw-value))
-        ((get-method sql.qp/->honeysql [:sql-jdbc :value])
-         driver value)))))
+  [driver [_ {:keys [base-type database-type]} raw-value]]
+  (when (some? raw-value)
+    (condp #(isa? %2 %1) base-type
+      :type/PostgresBitString (h2x/cast :varbit raw-value)
+      :type/IPAddress    (h2x/cast :inet raw-value)
+      :type/PostgresEnum (if (quoted? database-type)
+                           (h2x/cast database-type raw-value)
+                           (h2x/quoted-cast database-type raw-value))
+      ((get-method sql.qp/->honeysql [:sql-jdbc :value])
+       driver [:value raw-value {:base_type base-type :database_type database-type}]))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
@@ -801,8 +800,8 @@
 
 (defn- order-by-is-json-field?
   [clause]
-  (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
-        stored-field-id (-> clause (second) (second))
+  (let [is-aggregation? (= (-> clause (nth 2) (first)) :aggregation)
+        stored-field-id (-> clause (nth 2) (nth 2))
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (driver-api/field (driver-api/metadata-provider) stored-field-id))]
     (and
@@ -813,15 +812,17 @@
   [driver clause]
   (let [new-clause (if (order-by-is-json-field? clause)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                     clause)]
-    ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
+                     clause)
+        [_ opts ordered-clause] new-clause]
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver [:desc ordered-clause opts])))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
   (let [new-clause (if (order-by-is-json-field? clause)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                     clause)]
-    ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
+                     clause)
+        [_ opts ordered-clause] new-clause]
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver [:asc ordered-clause opts])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
