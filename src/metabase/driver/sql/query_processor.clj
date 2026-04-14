@@ -719,23 +719,24 @@
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
         expression-definition (driver-api/expression-with-name *inner-query* expression-name)]
-    (cond->> (->honeysql driver (cond (= source-table driver-api/qp.add.source)
-                                      (apply h2x/identifier :field source-query-alias source-alias)
+    (cond->>
+     (->honeysql driver (cond (= source-table driver-api/qp.add.source)
+                              (apply h2x/identifier :field source-query-alias source-alias)
 
-                                      (literal-text-value? expression-definition)
-                                      [::expression-literal-text-value expression-definition]
+                              (literal-text-value? expression-definition)
+                              [::expression-literal-text-value expression-definition]
 
-                                      ;; Handle raw string literals (not wrapped in :value) - needed for
-                                      ;; expression definitions that are just string literals, e.g. from
-                                      ;; custom columns like `"fixed literal string"`. Without this,
-                                      ;; the string becomes a parameter placeholder without type info,
-                                      ;; which some databases (like H2) can't handle.
-                                      (string? expression-definition)
-                                      [::expression-literal-text-value
-                                       [:value expression-definition {:base_type :type/Text}]]
+                              ;; Handle raw string literals (not wrapped in :value) - needed for
+                              ;; expression definitions that are just string literals, e.g. from
+                              ;; custom columns like `"fixed literal string"`. Without this,
+                              ;; the string becomes a parameter placeholder without type info,
+                              ;; which some databases (like H2) can't handle.
+                              (string? expression-definition)
+                              [::expression-literal-text-value
+                               [:value expression-definition {:base_type :type/Text}]]
 
-                                      :else
-                                      expression-definition))
+                              :else
+                              expression-definition))
       (:temporal-unit opts) (apply-temporal-bucketing driver opts))))
 
 (defmethod ->honeysql [:sql :now]
