@@ -9,12 +9,12 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/querying/constants";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import { UploadMode } from "metabase/redux/store/upload";
 import { uploadFile } from "metabase/redux/uploads";
 import { Box, Divider, Icon, Menu } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
-import { UploadMode } from "metabase-types/store/upload";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 

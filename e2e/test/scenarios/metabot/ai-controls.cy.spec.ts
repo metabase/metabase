@@ -381,7 +381,9 @@ describe("AI controls > AI usage limits", () => {
       cy.visit(AI_USAGE_LIMITS_URL);
       cy.wait("@getInstanceLimit");
 
-      cy.findByDisplayValue("100").clear();
+      cy.findByRole("textbox", {
+        name: /Total monthly instance limit/,
+      }).clear();
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: null });
       });

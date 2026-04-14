@@ -1190,6 +1190,9 @@
        (:source_table :source-table) (cond-> m
                                        (pos-int? v)
                                        (update k *export-table-fk*))
+       :table-id                     (cond-> m
+                                       (pos-int? v)
+                                       (update k *export-table-fk*))
        (:source_card :source-card)   (cond-> m
                                        (pos-int? v)
                                        (update k *export-fk* :model/Card))
@@ -1278,6 +1281,9 @@
        :snippet-id                   (cond-> m
                                        (portable-id? v)
                                        (update k *import-fk* 'NativeQuerySnippet))
+       :table-id                     (cond-> m
+                                       (vector? v)
+                                       (update k *import-table-fk*))
        #_else                        (update m k import-mbql*)))
    m
    m))
@@ -1383,6 +1389,7 @@
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-field) (vector? v))      #{(field->path v)}
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
+                    (and (= k :table-id)     (vector? v))      #{(table->path v)}
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
                     (map? v)                                   (mbql-deps-map v)
                     (vector? v)                                (mbql-deps-vector v))))

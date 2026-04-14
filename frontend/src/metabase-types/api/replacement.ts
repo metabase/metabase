@@ -33,6 +33,7 @@ export const SOURCE_REPLACEMENT_ERROR_TYPES = [
   "database-mismatch",
   "cycle-detected",
   "incompatible-implicit-joins",
+  "affects-gtap-policies",
 ] as const;
 export type SourceReplacementErrorType =
   (typeof SOURCE_REPLACEMENT_ERROR_TYPES)[number];
