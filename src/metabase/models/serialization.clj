@@ -1837,7 +1837,6 @@
 (defn nested "Nested entities" [model backward-fk opts]
   (let [model-name (name model)
         sorter     (:sort-by opts :created_at)
-        ; TODO
         key-field  (:key-field opts :entity_id)]
     {::nested             true
      :model               model
