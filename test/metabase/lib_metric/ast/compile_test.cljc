@@ -452,6 +452,21 @@
       (is (= 123 (nth field-ref 2)))
       (is (= 42 (get-in field-ref [1 :source-field]))))))
 
+(deftest ^:parallel compile-fk-aggregation-column-test
+  (testing "aggregation over an FK column produces :source-field on the compiled field ref (implicit join)"
+    (let [ast (assoc-in sample-ast [:source :aggregation]
+                        {:node/type :aggregation/sum
+                         :column    {:node/type :ast/column :id 53 :source-field 3}})
+          result (ast.compile/compile-to-mbql ast)
+          agg    (first (get-in result [:stages 0 :aggregation]))
+          field-ref (nth agg 2)]
+      (testing "stays single-stage (no explicit joins required)"
+        (is (= 1 (count (:stages result)))))
+      (is (= :sum (first agg)))
+      (is (= :field (first field-ref)))
+      (is (= 53 (nth field-ref 2)))
+      (is (= 3 (get-in field-ref [1 :source-field]))))))
+
 ;;; -------------------------------------------------- Options --------------------------------------------------
 
 (deftest ^:parallel compile-with-limit-test

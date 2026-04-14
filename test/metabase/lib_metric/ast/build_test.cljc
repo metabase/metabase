@@ -182,6 +182,23 @@
     (testing "extracts sum aggregation"
       (is (= :aggregation/sum (get-in ast [:expression :ast :source :aggregation :node/type]))))))
 
+(deftest ^:parallel aggregation-preserves-source-field-test
+  (testing "aggregation field refs with :source-field (implicit join) carry it through to the column node"
+    (let [mbql-agg->node @#'ast.build/mbql-aggregation->node
+          sum-node       (mbql-agg->node [:sum {:lib/uuid "c1"} [:field {:source-field 3} 53]])
+          count-node     (mbql-agg->node [:count {:lib/uuid "c2"} [:field {:source-field 3} 53]])]
+      (is (= {:node/type :aggregation/sum
+              :column    {:node/type :ast/column :id 53 :source-field 3}}
+             sum-node))
+      (is (= {:node/type :aggregation/count
+              :column    {:node/type :ast/column :id 53 :source-field 3}}
+             count-node))))
+  (testing "aggregation field refs without :source-field produce a plain column node"
+    (let [mbql-agg->node @#'ast.build/mbql-aggregation->node]
+      (is (= {:node/type :aggregation/sum
+              :column    {:node/type :ast/column :id 53}}
+             (mbql-agg->node [:sum {:lib/uuid "c3"} [:field {} 53]]))))))
+
 ;;; -------------------------------------------------- Dimension Reference Conversion --------------------------------------------------
 
 (deftest ^:parallel dimension-ref->ast-dimension-ref-test
