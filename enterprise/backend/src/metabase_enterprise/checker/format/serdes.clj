@@ -47,7 +47,8 @@
    [metabase-enterprise.checker.source :as source]
    [metabase.util.yaml :as yaml])
   (:import
-   (java.io File)))
+   (java.io File)
+   (java.util Locale)))
 
 (set! *warn-on-reflection* true)
 
@@ -345,11 +346,12 @@
 
    To change schema resolution in the future, modify this function."
   [model db-name schema]
-  (let [schemas (:schemas (get model db-name))]
+  (let [schemas (:schemas (get model db-name))
+        lower (fn [s] (.toLowerCase (str s) Locale/US))]
     (cond
       (contains? schemas schema) schema
-      schema (let [lower (str/lower-case schema)]
-               (some (fn [k] (when (and (string? k) (= (str/lower-case k) lower)) k))
+      schema (let [lowered (lower schema)]
+               (some (fn [k] (when (and (string? k) (= (lower k) lowered)) k))
                      (keys schemas)))
       :else (when (contains? schemas nil) nil))))
 
