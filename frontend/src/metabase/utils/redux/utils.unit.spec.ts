@@ -1,8 +1,7 @@
 import { delay } from "__support__/utils";
-import type { Dispatch, State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
-import { createMockRequestsState } from "metabase-types/store/mocks/requests";
-import type { RequestState } from "metabase-types/store/requests";
+import type { Dispatch, RequestState, State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
+import { createMockRequestsState } from "metabase/redux/store/mocks/requests";
 
 import { fetchData, mergeEntities, updateData } from "./utils";
 

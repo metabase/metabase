@@ -1,9 +1,9 @@
 import type { EnhancedStore } from "@reduxjs/toolkit";
 import * as Snowplow from "@snowplow/browser-tracker";
 
+import type { State } from "metabase/redux/store";
 import { getUserId } from "metabase/selectors/user";
 import Settings from "metabase/utils/settings";
-import type { State } from "metabase-types/store";
 
 export const trackPageView = (url: string): void => {
   if (!url || !Settings.trackingEnabled()) {

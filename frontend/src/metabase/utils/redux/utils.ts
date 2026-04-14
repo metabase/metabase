@@ -11,8 +11,8 @@ import {
   setRequestPromise,
   setRequestUnloaded,
 } from "metabase/redux/requests";
+import type { Dispatch, State } from "metabase/redux/store";
 import { delay } from "metabase/utils/promise";
-import type { Dispatch, State } from "metabase-types/store";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";

@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { setInitialUrlOptions } from "metabase/redux/embed";
+import type { State } from "metabase/redux/store";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
-import type { State } from "metabase-types/store";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason

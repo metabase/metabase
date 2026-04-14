@@ -4,7 +4,7 @@ import type { Action } from "redux-actions";
 
 import * as entities from "metabase/redux/entities";
 import { requestsReducer } from "metabase/redux/requests";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 /**
  * Map of slice name to its reducer. Reducer state types are unconstrained so that
