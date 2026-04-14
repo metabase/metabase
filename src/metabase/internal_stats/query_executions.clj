@@ -37,11 +37,14 @@
    [(u/count-case public-link-condition)       :public_link]
    [(u/count-case simple-embed-condition)      :simple_embed]
    ;; fallthru: if a row does NOT match the above, it will match this condition and be counted internal.
-   [(u/count-case [:not [:or sdk-embed-condition
-                         interactive-embed-condition
-                         simple-embed-condition
-                         static-embed-condition
-                         public-link-condition]]) :internal]])
+   ;; COALESCE needed because when embedding_client IS NULL, the OR of equality checks returns NULL
+   ;; (not FALSE), and NOT(NULL) = NULL which would skip the row instead of counting it.
+   [(u/count-case [:not [:coalesce [:or sdk-embed-condition
+                                    interactive-embed-condition
+                                    simple-embed-condition
+                                    static-embed-condition
+                                    public-link-condition]
+                         [:inline false]]]) :internal]])
 
 (defn query-executions-all-time-and-last-24h
   "Calculate query executions for the entire available history and over the last 24 hours from now."
