@@ -18,16 +18,23 @@
   (testing "weighted average of two scorers"
     (let [result (interestingness/score-field
                   {(constant-scorer 1.0 "high") 0.75
-                   (constant-scorer 0.0 "low")  0.25}
+                   (constant-scorer 0.5 "mid")  0.25}
                   {})]
-      (is (= 0.75 (:score result)))))
+      (is (= 0.875 (:score result)))))
 
   (testing "weights don't need to sum to 1"
     (let [result (interestingness/score-field
                   {(constant-scorer 1.0 "a") 3.0
-                   (constant-scorer 0.0 "b") 1.0}
+                   (constant-scorer 0.5 "b") 1.0}
                   {})]
-      (is (= 0.75 (:score result)))))
+      (is (= 0.875 (:score result)))))
+
+  (testing "hard-zero from any scorer clamps total to at most 0.1"
+    (let [result (interestingness/score-field
+                  {(constant-scorer 1.0 "high") 0.75
+                   (constant-scorer 0.0 "gate") 0.25}
+                  {})]
+      (is (<= (:score result) 0.1))))
 
   (testing "empty scorer map returns 0.5"
     (is (= 0.5 (:score (interestingness/score-field {} {} nil)))))

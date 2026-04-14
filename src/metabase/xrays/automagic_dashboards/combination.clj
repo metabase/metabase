@@ -199,7 +199,18 @@
           :let [dim-names (map ffirst card-dimensions)]
           :when (and (every? ground-dimensions dim-names)
                      (every? simple-grounded-filters card-filters))
-          :let [dim-score (map (comp :score ground-dimensions) dim-names)]
+          :let [dim-score (map (fn [dim-name]
+                                 (let [{:keys [score matches]} (ground-dimensions dim-name)
+                                       avg-interestingness (when (seq matches)
+                                                             (let [scores (keep :interestingness-score matches)]
+                                                               (when (seq scores)
+                                                                 (/ (reduce + scores) (count scores)))))]
+                                    ;; Blend template score with avg interestingness of matched fields.
+                                    ;; If no interestingness data, use template score unmodified.
+                                   (if avg-interestingness
+                                     (* score avg-interestingness)
+                                     score)))
+                               dim-names)]
           dimension-name->field (->> (map (comp :matches ground-dimensions) dim-names)
                                      (apply math.combo/cartesian-product)
                                      (map (partial zipmap dim-names)))

@@ -18,6 +18,7 @@
     0.51-0.74   Decent, typical useful field
     0.75-1.0    High value for exploration"
   (:require
+   [clojure.set :as set]
    [metabase.interestingness.scorers.dimension :as scorers.dimension]))
 
 ;; Planned context keys (not yet implemented):
@@ -32,7 +33,12 @@
   "Score a single field using weighted scorers. Returns:
    {:score  double        ;; weighted average in [0.0, 1.0]
     :scores {key {:score double, :reason string}}  ;; per-scorer breakdown
-    :field  field}        ;; the input field, passed through"
+    :field  field}        ;; the input field, passed through
+
+   If any scorer with nonzero weight returns exactly 0.0, the final score is clamped
+   to at most 0.1. This ensures hard signals act as effective gates regardless of
+   what other scorers return. Scorers that use 0.0 as a gate include type-penalty
+   (PKs, FKs), cardinality (constant fields), and numeric-variance (zero spread)."
   ([scorer-weight-map field]
    (score-field scorer-weight-map field nil))
   ([scorer-weight-map field context]
@@ -43,12 +49,16 @@
                           (let [{:keys [score] :as result} (scorer field context)]
                             (-> acc
                                 (update :weighted-sum + (* weight score))
+                                (update :has-hard-zero? #(or % (and (pos? weight) (zero? score))))
                                 (assoc-in [:scores scorer] result))))
-                        {:weighted-sum 0.0 :scores {}}
+                        {:weighted-sum 0.0 :scores {} :has-hard-zero? false}
                         scorer-weight-map)
-         final-score   (if (pos? total-weight)
+         raw-score     (if (pos? total-weight)
                          (/ (:weighted-sum results) total-weight)
-                         0.5)]
+                         0.5)
+         final-score   (if (:has-hard-zero? results)
+                         (min raw-score 0.1)
+                         raw-score)]
      {:score  final-score
       :scores (:scores results)
       :field  field})))
@@ -86,4 +96,52 @@
    scorers.dimension/type-bonus        0.15
    scorers.dimension/numeric-variance  0.10
    scorers.dimension/temporal-range    0.10
+   scorers.dimension/text-structure    0.05})
+
+;;; -------------------------------------------------- Field Normalization --------------------------------------------------
+
+(def ^:private snake->kebab-keys
+  "Keys that need conversion from snake_case (raw DB Field maps) to kebab-case (scorer input)."
+  {:semantic_type   :semantic-type
+   :base_type       :base-type
+   :effective_type  :effective-type
+   :visibility_type :visibility-type})
+
+(defn normalize-field
+  "Convert a snake_case field map (as used in x-rays/raw DB) to the kebab-case shape scorers expect.
+   Keys not in the rename map are passed through unchanged (e.g., :fingerprint)."
+  [field]
+  (set/rename-keys field snake->kebab-keys))
+
+(defn score-raw-field
+  "Score a snake_case field map by normalizing it first. Returns the same shape as `score-field`
+   but with the original (unnormalized) field in `:field`."
+  ([scorer-weight-map field]
+   (score-raw-field scorer-weight-map field nil))
+  ([scorer-weight-map field context]
+   (let [result (score-field scorer-weight-map (normalize-field field) context)]
+     (assoc result :field field))))
+
+;;; -------------------------------------------------- X-Ray Weight Profiles --------------------------------------------------
+
+(def xray-dimension-weights
+  "Weight profile for x-ray dimension matching. Emphasizes type-penalty and cardinality
+   to aggressively filter structural noise (PKs, FKs, audit fields, constants)."
+  {scorers.dimension/type-penalty      0.40
+   scorers.dimension/cardinality       0.25
+   scorers.dimension/nullness          0.15
+   scorers.dimension/type-bonus        0.05
+   scorers.dimension/numeric-variance  0.05
+   scorers.dimension/temporal-range    0.05
+   scorers.dimension/text-structure    0.05})
+
+(def xray-filter-weights
+  "Weight profile for x-ray filter/parameter selection. Emphasizes type-bonus since
+   temporal and category fields make the best dashboard filters."
+  {scorers.dimension/type-penalty      0.25
+   scorers.dimension/cardinality       0.20
+   scorers.dimension/nullness          0.10
+   scorers.dimension/type-bonus        0.35
+   scorers.dimension/numeric-variance  0.00
+   scorers.dimension/temporal-range    0.05
    scorers.dimension/text-structure    0.05})

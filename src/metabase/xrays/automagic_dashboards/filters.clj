@@ -1,62 +1,32 @@
 (ns metabase.xrays.automagic-dashboards.filters
   (:require
+   [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
-(defn- temporal?
-  "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
-  [{base-type :base_type, effective-type :effective_type, unit :unit}]
-  ;; Excluding :year because it's (currently) both an extraction and truncation unit.
-  ;; For the purposes of this check, :year is an interesting :unit which yields a time interval, not just a number.
-  (and (not ((disj u.date/extract-units :year) unit))
-       (isa? (or effective-type base-type) :type/Temporal)))
-
-(defn- interestingness
-  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [fingerprint]}]
-  (cond-> 0
-    (some-> fingerprint :global :distinct-count (< 10)) inc
-    (some-> fingerprint :global :distinct-count (> 20)) dec
-    ((descendants :type/Category) semantic-type)        inc
-    (isa? (or effective-type base-type) :type/Temporal) inc
-    ((descendants :type/Temporal) semantic-type)        inc
-    (isa? semantic-type :type/CreationTimestamp)        inc
-    (#{:type/State :type/Country} semantic-type)        inc))
-
-(defn- interleave-all
-  [& colls]
-  (lazy-seq
-   (when (seq colls)
-     (concat (map first colls) (apply interleave-all (keep (comp seq rest) colls))))))
-
-(defn- sort-by-interestingness
-  [fields]
-  (->> fields
-       (map #(assoc % :interestingness (interestingness %)))
-       (sort-by :interestingness >)
-       (partition-by :interestingness)
-       (mapcat (fn [fields]
-                 (->> fields
-                      (group-by (juxt :base_type :semantic_type))
-                      vals
-                      (apply interleave-all))))))
+(def ^:private ^:const filter-interestingness-cutoff
+  "Minimum interestingness score for a field to be considered as a dashboard filter."
+  0.3)
 
 (defn interesting-fields
-  "Pick out interesting fields and sort them by interestingness."
+  "Pick out interesting fields and sort them by interestingness.
+   Uses the interestingness engine to score and filter, replacing the previous
+   manual type-check approach."
   [fields]
   (->> fields
-       (filter (fn [{:keys [base_type effective_type semantic_type] :as field}]
-                 (or (temporal? field)
-                     (isa? (or effective_type base_type) :type/Boolean)
-                     (isa? semantic_type :type/Category))))
-       sort-by-interestingness))
+       (keep (fn [field]
+               (let [{:keys [score]} (interestingness/score-raw-field
+                                      interestingness/xray-filter-weights field)]
+                 (when (>= score filter-interestingness-cutoff)
+                   (assoc field :interestingness score)))))
+       (sort-by :interestingness >)))
 
 (defn- build-fk-map
   [fks field]
@@ -113,10 +83,6 @@
     {:type "string/="
      :sectionId "string"}))
 
-(def ^:private ^{:arglists '([dimensions])} remove-unqualified
-  (partial remove (fn [{:keys [fingerprint]}]
-                    (some-> fingerprint :global :distinct-count (< 2)))))
-
 (mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
   create filters."
@@ -129,8 +95,7 @@
                                              :fk_target_field_id [:not= nil]
                                              :table_id [:in table-ids])))]
     (->> dimensions
-         remove-unqualified
-         sort-by-interestingness
+         interesting-fields
          (take max-filters)
          (reduce
           (fn [dashboard candidate]

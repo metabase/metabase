@@ -43,6 +43,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.interestingness.core :as interestingness]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -418,6 +419,31 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
+(def ^:private ^:const interestingness-threshold
+  "Minimum interestingness score for a field to be kept as a dimension match.
+   Set low (0.2) to catch only obvious noise (PKs, FKs, constants, mostly-null)."
+  0.2)
+
+(defn- score-and-filter-matches
+  "Score each field in `:matches` using the interestingness engine.
+   Filters out fields below the threshold and annotates surviving fields
+   with `:interestingness-score`. Removes dimension entries with no surviving matches."
+  [dims]
+  (into {}
+        (keep (fn [[dim-name dim-def]]
+                (let [scored-matches
+                      (->> (:matches dim-def)
+                           (keep (fn [field]
+                                   (let [{:keys [score]} (interestingness/score-raw-field
+                                                          interestingness/xray-dimension-weights
+                                                          field)]
+                                     (when (>= score interestingness-threshold)
+                                       (assoc field :interestingness-score score)))))
+                           vec)]
+                  (when (seq scored-matches)
+                    [dim-name (assoc dim-def :matches scored-matches)]))))
+        dims))
+
 (mu/defn identify :- ::ads/grounded-values
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied.
@@ -430,7 +456,8 @@
                               [:metric-specs    [:maybe [:sequential ::ads/metric-template]]]
                               [:filter-specs    [:maybe [:sequential ::ads/filter-template]]]]]
   (let [dims      (->> (find-dimensions context dimension-specs)
-                       (add-field-self-reference context))
+                       (add-field-self-reference context)
+                       score-and-filter-matches)
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)
                       (grounded-metrics dims))
         set-score (fn [score metrics]

@@ -8,6 +8,45 @@
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
+;;; -------------------- Interestingness scoring integration --------------------
+
+(deftest ^:parallel score-and-filter-matches-test
+  (testing "PK fields are filtered out of dimension matches"
+    (let [dims {"GenericNumber" {:field_type [:type/Number]
+                                 :score 80
+                                 :matches [{:id 1 :name "AMOUNT" :base_type :type/Float
+                                            :semantic_type :type/Currency
+                                            :fingerprint {:global {:distinct-count 50 :nil% 0.0}
+                                                          :type {:type/Number {:sd 10.0 :avg 50.0 :min 0 :max 100}}}}
+                                           {:id 2 :name "ID" :base_type :type/Integer
+                                            :semantic_type :type/PK
+                                            :fingerprint {:global {:distinct-count 10000 :nil% 0.0}}}]}}
+          result (#'interesting/score-and-filter-matches dims)]
+      (is (= 1 (count (get-in result ["GenericNumber" :matches]))))
+      (is (= "AMOUNT" (-> result (get "GenericNumber") :matches first :name)))))
+
+  (testing "FK fields are filtered out"
+    (let [dims {"GenericNumber" {:field_type [:type/Number]
+                                 :score 60
+                                 :matches [{:id 3 :name "USER_ID" :base_type :type/Integer
+                                            :semantic_type :type/FK
+                                            :fingerprint {:global {:distinct-count 5000 :nil% 0.0}}}]}}
+          result (#'interesting/score-and-filter-matches dims)]
+      (testing "dimension entry is removed when all matches are filtered"
+        (is (empty? result)))))
+
+  (testing "Good fields survive with interestingness-score annotation"
+    (let [dims {"Timestamp" {:field_type [:type/DateTime]
+                             :score 60
+                             :matches [{:id 4 :name "CREATED_AT" :base_type :type/DateTime
+                                        :semantic_type :type/CreationTimestamp
+                                        :fingerprint {:global {:distinct-count 365 :nil% 0.0}
+                                                      :type {:type/DateTime {:earliest "2020-01-01"
+                                                                             :latest "2024-01-01"}}}}]}}
+          result (#'interesting/score-and-filter-matches dims)]
+      (is (= 1 (count (get-in result ["Timestamp" :matches]))))
+      (is (number? (-> result (get "Timestamp") :matches first :interestingness-score))))))
+
 ;;; -------------------- Bind dimensions, candidate bindings, field candidates, and related --------------------
 
 (defn field [table column]
