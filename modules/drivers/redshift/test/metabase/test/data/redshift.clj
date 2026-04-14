@@ -66,14 +66,23 @@
 (defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
-;; MB_REDSHIFT_TEST_HOSTS
+;;; `MB_REDSHIFT_TEST_HOSTS`
+;;;
+;;; We've had lots of problems with Redshift timing out because of too much CPU load on our single cluster in the past;
+;;; instead of continuing to increase the size of the cluster (which doesn't seem to help much) we're switching to a
+;;; handful of smaller clusters, and picking one randomly; there is nothing shared between test runs and no reason they
+;;; all need to be done on a single cluster anyway. Other than the `:host` these are all configured identically with the
+;;; same user, password, and database name.
+
 (defonce ^:private hosts
   (delay
     (when-let [hosts (not-empty (tx/db-test-env-var :redshift :hosts))]
       (str/split hosts #","))))
 
-(defn- random-host []
-  (println "(seq @hosts):" (seq @hosts)) ; NOCOMMIT
+(defn- random-host
+  "Pick a random host to test against from `MB_REDSHIFT_TEST_HOSTS` if it's set; otherwise fall back to the host in
+  `MB_REDSHIFT_TEST_HOST`."
+  []
   (u/prog1 (if (seq @hosts)
              (rand-nth @hosts)
              (tx/db-test-env-var-or-throw :redshift :host))
