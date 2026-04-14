@@ -9,7 +9,6 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { uuid } from "metabase/utils/uuid";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
@@ -1829,7 +1828,7 @@ describe("scenarios > embedding > full app", () => {
           content: [
             {
               type: "paragraph",
-              attrs: { _id: uuid() },
+              attrs: { _id: crypto.randomUUID() },
               content: [{ type: "text", text: "Test comment" }],
             },
           ],

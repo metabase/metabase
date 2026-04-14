@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { formatNumber } from "metabase/utils/formatting/numbers";
 import { measureText } from "metabase/utils/measure-text";
-import { uuid } from "metabase/utils/uuid";
 import { isEmpty } from "metabase/utils/validate";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -144,7 +143,7 @@ export function getDefaultComparison(
   if (!dateUnit) {
     return [
       {
-        id: uuid(),
+        id: crypto.randomUUID(),
         type: COMPARISON_TYPES.PREVIOUS_VALUE,
       },
     ];
@@ -152,7 +151,7 @@ export function getDefaultComparison(
 
   return [
     {
-      id: uuid(),
+      id: crypto.randomUUID(),
       type: COMPARISON_TYPES.PREVIOUS_PERIOD,
     },
   ];

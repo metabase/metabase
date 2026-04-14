@@ -1,8 +1,6 @@
 import type { Attribute } from "@tiptap/core";
 import { Plugin } from "prosemirror-state";
 
-import { uuid } from "metabase/utils/uuid";
-
 import { ID_ATTRIBUTE_NAME } from "./constants";
 
 type Attributes = {
@@ -12,7 +10,7 @@ type Attributes = {
 export function createIdAttribute() {
   return {
     [ID_ATTRIBUTE_NAME]: {
-      default: () => uuid(),
+      default: () => crypto.randomUUID(),
       parseHTML: (el: HTMLElement) =>
         el.getAttribute(ID_ATTRIBUTE_NAME) || null,
       renderHTML: (attrs: Attributes) =>
@@ -44,7 +42,7 @@ export function createProseMirrorPlugin(nodeName: string) {
         }
 
         if ((isRightNode && hasNoId) || isDuplicate) {
-          tr.setNodeAttribute(pos, ID_ATTRIBUTE_NAME, uuid());
+          tr.setNodeAttribute(pos, ID_ATTRIBUTE_NAME, crypto.randomUUID());
           updated = true;
         }
       });

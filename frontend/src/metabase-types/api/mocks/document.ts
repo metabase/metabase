@@ -1,4 +1,3 @@
-import { uuid } from "metabase/utils/uuid";
 import type { Document, DocumentContent } from "metabase-types/api";
 
 import { createMockUser } from "./user";
@@ -33,7 +32,7 @@ export const createMockDocumentContentParagraph = (
 ): DocumentContent => ({
   type: "paragraph",
   attrs: {
-    _id: uuid(),
+    _id: crypto.randomUUID(),
   },
   content: [{ type: "text", text }],
 });
