@@ -15,6 +15,20 @@
   "Minimum interestingness score for a field to be considered as a dashboard filter."
   0.3)
 
+(defn- score-field
+  "Score a field using the x-ray filter weights. Returns the field with `:interestingness` assoc'd."
+  [field]
+  (let [{:keys [score]} (interestingness/score-raw-field
+                          interestingness/xray-filter-weights field)]
+    (assoc field :interestingness score)))
+
+(defn- rank-by-interestingness
+  "Score all fields and sort by interestingness descending. No cutoff — returns all fields ranked."
+  [fields]
+  (->> fields
+       (map score-field)
+       (sort-by :interestingness >)))
+
 (defn interesting-fields
   "Pick out interesting fields and sort them by interestingness.
    Uses the interestingness engine to score and filter, replacing the previous
@@ -23,7 +37,7 @@
   (->> fields
        (keep (fn [field]
                (let [{:keys [score]} (interestingness/score-raw-field
-                                      interestingness/xray-filter-weights field)]
+                                       interestingness/xray-filter-weights field)]
                  (when (>= score filter-interestingness-cutoff)
                    (assoc field :interestingness score)))))
        (sort-by :interestingness >)))
@@ -95,7 +109,7 @@
                                              :fk_target_field_id [:not= nil]
                                              :table_id [:in table-ids])))]
     (->> dimensions
-         interesting-fields
+         rank-by-interestingness
          (take max-filters)
          (reduce
           (fn [dashboard candidate]
