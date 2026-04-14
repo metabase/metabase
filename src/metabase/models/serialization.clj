@@ -1370,15 +1370,35 @@
        (identical? *export-table-fk*    (.getRawRoot #'*export-table-fk*))
        (identical? *export-field-fk*    (.getRawRoot #'*export-field-fk*))))
 
+(defn- collect-mbql-fk-ids
+  "Returns `{:field-ids #{…} :table-ids #{…} :db-ids #{…}}` — every id the standard MBQL walker
+  would pass to a singleton FK fn while exporting `x`. Implemented by running the walker with
+  side-effecting collectors bound to the FK vars; using the same walker as [[export-mbql*]]
+  guarantees pass 1 and pass 2 visit the same positions, even if the walker grows new
+  FK-bearing shapes later. The transient/volatile machinery is confined to this fn — the
+  return value is a plain immutable map."
+  [x]
+  (let [field-ids (volatile! (transient #{}))
+        table-ids (volatile! (transient #{}))
+        db-ids    (volatile! (transient #{}))
+        collect!  (fn [v! id] (when id (vswap! v! conj! id)) nil)]
+    (binding [*export-field-fk*    (partial collect! field-ids)
+              *export-table-fk*    (partial collect! table-ids)
+              *export-database-fk* (partial collect! db-ids)]
+      (export-mbql* x))
+    {:field-ids (persistent! @field-ids)
+     :table-ids (persistent! @table-ids)
+     :db-ids    (persistent! @db-ids)}))
+
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references.
 
-  When all three FK singletons are at their default bindings, runs a two-pass batch: pass 1 walks
-  collecting every id the tree references, one batched call to each plural primary
-  ([[*export-database-fks*]], [[*export-table-fks*]], [[*export-field-fks*]]) resolves them, and
-  pass 2 walks again substituting from the resolved lookup maps. Cross-call sharing via the
-  [[with-cache]] atoms means later invocations on related trees mostly hit the cache.
+  When all three FK singletons are at their default bindings, runs a two-pass batch: collect every
+  id the tree references via [[collect-mbql-fk-ids]], one batched call to each plural primary
+  ([[*export-database-fks*]], [[*export-table-fks*]], [[*export-field-fks*]]) resolves them, then
+  walk again substituting from the resolved lookup maps. Cross-call sharing via the [[with-cache]]
+  atoms means later invocations on related trees mostly hit the cache.
 
   When any FK singleton has been rebound (test mocks, custom resolvers) the two-pass machinery is
   skipped and the walker resolves pointwise via the rebound fns — preserving the legacy contract."
@@ -1387,29 +1407,14 @@
   (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
     (if-not (using-default-fk-fns?)
       (export-mbql* x)
-      (let [field-ids (volatile! (transient #{}))
-            table-ids (volatile! (transient #{}))
-            db-ids    (volatile! (transient #{}))
-            collect!  (fn [v! id] (when id (vswap! v! conj! id)) nil)]
-        ;; Pass 1: walk discarding the result, collecting every id the singleton FK fns would resolve.
-        (binding [*export-field-fk*    (partial collect! field-ids)
-                  *export-table-fk*    (partial collect! table-ids)
-                  *export-database-fk* (partial collect! db-ids)]
-          (export-mbql* x))
-        ;; Batch-resolve. The batch primaries write through to the dynamic caches under `with-cache`,
-        ;; so callers that re-enter `export-mbql` for related trees pick up the populated cache.
-        (let [field-ids* (persistent! @field-ids)
-              table-ids* (persistent! @table-ids)
-              db-ids*    (persistent! @db-ids)
-              field->fk  (zipmap field-ids* (*export-field-fks* field-ids*))
-              table->fk  (zipmap table-ids* (*export-table-fks* table-ids*))
-              db->fk     (zipmap db-ids*    (*export-database-fks* db-ids*))]
-          ;; Pass 2: walk again, this time substituting from the resolved maps. Falls back to the
-          ;; root singleton for anything pass 1 might have missed (defensive — shouldn't happen).
-          (binding [*export-field-fk*    #(if (contains? field->fk %) (field->fk %) (when % (first (*export-field-fks* [%]))))
-                    *export-table-fk*    #(if (contains? table->fk %) (table->fk %) (when % (first (*export-table-fks* [%]))))
-                    *export-database-fk* #(if (contains? db->fk    %) (db->fk %)    (when % (first (*export-database-fks* [%]))))]
-            (export-mbql* x)))))))
+      (let [{:keys [field-ids table-ids db-ids]} (collect-mbql-fk-ids x)
+            field->fk (zipmap field-ids (*export-field-fks* field-ids))
+            table->fk (zipmap table-ids (*export-table-fks* table-ids))
+            db->fk    (zipmap db-ids    (*export-database-fks* db-ids))]
+        (binding [*export-field-fk*    #(if (contains? field->fk %) (field->fk %) (when % (first (*export-field-fks* [%]))))
+                  *export-table-fk*    #(if (contains? table->fk %) (table->fk %) (when % (first (*export-table-fks* [%]))))
+                  *export-database-fk* #(if (contains? db->fk    %) (db->fk %)    (when % (first (*export-database-fks* [%]))))]
+          (export-mbql* x))))))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."
