@@ -365,7 +365,7 @@
            #"[Mm]easures cannot reference metrics"
            (adjust query))))))
 
-(deftest ^:parallel preserve-sticky-name-on-expansion-test
+(deftest ^:parallel preserve-name-on-expansion-test
   (testing "Expanding a measure preserves the sticky :name from the measure clause options"
     (let [[_measure mp] (mock-measure 1 (basic-sum-measure-query))
           query    (-> (lib/query mp (meta/table-metadata :products))
