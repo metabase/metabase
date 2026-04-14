@@ -122,7 +122,7 @@ export function ConversationsTable({
                   0
                 </Box>
                 <Box component="td" ta="right">
-                  0
+                  {convo.search_count}
                 </Box>
                 <td>0.0.0.0</td>
               </tr>

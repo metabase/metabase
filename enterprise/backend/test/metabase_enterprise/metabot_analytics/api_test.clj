@@ -305,6 +305,112 @@
           (finally
             (delete-conversations! [conversation-id])))))))
 
+(defn- search-input-block
+  [call-id]
+  {:type "tool-input" :id call-id :function "search" :arguments {:q "foo"}})
+
+(defn- search-output-block
+  [call-id]
+  {:type "tool-output" :id call-id :result {:output "<result>...</result>"}})
+
+(defn- with-search-count-fixture!
+  "Seed conversations with varying numbers of search tool-input blocks so we
+   can assert both list and detail `:search_count` behavior without perturbing
+   the existing list fixture."
+  [thunk]
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-search-count@metabase.com"
+                                                   :first_name "Search"
+                                                   :last_name  "Counter"}]
+      (let [convo-none    (str (random-uuid))
+            convo-two     (str (random-uuid))
+            convo-errored (str (random-uuid))
+            jan-1         (offset-date-time "2026-02-01T00:00:00Z")
+            jan-2         (offset-date-time "2026-02-02T00:00:00Z")
+            jan-3         (offset-date-time "2026-02-03T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id convo-none
+                                 :user-id         test-user-id
+                                 :created-at      jan-1
+                                 :summary         "no searches"})
+          (insert-conversation! {:conversation-id convo-two
+                                 :user-id         test-user-id
+                                 :created-at      jan-2
+                                 :summary         "two searches across two messages"})
+          (insert-conversation! {:conversation-id convo-errored
+                                 :user-id         test-user-id
+                                 :created-at      jan-3
+                                 :summary         "one errored search still counts"})
+          ;; convo-none: only text, no search calls.
+          (insert-message! {:conversation-id convo-none
+                            :created-at      jan-1
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    5
+                            :data            [{:type "text" :text "no tools here"}]})
+          ;; convo-two: one search in msg 1, one search in msg 2 (plus an unrelated tool).
+          (insert-message! {:conversation-id convo-two
+                            :created-at      jan-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [(search-input-block "call-a")
+                                              (search-output-block "call-a")]})
+          (insert-message! {:conversation-id convo-two
+                            :created-at      jan-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [{:type "tool-input" :id "call-x" :function "analyze_chart" :arguments {}}
+                                              (search-input-block "call-b")
+                                              (search-output-block "call-b")]})
+          ;; convo-errored: a single search whose tool-output is marked errored — should still count.
+          (insert-message! {:conversation-id convo-errored
+                            :created-at      jan-3
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    4
+                            :data            [(search-input-block "call-err")
+                                              {:type "tool-output" :id "call-err" :error "boom"}]})
+          (thunk {:test-user-id  test-user-id
+                  :convo-none    convo-none
+                  :convo-two     convo-two
+                  :convo-errored convo-errored})
+          (finally
+            (delete-conversations! [convo-none convo-two convo-errored])))))))
+
+(deftest list-conversations-search-count-test
+  (with-search-count-fixture!
+    (fn [{:keys [test-user-id convo-none convo-two convo-errored]}]
+      (let [response (mt/user-http-request :crowberto :get 200
+                                           (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+            by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
+        (is (= 0 (:search_count (get by-id convo-none))))
+        (is (= 2 (:search_count (get by-id convo-two))))
+        (is (= 1 (:search_count (get by-id convo-errored)))
+            "errored search calls should still contribute to the count")))))
+
+(deftest list-conversations-search-count-pagination-test
+  (testing "search_count is correctly hydrated for rows on page 2 (verifies batch scopes to the page)"
+    (with-search-count-fixture!
+      (fn [{:keys [test-user-id convo-two]}]
+        ;; Default sort is created_at desc: [convo-errored convo-two convo-none].
+        ;; Page with limit=1, offset=1 returns just convo-two.
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s&limit=1&offset=1"
+                                                     test-user-id))]
+          (is (= [convo-two] (map :conversation_id (:data response))))
+          (is (= 2 (:search_count (first (:data response))))))))))
+
+(deftest get-conversation-detail-search-count-test
+  (with-search-count-fixture!
+    (fn [{:keys [convo-none convo-two convo-errored]}]
+      (doseq [[convo expected] [[convo-none 0] [convo-two 2] [convo-errored 1]]]
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations/%s" convo))]
+          (is (= expected (:search_count response))
+              (format "expected search_count=%d for %s" expected convo)))))))
+
 (deftest get-conversation-detail-slack-permalink-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id returns a Slack permalink when metadata is present"

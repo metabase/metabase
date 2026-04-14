@@ -19,6 +19,7 @@ export type ConversationSummary = {
   total_tokens: number;
   last_message_at: string | null;
   model: string | null;
+  search_count: number;
   user: MetabotUserInfo | null;
 };
 
@@ -65,4 +66,5 @@ export type ConversationDetail = {
   slack_permalink: string | null;
   chat_messages: MetabotChatMessage[];
   queries: GeneratedQuery[];
+  search_count: number;
 };
