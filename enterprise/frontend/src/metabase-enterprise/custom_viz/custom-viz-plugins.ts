@@ -316,6 +316,7 @@ export async function loadCustomVizPlugin(
       identifier,
       getUiName: () => plugin.display_name,
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
+      isDev: Boolean(plugin.dev_bundle_url),
     });
 
     // Use registerVisualization for first load; overwrite directly for updates
