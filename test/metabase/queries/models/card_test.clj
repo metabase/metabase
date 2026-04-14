@@ -730,24 +730,61 @@
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2) {}))))))
 
-(deftest ^:parallel extract-test
-  (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
-        query    (mt/mbql-query venues)]
-    (testing "every card retains result_metadata"
-      (mt/with-temp [:model/Card {card1-id :id} {:dataset_query   query
-                                                 :result_metadata metadata}
-                     :model/Card {card2-id :id} {:type            :model
-                                                 :dataset_query   query
-                                                 :result_metadata metadata}]
-        (doseq [card-id [card1-id card2-id]]
-          (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
-            ;; card2 is model, but card1 is not
-            (is (= (= card-id card2-id)
-                   (= :model (:type extracted))))
-            (is (string? (:display_name (first (:result_metadata extracted)))))
-            ;; this is a quick comparison, since the actual stored metadata is quite complex
-            (is (= (map :display_name metadata)
-                   (map :display_name (:result_metadata extracted))))))))))
+(deftest ^:parallel extract-result-metadata-non-model-test
+  (testing "non-model Card extraction drops :result_metadata entirely"
+    (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
+          query    (mt/mbql-query venues)]
+      (mt/with-temp [:model/Card {card-id :id} {:type            :question
+                                                :dataset_query   query
+                                                :result_metadata metadata}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
+          (is (not (contains? extracted :result_metadata))))))))
+
+(deftest ^:parallel extract-result-metadata-model-test
+  (testing "model Card extraction keeps :name + snake-cased model-preserved-keys only"
+    (let [base     (qp.preprocess/query->expected-cols (mt/mbql-query venues))
+          metadata (mapv #(assoc %
+                                 :display_name             "Custom!"
+                                 :semantic_type            :type/Category
+                                 :visibility_type          :normal
+                                 :description              "desc"
+                                 :lib/desired-column-alias "bloat"
+                                 :qp/internal-flag         true)
+                         base)
+          query    (mt/mbql-query venues)]
+      (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                                :dataset_query   query
+                                                :result_metadata metadata}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+              cols      (:result_metadata extracted)
+              ;; snake-cased form of :name + (lib/model-preserved-keys false) — the closed set
+              ;; of keys a non-native model export is allowed to emit
+              allowed   #{:name :description :display_name :semantic_type :visibility_type
+                          :fk_target_field_id :settings :lib/source-display-name}
+              leaked    (into #{} (mapcat #(remove allowed (keys %))) cols)]
+          (is (seq cols))
+          (is (= #{} leaked)
+              "no key outside the allowed set leaks through (including the bloat keys we deliberately added)")
+          (is (every? #(= "Custom!" (:display_name %)) cols)
+              "user-set :display_name survives"))))))
+
+(deftest ^:parallel extract-result-metadata-native-model-test
+  (testing "native model Card extraction also preserves :id (as a field FK)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:type            :model
+                    :dataset_query   (mt/native-query {:query "SELECT ID FROM VENUES"})
+                    :result_metadata [{:name          "ID"
+                                       :id            (mt/id :venues :id)
+                                       :display_name  "Venue ID"
+                                       :semantic_type :type/PK
+                                       :base_type     :type/BigInteger}]}]
+      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+            col      (first (:result_metadata extracted))]
+        (is (= #{:name :id :display_name :semantic_type}
+               (set (keys col))))
+        (is (= "Venue ID" (:display_name col)))
+        ;; :id should be portablized to a Field FK path, not a raw number
+        (is (vector? (:id col)))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
