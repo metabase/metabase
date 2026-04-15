@@ -32,9 +32,9 @@
 (def source-query-alias
   "Alias to use for source queries, e.g.:
 
-    SELECT source.*
-    FROM ( SELECT * FROM some_table ) source"
-  "source")
+    SELECT __mb_source.*
+    FROM ( SELECT * FROM some_table ) __mb_source"
+  "__mb_source")
 
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
@@ -2053,7 +2053,7 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query.
    If the source query has ambiguous column names, use a `WITH` statement to rename the source columns.
-   At the time of this writing, all source queries are aliased as `source`."
+   At the time of this writing, all source queries are aliased as `__mb_source`."
   [driver honeysql-form {{:keys [native params] :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
@@ -2083,7 +2083,7 @@
     (merge
      honeysql-form
      (if needs-columns?
-        ;; HoneySQL cannot expand [::h2x/identifier :table "source"] in the with alias.
+        ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
         ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                 source-clause]]
