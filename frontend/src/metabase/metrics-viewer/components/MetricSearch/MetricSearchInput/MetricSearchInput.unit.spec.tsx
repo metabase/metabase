@@ -598,33 +598,12 @@ describe("expression pill display after committing a formula", () => {
     const expr = exprDefs[0];
     expect(expr.tokens).toEqual([
       { type: "open-paren" },
-      {
-        type: "metric",
-        sourceId: "metric:1",
-        count: 1,
-        definition: {
-          "display-name": "MetricA",
-        },
-      },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "+" },
-      {
-        type: "metric",
-        sourceId: "metric:2",
-        count: 1,
-        definition: {
-          "display-name": "MetricB",
-        },
-      },
+      { type: "metric", sourceId: "metric:2", count: 1 },
       { type: "close-paren" },
       { type: "operator", op: "/" },
-      {
-        type: "metric",
-        sourceId: "metric:3",
-        count: 1,
-        definition: {
-          "display-name": "MetricC",
-        },
-      },
+      { type: "metric", sourceId: "metric:3", count: 1 },
     ]);
     expect(expr.name).toBe("(MetricA + MetricB) / MetricC");
   });

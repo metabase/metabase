@@ -1129,7 +1129,7 @@ describe("findInvalidRanges — untracked metric detection", () => {
     expect(errors[0]).toMatchObject({
       from: 0,
       to: 7,
-      message: expect.stringContaining("dropdown"),
+      message: 'Unknown token: "Revenue"',
     });
   });
 
