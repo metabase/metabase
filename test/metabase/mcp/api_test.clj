@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
    [metabase.mcp.api :as mcp.api]
+   [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -108,6 +110,21 @@
                                                 (jsonrpc-request "initialize"))]
       (is (= 401 (:status response)))
       (is (= -32603 (get-in response [:body :error :code]))))))
+
+(deftest mcp-enabled-setting-test
+  (testing "external MCP requests return 403 when disabled"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-enabled? false]
+      (let [response (mcp-request (jsonrpc-request "initialize"))]
+        (is (= 403 (:status response)))
+        (is (= "MCP server is not enabled." (:body response)))))))
+
+(deftest ai-features-enabled-setting-test
+  (testing "external MCP requests return 403 when AI features are globally disabled"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
+                                           :mcp-enabled?         "true"]
+      (let [response (mcp-request (jsonrpc-request "initialize"))]
+        (is (= 403 (:status response)))
+        (is (= "AI features are not enabled." (:body response)))))))
 
 (deftest initialize-test
   (testing "initialize returns protocol version, capabilities, and server info"
@@ -515,6 +532,13 @@
                      (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
         (is (not (:isError result))
             "Agent API should accept unrestricted scopes")))))
+
+(deftest mcp-does-not-depend-on-external-agent-api-setting-test
+  (testing "MCP tool calls still work when the external Agent API is disabled"
+    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{::scope/unrestricted} "get_table" {:id (mt/id :orders)}))]
+        (is (not (:isError result)))))))
 
 ;;; ------------------------------------------------- Throttling ---------------------------------------------------
 

@@ -11,6 +11,7 @@ import {
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
 } from "metabase/redux/query-builder";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { defer } from "metabase/utils/promise";
@@ -20,7 +21,6 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import type { Dataset } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   getAllNativeEditorSelectedText,
