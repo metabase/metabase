@@ -130,7 +130,7 @@
    [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:fields {:optional true} [:maybe [:sequential ::field]]]
+   [:fields [:sequential ::field]]
    [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
    [:metrics {:optional true} [:maybe [:sequential ::metric-summary]]]
    [:measures {:optional true} [:maybe [:sequential ::measure]]]
@@ -194,14 +194,6 @@
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
 
-(mr/def ::database
-  "Details of a database, optionally including its tables."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]
-   [:engine :string]
-   [:tables {:optional true} [:maybe [:sequential ::table]]]])
-
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
@@ -209,29 +201,6 @@
   {:scope :unchecked}
   []
   {:message "pong"})
-
-(api.macros/defendpoint :get "/v1/database" :- [:sequential ::database]
-  "List all databases the current user has access to."
-  {:scope metabot/agent-database-read
-   :tool  {:name "list_databases"}}
-  []
-  (check-tool-result (entity-details/list-databases)))
-
-(api.macros/defendpoint :get "/v1/database/:id" :- ::database
-  "Get details for a database by ID."
-  {:scope metabot/agent-database-read
-   :tool  {:name "get_database"}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [with-tables with-fields]
-    :or   {with-tables false, with-fields false}}
-   :- [:map
-       [:with-tables {:optional true} [:maybe :boolean]]
-       [:with-fields {:optional true} [:maybe :boolean]]]]
-  (check-tool-result
-   (entity-details/get-database-details
-    {:database-id  id
-     :with-tables? with-tables
-     :with-fields? with-fields})))
 
 (api.macros/defendpoint :get "/v1/table/:id" :- ::table
   "Get details for a table by ID."
