@@ -448,7 +448,7 @@ describe("admin > custom visualizations", () => {
         cy.wait("@failedBundle");
 
         H.undoToastList()
-          .findByText(/Couldn't load .*demo-viz.* plugin bundle/)
+          .findByText(/The .*demo-viz.* visualization is currently unavailable/)
           .should("be.visible");
       });
     });
