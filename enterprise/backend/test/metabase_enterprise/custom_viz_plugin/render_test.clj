@@ -65,6 +65,17 @@
           (let [card {:display :custom:disabled-chart}]
             (is (= :table
                    (card/detect-pulse-chart-type card nil multi-col-data))))))
+      (testing "custom viz with registered plugin and bundle falls back to :table when :custom-viz feature is disabled"
+        (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/feature-off"
+                                                 :identifier   "feature-off"
+                                                 :display_name "Feature Off"
+                                                 :status       :active
+                                                 :enabled      true}]
+          (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content "function(){}" :hash "abc"})]
+            (mt/with-premium-features #{}
+              (let [card {:display :custom:feature-off}]
+                (is (= :table
+                       (card/detect-pulse-chart-type card nil multi-col-data))))))))
       (testing "custom viz with registered plugin and bundle resolves to :javascript_visualization"
         (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/has-bundle"
                                                  :identifier   "has-bundle"
@@ -83,13 +94,13 @@
     (testing "when custom viz returns empty content, falls back to table rendering"
       (let [card {:display :custom:empty-viz :id 1}
             data {:cols [{:name "x" :base_type :type/Integer} {:name "y" :base_type :type/Integer}]
-                  :rows [[1 2]]}]
+                  :rows [[1 2]]}
+            table-result (body/render :table :inline "UTC" card nil data)]
         (binding [js.svg/*javascript-visualization*
                   (fn [_cards _viz-settings _custom-bundles]
                     {:type :svg :content ""})]
-          ;; body/render is a multimethod; calling :javascript_visualization with empty content
-          ;; should fall back to :table. We verify it doesn't throw.
-          (is (some? (body/render :javascript_visualization :inline "UTC" card nil data))))))))
+          (let [result (body/render :javascript_visualization :inline "UTC" card nil data)]
+            (is (= (:content table-result) (:content result)))))))))
 
 (deftest custom-viz-bundles-resolved-test
   (mt/with-premium-features #{:custom-viz}
@@ -120,6 +131,57 @@
                 (is (contains? assets "icon.png"))
                 (is (re-find #"^data:image/png;base64," (get assets "icon.png")))))))))))
 
+(deftest custom-viz-bundles-no-manifest-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "custom-viz-bundles returns bundle with empty assets when plugin has no manifest"
+      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/no-manifest"
+                                               :identifier   "no-manifest"
+                                               :display_name "No Manifest"
+                                               :status       :active
+                                               :enabled      true}]
+        (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content "function(){}" :hash "abc"})]
+          (let [custom-viz-bundles #'body/custom-viz-bundles
+                result             (custom-viz-bundles {:display :custom:no-manifest})]
+            (is (= 1 (count result)))
+            (is (= {} (:assets (first result))))
+            (is (= "function(){}" (:source (first result))))))))))
+
+(deftest custom-viz-bundles-asset-edge-cases-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "custom-viz-bundles skips assets whose bytes cannot be resolved"
+      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/missing-asset"
+                                               :identifier   "missing-asset"
+                                               :display_name "Missing Asset"
+                                               :status       :active
+                                               :enabled      true
+                                               :manifest     {:name   "missing-asset"
+                                                              :assets ["present.png" "missing.png"]}}]
+        (with-redefs [custom-viz-plugin/resolve-bundle      (constantly {:content "fn" :hash "h"})
+                      custom-viz-plugin/asset-paths         (constantly ["present.png" "missing.png"])
+                      custom-viz-plugin/resolve-asset       (fn [_plugin asset-name]
+                                                              (when (= asset-name "present.png")
+                                                                (.getBytes "png-bytes")))
+                      custom-viz-plugin/asset-content-type  (constantly "image/png")]
+          (let [custom-viz-bundles #'body/custom-viz-bundles
+                {:keys [assets]}   (first (custom-viz-bundles {:display :custom:missing-asset}))]
+            (is (contains? assets "present.png"))
+            (is (not (contains? assets "missing.png")))))))
+    (testing "custom-viz-bundles falls back to application/octet-stream when content-type is unknown"
+      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/unknown-ct"
+                                               :identifier   "unknown-ct"
+                                               :display_name "Unknown CT"
+                                               :status       :active
+                                               :enabled      true
+                                               :manifest     {:name   "unknown-ct"
+                                                              :assets ["blob.bin"]}}]
+        (with-redefs [custom-viz-plugin/resolve-bundle      (constantly {:content "fn" :hash "h"})
+                      custom-viz-plugin/asset-paths         (constantly ["blob.bin"])
+                      custom-viz-plugin/resolve-asset       (constantly (.getBytes "raw"))
+                      custom-viz-plugin/asset-content-type  (constantly nil)]
+          (let [custom-viz-bundles #'body/custom-viz-bundles
+                {:keys [assets]}   (first (custom-viz-bundles {:display :custom:unknown-ct}))]
+            (is (re-find #"^data:application/octet-stream;base64," (get assets "blob.bin")))))))))
+
 (deftest custom-viz-bundles-nil-when-no-plugin-test
   (mt/with-premium-features #{:custom-viz}
     (testing "custom-viz-bundles returns nil when plugin doesn't exist"
@@ -142,3 +204,25 @@
                        {:cols [{:name "x" :base_type :type/Integer}] :rows [[1]]})
           ;; For a non-custom display type, custom-viz-bundles returns nil
           (is (nil? @received-bundles)))))))
+
+(deftest javascript-visualization-passes-resolved-bundles-for-custom-display-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "*javascript-visualization* receives resolved bundles when display is :custom:*"
+      (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/wired-through"
+                                               :identifier   "wired-through"
+                                               :display_name "Wired Through"
+                                               :status       :active
+                                               :enabled      true}]
+        (let [received-bundles (atom nil)]
+          (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content "function(){}" :hash "abc"})]
+            (binding [js.svg/*javascript-visualization*
+                      (fn [_cards _viz-settings custom-bundles]
+                        (reset! received-bundles custom-bundles)
+                        {:type :html :content "<div>custom</div>"})]
+              (body/render :javascript_visualization :inline "UTC"
+                           {:display :custom:wired-through :id 1}
+                           nil
+                           {:cols [{:name "x" :base_type :type/Integer}] :rows [[1]]})
+              (is (= 1 (count @received-bundles)))
+              (is (= "wired-through" (:identifier (first @received-bundles))))
+              (is (= "function(){}" (:source (first @received-bundles)))))))))))
