@@ -15,6 +15,7 @@
    [metabase-enterprise.audit-app.audit :as audit-ee]
    [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.v2.storage.files :as v2.storage.files]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.models.serialization :as serdes]
@@ -61,26 +62,34 @@
   - Named 'Internal Metabase Database'
   - Not marked as is_audit (gets normal permissions, is editable)
 
+  Options:
+  - `:sync?` — whether to sync the database schema after creating it. Defaults to `true`.
+    The analytics-dev export pipeline passes `false` because it only needs the Database row,
+    not synced field metadata.
+
   Returns the created database map."
-  [user-id]
-  (let [db-type (mdb/db-type)]
-    (if-let [existing (find-analytics-dev-database)]
-      (do
-        (log/info "Analytics dev database already exists:" (:id existing))
-        existing)
-      (let [db (t2/insert-returning-instance! :model/Database
-                                              {:name canonical-db-name
-                                               :description "Development database for analytics views and content"
-                                               :engine (name db-type)
-                                               :details {:is-audit-dev true}
-                                               :is_audit false ; Important: not an audit DB
-                                               :is_full_sync true
-                                               :is_on_demand false
-                                               :creator_id user-id
-                                               :auto_run_queries true})]
-        (log/info "Created analytics dev database:" (:id db))
-        (sync/sync-database! db {:scan :schema})
-        db))))
+  ([user-id]
+   (create-analytics-dev-database! user-id {:sync? true}))
+  ([user-id {:keys [sync?]}]
+   (let [db-type (mdb/db-type)]
+     (if-let [existing (find-analytics-dev-database)]
+       (do
+         (log/info "Analytics dev database already exists:" (:id existing))
+         existing)
+       (let [db (t2/insert-returning-instance! :model/Database
+                                               {:name canonical-db-name
+                                                :description "Development database for analytics views and content"
+                                                :engine (name db-type)
+                                                :details {:is-audit-dev true}
+                                                :is_audit false ; Important: not an audit DB
+                                                :is_full_sync true
+                                                :is_on_demand false
+                                                :creator_id user-id
+                                                :auto_run_queries true})]
+         (log/info "Created analytics dev database:" (:id db))
+         (when sync?
+           (sync/sync-database! db {:scan :schema}))
+         db)))))
 
 (defn delete-analytics-dev-database!
   "Deletes the analytics dev database and all related metadata."
@@ -196,9 +205,10 @@
         temp-path (.toFile temp-dir)]
     (log/info "Exporting dev collection" collection-id "to" temp-path)
     (try
-      (let [opts {:targets (serialization/make-targets-of-type "Collection" [collection-id])
-                  :no-settings true :no-transforms true}
-            report (serdes/with-cache (serialization/store! (serialization/extract opts) (.getPath temp-path)))]
+      (let [opts   {:targets (serialization/make-targets-of-type "Collection" [collection-id])
+                    :no-settings true :no-transforms true}
+            writer (v2.storage.files/file-writer (.getPath temp-path))
+            report (serdes/with-cache (serialization/store! (serialization/extract opts) writer))]
         (log/info "Export complete:" (count (:seen report)) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (:errors report)))
