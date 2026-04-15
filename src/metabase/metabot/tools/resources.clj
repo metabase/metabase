@@ -103,10 +103,13 @@
 (defn- fetch-model-or-card-resource
   "Fetch model resource based on URI components."
   [{:keys [resource-id resource-type sub-resource sub-resource-id]}]
-  (let [resource-id* (parse-long resource-id)]
+  (let [resource-id* (parse-long resource-id)
+        resource-type* (keyword resource-type)]
+    (assert (#{:question :model} resource-type*))
     (cond
       ;; metabase://<model,question>/123/fields/FIELD_ID
       (and (= sub-resource "fields") sub-resource-id)
+      ;; field-values takes type as string and id as integer
       (field-stats/field-values {:entity-type resource-type
                                  :entity-id resource-id*
                                  :field-id sub-resource-id
@@ -114,7 +117,8 @@
 
       ;; metabase://<model,question>/123/fields
       (= sub-resource "fields")
-      (entity-details/get-table-details {:entity-type :model
+      ;; get-table-details takes type as kw and id as integer
+      (entity-details/get-table-details {:entity-type resource-type*
                                          :entity-id resource-id*
                                          :with-fields? true
                                          :with-field-values? false
@@ -124,7 +128,7 @@
 
       ;; metabase://<model,question>/123
       (nil? sub-resource)
-      (entity-details/get-table-details {:entity-type :model
+      (entity-details/get-table-details {:entity-type resource-type*
                                          :entity-id resource-id*
                                          :with-fields? false
                                          :with-field-values? false
