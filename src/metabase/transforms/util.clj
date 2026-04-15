@@ -117,11 +117,12 @@
   (try
     (when-not (driver/schema-exists? driver db-id output-schema)
       (driver/create-schema-if-needed! driver conn-spec output-schema))
-    (let [source-range-params (transforms-base.u/get-source-range-params transform)]
+    (let [source-range-params  (transforms-base.u/get-source-range-params transform)
+          transform-timeout    (transforms.settings/transform-timeout)
+          transform-timeout-ms (u/minutes->ms transform-timeout)]
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
-      (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
-      (let [cancel-chan      (a/promise-chan)
-            transform-timeout-ms (u/minutes->ms (transforms.settings/transform-timeout))
+      (canceling/chan-start-timeout-vthread! run-id transform-timeout)
+      (let [cancel-chan (a/promise-chan)
             ret (binding [qp.pipeline/*canceled-chan*          cancel-chan
                           driver.settings/*query-timeout-ms*   transform-timeout-ms
                           ;; Match the query timeout so a single slow socket read (or a driver that waits for

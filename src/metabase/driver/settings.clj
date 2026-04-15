@@ -147,11 +147,10 @@
 
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-      ;; Query-timeout enforcement lives per-statement via `Statement.setQueryTimeout` (see
-      ;; `metabase.driver.sql-jdbc.execute/set-statement-query-timeout!`). This setting only acts as a leak-detector
-      ;; upper bound, so it must be at least as large as the longest legitimate query we expect — which, for
-      ;; transforms, is `transform-timeout`. `transform-timeout` lives downstream of this namespace; resolve it
-      ;; lazily to avoid a module-layering cycle.
+      ;; Query-timeout enforcement lives per-statement via `Statement.setQueryTimeout`; this setting only acts as a
+      ;; leak-detector upper bound, so it must be at least as large as the longest legitimate query we expect —
+      ;; which, for transforms, is `transform-timeout`. `transform-timeout` lives downstream of this namespace;
+      ;; resolve it lazily to avoid a module-layering cycle.
       (let [query-timeout-s     (long (/ *query-timeout-ms* 1000))
             transform-timeout-s (when-let [get-transform-timeout (requiring-resolve 'metabase.transforms.settings/transform-timeout)]
                                   (* 60 (long (get-transform-timeout))))]

@@ -398,7 +398,7 @@
           (is (nil? (:transform hydrated))))))))
 
 (deftest jdbc-unreturned-connection-timeout-covers-transform-timeout-test
-  (testing "the c3p0 unreturnedConnectionTimeout default is at least as long as transform-timeout (GDGT-2173).
+  (testing "the c3p0 unreturnedConnectionTimeout default is at least as long as transform-timeout.
             Per-query timeouts are enforced via Statement.setQueryTimeout; this pool setting only acts as a
             leak-detector, so it must not undercut a legitimate long transform."
     ;; transform-timeout is premium-gated; without the feature flag its getter returns the default regardless of
@@ -423,7 +423,7 @@
 (deftest sql-jdbc-statement-honors-dynamic-query-timeout-test
   (testing "statement-or-prepared-statement applies *query-timeout-ms* via Statement.setQueryTimeout, so rebinding
             the var inside a transform makes per-statement timeouts follow transform-timeout rather than the shorter
-            MB_DB_QUERY_TIMEOUT_MINUTES (GDGT-2173)."
+            MB_DB_QUERY_TIMEOUT_MINUTES."
     (mt/test-driver :h2
       (let [db (mt/db)]
         (sql-jdbc.execute/do-with-connection-with-options
@@ -443,7 +443,7 @@
 (deftest run-cancelable-transform!-propagates-timeout-to-driver-test
   (testing "run-cancelable-transform! rebinds *query-timeout-ms* for the whole transform body, so any driver that
             reads the dynamic var at query time (SQL JDBC via setQueryTimeout, Mongo/Druid/BigQuery directly) sees
-            the transform timeout instead of db-query-timeout (GDGT-2173)."
+            the transform timeout instead of db-query-timeout."
     (let [driver-observed-timeout-ms (atom nil)]
       (with-redefs [driver/schema-exists?                            (constantly true)
                     driver/create-schema-if-needed!                  (constantly nil)

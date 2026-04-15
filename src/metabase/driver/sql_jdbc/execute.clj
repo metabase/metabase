@@ -564,10 +564,10 @@
           (.cancel stmt))))))
 
 (defn- set-statement-query-timeout!
-  "Set `Statement.setQueryTimeout` to the current `*query-timeout-ms*`. Applied uniformly to every SQL-JDBC statement so
-  each query carries its own server-side timeout, rather than relying on the pool-wide c3p0 `unreturnedConnectionTimeout`
-  to kill long queries. Transforms rebind `*query-timeout-ms*` so their statements get the transform timeout instead of
-  the shorter default (GDGT-2173)."
+  "Set `Statement.setQueryTimeout` to the current `*query-timeout-ms*`. Applied uniformly to every SQL-JDBC statement
+  so each query carries its own server-side timeout, rather than relying on the pool-wide c3p0
+  `unreturnedConnectionTimeout` to kill long queries. Transforms rebind `*query-timeout-ms*` so their statements get
+  the transform timeout instead of the shorter default."
   [^Statement stmt]
   (try
     (.setQueryTimeout stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
