@@ -267,8 +267,12 @@
          (map #(get-structured-output (:result %)))
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
-    (fn [mem {:keys [chart-id] :as chart}]
-      (memory/store-chart mem chart-id chart)))
+    (fn [mem {:keys [chart-id chart-type query]}]
+      (memory/store-chart mem
+                          chart-id
+                          {:chart_id chart-id
+                           :queries [query]
+                           :visualization_settings {:chart_type chart-type}})))
    memory
    parts))
 
