@@ -262,7 +262,8 @@
        [:with-segments       {:optional true} [:maybe :boolean]]]]
   (check-tool-result
    (entity-details/get-table-details
-    {:table-id             id
+    {:entity-type          :table
+     :entity-id            id
      :with-fields?         with-fields
      :with-field-values?   with-field-values
      :with-related-tables? with-related-tables
