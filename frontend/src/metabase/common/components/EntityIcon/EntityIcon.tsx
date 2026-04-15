@@ -33,12 +33,16 @@ export function EntityIcon({
   name = "unknown",
   size = "1rem",
   color,
+  c,
   style,
   alt = "",
   ...rest
 }: EntityIconProps) {
   if (iconUrl) {
-    const backgroundColor = resolveIconMaskColor(color);
+    // `c` from Mantine's BoxProps can be a responsive breakpoint object, not
+    // just a string, so guard before using it as a fallback for `color`.
+    const effectiveColor = color ?? (typeof c === "string" ? c : undefined);
+    const backgroundColor = resolveIconMaskColor(effectiveColor);
 
     return (
       <span
@@ -62,5 +66,7 @@ export function EntityIcon({
     );
   }
 
-  return <Icon name={name} size={size} c={color} style={style} {...rest} />;
+  return (
+    <Icon name={name} size={size} c={color ?? c} style={style} {...rest} />
+  );
 }
