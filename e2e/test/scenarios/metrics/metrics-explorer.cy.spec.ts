@@ -123,7 +123,9 @@ const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 const addMetric = (name: string) => {
   // for some reason `type` clicks in the middle of the input first
   // so we use `{end}` to make sure we type at the end
-  H.MetricsViewer.searchInput().type(`{end}, ${name}`);
+  H.MetricsViewer.searchInput().type(`{end}, ${name}`, {
+    waitForAnimations: true,
+  });
   H.MetricsViewer.searchResults().findByText(name).click();
 
   H.MetricsViewer.runButton().click();
@@ -132,9 +134,13 @@ const addMetricMath = (expression: ({ metricName: string } | string)[]) => {
   H.MetricsViewer.searchInput().type("{end}, ");
   for (const item of expression) {
     if (typeof item === "string") {
-      H.MetricsViewer.searchInput().type(`{end}${item}`);
+      H.MetricsViewer.searchInput().type(`{end}${item}`, {
+        waitForAnimations: true,
+      });
     } else {
-      H.MetricsViewer.searchInput().type(`{end}${item.metricName}`);
+      H.MetricsViewer.searchInput().type(`{end}${item.metricName}`, {
+        waitForAnimations: true,
+      });
       H.MetricsViewer.searchResults().findByText(item.metricName).click();
     }
   }
@@ -198,26 +204,39 @@ const rgbToHex = (rgb: string): string => {
  * Get hex color(s) from a search bar pill's color indicator.
  * Returns an array of hex color strings.
  */
+const DEFAULT_PLACEHOLDER_COLOR = "#071722";
+
+const readColorsFromIndicator = ($pill: JQuery): string[] => {
+  const colors: string[] = [];
+  $pill
+    .find("[data-testid='color-indicator-container']")
+    .children()
+    .each((_i, el) => {
+      const $el = Cypress.$(el);
+      // Multi-dot: backgroundColor is set; single icon: color is set
+      const bg = $el.css("background-color");
+      const fg = $el.css("color");
+      const raw =
+        bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" ? bg : fg;
+      colors.push(rgbToHex(raw));
+    });
+  return colors;
+};
+
 const getPillColors = (pillIndex: number): Cypress.Chainable<string[]> => {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return H.MetricsViewer.searchBarPills()
     .should("have.length.greaterThan", pillIndex)
     .eq(pillIndex)
-    .findByTestId("color-indicator-container")
-    .children()
-    .then(($children) => {
-      const colors: string[] = [];
-      $children.each((_i, el) => {
-        const $el = Cypress.$(el);
-        // Multi-dot: backgroundColor is set; single icon: color is set
-        const bg = $el.css("background-color");
-        const fg = $el.css("color");
-        const raw =
-          bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" ? bg : fg;
-        colors.push(rgbToHex(raw));
-      });
-      return colors;
-    });
+    .should(($pill) => {
+      const colors = readColorsFromIndicator($pill);
+      expect(colors.length, "pill should have at least one color").to.be.gt(0);
+      expect(
+        colors.every((c) => c === DEFAULT_PLACEHOLDER_COLOR),
+        "pill colors should not all be the default placeholder color",
+      ).to.be.false;
+    })
+    .then(($pill) => readColorsFromIndicator($pill));
 };
 
 /**
@@ -863,6 +882,197 @@ describe("scenarios > metrics > explorer", () => {
           .find("[data-element-id=list-item]")
           .eq(expectedIndex)
           .should("have.attr", "aria-selected", "true");
+      });
+    });
+  });
+
+  // ============================================================================
+  // Expression Custom Names
+  // ============================================================================
+
+  describe("Expression custom names", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+      addMetric("Count of orders");
+      cy.wait("@dataset");
+    });
+
+    it("should allow setting a custom name on an expression pill", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Click the expression pill to open name editor");
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "Count of orders")
+        .click();
+
+      cy.log("Type a custom name");
+      cy.findByTestId("expression-name-input")
+        .should("be.focused")
+        .clear()
+        .type("My Custom Expression{enter}");
+
+      cy.log("Pill should display the custom name");
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "My Custom Expression");
+
+      cy.log("Add breakout on the first metric to trigger the legend");
+      selectBreakout("Count of orders", "Source");
+      cy.wait("@dataset");
+
+      cy.log("Legend should display the custom expression name");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findAllByText("My Custom Expression")
+          .should("exist")
+          .should("have.length", 2);
+        cy.findByText(/Test Measure/).should("not.exist");
+      });
+
+      cy.log("Chart tooltip should display the custom name");
+      H.cartesianChartCircle()
+        .should("have.length.at.least", 4)
+        .eq(4)
+        .trigger("mousemove", { force: true });
+      H.echartsTooltip().within(() => {
+        cy.findByText("My Custom Expression").should("exist");
+        cy.findByText(/Test Measure/).should("not.exist");
+      });
+    });
+
+    it("should revert to formula text when custom name is cleared", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Set a custom name");
+      H.MetricsViewer.searchBarPills().should("have.length", 2).eq(1).click();
+      cy.findByTestId("expression-name-input")
+        .clear()
+        .type("Temporary Name{enter}");
+
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "Temporary Name");
+
+      cy.log("Clear the custom name");
+      H.MetricsViewer.searchBarPills().should("have.length", 2).eq(1).click();
+      cy.findByTestId("expression-name-input").clear().type("{enter}");
+
+      cy.log(
+        "Pill should revert to formula-derived text (contains metric names)",
+      );
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("not.contain.text", "Temporary Name")
+        .should("contain.text", "Count of orders");
+
+      cy.log("Add breakout on the first metric to trigger the legend");
+      selectBreakout("Count of orders", "Source");
+      cy.wait("@dataset");
+
+      cy.log(
+        "Legend should use the formula-derived name, not the old custom name",
+      );
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByText("Temporary Name").should("not.exist");
+        cy.findAllByText("Count of orders + Test Measure")
+          .should("exist")
+          .should("have.length", 2);
+      });
+
+      cy.log(
+        "Tooltip should use the formula-derived name, not the old custom name",
+      );
+      H.cartesianChartCircle()
+        .should("have.length.at.least", 4)
+        .eq(4)
+        .trigger("mousemove", { force: true });
+      H.echartsTooltip().within(() => {
+        cy.findByText("Temporary Name").should("not.exist");
+        cy.findByText("Count of orders + Test Measure").should("exist");
+      });
+    });
+
+    it("should preserve custom name when re-running with the same expression", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Set a custom name on the expression pill");
+      H.MetricsViewer.searchBarPills().should("have.length", 2).eq(1).click();
+      cy.findByTestId("expression-name-input")
+        .clear()
+        .type("My Stable Name{enter}");
+
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "My Stable Name");
+
+      cy.log("Enter formula mode and re-run the expression");
+      addMetric("Count of products");
+      cy.wait("@dataset");
+
+      cy.log("Custom name should still be preserved");
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 3)
+        .eq(1)
+        .should("contain.text", "My Stable Name");
+
+      cy.log("Tooltip should display the preserved custom name");
+      H.cartesianChartCircle()
+        .should("have.length.at.least", 4)
+        .eq(4)
+        .trigger("mousemove", { force: true });
+      H.echartsTooltip().within(() => {
+        cy.findByText("My Stable Name").should("exist");
+        cy.findByText(/Test Measure/).should("not.exist");
+      });
+    });
+
+    it("should not change expression pill color when renaming", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Capture the expression pill color before renaming");
+      const expressionPillIndex = 1;
+      getPillColors(expressionPillIndex).then((colorsBefore) => {
+        cy.log("Set a custom name on the expression pill");
+        H.MetricsViewer.searchBarPills().should("have.length", 2).eq(1).click();
+        cy.findByTestId("expression-name-input")
+          .clear()
+          .type("Renamed Expression{enter}", { waitForAnimations: true });
+
+        H.MetricsViewer.searchBarPills()
+          .should("have.length", 2)
+          .eq(1)
+          .should("contain.text", "Renamed Expression");
+
+        cy.log("Verify the pill color has not changed after renaming");
+        getPillColors(expressionPillIndex).then((colorsAfter) => {
+          expect(colorsAfter).to.deep.equal(colorsBefore);
+        });
       });
     });
   });
