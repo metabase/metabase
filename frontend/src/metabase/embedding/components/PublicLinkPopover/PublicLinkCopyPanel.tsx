@@ -31,8 +31,8 @@ export const PublicLinkCopyPanel = ({
   loading?: boolean;
   url: string | null;
   onRemoveLink?: MouseEventHandler;
-  selectedExtension?: ExportFormat;
-  onChangeExtension?: (extension: ExportFormat) => void;
+  selectedExtension?: ExportFormat | null;
+  onChangeExtension?: (extension: ExportFormat | null) => void;
   extensions?: ExportFormat[];
   removeButtonLabel?: string;
   removeTooltipLabel?: string;

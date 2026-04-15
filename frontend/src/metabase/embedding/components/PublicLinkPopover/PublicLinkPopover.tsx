@@ -17,7 +17,7 @@ export type PublicLinkPopoverProps = {
   url: string | null;
   extensions?: ExportFormat[];
   selectedExtension?: ExportFormat | null;
-  setSelectedExtension?: (extension: ExportFormat) => void;
+  setSelectedExtension?: (extension: ExportFormat | null) => void;
   onCopyLink?: () => void;
 };
 
