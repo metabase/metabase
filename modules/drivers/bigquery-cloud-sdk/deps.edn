@@ -25,5 +25,5 @@
   ;; was 1.71.0. bumping to 77
   io.grpc/grpc-netty-shaded              {:mvn/version "1.77.0"}
   ;; matches those in athena
-  io.netty/netty-common                  {:mvn/version "4.2.7.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.7.Final"}}}
+  io.netty/netty-common                  {:mvn/version "4.2.10.Final"}
+  io.netty/netty-buffer                  {:mvn/version "4.2.10.Final"}}}
