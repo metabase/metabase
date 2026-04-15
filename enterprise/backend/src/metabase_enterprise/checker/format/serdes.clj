@@ -45,7 +45,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.checker.source :as source]
-   [metabase.util.yaml :as yaml])
+   [metabase.util.yaml :as yaml]
+   [potemkin.types :as p.types])
   (:import
    (java.io File)
    (java.util Locale)))
@@ -425,6 +426,11 @@
                                     (for [schema (list-schemas databases-dir db-name->dir db-name)]
                                       [schema ::not-indexed]))}]))))
 
+(p.types/defprotocol+ ISchemaModelDebug
+  "Non exported protocol to get the schema of the SerdesSource. Useful for debugging and asserting on the schema model
+  built up during serdes."
+  (schema-model [_] "Deref and return the schema model. See [[init-schema-model]] for details of this structure."))
+
 (deftype SerdesSource [databases-dir assets-index db-name->dir
                        ;; See init-schema-model for shape documentation
                        schema-model]
@@ -524,7 +530,9 @@
 
   (resolve-measure [_ entity-id]
     (when-let [file (get-in assets-index [:measure entity-id])]
-      (load-yaml file))))
+      (load-yaml file)))
+  ISchemaModelDebug
+  (schema-model [_] (deref schema-model)))
 
 (defn make-source
   "Create a MetadataSource for a serdes export directory.

@@ -282,19 +282,19 @@
           (is (=? {"DB" {:db-file string?
                          :schemas {"s1" not-indexed
                                    "s2" not-indexed}}}
-                  @(.-schema-model source)))
+                  (serdes/schema-model source)))
           ;; After resolving a table in s1: s1 indexed with tables, s2 untouched
           (source/resolve-table source ["DB" "s1" "T1"])
           (is (=? {"DB" {:schemas {"s1" {"T1" {:table-file string?
                                                :fields     not-indexed}}
                                    "s2" not-indexed}}}
-                  @(.-schema-model source)))
+                  (serdes/schema-model source)))
           ;; After resolving fields for T1: T1 fields indexed, s2 still untouched
           (source/fields-for-table source ["DB" "s1" "T1"])
           (is (=? {"DB" {:schemas {"s1" {"T1" {:table-file string?
                                                :fields     {"F1" string?}}}
                                    "s2" not-indexed}}}
-                  @(.-schema-model source))))))))
+                  (serdes/schema-model source))))))))
 
 (deftest case-insensitive-schema-resolution-test
   (testing "schemas with different casing on disk vs YAML resolve correctly"
@@ -311,7 +311,7 @@
           (is (some? (source/resolve-table source ["DB" "PUBLIC" "ORDERS"])))
           (is (some? (source/resolve-field source ["DB" "PUBLIC" "ORDERS" "ID"])))
           (is (=? {"DB" {:schemas {"PUBLIC" {"ORDERS" {:fields {"ID" string?}}}}}}
-                  @(.-schema-model source))))))))
+                  (serdes/schema-model source))))))))
 
 ;;; ===========================================================================
 ;;; Segments and measures — indexed from export dir, NOT schema dir
