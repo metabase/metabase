@@ -56,8 +56,9 @@
 (defn- create-card!
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
-  (query-perms/check-run-permissions-for-query query)
-  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+  (let [query (dissoc query :query-permissions/perms)]
+    (query-perms/check-run-permissions-for-query query)
+    (card/create-card! (assoc card :dataset_query query :type :question :dashboard_id nil) creator)))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
                                   [:content_type :string]]

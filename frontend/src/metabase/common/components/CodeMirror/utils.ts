@@ -11,8 +11,21 @@ import {
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { openSearchPanel, searchKeymap } from "@codemirror/search";
-import { EditorView, drawSelection, keymap } from "@codemirror/view";
+import {
+  closeSearchPanel,
+  getSearchQuery,
+  openSearchPanel,
+  search,
+  searchKeymap,
+  searchPanelOpen,
+} from "@codemirror/search";
+import {
+  EditorView,
+  ViewPlugin,
+  type ViewUpdate,
+  drawSelection,
+  keymap,
+} from "@codemirror/view";
 import {
   type BasicSetupOptions,
   type EditorState,
@@ -83,7 +96,9 @@ function useBaseExtensions({
       bracketMatching({
         brackets: "()",
       }),
+      search(),
       keyboardShortcuts({ onFormat }),
+      closeSearchPanelAfterLastReplace(),
       EditorView.lineWrapping,
       highlighting(),
       folds(),
@@ -120,6 +135,34 @@ function fonts() {
     "&": shared,
     ".cm-content": shared,
   });
+}
+
+function closeSearchPanelAfterLastReplace() {
+  return ViewPlugin.define((view) => ({
+    update(update: ViewUpdate) {
+      if (
+        !searchPanelOpen(update.startState) ||
+        !update.transactions.some((tr) => tr.isUserEvent("input.replace"))
+      ) {
+        return;
+      }
+
+      const query = getSearchQuery(update.state);
+      if (!query.valid) {
+        return;
+      }
+
+      const cursor = query.getCursor(update.state, 0, update.state.doc.length);
+      const hasMoreMatches = !cursor.next().done;
+
+      if (!hasMoreMatches) {
+        // closeSearchPanel dispatches; cannot run during ViewPlugin.update.
+        queueMicrotask(() => {
+          closeSearchPanel(view);
+        });
+      }
+    },
+  }));
 }
 
 function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {

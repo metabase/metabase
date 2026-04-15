@@ -1,0 +1,128 @@
+name: Weekly cache hit rate
+description: '% of queries hitting the cache'
+entity_id: HyPss6g8k1a6kSx_ErtVg
+created_at: '2024-05-15T20:23:07.445663Z'
+creator_id: internal@metabase.com
+display: bar
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_query_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    breakout:
+    - - field
+      - {base-type: type/Boolean, lib/uuid: cabd94ca-0b39-4fd5-9e3c-5ddf352bee47}
+      - cache_hit
+    - - field
+      - {temporal-unit: week, base-type: type/DateTimeWithLocalTZ, lib/uuid: 4ebd8013-03f0-407c-8c6d-c73c4371cf91}
+      - started_at
+    filters:
+    - - not-null
+      - {}
+      - - field
+        - {base-type: type/Boolean, lib/uuid: 6a7fe22a-d70e-44b4-a530-669f30fc5abf}
+        - cache_hit
+    - - time-interval
+      - {}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, lib/uuid: fe9875b9-02c0-4ca7-acb0-fd03b71c0975}
+        - started_at
+      - -52
+      - week
+    source-card: QOtZaiTLf2FDD4AT6Oinb
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Boolean
+  database_type: bool
+  display_name: Cache Hit
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, cache_hit]
+  - null
+  id: [Internal Metabase Database, public, v_query_log, cache_hit]
+  name: cache_hit
+  position: 15
+  semantic_type: type/Category
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_query_log]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 116
+  lib/deduplicated-name: cache_hit
+  lib/desired-column-alias: cache_hit
+  lib/from-model?: true
+  lib/original-display-name: Cache Hit
+  lib/original-name: cache_hit
+  lib/source: source/previous-stage
+  lib/source-column-alias: cache_hit
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: 'Started At: Week'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, started_at]
+  - {temporal-unit: week}
+  id: [Internal Metabase Database, public, v_query_log, started_at]
+  inherited_temporal_unit: week
+  name: started_at
+  position: 1
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_query_log]
+  unit: week
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 116
+  lib/deduplicated-name: started_at
+  lib/desired-column-alias: started_at
+  lib/from-model?: true
+  lib/original-display-name: Started At
+  lib/original-name: started_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: started_at
+  lib/temporal-unit: week
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings: null
+  graph.dimensions: [started_at, cache_hit]
+  graph.metrics: [count]
+  graph.x_axis.labels_enabled: false
+  graph.y_axis.labels_enabled: true
+  graph.y_axis.title_text: Cache hit rate
+  series_settings:
+    'false': {title: Not cached}
+    'true': {title: Cached}
+  stackable.stack_type: normalized
+  table.cell_column: running_time_seconds
+  table.pivot_column: error
+card_schema: 23
+serdes/meta:
+- {id: HyPss6g8k1a6kSx_ErtVg, label: weekly_cache_hit_rate, model: Card}
+dashboard_id: Glqmoytsnu0n6rfLUjock
+source_card_id: QOtZaiTLf2FDD4AT6Oinb
+type: question

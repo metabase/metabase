@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
    [metabase-enterprise.workspaces.execute :as ws.execute]
@@ -315,6 +316,7 @@
         ;; Wait for workspace DB initialization and grant all inputs by default.
         ;; Test tables are metadata-only (no physical DB tables), so the isolation layer's GRANT
         ;; fails silently and `access_granted` stays false — we force-grant to avoid that.
+        _                (deps.test/synchronously-run-backfill!)
         _                (when (and ws-id (not (:skip-init workspace)))
                            (ws-done! ws-id)
                            (force-grant-all-inputs! ws-id))]

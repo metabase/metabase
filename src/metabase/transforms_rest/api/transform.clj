@@ -86,7 +86,6 @@
    [:collection_id [:maybe pos-int?]]
    [:target_db_id {:optional true} [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
-   [:dependency_analysis_version :int]
    [:creator CreatorResponse]
    [:last_run {:optional true} [:maybe TransformLastRunResponse]]
    [:tag_ids {:optional true} [:sequential pos-int?]]

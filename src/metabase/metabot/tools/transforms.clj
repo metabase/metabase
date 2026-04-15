@@ -79,7 +79,8 @@
 ;;; Tool definitions
 ;;; ──────────────────────────────────────────────────────────────────
 
-(mu/defn ^{:tool-name "get_transform_details"}
+(mu/defn ^{:tool-name "get_transform_details"
+           :capabilities #{:feature-transforms}}
   get-transform-details-tool
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
@@ -94,7 +95,7 @@
 
 (defenterprise ^{:tool-name  "get_transform_python_library_details"
                  :schema     [:=> [:cat python-lib-schema] :map]
-                 :ee-feature :transforms}
+                 :capabilities #{:feature-transforms :feature-transforms-python}}
   get-transform-python-library-details-tool
   "Get Python library details. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.tools.transforms
@@ -252,8 +253,7 @@
 
 (defenterprise ^{:tool-name    "write_transform_python"
                  :schema       [:=> [:cat write-transform-python-schema] :map]
-                 :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}
-                 :ee-feature   :transforms}
+                 :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}}
   write-transform-python-tool
   "Write Python transforms. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.tools.transforms

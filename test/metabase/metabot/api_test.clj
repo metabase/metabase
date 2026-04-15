@@ -5,7 +5,12 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
+   [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
@@ -260,6 +265,24 @@
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openrouter"))))))
 
+(deftest settings-get-returns-metabase-models-without-api-key-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+    (with-redefs [metabot.self/list-models (fn
+                                             ([provider]
+                                              (is false (str "unexpected list-models call: " provider)))
+                                             ([provider opts]
+                                              (is (= "anthropic" provider))
+                                              (is (= {:ai-proxy? true} opts))
+                                              {:models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                                                        {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
+      (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
+              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "metabase"))))))
+
 (deftest settings-put-updates-provider-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
                                      llm.settings/llm-openai-api-key      "sk-valid"]
@@ -282,32 +305,75 @@
       (is (= "openai/gpt-4.1-mini"
              (metabot.settings/llm-metabot-provider))))))
 
+(deftest settings-put-updates-metabase-provider-without-api-key-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]
+    (with-redefs [metabot.self/list-models (fn
+                                             ([provider]
+                                              (is false (str "unexpected list-models call: " provider)))
+                                             ([provider opts]
+                                              (is (= "anthropic" provider))
+                                              (is (= {:ai-proxy? true} opts))
+                                              {:models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                                                        {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
+      (is (= {:value  "metabase/anthropic/claude-opus-4-1"
+              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+             (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                   {:provider "metabase"
+                                    :model    "anthropic/claude-opus-4-1"})))
+      (is (= "metabase/anthropic/claude-opus-4-1"
+             (metabot.settings/llm-metabot-provider))))))
+
+(deftest settings-put-defaults-empty-metabase-model-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]
+    (with-redefs [metabot.self/list-models (fn
+                                             ([provider]
+                                              (is false (str "unexpected list-models call: " provider)))
+                                             ([provider opts]
+                                              (is (= "anthropic" provider))
+                                              (is (= {:ai-proxy? true} opts))
+                                              {:models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                                                        {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
+      (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
+              :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                       {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
+             (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                   {:provider "metabase"
+                                    :model    ""})))
+      (is (= "metabase/anthropic/claude-sonnet-4-6"
+             (metabot.settings/llm-metabot-provider))))))
+
 (deftest settings-put-verifies-and-saves-api-keys-test
-  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
-    (let [calls (atom 0)]
-      (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
-                                               (swap! calls inc)
-                                               (is (= "anthropic" provider))
-                                               (is (= "sk-ant-valid" api-key))
-                                               (case @calls
-                                                 1 (is (nil? (llm.settings/llm-anthropic-api-key))
-                                                       "verification should happen before saving the key")
-                                                 2 (is (= "sk-ant-valid" (llm.settings/llm-anthropic-api-key))
-                                                       "response should use the saved key")
-                                                 (is false (str "unexpected list-models call: " @calls)))
-                                               {:models [{:id "claude-haiku-4-5"
-                                                          :display_name "Claude Haiku 4.5"}]})]
-        (is (= {:value  (metabot.settings/llm-metabot-provider)
-                :models [{:id "claude-haiku-4-5"
-                          :display_name "Claude Haiku 4.5"
-                          :group "Haiku"}]}
-               (mt/user-http-request :crowberto :put 200 "metabot/settings"
-                                     {:provider "anthropic"
-                                      :api-key  "sk-ant-valid"})))
-        (is (= 2 @calls)
-            "should verify first, then fetch models again after saving")
-        (is (= "sk-ant-valid"
-               (llm.settings/llm-anthropic-api-key)))))))
+  (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+      (let [calls (atom 0)]
+        (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                                 (swap! calls inc)
+                                                 (is (= "anthropic" provider))
+                                                 (is (= "sk-ant-valid" api-key))
+                                                 (case (long @calls)
+                                                   1 (is (nil? (llm.settings/llm-anthropic-api-key))
+                                                         "verification should happen before saving the key")
+                                                   2 (is (= "sk-ant-valid" (llm.settings/llm-anthropic-api-key))
+                                                         "response should use the saved key")
+                                                   (is false (str "unexpected list-models call: " @calls)))
+                                                 {:models [{:id "claude-haiku-4-5"
+                                                            :display_name "Claude Haiku 4.5"}]})]
+          (is (= {:value  (metabot.settings/llm-metabot-provider)
+                  :models [{:id "claude-haiku-4-5"
+                            :display_name "Claude Haiku 4.5"
+                            :group "Haiku"}]}
+                 (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                       {:provider "anthropic"
+                                        :api-key  "sk-ant-valid"})))
+          (is (= 2 @calls)
+              "should verify first, then fetch models again after saving")
+          (is (= "sk-ant-valid"
+                 (llm.settings/llm-anthropic-api-key))))))))
 
 (deftest settings-put-rejects-invalid-api-key-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
@@ -361,85 +427,92 @@
                         {:provider "anthropic"
                          :model    "claude-haiku-4-5"}))
 
+(deftest metabot-provider-without-api-key-is-configured-test
+  (mt/with-premium-features #{:metabase-ai-managed}
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"
+                                       llm.settings/llm-proxy-base-url      "https://proxy.example.com"
+                                       llm.settings/llm-anthropic-api-key    nil
+                                       llm.settings/llm-openai-api-key       nil
+                                       llm.settings/llm-openrouter-api-key   nil]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
 (deftest endpoints-require-authentication-test
-  (mt/with-premium-features #{:metabot-v3}
-    (testing "Metabot v3 endpoints require authentication"
-      (testing "/agent-streaming"
-        (is (= "Unauthenticated"
-               (mt/client :post 401 "metabot/agent-streaming"
-                          {:message "Test"
-                           :context {}
-                           :conversation_id (str (random-uuid))
-                           :history []
-                           :state {}}))))
-      (testing "/feedback"
-        (is (= "Unauthenticated"
-               (mt/client :post 401 "metabot/feedback"
-                          {:feedback {}})))))))
+  (testing "Metabot v3 endpoints require authentication"
+    (testing "/agent-streaming"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "metabot/agent-streaming"
+                        {:message "Test"
+                         :context {}
+                         :conversation_id (str (random-uuid))
+                         :history []
+                         :state {}}))))
+    (testing "/feedback"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "metabot/feedback"
+                        {:feedback {}}))))))
 
 (deftest metabot-enabled-setting-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
-    (mt/with-premium-features #{:metabot-v3}
-      (let [base-request {:message         "Test"
-                          :context         {}
-                          :conversation_id (str (random-uuid))
-                          :history         []
-                          :state           {}}]
-        (with-redefs [openrouter/openrouter (fn [_]
-                                              (mut/mock-llm-response
-                                               [{:type :start :id "msg-1"}
-                                                {:type :text :text "Hello"}
-                                                {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
-                                                 :model "test-model" :id    "msg-1"}]))]
-          (testing "Regular metabot is blocked when metabot-enabled is false"
-            (mt/with-temporary-setting-values [metabot-enabled? false]
-              (mt/with-model-cleanup [:model/MetabotMessage
-                                      [:model/MetabotConversation :created_at]]
-                (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
-                                      base-request))))
+    (let [base-request {:message         "Test"
+                        :context         {}
+                        :conversation_id (str (random-uuid))
+                        :history         []
+                        :state           {}}]
+      (with-redefs [openrouter/openrouter (fn [_]
+                                            (mut/mock-llm-response
+                                             [{:type :start :id "msg-1"}
+                                              {:type :text :text "Hello"}
+                                              {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
+                                               :model "test-model" :id    "msg-1"}]))]
+        (testing "Regular metabot is blocked when metabot-enabled is false"
+          (mt/with-temporary-setting-values [metabot-enabled? false]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
+                                    base-request))))
 
-          (testing "Regular metabot works when metabot-enabled is true"
-            (mt/with-temporary-setting-values [metabot-enabled? true]
-              (mt/with-model-cleanup [:model/MetabotMessage
-                                      [:model/MetabotConversation :created_at]]
-                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                      (assoc base-request :conversation_id (str (random-uuid)))))))
+        (testing "Regular metabot works when metabot-enabled is true"
+          (mt/with-temporary-setting-values [metabot-enabled? true]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    (assoc base-request :conversation_id (str (random-uuid)))))))
 
-          (testing "Embedded metabot is blocked when embedded-metabot-enabled? is false"
-            (mt/with-temporary-setting-values [embedded-metabot-enabled? false]
-              (mt/with-model-cleanup [:model/MetabotMessage
-                                      [:model/MetabotConversation :created_at]]
-                (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
-                                      (assoc base-request
-                                             :metabot_id metabot.config/embedded-metabot-id
-                                             :conversation_id (str (random-uuid)))))))
+        (testing "Embedded metabot is blocked when embedded-metabot-enabled? is false"
+          (mt/with-temporary-setting-values [embedded-metabot-enabled? false]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
+                                    (assoc base-request
+                                           :metabot_id metabot.config/embedded-metabot-id
+                                           :conversation_id (str (random-uuid)))))))
 
-          (testing "Embedded metabot works when embedded-metabot-enabled? is true"
-            (mt/with-temporary-setting-values [embedded-metabot-enabled? true]
-              (mt/with-model-cleanup [:model/MetabotMessage
-                                      [:model/MetabotConversation :created_at]]
-                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                      (assoc base-request
-                                             :metabot_id metabot.config/embedded-metabot-id
-                                             :conversation_id (str (random-uuid)))))))
+        (testing "Embedded metabot works when embedded-metabot-enabled? is true"
+          (mt/with-temporary-setting-values [embedded-metabot-enabled? true]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    (assoc base-request
+                                           :metabot_id metabot.config/embedded-metabot-id
+                                           :conversation_id (str (random-uuid)))))))
 
-          (testing "Regular metabot still works when only embedded is disabled"
-            (mt/with-temporary-setting-values [metabot-enabled?          true
-                                               embedded-metabot-enabled? false]
-              (mt/with-model-cleanup [:model/MetabotMessage
-                                      [:model/MetabotConversation :created_at]]
-                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                      (assoc base-request :conversation_id (str (random-uuid)))))))
+        (testing "Regular metabot still works when only embedded is disabled"
+          (mt/with-temporary-setting-values [metabot-enabled?          true
+                                             embedded-metabot-enabled? false]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    (assoc base-request :conversation_id (str (random-uuid)))))))
 
-          (testing "Embedded metabot still works when only regular is disabled"
-            (mt/with-temporary-setting-values [metabot-enabled?          false
-                                               embedded-metabot-enabled? true]
-              (mt/with-model-cleanup [:model/MetabotMessage
-                                      [:model/MetabotConversation :created_at]]
-                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                      (assoc base-request
-                                             :metabot_id metabot.config/embedded-metabot-id
-                                             :conversation_id (str (random-uuid))))))))))))
+        (testing "Embedded metabot still works when only regular is disabled"
+          (mt/with-temporary-setting-values [metabot-enabled?          false
+                                             embedded-metabot-enabled? true]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    (assoc base-request
+                                           :metabot_id metabot.config/embedded-metabot-id
+                                           :conversation_id (str (random-uuid)))))))))))
 
 (deftest extract-usage-test
   (testing "takes last cumulative usage per model"
@@ -496,3 +569,153 @@
     (is (= [{:type :text, :text "solo"}]
            (into [] (#'api/combine-text-parts-xf)
                  [{:type :text, :text "solo"}])))))
+
+(defn- store-and-check!
+  "Helper: call store-native-parts! with the given provider setting, return the stored message."
+  [provider]
+  (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
+    (let [conv-id (str (random-uuid))]
+      (try
+        (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
+          (#'api/store-native-parts!
+           conv-id "internal"
+           [{:type :start :id "msg-1"}
+            {:type :text :text "Hello"}
+            ;; SSE usage parts carry bare model names (from provider API response)
+            {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 100 :completionTokens 50}}
+            {:type :data :data-type "state" :data {:step 1}}
+            {:type :finish}])
+          (t2/select-one :model/MetabotMessage :conversation_id conv-id))
+        (finally
+          (t2/delete! :model/MetabotMessage :conversation_id conv-id)
+          (t2/delete! :model/MetabotConversation :id conv-id))))))
+
+(deftest store-native-parts-ai-proxy-test
+  (testing "metabase/ provider prefix sets ai_proxied true and stores bare model names"
+    (let [msg (store-and-check! "metabase/anthropic/claude-sonnet-4-6")]
+      (is (true? (:ai_proxied msg)))
+      (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
+             (:usage msg))
+          "usage keys should be bare model names, not metabase/anthropic/...")))
+
+  (testing "BYOK provider (no metabase/ prefix) sets ai_proxied false"
+    (let [msg (store-and-check! "anthropic/claude-sonnet-4-6")]
+      (is (false? (:ai_proxied msg)))
+      (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
+             (:usage msg))))))
+
+(deftest strip-tool-output-bloat-test
+  (testing "strips transient keys from tool-output results, keeping only :output"
+    (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-1"
+             :result {:output            "<result>XML</result>"
+                      :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
+                      :structured-output {:result-type :search :data [{:id 1}]}
+                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+  (testing "leaves non-tool-output parts untouched"
+    (let [text-part {:type :text :text "hello"}]
+      (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
+  (testing "handles result with no :output key"
+    (is (= {:type :tool-output :id "call-2" :result {}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-2"
+             :result {:structured-output {:some "data"}}})))))
+
+(defn- legacy-query
+  "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."
+  []
+  {:database (mt/id)
+   :query    {:source-table (mt/id :orders)}
+   :type     :query})
+
+(deftest upgrade-viewing-queries-upgradable-types-test
+  (doseq [item-type ["adhoc" "question" "metric" "model"]]
+    (testing (str "upgrades query for type=" item-type)
+      (let [result (#'api/upgrade-viewing-queries [{:type item-type :query (legacy-query)}])
+            q      (:query (first result))]
+        (is (= :mbql/query (:lib/type q)))
+        (is (= (mt/id) (:database q)))))))
+
+(deftest upgrade-viewing-queries-chart-configs-test
+  (let [lq     (legacy-query)
+        item   {:type          "adhoc"
+                :query         lq
+                :chart_configs [{:query lq}
+                                {:query lq}]}
+        result (first (#'api/upgrade-viewing-queries [item]))]
+    (is (= :mbql/query (:lib/type (:query result))))
+    (is (every? #(= :mbql/query (:lib/type (:query %)))
+                (:chart_configs result)))))
+
+(deftest upgrade-viewing-queries-missing-keys-test
+  (testing "items without :query are unchanged"
+    (let [item {:type "adhoc"}]
+      (is (= [item] (#'api/upgrade-viewing-queries [item])))))
+  (testing "items without :chart_configs keep no chart_configs"
+    (let [result (first (#'api/upgrade-viewing-queries [{:type "question" :query (legacy-query)}]))]
+      (is (nil? (:chart_configs result))))))
+
+(deftest upgrade-viewing-queries-mixed-items-test
+  (let [lq (legacy-query)
+        items [{:type "adhoc" :query lq}
+               {:type "dashboard"}
+               {:type "model" :query lq :chart_configs [{:query lq}]}]
+        result (#'api/upgrade-viewing-queries items)]
+    (is (=? [{:query {:lib/type :mbql/query}}
+             {}
+             {:query {:lib/type :mbql/query}
+              :chart_configs [{:query {:lib/type :mbql/query}}]}]
+            result))))
+
+(deftest upgrade-viewing-queries-idempotence-test
+  (let [mp meta/metadata-provider
+        q (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+        items [{:type "adhoc" :query q}
+               {:type "dashboard"}
+               {:type "model" :query q :chart_configs [{:query q}]}]
+        result (#'api/upgrade-viewing-queries items)]
+    (is (=? [{:type "adhoc" :query q}
+             {:type "dashboard"}
+             {:type "model" :query q :chart_configs [{:query q}]}]
+            result))))
+
+(deftest ^:parallel upgrade-viewing-queries-native-test
+  (testing "Native queries are properly adjusted"
+    (let [mp (mt/metadata-provider)
+          native (lib/native-query mp "select * from orders")
+          legacy (lib.convert/->legacy-MBQL native)
+          items  [{:type "adhoc" :query legacy}
+                  {:type "dashboard"}
+                  {:type "model" :query legacy :chart_configs [{:query legacy}]}]
+          result (#'api/upgrade-viewing-queries items)]
+      (is (=? [{:type "adhoc" :query native}
+               {:type "dashboard"}
+               {:type "model" :query native :chart_configs [{:query native}]}]
+              result)))))
+
+(deftest streaming-request-passes-metabot-id-test
+  (testing "streaming-request passes metabot-id to native-agent-streaming-request"
+    (let [captured-args (atom nil)
+          test-metabot-id metabot.config/embedded-metabot-id]
+      (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                    api/store-aiservice-messages!         (constantly nil)
+                    api/native-agent-streaming-request    (fn [args]
+                                                            (reset! captured-args args)
+                                                            ;; Return a minimal streaming response
+                                                            nil)]
+        (api/streaming-request {:metabot_id      test-metabot-id
+                                :profile_id      nil
+                                :message         "test message"
+                                :context         {}
+                                :history         []
+                                :conversation_id (str (random-uuid))
+                                :state           {}
+                                :debug           false})
+        (testing "metabot-id is included in the arguments"
+          (is (some? (:metabot-id @captured-args))
+              "metabot-id should not be nil")
+          (is (= test-metabot-id (:metabot-id @captured-args))
+              "metabot-id should match the input metabot_id"))))))

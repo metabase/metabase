@@ -35,7 +35,7 @@ export const SearchResults = ({
   if (isLoading || error) {
     return (
       <Box h="100%" w="40rem">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Box>
     );
   }

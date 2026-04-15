@@ -160,7 +160,7 @@ export interface CollectionItem {
     isArchived: boolean,
     opts?: Record<string, unknown>,
   ) => Promise<void>;
-  setPinned?: (isPinned: boolean) => void;
+  setPinned?: (isPinned: number | boolean) => void;
   setCollection?: (
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;

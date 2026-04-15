@@ -42,6 +42,7 @@
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
+    :model/DependencyStatus                  metabase-enterprise.dependencies.models.dependency-status
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark

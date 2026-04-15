@@ -18,10 +18,11 @@ export const useInvalidateTarget = (
     if (targetId === null) {
       return;
     }
+    const apiModel = targetModel === "metric" ? "question" : targetModel;
     try {
       const invalidate = invalidateCacheConfigs({
         include: "overrides",
-        [targetModel]: targetId,
+        [apiModel]: targetId,
       }).unwrap();
       if (smooth) {
         await resolveSmoothly([invalidate]);

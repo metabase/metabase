@@ -4,7 +4,6 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
-   [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.api :as api]
@@ -12,26 +11,11 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
-   [metabase.test :as mt]
-   [metabase.test.util :as tu]
-   [metabase.util.malli :as mu]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
-
-;; Mock tool for testing
-(mu/defn test-search-tool
-  "Mock search tool that returns test data."
-  [{:keys [_query]} :- [:map {:closed true}
-                        [:query :string]]]
-  {:structured-output {:data [{:id 1 :name "Test Result"}]}})
-
-(def test-tools
-  {"search" {:tool-name "search"
-             :schema    (:schema (meta #'test-search-tool))
-             :doc       (:doc (meta #'test-search-tool))
-             :fn        test-search-tool}})
 
 (defn- run-agent-loop!
   "run-agent-loop for side effects, discarding results"
@@ -375,7 +359,7 @@
                       (fn [_]
                         (let [n (swap! call-count inc)]
                           (case (int n)
-                          ;; Iteration 1: tool call with usage
+                            ;; Iteration 1: tool call with usage
                             1 (mut/mock-llm-response
                                [{:type :start :id "msg-1"}
                                 {:type      :tool-input
@@ -384,7 +368,7 @@
                                  :arguments {:query "test"}}
                                 {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                  :model "gpt-4" :id "msg-1"}])
-                          ;; Iteration 2: text response with usage
+                            ;; Iteration 2: text response with usage
                             (mut/mock-llm-response
                              [{:type :start :id "msg-2"}
                               {:type :text :text "Done"}
@@ -432,12 +416,13 @@
                                     :profile-id :embedding_next
                                     :context    {}})))
                 usages (filterv #(= :usage (:type %)) result)]
-            (testing "different models accumulate independently"
-              (is (= "model-a" (:model (first usages))))
+            (testing "model is always the canonical provider-and-model from the profile"
+              (is (= test-provider (:model (first usages))))
+              (is (= test-provider (:model (second usages)))))
+            (testing "usage accumulates under the single provider key"
               (is (= {:promptTokens 100 :completionTokens 20}
                      (:usage (first usages))))
-              (is (= "model-b" (:model (second usages))))
-              (is (= {:promptTokens 200 :completionTokens 40}
+              (is (= {:promptTokens 300 :completionTokens 60}
                      (:usage (second usages)))))))))))
 
 (deftest run-agent-loop-retries-on-rate-limit-test
@@ -671,112 +656,6 @@
                                       "tag"                  "agent"
                                       "session_id"           "00000000-0000-0000-0000-000000000001"}}]
                           token-events)))))))))))
-
-;;; ===================== User Intent Classification Tests =====================
-
-(def ^:private mock-llm-response-for-intent
-  [{:type :start :id "msg-1"}
-   {:type :text :text "Done"}
-   {:type :usage :usage {:promptTokens 10 :completionTokens 5}
-    :model "test-model" :id "msg-1"}])
-
-(deftest user-intent-snowplow-fires-event-test
-  (mt/with-temporary-setting-values [llm-metabot-provider                test-provider
-                                     llm-metabot-internal-tasks-enabled? true
-                                     llm-anthropic-api-key               "sk-ant-test"]
-    (testing "fires :snowplow/ai_service_event 'user_intent' when :track-user-intent? is true"
-      (let [rasta-id (mt/user->id :rasta)]
-        (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-                      self/call-llm         (fn [& _] [{:type :text :text "<category>query_data</category>"}])]
-          (mt/with-current-user rasta-id
-            (snowplow-test/with-fake-snowplow-collector
-              (run-agent-loop! {:messages            [{:role :user :content "Show sales by region"}]
-                                :state               {}
-                                :context             {}
-                                :profile-id          :internal
-                                :tracking-opts       {:session-id          "00000000-0000-0000-0000-000000000002"
-                                                      :track-user-intent?  true}})
-              (tu/poll-until 5000
-                             (some #(= "user_intent" (get-in % [:properties "data" "data" "event"]))
-                                   @snowplow-test/*snowplow-collector*))
-              (let [events        (snowplow-test/pop-event-data-and-user-id!)
-                    intent-events (filter #(= "user_intent" (get-in % [:data "event"])) events)]
-                (is (=? [{:user-id (str rasta-id)
-                          :data    {"event"         "user_intent"
-                                    "source"        "metabot_agent"
-                                    "profile"       "internal"
-                                    "session_id"    "00000000-0000-0000-0000-000000000002"
-                                    "event_details" {"intent" "query_data"}}}]
-                        intent-events))))))))))
-
-(deftest user-intent-not-tracked-when-disabled-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
-    (testing "does not fire user_intent event when :track-user-intent? is false"
-      (let [classify-called (atom false)]
-        (with-redefs [openrouter/openrouter
-                      (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-
-                      agent-analytics/classify-and-track-user-intent-async!
-                      (fn [_ _] (reset! classify-called true))]
-          (run-agent-loop! {:messages        [{:role :user :content "test"}]
-                            :state           {}
-                            :context         {}
-                            :profile-id      :internal
-                            :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000003"}})
-          (is (false? @classify-called)))))))
-
-(deftest user-intent-not-tracked-when-internal-tasks-disabled-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
-    (let [opts            {:messages      [{:role :user :content "Show sales by region"}]
-                           :state         {}
-                           :context       {}
-                           :profile-id    :internal
-                           :tracking-opts {:session-id         "00000000-0000-0000-0000-000000000005"
-                                           :track-user-intent? true}}
-          classify-called (atom 0)]
-      (with-redefs [openrouter/openrouter
-                    (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-
-                    agent-analytics/classify-and-track-user-intent-async!
-                    (fn [_ _] (swap! classify-called inc))]
-        (testing "does not call classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is false"
-          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? false
-                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
-                                             llm-anthropic-api-key               "sk-ant-test"]
-            (run-agent-loop! opts)
-            (is (zero? @classify-called))))
-        (testing "does not call classify-and-track-user-intent-async! when api key is not configured"
-          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
-                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
-                                             llm-anthropic-api-key               nil]
-            (run-agent-loop! opts)
-            (is (zero? @classify-called))))
-        (testing "calls classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is true"
-          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
-                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
-                                             llm-anthropic-api-key               "sk-ant-test"]
-            (run-agent-loop! opts)
-            (is (= 1 @classify-called))))))))
-
-(deftest user-intent-classifier-exception-swallowed-test
-  (mt/with-temporary-setting-values [llm-metabot-provider                test-provider
-                                     llm-metabot-internal-tasks-enabled? true
-                                     llm-anthropic-api-key               "sk-ant-test"]
-    (testing "does not propagate exception if classify-user-intent throws"
-      (let [classify-called (atom false)]
-        (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-                      self/call-llm         (fn [& _]
-                                              (reset! classify-called true)
-                                              (throw (ex-info "LLM error" {})))]
-            ;; Should not throw — exception is caught inside the background future
-          (run-agent-loop! {:messages            [{:role :user :content "test"}]
-                            :state               {}
-                            :context             {}
-                            :profile-id          :internal
-                            :tracking-opts       {:session-id          "00000000-0000-0000-0000-000000000004"
-                                                  :track-user-intent?  true}})
-          (tu/poll-until 5000 @classify-called)
-          (is (true? @classify-called)))))))
 
 (deftest chart-configs-loaded-into-charts-test
   (let [query (lib/native-query (mt/metadata-provider) "select 1")

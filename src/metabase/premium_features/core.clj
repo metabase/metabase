@@ -23,11 +23,13 @@
   assert-airgap-allows-user-creation!
   assert-has-feature
   assert-has-any-features
+  canonically-has-feature?
   ee-feature-error
   has-any-features?
   has-feature?
   log-enabled?
   max-users-allowed
+  meters
   plan-alias
   quotas
   TokenStatus
@@ -53,12 +55,12 @@
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
+  enable-metabase-ai-managed?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
-  enable-metabot-v3?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?

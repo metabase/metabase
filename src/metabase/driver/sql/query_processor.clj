@@ -13,6 +13,8 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -2035,16 +2037,29 @@
 
 (declare apply-clauses)
 
+(defn- resolve-persisted-source-sql
+  [source-query]
+  (when-not (:qp/skip-persisted-cache source-query)
+    (when-let [card-id (:qp/stage-is-from-source-card source-query)]
+      (let [mp   (driver-api/metadata-provider)
+            card (lib.metadata.protocols/card mp card-id)]
+        (when-let [persisted-info (:lib/persisted-info card)]
+          (when (qp.persisted/can-substitute? card persisted-info)
+            (qp.persisted/persisted-info-native-query
+             (:id (lib.metadata.protocols/database mp))
+             persisted-info)))))))
+
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
   column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
   are aliased as `__mb_source`."
-  [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
+  [driver honeysql-form {{:keys [native params] :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
+        persisted-sql (resolve-persisted-source-sql source-query)
         source-clause (cond
-                        persisted
-                        (sql-source-query persisted nil)
+                        persisted-sql
+                        (sql-source-query persisted-sql nil)
 
                         native
                         (sql-source-query native params)

@@ -96,6 +96,26 @@
                   (read-resource/read-resource
                    {:uris ["metabase://table/99999"]}))))))))
 
+(deftest read-table-resource-excludes-related-tables-test
+  (testing "table resources should not include related_tables (to avoid bloated responses)"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; Use orders table which has FK relationships to other tables
+        (let [orders-id (mt/id :orders)]
+          (testing "metabase://table/:id excludes related_tables"
+            (let [result (read-resource/read-resource
+                          {:uris [(str "metabase://table/" orders-id)]})
+                  output (get-in result [:resources 0 :content :structured-output])]
+              (is (nil? (:related_tables output))
+                  "table resource should not include related_tables")))
+
+          (testing "metabase://table/:id/fields excludes related_tables"
+            (let [result (read-resource/read-resource
+                          {:uris [(str "metabase://table/" orders-id "/fields")]})
+                  output (get-in result [:resources 0 :content :structured-output])]
+              (is (nil? (:related_tables output))
+                  "table/fields resource should not include related_tables"))))))))
+
 (deftest read-dashboard-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-name :name}
@@ -115,7 +135,7 @@
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
 
 (deftest read-transform-resource-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:transforms}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id transform-name :name}
                      {:name   "Gadget Products"

@@ -27,7 +27,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
         items={measures}
         title={t`Measures`}
         emptyState={{
-          icon: "sum",
+          icon: "ruler",
           title: t`No measures yet`,
           message: t`Create a measure to define aggregations for this table.`,
         }}
@@ -46,7 +46,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
             key={measure.id}
             name={measure.name}
             description={measure.definition_description}
-            icon="sum"
+            icon="ruler"
             href={Urls.dataStudioPublishedTableMeasure(table.id, measure.id)}
           />
         )}

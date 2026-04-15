@@ -17,6 +17,7 @@ import {
 import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
+import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import {
@@ -36,7 +37,6 @@ import type {
 
 import { DashboardDetails } from "./DashboardDetails";
 import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
-import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
 enum Tab {
   Overview = "overview",

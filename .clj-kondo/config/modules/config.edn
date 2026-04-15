@@ -156,7 +156,6 @@
   agent-api
   {:team    "Metabot"
    :api     #{metabase.agent-api.api}
-   :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
               lib
@@ -947,6 +946,7 @@
    :api  #{metabase.frontend-errors.api}
    :uses #{analytics
            api
+           request
            util}}
 
   geojson
@@ -1002,7 +1002,8 @@
    :api  #{metabase.internal-stats.core
            metabase.internal-stats.metabot}
    :uses #{app-db
-           models}
+           models
+           util}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/MetabotMessage
@@ -1059,8 +1060,7 @@
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
-              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
-              }}
+              enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
 
   lib-be
   {:team "Querying Platform"
@@ -1095,8 +1095,7 @@
 
   llm
   {:team "Metabot"
-   :api  #{metabase.llm.anthropic
-           metabase.llm.api
+   :api  #{metabase.llm.api
            metabase.llm.init
            metabase.llm.settings}
    :uses #{analytics
@@ -1104,6 +1103,7 @@
            driver
            lib
            lib-be
+           metabot
            models
            request
            settings
@@ -1140,13 +1140,16 @@
 
   mcp
   {:team "Metabot"
-   :api  #{metabase.mcp.api}
+   :api  #{metabase.mcp.api
+           metabase.mcp.core
+           metabase.mcp.init}
    :uses #{agent-api
            api
            config
            oauth-server
            request
            server
+           settings
            system
            util}}
 
@@ -1170,7 +1173,10 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-              metabase.metabot.init}
+              metabase.metabot.core
+              metabase.metabot.init
+              metabase.metabot.self
+              metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
               slackbot}
@@ -1186,6 +1192,7 @@
               documents
               driver
               internal-stats
+              legacy-mbql
               lib
               lib-be
               llm
@@ -1377,8 +1384,11 @@
    :uses #{api
            appearance
            models
+           request
            settings
            system
+           task
+           tracing
            util}}
 
   ;; TODO -- too many API namespaces
@@ -1445,7 +1455,6 @@
   {:team "UX West"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
-           app-db
            audit-app
            events
            permissions
@@ -1539,7 +1548,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Document}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Document}}
 
   pulse
   {:team "Gadget"
@@ -1630,6 +1639,7 @@
                     :model/Field
                     :model/ModerationReview
                     :model/NativeQuerySnippet
+                    :model/Notification
                     :model/Revision
                     :model/Table
                     :model/User}}
@@ -1767,6 +1777,7 @@
            config
            embedding
            permissions ; FIXME
+           premium-features
            session
            settings
            users
@@ -1888,6 +1899,7 @@
            embedding
            initialization-status
            lib-be
+           mcp
            oauth-server
            premium-features
            query-processor
@@ -1899,7 +1911,8 @@
            tracing
            users
            util
-           enterprise/sso}}
+           enterprise/sso}
+   :model-imports #{:model/Session}}
 
   session
   {:team "UX West"
@@ -2001,7 +2014,8 @@
   source-swap
   {:team "Graphy"
    :api  #{metabase.source-swap.core
-           metabase.source-swap.schema}
+           metabase.source-swap.schema
+           metabase.source-swap.util}
    :uses #{driver
            lib
            sql-tools
@@ -2038,6 +2052,7 @@
               permissions
               premium-features
               request
+              server
               settings
               system
               util}
@@ -2624,13 +2639,6 @@
                     :model/Sandbox
                     :model/Table}}
 
-  enterprise/agent-api
-  {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.workspace}
-   :uses #{api
-           util
-           enterprise/workspaces}}
-
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -2725,6 +2733,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Dashboard
+                    :model/DatabaseRouter
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
@@ -2833,7 +2842,6 @@
            api
            app-db
            collections
-           config
            documents
            driver
            events
@@ -2858,8 +2866,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardCardSeries
                     :model/Document
                     :model/Field
                     :model/Measure
@@ -2950,7 +2956,7 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{}
+   :api     #{metabase-enterprise.metabot.api}
    :friends #{enterprise/agent-api
               slackbot
               mcp
@@ -2959,6 +2965,7 @@
               lib-be
               metabot
               models
+              permissions
               premium-features
               util
               enterprise/dependencies
@@ -3031,6 +3038,7 @@
            task
            transforms
            util
+           warehouse-schema
            enterprise/dependencies}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -3038,6 +3046,7 @@
                     :model/Field
                     :model/Measure
                     :model/PersistedInfo
+                    :model/Sandbox
                     :model/Segment
                     :model/Table
                     :model/Transform}}
@@ -3289,7 +3298,6 @@
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :friends #{enterprise/agent-api}
    :uses #{api
            app-db
            config

@@ -58,7 +58,7 @@ const getCollectionItem = ({
   description?: string;
   collection_position?: number;
   setArchived?: (isArchived: boolean) => Promise<void>;
-  setPinned?: (isPinned: boolean) => void;
+  setPinned?: (isPinned: boolean | number) => void;
 } = {}): CollectionItem & { description: string } => {
   return createMockCollectionItem({
     ...rest,

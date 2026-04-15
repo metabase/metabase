@@ -733,6 +733,60 @@ export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type MetricPageShowMoreClickedEvent = ValidateEvent<{
+  event: "metric_page_show_more_clicked";
+  target_id: number;
+}>;
+
+export type MetricsViewerMetricAddedEvent = ValidateEvent<{
+  event: "metrics_viewer_metric_added";
+  target_id: number | null;
+  event_detail: "metric" | "measure";
+}>;
+
+export type MetricsViewerMetricRemovedEvent = ValidateEvent<{
+  event: "metrics_viewer_metric_removed";
+  target_id: number | null;
+  event_detail: "metric" | "measure";
+}>;
+
+export type MetricsViewerFilterAddedEvent = ValidateEvent<{
+  event: "metrics_viewer_filter_added";
+  triggered_from: "metric_filter" | "dimension_filter";
+}>;
+
+export type MetricsViewerFilterEditedEvent = ValidateEvent<{
+  event: "metrics_viewer_filter_edited";
+  triggered_from: "metric_filter" | "dimension_filter";
+}>;
+
+export type MetricsViewerFilterRemovedEvent = ValidateEvent<{
+  event: "metrics_viewer_filter_removed";
+  triggered_from: "metric_filter" | "dimension_filter";
+}>;
+
+export type MetricsViewerDimensionTabAddedEvent = ValidateEvent<{
+  event: "metrics_viewer_dimension_tab_added";
+}>;
+
+export type MetricsViewerDimensionTabSwitchedEvent = ValidateEvent<{
+  event: "metrics_viewer_dimension_tab_switched";
+}>;
+
+export type MetricsViewerDimensionTabRemovedEvent = ValidateEvent<{
+  event: "metrics_viewer_dimension_tab_removed";
+}>;
+
+export type MetricsViewerEvent =
+  | MetricsViewerMetricAddedEvent
+  | MetricsViewerMetricRemovedEvent
+  | MetricsViewerFilterAddedEvent
+  | MetricsViewerFilterEditedEvent
+  | MetricsViewerFilterRemovedEvent
+  | MetricsViewerDimensionTabAddedEvent
+  | MetricsViewerDimensionTabSwitchedEvent
+  | MetricsViewerDimensionTabRemovedEvent;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -792,4 +846,6 @@ export type SimpleEvent =
   | RemoteSyncEvent
   | ClickActionPerformedEvent
   | DataStudioEvent
-  | UnsavedChangesWarningDisplayedEvent;
+  | UnsavedChangesWarningDisplayedEvent
+  | MetricPageShowMoreClickedEvent
+  | MetricsViewerEvent;

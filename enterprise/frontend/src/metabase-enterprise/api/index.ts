@@ -7,6 +7,7 @@ export * from "./db-routing";
 export * from "./dependencies";
 export * from "./gdrive";
 export * from "./library";
+export * from "./metabot";
 export * from "./remote-sync";
 export * from "./oidc";
 export * from "./replacement";

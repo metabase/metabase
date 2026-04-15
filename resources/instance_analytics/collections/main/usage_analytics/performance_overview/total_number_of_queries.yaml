@@ -1,0 +1,93 @@
+name: Total number of queries
+description: Number of queries agains this database
+entity_id: ycqt74TQ1W0kjmkLXFae5
+created_at: '2024-05-15T20:32:57.868684Z'
+creator_id: internal@metabase.com
+display: line
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_query_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    breakout:
+    - - field
+      - {temporal-unit: week, base-type: type/DateTimeWithLocalTZ, lib/uuid: 6bcc2895-33c5-407f-a0db-479e0dd94240}
+      - started_at
+    filters:
+    - - time-interval
+      - {}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, lib/uuid: d0c2f991-1335-438f-81f7-67a02125632c}
+        - started_at
+      - -52
+      - week
+    source-card: QOtZaiTLf2FDD4AT6Oinb
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: 'Started At: Week'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, started_at]
+  - {temporal-unit: week}
+  id: [Internal Metabase Database, public, v_query_log, started_at]
+  inherited_temporal_unit: week
+  name: started_at
+  position: 1
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_query_log]
+  unit: week
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 116
+  lib/deduplicated-name: started_at
+  lib/desired-column-alias: started_at
+  lib/from-model?: true
+  lib/original-display-name: Started At
+  lib/original-name: started_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: started_at
+  lib/temporal-unit: week
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings: null
+  graph.dimensions: [started_at]
+  graph.label_value_formatting: compact
+  graph.metrics: [count]
+  graph.show_goal: false
+  graph.show_values: true
+  graph.x_axis.labels_enabled: false
+  graph.y_axis.labels_enabled: false
+  stackable.stack_type: normalized
+  table.cell_column: running_time_seconds
+  table.pivot_column: error
+card_schema: 23
+serdes/meta:
+- {id: ycqt74TQ1W0kjmkLXFae5, label: total_number_of_queries, model: Card}
+dashboard_id: Glqmoytsnu0n6rfLUjock
+source_card_id: QOtZaiTLf2FDD4AT6Oinb
+type: question

@@ -11,7 +11,7 @@
    [toucan2.core :as t2]))
 
 (deftest suggested-prompts-generator-test
-  (mt/with-premium-features #{:metabot-v3 :content-verification}
+  (mt/with-premium-features #{:content-verification}
     (mt/with-empty-h2-app-db!
       (let [original-metabot (t2/select-one :model/Metabot
                                             :entity_id (get-in metabot.config/metabot-config

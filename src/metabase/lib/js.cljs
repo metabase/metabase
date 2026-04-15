@@ -2609,12 +2609,12 @@
   (lib.core/with-wrapped-native-query a-query stage-number card-id
     lib.core/update-temporal-filter temporal-column start end))
 
-(defn ^:export valid-filter-for?
-  "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.
+(defn ^:export compatible-type?
+  "Given two columns, returns true if they have compatible types.
 
   > **Code health:** Healthy."
   [src-column dst-column]
-  (lib.types.isa/valid-filter-for? src-column dst-column))
+  (lib.types.isa/compatible-type? src-column dst-column))
 
 (defn ^:export dependent-metadata
   "Return a JS array of entities which `a-query` requires to be loaded. `card-id` is provided

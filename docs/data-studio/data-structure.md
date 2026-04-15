@@ -24,7 +24,7 @@ You can do things like:
 
 ## Permissions for Data Structure
 
-To access the Data Structure area of Data Studio, you need to be a members of the Admin group or the Data Analyst group (Data Analyst group is only available on Pro/Enterprise plans).
+To access the Data Structure area of Data Studio, you need to be a member of the Admin group or the Data Analyst group (Data Analyst group is only available on Pro/Enterprise plans).
 
 People in the Data Analyst group will have table metadata and data structure access to _all_ tables in your Metabase, even if they have limited View Data permissions for those tables. If you only want to give someone access to table metadata for some - but not all - tables, use the table metadata permissions and access the Table Metadata through Admin > Table metadata instead of Data Studio.
 
@@ -74,7 +74,7 @@ The options are:
 - **Internal**: table visible in the query builder and synced.
 - **Final**: table is visible in the query builder and synced.
 
-Table visibility layer can be used as a tool to improve user experience of people working in you Metabase, and it should _not be used to control access_ - use [data permissions](../permissions/data.md) to control access instead.
+Table visibility layer can be used as a tool to improve user experience of people working in your Metabase, and it should _not be used to control access_ - use [data permissions](../permissions/data.md) to control access instead.
 
 ### Entity type
 
@@ -143,7 +143,7 @@ To see all measures on a table, select the table in **Data structure** and switc
 
 ### Use a measure in the query builder
 
-To use a measure in the query builder, start a new question from the table that the measure is based on, and select the measure in the **Summarize** block. Measure's saved aggregation will be applied behind the scenes. You can use breakouts with a saved measure.
+To use a measure in the query builder, start a new question from the table that the measure is based on, and select the measure in the **Summarize** block. The measure's saved aggregation will be applied behind the scenes. You can use breakouts with a saved measure.
 
 ### Delete a measure
 

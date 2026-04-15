@@ -1,16 +1,14 @@
 import * as LibMetric from "metabase-lib/metric";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import Metric from "metabase-lib/v1/metadata/Metric";
-import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 import {
   createMockMetric,
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
 
 import type {
-  MetricSourceId,
   MetricsViewerDefinitionEntry,
-  SourceColorMap,
+  SourceBreakoutColorMap,
 } from "../types/viewer-state";
 
 import { buildLegendGroups } from "./legend";
@@ -89,13 +87,29 @@ describe("buildLegendGroups", () => {
     const definitions: MetricsViewerDefinitionEntry[] = [
       { id: "metric:1", definition },
     ];
-    const breakoutValues = new Map<
-      MetricSourceId,
-      MetricBreakoutValuesResponse
-    >();
-    const colors: SourceColorMap = { "metric:1": ["#509EE3"] };
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      "metric:1": "#509EE3",
+    };
 
-    expect(buildLegendGroups(definitions, breakoutValues, colors)).toEqual([]);
+    expect(buildLegendGroups(definitions, activeBreakoutColors)).toEqual([]);
+  });
+
+  it("returns empty array when activeBreakoutColors has only string values", () => {
+    const metadata = createMetadata([REVENUE_METRIC]);
+    const revenueDefinition = setupDefinitionWithBreakout(
+      metadata,
+      REVENUE_METRIC.id,
+      1,
+    );
+
+    const definitions: MetricsViewerDefinitionEntry[] = [
+      { id: "metric:1", definition: revenueDefinition },
+    ];
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      "metric:1": "#509EE3",
+    };
+
+    expect(buildLegendGroups(definitions, activeBreakoutColors)).toEqual([]);
   });
 
   it("builds legend groups for definitions with and without breakouts", () => {
@@ -112,25 +126,15 @@ describe("buildLegendGroups", () => {
       { id: "metric:2", definition: ordersDefinition },
     ];
 
-    const breakoutValues = new Map<
-      MetricSourceId,
-      MetricBreakoutValuesResponse
-    >([
-      [
-        "metric:1",
-        {
-          values: ["Gadgets", "Widgets"],
-          col: { name: "CATEGORY" } as any,
-        },
-      ],
-    ]);
-
-    const colors: SourceColorMap = {
-      "metric:1": ["#509EE3", "#88BF4D"],
-      "metric:2": ["#A989C5"],
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      "metric:1": new Map([
+        ["Gadgets", "#509EE3"],
+        ["Widgets", "#88BF4D"],
+      ]),
+      "metric:2": "#A989C5",
     };
 
-    expect(buildLegendGroups(definitions, breakoutValues, colors)).toEqual([
+    expect(buildLegendGroups(definitions, activeBreakoutColors)).toEqual([
       {
         header: "Category",
         subtitle: "Revenue",

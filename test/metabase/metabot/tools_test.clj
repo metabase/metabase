@@ -33,18 +33,6 @@
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/navigate-user-tool #'agent-tools/create-chart-tool]
           capabilities #{:frontend-navigate-user-v1}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= tool-vars result))))
-
-  (testing "filters snippet tools by capabilities"
-    (let [tool-vars [#'agent-tools/list-snippets-tool #'agent-tools/get-snippet-details-tool #'agent-tools/search-tool]
-          capabilities #{}
-          result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= ["search"] (mapv #(:tool-name (meta %)) result)))))
-
-  (testing "includes snippet tools when capability present"
-    (let [tool-vars [#'agent-tools/list-snippets-tool #'agent-tools/get-snippet-details-tool #'agent-tools/search-tool]
-          capabilities #{:feature-snippets}
-          result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= tool-vars result)))))
 
 (deftest get-tools-for-profile-test

@@ -263,8 +263,8 @@ const tokenStatusFeatures = [
   "embedding-simple",
   "embedding-hub",
   "hosting",
+  "metabase-ai-managed",
   "metabase-store-managed",
-  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -327,6 +327,8 @@ export const tokenFeatures = [
   "embedding_sdk",
   "embedding_simple",
   "hosting",
+  "offer-metabase-ai-managed",
+  "metabase-ai-managed",
   "official_collections",
   "sandboxes",
   "scim",
@@ -349,7 +351,6 @@ export const tokenFeatures = [
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
-  "metabot_v3",
   "database_routing",
   "development_mode",
   "etl_connections",
@@ -723,6 +724,7 @@ export interface EnterpriseSettings extends Settings {
   "send-new-sso-user-admin-email?"?: boolean;
   "jwt-configured"?: boolean;
   "jwt-enabled"?: boolean;
+  "jwt-enabled-and-configured"?: boolean;
   "jwt-user-provisioning-enabled?": boolean;
   "jwt-identity-provider-uri": string | null;
   "jwt-shared-secret": string | null;
@@ -771,10 +773,13 @@ export interface EnterpriseSettings extends Settings {
   "llm-metabot-provider"?: string | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
+  "llm-proxy-configured?"?: boolean | null;
   "metabot-slack-signing-secret"?: string | null;
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
+  "mcp-apps-cors-enabled-clients": string[] | null;
+  "mcp-apps-cors-custom-origins": string | null;
   /**
    * @deprecated
    */

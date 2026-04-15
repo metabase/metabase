@@ -84,9 +84,9 @@
                               (:constraints query))]
             (qp.pivot/run-pivot-query (-> query
                                           (assoc :constraints constraints)
-                                          (update :info merge info))
+                                          (assoc :info info))
                                       rff))
-          (qp/process-query (update query :info merge info) rff))))))
+          (qp/process-query (assoc query :info info) rff))))))
 
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)

@@ -78,18 +78,18 @@
       ;; metabase://table/123/fields
       (= sub-resource "fields")
       (entity-details/get-table-details {:table-id table-id
-                                         :with-fields true
-                                         :with-field-values false
-                                         :with-related-tables false
+                                         :with-fields? true
+                                         :with-field-values? false
+                                         :with-related-tables? false
                                          :with-measures? true
                                          :with-segments? true})
 
       ;; metabase://table/123
       (nil? sub-resource)
       (entity-details/get-table-details {:table-id table-id
-                                         :with-fields false
-                                         :with-field-values false
-                                         :with-related-tables false
+                                         :with-fields? false
+                                         :with-field-values? false
+                                         :with-related-tables? false
                                          :with-measures? true
                                          :with-segments? true})
 
@@ -112,18 +112,18 @@
       ;; metabase://model/123/fields
       (= sub-resource "fields")
       (entity-details/get-table-details {:model-id model-id
-                                         :with-fields true
-                                         :with-field-values false
-                                         :with-related-tables false
+                                         :with-fields? true
+                                         :with-field-values? false
+                                         :with-related-tables? false
                                          :with-measures? true
                                          :with-segments? true})
 
       ;; metabase://model/123
       (nil? sub-resource)
       (entity-details/get-table-details {:model-id model-id
-                                         :with-fields false
-                                         :with-field-values false
-                                         :with-related-tables false
+                                         :with-fields? false
+                                         :with-field-values? false
+                                         :with-related-tables? false
                                          :with-measures? true
                                          :with-segments? true})
 

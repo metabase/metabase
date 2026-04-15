@@ -640,8 +640,8 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (let [value (setting/read-setting setting-k)]
-          (do-with-temporary-setting-value! setting-k value thunk :skip-init? true))))
+        (let [value (setting/get setting-k)]
+          (do-with-temporary-setting-value! setting-k value thunk))))
     thunk
     settings)))
 

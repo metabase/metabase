@@ -470,3 +470,20 @@
         (let [request {:cookies {}}]
           (is (= response
                  (mw.session/reset-session-timeout* request response request-time))))))))
+
+;;; ---------------------------------------- server-side session timeout tests -----------------------------------------
+;; Tests for session-timeout-enforces-last-active-at, session-timeout-falls-back-to-created-at, and
+;; session-activity-update-throttle are in metabase-enterprise.api.session-test because they require EE features.
+
+(deftest session-timeout-requires-premium-feature-test
+  (init-status/set-complete!)
+  (mt/with-premium-features #{}
+    (mt/with-temporary-setting-values [session-timeout {:amount 5 :unit "minutes"}]
+      (mt/with-temp [:model/User {user-id :id}]
+        (let [session-id  (session/generate-session-id)
+              session-key (str (random-uuid))
+              key-hashed  (session/hash-session-key session-key)]
+          (t2/insert! (t2/table-name :model/Session)
+                      {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
+                       :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
+          (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))

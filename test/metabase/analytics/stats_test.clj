@@ -567,7 +567,9 @@
     :enhancements
     :etl-connections
     :etl-connections-pg
+    :offer-metabase-ai-managed
     :query-reference-validation
+    :metabase-ai-managed
     :cloud-custom-smtp
     :session-timeout-config
     :sso-oidc})

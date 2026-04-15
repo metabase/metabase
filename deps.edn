@@ -16,7 +16,7 @@
                                                            org.bouncycastle/bcprov-jdk18on]}
   buddy/buddy-sign                          {:mvn/version "3.6.1-359"}          ; JSON Web Tokens; High-Level message signing library
   camel-snake-kebab/camel-snake-kebab       {:mvn/version "0.4.3"}              ; util functions for converting between camel, snake, and kebob case
-  cheshire/cheshire                         {:mvn/version "6.1.0"}             ; fast JSON encoding (used by Ring JSON middleware)
+  cheshire/cheshire                         {:mvn/version "6.2.0"}             ; fast JSON encoding (used by Ring JSON middleware)
   clj-bom/clj-bom                           {:mvn/version "0.1.2"}              ; handle BOMs in imported CSVs
   clj-commons/clj-yaml                      {:mvn/version "1.0.29"}             ; Clojure wrapper for YAML library SnakeYAML
   clj-commons/iapetos                       {:mvn/version "0.1.14"}             ; prometheus metrics
@@ -61,8 +61,8 @@
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
                                             {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
-  com.taoensso/encore                       {:mvn/version "3.158.0"}            ; Utilities library (used by Nippy)
-  com.taoensso/nippy                        {:mvn/version "3.6.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
+  com.taoensso/encore                       {:mvn/version "3.160.1"}            ; Utilities library (used by Nippy)
+  com.taoensso/nippy                        {:mvn/version "3.6.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
   {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
@@ -117,19 +117,19 @@
                                                            junit/junit]}
   net.thisptr/jackson-jq                        {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
-  org.apache.commons/commons-lang3              {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
+  org.apache.commons/commons-lang3              {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
   org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.4.4"}              ; pinned: ClickHouse JDBC 0.9.7 needs httpcore5 5.3.4+; must pair with httpclient5 5.4.x
   org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.4"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
   org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.4"}              ; pinned: must match httpcore5 version
-  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.25.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api            {:mvn/version "2.25.3"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core           {:mvn/version "2.25.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.25.3"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.25.3"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.25.4"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api            {:mvn/version "2.25.4"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core           {:mvn/version "2.25.4"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.25.4"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.25.4"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
-  {:mvn/version "2.25.2"}             ; allows the custom json logging format
+  {:mvn/version "2.25.4"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
-  {:mvn/version "2.25.2"}             ; allows the slf4j2 API to work with log4j 2
+  {:mvn/version "2.25.4"}             ; allows the slf4j2 API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.4.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.4.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
@@ -330,7 +330,7 @@
   :test
   {:extra-paths ["test_config"]
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
-   :exec-args   {:exclude-tags [:metabot-v3/e2e]}
+   :exec-args   {}
    :jvm-opts    ["-Dmb.run.mode=test"
                  "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"

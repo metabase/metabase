@@ -8,7 +8,12 @@ import { Center, Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { Dataset, TemporalUnit } from "metabase-types/api";
+import type {
+  CardId,
+  SingleSeries,
+  TemporalUnit,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import type {
   MetricSourceId,
@@ -20,20 +25,18 @@ import type {
 } from "../../../types/viewer-state";
 import { getProjectionInfo } from "../../../utils/definition-builder";
 import type { DimensionFilterValue } from "../../../utils/dimension-filters";
-import {
-  buildDimensionItemsFromDefinitions,
-  buildRawSeriesFromDefinitions,
-} from "../../../utils/series";
-import { getTabConfig } from "../../../utils/tab-config";
+import { buildDimensionItemsFromDefinitions } from "../../../utils/series";
+import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 
 type MetricsViewerTabContentProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
-  resultsByDefinitionId: Map<MetricSourceId, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
+  series: SingleSeries[];
+  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
   sourceColors: SourceColorMap;
   isExecuting: (id: MetricSourceId) => boolean;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
@@ -47,9 +50,10 @@ type MetricsViewerTabContentProps = {
 export function MetricsViewerTabContent({
   definitions,
   tab,
-  resultsByDefinitionId,
   errorsByDefinitionId,
   modifiedDefinitions,
+  series: rawSeries,
+  cardIdToDefinitionId,
   sourceColors,
   isExecuting,
   onTabUpdate,
@@ -59,26 +63,6 @@ export function MetricsViewerTabContent({
   const isLoading = useMemo(() => {
     return getObjectKeys(tab.dimensionMapping).some(isExecuting);
   }, [tab.dimensionMapping, isExecuting]);
-
-  const { series: rawSeries, cardIdToDimensionId } = useMemo(
-    () =>
-      buildRawSeriesFromDefinitions(
-        definitions,
-        tab.dimensionMapping,
-        tab.display,
-        resultsByDefinitionId,
-        modifiedDefinitions,
-        sourceColors,
-      ),
-    [
-      definitions,
-      tab.dimensionMapping,
-      tab.display,
-      resultsByDefinitionId,
-      modifiedDefinitions,
-      sourceColors,
-    ],
-  );
 
   const firstError = useMemo(() => {
     for (const series of rawSeries) {
@@ -189,6 +173,18 @@ export function MetricsViewerTabContent({
     [onTabUpdate],
   );
 
+  const handleVisualizationSettingsChange = useCallback(
+    (updates: Partial<VisualizationSettings>) => {
+      onTabUpdate({
+        visualizationSettings: {
+          ...tab.visualizationSettings,
+          ...updates,
+        },
+      });
+    },
+    [onTabUpdate, tab.visualizationSettings],
+  );
+
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
       updateProjectionConfig({
@@ -202,6 +198,9 @@ export function MetricsViewerTabContent({
     },
     [updateProjectionConfig],
   );
+
+  const showStackSeries =
+    DISPLAY_TYPE_REGISTRY[tab.display].supportsStacking && rawSeries.length > 1;
 
   const isTimeTab = tab.type === "time";
   const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
@@ -233,7 +232,7 @@ export function MetricsViewerTabContent({
         definitions={definitions}
         tab={tab}
         onTabUpdate={onTabUpdate}
-        cardIdToDimensionId={cardIdToDimensionId}
+        cardIdToDefinitionId={cardIdToDefinitionId}
       />
       {definitionForControls && (
         <Flex justify="center" align="center">
@@ -247,6 +246,9 @@ export function MetricsViewerTabContent({
             onDimensionFilterChange={handleDimensionFilterChange}
             onTemporalUnitChange={handleTemporalUnitChange}
             onBinningChange={handleBinningChange}
+            showStackSeries={showStackSeries}
+            visualizationSettings={tab.visualizationSettings}
+            onVisualizationSettingsChange={handleVisualizationSettingsChange}
           />
         </Flex>
       )}

@@ -1,0 +1,99 @@
+name: Most active creators
+entity_id: p-z74CSp1IOs1rXwAcwcS
+created_at: '2023-06-15T02:22:17.198967Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_audit_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {lib/uuid: 0fc9b145-a552-4546-b197-cf0b3c866dcb}
+    breakout:
+    - - field
+      - {base-type: type/Text, join-alias: People - User, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_users, full_name]
+    - - field
+      - {base-type: type/Integer, effective-type: type/Integer}
+      - [Internal Metabase Database, public, v_audit_log, user_id]
+    filters:
+    - - =
+      - {}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_audit_log, topic]
+      - card-create
+    joins:
+    - alias: Group Members - User
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_audit_log, user_id]
+        - - field
+          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_group_members, user_id]
+      stages:
+      - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: ed97ca5c-874d-4ccd-b9e3-b48795171384}
+      lib/type: mbql/join
+    - alias: People - User
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_group_members, user_id]
+        - - field
+          - {join-alias: People - User, base-type: type/Integer, lib/uuid: 8975626d-dbb1-425e-9112-bdfa5f461850}
+          - user_id
+      stages:
+      - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: 54ef495a-40cd-436d-98ce-b2edb3bb13fc}
+      lib/type: mbql/join
+    order-by:
+    - - desc
+      - {}
+      - - aggregation
+        - {}
+        - 0fc9b145-a552-4546-b197-cf0b3c866dcb
+    source-card: -lNDM3tJmuL5ltGbX0oyT
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+visualization_settings:
+  column_settings:
+    '["name","count"]': {column_title: Questions created, show_mini_bar: true}
+    '["name","user_id"]': {column_title: Person Name}
+  table.cell_column: model_id
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_users, full_name]
+    - {base-type: type/Text, join-alias: People - User}
+    name: full_name
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_audit_log, user_id]
+    - {base-type: type/Integer}
+    name: user_id
+  - enabled: true
+    fieldRef: [aggregation, 0]
+    name: count
+  table.pivot_column: end_timestamp
+card_schema: 23
+serdes/meta:
+- {id: p-z74CSp1IOs1rXwAcwcS, label: most_active_creators, model: Card}
+dashboard_id: vFnGZMNN2K_KW1I0B52bq
+source_card_id: -lNDM3tJmuL5ltGbX0oyT
+type: question

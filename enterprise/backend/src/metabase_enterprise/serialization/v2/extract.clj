@@ -168,10 +168,11 @@
   `opts` are passed down to [[serdes/extract-all]] for each model."
   [{:keys [targets user-id] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [models   (model-set opts)
+  (let [models       (model-set opts)
         has-content? (seq (set/intersection (set serdes.models/content) models))
-        nodes    (resolve-targets opts user-id)
-        ;; by model is a map of `{model-name [ids ...]}`
+        nodes        (when has-content?
+                       (resolve-targets opts user-id))
+        ;; `by-model` is a map of `{model-name [ids ...]}`
         by-model (u/group-by first second (keys nodes))
         ;; Escape analysis only matters when exporting collection content — it checks whether
         ;; cards referenced by dashboards live outside the target collections.

@@ -1,12 +1,10 @@
 import { useMemo } from "react";
 
 import { Box, Flex, Paper, Stack, Text, Title } from "metabase/ui";
-import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
 import type {
-  MetricSourceId,
   MetricsViewerDefinitionEntry,
-  SourceColorMap,
+  SourceBreakoutColorMap,
 } from "../../types/viewer-state";
 import { buildLegendGroups } from "../../utils/legend";
 
@@ -14,19 +12,16 @@ import S from "./BreakoutLegend.module.css";
 
 type BreakoutLegendProps = {
   definitions: MetricsViewerDefinitionEntry[];
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
-  sourceColors: SourceColorMap;
+  activeBreakoutColors: SourceBreakoutColorMap;
 };
 
 export function BreakoutLegend({
   definitions,
-  breakoutValuesBySourceId,
-  sourceColors,
+  activeBreakoutColors,
 }: BreakoutLegendProps) {
   const groups = useMemo(
-    () =>
-      buildLegendGroups(definitions, breakoutValuesBySourceId, sourceColors),
-    [definitions, breakoutValuesBySourceId, sourceColors],
+    () => buildLegendGroups(definitions, activeBreakoutColors),
+    [definitions, activeBreakoutColors],
   );
 
   if (groups.length === 0) {
@@ -61,6 +56,7 @@ export function BreakoutLegend({
                 <Flex key={item.label} align="center" gap="sm">
                   <Box
                     className={S.dot}
+                    data-testid="breakout-legend-dot"
                     w="0.625rem"
                     h="0.625rem"
                     bdrs="50%"

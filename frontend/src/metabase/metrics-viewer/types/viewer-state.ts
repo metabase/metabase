@@ -5,6 +5,7 @@ import type {
   ConcreteTableId,
   DimensionId,
   TemporalUnit,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
@@ -57,6 +58,7 @@ export interface MetricsViewerTabState {
   type: MetricsViewerTabType;
   label: string | null;
   display: MetricsViewerDisplayType;
+  visualizationSettings?: Partial<VisualizationSettings>;
   dimensionMapping: Record<MetricSourceId, DimensionId | null>;
   projectionConfig: MetricsViewerTabProjectionConfig;
 }
@@ -79,6 +81,21 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
 
 // ── Color mapping ──
 
+/**
+ * A map of breakout display values to colors.
+ */
+export type BreakoutColorMap = Map<string, string>;
+
+/**
+ * Values are either BreakoutColorMap or a single color for non-breakout sources.
+ */
+export type SourceBreakoutColorMap = Partial<
+  Record<MetricSourceId, BreakoutColorMap | string>
+>;
+
+/**
+ * For consumers that expect an array of colors and don't care about breakout values.
+ */
 export type SourceColorMap = Partial<Record<MetricSourceId, string[]>>;
 
 // ── Shared display types ──

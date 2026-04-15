@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
+   [metabase.mcp.api :as mcp.api]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -11,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -407,18 +409,17 @@
 
 (deftest invalid-bearer-token-returns-401-test
   (testing "POST with invalid bearer token returns 401 with invalid_token error"
-    (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-        (oauth-server/reset-provider!)
-        (try
-          (let [response (mcp-request-with-bearer "totally-bogus-token" 401
-                                                  (jsonrpc-request "initialize")
-                                                  {})]
-            (is (=? {:status  401
-                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
-                    response)))
-          (finally
-            (oauth-server/reset-provider!)))))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server/reset-provider!)
+      (try
+        (let [response (mcp-request-with-bearer "totally-bogus-token" 401
+                                                (jsonrpc-request "initialize")
+                                                {})]
+          (is (=? {:status  401
+                   :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                  response)))
+        (finally
+          (oauth-server/reset-provider!))))))
 
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
 
@@ -465,18 +466,17 @@
 
 (deftest expired-oauth-bearer-token-returns-401-test
   (testing "POST with expired OAuth bearer token returns 401"
-    (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-        (t2/with-transaction [_conn nil {:rollback-only true}]
-          (oauth-server/reset-provider!)
-          (let [user-id  (mt/user->id :crowberto)
-                token    (insert-expired-oauth-token! user-id (str (random-uuid)))
-                response (mcp-request-with-bearer token 401
-                                                  (jsonrpc-request "initialize")
-                                                  {})]
-            (is (=? {:status  401
-                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
-                    response))))))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [user-id  (mt/user->id :crowberto)
+              token    (insert-expired-oauth-token! user-id (str (random-uuid)))
+              response (mcp-request-with-bearer token 401
+                                                (jsonrpc-request "initialize")
+                                                {})]
+          (is (=? {:status  401
+                   :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                  response)))))))
 
 (deftest tools-call-scope-enforcement-test
   (testing "tool call is rejected when token scopes don't include the required scope"
@@ -517,3 +517,22 @@
                      (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
         (is (not (:isError result))
             "Agent API should accept unrestricted scopes")))))
+
+;;; ------------------------------------------------- Throttling ---------------------------------------------------
+
+(deftest mcp-throttle-returns-429-test
+  (testing "MCP endpoint returns 429 with JSON-RPC error when rate-limited"
+    (let [[session-id _] (initialize!)]
+      ;; Replace throttler after initialization so the handshake doesn't consume attempts
+      (with-redefs [mcp.api/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)]
+        ;; First request succeeds (consumes the single attempt)
+        (is (= 200 (:status (mcp-request (jsonrpc-request "ping")
+                                         {"mcp-session-id" session-id}))))
+        ;; Second request should be throttled
+        (is (=? {:status  429
+                 :headers {"Retry-After" string?}
+                 :body    {:jsonrpc "2.0"
+                           :error   {:code    -32000
+                                     :message #(str/starts-with? % "Too many attempts!")}}}
+                (mcp-request (jsonrpc-request "ping")
+                             {"mcp-session-id" session-id})))))))

@@ -555,6 +555,7 @@
    {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
   (let [card (-> card
                  (update :dataset_query lib-be/normalize-query)
+                 (update :dataset_query dissoc :query-permissions/perms)
                  (cond-> (some? collection-id)
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
@@ -662,7 +663,9 @@
   [id :- ::lib.schema.id/card
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  (let [card-updates (m/update-existing card-updates :dataset_query lib-be/normalize-query)
+  (let [card-updates (-> card-updates
+                         (m/update-existing :dataset_query lib-be/normalize-query)
+                         (m/update-existing :dataset_query dissoc :query-permissions/perms))
         query        (:dataset_query card-updates)]
     (check-if-card-can-be-saved query card-type)
     (when-some [query (:dataset_query card-updates)]

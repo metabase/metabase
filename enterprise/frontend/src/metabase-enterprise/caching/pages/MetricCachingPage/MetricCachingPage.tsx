@@ -51,7 +51,7 @@ export function MetricCachingPage({
     return { savedStrategy };
   }, [configs, cardId]);
 
-  const saveStrategy = useSaveStrategy(cardId ?? null, "question");
+  const saveStrategy = useSaveStrategy(cardId ?? null, "metric");
 
   const { confirmationModal, setIsStrategyFormDirty } =
     useConfirmIfFormIsDirty();
@@ -80,7 +80,7 @@ export function MetricCachingPage({
         <Card withBorder flex={1} p={0}>
           <StrategyForm
             targetId={question.id()}
-            targetModel="question"
+            targetModel="metric"
             targetName={getItemName("question", question)}
             setIsDirty={setIsStrategyFormDirty}
             saveStrategy={saveStrategy}

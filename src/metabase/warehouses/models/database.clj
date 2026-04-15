@@ -321,30 +321,12 @@
 (defn- set-new-database-permissions!
   [database]
   (when-not (is-destination? database)
-    (t2/with-transaction [_conn]
-      (let [all-users-group  (perms/all-users-group)
+    (perms/with-db-scoped-permissions-lock (u/the-id database)
+      (let [all-users-group          (perms/all-users-group)
             all-external-users-group (perms/all-external-users-group)
-            non-magic-groups (perms/non-magic-groups)
+            non-magic-groups         (perms/non-magic-groups)
             non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
-        (if (:is_audit database)
-          (doseq [group non-admin-groups]
-            (if-not (:is_tenant_group group)
-              (do
-                (perms/set-database-permission! group database :perms/view-data :unrestricted)
-                (perms/set-database-permission! group database :perms/create-queries :no)
-                (perms/set-database-permission! group database :perms/download-results :one-million-rows)
-                (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-                (perms/set-database-permission! group database :perms/manage-database :no))
-              (do
-                (perms/set-database-permission! group database :perms/view-data :no)
-                (perms/set-database-permission! group database :perms/create-queries :no)
-                (perms/set-database-permission! group database :perms/download-results :no)
-                (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-                (perms/set-database-permission! group database :perms/manage-database :no))))
-          (doseq [group non-admin-groups]
-            (if-not (:is_tenant_group group)
-              (perms/set-new-database-permissions! group database)
-              (perms/set-external-group-permissions! group database))))))))
+        (perms/set-default-database-permissions! database non-admin-groups)))))
 
 (t2/define-after-insert :model/Database
   [database]
@@ -666,7 +648,7 @@
                                         ::serdes/skip))
                                     :import identity}
                :creator_id          (serdes/fk :model/User)
-               :router_database_id (serdes/fk :model/Database :name)
+               :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}
    :defaults {:auto_run_queries true
               :is_attached_dwh  false
