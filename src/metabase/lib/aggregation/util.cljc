@@ -6,6 +6,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util.malli :as mu]))
 
 (mu/defn- clause-name :- [:maybe :string]
@@ -20,19 +21,25 @@
   (lib.options/update-options a-clause assoc :name a-name))
 
 (mu/defn- aggregation-column-names :- [:set :string]
-  "Compute the set of effective column names of the aggregations currently in `stage-number` of `query`, optionally
-  excluding the clause with `except-uuid`. Each aggregation's effective name is its `:name` option if set (via
-  [[lib.metadata.calculation/column-name]]) or the computed [[lib.metadata.calculation/column-name-method]]
-  otherwise."
+  "Compute the set of deduplicated effective column names for the aggregations currently in `stage-number` of
+  `query`, optionally excluding the clause with `except-uuid`. Each aggregation's effective name is its `:name`
+  option if set (via [[lib.metadata.calculation/column-name]]) or the computed
+  [[lib.metadata.calculation/column-name-method]] otherwise. The raw sequence is fed through a
+  [[lib.util.unique-name-generator/non-truncating-unique-name-generator]] so that several existing aggregations
+  sharing the same computed name get distinct `_2`/`_3`/... suffixes before the set is built. Callers must pass
+  `except-uuid` *before* deduplication so the suffix order of the remaining siblings is not affected by the
+  excluded clause."
   ([query stage-number]
    (aggregation-column-names query stage-number nil))
   ([query        :- ::lib.schema/query
     stage-number :- :int
     except-uuid  :- [:maybe :string]]
-   (into #{}
-         (comp (remove #(and except-uuid (= (lib.options/uuid %) except-uuid)))
-               (map #(lib.metadata.calculation/column-name query stage-number %)))
-         (:aggregation (lib.util/query-stage query stage-number)))))
+   (let [generator (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
+     (into #{}
+           (comp (remove #(and except-uuid (= (lib.options/uuid %) except-uuid)))
+                 (map #(lib.metadata.calculation/column-name query stage-number %))
+                 (map generator))
+           (:aggregation (lib.util/query-stage query stage-number))))))
 
 (mu/defn with-unique-aggregation-name :- ::lib.schema.expression/expression
   "Set a unique `:name` on the aggregation `a-clause` that is derived from its effective column name (its existing

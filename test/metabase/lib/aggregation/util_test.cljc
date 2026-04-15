@@ -10,13 +10,20 @@
   (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (deftest ^:parallel aggregation-column-names-test
-  (testing "empty set when there are no aggregations"
+  (testing "empty when there are no aggregations"
     (is (= #{} (#'lib.aggregation.util/aggregation-column-names (venues-query) 0))))
-  (testing "returns :name of each aggregation clause"
+  (testing "returns the effective :name of each aggregation clause"
     (let [query (-> (venues-query)
                     (lib/aggregate (lib/count))
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))]
       (is (= #{"count" "sum"}
+             (#'lib.aggregation.util/aggregation-column-names query 0)))))
+  (testing "deduplicates computed names from siblings without an explicit :name"
+    (let [query (-> (lib/aggregate (venues-query) (lib/count))
+                    (lib/aggregate (lib/count))
+                    (update-in [:stages 0 :aggregation 0] lib.options/update-options dissoc :name)
+                    (update-in [:stages 0 :aggregation 1] lib.options/update-options dissoc :name))]
+      (is (= #{"count" "count_2"}
              (#'lib.aggregation.util/aggregation-column-names query 0)))))
   (testing "except-uuid drops that clause"
     (let [query (-> (venues-query)
@@ -41,6 +48,25 @@
     (let [query (-> (lib/aggregate (venues-query) (lib/count))
                     (update-in [:stages 0 :aggregation 0] lib.options/update-options dissoc :name))]
       (is (= "count_2"
+             (:name (lib.options/options
+                     (lib.aggregation.util/with-unique-aggregation-name query 0 (lib/count))))))))
+  (testing "multiple siblings computing to the same base name advance the suffix correctly"
+    ;; Two existing `:count` aggregations with no explicit :name — both compute to "count", so the dedup set is
+    ;; {"count" "count_2"} and the next addition gets "count_3".
+    (let [query (-> (lib/aggregate (venues-query) (lib/count))
+                    (lib/aggregate (lib/count))
+                    (update-in [:stages 0 :aggregation 0] lib.options/update-options dissoc :name)
+                    (update-in [:stages 0 :aggregation 1] lib.options/update-options dissoc :name))]
+      (is (= "count_3"
+             (:name (lib.options/options
+                     (lib.aggregation.util/with-unique-aggregation-name query 0 (lib/count))))))))
+  (testing "skips existing indexed :names when assigning the next suffix"
+    ;; After normal flow the stage already has aggregations with explicit :name \"count\" and \"count_2\".
+    ;; A new count should become \"count_3\", not \"count_2_2\".
+    (let [query (-> (venues-query)
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/count)))]
+      (is (= "count_3"
              (:name (lib.options/options
                      (lib.aggregation.util/with-unique-aggregation-name query 0 (lib/count))))))))
   (testing "except-uuid removes that sibling from the dedup set"
