@@ -7,7 +7,7 @@
    SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
    these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
    [[metabase.driver.sql-jdbc]] for more details."
-  (:refer-clojure :exclude [some mapv empty?])
+  (:refer-clojure :exclude [mapv empty?])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.java.io :as io]

@@ -1,5 +1,5 @@
 (ns metabase.lib.query
-  (:refer-clojure :exclude [remove some select-keys mapv empty? #?(:clj for)])
+  (:refer-clojure :exclude [some select-keys mapv empty? #?(:clj for)])
   (:require
    [medley.core :as m]
    ;; allowed since this is needed to convert legacy queries to MBQL 5

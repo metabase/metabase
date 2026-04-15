@@ -850,11 +850,11 @@
               (mt/db)
               (mt/$ids nil
                 (testing "Column ids are different in different dbs")
-                (is (not= @old-ids
-                          {:people.name       %people.name
+                (is (not= {:people.name       %people.name
                            :orders.user_id    %orders.user_id
                            :products.title    %products.title
-                           :orders.product_id %orders.product_id}))
+                           :orders.product_id %orders.product_id}
+                          @old-ids))
 
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
 

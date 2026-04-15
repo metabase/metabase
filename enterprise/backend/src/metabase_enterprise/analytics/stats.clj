@@ -28,7 +28,7 @@
     :enabled   (t2/exists? :model/Sandbox)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
-    :enabled   (boolean (some? (advanced-config.settings/subscription-allowed-domains)))}
+    :enabled   (some? (advanced-config.settings/subscription-allowed-domains))}
    {:name      :semantic-search
     :available (premium-features/enable-semantic-search?)
     :enabled   (semantic-search/supported?)}])
