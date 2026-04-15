@@ -333,3 +333,87 @@
                 (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
           (finally
             (t2/delete! :model/Database (mt/id))))))))
+
+(deftest create-or-replace-table-updates-effective-type-test
+  (testing "GHY-3388: when a column's database type changes in place (e.g. TEXT -> numeric via
+           Snowflake's CREATE OR REPLACE TABLE AS SELECT TRY_TO_NUMBER(...)), sync should update
+           effective_type to match the new base_type and clear any stale coercion_strategy/semantic_type.
+           Reproduces the in-place update path (repro v1 from the Linear issue), where the field row
+           is preserved and only updated — as opposed to being dropped and re-created (repro v2)."
+    (mt/with-temp-test-data [["my_table"
+                              [{:field-name "text_column"
+                                :base-type  :type/Text}]
+                              [["100"] ["200"] ["300"]]]]
+      (try
+        (sync/sync-database! (mt/db))
+        (let [original-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
+          (testing "sanity check: original column is text"
+            (is (=? {:base_type      :type/Text
+                     :effective_type :type/Text}
+                    original-field)))
+          ;; Mimic Snowflake's CREATE OR REPLACE TABLE AS SELECT TRY_TO_NUMBER(text_column) —
+          ;; the column is converted to a numeric type in place, preserving the field's identity
+          ;; in Metabase's app DB (same name, same position). Snowflake's CREATE OR REPLACE does
+          ;; not translate to H2, so we use ALTER COLUMN to achieve the same "in-place update" effect.
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["DROP TABLE \"MY_TABLE\";"
+                          "CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" DECIMAL(38,2));"
+                          "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
+               (next.jdbc/execute! conn [sql]))))
+          (sync/sync-database! (mt/db))
+          (let [new-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
+            (testing "after sync, base_type and effective_type both reflect the new numeric column
+                     and stale coercion/semantic type are cleared"
+              (is (=? {:id                (:id original-field)
+                       :base_type         :type/Decimal
+                       :effective_type    :type/Decimal
+                       :coercion_strategy nil
+                       :semantic_type     nil}
+                      new-field))))
+
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["DROP TABLE \"MY_TABLE\";"]]
+               (next.jdbc/execute! conn [sql]))))
+
+          (t2/delete! :model/Table (:table_id original-field))
+          (t2/delete! :model/Field :table_id (:table_id original-field))
+
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" TEXT);"
+                          "INSERT INTO \"MY_TABLE\"(text_column) VALUES('100'),('200'),('300');"]]
+               (next.jdbc/execute! conn [sql]))))
+          (sync/sync-database! (mt/db))
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["DROP TABLE \"MY_TABLE\";"
+                          "CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" DECIMAL(38,2));"
+                          "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
+               (next.jdbc/execute! conn [sql]))))
+          (sync/sync-database! (mt/db))
+
+          (let [new-field (t2/select-one :model/Field :name "TEXT_COLUMN")]
+            (testing "after sync, base_type and effective_type both reflect the new numeric column
+                     and stale coercion/semantic type are cleared"
+              (is (=? {:base_type         :type/Decimal
+                       :effective_type    :type/Decimal
+                       :coercion_strategy nil
+                       :semantic_type     nil}
+                      new-field))))
+          )
+        (finally
+          (t2/delete! :model/Database (mt/id)))))))
