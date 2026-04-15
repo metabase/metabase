@@ -75,7 +75,7 @@ import inflection from "inflection"; // NOTE: need to use inflection directly he
 import { denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import type React from "react";
-import _ from "underscore";
+import _, { omit } from "underscore";
 
 import { requestsReducer, setRequestUnloaded } from "metabase/redux/requests";
 import type { EntitiesState } from "metabase/redux/store";
@@ -305,7 +305,7 @@ type EntityDef = {
   // Reducers in entity defs typically destructure `{ type, payload }` from the action
   // and accept any payload shape, so we type the action loosely here.
 
-  reducer: EntitiesReducer;
+  reducer?: EntitiesReducer;
   wrapEntity?: Entity["wrapEntity"];
   requestsReducer?: Entity["requestsReducer"];
   actionShouldInvalidateLists?: Entity["actionShouldInvalidateLists"];
@@ -343,24 +343,24 @@ export function mergeEntities(
 export function handleEntities(
   actionPattern: RegExp,
   entityType: string,
-  reducer: EntitiesReducer,
+  reducer?: EntitiesReducer,
 ): EntitiesReducer {
-  return (state = {}, action) => {
+  return (state: EntitiesStateType | undefined = {}, action) => {
     const entities = getIn(action, ["payload", "entities", entityType]);
     if (actionPattern.test(action.type) && entities) {
       state = mergeEntities(state, entities);
     }
-    return reducer(state, action);
+    return reducer?.(state, action) ?? state;
   };
 }
 
 /**
  * @deprecated use "metabase/api" instead
  */
-export function createEntity(def: Omit<EntityDef, "reducer">): Entity {
+export function createEntity(def: EntityDef): Entity {
   // We use a mutable object internally during construction
   // then return it typed as Entity at the end.
-  const entity = { ...def } as Entity;
+  const entity = { ...omit(def, ["reducer"]) } as Entity;
 
   if (!entity.nameOne) {
     entity.nameOne = inflection.singularize(entity.name);
