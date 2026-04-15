@@ -1244,19 +1244,21 @@
   (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
         user             (driver.u/workspace-isolation-user-name workspace)
         password         (driver.u/random-workspace-password)
-        escaped-password (sql.u/escape-sql password :ansi)]
+        escaped-password (sql.u/escape-sql password :ansi)
+        quoted-db        (sql.u/quote-name :mysql :field db-name)
+        quoted-user      (sql.u/quote-name :mysql :field user)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-sql (if (mysql-user-exists? t-conn user)
-                       (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user escaped-password)
-                       (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user escaped-password))]
+                       (format "ALTER USER %s@'%%' IDENTIFIED BY '%s'"
+                               quoted-user escaped-password)
+                       (format "CREATE USER %s@'%%' IDENTIFIED BY '%s'"
+                               quoted-user escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; Create the isolated database
-                       (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
+                       (format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
                        user-sql
                        ;; Grant all privileges on the isolated database
-                       (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]]
+                       (format "GRANT ALL PRIVILEGES ON %s.* TO %s@'%%'" quoted-db quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (.executeBatch ^Statement stmt))))
     {:schema           db-name
@@ -1264,13 +1266,15 @@
 
 (defmethod driver/destroy-workspace-isolation! :mysql
   [_driver database workspace]
-  (let [db-name  (:schema workspace)
-        username (-> workspace :database_details :user)]
+  (let [db-name    (:schema workspace)
+        username   (-> workspace :database_details :user)
+        quoted-db  (sql.u/quote-name :mysql :field db-name)
+        quoted-user (sql.u/quote-name :mysql :field username)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS `%s`" db-name)]
+        (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS %s" quoted-db)]
                       (mysql-user-exists? t-conn username)
-                      (conj (format "DROP USER IF EXISTS `%s`@'%%'" username)))]
+                      (conj (format "DROP USER IF EXISTS %s@'%%'" quoted-user)))]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 

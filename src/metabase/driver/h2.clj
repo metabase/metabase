@@ -709,25 +709,30 @@
         ;; H2 embeds credentials in the :db connection string, so we need to build a new one
         original-db (:db (driver.conn/effective-details database))
         new-db      (replace-credentials original-db username password)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
-                     (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
-                     (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+    (let [quoted-user   (sql.u/quote-name :h2 :field username)
+          quoted-schema (sql.u/quote-name :h2 :schema schema-name)
+          escaped-pw    (sql.u/escape-sql password :ansi)]
+      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql [(format "CREATE USER IF NOT EXISTS %s PASSWORD '%s'" quoted-user escaped-pw)
+                       (format "CREATE SCHEMA IF NOT EXISTS %s AUTHORIZATION %s" quoted-schema quoted-user)
+                       (format "GRANT ALL ON SCHEMA %s TO %s" quoted-schema quoted-user)]]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))
     {:schema           schema-name
      :database_details {:db new-db}}))
 
 (defmethod driver/destroy-workspace-isolation! :h2
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)]
+  (let [schema-name    (driver.u/workspace-isolation-namespace-name workspace)
+        username       (driver.u/workspace-isolation-user-name workspace)
+        quoted-user    (sql.u/quote-name :h2 :field username)
+        quoted-schema  (sql.u/quote-name :h2 :schema schema-name)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
-                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
-                     (format "DROP USER IF EXISTS \"%s\"" username)]]
+                     (format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema)
+                     (format "DROP USER IF EXISTS %s" quoted-user)]]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 

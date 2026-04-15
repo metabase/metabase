@@ -1078,7 +1078,7 @@
         dataset-id (DatasetId/of project-id schema)]
     (when-not (.getDataset client dataset-id (u/varargs BigQuery$DatasetOption))
       ;; Dataset doesn't exist, try to create it
-      (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+      (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.u/quote-name :bigquery-cloud-sdk :schema schema))]]]
         (driver/execute-raw-queries! driver conn-spec sql)))))
 
 (defmethod driver/schema-exists? :bigquery-cloud-sdk
