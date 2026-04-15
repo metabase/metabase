@@ -94,7 +94,7 @@ export function saveDashboard({
   );
 
   cy.findByTestId("edit-bar").should("be.visible");
-  cy.findByTestId("edit-bar-save-button").click();
+  cy.findByTestId("edit-bar").findByTestId("save-edit-button").click();
 
   if (awaitRequest) {
     cy.wait("@saveDashboard-saveDashboardCards");
