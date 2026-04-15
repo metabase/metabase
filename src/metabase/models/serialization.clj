@@ -1129,26 +1129,27 @@
 
 (defn make-field-cache
   "Create a batch-loading field cache. Returns a lookup function (fn [field-id] -> field-row-or-nil).
-  On first miss for a field, loads all fields from that field's table.
-  Public because [[with-cache]] is a macro that expands in other namespaces."
+  On first miss for a field, loads all fields from that field's table."
   []
-  (let [cache (atom {})]   ; {field-id -> field-row-or-::missing}
+  (let [cache (atom {})] ; {field-id -> field-row-or-::missing}
     (fn [field-id]
       (let [cached (get @cache field-id ::not-found)]
-        (if (not= cached ::not-found)
-          (when (not= cached ::missing) cached)
-          ;; Cache miss: find this field's table, then bulk load
-          (let [field-row (t2/select-one :model/Field
-                                         {:from   [:metabase_field]
-                                          :select [:id :name :parent_id :table_id]
-                                          :where  [:= :id field-id]})]
-            (if field-row
-              (let [siblings (batch-load-fields-for-table (:table_id field-row))]
-                (swap! cache merge siblings)
-                (get siblings field-id))
-              (do
-                (swap! cache assoc field-id ::missing)
-                nil))))))))
+        (if (= cached ::not-found)
+          ;; Cache miss: we need the field's table_id to know which table to batch-load,
+          ;; so the first encounter of any field requires a single-row lookup.
+          (if-let [field-row (t2/select-one :model/Field
+                                            {:from   [:metabase_field]
+                                             :select [:id :name :parent_id :table_id]
+                                             :where  [:= :id field-id]})]
+            (let [siblings (batch-load-fields-for-table (:table_id field-row))]
+              (swap! cache merge siblings)
+              (get siblings field-id))
+            (do
+              (swap! cache assoc field-id ::missing)
+              nil))
+          ;; Cache hit: return field or nil (for ::missing sentinel)
+          (when-not (= cached ::missing)
+            cached))))))
 
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
@@ -1963,7 +1964,7 @@
    :import-with-context (compose* (maybe-lift outer-xform :import :import-with-context)
                                   (maybe-lift inner-xform :import :import-with-context))})
 
-;;; ## Cached resolvers
+;;; ## Memoizing appdb lookups
 
 (defmacro with-cache
   "Runs body with resolvers bound to cached (memoized) versions for performance."
