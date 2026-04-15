@@ -71,12 +71,18 @@ const MetabotSetupContext = createContext<{
   isLoading: boolean;
   isConnectButtonEnabled: boolean;
   setIsConnectButtonEnabled: (enabled: boolean) => void;
+  resetProvider: VoidFunction;
+  handleDisconnect: VoidFunction;
+  isModal: boolean;
 }>({
   isLoading: false,
   connectHandlerRef: null,
   disconnectHandlerRef: null,
   isConnectButtonEnabled: false,
   setIsConnectButtonEnabled: () => {},
+  resetProvider: () => {},
+  handleDisconnect: () => {},
+  isModal: false,
 });
 
 export function useMetabotSetupContext(
@@ -88,6 +94,9 @@ export function useMetabotSetupContext(
     disconnectHandlerRef,
     isLoading,
     setIsConnectButtonEnabled,
+    resetProvider,
+    handleDisconnect,
+    isModal,
   } = useContext(MetabotSetupContext);
 
   useEffect(() => {
@@ -116,10 +125,54 @@ export function useMetabotSetupContext(
     };
   }, [disconnectHandlerRef, onDisconnect]);
 
-  return { isLoading };
+  return { isLoading, resetProvider, handleDisconnect, isModal };
 }
 
 export function MetabotSetup({ id }: { id?: string }) {
+  const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
+  const { value: savedProviderValue } = useAdminSetting("llm-metabot-provider");
+  const config = useMemo(
+    () => parseProviderAndModel(savedProviderValue),
+    [savedProviderValue],
+  );
+  const isConfigured = !!useSetting("llm-metabot-configured?");
+  const connectedProvider = isConfigured ? config?.provider : undefined;
+
+  return (
+    <SettingsSection
+      id={id}
+      title={
+        <Flex justify="space-between" align="center">
+          <Group gap="xs" wrap="nowrap">
+            {isConfigured ? (
+              <Badge circle size="12" bg="success" mr="sm" />
+            ) : null}
+            <div>
+              {connectedProvider
+                ? t`Connected to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`
+                : t`Connect to an AI provider`}
+            </div>
+          </Group>
+        </Flex>
+      }
+      description={
+        !connectedProvider
+          ? t`Select your AI provider to use AI explorations, SQL generation and Metabot.`
+          : undefined
+      }
+    >
+      <MetabotSetupInner />
+    </SettingsSection>
+  );
+}
+
+export function MetabotSetupInner({
+  isModal = false,
+  onClose,
+}: {
+  isModal?: boolean;
+  onClose?: VoidFunction;
+}) {
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
   const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
   const [sendToast] = useToast();
@@ -133,20 +186,26 @@ export function MetabotSetup({ id }: { id?: string }) {
     !!settingDetails.env_name;
   const envSettingName = isEnvSetting ? settingDetails?.env_name : undefined;
 
+  const isConfigured = !!useSetting("llm-metabot-configured?");
+
   const config = useMemo(
     () => parseProviderAndModel(savedProviderValue),
     [savedProviderValue],
   );
-  const isConfigured = useSetting("llm-metabot-configured?");
   const connectedProvider = isConfigured ? config?.provider : undefined;
   const connectedModel = isConfigured ? config?.model : undefined;
   const [provider, setProvider] = useState<MetabotProvider | undefined>(
-    connectedProvider,
+    isModal ? undefined : connectedProvider,
   );
 
+  const isCurrentConfigured = connectedProvider === provider && isConfigured;
+
   useEffect(() => {
+    if (isModal) {
+      return;
+    }
     setProvider(connectedProvider);
-  }, [connectedProvider]);
+  }, [isModal, connectedProvider]);
 
   const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
   const disconnectHandlerRef = useRef<(() => Promise<void>) | null>(null);
@@ -240,6 +299,10 @@ export function MetabotSetup({ id }: { id?: string }) {
     }
   };
 
+  const resetProvider = () => {
+    setProvider(undefined);
+  };
+
   const isLoading =
     isConnecting || isDisconnecting || updateSettingsResult.isLoading;
   const [isConnectButtonEnabled, setIsConnectButtonEnabled] = useState(false);
@@ -252,79 +315,85 @@ export function MetabotSetup({ id }: { id?: string }) {
         isLoading,
         setIsConnectButtonEnabled,
         isConnectButtonEnabled,
+        resetProvider,
+        handleDisconnect,
+        isModal: !!isModal,
       }}
     >
-      <SettingsSection
-        id={id}
-        title={
-          <Flex justify="space-between" align="center">
-            <Group gap="xs" wrap="nowrap">
-              {isConfigured ? (
-                <Badge circle size="12" bg="success" mr="sm" />
-              ) : null}
-              <div>
-                {connectedProvider
-                  ? t`Connected to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`
-                  : t`Connect to an AI provider`}
-              </div>
-            </Group>
-          </Flex>
-        }
-        description={
-          !connectedProvider
-            ? t`Select your AI provider to use AI explorations, SQL generation and Metabot.`
-            : undefined
-        }
-      >
-        <Stack gap="md">
-          {!isConfigured && (
-            <Select
-              label={t`Provider`}
-              placeholder={t`Select a provider`}
-              data={providerOptions}
-              value={provider}
-              onChange={setProvider}
-              disabled={isEnvSetting || isLoading}
-              renderOption={({ option }) => (
-                <Group
-                  gap="xs"
-                  p="sm"
-                  justify="space-between"
-                  wrap="nowrap"
-                  w="100%"
+      <Stack gap="md">
+        {!isCurrentConfigured && (
+          <Select
+            label={t`Provider`}
+            placeholder={t`Select a provider`}
+            data={providerOptions}
+            value={provider}
+            onChange={setProvider}
+            disabled={isEnvSetting || isLoading}
+            renderOption={({ option }) => (
+              <Group
+                gap="xs"
+                p="sm"
+                justify="space-between"
+                wrap="nowrap"
+                w="100%"
+              >
+                <Text
+                  lh="1rem"
+                  c={option.disabled ? "text-tertiary" : undefined}
                 >
-                  <Text
-                    lh="1rem"
-                    c={option.disabled ? "text-tertiary" : undefined}
-                  >
-                    {option.label}
+                  {option.label}
+                </Text>
+                {!isAvailableProvider(option.value as MetabotProvider) && (
+                  <Text c="text-tertiary" lh="1rem" size="sm">
+                    {t`Coming soon`}
                   </Text>
-                  {!isAvailableProvider(option.value as MetabotProvider) && (
-                    <Text c="text-tertiary" lh="1rem" size="sm">
-                      {t`Coming soon`}
-                    </Text>
-                  )}
-                </Group>
-              )}
+                )}
+              </Group>
+            )}
+          />
+        )}
+
+        {match(provider)
+          .with("metabase", () => <MetabaseAIProviderSetup />)
+          .with(P.nonNullable, (selectedProvider) => (
+            <AIProviderSetup
+              selectedProvider={selectedProvider}
+              connectedModel={connectedModel}
+              isCurrentConfigured={isCurrentConfigured}
+              isEnvSetting={isEnvSetting}
             />
-          )}
+          ))
+          .with(P.nullish, () => null)
+          .exhaustive()}
 
-          {match(provider)
-            .with("metabase", () => <MetabaseAIProviderSetup />)
-            .with(P.nonNullable, (selectedProvider) => (
-              <AIProviderSetup
-                selectedProvider={selectedProvider}
-                connectedModel={connectedModel}
-                isEnvSetting={isEnvSetting}
-              />
+        {envSettingName && <SetByEnvVar varName={envSettingName} />}
+
+        <Flex justify="end">
+          {match({ isCurrentConfigured, isModal })
+            .with({ isModal: true, isCurrentConfigured: true }, () => (
+              <Button
+                variant="filled"
+                loading={isLoading}
+                disabled={isLoading}
+                onClick={onClose}
+              >
+                {t`Done`}
+              </Button>
             ))
-            .with(P.nullish, () => null)
-            .exhaustive()}
-
-          {envSettingName && <SetByEnvVar varName={envSettingName} />}
-
-          <Flex justify="end">
-            {isConfigured ? (
+            .when(
+              () => isCurrentConfigured && isConnectButtonEnabled,
+              () => (
+                <Button
+                  variant="filled"
+                  loading={isLoading}
+                  disabled={isLoading}
+                  onClick={handleConnect}
+                >
+                  {t`Connect`}
+                </Button>
+              ),
+            )
+            .with({ isCurrentConfigured: true }, () => (
               <Button
                 c="danger"
                 loading={isLoading}
@@ -340,7 +409,8 @@ export function MetabotSetup({ id }: { id?: string }) {
               >
                 {t`Disconnect`}
               </Button>
-            ) : (
+            ))
+            .with({ isCurrentConfigured: false }, () => (
               <Button
                 variant="filled"
                 loading={isLoading}
@@ -349,10 +419,10 @@ export function MetabotSetup({ id }: { id?: string }) {
               >
                 {t`Connect`}
               </Button>
-            )}
-          </Flex>
-        </Stack>
-      </SettingsSection>
+            ))
+            .exhaustive()}
+        </Flex>
+      </Stack>
     </MetabotSetupContext.Provider>
   );
 }
@@ -360,10 +430,12 @@ export function MetabotSetup({ id }: { id?: string }) {
 const AIProviderSetup = ({
   selectedProvider,
   connectedModel,
+  isCurrentConfigured,
   isEnvSetting,
 }: {
   selectedProvider: Exclude<MetabotProvider, "metabase">;
   connectedModel: string | undefined;
+  isCurrentConfigured: boolean;
   isEnvSetting: boolean;
 }) => {
   const [model, setModel] = useState<string | undefined>(connectedModel);
@@ -386,7 +458,11 @@ const AIProviderSetup = ({
     setApiKeyLocalValue(null);
   };
 
-  const { isLoading } = useMetabotSetupContext(onConnect);
+  const hasDirtyApiKey = apiKeyLocalValue !== null;
+  const connectHandler =
+    !isCurrentConfigured || hasDirtyApiKey ? onConnect : null;
+
+  const { isLoading } = useMetabotSetupContext(connectHandler);
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",

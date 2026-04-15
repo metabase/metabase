@@ -42,6 +42,19 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
+  it("should keep the prompt for locked requests so it can be retried", async () => {
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, 402);
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", METABOT_ERR_MSG.locked],
+    ]);
+    expect(await input()).toHaveTextContent("Who is your favorite?");
+  });
+
   it("should handle show error if data error part is in response", async () => {
     setup();
     mockAgentEndpoint({ textChunks: erroredResponse });

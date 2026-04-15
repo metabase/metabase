@@ -100,9 +100,21 @@
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
   #{"anthropic" "openai" "openrouter"})
 
+(def ^:private default-anthropic-llm-metabot-model
+  "Default Anthropic model used for Metabot when no explicit model is selected."
+  "claude-sonnet-4-6")
+
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
-  "anthropic/claude-sonnet-4-6")
+  (str "anthropic/" default-anthropic-llm-metabot-model))
+
+(def default-llm-metabot-model-by-provider
+  "Default model payload keyed by provider for `PUT /api/metabot/settings`.
+
+  Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
+  managed `metabase` provider uses the proxied `provider/model` form."
+  {"anthropic"                       default-anthropic-llm-metabot-model
+   provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
   "Managed-provider version of [[default-llm-metabot-provider]]."
@@ -175,6 +187,14 @@
                        :provider    inner-provider
                        :model       inner-model
                        :supported   allowed-models})))))
+(defn default-model-for-provider
+  "Return the default request-model payload for a provider.
+
+  When `provider` is nil, fall back to the global default provider/model string."
+  [provider]
+  (if (nil? provider)
+    default-llm-metabot-provider
+    (get default-llm-metabot-model-by-provider provider)))
 
 (defn- validate-metabot-provider!
   "Validate that `value` has the format `provider/model` with a supported provider prefix.
