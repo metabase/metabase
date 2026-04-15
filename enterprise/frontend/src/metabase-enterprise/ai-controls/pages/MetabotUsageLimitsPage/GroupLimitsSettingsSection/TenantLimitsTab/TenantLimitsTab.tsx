@@ -5,7 +5,15 @@ import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Alert, Box, Icon, Stack, Text, TextInput } from "metabase/ui";
+import {
+  Alert,
+  Box,
+  Icon,
+  NumberInput,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import { useUpdateAIControlsTenantLimitMutation } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
 
@@ -18,6 +26,7 @@ import {
   getColumnName,
   getDescription,
   getInputLabel,
+  getMaxUsageInputSuffix,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -73,7 +82,7 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
     SAVE_DEBOUNCE_MS,
   );
 
-  const handleChange = (tenant: Tenant, inputValue: string) => {
+  const handleChange = (tenant: Tenant, inputValue: string | number) => {
     const maxUsage = sanitizeUsageLimitValue(inputValue);
     setLocalLimitsMap((prev: Record<number, number | null>) => ({
       ...prev,
@@ -153,24 +162,26 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                         <tr key={tenant.id} className={S.BodyRow}>
                           <td className={S.BodyCell}>{tenant.name}</td>
                           <td className={S.BodyCell}>
-                            <TextInput
+                            <NumberInput
                               placeholder={placeholder}
                               value={inputValue}
-                              onChange={(e) =>
-                                handleChange(tenant, e.target.value)
-                              }
+                              onChange={(value) => handleChange(tenant, value)}
                               classNames={{ input: S.LimitInput }}
                               error={
                                 isOverInstanceLimit
                                   ? t`Can't be higher than the instance limit`
                                   : undefined
                               }
-                              type="number"
-                              min={1}
+                              min={0}
+                              decimalScale={0}
                               aria-label={getInputLabel(
                                 tenant.name,
                                 limitType,
                                 limitPeriod,
+                              )}
+                              suffix={getMaxUsageInputSuffix(
+                                limitType,
+                                localLimitsMap?.[tenant.id],
                               )}
                             />
                           </td>

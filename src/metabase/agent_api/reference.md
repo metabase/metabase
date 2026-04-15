@@ -135,10 +135,11 @@ Response:
     {
       "field_id": "t42-0",
       "name": "ID",
-      "type": "number",
+      "display_name": "ID",
       "description": "Primary key",
-      "database_type": "BIGINT",
+      "base_type": "type/BigInteger",
       "semantic_type": "type/PK",
+      "database_type": "BIGINT",
       "field_values": [1, 2, 3]
     }
   ],
@@ -196,7 +197,8 @@ Response:
     {
       "field_id": "c10-0",
       "name": "CREATED_AT",
-      "type": "datetime"
+      "display_name": "Created At",
+      "base_type": "type/DateTime"
     }
   ],
   "segments": []

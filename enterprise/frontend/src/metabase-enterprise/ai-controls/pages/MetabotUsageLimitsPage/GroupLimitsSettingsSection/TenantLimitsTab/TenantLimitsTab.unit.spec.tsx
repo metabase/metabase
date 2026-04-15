@@ -87,13 +87,13 @@ describe("TenantLimitsTab", () => {
   it("populates inputs from existing tenant limits", () => {
     setup({
       tenantLimits: [
-        { tenant_id: 1, max_usage: 200 },
-        { tenant_id: 2, max_usage: 75 },
+        { tenant_id: 1, max_usage: 1 },
+        { tenant_id: 2, max_usage: 10 },
       ],
     });
 
-    expect(screen.getByDisplayValue("200")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("75")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1 million")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("10 million")).toBeInTheDocument();
   });
 
   it("shows 'Unlimited' placeholder when instance limit is null", () => {
@@ -138,12 +138,12 @@ describe("TenantLimitsTab", () => {
   it("updates input value when user types", async () => {
     setup();
 
-    const acmeInput = screen.getByRole("spinbutton", {
+    const acmeInput = screen.getByRole("textbox", {
       name: /Acme Corp/,
     });
     await userEvent.type(acmeInput, "300");
 
-    expect(acmeInput).toHaveValue(300);
+    expect(acmeInput).toHaveValue("300 million");
   });
 
   it("shows error when value exceeds the instance limit", async () => {
