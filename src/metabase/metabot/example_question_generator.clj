@@ -99,36 +99,38 @@
 (defn- call-llm
   "Make a structured LLM call for example question generation.
   Delegates to the shared self/call-llm-structured infrastructure which provides
-  retry logic, error handling, and OTel tracing."
-  [rendered-prompt]
+  retry logic, error handling, and OTel tracing.
+  When `usage-atom` is provided, token usage for this call is captured into it."
+  [rendered-prompt usage-atom]
   (self/call-llm-structured
    (metabot.settings/llm-metabot-provider)
    [{:role "user" :content rendered-prompt}]
    questions-json-schema
    temperature
    300
-   {:request-id (str (random-uuid))
-    ;; example_question_generation_batch was the name of the old ai-service api endpoint
-    :source     "example_question_generation_batch"
-    :tag        "example-question-generation"}))
+   (cond-> {:request-id (str (random-uuid))
+            ;; example_question_generation_batch was the name of the old ai-service api endpoint
+            :source     "example_question_generation_batch"
+            :tag        "example-question-generation"}
+     usage-atom (assoc :usage-atom usage-atom))))
 
 ;;; Per-item generation (mirrors Python generate_table_example_questions / generate_metric_example_questions)
 
 (defn- generate-table-questions
   "Generate example questions for a single table/model."
-  [table]
+  [table usage-atom]
   (let [template (load-template table-template-path)
         rendered (selmer/render template
                                 {:table_name        (:name table)
                                  :table_description (or (:description table) "")
                                  :columns           (map enrich-column (:fields table))})
-        response (call-llm rendered)]
+        response (call-llm rendered usage-atom)]
     (validate-questions-response! response (:name table))
     {:questions (vec (:questions response))}))
 
 (defn- generate-metric-questions
   "Generate example questions for a single metric."
-  [metric]
+  [metric usage-atom]
   (let [template (load-template metric-template-path)
         rendered (selmer/render template
                                 {:metric_name            (:name metric)
@@ -137,7 +139,7 @@
                                                               (:queryable-dimensions metric))
                                  :default_time_dimension (some-> (:default-time-dimension metric)
                                                                  enrich-column)})
-        response (call-llm rendered)]
+        response (call-llm rendered usage-atom)]
     (validate-questions-response! response (:name metric))
     {:questions (vec (:questions response))}))
 
@@ -145,15 +147,33 @@
 
 (def ^:private max-batch-size 10)
 
+(defn- merge-usage
+  "Merge two usage maps by summing :prompt and :completion per model."
+  [a b]
+  (merge-with (fn [x y]
+                {:prompt     (+ (:prompt x 0) (:prompt y 0))
+                 :completion (+ (:completion x 0) (:completion y 0))})
+              a b))
+
 (defn- process-batch-parallel
-  "Process items in parallel batches, matching Python's asyncio.gather behavior."
+  "Process items in parallel batches, matching Python's asyncio.gather behavior.
+  Returns {:results [...] :usage {model {:prompt X :completion Y}}}."
   [items generate-fn]
-  (vec
-   (mapcat
-    (fn [batch]
-      (let [futures (mapv #(future (generate-fn %)) batch)]
-        (mapv deref futures)))
-    (partition-all max-batch-size items))))
+  (let [all-usage (atom {})]
+    {:results
+     (vec
+      (mapcat
+       (fn [batch]
+         (let [futures (mapv (fn [item]
+                               (let [usage-atom (atom {})]
+                                 (future
+                                   (let [result (generate-fn item usage-atom)]
+                                     (swap! all-usage merge-usage @usage-atom)
+                                     result))))
+                             batch)]
+           (mapv deref futures)))
+       (partition-all max-batch-size items)))
+     :usage @all-usage}))
 
 (defn generate-example-questions
   "Generate example questions natively using LLM via OpenRouter.
@@ -169,14 +189,17 @@
   (log/info "Generating example questions natively"
             {:table-count  (count (:tables payload))
              :metric-count (count (:metrics payload))})
-  (let [table-questions  (if (seq (:tables payload))
-                           (process-batch-parallel (:tables payload) generate-table-questions)
-                           [])
-        metric-questions (if (seq (:metrics payload))
-                           (process-batch-parallel (:metrics payload) generate-metric-questions)
-                           [])]
+  (let [{table-questions :results table-usage :usage}
+        (if (seq (:tables payload))
+          (process-batch-parallel (:tables payload) generate-table-questions)
+          {:results [] :usage {}})
+        {metric-questions :results metric-usage :usage}
+        (if (seq (:metrics payload))
+          (process-batch-parallel (:metrics payload) generate-metric-questions)
+          {:results [] :usage {}})]
     (log/info "Native example question generation complete"
               {:table-results  (count table-questions)
                :metric-results (count metric-questions)})
     {:table_questions  table-questions
-     :metric_questions metric-questions}))
+     :metric_questions metric-questions
+     :usage            (merge-usage table-usage metric-usage)}))

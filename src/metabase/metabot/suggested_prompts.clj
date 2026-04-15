@@ -1,8 +1,11 @@
 (ns metabase.metabot.suggested-prompts
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.example-question-generator :as native-generator]
+   [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.log :as log]
@@ -33,22 +36,46 @@
       (select-keys [:name :description :fields])
       (update :fields #(map column-input %))))
 
+(defn- record-usage!
+  "Record LLM token usage from example question generation in MetabotMessage.
+  Creates a synthetic conversation so that metabot-stats can pick up the usage."
+  [user-id usage]
+  (when (seq usage)
+    (let [conversation-id (str (random-uuid))
+          total-tokens    (->> (vals usage)
+                               (map #(+ (:prompt % 0) (:completion % 0)))
+                               (reduce + 0))]
+      (t2/insert! :model/MetabotConversation
+                  {:id      conversation-id
+                   :user_id user-id})
+      (t2/insert! :model/MetabotMessage
+                  {:conversation_id conversation-id
+                   :data            []
+                   :usage           usage
+                   :role            :assistant
+                   :profile_id      "example-question-generation"
+                   :total_tokens    total-tokens
+                   :ai_proxied      (provider-util/metabase-provider?
+                                     (metabot.settings/llm-metabot-provider))}))))
+
 (def ^:private default-opts
   {:limit 20})
 
 (defn- generate-questions-with-fallback
   "Generate example questions using the configured path."
-  [payload]
+  [payload user-id]
   (let [result (native-generator/generate-example-questions payload)]
     (log/info "Native example question generation succeeded"
               {:table-results  (count (:table_questions result))
                :metric-results (count (:metric_questions result))})
+    (record-usage! user-id (:usage result))
     result))
 
 (defn generate-sample-prompts
   "Generate suggested prompts for instance of Metabot."
-  [metabot-id & {:as opts}]
-  (let [opts (merge default-opts opts)]
+  [metabot-id & {:keys [user-id] :as opts}]
+  (let [user-id (or user-id api/*current-user-id*)
+        opts    (merge default-opts (dissoc opts :user-id))]
     (lib-be/with-metadata-provider-cache
       (let [{metrics :metric models :model} (->> (metabot.tools.u/get-metrics-and-models metabot-id opts)
                                                  (sort-by :view_count >)
@@ -65,7 +92,7 @@
             metric-inputs (map metric-input metrics)
             model-inputs (map model-input models)
             {:keys [table_questions metric_questions]}
-            (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
+            (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs} user-id)
             ->prompt (fn [{:keys [questions]} {::keys [origin]}]
                        (let [base {:metabot_id metabot-id
                                    :model      (:type origin)

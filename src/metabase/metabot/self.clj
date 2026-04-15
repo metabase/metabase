@@ -156,7 +156,7 @@
     - `:session-id` — conversation UUID string
     - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
                       Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-id request-id session-id source tag]}]
+  [{:keys [model profile-id request-id session-id source tag usage-atom]}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
@@ -187,7 +187,9 @@
                  :completion-tokens completion
                  :conversation-id   session-id
                  :profile-id        profile-id
-                 :request-id        request-id})))
+                 :request-id        request-id})
+               (when usage-atom
+                 (swap! usage-atom assoc model {:prompt prompt :completion completion}))))
            part))))
 
 (defn- report-tool-usage-xf

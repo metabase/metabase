@@ -33,9 +33,11 @@
                               {:table_questions [{:questions ["What is the total for this model?"
                                                               "How many items are in this model?"]}]
                                :metric_questions [{:questions ["What is the current value of this metric?"
-                                                               "How has this metric changed over time?"]}]}
+                                                               "How has this metric changed over time?"]}]
+                               :usage {}}
                               {:table_questions []
-                               :metric_questions []}))]
+                               :metric_questions []
+                               :usage {}}))]
 
               (testing "Non-verified card with use_verified_content=false generates prompts"
                 (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})

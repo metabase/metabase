@@ -3,6 +3,7 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.config.core :as config]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.request.core :as request]
@@ -33,7 +34,7 @@
           (if (zero? suggested-prompts-cnt)
             (do
               (log/info "No suggested prompts found. Generating suggested prompts.")
-              (metabot.suggested-prompts/generate-sample-prompts metabot-id)
+              (metabot.suggested-prompts/generate-sample-prompts metabot-id :user-id config/internal-mb-user-id)
               (log/info "Suggested prompts generated successfully."))
             (log/info "Suggested prompts are present. Not generating.")))))
     (catch Exception e
