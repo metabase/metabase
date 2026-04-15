@@ -39,13 +39,16 @@
                              :state           {}}))))
 
 (defn- backdate-messages!
-  "Update created_at on all messages for a conversation to the given timestamp."
+  "Update created_at on all messages and usage log rows for a conversation to the given timestamp."
   [conversation-id created-at]
   (t2/update! :model/MetabotMessage {:conversation_id conversation-id}
+              {:created_at created-at})
+  (t2/update! :model/AiUsageLog {:conversation_id conversation-id}
               {:created_at created-at}))
 
 (defn- cleanup! [& conv-ids]
   (doseq [cid conv-ids]
+    (t2/delete! :model/AiUsageLog :conversation_id cid)
     (t2/delete! :model/MetabotMessage :conversation_id cid)
     (t2/delete! :model/MetabotConversation :id cid)))
 
@@ -107,10 +110,20 @@
               (is (= 2 (count msgs)) "should have user + assistant messages")
               (is (every? true? (map :ai_proxied msgs)))))
 
+          (testing "ai-proxy usage log has ai_proxied = true"
+            (let [logs (t2/select :model/AiUsageLog :conversation_id conv-1)]
+              (is (= 1 (count logs)) "should have one usage log row per LLM call")
+              (is (every? true? (map :ai_proxied logs)))))
+
           (testing "BYOK messages have ai_proxied = false on ALL rows"
             (let [msgs (t2/select :model/MetabotMessage :conversation_id conv-5)]
               (is (= 2 (count msgs)))
               (is (every? false? (map :ai_proxied msgs)))))
+
+          (testing "BYOK usage log has ai_proxied = false"
+            (let [logs (t2/select :model/AiUsageLog :conversation_id conv-5)]
+              (is (= 1 (count logs)) "should have one usage log row per LLM call")
+              (is (every? false? (map :ai_proxied logs)))))
 
           (testing "usage keys are provider/model (metabase/ prefix stripped)"
             ;; accumulate-usage-xf strips metabase/ prefix → "openrouter/anthropic/claude-haiku-4-5"

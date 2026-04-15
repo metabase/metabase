@@ -1016,9 +1016,9 @@
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
    :uses #{app-db
-           models
-           util}
-   :model-imports #{:model/Card
+           models}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
                     :model/Dashboard
                     :model/MetabotMessage
                     :model/QueryExecution
