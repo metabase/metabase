@@ -71,7 +71,7 @@ export const ButtonBar = ({
         overflowX: "auto",
       }}
     >
-      <Flex gap="md">
+      <Flex gap="md" mr="md">
         <NewCollectionDialog />
         <NewDashboardDialog />
       </Flex>

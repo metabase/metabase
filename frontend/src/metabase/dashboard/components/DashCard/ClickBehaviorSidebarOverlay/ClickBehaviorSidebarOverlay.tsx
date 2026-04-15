@@ -3,8 +3,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Icon } from "metabase/ui";
-import { getClickBehaviorDescription } from "metabase/utils/click-behavior";
 import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
+
+import { getClickBehaviorDescription } from "../../../utils";
 
 import S from "./ClickBehaviorSidebarOverlay.module.css";
 
