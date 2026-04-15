@@ -8,6 +8,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.remote-sync.source.git :as rs.git]
    [metabase.config.core :as config]
    [metabase.util :as u]
