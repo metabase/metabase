@@ -181,8 +181,6 @@ export const SdkQuestionDefaultView = ({
       canWriteToTargetCollection,
     }) && isSaveEnabled;
 
-  console.log("trigger CI");
-
   return (
     <FlexibleSizeComponent
       height={height}
