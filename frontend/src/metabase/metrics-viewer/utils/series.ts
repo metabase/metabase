@@ -148,16 +148,31 @@ export function buildSeries({
 
       const seriesKey = isFirstSeries ? result.data.cols[1]?.name : name;
 
+      const vizSettingsOverride: Partial<VisualizationSettings> = nativeBreakout
+        ? {}
+        : computeColorVizSettings({
+            displayType: display,
+            seriesKey,
+            color,
+          });
+
+      // When an expression is the first (or only) series the vizSettingsKey
+      // equals the raw column name ("Expression").  Override the series title
+      // so the tooltip / legend display the user-provided name instead.
+      if (isFirstSeries && isExpressionEntry(entity) && seriesKey && name) {
+        vizSettingsOverride.series_settings = {
+          ...vizSettingsOverride.series_settings,
+          [seriesKey]: {
+            ...vizSettingsOverride.series_settings?.[seriesKey],
+            title: name,
+          },
+        };
+      }
+
       const singleSeries: SingleSeries = {
         card: createSeriesCard(cardId, name, display, {
           ...vizSettings,
-          ...(nativeBreakout
-            ? {}
-            : computeColorVizSettings({
-                displayType: display,
-                seriesKey,
-                color,
-              })),
+          ...vizSettingsOverride,
           ...extraVizSettings,
         }),
         data: result.data,
