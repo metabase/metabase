@@ -240,3 +240,35 @@ Transforms are similar to models with model persistence turned on, but there are
 - You can use Python to create transforms.
 
 Use models to enable non-admins to create their own datasets within Metabase, and to add context like field descriptions and semantic types. Use transforms to create persisted datasets in your database and reuse them across Metabase. In future versions of Metabase, model persistence will be deprecated in favor of transforms.
+
+## Convert models to transforms
+
+If you have models you'd like to migrate to transforms, Metabase can convert them for you. When you convert a model, Metabase:
+
+1. Creates a new transform based on the model's query.
+2. Runs the transform to create the output table in your database.
+3. Replaces every question, dashboard, and other item that used the model with the transform's output table.
+4. Converts the model itself to a saved question.
+
+You must be an admin to convert models, and the model's database must [support transforms](#databases-that-support-transforms).
+
+Before converting models into transforms, review [Replacing data sources](../dependencies/replace-data-sources.md) docs for overview and limitations of the process.
+
+To convert a model into a transform:
+
+1. Open **Data Studio** and select **Transforms** in the sidebar.
+2. Click **Tools > Migrate models**.
+3. Find the model you want to convert and click it to open its details panel. The panel shows the model's name, database, and collection, and a list of items that depend on it.
+4. Click **Convert to a transform**.
+5. Fill out the transform settings. See [Create a transform](#create-a-transform) for the overview of settings.
+6. Click **Convert to a transform**.
+
+Metabase runs the conversion in the background. A status indicator at the bottom of the screen shows progress.
+
+If the transform run fails, Metabase stops and leaves the model unchanged—nothing is replaced.
+
+If the transform runs successfully but the source swap fails afterward, the transform and its output table are kept. The model is left unchanged. You can complete the migration manually using [Replace data sources](../dependencies/replace-data-sources.md) to point remaining content from the model to the transform's output table.
+
+Once conversion completes, all content that previously queried the model now queries the transform's output table, and the model becomes a saved question.
+
+Newly created tables will be created with default permissions and will _not_ inherit the model's permissions. As an alternative, consider manually creating and running the transform first, setting up the permissions, then using [Replace data sources](../dependencies/replace-data-sources.md) to swap the model for the transform's output table once you configured permissions.
