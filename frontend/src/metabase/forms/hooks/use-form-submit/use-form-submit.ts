@@ -2,7 +2,7 @@ import type { FormikHelpers } from "formik";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useState } from "react";
 
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 
 import type { FormState } from "../../contexts";
 

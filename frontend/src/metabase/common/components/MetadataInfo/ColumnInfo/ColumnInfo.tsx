@@ -22,7 +22,7 @@ export type TableColumnInfoProps = {
 };
 
 /**
- * @deprecated prefer to use the MLv2 query props
+ * @deprecated prefer to use the Lib/MBQL 5 query props
  */
 export function TableColumnInfo({
   className,

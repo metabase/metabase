@@ -6,10 +6,10 @@ import {
   setupUpdateMetabotGroupPermissionsEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 import { createMockMetabotGroupPermissions } from "metabase-types/api/mocks/metabot";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotFeatureAccessPage } from "./MetabotFeatureAccessPage";
 
@@ -76,6 +76,13 @@ function getPermissionRow(groupName: string) {
     name: new RegExp(`${groupName} permissions`),
   });
 }
+
+const dataAnalystsGroup = createMockGroup({
+  id: 4,
+  name: "Data Analysts",
+  member_count: 2,
+  magic_group_type: "data-analyst",
+});
 
 describe("MetabotFeatureAccessPage", () => {
   it("renders groups with their permission states", async () => {
@@ -205,5 +212,151 @@ describe("MetabotFeatureAccessPage", () => {
 
     expect(screen.getByText("User groups")).toBeInTheDocument();
     expect(screen.getByText("Tenant groups")).toBeInTheDocument();
+  });
+
+  describe("'All Users' group override warning icons", () => {
+    // defaultPermissions: All Users group has everything enabled; Data Analysts has everything disabled
+    const defaultPermissions = [
+      ...createMockMetabotGroupPermissions(adminGroup.id),
+      ...createMockMetabotGroupPermissions(allUsersGroup.id),
+      ...createMockMetabotGroupPermissions(dataAnalystsGroup.id, {
+        [AIToolKey.Metabot]: "no",
+        [AIToolKey.ChatAndNLQ]: "no",
+        [AIToolKey.SQLGeneration]: "no",
+        [AIToolKey.OtherTools]: "no",
+      }),
+    ];
+
+    it("shows info icons on a group's row when 'All Users' has higher access", async () => {
+      setup({
+        groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
+        permissions: defaultPermissions,
+      });
+
+      await screen.findByTestId("ai-feature-access-table");
+
+      const dataAnalystsRow = getPermissionRow("Data Analysts");
+
+      // Wait for permissions to propagate
+      await waitFor(() => {
+        const infoIcons = within(dataAnalystsRow).getAllByRole("img", {
+          name: "Group limit warning",
+        });
+        // One icon per tool column (AI features switch + 3 checkboxes)
+        expect(infoIcons).toHaveLength(4);
+      });
+    });
+
+    it("shows info icon only for tools where 'All Users' has higher access", async () => {
+      const permissions = [
+        ...createMockMetabotGroupPermissions(adminGroup.id),
+        ...createMockMetabotGroupPermissions(allUsersGroup.id, {
+          [AIToolKey.SQLGeneration]: "no",
+        }),
+        ...createMockMetabotGroupPermissions(dataAnalystsGroup.id, {
+          [AIToolKey.ChatAndNLQ]: "no",
+          [AIToolKey.SQLGeneration]: "no",
+          [AIToolKey.OtherTools]: "no",
+        }),
+      ];
+
+      setup({
+        groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
+        permissions,
+      });
+
+      await screen.findByTestId("ai-feature-access-table");
+
+      const dataAnalystsRow = getPermissionRow("Data Analysts");
+
+      await waitFor(() => {
+        // Only ChatAndNLQ and OtherTools are overridden — SQLGeneration is "no" for both
+        const infoIcons = within(dataAnalystsRow).getAllByRole("img", {
+          name: "Group limit warning",
+        });
+        expect(infoIcons).toHaveLength(2);
+      });
+    });
+
+    it("does not show info icons on the 'All Users' row itself", async () => {
+      setup();
+      await screen.findByTestId("ai-feature-access-table");
+
+      const allUsersRow = getPermissionRow("All Users");
+
+      await waitFor(() => {
+        expect(within(allUsersRow).getByRole("switch")).toBeInTheDocument();
+      });
+
+      expect(
+        within(allUsersRow).queryByRole("img", { name: "Group limit warning" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not show info icons when 'All Users' has equal or lower access", async () => {
+      // All Users has SQL generation disabled; Data Analysts also has it disabled — no override
+      const permissions = [
+        ...createMockMetabotGroupPermissions(adminGroup.id),
+        ...createMockMetabotGroupPermissions(allUsersGroup.id, {
+          [AIToolKey.SQLGeneration]: "no",
+        }),
+        ...createMockMetabotGroupPermissions(dataAnalystsGroup.id, {
+          [AIToolKey.SQLGeneration]: "no",
+        }),
+      ];
+
+      setup({
+        groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
+        permissions,
+      });
+
+      await screen.findByTestId("ai-feature-access-table");
+
+      const dataAnalystsRow = getPermissionRow("Data Analysts");
+
+      await waitFor(() => {
+        expect(within(dataAnalystsRow).getByRole("switch")).toBeInTheDocument();
+      });
+
+      expect(
+        within(dataAnalystsRow).queryByRole("img", {
+          name: "Group limit warning",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not show info icons when 'All Users' AI features switch is off, even if sub-tools are on", async () => {
+      const permissions = [
+        ...createMockMetabotGroupPermissions(adminGroup.id),
+        ...createMockMetabotGroupPermissions(allUsersGroup.id, {
+          [AIToolKey.Metabot]: "no",
+          // ChatAndNLQ, SQLGeneration, OtherTools remain "yes" in state
+        }),
+        ...createMockMetabotGroupPermissions(dataAnalystsGroup.id, {
+          [AIToolKey.ChatAndNLQ]: "no",
+          [AIToolKey.SQLGeneration]: "no",
+          [AIToolKey.OtherTools]: "no",
+        }),
+      ];
+
+      setup({
+        groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
+        permissions,
+      });
+
+      await screen.findByTestId("ai-feature-access-table");
+
+      const dataAnalystsRow = getPermissionRow("Data Analysts");
+
+      await waitFor(() => {
+        expect(within(dataAnalystsRow).getByRole("switch")).toBeInTheDocument();
+      });
+
+      expect(
+        within(dataAnalystsRow).queryByRole("img", {
+          name: "Group limit warning",
+        }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -916,7 +917,7 @@
                       {:model "Field" :id "Some Field"}]}
                    (set (serdes/dependencies ser))))))))))
 
-(defn- pmbql-measure-definition
+(defn- mbql5-measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [db-id table-id field-id]
   (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
@@ -933,7 +934,7 @@
                        :model/Database   {db-id :id}        {:name "My Database"}
                        :model/Table      {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {field-id :id}     {:name "Some Field" :table_id no-schema-id}]
-      (let [definition (pmbql-measure-definition db-id no-schema-id field-id)]
+      (let [definition (mbql5-measure-definition db-id no-schema-id field-id)]
         (ts/with-temp-dpc [:model/Measure
                            {m1-id  :id
                             m1-eid :entity_id}
@@ -970,7 +971,7 @@
                        :model/Database   {db-id :id}        {:name "My Database"}
                        :model/Table      {table-id :id}     {:name "My Table" :db_id db-id}
                        :model/Field      {field-id :id}     {:name "Amount" :table_id table-id}]
-      (let [base-definition (pmbql-measure-definition db-id table-id field-id)]
+      (let [base-definition (mbql5-measure-definition db-id table-id field-id)]
         (ts/with-temp-dpc [:model/Measure
                            {m1-id  :id
                             m1-eid :entity_id}
@@ -1952,20 +1953,41 @@
           (is (= 5 (qc))))))))
 
 (deftest result-metadata-test
-  (mt/with-temp [:model/Card c {:dataset_query (mt/query venues)}]
-    (let [res (qp/process-query
-               (qp/userland-query
-                (:dataset_query c)
-                {:card-id (:id c)}))]
-      (when-not (= (:status res) :completed)
-        (throw (ex-info "Query failed" res)))
-      (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
-        (is (=? {:base_type          :type/Integer
-                 :id                 [string? "PUBLIC" "VENUES" "CATEGORY_ID"]
-                 :fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]
-                 :field_ref          [:field [string? "PUBLIC" "VENUES" "CATEGORY_ID"] nil]}
-                (->> (:result_metadata ser)
-                     (u/seek #(= (:display_name %) "Category ID")))))))))
+  (testing "model Card extraction portablizes :fk_target_field_id in :result_metadata"
+    (mt/with-temp [:model/Card c {:type :model :dataset_query (mt/query venues)}]
+      (let [res (qp/process-query
+                 (qp/userland-query
+                  (:dataset_query c)
+                  {:card-id (:id c)}))]
+        (when-not (= (:status res) :completed)
+          (throw (ex-info "Query failed" res)))
+        (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
+          (is (=? {:fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]}
+                  (->> (:result_metadata ser)
+                       (u/seek #(and (= (:name %) "CATEGORY_ID")
+                                     (= (:display_name %) "Category ID")))))))))))
+
+(deftest model-preserved-keys-extract-test
+  (testing "model Card preserved-key overrides survive extract"
+    (let [base-cols  (qp.preprocess/query->expected-cols (mt/query venues))
+          overridden (mapv (fn [col]
+                             (cond-> (assoc col
+                                            :display_name    (str "Custom " (:name col))
+                                            :visibility_type :normal
+                                            :description     "user-set")
+                               (= "CATEGORY_ID" (:name col)) (assoc :semantic_type :type/Category)))
+                           base-cols)]
+      (mt/with-temp
+        [:model/Card {card-id :id} {:type            :model
+                                    :dataset_query   (mt/query venues)
+                                    :result_metadata overridden}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
+              by-name   (u/index-by :name (:result_metadata extracted))]
+          (is (every? #(re-matches #"Custom .*" (:display_name %))
+                      (:result_metadata extracted)))
+          (is (= "user-set" (:description (get by-name "ID"))))
+          (is (= :type/Category (:semantic_type (get by-name "CATEGORY_ID"))))
+          (is (vector? (:fk_target_field_id (get by-name "CATEGORY_ID")))))))))
 
 (deftest extract-single-collection-test
   (mt/with-empty-h2-app-db!

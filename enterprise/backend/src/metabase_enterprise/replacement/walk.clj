@@ -26,7 +26,7 @@
             (try
               ;; `value_field` and `label_field` are legacy refs
               #_{:clj-kondo/ignore [:discouraged-var]}
-              (-> legacy-ref lib/->pMBQL (ref-fn card-id) lib/->legacy-MBQL)
+              (-> legacy-ref lib/->mbql5 (ref-fn card-id) lib/->legacy-MBQL)
               (catch Exception _
                 legacy-ref)))]
     (mapv (fn [parameter]
@@ -63,7 +63,7 @@
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref-or-name [ref-or-name]
             (or (when (vector? ref-or-name)
-                  (when-some [ref (try (lib/->pMBQL ref-or-name) (catch Exception _ nil))]
+                  (when-some [ref (try (lib/->mbql5 ref-or-name) (catch Exception _ nil))]
                     (when-some [ref-or-name' (ref-fn ref)]
                       (when (string? ref-or-name')
                         ref-or-name'))))

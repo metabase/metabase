@@ -19,7 +19,7 @@
 ;;; -------------------------------------------------- Query Building --------------------------------------------------
 
 (defn- make-count-query
-  "Generate a pMBQL COUNT(*) query."
+  "Generate a MBQL 5 COUNT(*) query."
   [db-id table-id]
   (let [mp (lib-be/application-database-metadata-provider db-id)
         table-metadata (lib.metadata/table mp table-id)]

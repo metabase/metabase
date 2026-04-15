@@ -69,7 +69,7 @@
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
   deserialized JSON (from the app DB or a REST API request). This is intended for things that are already in a
-  generally correct pMBQL; to 'normalize' things from legacy MBQL, use [[metabase.lib.convert]].
+  generally correct MBQL 5; to 'normalize' things from legacy MBQL, use [[metabase.lib.convert]].
 
   Normalization logic is defined in various schemas; grep for `:decode/normalize` in the `metabase.lib.schema*`
   namespaces.

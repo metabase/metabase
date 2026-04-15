@@ -11,8 +11,6 @@ import {
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import { PLUGIN_AUDIT, PLUGIN_MODERATION } from "metabase/plugins";
@@ -24,6 +22,8 @@ import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Button, Group, Icon, Menu } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
@@ -153,7 +153,7 @@ function MetricToolbarButtons({
             </Menu.Item>
           )}
 
-          <Menu.Divider />
+          <Menu.Divider role="separator" />
 
           <Menu.Item
             leftSection={<Icon name="add_to_dash" />}
@@ -173,7 +173,9 @@ function MetricToolbarButtons({
             </Menu.Item>
           )}
 
-          {(canManageSubscriptions || isInLibrary) && <Menu.Divider />}
+          {(PLUGIN_AUDIT.isEnabled || isInLibrary) && (
+            <Menu.Divider role="separator" />
+          )}
 
           {isInLibrary && (
             <Menu.Item
@@ -191,7 +193,7 @@ function MetricToolbarButtons({
 
           {card.can_write && (
             <>
-              <Menu.Divider />
+              <Menu.Divider role="separator" />
               <Menu.Item
                 leftSection={<Icon name="trash" />}
                 onClick={() => onOpenModal("archive")}

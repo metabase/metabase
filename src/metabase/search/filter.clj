@@ -30,6 +30,18 @@
              ;; TODO remove special handling of :id
              (dissoc search.config/filters :id)))
 
+(defn- spec-supported-attr-keys
+  "All attr keys a spec supports, including those provided by function attrs.
+  Keys with value false are excluded — false means 'not present' in the spec DSL."
+  [spec]
+  (into #{}
+        (mapcat (fn [[k v]]
+                  (cond
+                    (search.spec/function-attr? v) (conj (search.spec/function-attr-provides v) k)
+                    v [k]
+                    :else [])))
+        (:attrs spec)))
+
 (defn search-context->applicable-models
   "Returns a set of models that are applicable given the search context.
 
@@ -43,7 +55,7 @@
           (for [search-model (:models search-ctx)
                 :let [spec (search.spec/spec search-model)]]
             (when (and (visible-to? search-ctx spec)
-                       (every? (:attrs spec) required))
+                       (every? (spec-supported-attr-keys spec) required))
               (:name spec))))))
 
 (defn models-without-collection

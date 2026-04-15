@@ -1,5 +1,5 @@
 (ns metabase-enterprise.transforms-inspector.lens.query-util
-  "Shared utilities for manipulating preprocessed pMBQL queries in lens code."
+  "Shared utilities for manipulating preprocessed MBQL 5 queries in lens code."
   (:require
    [metabase.lib.core :as lib]))
 

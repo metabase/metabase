@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEffectOnce } from "react-use";
 
-import type { Deferred } from "metabase/lib/promise";
-import { defer } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
+import type { Deferred } from "metabase/utils/promise";
+import { defer } from "metabase/utils/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 

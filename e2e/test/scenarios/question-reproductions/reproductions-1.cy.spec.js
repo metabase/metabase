@@ -646,10 +646,11 @@ function moveColumnToTop(column) {
     cy.findByText(column)
       .should("be.visible")
       .closest("[data-testid^=draggable-item]")
-      .trigger("mousedown", 0, 0, { force: true })
-      .trigger("mousemove", 5, 5, { force: true })
-      .trigger("mousemove", 0, -600, { force: true })
-      .trigger("mouseup", 0, -600, { force: true });
+      .as("dragColumn");
+  });
+  H.moveDnDKitElementByAlias("@dragColumn", {
+    vertical: -130,
+    useMouseEvents: true,
   });
 }
 

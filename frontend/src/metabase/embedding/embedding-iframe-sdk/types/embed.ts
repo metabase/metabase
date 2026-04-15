@@ -17,10 +17,10 @@ import type {
   MetabaseFetchRequestTokenFn,
 } from "metabase/embedding-sdk/types/refresh-token";
 import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
@@ -174,7 +174,7 @@ export interface BrowserEmbedOptions {
   /** Which entities to show on the question's data picker */
   dataPickerEntityTypes?: EmbeddingEntityType[];
 
-  /** Whether to show the "New exploration" button. Defaults to true. */
+  /** Whether to show the "New question" button. Defaults to true. */
   withNewQuestion?: boolean;
 
   /** Whether to show the "New dashboard" button. Defaults to true. Only applies when readOnly is false. */

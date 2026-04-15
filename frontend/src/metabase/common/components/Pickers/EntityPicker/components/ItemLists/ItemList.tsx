@@ -3,7 +3,6 @@ import { useMemo } from "react";
 
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { getIsTenantUser } from "metabase/selectors/user";
@@ -15,6 +14,7 @@ import {
   NavLink,
   type NavLinkProps,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";

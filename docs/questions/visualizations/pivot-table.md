@@ -24,7 +24,7 @@ A pivot table is a table that has dimensions in both rows and columns, and metri
 
 The reason they're called pivot tables is because you can rotate ("pivot") a column 90 degrees so that the values in that column become column headings themselves. Pivoting values into column headings is useful when analyzing data across multiple attributes, like time, location, and category. You can pivot multiple rows to columns and vice versa, or not pivot any at all.
 
-Pivot table is the only Metabase visualization type (besides the plain table, of course) can display several metrics simultaneously along several dimensions.
+Pivot table is the only Metabase visualization type (besides the plain table, of course) that can display several metrics simultaneously along several dimensions.
 
 ## How to create a pivot table
 

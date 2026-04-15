@@ -1,8 +1,9 @@
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 
-import type { OptionsType } from "metabase/lib/formatting/types";
+import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconName, IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
@@ -35,7 +36,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
-import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
 import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
 import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";

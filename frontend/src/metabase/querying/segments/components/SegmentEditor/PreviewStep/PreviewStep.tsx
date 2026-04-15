@@ -4,8 +4,8 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Button, Flex, Loader, Text } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";

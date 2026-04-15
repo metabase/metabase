@@ -2,7 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
+   [metabase.mcp.api :as mcp.api]
+   [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -11,6 +14,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -107,6 +111,21 @@
       (is (= 401 (:status response)))
       (is (= -32603 (get-in response [:body :error :code]))))))
 
+(deftest mcp-enabled-setting-test
+  (testing "external MCP requests return 403 when disabled"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-enabled? false]
+      (let [response (mcp-request (jsonrpc-request "initialize"))]
+        (is (= 403 (:status response)))
+        (is (= "MCP server is not enabled." (:body response)))))))
+
+(deftest ai-features-enabled-setting-test
+  (testing "external MCP requests return 403 when AI features are globally disabled"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
+                                           :mcp-enabled?         "true"]
+      (let [response (mcp-request (jsonrpc-request "initialize"))]
+        (is (= 403 (:status response)))
+        (is (= "AI features are not enabled." (:body response)))))))
+
 (deftest initialize-test
   (testing "initialize returns protocol version, capabilities, and server info"
     (let [[session-id response] (initialize!)]
@@ -149,15 +168,16 @@
       (is (= 200 (:status post-response))))))
 
 (deftest tools-list-test
-  (testing "tools/list returns the 8 agent tools"
+  (testing "tools/list returns the 10 agent tools"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" session-id})
           tools (get-in response [:body :result :tools])]
       (is (= 200 (:status response)))
       (is (pos? (count tools)))
-      (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
-               "get_metric_field_values" "construct_query" "execute_query" "query"}
+      (is (= #{"search" "list_databases" "get_database" "get_table" "get_metric"
+               "get_table_field_values" "get_metric_field_values"
+               "construct_query" "execute_query" "query"}
              (set (map :name tools))))
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
@@ -424,7 +444,7 @@
 (deftest tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
-      (is (= 8 (count tools)))))
+      (is (= 10 (count tools)))))
 
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
@@ -437,11 +457,11 @@
 
   (testing "tools/list with wildcard scope matches all agent tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
-      (is (= 8 (count tools)))))
+      (is (= 10 (count tools)))))
 
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
-      (is (= 8 (count tools)))))
+      (is (= 10 (count tools)))))
 
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]
@@ -513,3 +533,29 @@
                      (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
         (is (not (:isError result))
             "Agent API should accept unrestricted scopes")))))
+
+(deftest mcp-does-not-depend-on-external-agent-api-setting-test
+  (testing "MCP tool calls still work when the external Agent API is disabled"
+    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{::scope/unrestricted} "get_table" {:id (mt/id :orders)}))]
+        (is (not (:isError result)))))))
+
+;;; ------------------------------------------------- Throttling ---------------------------------------------------
+
+(deftest mcp-throttle-returns-429-test
+  (testing "MCP endpoint returns 429 with JSON-RPC error when rate-limited"
+    (let [[session-id _] (initialize!)]
+      ;; Replace throttler after initialization so the handshake doesn't consume attempts
+      (with-redefs [mcp.api/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)]
+        ;; First request succeeds (consumes the single attempt)
+        (is (= 200 (:status (mcp-request (jsonrpc-request "ping")
+                                         {"mcp-session-id" session-id}))))
+        ;; Second request should be throttled
+        (is (=? {:status  429
+                 :headers {"Retry-After" string?}
+                 :body    {:jsonrpc "2.0"
+                           :error   {:code    -32000
+                                     :message #(str/starts-with? % "Too many attempts!")}}}
+                (mcp-request (jsonrpc-request "ping")
+                             {"mcp-session-id" session-id})))))))

@@ -56,7 +56,7 @@ To restore an item:
 
 > Restoring a collection will also restore all the items from that collection.
 
-If the item's original parent collection has been deleted as well, you won't see an option to **Restore**. You'll still be able to move the it from Trash to a different collection.
+If the item's original parent collection has been deleted as well, you won't see an option to **Restore**. You'll still be able to move it from Trash to a different collection.
 
 ### Cleaning up collections
 

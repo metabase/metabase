@@ -9,8 +9,8 @@ import {
   getExpandedCollectionsById,
   useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
-import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
+import { createEntity, undo } from "metabase/utils/entities";
 
 /**
  * @deprecated use "metabase/api" instead

@@ -211,8 +211,7 @@
 
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
   {:copy [:name :archived :description :entity_id]
-   :skip [:dependency_analysis_version
-          ;; dimensions are computed from the query and reconciled on read, not serialized
+   :skip [;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)

@@ -1,9 +1,9 @@
 (ns metabase.transforms-rest.api.transform-job-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.transforms.transform-job]
-   [metabase.models.transforms.transform-tag]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform-job]
+   [metabase.transforms.models.transform-tag]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.test-util :refer [parse-instant
                                           utc-timestamp]]

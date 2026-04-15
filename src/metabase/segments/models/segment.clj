@@ -229,7 +229,7 @@
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip      [:dependency_analysis_version]
+   :skip      []
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}

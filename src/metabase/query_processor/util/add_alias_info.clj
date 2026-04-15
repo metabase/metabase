@@ -69,16 +69,6 @@
    s      :- :string]
   (driver/escape-alias driver s))
 
-(defmulti ^String field-reference-mlv2
-  "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
-  By default this is just the name of the field, but it can be more complicated, e.g., take
-  parent fields into account.
-
-  DEPRECATED in 0.56.0, and no longer used."
-  {:added "0.48.0", :deprecated "0.57.0, " :arglists '([driver field-inst])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (defn- escape-fn []
   {:pre [(keyword? driver/*driver*)]}
   (let [f      (lib/unique-name-generator)
@@ -560,7 +550,7 @@
      ((some-fn :source-table :source-query) query)
      (-> query
          #_{:clj-kondo/ignore [:deprecated-var]}
-         annotate.legacy-helper-fns/legacy-inner-query->mlv2-query
+         annotate.legacy-helper-fns/legacy-inner-query->mbql5-query
          (add-alias-info options)
          lib/->legacy-MBQL
          :query)

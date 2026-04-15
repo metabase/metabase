@@ -74,7 +74,7 @@
                      :filters [[:= {} [:expression {:base-type :type/Integer :effective-type :type/Integer} "math"] 2]]}]}
           (lib/query
            meta/metadata-provider
-           (lib.convert/->pMBQL {:type :query
+           (lib.convert/->mbql5 {:type :query
                                  :database (meta/id)
                                  :query {:source-table (meta/id :venues)
                                          :expressions {"math" [:+ 1 1]}
@@ -86,7 +86,7 @@
                                                (lib/expression-ref $q "CC"))]))
           query (lib/join (lib.tu/venues-query) clause)
           ;; Make a legacy query but don't put types in :field and :expression
-          converted-query (lib.convert/->pMBQL
+          converted-query (lib.convert/->mbql5
                            (walk/postwalk
                             (fn [node]
                               (if (map? node)
@@ -152,7 +152,7 @@
           false (mock-db-native-perms nil))))))      ; native-permissions not found on the database
 
 (deftest ^:parallel convert-from-legacy-preserve-info-test
-  (testing ":info key should be converted when converting from legacy to pMBQL"
+  (testing ":info key should be converted when converting from legacy to MBQL 5"
     (is (=? {:lib/type     :mbql/query
              :lib/metadata lib.metadata.protocols/cached-metadata-provider?
              :database     (meta/id)

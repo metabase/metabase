@@ -590,6 +590,7 @@
           field1s    (atom nil)
           field2s    (atom nil)
           field3s    (atom nil)
+          field4s    (atom nil)
           dash1s     (atom nil)
           dash2s     (atom nil)
           tab2s      (atom nil)
@@ -618,6 +619,7 @@
             (reset! field1s  (ts/create! :model/Field :name "subtotal" :table_id (:id @table1s)))
             (reset! field2s  (ts/create! :model/Field :name "invoice" :table_id (:id @table1s)))
             (reset! field3s  (ts/create! :model/Field :name "discount" :table_id (:id @table1s)))
+            (reset! field4s  (ts/create! :model/Field :name "quantity" :table_id (:id @table1s)))
             (reset! user1s   (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! dash1s   (ts/create! :model/Dashboard :name "My Dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
             (reset! dash2s   (ts/create! :model/Dashboard :name "Linked dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
@@ -674,7 +676,12 @@
                                                  :parameterMapping
                                                  {"qweqwe" {:id     "qweqwe"
                                                             :source {:id "DISCOUNT" :name "Discount" :type "column"}
-                                                            :target {:id "amount_between" :type "variable"}}}}}}
+                                                            :target {:id "amount_between" :type "variable"}}}}}
+                                               (json/encode [:ref [:field (:id @field4s) nil]])
+                                               {:click_behavior
+                                                {:type     "link"
+                                                 :linkType "url"
+                                                 :linkTemplate "https://example.com/order/{{QUANTITY}}"}}}
                                               :click_behavior     {:type     "link"
                                                                    :linkType "question"
                                                                    :targetId (:id @card1s)}}
@@ -747,7 +754,13 @@
                                                   :parameterMapping
                                                   {"qweqwe" {:id "qweqwe"
                                                              :source {:id "DISCOUNT" :name "Discount" :type "column"}
-                                                             :target {:id "amount_between" :type "variable"}}}}))]
+                                                             :target {:id "amount_between" :type "variable"}}}})
+                                       (assoc-in [:column_settings
+                                                  (json/encode [:ref [:field [:my-db nil :orders :quantity] nil]])
+                                                  :click_behavior]
+                                                 {:type     "link"
+                                                  :linkType "url"
+                                                  :linkTemplate "https://example.com/order/{{QUANTITY}}"}))]
                   (is (= exp-card
                          (:visualization_settings card)))
                   (is (= exp-dashcard

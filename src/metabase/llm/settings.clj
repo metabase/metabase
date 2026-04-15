@@ -120,7 +120,44 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; --------------------------------------------------- Proxy ---------------------------------------------------
+
+(defsetting llm-proxy-base-url
+  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key.")
+  :feature          :metabase-ai-managed
+  :encryption       :no
+  :visibility       :internal
+  :default          nil
+  :export?          false
+  :doc              false)
+
+(defsetting ai-service-base-url
+  (deferred-tru "Base URL for the managed Metabase AI service.")
+  :feature          :metabase-ai-managed
+  :encryption       :no
+  :visibility       :internal
+  :default          nil
+  :export?          false
+  :doc              false)
+
+(defsetting llm-proxy-configured?
+  (deferred-tru "Whether the LLM proxy is configured for the managed Metabase AI service.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :export?          false
+  :setter           :none
+  :getter           #(boolean (some? (llm-proxy-base-url)))
+  :doc              false)
+
 ;;; -------------------------------------------------- General --------------------------------------------------
+
+(defsetting ai-features-enabled?
+  (deferred-tru "Whether AI features are enabled.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :export?    true
+  :doc        false)
 
 (defsetting llm-max-tokens
   (deferred-tru "Maximum tokens for LLM responses.")

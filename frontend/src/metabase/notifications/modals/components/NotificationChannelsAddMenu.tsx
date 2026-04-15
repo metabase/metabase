@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
 import CS from "metabase/css/core/index.css";
-import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
 import { Button, Menu, Text } from "metabase/ui";
+import { getNotificationHandlersGroupedByTypes } from "metabase/utils/notifications";
 import type {
   ChannelApiResponse,
   NotificationChannel,

@@ -1,7 +1,7 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
-import { combineReducers } from "metabase/lib/redux";
-import type { TemporaryPasswordsState } from "metabase-types/store";
+import type { TemporaryPasswordsState } from "metabase/redux/store";
+import { combineReducers } from "metabase/utils/redux";
 
 const initialState: TemporaryPasswordsState = {};
 

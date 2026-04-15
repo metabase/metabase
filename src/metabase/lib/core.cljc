@@ -1380,7 +1380,7 @@
   external-op]
  [lib.convert
   ->legacy-MBQL
-  ->pMBQL
+  ->mbql5
   legacy-default-join-alias
   with-aggregation-list
   without-cleaning]

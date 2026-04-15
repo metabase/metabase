@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import * as Urls from "metabase/lib/urls";
 import type { InsightsLinkProps } from "metabase/plugins";
 import { Flex, Icon } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 

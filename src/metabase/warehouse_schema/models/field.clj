@@ -420,8 +420,8 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/generate-path "Field" [_ field]
-  (let [[db schema table & fields] (serdes/*export-field-fk* (:id field))]
+(defmethod serdes/generate-path "Field" [_ {:keys [id]}]
+  (let [[db schema table & fields] (serdes/*export-field-fk* id)]
     (->> (into (serdes/table->path [db schema table])
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))

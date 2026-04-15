@@ -3,8 +3,7 @@ import { match } from "ts-pattern";
 
 import { setGuestTokenFetchError } from "embedding-sdk-bundle/store/guest-embed";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { trackSchemaEvent } from "metabase/lib/analytics";
-import { isWithinIframe } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
@@ -12,6 +11,8 @@ import type {
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
 } from "../types/embed";
+
+import { trackEmbeddedAnalyticsJs } from "./analytics";
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
 
@@ -87,7 +88,7 @@ export function useSdkIframeEmbedEventBus({
         usageAnalytics.embedHostUrl,
       );
       if (!isEmbeddedAnalyticsJsPreview) {
-        trackSchemaEvent("embedded_analytics_js", usageAnalytics.usage);
+        trackEmbeddedAnalyticsJs(usageAnalytics.usage);
       }
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);

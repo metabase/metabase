@@ -1,0 +1,21 @@
+name: Big Orders
+entity_id: big-orders-segment
+definition:
+  database: Test Database
+  stages:
+  - filters:
+    - - ">"
+      - {}
+      - - field
+        - {}
+        - total
+      - 100
+    source-table:
+    - Test Database
+    - public
+    - orders
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+serdes/meta:
+- id: big-orders-segment
+  model: Segment
