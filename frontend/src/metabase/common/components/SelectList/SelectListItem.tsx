@@ -51,7 +51,6 @@ export function SelectListItem({
         <ItemIcon
           iconUrl={iconUrl}
           className={classNames.icon}
-          color="brand"
           {...iconProps}
         />
       )}
