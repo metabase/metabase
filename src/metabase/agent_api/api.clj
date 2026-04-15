@@ -10,7 +10,6 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.deftool :as deftool]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
@@ -211,14 +210,14 @@
 
 (api.macros/defendpoint :get "/v1/database" :- [:sequential ::database]
   "List all databases the current user has access to."
-  {:scope metabot/agent-database-read
+  {:scope "agent:database:read"
    :tool  {:name "list_databases"}}
   []
   (check-tool-result (entity-details/list-databases)))
 
 (api.macros/defendpoint :get "/v1/database/:id" :- ::database
   "Get details for a database by ID."
-  {:scope metabot/agent-database-read
+  {:scope "agent:database:read"
    :tool  {:name "get_database"}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-tables with-fields with-field-values with-related-tables with-metrics with-measures with-segments]

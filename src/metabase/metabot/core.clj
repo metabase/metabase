@@ -7,14 +7,7 @@
 (p/import-vars
  [metabase.metabot.provider-util
   metabase-provider?
-  provider-and-model->provider]
- [metabase.metabot.scope
-  agent-database-read
-  agent-metric-read
-  agent-query-construct
-  agent-query-execute
-  agent-search
-  agent-table-read])
+  provider-and-model->provider])
 
 ;; TODO: Port analyze-chart to use the native LLM infrastructure
 ;; instead of the deleted `metabase.metabot.client`.
