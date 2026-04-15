@@ -224,35 +224,9 @@ export function useFormulaEditor({
         metricNamesRef.current,
       );
 
-    // Fill in definitions for expression tokens that weren't covered by
-    // tracked identities (e.g. metrics typed by hand without selecting from
-    // the dropdown).  The definitions store may already have them loaded.
-    const defs = definitionsRef.current;
-    const entitiesWithDefs = reconciledEntities.map((entity) => {
-      if (!isExpressionEntry(entity)) {
-        return entity;
-      }
-      let changed = false;
-      const tokens = entity.tokens.map((token) => {
-        if (
-          token.type === "metric" &&
-          token.definition == null &&
-          defs[token.sourceId]?.definition
-        ) {
-          changed = true;
-          return {
-            ...token,
-            definition: defs[token.sourceId].definition ?? undefined,
-          };
-        }
-        return token;
-      });
-      return changed ? { ...entity, tokens } : entity;
-    });
-
     // Find which metric sourceIds are referenced in the parsed entities
     const referencedSourceIds = new Set<MetricSourceId>();
-    for (const entry of entitiesWithDefs) {
+    for (const entry of reconciledEntities) {
       if (isMetricEntry(entry)) {
         referencedSourceIds.add(entry.id);
       } else if (isExpressionEntry(entry)) {
@@ -280,7 +254,7 @@ export function useFormulaEditor({
       }
     }
 
-    onFormulaEntitiesChange(entitiesWithDefs, slotMapping);
+    onFormulaEntitiesChange(reconciledEntities, slotMapping);
     isEditingSessionActiveRef.current = false;
     setIsFocused(false);
     setIsOpen(false);

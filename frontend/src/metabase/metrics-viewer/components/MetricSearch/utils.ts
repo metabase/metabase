@@ -951,10 +951,11 @@ export function findInvalidRanges(
           token.type === "metric" &&
           !identityPositions.has(getPositionKey(token.from, token.to))
         ) {
+          const metricText = text.substring(token.from, token.to);
           itemInvalid.push({
             from: token.from,
             to: token.to,
-            message: t`Select this metric from the dropdown`,
+            message: t`Unknown token: "${metricText}"`,
           });
         }
       }
