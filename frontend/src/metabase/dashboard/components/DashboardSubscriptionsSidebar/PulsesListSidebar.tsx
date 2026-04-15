@@ -6,7 +6,6 @@ import { Sidebar } from "metabase/common/components/Sidebar";
 import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
-import { getParameters } from "metabase/dashboard/selectors";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import type { State } from "metabase/redux/store";
 import { Button, Icon, Tooltip } from "metabase/ui";
@@ -25,6 +24,8 @@ import type {
   ChannelType,
   DashboardSubscription,
 } from "metabase-types/api";
+
+import { getParameters } from "../../../selectors";
 
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 

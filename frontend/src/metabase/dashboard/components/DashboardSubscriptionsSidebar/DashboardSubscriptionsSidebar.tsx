@@ -7,12 +7,6 @@ import { Sidebar } from "metabase/common/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Pulses } from "metabase/entities/pulses";
 import {
-  AddEditEmailSidebar,
-  AddEditSlackSidebar,
-} from "metabase/notifications/AddEditSidebar/AddEditSidebar";
-import { NewPulseSidebar } from "metabase/notifications/NewPulseSidebar";
-import { PulsesListSidebar } from "metabase/notifications/PulsesListSidebar";
-import {
   cancelEditingPulse,
   fetchPulseFormInput,
   saveEditingPulse,
@@ -48,6 +42,12 @@ import type {
 
 import { useDashboardContext } from "../../context";
 
+import {
+  AddEditEmailSidebar,
+  AddEditSlackSidebar,
+} from "./AddEditSidebar/AddEditSidebar";
+import { NewPulseSidebar } from "./NewPulseSidebar";
+import { PulsesListSidebar } from "./PulsesListSidebar";
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 
 const EDITING_MODES = {
