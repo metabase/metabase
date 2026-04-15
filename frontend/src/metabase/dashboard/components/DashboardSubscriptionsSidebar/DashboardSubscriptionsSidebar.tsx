@@ -4,7 +4,6 @@ import _ from "underscore";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Pulses } from "metabase/entities/pulses";
 import {
@@ -46,6 +45,8 @@ import type {
   SubscriptionSupportingCard,
   User,
 } from "metabase-types/api";
+
+import { useDashboardContext } from "../../context";
 
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 
