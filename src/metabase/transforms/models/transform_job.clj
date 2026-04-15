@@ -189,7 +189,7 @@
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}
                :created_at (serdes/date)
-               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :created_at :position)} opts))}})
+               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :created_at)} opts))}})
 
 (defmethod serdes/dependencies "TransformJob"
   [{:keys [job_tags]}]
