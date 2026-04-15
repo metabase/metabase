@@ -65,7 +65,7 @@
              (i18n.impl/available-locale? locale))))))
 
 (deftest ^:parallel available-locale?-accepts-pseudo-locale-test
-  (testing "The `en_ZZ` pseudo-locale used for E2E tests is accepted even though the JVM doesn't recognize it"
+  (testing "The `en_ZZ` pseudo-locale is accepted"
     (doseq [[locale expected] {"en_ZZ" true
                                "en-ZZ" true
                                "en-zz" true

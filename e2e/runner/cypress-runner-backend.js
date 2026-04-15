@@ -19,9 +19,6 @@ process.env.MB_DB_FILE = process.env.MB_DB_FILE || tempDbPath;
 process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
 
 // Expose the `en-ZZ` pseudo-locale in the Cypress backend's language pickers and API validation.
-// The setting is gated on this env var in production, but E2E tests rely on it for the locale
-// mechanism tests (UXW-3460). Applies to both `runFromJar` and `runFromSource` below since
-// `process.env` is inherited by the spawned JVM.
 process.env.MB_ENABLE_TEST_LOCALES = "true";
 
 if (!process.env.CI) {
