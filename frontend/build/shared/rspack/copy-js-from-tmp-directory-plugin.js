@@ -1,4 +1,4 @@
-const fs = require("fs");
+const fs = require("fs/promises");
 const path = require("path");
 
 const { IS_DEV_MODE } = require("../constants");
@@ -12,22 +12,32 @@ module.exports.CopyJsFromTmpDirectoryPlugin = ({
 }) => ({
   name: PLUGIN_NAME,
   apply(compiler) {
-    compiler.hooks.afterEmit.tap(PLUGIN_NAME, () => {
-      const fileNames = fs.readdirSync(tmpPath);
+    compiler.hooks.afterEmit.tapPromise(PLUGIN_NAME, async () => {
+      const fileNames = await readdir(tmpPath);
 
-      fs.mkdirSync(outputPath, { recursive: true });
+      // create the output directory if it doesn't exist.
+      await fs.mkdir(outputPath, { recursive: true });
 
-      for (const fileName of fileNames) {
-        const tmpFilePath = path.join(tmpPath, fileName);
-        const outputFilePath = path.join(outputPath, fileName);
-
-        fs.copyFileSync(tmpFilePath, outputFilePath);
-      }
+      await Promise.all(
+        fileNames.map((fileName) => {
+          const tmpFilePath = path.join(tmpPath, fileName);
+          const outputFilePath = path.join(outputPath, fileName);
+          return fs.copyFile(tmpFilePath, outputFilePath);
+        }),
+      );
 
       if (!IS_DEV_MODE || cleanupInDevMode) {
         // cleanup the temp directory to prevent bloat.
-        fs.rmSync(tmpPath, { recursive: true });
+        await fs.rm(tmpPath, { recursive: true });
       }
     });
   },
 });
+
+async function readdir(dir) {
+  try {
+    return await fs.readdir(dir);
+  } catch (e) {
+    return [];
+  }
+}
