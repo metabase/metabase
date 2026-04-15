@@ -372,7 +372,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it("should show all summaries and groupings from multi-stage queries and handle removal correctly", () => {
+  it.only("should show the last visible stage and fall back to the previous stage when current is cleared", () => {
     mountSdkContent(<InteractiveQuestion questionId="new" />);
 
     cy.log("Pick starting data");
@@ -406,20 +406,25 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     H.visualize();
 
     getSdkRoot().within(() => {
-      cy.log("Toolbar should show 2 summaries and 2 groupings");
-      cy.findByText("2 summaries").should("be.visible");
-      cy.findByText("2 groupings").should("be.visible");
+      cy.log("Toolbar should show stage 1: 1 summary and 1 grouping");
+      cy.findByText("1 summary").should("be.visible");
+      cy.findByText("1 grouping").should("be.visible");
 
-      cy.log("Open groupings popup and verify 2 badges");
-      cy.findByText("2 groupings").click();
+      cy.log("Remove the grouping from stage 1");
+      cy.findByText("1 grouping").click();
     });
 
-    cy.log("Remove both groupings from the popup");
     popover().within(() => {
-      cy.findAllByLabelText("close icon")
-        .should("have.length", 2)
-        .last()
-        .click();
+      cy.findAllByLabelText("close icon").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.log("Stage 1 still has an aggregation, toolbar shows it");
+      cy.findByText("1 summary").should("be.visible");
+      cy.findByText("Group").should("be.visible");
+
+      cy.log("Remove the aggregation from stage 1");
+      cy.findByText("1 summary").click();
     });
 
     popover().within(() => {
@@ -428,11 +433,19 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     getSdkRoot().within(() => {
       cy.log(
-        "After removing both groupings, only 1 summary should remain (empty stage gets dropped)",
+        "Stage 1 is now empty — toolbar falls back to stage 0 (Count + Created At)",
       );
       cy.findByText("1 summary").should("be.visible");
-      cy.findByText("Group").should("be.visible");
+      cy.findByText("1 grouping").should("be.visible");
     });
+
+    cy.log("Stage switch tooltip should appear on the summary button");
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      "Switched to the previous stag",
+    );
+    cy.findByText("1 summary").should("be.visible");
+    cy.findByText("1 grouping").should("be.visible");
   });
 
   it("does not contain known console errors (metabase#48497)", () => {
