@@ -138,7 +138,7 @@
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :case]
   [driver [op _opts cases opts-or-default]]
-  ;; Handle the default options coming in as a map from `mbql-clause`, or as a single value from ->pMBQL
+  ;; Handle the default options coming in as a map from `mbql-clause`, or as a single value from ->mbql5
   ((get-method sql.qp/->honeysql [:sql op]) driver [op cases (if (map? opts-or-default)
                                                                opts-or-default
                                                                {:default opts-or-default})]))
