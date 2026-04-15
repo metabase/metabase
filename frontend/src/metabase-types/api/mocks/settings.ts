@@ -422,6 +422,7 @@ export const createMockSettings = (
   "embedding-hub-sso-auth-manual-tested": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
+  "chart-max-series": 100,
   "check-for-updates": true,
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],

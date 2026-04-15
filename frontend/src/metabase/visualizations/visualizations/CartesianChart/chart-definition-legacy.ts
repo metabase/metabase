@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { getBreakoutSeriesName } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { getChartMaxSeries } from "metabase/visualizations/lib/utils";
 import type {
   DatasetColumn,
   RawSeries,
@@ -88,7 +88,7 @@ function transformSingleSeries(
         breakoutRowsByValue.set(seriesValue, (seriesRows = []));
         breakoutValues.push(seriesValue);
 
-        if (breakoutValues.length > MAX_SERIES) {
+        if (breakoutValues.length > getChartMaxSeries()) {
           return [s];
         }
       }

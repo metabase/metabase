@@ -6,6 +6,7 @@ import {
   computeSplit,
   findSensibleSankeyColumns,
   getCardAfterVisualizationClick,
+  getChartMaxSeries,
   getColumnCardinality,
   getDefaultDimensionsAndMetrics,
   getDefaultPivotColumn,
@@ -601,6 +602,41 @@ describe("metabase/visualization/lib/utils", () => {
       const data = createMockDatasetData({ cols, rows });
 
       expect(findSensibleSankeyColumns(data)).toEqual(null);
+    });
+  });
+
+  describe("getChartMaxSeries", () => {
+    const origBootstrap = { ...window.MetabaseBootstrap };
+
+    afterEach(() => {
+      window.MetabaseBootstrap = { ...origBootstrap };
+    });
+
+    it("returns 100 when chart-max-series is missing from bootstrap", () => {
+      window.MetabaseBootstrap = { ...origBootstrap };
+      delete window.MetabaseBootstrap["chart-max-series"];
+      expect(getChartMaxSeries()).toBe(100);
+    });
+
+    it("returns bootstrap value when valid", () => {
+      window.MetabaseBootstrap = { ...origBootstrap, "chart-max-series": 250 };
+      expect(getChartMaxSeries()).toBe(250);
+    });
+
+    it("returns 100 for invalid values", () => {
+      window.MetabaseBootstrap = {
+        ...origBootstrap,
+        "chart-max-series": "nope" as unknown as number,
+      };
+      expect(getChartMaxSeries()).toBe(100);
+    });
+
+    it("clamps to upper bound", () => {
+      window.MetabaseBootstrap = {
+        ...origBootstrap,
+        "chart-max-series": 20000,
+      };
+      expect(getChartMaxSeries()).toBe(10000);
     });
   });
 });

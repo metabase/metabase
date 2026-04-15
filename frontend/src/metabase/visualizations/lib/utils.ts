@@ -23,7 +23,24 @@ import type {
 
 import type { Extent } from "../types";
 
-export const MAX_SERIES = 100;
+/** Hard cap aligned with backend `chart-max-series-upper-bound` (10k). */
+const CHART_MAX_SERIES_UPPER_BOUND = 10000;
+
+/**
+ * Maximum series count for multi-breakout charts (from site setting `chart-max-series`, including `MB_CHART_MAX_SERIES`).
+ * When bootstrap is unavailable or invalid, uses 100 (the backend default).
+ */
+export function getChartMaxSeries(): number {
+  if (typeof window === "undefined") {
+    return 100;
+  }
+  const raw = window.MetabaseBootstrap?.["chart-max-series"];
+  const n = typeof raw === "number" ? raw : Number.parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n < 1) {
+    return 100;
+  }
+  return Math.min(n, CHART_MAX_SERIES_UPPER_BOUND);
+}
 export const MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY = 100;
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
@@ -326,7 +343,8 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   if (
     dimensions.length > 1 &&
-    getColumnCardinality(cols, rows, cols.indexOf(dimensions[1])) > MAX_SERIES
+    getColumnCardinality(cols, rows, cols.indexOf(dimensions[1])) >
+      getChartMaxSeries()
   ) {
     dimensions.pop();
   }
