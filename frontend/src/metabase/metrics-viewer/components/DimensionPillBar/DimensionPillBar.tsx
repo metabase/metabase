@@ -28,6 +28,7 @@ export interface ExpressionMetricSource {
   metricName: string;
   metricCount?: number;
   colors?: string[];
+  currentDimension?: DimensionMetadata;
   currentDimensionLabel?: string;
   currentDimensionIcon?: IconName;
   availableOptions: DimensionOption[];

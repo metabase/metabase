@@ -915,7 +915,11 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should not show dimensions that are already in tabs in the dimension picker", () => {
-      addMetric("Count of products");
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of products" },
+      ]);
       cy.wait("@dataset");
       H.MetricsViewer.tabsShouldBe([
         "Created At",
@@ -932,6 +936,16 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText("State").should("not.exist");
         cy.findByText("Title").should("not.exist");
         cy.findByText("Category").should("not.exist");
+
+        // metric math should not cause dimensions to be repeated
+        cy.findAllByText("Birth Date").should("have.length", 1);
+
+        cy.findByText("Rating").click();
+      });
+
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findAllByText("Product → Rating").should("exist");
+        cy.findAllByText("Multiple dimensions").should("not.exist");
       });
     });
 
