@@ -413,7 +413,6 @@
                        :effective_type    :type/Decimal
                        :coercion_strategy nil
                        :semantic_type     nil}
-                      new-field))))
-          )
+                      new-field)))))
         (finally
           (t2/delete! :model/Database (mt/id)))))))
