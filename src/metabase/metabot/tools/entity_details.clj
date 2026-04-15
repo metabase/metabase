@@ -378,7 +378,7 @@
                       (let [card (card-details entity-id options)]
                         (if (= :question (:type card))
                           card
-                          (throw (ex-info (format "ID %s is not a valid question id, it's a model" entity-id)
+                          (throw (ex-info (format "ID %s is not a valid question id, it's a %s" entity-id (:type card))
                                           {:agent-error? true :status-code 400}))))
 
                       (and (= :table entity-type)
