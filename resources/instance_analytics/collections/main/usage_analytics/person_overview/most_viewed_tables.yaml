@@ -133,7 +133,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 126
+  lib/card-id: 11
   lib/deduplicated-name: name
   lib/desired-column-alias: Tables - Entity Qualified__name
   lib/from-model?: true
@@ -161,7 +161,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_databases]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 117
+  lib/card-id: 2
   lib/deduplicated-name: name_2
   lib/desired-column-alias: Databases__name
   lib/from-model?: true
@@ -189,7 +189,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_databases]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 117
+  lib/card-id: 2
   lib/deduplicated-name: entity_id
   lib/desired-column-alias: Databases__entity_id
   lib/from-model?: true
@@ -217,7 +217,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_tables]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 126
+  lib/card-id: 11
   lib/deduplicated-name: entity_id_2
   lib/desired-column-alias: Tables - Entity Qualified__entity_id
   lib/from-model?: true

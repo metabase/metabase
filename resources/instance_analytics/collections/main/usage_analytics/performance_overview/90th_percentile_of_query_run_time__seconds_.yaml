@@ -63,7 +63,7 @@ result_metadata:
   unit: week
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 116
+  lib/card-id: 1
   lib/deduplicated-name: started_at
   lib/desired-column-alias: started_at
   lib/from-model?: true
@@ -90,7 +90,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_query_log]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 116
+  lib/card-id: 1
   lib/deduplicated-name: cache_hit
   lib/desired-column-alias: cache_hit
   lib/from-model?: true

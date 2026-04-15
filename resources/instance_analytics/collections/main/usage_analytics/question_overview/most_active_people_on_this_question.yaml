@@ -104,10 +104,10 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_view_log]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 120
+  lib/card-id: 5
   lib/deduplicated-name: user_id
   lib/desired-column-alias: user_id
-  lib/external-remap: {field-id: 1645, id: 35, name: User ID, lib/type: metadata.column.remapping/external}
+  lib/external-remap: {field-id: 19, id: 8, name: User ID, lib/type: metadata.column.remapping/external}
   lib/from-model?: true
   lib/original-display-name: User ID
   lib/original-name: user_id
@@ -130,7 +130,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_users]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 121
+  lib/card-id: 6
   lib/deduplicated-name: full_name
   lib/desired-column-alias: People - Creator__full_name
   lib/from-model?: true

@@ -65,7 +65,7 @@ result_metadata:
   unit: month
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 124
+  lib/card-id: 9
   lib/deduplicated-name: timestamp
   lib/desired-column-alias: timestamp
   lib/from-model?: true

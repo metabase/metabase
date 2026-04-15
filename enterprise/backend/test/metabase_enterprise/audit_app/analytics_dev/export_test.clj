@@ -65,5 +65,5 @@
             (.delete f)))))))
 
 (comment
-  ; Update the actual collection in `resources/instance-analytics`
+  ; Update the actual collection in `resources/instance_analytics`
   (export/export!))

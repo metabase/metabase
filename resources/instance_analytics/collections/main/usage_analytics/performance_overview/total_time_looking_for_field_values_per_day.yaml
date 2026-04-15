@@ -80,7 +80,7 @@ result_metadata:
   unit: day
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 142
+  lib/card-id: 27
   lib/deduplicated-name: started_at
   lib/desired-column-alias: started_at
   lib/from-model?: true
@@ -107,7 +107,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_databases]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 117
+  lib/card-id: 2
   lib/deduplicated-name: name
   lib/desired-column-alias: Databases - Database Qualified__name
   lib/from-model?: true

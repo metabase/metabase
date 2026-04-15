@@ -65,7 +65,7 @@ result_metadata:
   unit: week
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 120
+  lib/card-id: 5
   lib/deduplicated-name: timestamp
   lib/desired-column-alias: timestamp
   lib/from-model?: true
@@ -91,7 +91,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_group_members]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 122
+  lib/card-id: 7
   lib/deduplicated-name: group_name
   lib/desired-column-alias: Group Members - User__group_name
   lib/from-model?: true

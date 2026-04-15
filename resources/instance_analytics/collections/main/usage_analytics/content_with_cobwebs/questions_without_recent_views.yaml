@@ -80,6 +80,97 @@ dataset_query:
     source-card: AxSackBiyXVRUzM_TyyQY
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - null
+  id: [Internal Metabase Database, public, v_content, entity_id]
+  name: entity_id
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 3
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: entity_id
+  lib/from-model?: true
+  lib/original-display-name: Entity ID
+  lib/original-name: entity_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: entity_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, created_at]
+  - null
+  id: [Internal Metabase Database, public, v_content, created_at]
+  name: created_at
+  position: 3
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 3
+  lib/deduplicated-name: created_at
+  lib/desired-column-alias: created_at
+  lib/from-model?: true
+  lib/original-display-name: Created At
+  lib/original-name: created_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: created_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, name]
+  - null
+  id: [Internal Metabase Database, public, v_content, name]
+  name: name
+  position: 6
+  semantic_type: type/Name
+  source: fields
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 3
+  lib/deduplicated-name: name
+  lib/desired-column-alias: name
+  lib/from-model?: true
+  lib/original-display-name: Name
+  lib/original-name: name
+  lib/source: source/previous-stage
+  lib/source-column-alias: name
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Days since last view
+  effective_type: type/Integer
+  field_ref: [expression, Days since last view]
+  name: Days since last view
+  source: fields
+  lib/deduplicated-name: Days since last view
+  lib/desired-column-alias: Days since last view
+  lib/expression-name: Days since last view
+  lib/original-name: Days since last view
+  lib/source: source/expressions
+  lib/source-column-alias: Days since last view
 visualization_settings:
   column_settings:
     '["ref",["expression","Days since last view"]]': {show_mini_bar: true}

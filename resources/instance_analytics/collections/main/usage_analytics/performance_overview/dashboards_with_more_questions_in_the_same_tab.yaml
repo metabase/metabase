@@ -77,7 +77,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 118
+  lib/card-id: 3
   lib/deduplicated-name: name
   lib/desired-column-alias: Content - Dashboard Qualified__name
   lib/from-model?: true
@@ -105,7 +105,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 118
+  lib/card-id: 3
   lib/deduplicated-name: entity_id
   lib/desired-column-alias: Content - Dashboard Qualified__entity_id
   lib/from-model?: true
@@ -133,7 +133,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_dashboardcard]
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 144
+  lib/card-id: 29
   lib/deduplicated-name: dashboardtab_id
   lib/desired-column-alias: dashboardtab_id
   lib/from-model?: true

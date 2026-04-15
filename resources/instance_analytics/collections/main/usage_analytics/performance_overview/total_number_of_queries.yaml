@@ -51,7 +51,7 @@ result_metadata:
   unit: week
   visibility_type: normal
   lib/breakout?: true
-  lib/card-id: 116
+  lib/card-id: 1
   lib/deduplicated-name: started_at
   lib/desired-column-alias: started_at
   lib/from-model?: true

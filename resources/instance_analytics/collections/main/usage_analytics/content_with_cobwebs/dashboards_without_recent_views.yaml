@@ -98,7 +98,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
   lib/breakout?: false
-  lib/card-id: 118
+  lib/card-id: 3
   lib/deduplicated-name: entity_id
   lib/desired-column-alias: entity_id
   lib/from-model?: true
@@ -124,7 +124,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
   lib/breakout?: false
-  lib/card-id: 118
+  lib/card-id: 3
   lib/deduplicated-name: created_at
   lib/desired-column-alias: created_at
   lib/from-model?: true
@@ -150,7 +150,7 @@ result_metadata:
   table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
   lib/breakout?: false
-  lib/card-id: 118
+  lib/card-id: 3
   lib/deduplicated-name: name
   lib/desired-column-alias: name
   lib/from-model?: true
