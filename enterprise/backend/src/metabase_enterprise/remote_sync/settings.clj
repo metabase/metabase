@@ -122,7 +122,7 @@
      (throw (ex-info "Invalid Repository URL format"
                      {:url remote-sync-url})))
 
-   (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
+   (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token nil)]
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
 
@@ -163,4 +163,4 @@
           (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
             (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
                        (not (and (= k :remote-sync-token) obfuscated?)))
-              (setting/set! k (k settings))))))))
+              (setting/set! k (k settings)))))))))
