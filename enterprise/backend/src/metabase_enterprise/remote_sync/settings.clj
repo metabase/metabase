@@ -138,18 +138,29 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
-  (if (and (contains? settings :remote-sync-url)
-           (str/blank? remote-sync-url))
-    (t2/with-transaction [_conn]
-      (setting/set! :remote-sync-url nil)
-      (setting/set! :remote-sync-token nil)
-      (setting/set! :remote-sync-branch nil))
-    (let [current-token (setting/get :remote-sync-token)
-          obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
-          token-to-check (if obfuscated? current-token remote-sync-token)
-          _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
+  (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
+        updating-git-settings? (some git-related-keys (keys settings))
+        env-set-url    (= :env (setting/get-raw-value-source :remote-sync-url))
+        env-set-token  (= :env (setting/get-raw-value-source :remote-sync-token))
+        env-set-branch (= :env (setting/get-raw-value-source :remote-sync-branch))]
+    (if (and (contains? settings :remote-sync-url)
+             (str/blank? remote-sync-url))
       (t2/with-transaction [_conn]
-        (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
-          (when (and (contains? settings k)
-                     (not (and (= k :remote-sync-token) obfuscated?)))
-            (setting/set! k (k settings))))))))
+        (when-not env-set-url
+          (setting/set! :remote-sync-url nil))
+        (when-not env-set-token
+          (setting/set! :remote-sync-token nil))
+        (when-not env-set-branch
+          (setting/set! :remote-sync-branch nil)))
+      (let [current-token  (setting/get :remote-sync-token)
+            obfuscated?    (= remote-sync-token (setting/obfuscate-value current-token))
+            token-to-check (if env-set-token
+                             (setting/get :remote-sync-token)
+                             (if obfuscated? current-token remote-sync-token))]
+        (when updating-git-settings?
+          (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
+        (t2/with-transaction [_conn]
+          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
+            (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
+                       (not (and (= k :remote-sync-token) obfuscated?)))
+              (setting/set! k (k settings))))))))
