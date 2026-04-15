@@ -551,9 +551,39 @@
       ;; return error as an entity so it can be used in the report
       e)))
 
+(declare export-mbql-batch)  ; defined much later in this file (MBQL export section)
+
+(def ^:private extract-chunk-size
+  "Number of entities buffered per chunk in the default [[extract-all]] eduction. Each chunk gets
+  its FK-bearing MBQL trees pre-resolved in batch via [[export-mbql-batch]] before per-entity
+  extract-one runs; the warmed cache atoms then feed pointwise FK lookups inside extract-one as
+  hits. Bounded so we never materialize the whole export at once."
+  20)
+
+(defn- chunk-prewarm-mbql!
+  "Side-effecting: collects every MBQL tree carried on entities in `chunk` (across the common
+  field names — `:dataset_query` / `:query` / `:definition`) and runs them through
+  [[export-mbql-batch]]. The batch primaries populate the FK cache atoms ([[*field-fk-cache*]]
+  etc.) so subsequent pointwise calls during extract-one hit those caches instead of
+  per-id SELECTs."
+  [chunk]
+  (let [trees (into [] (comp cat (keep identity))
+                    [(map :dataset_query chunk)
+                     (map :query chunk)
+                     (map :definition chunk)])]
+    (when (seq trees)
+      (export-mbql-batch trees))))
+
 (defmethod extract-all :default [model opts]
-  (eduction (map (partial log-and-extract-one model opts))
-            (extract-query model opts)))
+  (eduction
+   (comp ;; realize each row off the JDBC ResultSet before chunking so the upstream connection
+         ;; doesn't outlive the partition; mirrors [[extract-reducible-nested]].
+    (map t2.realize/realize)
+    (partition-all extract-chunk-size)
+    (mapcat (fn [chunk]
+              (chunk-prewarm-mbql! chunk)
+              (mapv (partial log-and-extract-one model opts) chunk))))
+   (extract-query model opts)))
 
 (defn- transform->nested [transform opts batch]
   (let [backward-fk (:backward-fk transform)
@@ -1292,7 +1322,7 @@
      [:aggregation (_opts :guard map?) (uuid :guard string?)]
      uuid)))
 
-(declare export-mbql*)
+(declare export-mbql)
 
 (defn- export-mbql-map [m]
   (reduce-kv
@@ -1319,7 +1349,7 @@
        :lib/uuid                     (cond-> m
                                        (not (contains? *required-lib-uuids-for-export* v))
                                        (dissoc :lib/uuid))
-       #_else                        (update m k export-mbql*)))
+       #_else                        (update m k export-mbql)))
    m
    m))
 
@@ -1350,71 +1380,266 @@
     [:measure opts (id :guard pos-int?)]
     [:measure (export-mbql-map opts) (*export-fk* id 'Measure)]))
 
-(defn- export-mbql*
-  "Single-pass MBQL walker. Calls [[*export-field-fk*]], [[*export-table-fk*]], and
-  [[*export-database-fk*]] pointwise as it visits refs. Used by [[export-mbql]] under two different
-  bindings: a collecting binding for pass 1, and a lookup binding for pass 2."
-  [x]
-  (cond
-    (mbql-ref? x)   (export-mbql-ref x)
-    (sequential? x) (mapv export-mbql* x)
-    (map? x)        (export-mbql-map x)
-    :else           x))
-
-(defn- using-default-fk-fns?
-  "Are all three FK singletons currently bound to their root (default) implementations? When true,
-  it's safe for [[export-mbql]] to do its two-pass batching dance; when false (a caller has bound
-  one of them to a mock or alternate resolver), fall back to the legacy single-pass walk."
-  []
-  (and (identical? *export-database-fk* (.getRawRoot #'*export-database-fk*))
-       (identical? *export-table-fk*    (.getRawRoot #'*export-table-fk*))
-       (identical? *export-field-fk*    (.getRawRoot #'*export-field-fk*))))
-
-(defn- collect-mbql-fk-ids
-  "Returns `{:field-ids #{…} :table-ids #{…} :db-ids #{…}}` — every id the standard MBQL walker
-  would pass to a singleton FK fn while exporting `x`. Implemented by running the walker with
-  side-effecting collectors bound to the FK vars; using the same walker as [[export-mbql*]]
-  guarantees pass 1 and pass 2 visit the same positions, even if the walker grows new
-  FK-bearing shapes later. The transient/volatile machinery is confined to this fn — the
-  return value is a plain immutable map."
-  [x]
-  (let [field-ids (volatile! (transient #{}))
-        table-ids (volatile! (transient #{}))
-        db-ids    (volatile! (transient #{}))
-        collect!  (fn [v! id] (when id (vswap! v! conj! id)) nil)]
-    (binding [*export-field-fk*    (partial collect! field-ids)
-              *export-table-fk*    (partial collect! table-ids)
-              *export-database-fk* (partial collect! db-ids)]
-      (export-mbql* x))
-    {:field-ids (persistent! @field-ids)
-     :table-ids (persistent! @table-ids)
-     :db-ids    (persistent! @db-ids)}))
-
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
-  inside it into portable references.
-
-  When all three FK singletons are at their default bindings, runs a two-pass batch: collect every
-  id the tree references via [[collect-mbql-fk-ids]], one batched call to each plural primary
-  ([[*export-database-fks*]], [[*export-table-fks*]], [[*export-field-fks*]]) resolves them, then
-  walk again substituting from the resolved lookup maps. Cross-call sharing via the [[with-cache]]
-  atoms means later invocations on related trees mostly hit the cache.
-
-  When any FK singleton has been rebound (test mocks, custom resolvers) the two-pass machinery is
-  skipped and the walker resolves pointwise via the rebound fns — preserving the legacy contract."
+  inside it into portable references."
   [x]
   ;; if required UUIDs are already calculated don't recalculate when we recurse.
   (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
-    (if-not (using-default-fk-fns?)
-      (export-mbql* x)
-      (let [{:keys [field-ids table-ids db-ids]} (collect-mbql-fk-ids x)
-            field->fk (zipmap field-ids (*export-field-fks* field-ids))
-            table->fk (zipmap table-ids (*export-table-fks* table-ids))
-            db->fk    (zipmap db-ids    (*export-database-fks* db-ids))]
-        (binding [*export-field-fk*    #(if (contains? field->fk %) (field->fk %) (when % (first (*export-field-fks* [%]))))
-                  *export-table-fk*    #(if (contains? table->fk %) (table->fk %) (when % (first (*export-table-fks* [%]))))
-                  *export-database-fk* #(if (contains? db->fk    %) (db->fk %)    (when % (first (*export-database-fks* [%]))))]
-          (export-mbql* x))))))
+    (cond
+      (mbql-ref? x)   (export-mbql-ref x)
+      (sequential? x) (mapv export-mbql x)
+      (map? x)        (export-mbql-map x)
+      :else           x)))
+
+;;; ## Layerwise (batched) MBQL export
+;;;
+;;; A breadth-first variant of [[export-mbql]] that processes a *collection* of MBQL trees in
+;;; parallel, batching FK resolution at every layer of the traversal. Within each batch,
+;;; partition-map dispatches nodes by shape and handler functions resolve FK-bearing keys via the
+;;; plural primaries ([[*export-database-fks*]], [[*export-table-fks*]], [[*export-field-fks*]]).
+;;; Children at the next level are gathered flat across the entire batch and recursed into,
+;;; preserving original positions for reassembly.
+;;;
+;;; The wins are amortized across the size of the input batch — for a chunk of N trees, FK
+;;; resolution at each layer collapses to ~3 SELECTs total regardless of N.
+
+(declare process-mbql-batch)
+
+(defn- split-by-counts
+  "Walks `items` left-to-right, distributing into nested vectors of the lengths in `counts`."
+  [items counts]
+  (loop [items items, counts counts, acc []]
+    (if (empty? counts)
+      acc
+      (let [[these more] (split-at (first counts) items)]
+        (recur more (next counts) (conj acc (vec these)))))))
+
+(defn- batch-resolve-column
+  "Given a column of values (one per map in some batch), apply `batch-fn` to the non-nil values
+  in one go, leaving nils as nils. Returns the resolved column in input order."
+  [col batch-fn]
+  (let [resolved (humilia/partition-map nil?
+                                        {true  (fn [nils] nils)
+                                         false batch-fn}
+                                        col)]
+    (vec resolved)))
+
+(defn- mbql-node-shape
+  "Classifier for [[partition-map]] dispatch in [[process-mbql-batch]]."
+  [x]
+  (cond
+    (mbql-ref? x)   :ref
+    (map? x)        :map
+    (sequential? x) :coll
+    :else           :leaf))
+
+(def ^:private mbql-map-keys-table-fk
+  "Map keys whose value is a (pos-int) Table id needing batched table FK resolution."
+  #{:source-table :source_table :table-id})
+
+(def ^:private mbql-map-keys-field-fk
+  "Map keys whose value is a (pos-int) Field id needing batched field FK resolution."
+  #{:source-field ::mb.viz/param-mapping-source})
+
+(def ^:private mbql-map-keys-pointwise-fk
+  "Map keys whose value is resolved pointwise via the existing per-id [[*export-fk*]] machinery
+  (no batch primary). Each entry maps to its target model keyword."
+  {:card_id     :model/Card
+   :card-id     :model/Card
+   :source_card :model/Card
+   :source-card :model/Card
+   :segment     :model/Segment
+   :snippet-id  :model/NativeQuerySnippet})
+
+(defn- process-map-key-as-table-fk [maps k]
+  (let [vals (mapv #(get % k) maps)
+        ;; only batch the pos-int values; nils and other shapes pass through
+        col  (mapv #(when (pos-int? %) %) vals)
+        resolved (batch-resolve-column col *export-table-fks*)]
+    (mapv (fn [m original-v resolved-v]
+            (if (and (pos-int? original-v) resolved-v)
+              (assoc m k resolved-v)
+              m))
+          maps vals resolved)))
+
+(defn- process-map-key-as-field-fk [maps k]
+  (let [vals (mapv #(get % k) maps)
+        col  (mapv #(when (pos-int? %) %) vals)
+        resolved (batch-resolve-column col *export-field-fks*)]
+    (mapv (fn [m original-v resolved-v]
+            (if (and (pos-int? original-v) resolved-v)
+              (assoc m k resolved-v)
+              m))
+          maps vals resolved)))
+
+(defn- process-map-key-as-database-fk [maps k]
+  ;; :database is unconditionally resolved (no pos-int? guard in the original walker).
+  (let [vals (mapv #(get % k) maps)
+        resolved (batch-resolve-column vals *export-database-fks*)]
+    (mapv (fn [m resolved-v]
+            (if (some? (get m k))
+              (assoc m k resolved-v)
+              m))
+          maps resolved)))
+
+(defn- maybe-cleanup-uuid [m]
+  (cond-> m
+    (and (contains? m :lib/uuid)
+         (not (contains? *required-lib-uuids-for-export* (:lib/uuid m))))
+    (dissoc :lib/uuid)))
+
+(defn- pointwise-export-fk [v model]
+  (when (pos-int? v) (*export-fk* v model)))
+
+(defn- process-maps-batch
+  "Layerwise handler for a batch of maps. Resolves recognized FK keys in batch, applies
+  pointwise FK resolution and the :lib/uuid cleanup per-map, then recursively processes
+  the remaining values across the batch in one go."
+  [maps]
+  (let [;; 1. Drop :lib/metadata from every map (cheap; same as the pointwise walker).
+        maps (mapv #(dissoc % :lib/metadata) maps)
+        ;; 2. Batch-resolve known-batchable FK keys (db / table / field).
+        maps (reduce (fn [ms k] (process-map-key-as-table-fk ms k))    maps mbql-map-keys-table-fk)
+        maps (reduce (fn [ms k] (process-map-key-as-field-fk ms k))    maps mbql-map-keys-field-fk)
+        maps (process-map-key-as-database-fk maps :database)
+        ;; 3. Pointwise FKs (Card / Segment / NativeQuerySnippet) — no batch primary, but the
+        ;;    cache-aware singletons under [[with-cache]] still dedupe per-id.
+        maps (mapv (fn [m]
+                     (reduce-kv (fn [acc k model]
+                                  (if-let [v (get acc k)]
+                                    (if-let [r (pointwise-export-fk v model)]
+                                      (assoc acc k r)
+                                      acc)
+                                    acc))
+                                m
+                                mbql-map-keys-pointwise-fk))
+                   maps)
+        ;; 4. :lib/uuid cleanup
+        maps (mapv maybe-cleanup-uuid maps)
+        ;; 5. Recurse into all *remaining* values across the batch in one go.
+        ;;    For every map, every key that wasn't an FK / metadata / uuid key, gather its value
+        ;;    into a flat coll, recurse via process-mbql-batch, scatter results back.
+        special-keys (into #{:lib/metadata :lib/uuid :database}
+                           (concat mbql-map-keys-table-fk
+                                   mbql-map-keys-field-fk
+                                   (keys mbql-map-keys-pointwise-fk)))
+        ;; for each map, collect [k v] pairs of values to recurse into
+        map-pairs (mapv (fn [m]
+                          (vec (for [[k v] m :when (not (special-keys k))] [k v])))
+                        maps)
+        flat-vals (vec (mapcat (fn [pairs] (map second pairs)) map-pairs))
+        recursed  (process-mbql-batch flat-vals)
+        per-map   (split-by-counts recursed (mapv count map-pairs))]
+    (mapv (fn [m pairs new-vals]
+            (reduce (fn [acc [[k _] new-v]]
+                      (assoc acc k new-v))
+                    m
+                    (map vector pairs new-vals)))
+          maps map-pairs per-map)))
+
+(defn- process-colls-batch
+  "Layerwise handler for a batch of nested sequential nodes (e.g., :stages, :fields, :joins
+  vectors). Each coll's elements are themselves nodes — gather all elements flat across all
+  colls, recurse, and split back per original coll."
+  [colls]
+  (let [flat     (vec (apply concat colls))
+        recursed (process-mbql-batch flat)
+        counts   (mapv count colls)]
+    (split-by-counts recursed counts)))
+
+(defn- field-ref-id-pos
+  "Returns the positional info for extracting and replacing the field id in a `[:field …]` /
+  `[:field-id …]` ref: `{:idx 1|2 :field-id … :opts …|nil :legacy? true|false}`, or nil if
+  the ref doesn't carry a numeric field id."
+  [ref]
+  (let [n (count ref)]
+    (cond
+      ;; [:field opts id]   — modern
+      (and (= n 3) (map? (second ref)) (pos-int? (nth ref 2)))
+      {:idx 2 :field-id (nth ref 2) :opts (second ref) :legacy? false}
+
+      ;; [:field id opts]   — legacy MBQL 4
+      (and (= n 3) (pos-int? (second ref)))
+      {:idx 1 :field-id (second ref) :opts (nth ref 2) :legacy? true}
+
+      ;; [:field id]   /  [:field-id id]   — MBQL 3
+      (and (= n 2) (pos-int? (second ref)))
+      {:idx 1 :field-id (second ref) :opts nil :legacy? false})))
+
+(defn- process-field-refs-batch
+  "Layerwise handler for `:field` / `:field-id` refs. Extracts every field id positionally,
+  batch-resolves them via [[*export-field-fks*]], and recursively processes the opts maps in
+  the same batch (so nested FK keys like `:source-field` get batched too). Reassembles each
+  ref preserving its original shape (modern / legacy / MBQL 3)."
+  [refs]
+  (let [normalized (mapv normalize-mbql-ref refs)
+        positions  (mapv field-ref-id-pos normalized)
+        ids        (mapv #(some-> % :field-id) positions)
+        resolved   (batch-resolve-column ids *export-field-fks*)
+        opts-col   (mapv #(some-> % :opts) positions)
+        processed-opts (process-mbql-batch opts-col)]
+    (mapv (fn [ref pos rid popts]
+            (cond
+              (nil? pos)        ref  ; nothing to resolve (e.g. id wasn't pos-int)
+              (= 2 (count ref)) [(first ref) rid]
+              (:legacy? pos)    [(first ref) rid popts]
+              :else             [(first ref) popts rid]))
+          normalized positions resolved processed-opts)))
+
+(defn- process-pointwise-refs-batch
+  "Refs whose id is resolved via the generic per-model [[*export-fk*]] (no batch primary):
+  `[:metric …]` / `[:segment …]` / `[:measure …]`, plus `[:dimension …]` which recursively
+  contains a ref. Falls back to the existing pointwise [[export-mbql-ref]]."
+  [refs]
+  (mapv export-mbql-ref refs))
+
+(defn- ref-batch-shape
+  "Sub-classifier used by [[process-refs-batch]]: which ref-handling group to dispatch to."
+  [ref]
+  (case (mbql-ref? ref)
+    (:field :field-id) :field
+    #_else             :pointwise))
+
+(defn- process-refs-batch
+  "Layerwise handler for a batch of MBQL refs. Field refs (the high-volume case) are
+  batch-resolved; the remaining ref types are handled pointwise via [[export-mbql-ref]]
+  (cache-aware singletons under [[with-cache]] dedupe repeat ids)."
+  [refs]
+  (humilia/partition-map
+   ref-batch-shape
+   {:field     process-field-refs-batch
+    :pointwise process-pointwise-refs-batch}
+   refs))
+
+(defn- process-mbql-batch
+  "Dispatches a batch of MBQL nodes by shape, processing each shape in batch and reassembling
+  in input order. Returns the transformed nodes."
+  [nodes]
+  (when (seq nodes)
+    (vec
+     (humilia/partition-map
+      mbql-node-shape
+      {:ref  process-refs-batch
+       :map  process-maps-batch
+       :coll process-colls-batch
+       :leaf identity}
+      nodes))))
+
+(defn export-mbql-batch
+  "Given a collection of MBQL expressions, run a layerwise (BFS) export that batches FK
+  resolution at each layer of the traversal across the entire input batch.
+
+  Cross-tree amortization: for a chunk of N trees, db/table/field FK resolution at each layer
+  collapses to ~3 SELECTs total via the batch primaries — independent of N — so a chunk export
+  pays roughly the same DB cost as exporting a single tree.
+
+  See [[export-mbql]] for the single-tree variant; that variant remains pointwise within the
+  tree but benefits from the cross-call cache atoms set up by [[with-cache]]."
+  [trees]
+  (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export*
+                                                (set (mapcat collect-required-lib-uuids trees)))]
+    (process-mbql-batch (vec trees))))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."

@@ -326,36 +326,51 @@
       (is (= ["thing" "thing" nil] (serdes/*export-database-fks* [db db nil])))
       (is (nil? serdes/*database-fk-cache*)))))
 
-(deftest export-mbql-two-pass-batches-fk-resolution-test
-  (testing "export-mbql collapses N field FK lookups into one batched query"
-    (mt/with-temp [:model/Database {db :id}  {:name "thing"}
-                   :model/Table {tbl :id}    {:db_id db :name "alpha" :schema "public"}
-                   :model/Field {f1 :id}     {:table_id tbl :name "a" :base_type :type/Integer}
-                   :model/Field {f2 :id}     {:table_id tbl :name "b" :base_type :type/Integer}
-                   :model/Field {f3 :id}     {:table_id tbl :name "c" :base_type :type/Integer}]
-      (let [;; Five field refs across the tree, three unique field-ids
-            mbql {:database db
-                  :stages [{:lib/type :mbql.stage/mbql
-                            :source-table tbl
-                            :fields [[:field {} f1] [:field {} f2] [:field {} f3]
-                                     [:field {} f1] [:field {} f2]]}]}]
+(deftest export-mbql-batch-shape-preservation-test
+  (testing "Layerwise batch produces the same output as pointwise export-mbql, tree by tree"
+    (mt/with-temp [:model/Database {db :id} {:name "thing"}
+                   :model/Table {t1 :id} {:db_id db :name "alpha" :schema "public"}
+                   :model/Table {t2 :id} {:db_id db :name "beta"  :schema "public"}
+                   :model/Field {f1 :id} {:table_id t1 :name "a" :base_type :type/Integer}
+                   :model/Field {f2 :id} {:table_id t1 :name "b" :base_type :type/Integer}
+                   :model/Field {f3 :id} {:table_id t2 :name "c" :base_type :type/Integer}]
+      (let [trees [{:lib/type :mbql/query :database db
+                    :stages   [{:lib/type :mbql.stage/mbql
+                                :source-table t1
+                                :fields [[:field {} f1] [:field {} f2]]}]}
+                   {:lib/type :mbql/query :database db
+                    :stages   [{:lib/type :mbql.stage/mbql
+                                :source-table t2
+                                :fields [[:field {} f3]]}]}]]
+        (serdes/with-cache
+          (let [pointwise (mapv serdes/export-mbql trees)]
+            (serdes/with-cache  ; fresh cache so we're not biased by the first run
+              (let [batch     (serdes/export-mbql-batch trees)]
+                (is (= pointwise batch)
+                    "layerwise output is structurally identical to the pointwise output")))))))))
+
+(deftest export-mbql-batch-amortizes-fk-resolution-test
+  (testing "Batched export across N trees collapses FK resolution to ~3 SELECTs total"
+    (mt/with-temp [:model/Database {db :id} {:name "thing"}
+                   :model/Table {t1 :id} {:db_id db :name "alpha" :schema "public"}
+                   :model/Table {t2 :id} {:db_id db :name "beta"  :schema "public"}
+                   :model/Field {f1 :id} {:table_id t1 :name "a" :base_type :type/Integer}
+                   :model/Field {f2 :id} {:table_id t1 :name "b" :base_type :type/Integer}
+                   :model/Field {f3 :id} {:table_id t2 :name "c" :base_type :type/Integer}
+                   :model/Field {f4 :id} {:table_id t2 :name "d" :base_type :type/Integer}]
+      ;; 4 distinct trees, each referencing different fields. Pointwise would need many more queries.
+      (let [trees [{:lib/type :mbql/query :database db
+                    :stages [{:lib/type :mbql.stage/mbql :source-table t1 :fields [[:field {} f1]]}]}
+                   {:lib/type :mbql/query :database db
+                    :stages [{:lib/type :mbql.stage/mbql :source-table t1 :fields [[:field {} f2]]}]}
+                   {:lib/type :mbql/query :database db
+                    :stages [{:lib/type :mbql.stage/mbql :source-table t2 :fields [[:field {} f3]]}]}
+                   {:lib/type :mbql/query :database db
+                    :stages [{:lib/type :mbql.stage/mbql :source-table t2 :fields [[:field {} f4]]}]}]]
         (serdes/with-cache
           (t2/with-call-count [qc]
-            (let [out (serdes/export-mbql mbql)]
-              (testing "tree shape is preserved with portable refs"
-                (is (= "thing" (:database out)))
-                (is (= ["thing" "public" "alpha"] (get-in out [:stages 0 :source-table])))
-                (is (= [[:field {} ["thing" "public" "alpha" "a"]]
-                        [:field {} ["thing" "public" "alpha" "b"]]
-                        [:field {} ["thing" "public" "alpha" "c"]]
-                        [:field {} ["thing" "public" "alpha" "a"]]
-                        [:field {} ["thing" "public" "alpha" "b"]]]
-                       (get-in out [:stages 0 :fields])))))
-            ;; 3 SELECTs total: fields, tables, databases — regardless of how many refs in tree
-            (is (= 3 (qc))))))))
-  (testing "with FK fns rebound to mocks, two-pass is skipped (back-compat)"
-    (binding [serdes/*export-field-fk*    (constantly ["MOCK" "MOCK" "MOCK" "MOCK"])
-              serdes/*export-table-fk*    (constantly ["MOCK" "MOCK" "MOCK"])
-              serdes/*export-database-fk* (constantly "MOCK")]
-      (is (= [:field {} ["MOCK" "MOCK" "MOCK" "MOCK"]]
-             (serdes/export-mbql [:field {} 42]))))))
+            (serdes/export-mbql-batch trees)
+            ;; 3 batched SELECTs total: fields, tables, databases. Independent of N.
+            ;; (Note: process-refs-batch falls back to pointwise export-mbql-ref for now,
+            ;;  which calls the cache-aware singletons. Field FKs go through the batch primary.)
+            (is (= 3 (qc)))))))))
