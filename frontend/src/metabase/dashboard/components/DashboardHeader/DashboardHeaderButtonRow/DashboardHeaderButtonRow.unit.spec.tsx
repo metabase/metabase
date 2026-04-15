@@ -7,6 +7,10 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import {
+  createMockDashboardState,
+  createMockStoreDashboard,
+} from "metabase/redux/store/mocks";
 import type { IconName } from "metabase/ui";
 import {
   createMockDashboard,
@@ -14,10 +18,6 @@ import {
   createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockDashboardState,
-  createMockStoreDashboard,
-} from "metabase-types/store/mocks";
 
 import { DashboardHeaderButtonRow } from "./DashboardHeaderButtonRow";
 import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";

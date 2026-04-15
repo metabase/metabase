@@ -1,12 +1,12 @@
 import type { Active } from "@dnd-kit/core";
 
+import type { DraggedColumn } from "metabase/redux/store/visualizer";
 import type {
   DatasetColumn,
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
-import type { DraggedColumn } from "metabase-types/store/visualizer";
 
 import { canHandleActiveItem } from "./use-can-handle-active-item";
 

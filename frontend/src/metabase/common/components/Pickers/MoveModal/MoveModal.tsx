@@ -183,6 +183,7 @@ export const MoveModal = ({
         hasRootCollection: true,
         hasConfirmButtons: true,
         canCreateCollections: true,
+        canCreateDashboards: canMoveToDashboard ?? false,
         hasPersonalCollections: true,
         confirmButtonText: t`Move`,
       }}
@@ -336,6 +337,7 @@ export const BulkMoveModal = ({
         hasRootCollection: true,
         hasConfirmButtons: true,
         canCreateCollections: true,
+        canCreateDashboards: canMoveToDashboard,
         confirmButtonText: t`Move`,
       }}
       isDisabledItem={shouldDisableItem}

@@ -12,6 +12,7 @@ import type {
   SidebarFeatures,
 } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import type { QueryBuilderMode } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import * as Lib from "metabase-lib";
@@ -24,7 +25,6 @@ import type {
   NativeQuerySnippet,
   ParameterId,
 } from "metabase-types/api";
-import type { QueryBuilderMode } from "metabase-types/store";
 
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";

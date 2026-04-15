@@ -16,6 +16,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Icon, Title } from "metabase/ui";
 import { dashboardPulseIsValid } from "metabase/utils/pulse";
@@ -29,7 +30,6 @@ import type {
   ScheduleSettings,
   User,
 } from "metabase-types/api";
-import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";

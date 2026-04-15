@@ -394,6 +394,51 @@
         {:output (ex-message e) :status-code 404}
         (metabot.tools.u/handle-agent-error e)))))
 
+(defn- database-details
+  "Convert a Database model to the agent API response shape."
+  [db]
+  {:id     (:id db)
+   :name   (:name db)
+   :engine (some-> (:engine db) name)})
+
+(defn list-databases
+  "Get a list of all databases the current user can read without including its tables."
+  []
+  (try
+    (let [dbs (metabot.tools.u/list-databases :name :engine)]
+      {:structured-output (mapv database-details dbs)})
+    (catch Exception e
+      (metabot.tools.u/handle-agent-error e))))
+
+(defn get-database-details
+  "Get details for a database by ID, optionally including its tables."
+  [{:keys [database-id with-tables? with-fields? with-field-values? with-related-tables?
+           with-metrics? with-measures? with-segments?]
+    :or   {with-tables? false, with-fields? false, with-field-values? false, with-related-tables? false,
+           with-metrics? false, with-measures? false, with-segments? false}}]
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [db       (metabot.tools.u/get-database database-id :name :engine)
+            response (database-details db)]
+        {:structured-output
+         (cond-> response
+           with-tables?
+           (assoc :tables
+                  (let [mp     (lib-be/application-database-metadata-provider database-id)
+                        tables (lib.metadata/tables mp)
+                        opts   (cond-> {:metadata-provider    mp
+                                        :with-fields?         with-fields?
+                                        :with-related-tables? with-related-tables?
+                                        :with-metrics?        with-metrics?
+                                        :with-measures?       with-measures?
+                                        :with-segments?       with-segments?}
+                                 (not with-field-values?) (assoc :field-values-fn identity))]
+                    (mapv #(table-details (:id %) opts) tables))))}))
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot.tools.u/handle-agent-error e)))))
+
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
   [{:keys [metric-id] :as arguments}]

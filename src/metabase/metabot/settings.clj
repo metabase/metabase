@@ -19,6 +19,8 @@
   :type       :boolean
   :visibility :public
   :default    true
+  :getter     #(and (llm.settings/ai-features-enabled?)
+                    (setting/get-value-of-type :boolean :metabot-enabled?))
   :export?    true
   :doc        false)
 
@@ -87,6 +89,8 @@
   :type       :boolean
   :visibility :public
   :default    true
+  :getter     #(and (llm.settings/ai-features-enabled?)
+                    (setting/get-value-of-type :boolean :embedded-metabot-enabled?))
   :export?    true
   :doc        false)
 

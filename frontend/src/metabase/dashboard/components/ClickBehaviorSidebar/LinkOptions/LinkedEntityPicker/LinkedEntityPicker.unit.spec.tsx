@@ -16,6 +16,8 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import type { StoreDashboard } from "metabase/redux/store";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   CollectionItem,
@@ -33,8 +35,6 @@ import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { StoreDashboard } from "metabase-types/store";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { LinkedEntityPicker } from "./LinkedEntityPicker";
 
