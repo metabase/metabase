@@ -46,7 +46,11 @@ export function SchemaViewerFieldRow({
     field.fk_target_table_id != null &&
     visibleTableIds.has(field.fk_target_table_id as ConcreteTableId);
 
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent) => {
+    // Keep the click from bubbling up to the node, otherwise React Flow
+    // treats it as a node-click and clears all edge selection — which would
+    // wipe out the edge we're about to highlight just below.
+    event.stopPropagation();
     if (canExpand && field.fk_target_table_id != null) {
       // Pre-compute the edge IDs that will connect the FK field to its
       // target field after expansion, so SchemaViewer can auto-highlight
