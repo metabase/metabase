@@ -373,15 +373,18 @@
 
 (defmethod driver/init-workspace-isolation! :clickhouse
   [_driver database workspace]
-  (let [db-name   (driver.u/workspace-isolation-namespace-name workspace)
-        read-user {:user     (driver.u/workspace-isolation-user-name workspace)
-                   :password (driver.u/random-workspace-password)}]
+  (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
+        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
+                          :password (driver.u/random-workspace-password)}
+        escaped-password (sql.u/escape-sql (:password read-user) :backslashes)
+        quoted-db        (sql.u/quote-name :clickhouse :schema db-name)
+        quoted-user      (sql.u/quote-name :clickhouse :field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
-                     (format "CREATE USER IF NOT EXISTS `%s` IDENTIFIED BY '%s'"
-                             (:user read-user) (:password read-user))
-                     (format "GRANT ALL ON `%s`.* TO `%s`" db-name (:user read-user))]]
+        (doseq [sql [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
+                     (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
+                             quoted-user escaped-password)
+                     (format "GRANT ALL ON %s.* TO %s" quoted-db quoted-user)]]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))
     {:schema           db-name
@@ -407,13 +410,15 @@
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [_driver database workspace]
-  (let [db-name  (driver.u/workspace-isolation-namespace-name workspace)
-        username (driver.u/workspace-isolation-user-name workspace)]
+  (let [db-name      (driver.u/workspace-isolation-namespace-name workspace)
+        username     (driver.u/workspace-isolation-user-name workspace)
+        quoted-db    (sql.u/quote-name :clickhouse :schema db-name)
+        quoted-user  (sql.u/quote-name :clickhouse :field username)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [;; DROP DATABASE cascades to all tables within it
-                     (format "DROP DATABASE IF EXISTS `%s`" db-name)
-                     (format "DROP USER IF EXISTS `%s`" username)]]
+                     (format "DROP DATABASE IF EXISTS %s" quoted-db)
+                     (format "DROP USER IF EXISTS %s" quoted-user)]]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
