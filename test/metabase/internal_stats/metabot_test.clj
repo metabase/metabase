@@ -1,8 +1,9 @@
 (ns metabase.internal-stats.metabot-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.internal-stats.metabot :as sut]
+   [metabase.metabot.example-question-generator :as eqg]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -10,7 +11,10 @@
    [metabase.metabot.test-util :as mut]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; ---------------------------------------------------------------------------
 ;; Helpers
@@ -253,3 +257,135 @@
                    (:metabot-usage stats))))
           (finally
             (cleanup! conv-1 conv-2 conv-3)))))))
+
+;; ---------------------------------------------------------------------------
+;; Example question generation usage tracking
+;; ---------------------------------------------------------------------------
+
+(defn- generate-example-questions!
+  "Call the example question generator with a mocked LLM that returns structured output
+   with the given model/usage."
+  [tables model prompt-tokens completion-tokens]
+  (let [mock-fn (fn [_]
+                  (mut/mock-llm-response
+                   [{:type :start :id "msg-eqg"}
+                    {:type      :tool-input
+                     :id        "tool-1"
+                     :function  "json"
+                     :arguments {:questions ["What is the total?" "Show me trends"]}}
+                    {:type  :usage
+                     :model model
+                     :usage {:promptTokens prompt-tokens :completionTokens completion-tokens}
+                     :id    "msg-eqg"}]))]
+    (with-redefs [openrouter/openrouter mock-fn
+                  claude/claude         mock-fn
+                  openai/openai         mock-fn]
+      (eqg/generate-example-questions {:tables tables :metrics []}))))
+
+(defn- max-usage-log-id
+  "Return the current max id in ai_usage_log, or 0 if empty."
+  []
+  (or (:max (t2/query-one {:select [[:%max.id :max]] :from [:ai_usage_log]})) 0))
+
+(defn- cleanup-usage-logs-after! [min-id]
+  (t2/delete! :model/AiUsageLog :id [:> min-id]))
+
+;; NOTE: generate-example-questions! uses `future` internally (process-batch-parallel),
+;; so ai_usage_log inserts happen on separate threads outside any with-transaction scope.
+;; We snapshot max(id) before each test and only delete rows inserted after that.
+
+(deftest example-question-generation-creates-usage-log-test
+  (search.tu/with-index-disabled
+    (let [baseline  (max-usage-log-id)
+          clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          today     (t/offset-date-time 2026 4 1 9 0 0 0 (t/zone-offset "+00"))
+          model     "anthropic/claude-haiku-4-5"
+          tables    [{:name "Orders" :fields [{:name "id"} {:name "total"}]}]]
+      (t/with-clock clock
+        (try
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/openrouter/anthropic/claude-haiku-4-5"]
+            ;; Yesterday's generation
+            (generate-example-questions! tables model 400 100)
+
+            (testing "ai_usage_log row is created with ai_proxied = true"
+              (is (=? [{:ai_proxied true
+                        :total_tokens 500}]
+                      (t2/select :model/AiUsageLog :id [:> baseline]))))
+
+            ;; backdate so it lands in yesterday's window
+            (t2/update! :model/AiUsageLog {:id [:> baseline]}
+                        {:created_at yesterday})
+
+            ;; Today's generation — exercises rolling usage
+            (let [before-today (max-usage-log-id)]
+              (generate-example-questions! tables model 200 60)
+              (t2/update! :model/AiUsageLog {:id [:> before-today]}
+                          {:created_at today})))
+
+          (testing "metabot-stats includes yesterday totals and today's rolling usage"
+            (is (=? {:metabot-tokens            500
+                     :metabot-usage             {"openrouter:anthropic/claude-haiku-4-5:tokens" 500}
+                     :metabot-rolling-usage      {"openrouter:anthropic/claude-haiku-4-5:tokens" 260}
+                     :metabot-rolling-usage-date "2026-04-01"}
+                    (sut/metabot-stats))))
+          (finally
+            (cleanup-usage-logs-after! baseline)))))))
+
+(deftest example-question-generation-byok-not-in-stats-test
+  (search.tu/with-index-disabled
+    (let [baseline  (max-usage-log-id)
+          clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          model     "anthropic/claude-haiku-4-5"
+          tables    [{:name "Orders" :fields [{:name "id"} {:name "total"}]}]]
+      (t/with-clock clock
+        (try
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "openrouter/anthropic/claude-haiku-4-5"]
+            (generate-example-questions! tables model 400 100)
+
+            (testing "ai_usage_log row is created with ai_proxied = false for BYOK"
+              (is (=? [{:ai_proxied false}]
+                      (t2/select :model/AiUsageLog :id [:> baseline]))))
+
+            (t2/update! :model/AiUsageLog {:id [:> baseline]}
+                        {:created_at yesterday}))
+
+          (testing "BYOK example question usage does not appear in metabot-stats"
+            (is (nil? (sut/metabot-stats))))
+          (finally
+            (cleanup-usage-logs-after! baseline)))))))
+
+(deftest example-question-generation-combined-with-chat-test
+  (search.tu/with-index-disabled
+    (let [baseline  (max-usage-log-id)
+          clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          model     "anthropic/claude-haiku-4-5"
+          tables    [{:name "Orders" :fields [{:name "id"} {:name "total"}]}]
+          conv-id   (str (random-uuid))]
+      (t/with-clock clock
+        (try
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/openrouter/anthropic/claude-haiku-4-5"]
+            ;; Chat conversation
+            (send-message! conv-id "What is 2+2?" model 200 50)
+            (backdate-messages! conv-id yesterday)
+
+            ;; Example question generation (no conversation)
+            (generate-example-questions! tables model 300 100)
+            (t2/update! :model/AiUsageLog {:id [:> baseline]
+                                           :source "example-question-generation"}
+                        {:created_at yesterday}))
+
+          (testing "metabot-stats includes both chat and example question generation"
+            ;; chat: 250, eqg: 400 → total 650
+            (is (=? {:metabot-tokens  650
+                     :metabot-queries 1
+                     :metabot-usage   {"openrouter:anthropic/claude-haiku-4-5:tokens" 650}}
+                    (sut/metabot-stats))))
+          (finally
+            (cleanup-usage-logs-after! baseline)
+            (cleanup! conv-id)))))))
