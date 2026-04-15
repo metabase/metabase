@@ -457,6 +457,52 @@ describe("admin > custom visualizations", () => {
           .findByText(/"demo-viz" visualization is currently unavailable/)
           .should("be.visible");
       });
+
+      it("falls back to the default viz when the bundle endpoint fails, then recovers on revisit", () => {
+        const bundleMatcher = {
+          method: "GET",
+          pathname: "/api/ee/custom-viz-plugin/*/bundle",
+        };
+
+        cy.intercept(bundleMatcher, {
+          statusCode: 503,
+          body: { error: "Bundle not available" },
+        }).as("bundleUnavailable");
+
+        H.createQuestion(
+          {
+            name: "Custom Viz — Bundle Recovery",
+            query: {
+              "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+              aggregation: [["count"]],
+            },
+            display: H.CUSTOM_VIZ_DISPLAY,
+          },
+          { wrapId: true, idAlias: "recoveryCardId", visitQuestion: true },
+        );
+
+        cy.wait("@bundleUnavailable");
+
+        cy.findByTestId("visualization-root")
+          .findByTestId("table-root")
+          .should("be.visible");
+
+        H.undoToastList()
+          .findByText(/visualization is currently unavailable/i)
+          .should("be.visible");
+
+        cy.intercept(bundleMatcher, (req) => req.continue()).as(
+          "bundleRestored",
+        );
+
+        cy.findByTestId("main-logo-link").click();
+        cy.go("back");
+        cy.wait("@bundleRestored");
+
+        H.main()
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
+      });
     });
 
     it("falls back to the default viz on a public question (metabase#GDGT-2234)", () => {
