@@ -1,11 +1,11 @@
 import _ from "underscore";
 
 import { Timelines } from "metabase/entities/timelines";
+import type { State } from "metabase/redux/store";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
 import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Timeline } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { setCollectionAndNavigate } from "../../actions";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
