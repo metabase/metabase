@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -19,7 +18,6 @@ import {
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import {
-  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -33,7 +31,7 @@ import {
 } from "metabase/metabot/constants";
 import { reinitialize } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
-import type { MetabotId, RecentItem } from "metabase-types/api";
+import type { MetabotId, MetabotInfo, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockMetabotInfo,
@@ -41,12 +39,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { MetabotConfig } from "./MetabotConfig";
-import * as hooks from "./utils";
-
-const mockPathParam = (id: MetabotId) => {
-  jest.spyOn(hooks, "useMetabotIdPath").mockReturnValue(id);
-};
+import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
 
 const defaultMetabots = [
   createMockMetabotInfo({
@@ -97,17 +90,14 @@ const defaultSeedCollections = [
 ];
 const setup = async (
   initialPathParam: MetabotId = 1,
-  metabots = defaultMetabots,
+  metabots: MetabotInfo[] = defaultMetabots,
   seedCollections = defaultSeedCollections,
-  error = false,
   settings = createMockSettings({ "llm-metabot-configured?": true }),
-  waitForPageLoad = true,
 ) => {
   mockGetBoundingClientRect();
-  mockPathParam(initialPathParam);
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
-  setupMetabotsEndpoints(metabots, error ? 500 : undefined);
+  setupMetabotsEndpoints(metabots);
   setupCollectionByIdEndpoint({
     collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),
   });
@@ -129,20 +119,16 @@ const setup = async (
     }),
   );
 
-  const view = renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotConfig} />,
-    {
-      withRouter: true,
-      initialRoute: `/admin/metabot/${initialPathParam}`,
-      storeInitialState: {
-        settings: createMockSettingsState(settings),
-      },
-    },
-  );
+  const metabot =
+    metabots.find((mb) => mb.id === initialPathParam) ?? metabots[0];
 
-  if (!error && waitForPageLoad) {
-    await screen.findByText(/Configure/);
-  }
+  const view = renderWithProviders(<MetabotSettingsPanel metabot={metabot} />, {
+    storeInitialState: {
+      settings: createMockSettingsState(settings),
+    },
+  });
+
+  await screen.findByTestId("metabot-enabled-toggle");
 
   return view;
 };
@@ -172,43 +158,14 @@ const setupContentVerificationPlugin = () => {
   setupEnterprisePlugins();
 };
 
-describe("MetabotConfig", () => {
+describe("MetabotSettingsPanel", () => {
   afterEach(() => {
     reinitialize();
   });
 
-  it("should render the page", async () => {
+  it("should render the default metabot settings", async () => {
     await setup();
-    expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();
-  });
-
-  it("should redirect to setup if not configured", async () => {
-    const { history } = await setup(
-      FIXED_METABOT_IDS.DEFAULT,
-      defaultMetabots,
-      defaultSeedCollections,
-      false,
-      createMockSettings({ "llm-metabot-configured?": false }),
-      false,
-    );
-
-    await waitFor(() => {
-      expect(history?.getCurrentLocation()?.pathname).toBe(
-        "/admin/metabot/setup",
-      );
-    });
-  });
-
-  it("should not redirect to setup if configured", async () => {
-    const { history } = await setup(
-      FIXED_METABOT_IDS.DEFAULT,
-      defaultMetabots,
-      defaultSeedCollections,
-      false,
-      createMockSettings({ "llm-metabot-configured?": true }),
-    );
-
-    expect(history?.getCurrentLocation()?.pathname).toBe("/admin/metabot/1");
+    expect(screen.getByText("Enable Metabot")).toBeInTheDocument();
   });
 
   it("should toggle default metabot enabled state", async () => {
@@ -226,29 +183,11 @@ describe("MetabotConfig", () => {
     expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
   });
 
-  it("should show collection picker for default metabot with NLQ title", async () => {
+  it("should show the default collection section title", async () => {
     await setup();
-    expect(await screen.findByText("Configure Metabot")).toBeInTheDocument();
     expect(
       await screen.findByText(/Collection for natural language querying/),
     ).toBeInTheDocument();
-  });
-
-  it("should redirect from embedded metabot page to default without embedding features", async () => {
-    const { history } = await setup(
-      FIXED_METABOT_IDS.EMBEDDED,
-      defaultMetabots,
-      defaultSeedCollections,
-      false,
-      createMockSettings({ "llm-metabot-configured?": true }),
-      false,
-    );
-
-    await waitFor(() => {
-      expect(history?.getCurrentLocation()?.pathname).toBe(
-        `/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`,
-      );
-    });
   });
 
   it("should render a selected collection for embedded metabot", async () => {
@@ -268,18 +207,6 @@ describe("MetabotConfig", () => {
       }),
     ]);
     expect(await screen.findByText("Our Analytics")).toBeInTheDocument();
-  });
-
-  it("should be able to switch between metabots", async () => {
-    setupEmbeddingPlugin();
-    const { history } = await setup(FIXED_METABOT_IDS.DEFAULT);
-    expect(await screen.findByText("Configure Metabot")).toBeInTheDocument();
-
-    mockPathParam(FIXED_METABOT_IDS.EMBEDDED);
-    act(() => {
-      history?.push(`/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`);
-    });
-    expect(await screen.findByText("Collection Two")).toBeInTheDocument();
   });
 
   it("should change selected collection for embedded metabot", async () => {
@@ -311,12 +238,6 @@ describe("MetabotConfig", () => {
       new RegExp(`/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}`),
     );
     expect(puts[0].body).toEqual({ collection_id: 31 });
-
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
-      ).length,
-    ).toEqual(2); // +1 refetch for DELETE, +1 for PUT
   });
 
   it("should show special copy for embedded metabot", async () => {
@@ -349,19 +270,8 @@ describe("MetabotConfig", () => {
     expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
   });
 
-  it("should show an error message when a request fails", async () => {
-    await setup(404, defaultMetabots, defaultSeedCollections, true);
-
-    expect(
-      await screen.findByText("Error fetching Metabots"),
-    ).toBeInTheDocument();
-  });
-
   it("should not show verification switch without content_verification feature", async () => {
     await setup();
-
-    // First ensure the page has loaded
-    await screen.findByText(/Configure Metabot/);
 
     expect(screen.queryByText("Verified content")).not.toBeInTheDocument();
     expect(
