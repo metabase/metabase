@@ -249,8 +249,8 @@
     (cond-> {:name        tool-name
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
-                           :path   full-path}}
-      input-schema      (assoc :inputSchema input-schema)
+                           :path   full-path}
+             :inputSchema (or input-schema {:type "object" :properties {}})}
       resp-schema       (assoc :responseSchema resp-schema)
       (seq annotations) (assoc :annotations annotations)
       task-support      (assoc :execution {:taskSupport (name task-support)})
