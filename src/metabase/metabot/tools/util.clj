@@ -54,6 +54,28 @@
   "A prefix pattern accepting columns from any entity."
   #"^.*-(\d+)")
 
+(defn ->result-database
+  "Build the agent result map for a database."
+  [db]
+  {:id     (:id db)
+   :name   (:name db)
+   :engine (some-> (:engine db) name)})
+
+(defn ->result-table
+  "Build the base agent result map for a table (without `:fields`).
+  Accepts either a raw t2 row (underscore keys) or a lib-shaped table (hyphenated keys)."
+  [table db-engine]
+  (cond-> {:id              (:id table)
+           :type            :table
+           :name            (:name table)
+           :display_name    (or (:display_name table)
+                                (:display-name table)
+                                (some->> (:name table) (u.humanization/name->human-readable-name :simple)))
+           :database_id     (or (:db_id table) (:db-id table))
+           :database_engine db-engine
+           :database_schema (:schema table)}
+    (:description table) (assoc :description (:description table))))
+
 (defn ->result-column
   "Return a tool result column for `column`. Position is determined by `index`; the field ID is
   `field-id-prefix` + `index`.
@@ -86,28 +108,6 @@
    (->result-column (assoc column :display-name (lib/display-name query column))
                     index
                     field-id-prefix)))
-
-(defn ->result-database
-  "Build the agent result map for a database."
-  [db]
-  {:id     (:id db)
-   :name   (:name db)
-   :engine (some-> (:engine db) name)})
-
-(defn ->result-table
-  "Build the base agent result map for a table (without `:fields`).
-  Accepts either a raw t2 row (underscore keys) or a lib-shaped table (hyphenated keys)."
-  [table db-engine]
-  (cond-> {:id              (:id table)
-           :type            :table
-           :name            (:name table)
-           :display_name    (or (:display_name table)
-                                (:display-name table)
-                                (some->> (:name table) (u.humanization/name->human-readable-name :simple)))
-           :database_id     (or (:db_id table) (:db-id table))
-           :database_engine db-engine
-           :database_schema (:schema table)}
-    (:description table) (assoc :description (:description table))))
 
 (defn parse-field-id
   "Parse a field-id string into its components.
@@ -196,10 +196,13 @@
    :schedule_frame (some->> day-of-month name (re-find #"^(?:first|mid|last)"))})
 
 (defn- database-filter
+  "HoneySQL WHERE clause matching tables (alias `:t`) belonging to the database with `database-id`."
   [database-id]
   [:= :t.db_id database-id])
 
 (defn- table-filter
+  "HoneySQL WHERE clause keeping only user-visible tables (alias `:t`): active and not hidden,
+  technical, or cruft."
   []
   [:and [:= :t.active true]
    [:or
@@ -207,6 +210,8 @@
     [:not-in :t.visibility_type [:inline ["hidden" "technical" "cruft"]]]]])
 
 (defn- field-filter
+  "HoneySQL WHERE clause keeping only user-visible fields (alias `:f`): active and not retired
+  or sensitive."
   []
   [:and [:= :f.active true]
    [:or
