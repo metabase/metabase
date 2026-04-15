@@ -1079,7 +1079,8 @@
            query-processor
            request
            tiles
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Document}}
 
   pulse
   {:team "Gadget"
