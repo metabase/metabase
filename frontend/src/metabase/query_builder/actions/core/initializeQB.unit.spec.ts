@@ -9,7 +9,7 @@ import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
-import * as CardLib from "metabase/utils/card";
+import * as CardLib from "metabase/common/utils/card";
 import { checkNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";

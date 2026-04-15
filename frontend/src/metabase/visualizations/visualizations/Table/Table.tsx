@@ -29,7 +29,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isNative } from "metabase/utils/card";
+import { isNative } from "metabase/common/utils/card";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isAvatarURL,

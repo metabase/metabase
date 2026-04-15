@@ -50,7 +50,7 @@ import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { applyParameters } from "metabase/utils/card";
+import { applyParameters } from "metabase/common/utils/card";
 import type {
   Card,
   CardId,

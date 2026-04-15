@@ -9,7 +9,7 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import Question from "metabase-lib/v1/Question";
-import { cardIsEquivalent } from "metabase/utils/card";
+import { cardIsEquivalent } from "metabase/common/utils/card";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
