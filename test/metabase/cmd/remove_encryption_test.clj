@@ -30,7 +30,7 @@
   (testing "removing encryption"
     (encryption-test/with-secret-key "key1"
       (mt/with-temp-empty-app-db [_conn :h2]
-        (mdb/setup-db! :create-sample-content? true)
+        (mdb/setup-db!)
         (t2/insert! :model/Setting {:key "test-setting", :value "unencrypted value"})
 
         (is (encryption/possibly-encrypted-string? (raw-value _conn "encryption-check")))

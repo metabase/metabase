@@ -185,7 +185,7 @@
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
     (mt/with-temp-empty-app-db [_conn :h2]
       (api.database-test/with-db-scheduler-setup!
-        (mdb/setup-db! :create-sample-content? true)
+        (mdb/setup-db!)
         (sample-data/extract-and-sync-sample-database!)
         (testing "Sense check: a newly created database should have sync jobs scheduled"
           (mt/with-temp [:model/Database db {}]

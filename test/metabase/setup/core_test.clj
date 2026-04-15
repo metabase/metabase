@@ -4,11 +4,10 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
-   [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.models.interface :as mi]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.sample-data.core :as sample-data]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -45,7 +44,7 @@
     ;; create a new completely empty database.
     (mt/with-temp-empty-app-db [_conn :h2]
       ;; make sure the DB is setup (e.g., run all the Liquibase migrations)
-      (mdb/setup-db! :create-sample-content? true)
+      (mdb/setup-db!)
       (t2/with-call-count [call-count]
         (dotimes [_ 5]
           (is (= false
@@ -59,58 +58,18 @@
            (setup/has-user-setup)))
       (is (zero? (call-count))))))
 
-(deftest has-example-dashboard-id-setting-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
-    (testing "The example-dashboard-id setting should be set if the example content is loaded"
-      (is (= 1
-             (appearance/example-dashboard-id)))))
-  (testing "The example-dashboard-id setting should be nil if the example content isn't loaded"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
-      (is (nil? (appearance/example-dashboard-id)))))
-  (testing "The example-dashboard-id setting should be reset to nil if the example dashboard is archived"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? true)
-      (is (= 1
-             (appearance/example-dashboard-id)))
-      (t2/update! :model/Dashboard 1 {:archived true})
-      (is (nil? (appearance/example-dashboard-id))))))
-
-(deftest sample-content-permissions-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
-    (let [dashboard  (t2/select-one :model/Dashboard :creator_id config/internal-mb-user-id)
-          collection (t2/select-one :model/Collection (:collection_id dashboard))
-          card       (t2/select-one :model/Card :creator_id config/internal-mb-user-id)]
-      (testing "Rasta (as a member of 'All Users') should have sufficient privileges to edit the example content"
-        (mt/with-current-user (mt/user->id :rasta)
-          (is (true? (mi/can-write? dashboard)))
-          (is (true? (mi/can-write? card)))
-          (is (true? (mi/can-write? collection))))))
-    (let [sample-db       (t2/select-one :model/Database :is_sample true)
-          sample-db-table (t2/select-one :model/Table :db_id (:id sample-db))
-          sample-db-field (t2/select-one :model/Field :table_id (:id sample-db-table))]
-      (testing "Rasta (as a member of 'All Users') should have read but not write privileges to the sample database"
-        (mt/with-current-user (mt/user->id :rasta)
-          (is (true? (mi/can-read? sample-db)))
-          (is (true? (mi/can-read? sample-db-table)))
-          (is (true? (mi/can-read? sample-db-field)))
-          (is (false? (mi/can-write? sample-db)))
-          (is (false? (mi/can-write? sample-db-table)))
-          (is (false? (mi/can-write? sample-db-field)))))
-      (testing "Crowberto (as an admin member of 'All Users') should have write privileges to the sample database"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (is (true? (mi/can-write? sample-db)))
-          (is (true? (mi/can-write? sample-db-table)))
-          (is (true? (mi/can-write? sample-db-field))))))))
+;;; Tests for sample content (example-dashboard-id, permissions) have moved to
+;;; metabase.sample-content.import-test, since content is no longer loaded by
+;;; migrations but by metabase.sample-content.import/import! after sync.
 
 (deftest encryption-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (testing "Database can start with no encryption"
       (encryption-test/with-secret-key nil
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
-          (mdb/setup-db! :create-sample-content? true)
+          (mdb/setup-db!)
+          ;; just so we have a database with details to check
+          (sample-data/extract-and-sync-sample-database!)
           (let [cache-backend (i/cache-backend :db)]
             (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
             (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
@@ -120,7 +79,7 @@
             (testing "Adding encryption encrypts database on restart"
               (encryption-test/with-secret-key "key1"
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-                (mdb/setup-db! :create-sample-content? false)
+                (mdb/setup-db!)
                 (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
                 (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
                 (testing "Cache is cleared on encryption"
@@ -128,16 +87,18 @@
     (testing "Database created with encryption configured is encrypted"
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
-          (mdb/setup-db! :create-sample-content? true)
+          (mdb/setup-db!)
+          ;; just so we have a database with details to check
+          (sample-data/extract-and-sync-sample-database!)
           (is (encryption/possibly-encrypted-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
           (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database")))
           (testing "Re-running server works"
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-            (mdb/setup-db! :create-sample-content? false)
+            (mdb/setup-db!)
             (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
           (testing "Different encryption key throws an error"
             (encryption-test/with-secret-key "different-key"
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
-              (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db! :create-sample-content? false)))
+              (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db!)))
               (let [setting-value (:value (t2/select-one "setting" :key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
                 (is (not (string/valid-uuid? setting-value)))))))))))

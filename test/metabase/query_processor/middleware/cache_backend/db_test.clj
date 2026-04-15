@@ -24,7 +24,7 @@
   (testing "With no encryption, cache results should be stored plain text"
     (encryption-test/with-secret-key nil
       (mt/with-temp-empty-app-db [conn :h2]
-        (mdb/setup-db! :create-sample-content? false)
+        (mdb/setup-db!)
         (let [cache-backend (i/cache-backend :db)]
           (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
           (let [cached (cache-results conn)]
@@ -32,7 +32,7 @@
   (testing "With encryption enabled, cache results should be stored encrypted text"
     (encryption-test/with-secret-key "key1"
       (mt/with-temp-empty-app-db [conn :h2]
-        (mdb/setup-db! :create-sample-content? false)
+        (mdb/setup-db!)
         (let [cache-backend (i/cache-backend :db)]
           (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
           (let [cached (codecs/bytes->str (cache-results conn))]

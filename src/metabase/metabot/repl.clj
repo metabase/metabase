@@ -80,7 +80,7 @@
 
     clj -X:metabot/repl"
   [_options]
-  (mdb/setup-db! :create-sample-content? false)
+  (mdb/setup-db!)
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Starting MetaBot REPL... 🤖")
   (user-repl [] {} (str (random-uuid)))

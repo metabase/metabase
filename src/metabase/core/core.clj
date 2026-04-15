@@ -24,6 +24,7 @@
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.sample-content.core :as sample-content]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
@@ -177,11 +178,7 @@
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
-  ;; Cal 2024-04-03:
-  ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
-  ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
-  ;; negatives, but for now there's not much we can do
-  (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  (mdb/setup-db!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.
@@ -215,6 +212,9 @@
         (sample-data/extract-and-sync-sample-database!)
         ;; otherwise update if appropriate
         (sample-data/update-sample-database-if-needed!)))
+    ;; load sample content (dashboards, questions, collections) after the sample DB is synced
+    (when new-install?
+      (sample-content/import!))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)

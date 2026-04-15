@@ -9,7 +9,7 @@
   [to-key]
   (when-not (mdb/db-is-set-up?)
     (log/info "Checking database configuration prior to encrypting")
-    (mdb/setup-db! :create-sample-content? true))
+    (mdb/setup-db!))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
   (if (empty? to-key)
     (mdb/decrypt-db (mdb/db-type) (mdb/data-source))
