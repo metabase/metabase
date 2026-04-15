@@ -127,7 +127,7 @@ Locked parameters will apply the selected filter values to your original dashboa
 
 If you just want to require a value for the parameter, you could set the filter as editable and configure the underlying question or dashboard to [always require a value](../dashboards/filters.md).
 
-For more on how locked parameters work, check out [guest embedding](./guest-embedding.md#locked-parameters). The rules for locked parameters are the same for static embeds. as both share the same JWT validation path.
+For more on how locked parameters work, check out [guest embedding](./guest-embedding.md#locked-parameters). The rules for locked parameters are the same for static embeds.
 
 ## Customizing the appearance of a static embed
 
