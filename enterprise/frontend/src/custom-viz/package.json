@@ -28,7 +28,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
-    "release": "bun run build && np"
+    "release": "bun run build && np",
+    "check:package-versions": "bun run scripts/check-package-versions.ts"
   },
   "dependencies": {
     "commander": "^13.1.0"
