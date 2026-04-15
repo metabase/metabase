@@ -1,5 +1,5 @@
-import type { CurrencyStyle } from "metabase/lib/formatting";
-import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
+import type { CurrencyStyle } from "metabase/utils/formatting";
+import { formatNumber as appFormatNumber } from "metabase/utils/formatting/numbers";
 
 export type NumberStyle = "currency" | "decimal" | "scientific" | "percentage";
 

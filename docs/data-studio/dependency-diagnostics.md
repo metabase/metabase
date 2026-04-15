@@ -5,7 +5,7 @@ summary: Find broken content and unused items so you can fix problems and clean 
 
 # Dependency diagnostics
 
-{% include plans-blockquote.html feature="Dependency disagnistics" %}
+{% include plans-blockquote.html feature="Dependency diagnostics" %}
 
 Dependency diagnostics shows you content with broken dependencies, and content that isn't referenced by anything else.
 

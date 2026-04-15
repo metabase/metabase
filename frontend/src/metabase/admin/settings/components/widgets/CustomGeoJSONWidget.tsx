@@ -12,8 +12,8 @@ import { Option, Select } from "metabase/common/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { uuid } from "metabase/lib/uuid";
 import { Button, Ellipsified, Image, Stack, Text } from "metabase/ui";
+import { uuid } from "metabase/utils/uuid";
 import { LeafletChoropleth } from "metabase/visualizations/components/LeafletChoropleth";
 import type {
   CustomGeoJSONMap,

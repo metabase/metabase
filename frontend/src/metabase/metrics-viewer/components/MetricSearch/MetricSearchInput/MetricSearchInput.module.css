@@ -8,8 +8,76 @@
   padding: 0;
   height: auto;
   min-height: unset;
+  font-family: Monaco, monospace;
 }
 
 .inputField::placeholder {
   color: var(--mb-color-text-tertiary);
+}
+
+.cmOperator {
+  color: var(--mb-color-syntax-parameters);
+}
+
+.cmMetricToken {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+
+.cmErrorUnderline {
+  text-decoration: underline wavy;
+  text-decoration-color: var(--mb-color-error);
+  text-decoration-skip-ink: none;
+}
+
+.cmErrorTooltip {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--mb-color-error);
+  background: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-error);
+  border-radius: var(--mantine-radius-sm, 4px);
+  max-width: 20rem;
+  white-space: normal;
+  pointer-events: none;
+}
+
+.codeEditor {
+  flex: 1;
+  min-width: 7.5rem;
+
+  :global {
+    .cm-editor {
+      background: transparent;
+    }
+
+    .cm-focused {
+      outline: none;
+    }
+
+    .cm-content {
+      padding: 0;
+      font-family: var(--mb-default-monospace-font-family);
+      font-size: 0.875rem;
+      color: var(--mb-color-text-primary);
+    }
+
+    .cm-line {
+      padding: 0;
+    }
+
+    .cm-cursor {
+      border-left-width: 1.6px;
+      border-left-color: var(--mb-color-text-secondary);
+    }
+
+    .cm-placeholder {
+      color: var(--mb-color-text-tertiary);
+    }
+
+    .cm-scroller {
+      overflow: hidden;
+    }
+  }
 }

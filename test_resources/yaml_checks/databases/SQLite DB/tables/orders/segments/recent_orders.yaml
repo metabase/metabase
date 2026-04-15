@@ -1,0 +1,21 @@
+name: Recent Orders
+entity_id: recent-orders-segment
+definition:
+  database: SQLite DB
+  stages:
+  - filters:
+    - - ">"
+      - {}
+      - - field
+        - {}
+        - created_at
+      - 2025-01-01
+    source-table:
+    - SQLite DB
+    - null
+    - orders
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+serdes/meta:
+- id: recent-orders-segment
+  model: Segment

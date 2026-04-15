@@ -3,9 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
   getCurrentVisualizerState,
@@ -17,6 +16,10 @@ import { setTitle } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerVizDefinition } from "metabase-types/api";
 
 import { useVisualizerUi } from "../VisualizerUiContext";
+import {
+  trackVisualizerCloseClicked,
+  trackVisualizerSaveClicked,
+} from "../analytics";
 
 import S from "./Header.module.css";
 
@@ -47,10 +50,7 @@ export function Header({
   const dispatch = useDispatch();
 
   const handleSave = () => {
-    trackSimpleEvent({
-      event: "visualizer_save_clicked",
-      triggered_from: "visualizer-modal",
-    });
+    trackVisualizerSaveClicked();
 
     onSave(
       _.pick(visualizerState, ["display", "columnValuesMapping", "settings"]),
@@ -124,10 +124,7 @@ export function Header({
       <ActionIcon
         data-testid="visualizer-close-button"
         onClick={() => {
-          trackSimpleEvent({
-            event: "visualizer_close_clicked",
-            triggered_from: "visualizer-modal",
-          });
+          trackVisualizerCloseClicked();
           onClose();
         }}
       >

@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { useSelector } from "metabase/lib/redux";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { Flex, Icon, Stack, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { ToggleFullList } from "./ToggleFullList";
 import { useExpandableList } from "./hooks";

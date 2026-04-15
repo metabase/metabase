@@ -6,7 +6,11 @@ import type {
   MetabotLimitPeriod,
   MetabotLimitType,
 } from "metabase-types/api";
-export { SAVE_DEBOUNCE_MS, sanitizeUsageLimitValue } from "../../utils";
+export {
+  SAVE_DEBOUNCE_MS,
+  sanitizeUsageLimitValue,
+  getMaxUsageInputSuffix,
+} from "../../utils";
 
 export type GroupLimitsTabProps = {
   groupLimits: MetabotGroupLimit[];
@@ -17,6 +21,8 @@ export type GroupLimitsTabProps = {
   limitPeriod: MetabotLimitPeriod;
   limitType: MetabotLimitType;
   variant: "regular-groups" | "tenant-groups";
+  allUsersGroup?: GroupInfo;
+  allUsersGroupLimit?: number | null;
 };
 
 export type GroupLimitsMap = Record<number, number | null>;

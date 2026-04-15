@@ -283,12 +283,14 @@
                 2)
          3))
 
-;; subtract number of days between today and first day of week, then add one since first day of week = 1
+;; Use locale-independent Julian day arithmetic instead of TO_CHAR(date, 'D') which depends on NLS_TERRITORY (#57794).
+;; MOD(TO_NUMBER(TO_CHAR(date, 'J')), 7) gives: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+;; We add 1 and remap so Sunday=1 to match the AMERICA convention that db-start-of-week :sunday expects.
 (defmethod sql.qp/date [:oracle :day-of-week]
   [driver _ v]
   (sql.qp/adjust-day-of-week
    driver
-   (h2x/->integer [:to_char v (h2x/literal :d)])
+   (h2x/+ [::mod (h2x/+ [:to_number [:to_char v (h2x/literal :J)]] [:inline 1]) [:inline 7]] [:inline 1])
    (driver.common/start-of-week-offset driver)
    (fn mod-fn [& args]
      (into [::mod] args))))

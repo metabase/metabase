@@ -5,7 +5,9 @@ import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Stack, Text, TextInput } from "metabase/ui";
+import { Box, NumberInput, Stack, Text } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
+import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type { GroupInfo } from "metabase-types/api";
 
@@ -18,6 +20,7 @@ import {
   getDescription,
   getErrorMessage,
   getGroupLimitAriaLabel,
+  getMaxUsageInputSuffix,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -31,6 +34,8 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
     limitType,
     groupLimits,
     instanceLimit,
+    allUsersGroup,
+    allUsersGroupLimit,
   } = props;
 
   const [updateGroupLimit] = useUpdateAIControlsGroupLimitMutation();
@@ -73,13 +78,43 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
     SAVE_DEBOUNCE_MS,
   );
 
+  /**
+   * The "all users" group overrides this group's limit when:
+   * - it exists and this group is not itself the "all users" group
+   * - the "all users" limit is null (unlimited) OR higher than the group's own limit
+   */
+  const isAllUsersGroupOverridingLimit = (group: GroupInfo): boolean => {
+    if (
+      !allUsersGroup ||
+      isDefaultGroup(group) ||
+      group.magic_group_type === "all-external-users" ||
+      allUsersGroupLimit === undefined
+    ) {
+      return false;
+    }
+    const thisGroupLimit = localLimitsMap?.[group.id] ?? null;
+
+    if (thisGroupLimit === null) {
+      // this group is set to unlimited
+      return false;
+    }
+
+    return allUsersGroupLimit === null || allUsersGroupLimit > thisGroupLimit;
+  };
+
   const placeholder =
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
-  const handleChange = (group: GroupInfo, inputValue: string) => {
+  const handleChange = (group: GroupInfo, inputValue: string | number) => {
     const maxUsage = sanitizeUsageLimitValue(inputValue);
     setLocalLimitsMap((prev) => ({ ...prev, [group.id]: maxUsage }));
-    debouncedSaveGroupLimit(group, maxUsage);
+
+    const isOverInstanceLimit =
+      maxUsage != null && instanceLimit != null && maxUsage > instanceLimit;
+
+    if (!isOverInstanceLimit) {
+      debouncedSaveGroupLimit(group, maxUsage);
+    }
   };
 
   return (
@@ -103,25 +138,57 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
                 </tr>
               </thead>
               <tbody>
-                {groups.map((group) => (
-                  <tr key={group.id} className={S.BodyRow}>
-                    <td className={S.BodyCell}>{group.name}</td>
-                    <td className={S.BodyCell}>
-                      <TextInput
-                        placeholder={placeholder}
-                        value={localLimitsMap?.[group.id] ?? ""}
-                        onChange={(e) => handleChange(group, e.target.value)}
-                        classNames={{ input: S.LimitInput }}
-                        type="number"
-                        min={1}
-                        aria-label={getGroupLimitAriaLabel(
-                          limitType,
-                          group.name,
-                        )}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {groups.map((group) => {
+                  const inputValue = String(localLimitsMap?.[group.id] ?? "");
+                  const maxUsage = sanitizeUsageLimitValue(inputValue);
+                  const isOverInstanceLimit =
+                    maxUsage != null &&
+                    instanceLimit != null &&
+                    maxUsage > instanceLimit;
+                  const showAllUsersOverrideTooltip =
+                    isAllUsersGroupOverridingLimit(group) &&
+                    !!allUsersGroup &&
+                    !isOverInstanceLimit;
+
+                  return (
+                    <tr key={group.id} className={S.BodyRow}>
+                      <td className={S.BodyCell}>{group.name}</td>
+                      <td className={S.BodyCell}>
+                        <div className={S.InputWrapper}>
+                          <NumberInput
+                            placeholder={placeholder}
+                            value={inputValue}
+                            onChange={(value) => handleChange(group, value)}
+                            classNames={{ input: S.LimitInput }}
+                            suffix={getMaxUsageInputSuffix(
+                              limitType,
+                              localLimitsMap?.[group.id],
+                            )}
+                            min={0}
+                            decimalScale={0}
+                            aria-label={getGroupLimitAriaLabel(
+                              limitType,
+                              group.name,
+                            )}
+                            error={
+                              isOverInstanceLimit
+                                ? t`Can't be higher than the instance limit`
+                                : undefined
+                            }
+                            rightSection={
+                              showAllUsersOverrideTooltip ? (
+                                <AllUsersHigherAccessTooltipIcon
+                                  groupName={allUsersGroup.name}
+                                  variant="group-limits"
+                                />
+                              ) : undefined
+                            }
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </Box>

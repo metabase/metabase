@@ -6,11 +6,11 @@ import {
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import { Tables } from "metabase/entities/tables";
-import { useDispatch, useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
+import { useDispatch, useStore } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 

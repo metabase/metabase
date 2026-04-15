@@ -2,9 +2,9 @@ import type { Location } from "history";
 import { useEffect } from "react";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { parseHashOptions } from "metabase/lib/browser";
-import { isWithinIframe } from "metabase/lib/dom";
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
+import { parseHashOptions } from "metabase/utils/browser";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import { DEFAULT_EMBED_DISPLAY_PARAMS } from "../constants";
 import type { EmbeddingHashOptions } from "../lib/types";

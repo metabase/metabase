@@ -8,13 +8,13 @@ import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { commonReducers } from "metabase/reducers-common";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { Stack, Text } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import type { Database, DatabaseId } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   DatabaseMultiSelect,

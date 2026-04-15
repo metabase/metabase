@@ -2364,23 +2364,23 @@
               (lib.tu.notebook/add-breakout {:display-name "Summaries"} {:display-name "Created At: Year"} {}))))))
 
 (deftest ^:parallel display-info-propagate-join-aliases-test
-  (let [mp         (lib.tu/mock-metadata-provider
-                    meta/metadata-provider
-                    {:cards [{:id            1
-                              :dataset-query (lib.tu.macros/mbql-query venues
-                                               {:joins
-                                                [{:source-table $$categories
-                                                  :condition    [:= $category-id &c.categories.id]
-                                                  :fields       :all
-                                                  :alias        "c"}]})}]})
-        query      {:database (meta/id)
-                    :type     :query
-                    :query    {:source-table "card__1"}}
-        mlv2-query (lib/query mp query)
-        breakouts  (lib/breakoutable-columns mlv2-query)
-        agg-query  (-> mlv2-query
-                       (lib/breakout (second breakouts))
-                       (lib/breakout (last breakouts)))]
+  (let [mp          (lib.tu/mock-metadata-provider
+                     meta/metadata-provider
+                     {:cards [{:id            1
+                               :dataset-query (lib.tu.macros/mbql-query venues
+                                                {:joins
+                                                 [{:source-table $$categories
+                                                   :condition    [:= $category-id &c.categories.id]
+                                                   :fields       :all
+                                                   :alias        "c"}]})}]})
+        query       {:database (meta/id)
+                     :type     :query
+                     :query    {:source-table "card__1"}}
+        mbql5-query (lib/query mp query)
+        breakouts   (lib/breakoutable-columns mbql5-query)
+        agg-query   (-> mbql5-query
+                        (lib/breakout (second breakouts))
+                        (lib/breakout (last breakouts)))]
     (testing "display name should be correct; inherited column status has to be detected correctly for this to work"
       (is (= [["Name"     true]         ; they're both inherited!
               ["c → Name" true]]

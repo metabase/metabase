@@ -3,8 +3,8 @@ import cx from "classnames";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
-import * as Urls from "metabase/lib/urls";
 import { Breadcrumbs, Icon } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Card } from "metabase-types/api";
 
 interface CollectionBreadcrumbsProps {

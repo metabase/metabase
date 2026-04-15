@@ -1,8 +1,8 @@
 import _ from "underscore";
 
 import { isImplicitDeleteAction } from "metabase/actions/utils";
-import { isNotNull } from "metabase/lib/types";
-import { isEmpty } from "metabase/lib/validate";
+import { isNotNull } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 import type {
   ActionDashboardCard,
   ActionParameterValue,

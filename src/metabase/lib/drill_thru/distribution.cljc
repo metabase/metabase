@@ -39,7 +39,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-;; TODO: The original `Question.distribution()` sets the display to `bar`, but that's out of scope for MLv2.
+;; TODO: The original `Question.distribution()` sets the display to `bar`, but that's out of scope for Lib.
 ;; Make sure the FE does this on the question after evolving the query.
 (mu/defn distribution-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.distribution]
   "Select a column and see a histogram of how many rows fall into an automatic set of bins/buckets.

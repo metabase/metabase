@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
 import {
   ChartTypeSettings,
@@ -18,6 +17,7 @@ import {
   onOpenChartSettings,
   setUIControls,
 } from "metabase/redux/query-builder";
+import { useDispatch } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";

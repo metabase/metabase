@@ -155,7 +155,7 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
-   "/agent"                metabase.agent-api.api/routes
+   "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
@@ -176,11 +176,11 @@
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
-   "/eid-translation"      'metabase.eid-translation.api
+   "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
-   "/frontend-errors"      'metabase.frontend-errors.api
+   "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
@@ -188,7 +188,7 @@
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
-   "/mcp"                  metabase.mcp.api/handler
+   "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)

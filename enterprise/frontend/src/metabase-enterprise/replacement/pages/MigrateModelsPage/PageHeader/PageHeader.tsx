@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import * as Urls from "metabase/lib/urls";
 import { Box, Text, Title } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 export function PageHeader() {
   return (

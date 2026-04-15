@@ -74,19 +74,18 @@
     (mt/with-premium-features #{}
       (is (boolean? (metabot.settings/metabot-enabled?)))
       (is (boolean? (metabot.settings/embedded-metabot-enabled?)))
-      (is (string? (metabot.settings/llm-metabot-provider)))
-      (is (string? (metabot.settings/llm-metabot-provider-lite))))))
+      (is (string? (metabot.settings/llm-metabot-provider))))))
 
 (deftest metabot-configured-with-metabase-provider-and-proxy-url-test
   (testing "returns true when metabase-proxied provider and proxy URL is set"
-    (mt/with-premium-features #{:metabase-ai-provider}
+    (mt/with-premium-features #{:metabase-ai-managed}
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4"
                                          llm-proxy-base-url   "https://proxy.example.com"]
         (is (true? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-configured-with-metabase-provider-no-proxy-url-test
   (testing "returns false when metabase-proxied provider and no proxy URL"
-    (mt/with-premium-features #{:metabase-ai-provider}
+    (mt/with-premium-features #{:metabase-ai-managed}
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4"
                                          llm-proxy-base-url   nil]
         (is (false? (metabot.settings/llm-metabot-configured?)))))))
@@ -105,7 +104,7 @@
 
 (deftest metabot-configured-proxy-url-not-fallback-for-direct-provider-test
   (testing "proxy URL alone does not make a direct provider configured"
-    (mt/with-premium-features #{:metabase-ai-provider}
+    (mt/with-premium-features #{:metabase-ai-managed}
       (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
         (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4"
                                            llm-proxy-base-url   "https://proxy.example.com"]
@@ -134,14 +133,14 @@
 
 (deftest validate-metabot-provider-rejects-unknown-inner-provider-test
   (testing "rejects unknown inner provider under metabase/ prefix"
-    (mt/with-premium-features #{:metabase-ai-provider}
+    (mt/with-premium-features #{:metabase-ai-managed}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Unknown inner provider"
            (metabot.settings/llm-metabot-provider! "metabase/foobar/some-model"))))))
 
 (deftest validate-metabot-provider-rejects-metabase-prefix-without-model-test
   (testing "rejects metabase/provider with no model"
-    (mt/with-premium-features #{:metabase-ai-provider}
+    (mt/with-premium-features #{:metabase-ai-managed}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Model name is required"
            (metabot.settings/llm-metabot-provider! "metabase/anthropic/"))))))
@@ -157,37 +156,8 @@
 
 (deftest validate-metabot-provider-accepts-valid-metabase-prefixed-test
   (testing "accepts valid metabase/ prefixed provider strings"
-    (mt/with-premium-features #{:metabase-ai-provider}
+    (mt/with-premium-features #{:metabase-ai-managed}
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4"]
         (is (= "metabase/anthropic/claude-sonnet-4" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/openrouter/anthropic/claude-haiku-4-5"]
         (is (= "metabase/openrouter/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider)))))))
-
-;;; ------------------------------------------- Internal Tasks Tests -------------------------------------------
-
-(deftest internal-tasks-disabled-by-default-test
-  (testing "returns false when the setting is not explicitly enabled"
-    (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? nil
-                                       llm-anthropic-api-key               "sk-ant-test"]
-      (is (false? (metabot.settings/llm-metabot-internal-tasks-enabled?))))))
-
-(deftest internal-tasks-requires-lite-api-key-test
-  (testing "returns false when enabled but lite provider has no api key"
-    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
-      (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
-                                         llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"]
-        (is (false? (metabot.settings/llm-metabot-internal-tasks-enabled?)))))))
-
-(deftest internal-tasks-enabled-with-anthropic-test
-  (testing "returns true when enabled and anthropic lite provider api key is configured"
-    (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
-                                       llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
-                                       llm-anthropic-api-key               "sk-ant-test"]
-      (is (true? (metabot.settings/llm-metabot-internal-tasks-enabled?))))))
-
-(deftest internal-tasks-enabled-with-openai-test
-  (testing "works with openai lite provider"
-    (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
-                                       llm-metabot-provider-lite           "openai/gpt-4.1-mini"
-                                       llm-openai-api-key                  "sk-openai-test"]
-      (is (true? (metabot.settings/llm-metabot-internal-tasks-enabled?))))))

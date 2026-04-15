@@ -2,6 +2,11 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import {
+  trackMetricsViewerFilterAdded,
+  trackMetricsViewerFilterEdited,
+  trackMetricsViewerFilterRemoved,
+} from "metabase/metrics-viewer/analytics";
 import { Button, Icon, Popover } from "metabase/ui";
 import type {
   DimensionMetadata,
@@ -59,14 +64,20 @@ export function DimensionFilterButton({
       const parsed = parseFilter(definition, filterClause);
       if (parsed) {
         onChange(parsed.value);
+        if (dimensionFilter) {
+          trackMetricsViewerFilterEdited("dimension_filter");
+        } else {
+          trackMetricsViewerFilterAdded("dimension_filter");
+        }
       }
       setIsOpen(false);
     },
-    [definition, onChange],
+    [definition, onChange, dimensionFilter],
   );
 
   const handleClear = useCallback(() => {
     onChange(undefined);
+    trackMetricsViewerFilterRemoved("dimension_filter");
     setIsOpen(false);
   }, [onChange]);
 

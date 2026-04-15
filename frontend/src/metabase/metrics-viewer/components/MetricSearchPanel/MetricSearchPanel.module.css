@@ -10,6 +10,10 @@
   border-color: var(--mb-color-brand);
 }
 
+.container:has([data-has-error]) {
+  border-color: var(--mb-color-error);
+}
+
 .filterPillsSection {
   border-radius: 0 0 var(--mantine-radius-lg) var(--mantine-radius-lg);
 }

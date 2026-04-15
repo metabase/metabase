@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -6,6 +6,7 @@ import { useListPermissionsGroupsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
 import {
   useGetAIControlsGroupLimitsQuery,
   useGetAIControlsInstanceLimitQuery,
@@ -68,6 +69,33 @@ export function GroupLimitsSettingsSection() {
 
   const instanceLimit = instanceLimitData?.max_usage ?? null;
 
+  const allUsersGroup = useMemo(
+    () => userGroups.find((g) => isDefaultGroup(g)),
+    [userGroups],
+  );
+  const allUsersGroupLimit = useMemo(() => {
+    if (!allUsersGroup) {
+      return undefined;
+    }
+    const limitEntry = groupLimits.find((l) => l.group_id === allUsersGroup.id);
+    // No entry means unlimited (null)
+    return limitEntry?.max_usage ?? null;
+  }, [allUsersGroup, groupLimits]);
+
+  const allTenantUsersGroup = useMemo(
+    () => tenantGroups.find((g) => g.magic_group_type === "all-external-users"),
+    [tenantGroups],
+  );
+  const allTenantUsersGroupLimit = useMemo(() => {
+    if (!allTenantUsersGroup) {
+      return undefined;
+    }
+    const limitEntry = groupLimits.find(
+      (l) => l.group_id === allTenantUsersGroup.id,
+    );
+    return limitEntry?.max_usage ?? null;
+  }, [allTenantUsersGroup, groupLimits]);
+
   const commonLimitPeriodProps = {
     instanceLimit,
     limitPeriod,
@@ -85,6 +113,8 @@ export function GroupLimitsSettingsSection() {
           groups={userGroups}
           isLoading={isLoadingUserGroups || isLoadingGroupLimits}
           variant="regular-groups"
+          allUsersGroup={allUsersGroup}
+          allUsersGroupLimit={allUsersGroupLimit}
         />
       </SettingsSection>
     );
@@ -110,6 +140,8 @@ export function GroupLimitsSettingsSection() {
             groups={userGroups}
             isLoading={isLoadingUserGroups || isLoadingGroupLimits}
             variant="regular-groups"
+            allUsersGroup={allUsersGroup}
+            allUsersGroupLimit={allUsersGroupLimit}
           />
         </Tabs.Panel>
 
@@ -121,6 +153,8 @@ export function GroupLimitsSettingsSection() {
             groups={tenantGroups}
             isLoading={isLoadingTenantGroups || isLoadingGroupLimits}
             variant="tenant-groups"
+            allUsersGroup={allTenantUsersGroup}
+            allUsersGroupLimit={allTenantUsersGroupLimit}
           />
         </Tabs.Panel>
 

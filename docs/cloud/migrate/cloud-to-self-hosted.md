@@ -60,4 +60,4 @@ If you're migrating from a Metabase Cloud Pro plan to a self-hosted Pro plan, yo
 
 4. **Pro plans will need to input a license token to activate the paid features**. If you're migrating to a Pro self-hosted plan, [activate your Enterprise Edition token](../../installation-and-operation/activating-the-enterprise-edition.md).
 
-   If you're on a Pro Cloud plan, you'll need to cancel that plan and start a new self-hosted Pro plan to get the token you'll need to activate your paid features . See [Preparing to migrate from cloud to self-hosted](#preparing-to-migrate-from-cloud-to-self-hosted).
+   If you're on a Pro Cloud plan, you'll need to cancel that plan and start a new self-hosted Pro plan to get the token you'll need to activate your paid features. See [Preparing to migrate from cloud to self-hosted](#preparing-to-migrate-from-cloud-to-self-hosted).

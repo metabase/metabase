@@ -3,15 +3,16 @@
    so that non-REST modules (e.g. metabot-v3, workspaces) can use them without depending
    on the `-rest` module."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform :as transform.model]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -47,6 +48,18 @@
     (throw (ex-info (:error error)
                     (assoc error
                            :status-code 400)))))
+
+(defn validate-target-schema!
+  "Require a non-blank `:target.schema` when the target database supports schemas.
+
+  On schemas-supporting drivers a nil schema makes post-run sync miss the physical table
+  and leaves the Metabase table with zero fields."
+  [transform]
+  (let [db-id (transforms-base.i/target-db-id transform)
+        db    (t2/select-one :model/Database db-id)]
+    (when (and db (driver.u/supports? (:engine db) :schemas db))
+      (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
+                     (deferred-tru "A target schema is required for this database.")))))
 
 (defn validate-incremental-column-type!
   "Validates that the checkpoint column for an incremental transform has a supported type.
@@ -100,6 +113,7 @@
   ([body creator-id]
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
+   (validate-target-schema! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -134,6 +148,8 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
+                      (when (contains? body :target)
+                        (validate-target-schema! new))
                       (validate-incremental-column-type! new)
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)

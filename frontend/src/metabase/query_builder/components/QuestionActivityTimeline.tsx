@@ -4,10 +4,10 @@ import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;

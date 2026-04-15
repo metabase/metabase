@@ -12,11 +12,6 @@ import {
   normalizedCollection,
 } from "metabase/entities/collections";
 import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
-import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
 } from "metabase/redux/query-builder";
@@ -25,6 +20,11 @@ import {
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 import { color } from "metabase/ui/colors";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  undo,
+} from "metabase/utils/entities";
 
 export const INJECT_RTK_QUERY_QUESTION_VALUE =
   "metabase/entities/questions/FETCH_ADHOC_METADATA";

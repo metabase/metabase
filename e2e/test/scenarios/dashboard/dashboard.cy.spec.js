@@ -10,7 +10,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { cancelConfirmationModal } from "e2e/test/scenarios/admin/performance/helpers/modals-helpers";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import {
   createMockVirtualCard,
   createMockVirtualDashCard,
