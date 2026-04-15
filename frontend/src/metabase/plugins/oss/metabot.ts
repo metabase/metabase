@@ -2,21 +2,14 @@ import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
-type MetabaseAIProviderSetupProps = {
-  isMetabaseProviderConnected: boolean;
-  isSavingMetabaseConnection: boolean;
-  onConnect: () => Promise<void>;
-};
-
 const getDefaultPluginMetabot = () => ({
   isEnabled: false,
-  MetabaseAIProviderSetup:
-    PluginPlaceholder as ComponentType<MetabaseAIProviderSetupProps>,
+  MetabaseAIProviderSetup: PluginPlaceholder as ComponentType,
 });
 
 export const PLUGIN_METABOT: {
   isEnabled: boolean;
-  MetabaseAIProviderSetup: ComponentType<MetabaseAIProviderSetupProps>;
+  MetabaseAIProviderSetup: ComponentType;
 } = getDefaultPluginMetabot();
 
 /**
