@@ -192,7 +192,7 @@
            db-id (if metadata-provider (:db-id base) (:db_id base))
            db-engine (some-> (if metadata-provider
                                (lib.metadata/database metadata-provider)
-                               (metabot.tools.u/get-database db-id :engine))
+                               (metabot.tools.u/get-database db-id))
                              :engine name)
            mp (when query-needed?
                 (or metadata-provider
@@ -207,18 +207,9 @@
                              (metabot.tools.u/table-field-id-prefix id))
            related-tables (when with-related-tables?
                             (related-tables table-query field-id-prefix with-fields? field-values-fn))]
-       (-> {:id id
-            :type :table
-            :fields (into [] (map-indexed #(metabot.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
-            :name (:name base)
-            ;; :display_name should be (lib/display-name table-query), but we want to avoid creating the query if possible
-            :display_name (some->> (:name base)
-                                   (u.humanization/name->human-readable-name :simple))
-            :database_id db-id
-            :database_engine db-engine
-            :database_schema (:schema base)}
-           (m/assoc-some :description (:description base)
-                         :related_tables related-tables
+       (-> (metabot.tools.u/->result-table base db-engine)
+           (assoc :fields (into [] (map-indexed #(metabot.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols))
+           (m/assoc-some :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))
@@ -394,46 +385,47 @@
         {:output (ex-message e) :status-code 404}
         (metabot.tools.u/handle-agent-error e)))))
 
-(defn- database-details
-  "Convert a Database model to the agent API response shape."
-  [db]
-  {:id     (:id db)
-   :name   (:name db)
-   :engine (some-> (:engine db) name)})
-
 (defn list-databases
   "Get a list of all databases the current user can read without including its tables."
   []
   (try
-    (let [dbs (metabot.tools.u/list-databases :name :engine)]
-      {:structured-output (mapv database-details dbs)})
+    (let [dbs (metabot.tools.u/list-databases)]
+      {:structured-output (mapv metabot.tools.u/->result-database dbs)})
     (catch Exception e
       (metabot.tools.u/handle-agent-error e))))
 
+(defn- database-table-details
+  "Build a table result map for `get-database-details`, optionally including its fields."
+  [table engine table-id->fields with-fields?]
+  (let [id     (:id table)
+        prefix (metabot.tools.u/table-field-id-prefix id)
+        cols   (->> (get table-id->fields id)
+                    (sort-by (juxt (fn [f] (or (:position f) 0)) :id)))]
+    (cond-> (metabot.tools.u/->result-table table engine)
+      with-fields?
+      (assoc :fields
+             (into []
+                   (map-indexed
+                    (fn [i field]
+                      (metabot.tools.u/->result-column field i prefix)))
+                   cols)))))
+
 (defn get-database-details
-  "Get details for a database by ID, optionally including its tables."
-  [{:keys [database-id with-tables? with-fields? with-field-values? with-related-tables?
-           with-metrics? with-measures? with-segments?]
-    :or   {with-tables? false, with-fields? false, with-field-values? false, with-related-tables? false,
-           with-metrics? false, with-measures? false, with-segments? false}}]
+  "Get details for a database by ID, optionally including its tables and fields.
+  Uses raw t2 queries so it stays efficient on databases with many tables and fields."
+  [{:keys [database-id with-tables? with-fields?]
+    :or   {with-tables? false, with-fields? false}}]
   (try
-    (lib-be/with-metadata-provider-cache
-      (let [db       (metabot.tools.u/get-database database-id :name :engine)
-            response (database-details db)]
-        {:structured-output
-         (cond-> response
-           with-tables?
-           (assoc :tables
-                  (let [mp     (lib-be/application-database-metadata-provider database-id)
-                        tables (lib.metadata/tables mp)
-                        opts   (cond-> {:metadata-provider    mp
-                                        :with-fields?         with-fields?
-                                        :with-related-tables? with-related-tables?
-                                        :with-metrics?        with-metrics?
-                                        :with-measures?       with-measures?
-                                        :with-segments?       with-segments?}
-                                 (not with-field-values?) (assoc :field-values-fn identity))]
-                    (mapv #(table-details (:id %) opts) tables))))}))
+    (let [db               (metabot.tools.u/get-database database-id)
+          engine           (some-> (:engine db) name)
+          tables           (when with-tables?
+                             (metabot.tools.u/list-database-tables database-id))
+          table-id->fields (when with-fields?
+                             (group-by :table_id (metabot.tools.u/list-database-table-fields database-id)))]
+      {:structured-output
+       (cond-> (metabot.tools.u/->result-database db)
+         with-tables?
+         (assoc :tables (mapv #(database-table-details % engine table-id->fields with-fields?) tables)))})
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
