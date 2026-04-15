@@ -52,37 +52,3 @@ runs:
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
         restore-keys: |
           ${{ steps.get-cache-keys.outputs.m2-restore-key }}
-
-    # Workaround: the athena-jdbc artifact on s3.amazonaws.com/metabase-maven-downloads
-    # is missing a POM, so tools.deps falls through to the opensaml repo, which returns
-    # 403 (not 404) and breaks classpath resolution. Install a stub POM + JAR into the
-    # local m2 cache so aether resolves from there. Remove once bin/athena.bb has been
-    # re-run to publish a POM alongside the JAR on S3.
-    - name: Prime athena-jdbc local m2 (missing-POM workaround)
-      shell: bash
-      env:
-        ATHENA_JDBC_VERSION: "3.7.0"
-      run: |
-        DIR="$HOME/.m2/repository/com/metabase/athena-jdbc/$ATHENA_JDBC_VERSION"
-        if [ -f "$DIR/athena-jdbc-$ATHENA_JDBC_VERSION.pom" ] && [ -f "$DIR/athena-jdbc-$ATHENA_JDBC_VERSION.jar" ]; then
-          echo "athena-jdbc $ATHENA_JDBC_VERSION already present in local m2, skipping"
-          exit 0
-        fi
-        mkdir -p "$DIR"
-        curl --retry 3 --retry-delay 5 --fail -L -o "$DIR/athena-jdbc-$ATHENA_JDBC_VERSION.jar" \
-          "https://s3.amazonaws.com/metabase-maven-downloads/com/metabase/athena-jdbc/$ATHENA_JDBC_VERSION/athena-jdbc-$ATHENA_JDBC_VERSION.jar"
-        cat > "$DIR/athena-jdbc-$ATHENA_JDBC_VERSION.pom" <<EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <project xmlns="http://maven.apache.org/POM/4.0.0">
-          <modelVersion>4.0.0</modelVersion>
-          <groupId>com.metabase</groupId>
-          <artifactId>athena-jdbc</artifactId>
-          <version>$ATHENA_JDBC_VERSION</version>
-          <packaging>jar</packaging>
-        </project>
-        EOF
-        cat > "$DIR/_remote.repositories" <<EOF
-        #NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
-        athena-jdbc-$ATHENA_JDBC_VERSION.jar>=
-        athena-jdbc-$ATHENA_JDBC_VERSION.pom>=
-        EOF

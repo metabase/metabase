@@ -55,23 +55,26 @@
 (defn create-new-metadata [version]
   (let [existing (x/parse (io/reader "https://s3.amazonaws.com/metabase-maven-downloads/com/metabase/athena-jdbc/maven-metadata.xml"))
         z        (z/xml-zip existing)]
-    (when (find-pred z (every-pred (tag= :version)
-                                   (content= version)))
-      (throw (Exception. "Version already exists in maven-metadata.xml")))
-    (let [indent (-> z (find-pred (tag= :versions)) z/down first)
-          indent (when (string? indent) indent)
-          xml    (-> z
-                     (find-pred (tag= :versions))
-                     (z/insert-child (x/element :version {} version))
-                     (z/insert-child indent)
-                     topmost
-                     (find-pred (tag= :release))
-                     (z/down)
-                     (z/replace version)
-                     (z/root))]
-      (println version "=> maven-metadata.xml")
-      (with-open [w (io/writer "maven-metadata.xml")]
-        (x/emit xml w)))))
+    (if (find-pred z (every-pred (tag= :version)
+                                 (content= version)))
+      (do
+        (println version "already in maven-metadata.xml, preserving existing file")
+        (with-open [w (io/writer "maven-metadata.xml")]
+          (x/emit (z/root z) w)))
+      (let [indent (-> z (find-pred (tag= :versions)) z/down first)
+            indent (when (string? indent) indent)
+            xml    (-> z
+                       (find-pred (tag= :versions))
+                       (z/insert-child (x/element :version {} version))
+                       (z/insert-child indent)
+                       topmost
+                       (find-pred (tag= :release))
+                       (z/down)
+                       (z/replace version)
+                       (z/root))]
+        (println version "=> maven-metadata.xml")
+        (with-open [w (io/writer "maven-metadata.xml")]
+          (x/emit xml w))))))
 
 (defn download-latest [version]
   (let [base-url  "https://s3.amazonaws.com/athena-downloads/"
