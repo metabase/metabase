@@ -80,6 +80,7 @@ export const useInitDataInternal = ({
   if (!api.requestClient) {
     api.requestClient = {
       name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      // Note: this is *package* version, it's undefined in EAJS
       version: sdkPackageVersion,
     };
   }
