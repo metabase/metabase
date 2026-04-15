@@ -1,6 +1,6 @@
 (ns metabase.util.encryption
-  "Utility functions for encrypting and decrypting strings using AES256 CBC + HMAC SHA512 and the
-  `MB_ENCRYPTION_SECRET_KEY` env var.
+  "Utility functions for encrypting and decrypting strings using AES256 CBC + HMAC SHA512 (at-rest) and
+  AES256-GCM (streaming) with the `MB_ENCRYPTION_SECRET_KEY` env var.
 
   You can generate a new key with something like
 
@@ -25,11 +25,12 @@
    [ring.util.codec :as codec])
   (:import (java.io ByteArrayInputStream InputStream SequenceInputStream)
            (javax.crypto Cipher CipherInputStream)
-           (javax.crypto.spec SecretKeySpec IvParameterSpec)))
+           (javax.crypto.spec GCMParameterSpec IvParameterSpec SecretKeySpec)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^:const aes-streaming-spec "AES/CBC/PKCS5Padding")
+(def ^:private ^:const aes-cbc-streaming-spec "AES/CBC/PKCS5Padding")
+(def ^:private ^:const aes-streaming-spec "AES/GCM/NoPadding")
 
 (defn secret-key->hash
   "Generate a 64-byte byte array hash of `secret-key` using 100,000 iterations of PBKDF2+SHA512."
@@ -110,8 +111,8 @@
                      {:algorithm :aes256-cbc-hmac-sha512}))))
 
 (defn encrypt-stream
-  "Wraps a plaintext input stream into an input stream that encrypts it using AES256 CBC.
-  The encryption format is slightly different for streams vs. fixed length data"
+  "Wraps a plaintext input stream into an input stream that encrypts it using AES256-GCM (authenticated encryption).
+  The encryption format is slightly different for streams vs. fixed length data."
   {:added "0.53.0"}
   (^InputStream [^InputStream input-stream]
    (encrypt-stream default-secret-key input-stream))
@@ -119,8 +120,8 @@
    (let [spec aes-streaming-spec
          spec-header (codecs/to-bytes (format "%-32s" spec))
          cipher (Cipher/getInstance spec)
-         iv (nonce/random-bytes 16)]
-     (.init cipher Cipher/ENCRYPT_MODE (SecretKeySpec. (bytes/slice secret-key 32 64) "AES") (IvParameterSpec. iv))
+         iv (nonce/random-bytes 12)]
+     (.init cipher Cipher/ENCRYPT_MODE (SecretKeySpec. (bytes/slice secret-key 32 64) "AES") (GCMParameterSpec. 128 iv))
      (SequenceInputStream. (ByteArrayInputStream. (bytes/concat spec-header iv)) (CipherInputStream. input-stream cipher)))))
 
 (defn encrypt-for-stream
@@ -133,23 +134,32 @@
      (.readAllBytes encrypted))))
 
 (defn maybe-decrypt-stream
-  "Wraps a possibly-encrypted input stream into a new input stream that decrypts it if necessary."
+  "Wraps a possibly-encrypted input stream into a new input stream that decrypts it if necessary.
+  Supports both AES-GCM (v0.54.0+) and legacy AES-CBC (v0.53.0) encrypted streams."
   {:added "0.53.0"}
   (^InputStream [^InputStream input-stream]
    (maybe-decrypt-stream default-secret-key input-stream))
   (^InputStream [secret-key ^InputStream input-stream]
    (let [spec-array (byte-array 32)
          spec-array-length (.read input-stream spec-array)
-         spec (str/trim (codecs/bytes->str spec-array))]
+         spec (str/trim (codecs/bytes->str spec-array))
+         aes-key (SecretKeySpec. (bytes/slice secret-key 32 64) "AES")]
      (cond
        (= spec-array-length -1)
        input-stream
 
        (and (= spec-array-length 32) (= spec aes-streaming-spec))
        (let [cipher (Cipher/getInstance spec)
+             iv (byte-array 12)
+             _ (.read input-stream iv)]
+         (.init cipher Cipher/DECRYPT_MODE aes-key (GCMParameterSpec. 128 iv))
+         (CipherInputStream. input-stream cipher))
+
+       (and (= spec-array-length 32) (= spec aes-cbc-streaming-spec))
+       (let [cipher (Cipher/getInstance spec)
              iv (byte-array 16)
              _ (.read input-stream iv)]
-         (.init cipher Cipher/DECRYPT_MODE (SecretKeySpec. (bytes/slice secret-key 32 64) "AES") (IvParameterSpec. iv))
+         (.init cipher Cipher/DECRYPT_MODE aes-key (IvParameterSpec. iv))
          (CipherInputStream. input-stream cipher))
 
        :else
