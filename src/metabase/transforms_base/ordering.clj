@@ -62,6 +62,17 @@
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 
+(defn safe-table-dependencies
+  "Like `table-dependencies`, but logs and returns `#{}` if the computation throws. Used by the
+  scheduler and cycle detection so a single broken transform can't poison graph traversal."
+  [{:keys [id] :as transform}]
+  (try
+    (transforms-base.i/table-dependencies transform)
+    (catch Throwable e
+      (log/warnf e "Failed to compute table dependencies for transform %s; treating as no dependencies"
+                 (pr-str id))
+      #{})))
+
 (mu/defn- output-table-map
   [transforms]
   (into {}
@@ -135,12 +146,7 @@
 
           :else
           (let [transform    (all-by-id id)
-                raw-deps     (try
-                               (transforms-base.i/table-dependencies transform)
-                               (catch Throwable e
-                                 (log/warnf e "Failed to compute table dependencies for transform %s; treating as no dependencies"
-                                            (pr-str id))
-                                 #{}))
+                raw-deps     (safe-table-dependencies transform)
                 resolved-ids (into #{}
                                    (keep (fn [dep]
                                            (resolve-dependency dep output-tables all-ids target-refs)))
@@ -196,7 +202,7 @@
         output-tables    (output-table-map db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
         target-refs      (target-ref-map transforms)
-        node->children   #(->> % transforms-by-id transforms-base.i/table-dependencies
+        node->children   #(->> % transforms-by-id safe-table-dependencies
                                (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]
