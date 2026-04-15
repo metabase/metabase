@@ -10,6 +10,10 @@ import { renderWithProviders } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
@@ -25,10 +29,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import DashboardSubscriptionsSidebar from "../DashboardSubscriptionsSidebar";
 
@@ -148,7 +148,11 @@ export function setup({
           name: "channel",
           type: "select",
           displayName: "Post to",
-          options: ["#general", "#random", "#alerts"],
+          options: [
+            { displayName: "#general", id: "C001" },
+            { displayName: "#random", id: "C002" },
+            { displayName: "#alerts", id: "C003" },
+          ],
           required: true,
         },
       ],

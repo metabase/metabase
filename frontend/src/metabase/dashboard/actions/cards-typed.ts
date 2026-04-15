@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import {
   isQuestionDashCard,
@@ -31,7 +32,6 @@ import type {
   VirtualCard,
   VisualizerVizDefinition,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   trackCardCreated,

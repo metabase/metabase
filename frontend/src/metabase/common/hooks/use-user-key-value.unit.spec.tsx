@@ -8,10 +8,10 @@ import {
 } from "__support__/server-mocks/user-key-value";
 import { waitFor } from "__support__/ui";
 import { mainReducers as reducers } from "metabase/reducers-main";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getStore } from "metabase/store";
 import { MetabaseReduxProvider } from "metabase/utils/redux";
 import type { UserKeyValue } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   type UseUserKeyValueParams,

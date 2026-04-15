@@ -680,7 +680,7 @@
     (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (serdes/*export-database-fk* (:db_id table))]
+  (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})

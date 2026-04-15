@@ -5,11 +5,11 @@ import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import type { QueryModalType } from "metabase/querying/constants";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import { ViewSection } from "../ViewSection";
 

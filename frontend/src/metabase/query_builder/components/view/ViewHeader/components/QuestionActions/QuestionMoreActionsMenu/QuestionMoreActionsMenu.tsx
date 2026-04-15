@@ -18,13 +18,13 @@ import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/compon
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { onOpenQuestionSettings } from "metabase/redux/query-builder";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import QuestionActionsS from "./QuestionActions.module.css";
 import { QuestionAlertsMenuItem } from "./QuestionAlertsMenuItem";

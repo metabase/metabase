@@ -155,14 +155,17 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api}
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init}
    :uses    #{api
               auth-identity
               lib
+              llm
               metabot
               query-processor
               request
               server
+              settings
               util}
    :model-imports #{:model/User}}
 
@@ -1152,6 +1155,7 @@
            api
            api-scope
            config
+           llm
            oauth-server
            request
            server
@@ -1290,6 +1294,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.serialization.resolve
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -1487,6 +1492,7 @@
            config
            events
            internal-stats
+           llm
            settings
            startup
            task
@@ -2046,6 +2052,7 @@
               permissions
               premium-features
               request
+              server
               settings
               system
               util}
@@ -2736,9 +2743,22 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Dashboard
+                    :model/DatabaseRouter
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
+
+  enterprise/checker
+  {:team "Graphy"
+   ;; todo: add ability to prevent usage (transitive even) of app db
+   :api  #{}
+   :uses #{lib
+           models
+           query-processor
+           sql-tools
+           util
+           enterprise/dependencies}
+   :model-imports #{:model/Database}}
 
   enterprise/cloud-add-ons
   {:team "Cloud"
@@ -2835,7 +2855,8 @@
 
   enterprise/dependencies
   {:team "Graphy"
-   :api  #{metabase-enterprise.dependencies.api
+   :api  #{metabase-enterprise.dependencies.analysis
+           metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
@@ -3054,6 +3075,7 @@
                     :model/Field
                     :model/Measure
                     :model/PersistedInfo
+                    :model/Sandbox
                     :model/Segment
                     :model/Table
                     :model/Transform}}
