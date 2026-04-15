@@ -1,4 +1,5 @@
 export * from "./ai-controls";
+export * from "./custom-viz-plugin";
 export * from "./api";
 export * from "./audit-info";
 export * from "./billing-info";

@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { useListAllCustomVizPluginsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useListAllCustomVizPluginsQuery } from "metabase-enterprise/api";
 
 import { AddDevCustomVizForm } from "./AddDevCustomVizForm";
 import { EditDevCustomVizForm } from "./EditDevCustomVizForm";

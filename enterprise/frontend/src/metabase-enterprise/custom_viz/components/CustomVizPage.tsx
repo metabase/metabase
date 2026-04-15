@@ -8,11 +8,6 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import {
-  useCreateCustomVizPluginMutation,
-  useListAllCustomVizPluginsQuery,
-  useUpdateCustomVizPluginMutation,
-} from "metabase/api";
-import {
   Form,
   FormCheckbox,
   FormErrorMessage,
@@ -23,6 +18,11 @@ import {
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
+import {
+  useCreateCustomVizPluginMutation,
+  useListAllCustomVizPluginsQuery,
+  useUpdateCustomVizPluginMutation,
+} from "metabase-enterprise/api";
 
 type Props = {
   params?: {

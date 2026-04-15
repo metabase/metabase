@@ -3,7 +3,6 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useCreateDevCustomVizPluginMutation } from "metabase/api";
 import {
   Form,
   FormCheckbox,
@@ -13,6 +12,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Group, Stack } from "metabase/ui";
+import { useCreateDevCustomVizPluginMutation } from "metabase-enterprise/api";
 
 type FormState = {
   devBundleUrl: string;
