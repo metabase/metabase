@@ -80,8 +80,9 @@
       metrics/filter-dimensions-for-user))
 
 (defn- score-dimensions
-  "Score dimensions by interestingness, sort by score descending, and optionally filter by cutoff."
-  [entity cutoff]
+  "Score dimensions by interestingness, sort by score descending, and optionally
+   filter by cutoff and/or limit to top N."
+  [entity cutoff limit]
   (let [dims (:dimensions entity)]
     (assoc entity :dimensions
            (cond->> dims
@@ -91,18 +92,23 @@
                               (assoc d :interestingness-score score))))
              true   (sort-by :interestingness-score >)
              true   vec
-             cutoff (filterv #(>= (:interestingness-score %) cutoff))))))
+             cutoff (filterv #(>= (:interestingness-score %) cutoff))
+             limit  (into [] (take limit))))))
 
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID.
 
   Dimensions are scored by interestingness and sorted highest-first.
-  Pass `interestingness_cutoff` (0.0-1.0) to filter out low-scoring dimensions."
+  Pass `interestingness_cutoff` (0.0-1.0) to filter out low-scoring dimensions.
+  Pass `dimension_limit` to return only the top N most interesting dimensions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [interestingness_cutoff]} :- [:map [:interestingness_cutoff {:optional true} [:maybe :double]]]]
+   {:keys [interestingness_cutoff dimension_limit]}
+   :- [:map
+       [:interestingness_cutoff {:optional true} [:maybe :double]]
+       [:dimension_limit        {:optional true} [:maybe ms/PositiveInt]]]]
   (let [measure (hydrated-measure id)]
     (-> measure
-        (score-dimensions interestingness_cutoff)
+        (score-dimensions interestingness_cutoff dimension_limit)
         (assoc :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure))))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
