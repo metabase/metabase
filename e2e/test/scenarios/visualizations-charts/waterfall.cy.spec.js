@@ -426,6 +426,34 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 
+  it("should display goal line when configured", () => {
+    H.visitQuestionAdhoc({
+      display: "waterfall",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        },
+      },
+    });
+
+    H.openVizSettingsSidebar();
+
+    H.leftSidebar().contains("Display").click();
+
+    H.leftSidebar().within(() => {
+      cy.findByText("Goal line").click();
+      cy.findByLabelText("Goal value").clear().type("11000");
+      cy.findByLabelText("Goal label").clear().type("Target");
+    });
+
+    H.echartsContainer().findByText("Target").should("exist");
+    H.goalLine().should("exist");
+  });
+
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
       H.restore();
