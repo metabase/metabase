@@ -1,9 +1,15 @@
 (ns metabase.mq.listener
   "Listener registry: registration, lookup, and the `def-listener!` macro."
   (:require
+   [metabase.mq.queue.transport-impl :as q.transport-impl]
+   [metabase.mq.topic.transport-impl :as topic.transport-impl]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
+
+(comment
+  q.transport-impl/keep-me
+  topic.transport-impl/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -113,7 +119,7 @@
 
 (defn register-listeners!
   "Call all [[def-listener!]] implementations to register their listeners.
-   Called at startup and in test setup (from `with-sync-mq`).
+   Called at startup and in test setup (from `with-test-mq`).
    Throws on the first registration failure so broken listeners are caught early."
   []
   (doseq [[k f] (methods def-listener*)]

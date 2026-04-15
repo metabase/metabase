@@ -1,7 +1,7 @@
 (ns metabase.mq.queue.appdb-test
   (:require
    [clojure.test :refer :all]
-   [metabase.mq.analytics :as mq.analytics]
+   [metabase.analytics.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.queue.appdb :as q.appdb]
@@ -307,9 +307,9 @@
     (try
       (t2/insert! :queue_message_batch {:queue_name (name queue-name) :messages (json/encode ["m1"]) :status "pending"})
       (t2/insert! :queue_message_batch {:queue_name (name queue-name) :messages (json/encode ["m2"]) :status "failed"})
-      (with-redefs [mq.analytics/set! (fn [metric labels value]
-                                        (when (= metric :metabase-mq/appdb-queue-depth)
-                                          (swap! gauge-calls conj {:labels labels :value value})))]
+      (with-redefs [analytics/set! (fn [metric labels value]
+                                     (when (= metric :metabase-mq/appdb-queue-depth)
+                                       (swap! gauge-calls conj {:labels labels :value value})))]
         (#'q.appdb/update-depth-gauges!))
       (testing "Gauge is emitted for each queue/status combination"
         (let [calls-for-queue (filter #(= (name queue-name) (-> % :labels :channel)) @gauge-calls)

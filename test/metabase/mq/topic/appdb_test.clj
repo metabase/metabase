@@ -1,7 +1,7 @@
 (ns metabase.mq.topic.appdb-test
   (:require
    [clojure.test :refer :all]
-   [metabase.mq.analytics :as mq.analytics]
+   [metabase.analytics.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.topic.appdb :as topic.appdb]
@@ -111,9 +111,9 @@
                                          :where    [:= :topic_name (name topic-name)]
                                          :order-by [[:id :desc]]
                                          :limit    1})))]
-          (with-redefs [mq.analytics/set! (fn [metric labels value]
-                                            (when (= metric :metabase-mq/appdb-topic-subscriber-lag)
-                                              (swap! gauge-calls conj {:labels labels :value value})))]
+          (with-redefs [analytics/set! (fn [metric labels value]
+                                         (when (= metric :metabase-mq/appdb-topic-subscriber-lag)
+                                           (swap! gauge-calls conj {:labels labels :value value})))]
             (#'topic.appdb/update-lag-gauges!))
           (testing "Lag gauge is emitted with the correct unread count"
             (let [call (first (filter #(= (name topic-name) (-> % :labels :channel)) @gauge-calls))]

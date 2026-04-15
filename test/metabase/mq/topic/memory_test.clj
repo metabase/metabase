@@ -2,42 +2,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
-   [metabase.mq.impl :as mq.impl]
-   [metabase.mq.listener :as listener]
-   [metabase.mq.memory :as memory]
-   [metabase.mq.publish-buffer :as publish-buffer]
-   [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.memory :as topic.memory])
-  (:import (clojure.lang ExceptionInfo)
-           (java.util.concurrent CyclicBarrier)))
+   [metabase.mq.test-util :as mq.tu])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.util.concurrent CyclicBarrier)))
 
 (set! *warn-on-reflection* true)
 
-(defmacro ^:private with-memory-topics
-  "Sets up an isolated memory topic environment with a fresh layer and binds
-  `tbe-sym` to the freshly constructed `MemoryTopicBackend`. Does NOT start the
-  background poll thread — tests call `deliver-pending!` to drive delivery
-  synchronously."
-  [[tbe-sym] & body]
-  `(let [layer# (memory/make-layer)
-         ~tbe-sym (topic.memory/make-backend layer#)]
-     (binding [topic.backend/*backend*           ~tbe-sym
-               listener/*listeners*              (atom {})
-               publish-buffer/*publish-buffer-ms* 0
-               publish-buffer/*publish-buffer*    (atom {})]
-       ~@body)))
-
-(defn- deliver-pending!
-  "Drains all pending memory channels on the given backend's layer and delivers
-  messages synchronously on the current thread."
-  [tbe]
-  (let [layer (:layer tbe)]
-    (doseq [channel-name (concat (listener/queue-names) (listener/topic-names))]
-      (when-let [messages (#'memory/drain! layer channel-name)]
-        (mq.impl/deliver! channel-name messages nil nil)))))
-
 (deftest publish-and-subscribe-test
-  (with-memory-topics [tbe]
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/test {}
                   (fn [message]
@@ -46,7 +19,7 @@
         (mq/put t "hello"))
       (mq/with-topic :topic/test [t]
         (mq/put t "world"))
-      (deliver-pending! tbe)
+      (mq.tu/flush! ctx)
 
       (testing "Subscriber receives published messages"
         (is (= ["hello" "world"] @received)))
@@ -54,7 +27,7 @@
       (mq/unlisten! :topic/test))))
 
 (deftest batch-publish-test
-  (with-memory-topics [tbe]
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/batch {}
                   (fn [message]
@@ -63,7 +36,7 @@
         (mq/put t "msg-1")
         (mq/put t "msg-2")
         (mq/put t "msg-3"))
-      (deliver-pending! tbe)
+      (mq.tu/flush! ctx)
 
       (testing "Batch of messages received in one row"
         (is (= ["msg-1" "msg-2" "msg-3"] @received)))
@@ -71,7 +44,7 @@
       (mq/unlisten! :topic/batch))))
 
 (deftest unsubscribe-stops-delivery-test
-  (with-memory-topics [tbe]
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/unsub {}
                   (fn [message]
@@ -79,20 +52,20 @@
 
       (mq/with-topic :topic/unsub [t]
         (mq/put t "before"))
-      (deliver-pending! tbe)
+      (mq.tu/flush! ctx)
       (is (= ["before"] @received))
 
       (mq/unlisten! :topic/unsub)
 
       (mq/with-topic :topic/unsub [t]
         (mq/put t "after"))
-      (deliver-pending! tbe)
+      (mq.tu/flush! ctx)
 
       (testing "No messages received after unsubscribe"
         (is (= ["before"] @received))))))
 
 (deftest error-handling-test
-  (with-memory-topics [tbe]
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/errors {}
                   (fn [message]
@@ -106,7 +79,7 @@
         (mq/put t "error!"))
       (mq/with-topic :topic/errors [t]
         (mq/put t "also-good"))
-      (deliver-pending! tbe)
+      (mq.tu/flush! ctx)
 
       (testing "Good messages are received"
         (is (= ["good" "also-good"] @received)))
@@ -114,7 +87,7 @@
       (mq/unlisten! :topic/errors))))
 
 (deftest double-subscribe-throws-test
-  (with-memory-topics [_tbe]
+  (mq.tu/with-test-mq [_ctx]
     (mq/listen! :topic/double {} (fn [_] nil))
     (testing "Subscribing twice to the same topic throws"
       (is (thrown-with-msg? ExceptionInfo #"Listener already registered"
@@ -123,7 +96,7 @@
 
 (deftest concurrent-publish-ordering-test
   (testing "Concurrent publishes are all delivered"
-    (with-memory-topics [tbe]
+    (mq.tu/with-test-mq [ctx]
       (let [received (atom [])
             n        20
             barrier  (CyclicBarrier. n)]
@@ -140,7 +113,7 @@
                             (range n))]
           (run! (fn [^Thread t] (.start t)) threads)
           (run! (fn [^Thread t] (.join t 5000)) threads))
-        (deliver-pending! tbe)
+        (mq.tu/flush! ctx)
         (testing "All messages delivered exactly once"
           (is (= n (count @received))))
         (testing "No duplicate messages"
@@ -148,7 +121,7 @@
         (mq/unlisten! :topic/concurrent-order)))))
 
 (deftest topic-isolation-test
-  (with-memory-topics [tbe]
+  (mq.tu/with-test-mq [ctx]
     (let [received-a (atom [])
           received-b (atom [])]
       (mq/listen! :topic/isolated-a {}
@@ -162,7 +135,7 @@
         (mq/put t "for-a"))
       (mq/with-topic :topic/isolated-b [t]
         (mq/put t "for-b"))
-      (deliver-pending! tbe)
+      (mq.tu/flush! ctx)
 
       (testing "Messages on topic A don't appear on topic B"
         (is (= ["for-a"] @received-a))

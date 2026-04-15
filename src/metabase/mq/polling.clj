@@ -27,23 +27,24 @@
 (defn make-poll-state
   "Creates a polling state map with an atom for the background process and a notify object."
   []
-  {:process (atom nil)
-   :notify  (Object.)})
+  {:process  (atom nil)
+   :running? (atom false)
+   :notify   (Object.)})
 
 (defn start-polling!
   "Starts a polling thread that calls `poll-fn` in a loop, waiting on the notify object
    for `wait-ms` between iterations. If `poll-fn` returns a truthy value (indicating work
    was found), the next iteration runs immediately without waiting. Idempotent — second
    call is a no-op."
-  [{:keys [process notify] :as poll-state} label wait-ms poll-fn]
-  (when-not @process
+  [{:keys [process running? notify] :as poll-state} label wait-ms poll-fn]
+  (when (compare-and-set! running? false true)
     (log/infof "Starting %s polling thread" label)
     (swap! active-poll-states conj poll-state)
     (reset! process
             (future
               (try
                 (loop []
-                  (when @process
+                  (when @running?
                     (let [found-work? (try
                                         (poll-fn)
                                         (catch InterruptedException e (throw e))
@@ -58,8 +59,9 @@
 
 (defn stop-polling!
   "Stops a polling thread."
-  [{:keys [process] :as poll-state} label]
+  [{:keys [process running?] :as poll-state} label]
   (swap! active-poll-states disj poll-state)
+  (reset! running? false)
   (when-let [f @process]
     (reset! process nil)
     (when (instance? Future f)

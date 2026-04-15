@@ -48,7 +48,7 @@
 
    Called by [[startup/def-startup-logic!]] with production backends (handle discarded;
    production shutdown uses [[startup/def-shutdown-logic!]] instead) and by
-   `metabase.mq.test-util/with-sync-mq` with sync backends (handle captured locally).
+   `metabase.mq.test-util/with-test-mq` with isolated memory backends.
 
    Backends are set globally via `alter-var-root`. For test isolation, bind
    `listener/*listeners*` and `publish-buffer/*publish-buffer*` with fresh atoms."
@@ -75,7 +75,7 @@
    Called with no arguments (production): shuts down all services using the current backend vars.
 
    Called with a handle (the map returned by [[start!]]): additionally restores the previous
-   backend state. Used by `metabase.mq.test-util/with-sync-mq` for test isolation."
+   backend state. Used by `metabase.mq.test-util/with-test-mq` for test isolation."
   ([]
    (publish-buffer/stop-publish-buffer-flush!)
    (when-let [qb q.backend/*backend*] (q.backend/shutdown! qb))

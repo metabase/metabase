@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest e2e-publish-subscribe-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/e2e {}
                   (fn [message]
@@ -24,16 +24,18 @@
           (mq/put t "message-1"))
         (mq/with-topic :topic/e2e [t]
           (mq/put t "message-2"))
+        (mq.tu/flush! ctx)
         (is (= ["message-1" "message-2"] @received)))
 
       (testing "Unsubscribe stops delivery"
         (mq/unlisten! :topic/e2e)
         (mq/with-topic :topic/e2e [t]
           (mq/put t "message-3"))
+        (mq.tu/flush! ctx)
         (is (= ["message-1" "message-2"] @received))))))
 
 (deftest batch-publish-e2e-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/batch {}
                   (fn [message]
@@ -43,6 +45,7 @@
         (mq/put t "a")
         (mq/put t "b")
         (mq/put t "c"))
+      (mq.tu/flush! ctx)
 
       (testing "Batch of messages delivered together"
         (is (= ["a" "b" "c"] @received)))
@@ -50,7 +53,7 @@
       (mq/unlisten! :topic/batch))))
 
 (deftest error-handling-e2e-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/errors {}
                   (fn [message]
@@ -64,6 +67,7 @@
         (mq/put t "fail"))
       (mq/with-topic :topic/errors [t]
         (mq/put t "ok-2"))
+      (mq.tu/flush! ctx)
 
       (testing "Non-error messages are delivered"
         (is (= ["ok-1" "ok-2"] @received)))
@@ -72,7 +76,7 @@
 
 (deftest batch-partial-failure-test
   (testing "When listener throws on one message in a batch, remaining messages are still delivered"
-    (mq.tu/with-sync-mq
+    (mq.tu/with-test-mq [ctx]
       (let [received (atom [])]
         (mq/listen! :topic/batch-fail {}
                     (fn [message]
@@ -85,13 +89,14 @@
           (mq/put t "boom")
           (mq/put t "msg-3")
           (mq/put t "msg-4"))
+        (mq.tu/flush! ctx)
 
         (is (= ["msg-1" "msg-3" "msg-4"] @received))
 
         (mq/unlisten! :topic/batch-fail)))))
 
 (deftest concurrent-subscribe-throws-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [_ctx]
     (let [topic-name :topic/concurrent-sub-test
           n          10
           barrier    (CyclicBarrier. n)
@@ -114,9 +119,10 @@
       (mq/unlisten! topic-name))))
 
 (deftest late-subscriber-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (mq/with-topic :topic/late [t]
       (mq/put t "old-message"))
+    (mq.tu/flush! ctx)
 
     (let [received (atom [])]
       (mq/listen! :topic/late {}
@@ -125,6 +131,7 @@
 
       (mq/with-topic :topic/late [t]
         (mq/put t "new-message"))
+      (mq.tu/flush! ctx)
 
       (testing "Late subscriber only sees new messages"
         (is (= ["new-message"] @received)))
@@ -132,7 +139,7 @@
       (mq/unlisten! :topic/late))))
 
 (deftest transaction-defers-topic-publish-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/txn-test {}
                   (fn [message]
@@ -153,11 +160,12 @@
             (is (= [] @received))))
         (testing "After flush (simulating commit), all messages are delivered"
           (mq.publish/flush-deferred-messages!)
+          (mq.tu/flush! ctx)
           (is (= ["msg1" "msg2" "msg3"] @received))))
       (mq/unlisten! :topic/txn-test))))
 
 (deftest transaction-rollback-discards-topic-messages-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/txn-rollback {}
                   (fn [message]
@@ -171,24 +179,26 @@
                          (throw (ex-info "boom" {})))))
           (is (nil? (get-in @app-db.conn/*transaction-state*
                             [::mq.publish/deferred-messages :topic/txn-rollback]))
-              "No messages should be in transaction state after exception")))
+              "No messages should be in transaction state after exception")
+          (mq.tu/flush! ctx)))
       (mq/unlisten! :topic/txn-rollback))))
 
 (deftest outside-transaction-publishes-topic-immediately-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/txn-immediate {}
                   (fn [message]
                     (swap! received conj message)))
-      (testing "Outside a transaction, messages are published immediately"
+      (testing "Outside a transaction, messages are published"
         (is (nil? app-db.conn/*transaction-state*))
         (mq/with-topic :topic/txn-immediate [t]
           (mq/put t "msg1"))
+        (mq.tu/flush! ctx)
         (is (= ["msg1"] @received)))
       (mq/unlisten! :topic/txn-immediate))))
 
 (deftest multiple-topics-in-transaction-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received-a (atom [])
           received-b (atom [])]
       (mq/listen! :topic/txn-multi-a {}
@@ -211,13 +221,14 @@
                          [::mq.publish/deferred-messages :topic/txn-multi-b]))))
         (testing "After flush, both topics receive their messages"
           (mq.publish/flush-deferred-messages!)
+          (mq.tu/flush! ctx)
           (is (= ["a1" "a2"] @received-a))
           (is (= ["b1"] @received-b))))
       (mq/unlisten! :topic/txn-multi-a)
       (mq/unlisten! :topic/txn-multi-b))))
 
 (deftest buffering-combines-topic-messages-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/buffer-test {}
                   (fn [message] (swap! received conj message)))
@@ -237,20 +248,25 @@
           (swap! publish-buffer/*publish-buffer*
                  update :topic/buffer-test assoc :deadline-ms 1)
           (publish-buffer/flush-publish-buffer!)
+          (mq.tu/flush! ctx)
           (is (= ["msg1" "msg2"] @received)
               "Both messages delivered after flush")))
       (mq/unlisten! :topic/buffer-test))))
 
 (deftest buffering-immediate-when-zero-test
-  (mq.tu/with-sync-mq
+  (mq.tu/with-test-mq [ctx]
     (let [received (atom [])]
       (mq/listen! :topic/buffer-zero {}
                   (fn [message] (swap! received conj message)))
-      (testing "With *publish-buffer-ms* 0 (default in with-sync-mq), topic messages publish immediately"
-        (mq/with-topic :topic/buffer-zero [t]
-          (mq/put t "msg1"))
-        (is (= ["msg1"] @received))
-        (mq/with-topic :topic/buffer-zero [t]
-          (mq/put t "msg2"))
-        (is (= ["msg1" "msg2"] @received)))
+      (binding [publish-buffer/*publish-buffer-ms* 0
+                publish-buffer/*publish-buffer*    (atom {})]
+        (testing "With *publish-buffer-ms* 0, topic messages publish without buffering"
+          (mq/with-topic :topic/buffer-zero [t]
+            (mq/put t "msg1"))
+          (mq.tu/flush! ctx)
+          (is (= ["msg1"] @received))
+          (mq/with-topic :topic/buffer-zero [t]
+            (mq/put t "msg2"))
+          (mq.tu/flush! ctx)
+          (is (= ["msg1" "msg2"] @received))))
       (mq/unlisten! :topic/buffer-zero))))
