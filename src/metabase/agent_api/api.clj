@@ -198,10 +198,8 @@
   "Details of a database, optionally including its tables."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:= :database]]
    [:name :string]
    [:engine :string]
-   [:description {:optional true} [:maybe :string]]
    [:tables {:optional true} [:maybe [:sequential ::table]]]])
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
@@ -215,17 +213,14 @@
 (api.macros/defendpoint :get "/v1/database" :- [:sequential ::database]
   "List all databases the current user has access to."
   {:scope "agent:database:read"
-   :tool  {:name "list_databases"
-           :description "List all databases available in Metabase."
-           :annotations {:read-only? true}}}
+   :tool  {:name "list_databases"}}
   []
   (check-tool-result (entity-details/list-databases)))
 
 (api.macros/defendpoint :get "/v1/database/:id" :- ::database
   "Get details for a database by ID."
   {:scope "agent:database:read"
-   :tool  {:name "get_database"
-           :description "Get details about a database, optionally including its tables, fields, and related metadata."}}
+   :tool  {:name "get_database"}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-tables with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
     :or   {with-tables false, with-fields false, with-field-values false, with-related-tables false,

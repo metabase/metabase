@@ -114,11 +114,9 @@ Response:
 ```json
 [
   {
-    "type": "database",
     "id": 1,
     "name": "Production DB",
-    "engine": "postgres",
-    "description": "Main production database"
+    "engine": "postgres"
   }
 ]
 ```
@@ -143,11 +141,9 @@ Response (without tables):
 
 ```json
 {
-  "type": "database",
   "id": 1,
   "name": "Production DB",
-  "engine": "postgres",
-  "description": "Main production database"
+  "engine": "postgres"
 }
 ```
 
@@ -155,11 +151,9 @@ Response (with-tables=true):
 
 ```json
 {
-  "type": "database",
   "id": 1,
   "name": "Production DB",
   "engine": "postgres",
-  "description": "Main production database",
   "tables": [
     {
       "type": "table",

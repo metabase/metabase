@@ -151,40 +151,53 @@
           (is (not (contains? (get by-name "name") :effective_type))))))))
 
 (deftest list-databases-test
-  (testing "Returns a list of databases with only expected keys"
+  (testing "Returns a list of databases"
     ;; Reference a table to ensure the test database exists
-    (let [_         (mt/id :orders)
-          databases (mt/user-http-request :crowberto :get 200 "agent/v1/database")]
-      (is (pos? (count databases)))
-      (is (= #{:id :type :name :engine :description}
-             (into #{} (mapcat keys) databases)))))
+    (let [_ (mt/id :orders)]
+      (is (=? [{:id     (mt/id)
+                :name   "test-data (h2)"
+                :engine "h2"}]
+              (mt/user-http-request :crowberto :get 200 "agent/v1/database")))))
 
   (testing "User without data permissions gets empty list"
     (mt/with-no-data-perms-for-all-users!
       (is (= [] (mt/user-http-request :rasta :get 200 "agent/v1/database"))))))
 
 (deftest get-database-details-test
-  (testing "Returns only expected keys without tables"
-    (let [db (mt/user-http-request :rasta :get 200 (str "agent/v1/database/" (mt/id)))]
-      (is (= #{:id :type :name :engine :description} (set (keys db))))
-      (is (= "database" (:type db)))
-      (is (= (mt/id) (:id db)))))
+  (testing "Returns database details"
+    (is (=? {:id     (mt/id)
+             :name   "test-data (h2)"
+             :engine "h2"}
+            (mt/user-http-request :rasta :get 200 (str "agent/v1/database/" (mt/id))))))
 
   (testing "Returns 404 for non-existent database"
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404 "agent/v1/database/999999"))))
 
-  (testing "Tables are included when requested, with only expected keys"
-    (let [db (mt/user-http-request :rasta :get 200
-                                   (str "agent/v1/database/" (mt/id) "?with-tables=true"))]
-      (is (= #{:id :type :name :engine :description :tables} (set (keys db))))
-      (is (pos? (count (:tables db))))
-      (is (every? #(empty? (:fields %)) (:tables db)))))
+  (testing "Tables are included when requested"
+    (let [response (mt/user-http-request :rasta :get 200
+                                         (str "agent/v1/database/" (mt/id) "?with-tables=true"))
+          orders   (m/find-first #(= (mt/id :orders) (:id %)) (:tables response))]
+      (is (=? {:id           (mt/id :orders)
+               :type         "table"
+               :name         "ORDERS"
+               :display_name "Orders"
+               :database_id  (mt/id)}
+              orders))))
 
   (testing "Tables include fields when requested"
-    (let [db (mt/user-http-request :rasta :get 200
-                                   (str "agent/v1/database/" (mt/id) "?with-tables=true&with-fields=true"))]
-      (is (every? #(seq (:fields %)) (:tables db)))))
+    (let [response (mt/user-http-request :rasta :get 200
+                                         (str "agent/v1/database/" (mt/id) "?with-tables=true&with-fields=true"))
+          orders   (m/find-first #(= (mt/id :orders) (:id %)) (:tables response))
+          total    (m/find-first #(= (str (metabot.tools.u/table-field-id-prefix (mt/id :orders)) 5)
+                                     (:field_id %))
+                                 (:fields orders))]
+      (is (=? {:field_id      (str (metabot.tools.u/table-field-id-prefix (mt/id :orders)) 5)
+               :name          "TOTAL"
+               :display_name  "Total"
+               :base_type     "type/Float"
+               :database_type "DOUBLE PRECISION"}
+              total))))
 
   (testing "User without data permissions gets 403"
     (mt/with-no-data-perms-for-all-users!

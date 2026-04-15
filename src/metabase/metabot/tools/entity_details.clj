@@ -397,17 +397,15 @@
 (defn- database-details
   "Convert a Database model to the agent API response shape."
   [db]
-  {:id          (:id db)
-   :type        :database
-   :name        (:name db)
-   :engine      (some-> (:engine db) name)
-   :description (:description db)})
+  {:id     (:id db)
+   :name   (:name db)
+   :engine (some-> (:engine db) name)})
 
 (defn list-databases
   "Get a list of all databases the current user can read without including its tables."
   []
   (try
-    (let [dbs (metabot.tools.u/list-databases :name :engine :description)]
+    (let [dbs (metabot.tools.u/list-databases :name :engine)]
       {:structured-output (mapv database-details dbs)})
     (catch Exception e
       (metabot.tools.u/handle-agent-error e))))
@@ -420,7 +418,7 @@
            with-metrics? false, with-measures? false, with-segments? false}}]
   (try
     (lib-be/with-metadata-provider-cache
-      (let [db       (metabot.tools.u/get-database database-id :name :engine :description)
+      (let [db       (metabot.tools.u/get-database database-id :name :engine)
             response (database-details db)]
         {:structured-output
          (cond-> response
