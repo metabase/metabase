@@ -148,7 +148,11 @@ export function setup({
           name: "channel",
           type: "select",
           displayName: "Post to",
-          options: ["#general", "#random", "#alerts"],
+          options: [
+            { displayName: "#general", id: "C001" },
+            { displayName: "#random", id: "C002" },
+            { displayName: "#alerts", id: "C003" },
+          ],
           required: true,
         },
       ],
