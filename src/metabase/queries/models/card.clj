@@ -1266,7 +1266,7 @@
       (mapv (fn [m]
               (-> (select-keys m keep-keys)
                   (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
-                  (cond-> native? (m/update-existing :id serdes/*export-field-fk*))))
+                  (m/update-existing :id serdes/*export-field-fk*)))
             metadata))
     ::serdes/skip))
 

@@ -735,11 +735,13 @@
   (testing "non-model Card extraction drops :result_metadata entirely"
     (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
           query    (mt/mbql-query venues)]
-      (mt/with-temp [:model/Card {card-id :id} {:type            :question
-                                                :dataset_query   query
-                                                :result_metadata metadata}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
-          (is (not (contains? extracted :result_metadata))))))))
+      (doseq [card-type [:question :metric]]
+        (testing (str "Card with :type " card-type)
+          (mt/with-temp [:model/Card {card-id :id} {:type            card-type
+                                                    :dataset_query   query
+                                                    :result_metadata metadata}]
+            (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
+              (is (not (contains? extracted :result_metadata))))))))))
 
 (deftest ^:parallel extract-result-metadata-model-test
   (testing "model Card extraction keeps :name + snake-cased model-preserved-keys only"
