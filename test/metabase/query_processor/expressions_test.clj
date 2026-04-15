@@ -1189,7 +1189,7 @@
                     (qp/process-query query))))))))))
 
 (deftest ^:parallel expression-as-bucketed-join-key-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql :+features [:expressions :left-join]})
     (testing "can join a custom expression that uses temporal bucketing (#59614)"
       (let [mp                (mt/metadata-provider)
             orders-table      (lib.metadata/table mp (mt/id :orders))
