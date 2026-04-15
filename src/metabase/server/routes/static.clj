@@ -11,8 +11,8 @@
    [ring.util.response :as response]))
 
 (def ^:private encoding->extension
-  {:gzip   "gz"
-   :brotli "br"})
+  {:gzip   ".gz"
+   :brotli ".br"})
 
 (def ^:private encoding->header
   {:gzip   "gzip"
@@ -28,7 +28,7 @@
 (defn- compressed-path
   "Returns the path of the pre-compressed artifact for a given encoding."
   [resource-path encoding]
-  (str resource-path "." (encoding->extension encoding)))
+  (str resource-path (encoding->extension encoding)))
 
 (defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
