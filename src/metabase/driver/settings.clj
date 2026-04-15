@@ -147,21 +147,12 @@
 
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-      ;; Query-timeout enforcement lives per-statement via `Statement.setQueryTimeout` (see
-      ;; `metabase.driver.sql-jdbc.execute/set-statement-query-timeout!`). This setting only acts as a leak-detector
-      ;; upper bound, so it must be at least as large as the longest legitimate query we expect — which, for
-      ;; transforms, is `transform-timeout`. `transform-timeout` lives downstream of this namespace; resolve it
-      ;; lazily to avoid a module-layering cycle.
-      (let [query-timeout-s     (long (/ *query-timeout-ms* 1000))
-            transform-timeout-s (when-let [get-transform-timeout (requiring-resolve 'metabase.transforms.settings/transform-timeout)]
-                                  (* 60 (long (get-transform-timeout))))]
-        (max query-timeout-s (or transform-timeout-s 0)))))
+      (long (/ *query-timeout-ms* 1000))))
 
 (defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
-  "Kill data-warehouse connections that have been checked out but not returned to the pool after this many seconds.
-  Acts as a leak-detector safety net — per-query timeouts are enforced separately via `Statement.setQueryTimeout`, so
-  this value should be at least as long as the longest legitimate query (including transforms). Defaults to
-  max(MB_DB_QUERY_TIMEOUT_MINUTES, MB_TRANSFORM_TIMEOUT)."
+  "Kill connections if they are unreturned after this amount of time. Currently, this is the mechanism that
+  terminates JDBC driver queries that run too long. This should be the same as the query timeout in
+  [[metabase.query-processor.context/query-timeout-ms]] and should not be overridden without a very good reason."
   :visibility :internal
   :type       :integer
   :getter     #'-jdbc-data-warehouse-unreturned-connection-timeout-seconds

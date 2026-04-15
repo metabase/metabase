@@ -563,17 +563,6 @@
           (log/debug "Query canceled, calling Statement.cancel()")
           (.cancel stmt))))))
 
-(defn- set-statement-query-timeout!
-  "Set `Statement.setQueryTimeout` to the current `*query-timeout-ms*`. Applied uniformly to every SQL-JDBC statement so
-  each query carries its own server-side timeout, rather than relying on the pool-wide c3p0 `unreturnedConnectionTimeout`
-  to kill long queries. Transforms rebind `*query-timeout-ms*` so their statements get the transform timeout instead of
-  the shorter default (GDGT-2173)."
-  [^Statement stmt]
-  (try
-    (.setQueryTimeout stmt (long (/ driver.settings/*query-timeout-ms* 1000)))
-    (catch Throwable e
-      (log/debug e "Error setting statement query timeout"))))
-
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
   ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid.
@@ -586,7 +575,6 @@
                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
                              :params params}
                             e))))
-    (set-statement-query-timeout!)
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn- use-statement? [driver params]
@@ -594,7 +582,6 @@
 
 (defn- statement* ^Statement [driver conn canceled-chan]
   (doto (statement driver conn)
-    (set-statement-query-timeout!)
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn statement-or-prepared-statement

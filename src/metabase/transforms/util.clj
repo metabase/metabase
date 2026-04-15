@@ -120,13 +120,9 @@
     (let [source-range-params (transforms-base.u/get-source-range-params transform)]
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
       (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
-      (let [cancel-chan      (a/promise-chan)
-            transform-timeout-ms (u/minutes->ms (transforms.settings/transform-timeout))
-            ret (binding [qp.pipeline/*canceled-chan*          cancel-chan
-                          driver.settings/*query-timeout-ms*   transform-timeout-ms
-                          ;; Match the query timeout so a single slow socket read (or a driver that waits for
-                          ;; the full server-side query) does not get killed before the transform's own deadline.
-                          driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
+      (let [cancel-chan (a/promise-chan)
+            ret (binding [qp.pipeline/*canceled-chan* cancel-chan
+                          driver.settings/*query-timeout-ms* (u/minutes->ms (transforms.settings/transform-timeout))]
                   (canceling/chan-start-run! run-id cancel-chan)
                   (run-transform! cancel-chan source-range-params))]
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
