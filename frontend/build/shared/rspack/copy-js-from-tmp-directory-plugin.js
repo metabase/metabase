@@ -28,7 +28,7 @@ module.exports.CopyJsFromTmpDirectoryPlugin = ({
 
       if (!IS_DEV_MODE || cleanupInDevMode) {
         // cleanup the temp directory to prevent bloat.
-        await fs.rm(tmpPath, { recursive: true });
+        await fs.rm(tmpPath, { recursive: true, force: true });
       }
     });
   },
