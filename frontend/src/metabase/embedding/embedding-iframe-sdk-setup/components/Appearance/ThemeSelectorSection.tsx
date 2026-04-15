@@ -128,6 +128,8 @@ export const ThemeSelectorSection = ({
         </Box>
       )}
 
+      {isCustomSelected && <Box h={24} />}
+
       {showColorInputs && (
         <ColorCustomizationSection
           theme={theme}
