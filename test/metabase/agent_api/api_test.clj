@@ -6,6 +6,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
@@ -70,6 +71,19 @@
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
 
+(deftest agent-api-enabled-setting-test
+  (testing "External Agent API routes return 403 when disabled"
+    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
+      (is (= "Agent API is not enabled."
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
+(deftest ai-features-enabled-setting-test
+  (testing "External Agent API routes return 403 when AI features are globally disabled"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
+                                           :agent-api-enabled?   "true"]
+      (is (= "AI features are not enabled."
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
 (deftest get-table-details-test
@@ -105,6 +119,89 @@
     (let [table-id (mt/id :orders)
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
       (is (some #(seq (:field_values %)) (:fields table))))))
+
+(deftest get-table-details-field-types-test
+  (testing "Field metadata (base_type, effective_type, semantic_type, coercion_strategy) is returned correctly"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id, :name "t", :active true}
+                   :model/Field    _              {:table_id table-id, :name "id"
+                                                   :base_type :type/BigInteger
+                                                   :semantic_type :type/PK}
+                   :model/Field    _              {:table_id table-id, :name "name"
+                                                   :base_type :type/Text}
+                   :model/Field    _              {:table_id table-id, :name "created_at"
+                                                   :base_type :type/Text
+                                                   :effective_type :type/DateTime
+                                                   :coercion_strategy :Coercion/ISO8601->DateTime}]
+      (let [fields  (-> (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
+                        :fields)
+            by-name (m/index-by :name fields)]
+        (testing "base_type is always set"
+          (is (= "type/BigInteger" (get-in by-name ["id" :base_type])))
+          (is (= "type/Text"       (get-in by-name ["name" :base_type])))
+          (is (= "type/Text"       (get-in by-name ["created_at" :base_type]))))
+        (testing "semantic_type is returned when set"
+          (is (= "type/PK" (get-in by-name ["id" :semantic_type])))
+          (is (nil? (get-in by-name ["name" :semantic_type]))))
+        (testing "effective_type and coercion_strategy are returned when coerced"
+          (is (= "type/DateTime"               (get-in by-name ["created_at" :effective_type])))
+          (is (= "Coercion/ISO8601->DateTime" (get-in by-name ["created_at" :coercion_strategy]))))
+        (testing "effective_type is omitted when it equals base_type"
+          (is (not (contains? (get by-name "id") :effective_type)))
+          (is (not (contains? (get by-name "name") :effective_type))))))))
+
+(deftest list-databases-test
+  (testing "Returns a list of databases"
+    ;; Reference a table to ensure the test database exists
+    (let [_ (mt/id :orders)]
+      (is (=? [{:id     (mt/id)
+                :name   "test-data (h2)"
+                :engine "h2"}]
+              (mt/user-http-request :crowberto :get 200 "agent/v1/database")))))
+
+  (testing "User without data permissions gets empty list"
+    (mt/with-no-data-perms-for-all-users!
+      (is (= [] (mt/user-http-request :rasta :get 200 "agent/v1/database"))))))
+
+(deftest get-database-details-test
+  (testing "Returns database details"
+    (is (=? {:id     (mt/id)
+             :name   "test-data (h2)"
+             :engine "h2"}
+            (mt/user-http-request :rasta :get 200 (str "agent/v1/database/" (mt/id))))))
+
+  (testing "Returns 404 for non-existent database"
+    (is (= "Not found."
+           (mt/user-http-request :rasta :get 404 "agent/v1/database/999999"))))
+
+  (testing "Tables are included when requested"
+    (let [response (mt/user-http-request :rasta :get 200
+                                         (str "agent/v1/database/" (mt/id) "?with-tables=true"))
+          orders   (m/find-first #(= (mt/id :orders) (:id %)) (:tables response))]
+      (is (=? {:id           (mt/id :orders)
+               :type         "table"
+               :name         "ORDERS"
+               :display_name "Orders"
+               :database_id  (mt/id)}
+              orders))))
+
+  (testing "Tables include fields when requested"
+    (let [response (mt/user-http-request :rasta :get 200
+                                         (str "agent/v1/database/" (mt/id) "?with-tables=true&with-fields=true"))
+          orders   (m/find-first #(= (mt/id :orders) (:id %)) (:tables response))
+          total    (m/find-first #(= (str (metabot.tools.u/table-field-id-prefix (mt/id :orders)) 5)
+                                     (:field_id %))
+                                 (:fields orders))]
+      (is (=? {:field_id      (str (metabot.tools.u/table-field-id-prefix (mt/id :orders)) 5)
+               :name          "TOTAL"
+               :display_name  "Total"
+               :base_type     "type/Float"
+               :database_type "DOUBLE PRECISION"}
+              total))))
+
+  (testing "User without data permissions gets 403"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/user-http-request :rasta :get 403 (str "agent/v1/database/" (mt/id))))))
 
 (deftest get-metric-details-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
