@@ -2,14 +2,20 @@
   "Test fixture for exercising the MQ subsystem in tests. `with-test-mq` starts a
   fresh async memory backend and exposes a fixture context that carries the layer,
   the backend instances, and convenience fns (`flush!`, `wait-for-idle!`,
-  `eventually`) for driving delivery and waiting for quiescence."
+  `eventually`) for driving delivery and waiting for quiescence.
+
+  `do-with-test-mq` also accepts `:kind :appdb` for running the real database-
+  backed backend in parity tests."
   (:require
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.init :as mq.init]
    [metabase.mq.listener :as listener]
    [metabase.mq.memory :as memory]
+   [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]
+   [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.memory :as q.memory]
+   [metabase.mq.topic.appdb :as topic.appdb]
    [metabase.mq.topic.memory :as topic.memory])
   (:import
    (java.util.concurrent LinkedBlockingQueue)))
@@ -21,13 +27,16 @@
 (defn- layer-channels-empty?
   "Returns true if every memory channel that currently has a listener is empty.
   Channels with no listener are not counted — messages published after an
-  `unlisten!` are orphaned by design and would otherwise block teardown."
+  `unlisten!` are orphaned by design and would otherwise block teardown.
+  Returns true for non-memory fixtures (appdb) since there is no layer."
   [{:keys [layer]}]
-  (let [listeners @listener/*listeners*]
-    (every? (fn [[channel-name ^LinkedBlockingQueue q]]
-              (or (not (contains? listeners channel-name))
-                  (.isEmpty q)))
-            @(:channels layer))))
+  (if (nil? layer)
+    true
+    (let [listeners @listener/*listeners*]
+      (every? (fn [[channel-name ^LinkedBlockingQueue q]]
+                (or (not (contains? listeners channel-name))
+                    (.isEmpty q)))
+              @(:channels layer)))))
 
 (defn- unmet-idle-conditions
   "Returns a set of the idle conditions that currently do NOT hold. Empty set == idle."
@@ -48,6 +57,9 @@
   ([ctx timeout-ms]
    (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
      (loop [consecutive-idle 0]
+       ;; Wake every active polling thread on each tick so appdb backends drain
+       ;; immediately instead of waiting on their 5s default poll interval.
+       (mq.polling/notify-all!)
        (let [unmet (unmet-idle-conditions ctx)]
          (cond
            (and (empty? unmet) (>= consecutive-idle 1)) :idle
@@ -77,11 +89,15 @@
 (defn eventually
   "Polls `pred` until truthy or `timeout-ms` elapses. Returns the final value of
   `pred`. Use when the thing you're waiting on can't be expressed as 'MQ is idle'
-  — for example, when waiting for a specific count to be reached."
+  — for example, when waiting for a specific count to be reached or for
+  appdb-backed delivery to round-trip through the database."
   ([_ctx pred] (eventually _ctx pred 2000))
   ([_ctx pred timeout-ms]
    (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
      (loop []
+       ;; Wake any polling threads so appdb backends drain promptly instead of
+       ;; blocking on their production poll interval.
+       (mq.polling/notify-all!)
        (let [v (pred)]
          (if v
            v
@@ -109,26 +125,43 @@
                         current
                         listeners)))))
 
+(defn- make-fixture-backends
+  "Constructs backend instances for the given fixture kind. Memory gets a fresh
+  isolated layer; appdb reuses its process-wide singleton since the DB is shared."
+  [kind]
+  (case kind
+    :memory (let [layer (memory/make-layer)]
+              {:kind     :memory
+               :layer    layer
+               :queue-be (q.memory/make-backend layer)
+               :topic-be (topic.memory/make-backend layer)})
+    :appdb  {:kind     :appdb
+             :queue-be q.appdb/backend
+             :topic-be topic.appdb/backend}))
+
 (defn do-with-test-mq
-  "Implementation detail for [[with-test-mq]]."
-  [listeners f]
-  (binding [listener/*listeners*            (atom {})
-            publish-buffer/*publish-buffer* (atom {})]
-    (let [layer    (memory/make-layer)
-          queue-be (q.memory/make-backend layer)
-          topic-be (topic.memory/make-backend layer)
-          handle   (mq.init/start! queue-be topic-be)
-          ctx      {:layer    layer
-                    :queue-be queue-be
-                    :topic-be topic-be
-                    :handle   handle}]
-      (try
-        (merge-listeners! listeners)
-        (let [result (f ctx)]
-          (flush! ctx)
-          result)
-        (finally
-          (mq.init/stop! handle))))))
+  "Implementation detail for [[with-test-mq]] and backend-parity tests.
+  `opts` may include `:kind` (`:memory` default or `:appdb`) and `:listeners`.
+
+  The fixture forces `*publish-buffer-ms*` to 0 so publishes go straight to the
+  backend without waiting for the background flush scheduler. Tests that want to
+  exercise buffering behaviour must rebind it explicitly in the body."
+  ([f] (do-with-test-mq {} f))
+  ([opts f]
+   (let [{:keys [kind listeners] :or {kind :memory}} opts]
+     (binding [listener/*listeners*               (atom {})
+               publish-buffer/*publish-buffer*    (atom {})
+               publish-buffer/*publish-buffer-ms* 0]
+       (let [backends (make-fixture-backends kind)
+             handle   (mq.init/start! (:queue-be backends) (:topic-be backends))
+             ctx      (assoc backends :handle handle)]
+         (try
+           (merge-listeners! listeners)
+           (let [result (f ctx)]
+             (flush! ctx)
+             result)
+           (finally
+             (mq.init/stop! handle))))))))
 
 (defmacro with-test-mq
   "Starts an MQ subsystem backed by isolated memory queue + topic backends on a
@@ -146,5 +179,5 @@
   (let [[listeners body] (if (map? (first body))
                            [(first body) (rest body)]
                            [nil body])]
-    `(do-with-test-mq ~listeners (fn [~ctx-sym] ~@body))))
+    `(do-with-test-mq {:listeners ~listeners} (fn [~ctx-sym] ~@body))))
 

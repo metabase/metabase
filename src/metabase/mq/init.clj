@@ -7,30 +7,23 @@
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.queue.sync :as q.sync]
    [metabase.mq.settings :as mq.settings]
    [metabase.mq.topic.appdb :as topic.appdb]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.memory :as topic.memory]
-   [metabase.mq.topic.sync :as topic.sync]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log]))
 
 (def ^:private queue-backends
   {:queue.backend/appdb  q.appdb/backend
-   :queue.backend/memory q.memory/backend
-   :queue.backend/sync   q.sync/backend})
+   :queue.backend/memory q.memory/backend})
 
 (def ^:private topic-backends
   {:topic.backend/appdb  topic.appdb/backend
-   :topic.backend/memory topic.memory/backend
-   :topic.backend/sync   topic.sync/backend})
+   :topic.backend/memory topic.memory/backend})
 
-(def ^:private valid-queue-backends
-  (disj (set (keys queue-backends)) :queue.backend/sync))
-
-(def ^:private valid-topic-backends
-  (disj (set (keys topic-backends)) :topic.backend/sync))
+(def ^:private valid-queue-backends (set (keys queue-backends)))
+(def ^:private valid-topic-backends (set (keys topic-backends)))
 
 (defn- resolve-backend [label table kw-or-instance]
   (if (keyword? kw-or-instance)

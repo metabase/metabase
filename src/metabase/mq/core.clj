@@ -40,12 +40,10 @@
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.queue.sync :as q.sync]
    [metabase.mq.queue.transport-impl :as q.transport-impl]
    [metabase.mq.topic.appdb :as topic.appdb]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.memory :as topic.memory]
-   [metabase.mq.topic.sync :as topic.sync]
    [metabase.mq.topic.transport-impl :as topic.transport-impl]
    [potemkin :as p]))
 
@@ -59,12 +57,10 @@
   q.appdb/keep-me
   q.impl/keep-me
   q.memory/keep-me
-  q.sync/keep-me
   q.transport-impl/keep-me
   topic.appdb/keep-me
   topic.impl/keep-me
   topic.memory/keep-me
-  topic.sync/keep-me
   topic.transport-impl/keep-me)
 
 (p/import-vars
