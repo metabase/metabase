@@ -37,7 +37,7 @@
   height: 10px;
   border-radius: 50%;
   background: var(--mb-color-white);
-  border: 1.5px solid var(--node-border-color, var(--mb-color-text-medium));
+  border: 1.5px solid var(--node-border-color, var(--mb-color-text-secondary));
   pointer-events: none;
   z-index: 1;
 }

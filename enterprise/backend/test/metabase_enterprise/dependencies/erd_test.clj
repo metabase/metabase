@@ -209,4 +209,3 @@
               (is (= {:orders {:focal true  :fk [:people]}
                       :people {:focal false :fk []}}
                      (graph-shape response))))))))))
-
