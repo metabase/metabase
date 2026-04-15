@@ -69,7 +69,7 @@ export const ChartTypeOption = ({
             name={iconName ?? "unknown"}
             iconUrl={visualization?.iconUrl}
             alt={displayName}
-            c={isSelected ? "white" : "brand"}
+            color={isSelected ? "white" : "brand"}
             size={20}
             style={
               hasCustomIcon && isSelected
