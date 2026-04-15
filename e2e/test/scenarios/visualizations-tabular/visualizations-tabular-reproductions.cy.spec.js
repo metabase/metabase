@@ -1351,7 +1351,7 @@ describe("issue 57132", () => {
     H.tableInteractive().findByText("Category").realHover();
 
     cy.log("The popover should be wide enough to show at least some values");
-    H.popover()
+    H.hovercard()
       .findByText(/^Doohickey, Gadget, Gizmo/)
       .should("be.visible");
   });
