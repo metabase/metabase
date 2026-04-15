@@ -3,7 +3,6 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.agent-lib.core :as agent-lib]
    [metabase.api.common :as api]
@@ -78,12 +77,10 @@
    [:field_id ::field-id]
    [:name :string]
    [:display_name :string]
+   [:type {:optional true} [:maybe ::field-type]]
    [:description {:optional true} [:maybe :string]]
-   [:base_type :string]
-   [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type {:optional true} [:maybe :string]]
    [:database_type {:optional true} [:maybe :string]]
-   [:coercion_strategy {:optional true} [:maybe :string]]
    [:field_values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::entity-type
