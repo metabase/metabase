@@ -4,6 +4,7 @@ export * from "./audit-info";
 export * from "./billing-info";
 export * from "./cloud-add-ons";
 export * from "./content-translation";
+export * from "./custom-viz-plugin";
 export * from "./db-routing";
 export * from "./dependencies";
 export * from "./gdrive";

@@ -16,6 +16,13 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   alt?: string;
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, keyof IconProps>;
 
+function resolveIconMaskColor(color: EntityIconProps["color"]): string {
+  if (!color || color === "inherit") {
+    return "currentColor";
+  }
+  return maybeColor(color) ?? "currentColor";
+}
+
 /**
  * Renders either a custom visualization icon (via iconUrl) or a standard
  * Metabase Icon (via name).  Drop-in replacement for `<Icon {...iconData} />`
@@ -25,13 +32,17 @@ export function EntityIcon({
   iconUrl,
   name = "unknown",
   size = "1rem",
-  color = "brand",
+  color,
+  c,
   style,
   alt = "",
   ...rest
 }: EntityIconProps) {
   if (iconUrl) {
-    const bg = color === "inherit" ? "currentColor" : maybeColor(color);
+    // `c` from Mantine's BoxProps can be a responsive breakpoint object, not
+    // just a string, so guard before using it as a fallback for `color`.
+    const effectiveColor = color ?? (typeof c === "string" ? c : undefined);
+    const backgroundColor = resolveIconMaskColor(effectiveColor);
 
     return (
       <span
@@ -44,7 +55,7 @@ export function EntityIcon({
           verticalAlign: "middle",
           width: size,
           height: size,
-          backgroundColor: bg,
+          backgroundColor,
           maskImage: `url(${iconUrl})`,
           maskSize: "contain",
           maskRepeat: "no-repeat",
@@ -55,5 +66,7 @@ export function EntityIcon({
     );
   }
 
-  return <Icon name={name} size={size} c={color} style={style} {...rest} />;
+  return (
+    <Icon name={name} size={size} c={color ?? c} style={style} {...rest} />
+  );
 }

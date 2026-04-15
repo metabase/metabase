@@ -1,6 +1,6 @@
 {
   "name": "@metabase/custom-viz",
-  "version": "0.0.1-alpha.13",
+  "version": "0.0.1-alpha.14",
   "description": "Creating custom visualizations for Metabase",
   "type": "module",
   "bin": {
@@ -22,13 +22,14 @@
     "dist"
   ],
   "scripts": {
-    "dev": "vite build --watch",
     "build": "vite build && cp -r src/templates dist/templates",
-    "lint": "oxlint src/",
+    "check:package-versions": "bun run scripts/check-package-versions.ts",
+    "dev": "vite build --watch",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "type-check": "tsc --noEmit",
-    "release": "bun run build && np"
+    "lint": "oxlint src/",
+    "release": "bun run build && np",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "commander": "^13.1.0"
