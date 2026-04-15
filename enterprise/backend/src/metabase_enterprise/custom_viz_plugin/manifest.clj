@@ -29,12 +29,6 @@
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
-(defn- normalize-mb-version
-  "Strip the leading `v` from a Metabase version tag so it can be coerced to a semver.
-   e.g. `v1.60.1-SNAPSHOT` → `1.60.1-SNAPSHOT`."
-  [^String version]
-  (str/replace version #"^v" ""))
-
 (defn compatible?
   "Check whether a plugin with the given metabase_version range string is compatible with the
    current Metabase version. Uses npm/node-semver range syntax against the full edition-prefixed
@@ -45,7 +39,7 @@
     (if (or config/is-dev? (nil? current-version) (str/blank? metabase_version))
       true
       (try
-        (if-let [current (Semver/coerce (normalize-mb-version current-version))]
+        (if-let [current (Semver/coerce current-version)]
           (.satisfies (.withClearedPreReleaseAndBuild current) ^String metabase_version)
           ;; Unknown/uncoercible current version (e.g. `vLOCAL_DEV` in CI) — be permissive.
           true)
