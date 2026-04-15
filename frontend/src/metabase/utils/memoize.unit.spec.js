@@ -1,4 +1,4 @@
-import { memoizeClass } from "metabase-lib/v1/utils";
+import { memoizeClass } from "./memoize";
 
 describe("memoize", () => {
   it("should memoize method", () => {
