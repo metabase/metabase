@@ -16,21 +16,49 @@ import {
   setupDefinitionWithBreakout,
 } from "../../utils/__tests__/test-helpers";
 
-import type { MetricIdentityEntry, MetricNameMap } from "./utils";
+import type {
+  MetricIdentityEntry,
+  MetricNameMap,
+  PositionedToken,
+} from "./utils";
 import {
   applyTrackedDefinitions,
   buildExpressionText,
+  buildFullTextWithIdentities,
   cleanupParens,
   expressionTokensEqual,
   filterSearchResults,
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
+  parseFullTextWithPositions,
 } from "./utils";
 
 jest.mock("../../utils/definition-builder", () => ({
   getDefinitionName: (def: any) => def?.["display-name"] ?? null,
 }));
+
+/**
+ * Builds identity entries for ALL metric tokens found in the text.
+ * Useful for tests that need identities but aren't testing identity tracking.
+ */
+function identitiesForAllMetrics(
+  text: string,
+  metricNames: MetricNameMap,
+): MetricIdentityEntry[] {
+  let slotIdx = 0;
+  return parseFullTextWithPositions(text, metricNames, [])
+    .filter(
+      (t): t is PositionedToken & { type: "metric" } => t.type === "metric",
+    )
+    .map((t) => ({
+      sourceId: t.sourceId,
+      from: t.from,
+      to: t.to,
+      definition: null,
+      slotIndex: slotIdx++,
+    }));
+}
 
 function makeSearchResult(id: number, model: "metric" | "measure") {
   return { id, model, name: `Result ${id}` };
@@ -45,7 +73,12 @@ describe("filterSearchResults", () => {
   ];
 
   it("excludes already-selected metrics by ID", () => {
-    const filtered = filterSearchResults(results, new Set([1]), new Set());
+    const filtered = filterSearchResults(
+      results,
+      new Set([1]),
+      new Set(),
+      undefined,
+    );
     expect(filtered.map((r) => ({ id: r.id, model: r.model }))).toEqual([
       { id: 2, model: "metric" },
       { id: 10, model: "measure" },
@@ -54,7 +87,12 @@ describe("filterSearchResults", () => {
   });
 
   it("excludes already-selected measures by ID", () => {
-    const filtered = filterSearchResults(results, new Set(), new Set([10, 20]));
+    const filtered = filterSearchResults(
+      results,
+      new Set(),
+      new Set([10, 20]),
+      undefined,
+    );
     expect(filtered.map((r) => ({ id: r.id, model: r.model }))).toEqual([
       { id: 1, model: "metric" },
       { id: 2, model: "metric" },
@@ -82,7 +120,12 @@ describe("filterSearchResults", () => {
   });
 
   it("handles empty results", () => {
-    const filtered = filterSearchResults([], new Set([1]), new Set([2]));
+    const filtered = filterSearchResults(
+      [],
+      new Set([1]),
+      new Set([2]),
+      undefined,
+    );
     expect(filtered).toEqual([]);
   });
 
@@ -370,7 +413,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a metric multiplied by a decimal constant", () => {
-    const result = parseFullText("Revenue * 0.85", metricNames);
+    const result = parseFullText("Revenue * 0.85", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -379,7 +422,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a metric multiplied by an integer constant", () => {
-    const result = parseFullText("Revenue * 100", metricNames);
+    const result = parseFullText("Revenue * 100", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -388,7 +431,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a constant on the left side", () => {
-    const result = parseFullText("0.5 * Revenue", metricNames);
+    const result = parseFullText("0.5 * Revenue", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -397,7 +440,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a constant inside parentheses — (Revenue + Costs) * 0.85", () => {
-    const result = parseFullText("(Revenue + Costs) * 0.85", metricNames);
+    const result = parseFullText("(Revenue + Costs) * 0.85", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -415,7 +458,11 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("parses multiple constants in one expression", () => {
     // 0.5 * Revenue + 0.5 * Costs
-    const result = parseFullText("0.5 * Revenue + 0.5 * Costs", metricNames);
+    const result = parseFullText(
+      "0.5 * Revenue + 0.5 * Costs",
+      metricNames,
+      [],
+    );
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -433,7 +480,7 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("handles an integer that looks like it could start a decimal (no dot follows)", () => {
     // "1 + Revenue" — "1" is an integer with no fractional part
-    const result = parseFullText("1 + Revenue", metricNames);
+    const result = parseFullText("1 + Revenue", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -442,7 +489,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a leading-dot decimal like .5", () => {
-    const result = parseFullText(".5 * Revenue", metricNames);
+    const result = parseFullText(".5 * Revenue", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -451,7 +498,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a metric multiplied by a leading-dot decimal", () => {
-    const result = parseFullText("Revenue * .85", metricNames);
+    const result = parseFullText("Revenue * .85", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -460,7 +507,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a negative leading-dot decimal", () => {
-    const result = parseFullText("-.5 * Revenue", metricNames);
+    const result = parseFullText("-.5 * Revenue", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -471,7 +518,7 @@ describe("parseFullText — numeric literal parsing", () => {
   it("does not parse a trailing dot as part of the number", () => {
     // "1." — trailing dot with no digit after it; "1" is the constant, "." is
     // dropped (unknown tokens are filtered out of committed data)
-    const result = parseFullText("1.", metricNames);
+    const result = parseFullText("1.", metricNames, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -481,7 +528,7 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("parses constants and metrics as separate items separated by a comma", () => {
     // "Revenue * 0.85, Costs"
-    const result = parseFullText("Revenue * 0.85, Costs", metricNames);
+    const result = parseFullText("Revenue * 0.85, Costs", metricNames, []);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -496,7 +543,7 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("round-trips through buildExpressionText", () => {
     const text = "(Revenue + Costs) * 0.85";
-    const result = parseFullText(text, metricNames);
+    const result = parseFullText(text, metricNames, []);
     expect(result).toHaveLength(1);
     const entry = result[0];
     if (entry.type === "expression") {
@@ -535,7 +582,7 @@ describe("parseFullText — negative numbers", () => {
   const close: ExpressionSubToken = { type: "close-paren" };
 
   it("parses a standalone negative integer", () => {
-    const result = parseFullText("-50", metricNames);
+    const result = parseFullText("-50", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:-50",
@@ -547,7 +594,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses metric plus negative constant", () => {
-    const result = parseFullText("Revenue + -50", metricNames);
+    const result = parseFullText("Revenue + -50", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:Revenue + -50",
@@ -559,7 +606,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses metric multiplied by negative decimal", () => {
-    const result = parseFullText("Revenue * -0.85", metricNames);
+    const result = parseFullText("Revenue * -0.85", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:Revenue * -0.85",
@@ -571,7 +618,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses negative constant at the start of expression", () => {
-    const result = parseFullText("-50 * Revenue", metricNames);
+    const result = parseFullText("-50 * Revenue", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:-50 * Revenue",
@@ -583,7 +630,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses negative constant after open-paren", () => {
-    const result = parseFullText("(-50 + Revenue)", metricNames);
+    const result = parseFullText("(-50 + Revenue)", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:(-50 + Revenue)",
@@ -595,7 +642,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses subtraction of a negative constant", () => {
-    const result = parseFullText("Revenue - -50", metricNames);
+    const result = parseFullText("Revenue - -50", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:Revenue - -50",
@@ -608,7 +655,7 @@ describe("parseFullText — negative numbers", () => {
 
   it("round-trips negative constants through buildExpressionText", () => {
     const text = "Revenue + -50";
-    const result = parseFullText(text, metricNames);
+    const result = parseFullText(text, metricNames, []);
     expect(result).toHaveLength(1);
     const entry = result[0];
     if (entry.type === "expression") {
@@ -626,11 +673,17 @@ describe("parseFullText — negative numbers", () => {
     "(-50 + Revenue)",
     "Revenue * -0.85",
   ])("does not report validation errors for: %s", (text) => {
-    expect(findInvalidRanges(text, metricNames)).toEqual([]);
+    expect(
+      findInvalidRanges(
+        text,
+        metricNames,
+        identitiesForAllMetrics(text, metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("parses metric minus negative constant without spaces (Revenue--50)", () => {
-    const result = parseFullText("Revenue--50", metricNames);
+    const result = parseFullText("Revenue--50", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:Revenue - -50",
@@ -642,7 +695,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses metric minus negative decimal without spaces (Revenue--0.5)", () => {
-    const result = parseFullText("Revenue--0.5", metricNames);
+    const result = parseFullText("Revenue--0.5", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:Revenue - -0.5",
@@ -654,11 +707,17 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("does not report validation errors for Revenue--50", () => {
-    expect(findInvalidRanges("Revenue--50", metricNames)).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "Revenue--50",
+        metricNames,
+        identitiesForAllMetrics("Revenue--50", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("still treats minus as binary operator after a metric", () => {
-    const result = parseFullText("Revenue - 50", metricNames);
+    const result = parseFullText("Revenue - 50", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:Revenue - 50",
@@ -670,7 +729,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("still treats minus as binary operator after a constant", () => {
-    const result = parseFullText("100 - Revenue", metricNames);
+    const result = parseFullText("100 - Revenue", metricNames, []);
     expect(result).toEqual([
       {
         id: "expression:100 - Revenue",
@@ -706,7 +765,7 @@ describe("parseFullText — metric names with commas", () => {
       "metric:10": "Revenue, Total",
       "metric:2": "Costs",
     };
-    const result = parseFullText("Revenue, Total", names);
+    const result = parseFullText("Revenue, Total", names, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
   });
@@ -716,7 +775,7 @@ describe("parseFullText — metric names with commas", () => {
       "metric:10": "Revenue, Total",
       "metric:2": "Costs",
     };
-    const result = parseFullText("Revenue, Total, Costs", names);
+    const result = parseFullText("Revenue, Total, Costs", names, []);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
     expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
@@ -727,7 +786,7 @@ describe("parseFullText — metric names with commas", () => {
       "metric:10": "Revenue, Total",
       "metric:2": "Costs",
     };
-    const result = parseFullText("Revenue, Total + Costs", names);
+    const result = parseFullText("Revenue, Total + Costs", names, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -740,7 +799,7 @@ describe("parseFullText — metric names with commas", () => {
       "metric:10": "Revenue, Total",
       "metric:11": "Costs, Annual",
     };
-    const result = parseFullText("Revenue, Total, Costs, Annual", names);
+    const result = parseFullText("Revenue, Total, Costs, Annual", names, []);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
     expect(result[1]).toMatchObject({ type: "metric", id: "metric:11" });
@@ -753,7 +812,7 @@ describe("parseFullText — metric names with commas", () => {
       "metric:1": "Revenue",
       "metric:2": "Costs",
     };
-    const result = parseFullText("Revenue, Total, Costs", names);
+    const result = parseFullText("Revenue, Total, Costs", names, []);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
     expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
@@ -762,7 +821,7 @@ describe("parseFullText — metric names with commas", () => {
   it("falls back to shorter metric when longer does not match", () => {
     // Only "Revenue" is known, not "Revenue, Total"
     const names: MetricNameMap = { "metric:1": "Revenue", "metric:2": "Costs" };
-    const result = parseFullText("Revenue, Costs", names);
+    const result = parseFullText("Revenue, Costs", names, []);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:1" });
     expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
@@ -770,7 +829,7 @@ describe("parseFullText — metric names with commas", () => {
 
   it("handles metric-with-comma multiplied by a constant", () => {
     const names: MetricNameMap = { "metric:10": "Revenue, Total" };
-    const result = parseFullText("Revenue, Total * 0.85", names);
+    const result = parseFullText("Revenue, Total * 0.85", names, []);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -790,15 +849,31 @@ describe("findInvalidRanges — unknown token detection", () => {
   };
 
   it("returns no errors for valid expression", () => {
-    expect(findInvalidRanges("Revenue + Costs", metricNames)).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "Revenue + Costs",
+        metricNames,
+        identitiesForAllMetrics("Revenue + Costs", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("returns no errors for valid expression with constant", () => {
-    expect(findInvalidRanges("Revenue * 0.85", metricNames)).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "Revenue * 0.85",
+        metricNames,
+        identitiesForAllMetrics("Revenue * 0.85", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("flags a single unknown word", () => {
-    const errors = findInvalidRanges("Revenue + xyz", metricNames);
+    const errors = findInvalidRanges(
+      "Revenue + xyz",
+      metricNames,
+      identitiesForAllMetrics("Revenue + xyz", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 10,
@@ -808,7 +883,11 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("flags unknown text that is not a known metric", () => {
-    const errors = findInvalidRanges("Foo", metricNames);
+    const errors = findInvalidRanges(
+      "Foo",
+      metricNames,
+      identitiesForAllMetrics("Foo", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       message: expect.stringContaining("Foo"),
@@ -816,12 +895,21 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("flags multiple unknown tokens in different segments", () => {
-    const errors = findInvalidRanges("abc, def", metricNames);
+    const errors = findInvalidRanges(
+      "abc, def",
+      metricNames,
+      identitiesForAllMetrics("abc, def", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(2);
   });
 
   it("flags unknown token mixed with valid tokens", () => {
-    const errors = findInvalidRanges("Revenue + unknown + Costs", metricNames);
+    const text = "Revenue + unknown + Costs";
+    const errors = findInvalidRanges(
+      text,
+      metricNames,
+      identitiesForAllMetrics(text, metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       message: expect.stringContaining("unknown"),
@@ -829,21 +917,41 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("does not flag numbers as unknown", () => {
-    expect(findInvalidRanges("Revenue * 100", metricNames)).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "Revenue * 100",
+        metricNames,
+        identitiesForAllMetrics("Revenue * 100", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("does not flag parentheses as unknown", () => {
-    expect(findInvalidRanges("(Revenue + Costs)", metricNames)).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "(Revenue + Costs)",
+        metricNames,
+        identitiesForAllMetrics("(Revenue + Costs)", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("does not flag operators as unknown", () => {
-    expect(findInvalidRanges("Revenue + Costs - Revenue", metricNames)).toEqual(
-      [],
-    );
+    expect(
+      findInvalidRanges(
+        "Revenue + Costs - Revenue",
+        metricNames,
+        identitiesForAllMetrics("Revenue + Costs - Revenue", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("flags unknown token at the start of expression", () => {
-    const errors = findInvalidRanges("xyz + Revenue", metricNames);
+    const errors = findInvalidRanges(
+      "xyz + Revenue",
+      metricNames,
+      identitiesForAllMetrics("xyz + Revenue", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 0,
@@ -854,7 +962,11 @@ describe("findInvalidRanges — unknown token detection", () => {
 
   it("returns both structural and unknown errors", () => {
     // "xyz +" has an unknown token AND a trailing operator
-    const errors = findInvalidRanges("xyz +", metricNames);
+    const errors = findInvalidRanges(
+      "xyz +",
+      metricNames,
+      identitiesForAllMetrics("xyz +", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(2);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("xyz"))).toBe(true);
@@ -863,7 +975,12 @@ describe("findInvalidRanges — unknown token detection", () => {
 
   it("flags trailing characters after a metric name with special chars", () => {
     const names: MetricNameMap = { "metric:99": "People Q H2 Orders, Count!" };
-    const errors = findInvalidRanges("People Q H2 Orders, Count!!!!", names);
+    const text = "People Q H2 Orders, Count!!!!";
+    const errors = findInvalidRanges(
+      text,
+      names,
+      identitiesForAllMetrics(text, names),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 26,
@@ -884,7 +1001,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   };
 
   it("flags missing operator between metric and constant", () => {
-    const errors = findInvalidRanges("Revenue 2", metricNames);
+    const errors = findInvalidRanges(
+      "Revenue 2",
+      metricNames,
+      identitiesForAllMetrics("Revenue 2", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 8,
@@ -894,7 +1015,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between two metrics", () => {
-    const errors = findInvalidRanges("Revenue Costs", metricNames);
+    const errors = findInvalidRanges(
+      "Revenue Costs",
+      metricNames,
+      identitiesForAllMetrics("Revenue Costs", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 8,
@@ -904,7 +1029,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between constant and metric", () => {
-    const errors = findInvalidRanges("2 Revenue", metricNames);
+    const errors = findInvalidRanges(
+      "2 Revenue",
+      metricNames,
+      identitiesForAllMetrics("2 Revenue", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 2,
@@ -914,7 +1043,12 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between close-paren and metric", () => {
-    const errors = findInvalidRanges("(Revenue + Costs) Revenue", metricNames);
+    const text = "(Revenue + Costs) Revenue";
+    const errors = findInvalidRanges(
+      text,
+      metricNames,
+      identitiesForAllMetrics(text, metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 18,
@@ -924,7 +1058,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags operator before closing parenthesis", () => {
-    const errors = findInvalidRanges("(Revenue +)", metricNames);
+    const errors = findInvalidRanges(
+      "(Revenue +)",
+      metricNames,
+      identitiesForAllMetrics("(Revenue +)", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 10,
@@ -934,42 +1072,66 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags consecutive operators", () => {
-    const errors = findInvalidRanges("Revenue + + Costs", metricNames);
+    const errors = findInvalidRanges(
+      "Revenue + + Costs",
+      metricNames,
+      identitiesForAllMetrics("Revenue + + Costs", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags operator after opening parenthesis", () => {
-    const errors = findInvalidRanges("(+ Revenue)", metricNames);
+    const errors = findInvalidRanges(
+      "(+ Revenue)",
+      metricNames,
+      identitiesForAllMetrics("(+ Revenue)", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags empty parentheses", () => {
-    const errors = findInvalidRanges("Revenue + ()", metricNames);
+    const errors = findInvalidRanges(
+      "Revenue + ()",
+      metricNames,
+      identitiesForAllMetrics("Revenue + ()", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Empty parentheses"))).toBe(true);
   });
 
   it("flags leading operator", () => {
-    const errors = findInvalidRanges("+ Revenue", metricNames);
+    const errors = findInvalidRanges(
+      "+ Revenue",
+      metricNames,
+      identitiesForAllMetrics("+ Revenue", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags trailing operator", () => {
-    const errors = findInvalidRanges("Revenue +", metricNames);
+    const errors = findInvalidRanges(
+      "Revenue +",
+      metricNames,
+      identitiesForAllMetrics("Revenue +", metricNames),
+    );
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("end with an operator"))).toBe(true);
   });
 
   it("flags constants-only expression as missing metric", () => {
-    const errors = findInvalidRanges("2 + 2", metricNames);
+    const errors = findInvalidRanges(
+      "2 + 2",
+      metricNames,
+      identitiesForAllMetrics("2 + 2", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       message: expect.stringContaining("at least one metric"),
@@ -977,7 +1139,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags unmatched opening parenthesis", () => {
-    const errors = findInvalidRanges("(Revenue + Costs", metricNames);
+    const errors = findInvalidRanges(
+      "(Revenue + Costs",
+      metricNames,
+      identitiesForAllMetrics("(Revenue + Costs", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 0,
@@ -987,7 +1153,11 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags unmatched closing parenthesis", () => {
-    const errors = findInvalidRanges("Revenue + Costs)", metricNames);
+    const errors = findInvalidRanges(
+      "Revenue + Costs)",
+      metricNames,
+      identitiesForAllMetrics("Revenue + Costs)", metricNames),
+    );
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 15,
@@ -997,13 +1167,77 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("accepts valid nested parentheses", () => {
-    expect(findInvalidRanges("(2 * (Revenue + Costs))", metricNames)).toEqual(
-      [],
-    );
+    expect(
+      findInvalidRanges(
+        "(2 * (Revenue + Costs))",
+        metricNames,
+        identitiesForAllMetrics("(2 * (Revenue + Costs))", metricNames),
+      ),
+    ).toEqual([]);
   });
 
   it("accepts close-paren followed by operator", () => {
-    expect(findInvalidRanges("(Revenue + Costs) * 2", metricNames)).toEqual([]);
+    expect(
+      findInvalidRanges(
+        "(Revenue + Costs) * 2",
+        metricNames,
+        identitiesForAllMetrics("(Revenue + Costs) * 2", metricNames),
+      ),
+    ).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// findInvalidRanges — untracked metric detection
+// ---------------------------------------------------------------------------
+
+describe("findInvalidRanges — untracked metric detection", () => {
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+  };
+
+  it("accepts all metrics when every metric token has a tracked identity", () => {
+    const text = "Revenue + Costs";
+    const ids = identitiesForAllMetrics(text, metricNames);
+    expect(findInvalidRanges(text, metricNames, ids)).toEqual([]);
+  });
+
+  it("flags a metric token that has no tracked identity", () => {
+    // Only "Costs" has an identity; "Revenue" was typed by hand.
+    const text = "Revenue + Costs";
+    const costsIdentity: MetricIdentityEntry = {
+      sourceId: "metric:2",
+      from: 10,
+      to: 15,
+      definition: null,
+      slotIndex: 0,
+    };
+    const errors = findInvalidRanges(text, metricNames, [costsIdentity]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      from: 0,
+      to: 7,
+      message: 'Unknown token: "Revenue"',
+    });
+  });
+
+  it("skips untracked check when no identities are provided at all", () => {
+    // When the identities list is completely empty the check is skipped
+    // because identity tracking may be unavailable (e.g. doc replacement).
+    const text = "Revenue + Costs";
+    const errors = findInvalidRanges(text, metricNames, []);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("does not flag non-metric tokens (constants, operators)", () => {
+    // "2 + 2" has no metrics — only the "must contain at least one metric"
+    // error should fire, not untracked-metric errors.
+    const errors = findInvalidRanges("2 + 2", metricNames, []);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      message: expect.stringContaining("at least one metric"),
+    });
   });
 });
 
@@ -1013,7 +1247,7 @@ describe("getWordAtCursor — comma handling with metric entries", () => {
   it("without entries, comma is always a delimiter", () => {
     const text = "Revenue, Total";
     // cursor at end
-    const result = getWordAtCursor(text, text.length);
+    const result = getWordAtCursor(text, text.length, {});
     expect(result.word).toBe("Total");
   });
 
@@ -1117,7 +1351,7 @@ describe("applyTrackedDefinitions", () => {
 
   it("applies tracked definition to a standalone metric by position", () => {
     const text = "Revenue";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
@@ -1133,7 +1367,7 @@ describe("applyTrackedDefinitions", () => {
 
   it("preserves null definition when tracked identity has null", () => {
     const text = "Revenue";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [identity(sourceId(1), 0, 7, null)];
     const { entities } = applyTrackedDefinitions(
       parsed,
@@ -1146,14 +1380,14 @@ describe("applyTrackedDefinitions", () => {
 
   it("leaves entity unchanged when no tracked identity matches its position", () => {
     const text = "Revenue";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const { entities } = applyTrackedDefinitions(parsed, [], text, metricNames);
     expect(entities).toEqual(parsed);
   });
 
   it("matches definitions by exact position for comma-separated metrics", () => {
     const text = "Revenue, Geo Revenue";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [
       identity(sourceId(1), 0, 7, revenueBreakoutDef),
       identity(sourceId(2), 9, 20, geoBreakoutDef),
@@ -1174,7 +1408,7 @@ describe("applyTrackedDefinitions", () => {
 
   it("strips breakout projections from expression token definitions", () => {
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
@@ -1189,7 +1423,7 @@ describe("applyTrackedDefinitions", () => {
 
   it("preserves non-breakout definitions on expression tokens", () => {
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
@@ -1203,14 +1437,14 @@ describe("applyTrackedDefinitions", () => {
 
   it("preserves reference identity for expression entries when no tokens change", () => {
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const { entities } = applyTrackedDefinitions(parsed, [], text, metricNames);
     expect(entities[0]).toBe(parsed[0]);
   });
 
   it("does not touch non-metric tokens inside expressions", () => {
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
@@ -1226,7 +1460,7 @@ describe("applyTrackedDefinitions", () => {
 
   it("applies definition only to standalone metric, not expression token at different position", () => {
     const text = "Revenue, Revenue + 5";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     // Only the standalone Revenue (0-7) has a tracked identity
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
     const { entities } = applyTrackedDefinitions(
@@ -1246,7 +1480,7 @@ describe("applyTrackedDefinitions", () => {
     // Tracked identity at [100,107] — token was deleted (TrackDel).
     // New Revenue at [0,7] is a fresh instance, gets no override.
     const text = "Revenue";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [identity(sourceId(1), 100, 107, revenueDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
@@ -1261,7 +1495,7 @@ describe("applyTrackedDefinitions", () => {
 
   it("newly added duplicate of same metric gets no definition from the tracked one", () => {
     const text = "Revenue, Revenue";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     // Only one tracked identity at position [0,7]
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
     const { entities } = applyTrackedDefinitions(
@@ -1283,7 +1517,7 @@ describe("applyTrackedDefinitions", () => {
   it("preserves definition when token survives edit (position tracked by RangeSet)", () => {
     // "Revenue + 5" — Revenue token at [0,7] survived the edit
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
@@ -1297,7 +1531,7 @@ describe("applyTrackedDefinitions", () => {
 
   it("two instances of same metric at different positions keep independent definitions", () => {
     const text = "Revenue, Revenue";
-    const parsed = parseFullText(text, metricNames);
+    const parsed = parseFullText(text, metricNames, []);
     const tracked = [
       identity(sourceId(1), 0, 7, revenueBreakoutDef, 0),
       identity(sourceId(1), 9, 16, revenueDef, 1),
@@ -1312,5 +1546,193 @@ describe("applyTrackedDefinitions", () => {
       revenueBreakoutDef,
     );
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildFullTextWithIdentities
+// ---------------------------------------------------------------------------
+
+describe("buildFullTextWithIdentities", () => {
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+    "metric:3": "123",
+  };
+
+  const revenueDef = { "display-name": "Revenue" } as any;
+  const costsDef = { "display-name": "Costs" } as any;
+  const numericDef = { "display-name": "123" } as any;
+
+  it("produces text and identity ranges for standalone metrics", () => {
+    const entities: MetricsViewerFormulaEntity[] = [
+      { id: "metric:1", type: "metric", definition: revenueDef },
+      { id: "metric:2", type: "metric", definition: costsDef },
+    ];
+    expect(buildFullTextWithIdentities(entities, metricNames)).toEqual({
+      text: "Revenue, Costs",
+      identities: [
+        {
+          sourceId: "metric:1",
+          from: 0,
+          to: 7,
+          definition: revenueDef,
+          slotIndex: 0,
+        },
+        {
+          sourceId: "metric:2",
+          from: 9,
+          to: 14,
+          definition: costsDef,
+          slotIndex: 1,
+        },
+      ],
+    });
+  });
+
+  it("produces identity ranges for metrics inside expressions", () => {
+    const entities: MetricsViewerFormulaEntity[] = [
+      {
+        id: "expression:Revenue + Costs" as const,
+        type: "expression",
+        name: "Revenue + Costs",
+        tokens: [
+          { type: "metric", sourceId: "metric:1" as const, count: 1 },
+          { type: "operator", op: "+" as const },
+          { type: "metric", sourceId: "metric:2" as const, count: 1 },
+        ],
+      },
+    ];
+    expect(buildFullTextWithIdentities(entities, metricNames)).toEqual({
+      text: "Revenue + Costs",
+      identities: [
+        {
+          sourceId: "metric:1",
+          from: 0,
+          to: 7,
+          definition: null,
+          slotIndex: 0,
+        },
+        {
+          sourceId: "metric:2",
+          from: 10,
+          to: 15,
+          definition: null,
+          slotIndex: 1,
+        },
+      ],
+    });
+  });
+
+  it("handles numeric metric names", () => {
+    const entities: MetricsViewerFormulaEntity[] = [
+      { id: "metric:3", type: "metric", definition: numericDef },
+    ];
+    expect(buildFullTextWithIdentities(entities, metricNames)).toEqual({
+      text: "123",
+      identities: [
+        {
+          sourceId: "metric:3",
+          from: 0,
+          to: 3,
+          definition: numericDef,
+          slotIndex: 0,
+        },
+      ],
+    });
+  });
+
+  it("handles numeric metric in an expression with a constant", () => {
+    const entities: MetricsViewerFormulaEntity[] = [
+      {
+        id: "expression:123 + 456" as const,
+        type: "expression",
+        name: "123 + 456",
+        tokens: [
+          { type: "metric", sourceId: "metric:3" as const, count: 1 },
+          { type: "operator", op: "+" as const },
+          { type: "constant", value: 456 },
+        ],
+      },
+    ];
+    expect(buildFullTextWithIdentities(entities, metricNames)).toEqual({
+      text: "123 + 456",
+      identities: [
+        {
+          sourceId: "metric:3",
+          from: 0,
+          to: 3,
+          definition: null,
+          slotIndex: 0,
+        },
+      ],
+    });
+  });
+
+  it("handles empty entities", () => {
+    expect(buildFullTextWithIdentities([], metricNames)).toEqual({
+      text: "",
+      identities: [],
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseFullText with identities (numeric metric disambiguation)
+// ---------------------------------------------------------------------------
+
+describe("parseFullText with identities", () => {
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:3": "123",
+  };
+
+  function identity(
+    sourceId: MetricSourceId,
+    from: number,
+    to: number,
+  ): MetricIdentityEntry {
+    return { sourceId, from, to, definition: null, slotIndex: 0 };
+  }
+
+  it("treats '123' as a metric when identity range covers it", () => {
+    const identities = [identity("metric:3", 0, 3)];
+    const result = parseFullText("123 + 456", metricNames, identities);
+    expect(result).toEqual([
+      {
+        id: "expression:123 + 456",
+        type: "expression",
+        name: "123 + 456",
+        tokens: [
+          { type: "metric", sourceId: "metric:3", count: 1 },
+          { type: "operator", op: "+" },
+          { type: "constant", value: 456 },
+        ],
+      },
+    ]);
+  });
+
+  it("treats '123' as a number when no identity covers it", () => {
+    const result = parseFullText("123 + 456", metricNames, []);
+    expect(result).toEqual([
+      {
+        id: "expression:123 + 456",
+        type: "expression",
+        name: "123 + 456",
+        tokens: [
+          { type: "constant", value: 123 },
+          { type: "operator", op: "+" },
+          { type: "constant", value: 456 },
+        ],
+      },
+    ]);
+  });
+
+  it("handles numeric metric as standalone", () => {
+    const identities = [identity("metric:3", 0, 3)];
+    const result = parseFullText("123", metricNames, identities);
+    expect(result).toEqual([
+      { id: "metric:3", type: "metric", definition: null },
+    ]);
   });
 });

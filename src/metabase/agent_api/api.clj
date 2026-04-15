@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -61,19 +62,18 @@
 ;; - Use :encode/api transformers to convert kebab-case data from internal functions
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
-(mr/def ::field-type
-  "A data type for a field derived from Metabase's type hierarchy."
-  [:enum :boolean :date :datetime :time :number :string])
-
 (mr/def ::field
   "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:field_id :string]
    [:name :string]
-   [:type {:optional true} [:maybe ::field-type]]
+   [:display_name :string]
    [:description {:optional true} [:maybe :string]]
-   [:database_type {:optional true} [:maybe :string]]
+   [:base_type :string]
+   [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type {:optional true} [:maybe :string]]
+   [:database_type {:optional true} [:maybe :string]]
+   [:coercion_strategy {:optional true} [:maybe :string]]
    [:field_values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::entity-type
@@ -130,7 +130,7 @@
    [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:fields [:sequential ::field]]
+   [:fields {:optional true} [:maybe [:sequential ::field]]]
    [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
    [:metrics {:optional true} [:maybe [:sequential ::metric-summary]]]
    [:measures {:optional true} [:maybe [:sequential ::measure]]]
@@ -194,6 +194,14 @@
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
 
+(mr/def ::database
+  "Details of a database, optionally including its tables."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:engine :string]
+   [:tables {:optional true} [:maybe [:sequential ::table]]]])
+
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
@@ -201,6 +209,29 @@
   {:scope :unchecked}
   []
   {:message "pong"})
+
+(api.macros/defendpoint :get "/v1/database" :- [:sequential ::database]
+  "List all databases the current user has access to."
+  {:scope metabot/agent-database-read
+   :tool  {:name "list_databases"}}
+  []
+  (check-tool-result (entity-details/list-databases)))
+
+(api.macros/defendpoint :get "/v1/database/:id" :- ::database
+  "Get details for a database by ID."
+  {:scope metabot/agent-database-read
+   :tool  {:name "get_database"}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [with-tables with-fields]
+    :or   {with-tables false, with-fields false}}
+   :- [:map
+       [:with-tables {:optional true} [:maybe :boolean]]
+       [:with-fields {:optional true} [:maybe :boolean]]]]
+  (check-tool-result
+   (entity-details/get-database-details
+    {:database-id  id
+     :with-tables? with-tables
+     :with-fields? with-fields})))
 
 (api.macros/defendpoint :get "/v1/table/:id" :- ::table
   "Get details for a table by ID."
@@ -855,6 +886,10 @@
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
+
+(def +agent-api-enabled
+  "Wrap routes so they may only be accessed when the Agent API is enabled."
+  agent-api.validation/+agent-api-enabled)
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 

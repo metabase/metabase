@@ -1,0 +1,13 @@
+name: users
+display_name: Users
+description: User accounts table
+created_at: '2026-01-01T00:00:00.000000Z'
+active: true
+visibility_type: null
+schema: null
+db_id: SQLite DB
+serdes/meta:
+- id: SQLite DB
+  model: Database
+- id: users
+  model: Table
