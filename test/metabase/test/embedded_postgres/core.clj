@@ -15,7 +15,6 @@
     (require '[metabase.test.embedded-postgres.core :as emb-pg]
              '[integrant.core :as ig])
     (def system (ig/init {::emb-pg/embedded-postgres {}}))
-    (emb-pg/install-as-app-db! (::emb-pg/embedded-postgres system))
     ;; ... work with the REPL ...
     (ig/halt! system)"
   (:require
