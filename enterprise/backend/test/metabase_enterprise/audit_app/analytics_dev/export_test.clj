@@ -59,7 +59,8 @@
                           :let [a (get exported-files path)
                                 b (get checked-in-files path)]
                           :when (not= (slurp a) (slurp b))]
-                      [path (first-diff-line a b)]))))
+                      [path (first-diff-line a b)]))
+              "Generated files should match checked-in files. You may need to regenerate checked-in files by running (export/export!)"))
         (finally
           (doseq [^File f (reverse (file-seq tmp-dir))]
             (.delete f)))))))
