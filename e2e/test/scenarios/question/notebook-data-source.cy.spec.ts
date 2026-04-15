@@ -152,7 +152,7 @@ describe("scenarios > notebook > data source", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      // H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.createLibrary();
     });
 

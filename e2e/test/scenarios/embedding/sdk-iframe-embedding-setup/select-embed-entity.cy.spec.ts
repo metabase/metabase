@@ -30,7 +30,7 @@ describe(suiteTitle, () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    // H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
 
@@ -368,7 +368,7 @@ describe("recently created dashboards", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    // H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");

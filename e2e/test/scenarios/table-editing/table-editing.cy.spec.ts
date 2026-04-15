@@ -48,7 +48,7 @@ describe("scenarios > table-editing", () => {
       tableName: EDITABLE_SOURCE_TABLE_NAME,
     });
 
-    // H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     setTableEditingEnabledForDB(WRITABLE_DB_ID);
 
@@ -479,7 +479,7 @@ describe("scenarios > table-editing", () => {
         tableName: "scoreboard_actions",
       });
 
-      // H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       setTableEditingEnabledForDB(WRITABLE_DB_ID);
 
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");

@@ -9,7 +9,7 @@ describe("Metabot UI", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    // H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
@@ -125,7 +125,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
       H.restore();
       cy.signInAsAdmin();
       H.enableTracking();
-      // H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
     });
 
@@ -222,7 +222,7 @@ describe("Metabot in full-app embedding", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    // H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
   });
 

@@ -21,7 +21,7 @@ describe("scenarios > content translation > guest embeds > questions", () => {
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      // H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       H.createQuestion(
         {

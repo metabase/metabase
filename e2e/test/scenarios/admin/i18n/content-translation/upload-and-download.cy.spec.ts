@@ -38,7 +38,7 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      // H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.snapshot("snapshot-for-upload-and-download");
     });
 

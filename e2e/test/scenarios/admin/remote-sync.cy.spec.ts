@@ -16,7 +16,7 @@ describe("Remote Sync", () => {
     H.restore("postgres-writable");
     H.resetSnowplow();
     cy.signInAsAdmin();
-    // H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.setupGitSync();
     H.interceptTask();
   });
@@ -441,7 +441,7 @@ describe("Remote Sync", () => {
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
       H.restore();
-      // H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.setupGitSync();
       cy.signInAsAdmin();
     });
@@ -591,7 +591,7 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      // H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.setupGitSync();
     });
 
@@ -645,7 +645,7 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      // H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.setupGitSync();
       H.interceptTask();
 

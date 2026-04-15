@@ -11,7 +11,7 @@ describe("scenarios > dependencies > dependency checks", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
-    // H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.resetSnowplow();
 

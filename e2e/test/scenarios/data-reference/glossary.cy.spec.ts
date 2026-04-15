@@ -139,7 +139,7 @@ describe("data studio > glossary", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    // H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   function visitDataStudioGlossary() {
