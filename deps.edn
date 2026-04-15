@@ -93,7 +93,6 @@
   io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.netty/netty-codec-http2                {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
-  io.zonky.test/embedded-postgres           {:mvn/version "2.2.2"}
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
@@ -263,8 +262,10 @@
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
+    integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.13"}                    ; test runner
+    io.zonky.test/embedded-postgres {:mvn/version "2.2.2"}                  ; In-process postgres for dev and testing
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
