@@ -1,9 +1,37 @@
 import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
-import type { CustomVizPlugin } from "metabase-types/api";
+import type {
+  CardId,
+  CustomVizPlugin,
+  DocumentContent,
+} from "metabase-types/api";
 
 const { H } = cy;
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
+
+function buildDocumentWithCustomVizCard(cardId: CardId): DocumentContent {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { _id: "1" },
+        content: [{ type: "text", text: "Custom viz embedded below:" }],
+      },
+      {
+        type: "resizeNode",
+        attrs: { height: 400, minHeight: 280 },
+        content: [
+          {
+            type: "cardEmbed",
+            attrs: { id: cardId, name: null, _id: "2" },
+          },
+        ],
+      },
+      { type: "paragraph", attrs: { _id: "3" } },
+    ],
+  };
+}
 
 describe("admin > custom visualizations", () => {
   beforeEach(() => {
@@ -513,6 +541,155 @@ describe("admin > custom visualizations", () => {
       cy.wait("@pluginBundle");
 
       cy.findByTestId("demo-viz-locale").should("have.text", "Locale: de");
+    });
+  });
+
+  describe("using a plugin — document", () => {
+    const DOC_QUESTION_NAME = "Custom Viz Doc Question";
+
+    before(() => {
+      H.setupCustomVizRepo();
+    });
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
+
+      H.createQuestion(
+        {
+          name: DOC_QUESTION_NAME,
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "questionId" },
+      );
+
+      // Query the card once so it appears in the /chart command's recent list.
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("POST", `/api/card/${cardId}/query`);
+      });
+    });
+
+    describe("authenticated", () => {
+      beforeEach(() => {
+        cy.get<CardId>("@questionId").then((cardId) => {
+          H.createDocument({
+            name: "Doc with Custom Viz",
+            document: buildDocumentWithCustomVizCard(cardId),
+            collection_id: null,
+            idAlias: "documentId",
+          });
+        });
+      });
+
+      it("renders the custom viz when the document is opened", () => {
+        H.interceptPluginBundle();
+        H.visitDocument("@documentId");
+        cy.wait("@pluginBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
+          cy.findByText("Custom viz rendered successfully").should(
+            "be.visible",
+          );
+          cy.findByText(/Value: \d+/).should("be.visible");
+        });
+      });
+
+      it("falls back to the default visualization when the plugin bundle fails to load", () => {
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+
+        H.visitDocument("@documentId");
+        cy.wait("@failedBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
+          cy.findByText("Custom viz rendered successfully").should("not.exist");
+          cy.findByTestId("table-root").should("be.visible");
+        });
+      });
+    });
+
+    describe("inserting via slash command", () => {
+      beforeEach(() => {
+        H.createDocument({
+          name: "Empty Doc",
+          document: {
+            type: "doc",
+            content: [{ type: "paragraph", attrs: { _id: "1" } }],
+          },
+          collection_id: null,
+          idAlias: "documentId",
+        });
+      });
+
+      it("renders the custom viz when added via the /chart command", () => {
+        H.interceptPluginBundle();
+        H.visitDocument("@documentId");
+
+        H.documentContent().click();
+        H.addToDocument("/", false);
+        H.commandSuggestionItem("Chart").click();
+        H.commandSuggestionDialog().findByText(DOC_QUESTION_NAME).click();
+
+        cy.wait("@pluginBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME)
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
+      });
+    });
+
+    describe("public sharing", () => {
+      beforeEach(() => {
+        H.updateSetting("enable-public-sharing", true);
+
+        cy.get<CardId>("@questionId").then((cardId) => {
+          H.createDocument({
+            name: "Public Doc with Custom Viz",
+            document: buildDocumentWithCustomVizCard(cardId),
+            collection_id: null,
+            idAlias: "documentId",
+          });
+        });
+      });
+
+      it("renders the custom viz when viewed via a public link", () => {
+        cy.get("@documentId")
+          .then((documentId) => H.createPublicDocumentLink(Number(documentId)))
+          .then(({ body: { uuid } }) => {
+            cy.signOut();
+            H.interceptPluginBundle();
+            cy.visit(`/public/document/${uuid}`);
+            cy.wait("@pluginBundle");
+
+            H.getDocumentCard(DOC_QUESTION_NAME)
+              .findByText("Custom viz rendered successfully")
+              .should("be.visible");
+          });
+      });
+
+      it("falls back to the default visualization in a public document when the bundle fails", () => {
+        cy.get("@documentId")
+          .then((documentId) => H.createPublicDocumentLink(Number(documentId)))
+          .then(({ body: { uuid } }) => {
+            cy.signOut();
+            cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+              statusCode: 500,
+              body: "boom",
+            }).as("failedBundle");
+            cy.visit(`/public/document/${uuid}`);
+            cy.wait("@failedBundle");
+
+            H.getDocumentCard(DOC_QUESTION_NAME)
+              .findByTestId("table-root")
+              .should("be.visible");
+          });
+      });
     });
   });
 });
