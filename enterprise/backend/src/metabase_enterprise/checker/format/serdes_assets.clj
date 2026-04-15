@@ -1,4 +1,4 @@
-(ns metabase-enterprise.checker.format.serdes
+(ns metabase-enterprise.checker.format.serdes-assets
   "Serdes export format — directory structure, path parsing, entity loading.
 
    Directory structure (on disk, names may be slugified):

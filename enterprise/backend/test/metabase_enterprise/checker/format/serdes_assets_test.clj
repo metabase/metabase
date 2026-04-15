@@ -1,9 +1,9 @@
-(ns metabase-enterprise.checker.format.serdes-test
+(ns metabase-enterprise.checker.format.serdes-assets-test
   "Tests for the serdes format module — YAML extraction, file indexing, and source resolution."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.checker.format.serdes :as serdes]
+   [metabase-enterprise.checker.format.serdes-assets :as serdes]
    [metabase-enterprise.checker.source :as source]
    [metabase.util.yaml :as yaml]))
 
@@ -262,7 +262,7 @@
 ;;; Cache shape and lazy resolution
 ;;; ===========================================================================
 
-(def ^:private not-indexed :metabase-enterprise.checker.format.serdes/not-indexed)
+(def ^:private not-indexed ::serdes/not-indexed)
 
 (deftest schema-model-shape-test
   (testing "schema model starts with ::not-indexed for each schema, populates lazily"

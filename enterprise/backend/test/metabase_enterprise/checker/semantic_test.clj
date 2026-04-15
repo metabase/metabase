@@ -6,7 +6,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.checker.format.serdes :as serdes-format]
+   [metabase-enterprise.checker.format.serdes-assets :as serdes-format]
    [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.source :as source]

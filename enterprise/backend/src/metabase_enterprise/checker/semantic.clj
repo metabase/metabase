@@ -11,7 +11,7 @@
    - `(setup export-dir schema-dir)` + `(check-one ctx entity-id)` — REPL workflow"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.checker.format.serdes :as serdes]
+   [metabase-enterprise.checker.format.serdes-assets :as serdes]
    [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
@@ -770,7 +770,10 @@
 (comment
   ;; REPL workflow:
   (check "/Users/dan/projects/work/stats-remote-sync"
-         "/tmp/metadata/metadata/databases")
+         "/Users/dan/projects/work/exports-root/metadata/metadata/databases")
+
+  (check "/Users/dan/projects/work/representations/examples/v1"
+         "/Users/dan/projects/work/yaml-checked-files-v1/exports/sqlite-based/databases")
   (setup
    "/Users/dan/projects/work/stats-remote-sync"
    "/Users/dan/projects/work/stats-remote-sync/databases")
