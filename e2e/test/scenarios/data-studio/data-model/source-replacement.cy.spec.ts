@@ -436,7 +436,7 @@ describe(
     });
 
     describe("Native queries", () => {
-      it.skip("replaces a table referenced in a native SQL question", () => {
+      it("replaces a table referenced in a native SQL question", () => {
         createTestTables();
         createSourceQuestion("MBQL dependent");
 
