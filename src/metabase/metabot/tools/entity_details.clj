@@ -407,8 +407,7 @@
              (into []
                    (map-indexed
                     (fn [i field]
-                      (metabot.tools.u/->result-column
-                       (update-keys field u/->kebab-case-en) i prefix)))
+                      (metabot.tools.u/->result-column field i prefix)))
                    cols)))))
 
 (defn get-database-details

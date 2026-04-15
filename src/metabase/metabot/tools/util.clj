@@ -58,30 +58,31 @@
   "Return a tool result column for `column`. Position is determined by `index`; the field ID is
   `field-id-prefix` + `index`.
 
-  `column` is expected to use kebab/lib-style keys (e.g. `:base-type`, `:display-name`). Callers with
-  raw t2 rows (snake_case keys) should convert via `(update-keys column u/->kebab-case-en)` first.
+  `column` may use either kebab/lib-style keys (e.g. `:base-type`, `:display-name`) or snake_case
+  keys from raw t2 rows (e.g. `:base_type`, `:display_name`); both are accepted.
 
-  The 3-arity takes the display name directly from `:display-name`; the 4-arity computes it via
+  The 3-arity takes the display name directly from the column; the 4-arity computes it via
   `(lib/display-name query column)`."
   ([column index field-id-prefix]
-   (let [base-type         (some-> (:base-type column) u/qualified-name)
-         effective-type    (some-> (:effective-type column) u/qualified-name)
-         semantic-type     (some-> (:semantic-type column) u/qualified-name)
-         coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)]
+   (let [column            (u/kebab->snake-keys column)
+         base-type         (some-> (:base_type column) u/qualified-name)
+         effective-type    (some-> (:effective_type column) u/qualified-name)
+         semantic-type     (some-> (:semantic_type column) u/qualified-name)
+         coercion-strategy (some-> (:coercion_strategy column) u/qualified-name)]
      (-> {:field_id     (str field-id-prefix index)
           ;; Prefer desired-column-alias over source-column-alias to ensure we use deduplicated names if needed
-          :name         (or (:lib/desired-column-alias column)
-                            (:lib/source-column-alias column)
+          :name         (or (:lib/desired_column_alias column)
+                            (:lib/source_column_alias column)
                             (:name column))
-          :display_name (:display-name column)}
+          :display_name (:display_name column)}
          (m/assoc-some :description       (:description column)
                        :base_type         base-type
                        :effective_type    (when (not= effective-type base-type) effective-type)
                        :semantic_type     semantic-type
-                       :database_type     (:database-type column)
+                       :database_type     (:database_type column)
                        :coercion_strategy coercion-strategy
-                       :field_values      (:field-values column)
-                       :table_reference   (:table-reference column)))))
+                       :field_values      (:field_values column)
+                       :table_reference   (:table_reference column)))))
   ([query column index field-id-prefix]
    (->result-column (assoc column :display-name (lib/display-name query column))
                     index
