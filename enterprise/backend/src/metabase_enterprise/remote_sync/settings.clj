@@ -176,10 +176,9 @@
   ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
    (when-not (or (not (str/index-of remote-sync-url ":"))
                  (str/starts-with? remote-sync-url "file://")
-                 (and (or (str/starts-with? remote-sync-url "http://")
-                          (str/starts-with? remote-sync-url "https://"))
-                      (str/index-of remote-sync-url "github.com")))
-     (throw (ex-info "Invalid Repository URL format"
+                 (str/starts-with? remote-sync-url "http://")
+                 (str/starts-with? remote-sync-url "https://"))
+     (throw (ex-info "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                      {:url remote-sync-url})))
 
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token nil)]
