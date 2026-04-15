@@ -14,11 +14,11 @@ const files: Record<string, string> = {
 const PACKAGES = ["react", "@types/react"];
 
 function getVersion(
-  pkg: Record<string, unknown>,
+  pkg: Record<string, Record<string, string> | undefined>,
   name: string,
 ): string | undefined {
   for (const field of ["dependencies", "devDependencies", "peerDependencies"]) {
-    const section = pkg[field] as Record<string, string> | undefined;
+    const section = pkg[field];
     if (section?.[name]) {
       return section[name];
     }
