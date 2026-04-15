@@ -1,5 +1,7 @@
 import * as Lib from "metabase-lib";
 
+export const LAST_STAGE_INDEX = -1;
+
 /**
  * Returns the last stage index that has aggregations or breakouts.
  * Walks backwards from the last stage — if a stage has nothing to show,
@@ -7,7 +9,7 @@ import * as Lib from "metabase-lib";
  */
 export function getLastVisibleStageIndex(query: Lib.Query | undefined): number {
   if (!query) {
-    return -1;
+    return LAST_STAGE_INDEX;
   }
 
   const indexes = Lib.stageIndexes(query);

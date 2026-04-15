@@ -7,6 +7,7 @@ import {
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";
+import { LAST_STAGE_INDEX } from "../../../utils/stages";
 import { BadgeList, type BadgeListProps } from "../../util/BadgeList";
 import {
   type SDKAggregationItem,
@@ -27,7 +28,6 @@ export const SummarizePicker = ({
   }
 
   const query = question.query();
-  const stageIndex = -1;
   const onQueryChange = (newQuery: Lib.Query) => {
     updateQuestion(question.setQuery(Lib.dropEmptyStages(newQuery)), {
       run: true,
@@ -38,12 +38,12 @@ export const SummarizePicker = ({
     <AggregationPicker
       className={className}
       query={query}
-      stageIndex={stageIndex}
+      stageIndex={LAST_STAGE_INDEX}
       clause={aggregation?.aggregation}
       clauseIndex={aggregation?.aggregationIndex}
       operators={
         aggregation?.operators ??
-        Lib.availableAggregationOperators(query, stageIndex)
+        Lib.availableAggregationOperators(query, LAST_STAGE_INDEX)
       }
       onQueryChange={onQueryChange}
       onBack={aggregationPickerProps.onBack}
