@@ -774,9 +774,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().findAllByTestId("expression-metric-header").eq(1).click();
 
       H.popover().within(() => {
-        cy.get("[data-element-id=list-item][aria-selected=false]")
-          .contains(/Created At/)
-          .click();
+        cy.findByText("Birth Date").click();
       });
 
       cy.wait("@dataset");
@@ -811,9 +809,7 @@ describe("scenarios > metrics > explorer", () => {
 
       // Pick a non-default dimension (e.g. "Created At" for Products)
       H.popover().within(() => {
-        cy.get("[data-element-id=list-item][aria-selected=false]")
-          .contains(/Created At/)
-          .click();
+        cy.findByText("Birth Date").click();
       });
 
       cy.wait("@dataset");
