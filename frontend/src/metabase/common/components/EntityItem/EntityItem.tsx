@@ -232,9 +232,9 @@ function EntityItemMenu({
         title: t`Delete permanently`,
         icon: "trash",
         action: onDeletePermanently,
-        color: "danger",
-        hoverColor: "danger",
-        hoverBgColor: "background-error",
+        color: "danger" as const,
+        hoverColor: "danger" as const,
+        hoverBgColor: "background-error" as const,
       });
     }
 
@@ -263,10 +263,9 @@ function EntityItemMenu({
     <EntityMenuContainer style={{ textAlign: "center" }}>
       <EntityMenu
         triggerAriaLabel={t`Actions`}
-        className={className}
-        closedClassNames={cx(CS.hoverChild, CS.hoverChildSmooth)}
         triggerIcon="ellipsis"
         items={actions}
+        className={className}
       />
     </EntityMenuContainer>
   );
@@ -341,7 +340,6 @@ export const EntityItem = ({
           onMove={onMove}
           onCopy={onCopy}
           onArchive={onArchive}
-          className={CS.ml1}
         />
       </EntityItemActions>
     </EntityItemWrapper>

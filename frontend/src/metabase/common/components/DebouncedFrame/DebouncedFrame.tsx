@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { ReactNode, Ref } from "react";
 import { Component, forwardRef } from "react";
 import _ from "underscore";
 
@@ -14,7 +14,26 @@ const DEBOUNCE_PERIOD = 300;
  * We also fade the component out and block mouse events while it's transitioning
  */
 
-class DebouncedFrameInner extends Component {
+interface DebouncedFrameInnerProps {
+  width?: number;
+  height?: number;
+  enabled?: boolean;
+  resetKey?: string | number | boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  children?: ReactNode;
+  forwardedRef?: Ref<HTMLDivElement>;
+}
+
+interface DebouncedFrameInnerState {
+  width?: number;
+  height?: number;
+}
+
+class DebouncedFrameInner extends Component<
+  DebouncedFrameInnerProps,
+  DebouncedFrameInnerState
+> {
   // NOTE: don't keep `_transition` in component state because we don't want to trigger a rerender when we update it
   // Instead manually modify the style in _updateTransitionStyle
   // There's probably a better way to block renders of children though
@@ -25,11 +44,13 @@ class DebouncedFrameInner extends Component {
   // Will be set to true whenever `props.resetKey` changes.
   _queueImmediateResize = false;
 
+  _container: HTMLDivElement | null = null;
+
   static defaultProps = {
     enabled: true,
   };
 
-  constructor(props) {
+  constructor(props: DebouncedFrameInnerProps) {
     super(props);
     this.state = {
       width: props.width,
@@ -50,7 +71,7 @@ class DebouncedFrameInner extends Component {
 
   updateSizeDebounced = _.debounce(this.updateSize, DEBOUNCE_PERIOD);
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: DebouncedFrameInnerProps) {
     if (!nextProps.enabled) {
       this._updateTransitionStyle();
       return;
@@ -73,7 +94,7 @@ class DebouncedFrameInner extends Component {
     this._updateTransitionStyle();
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: DebouncedFrameInnerProps) {
     if (prevProps.resetKey !== this.props.resetKey) {
       this._queueImmediateResize = true;
     }
@@ -92,8 +113,8 @@ class DebouncedFrameInner extends Component {
   _updateTransitionStyle = () => {
     if (this._container) {
       const transition = this._transition && this.props.enabled;
-      this._container.style.opacity = transition ? "0.5" : null;
-      this._container.style.pointerEvents = transition ? "none" : null;
+      this._container.style.opacity = transition ? "0.5" : "";
+      this._container.style.pointerEvents = transition ? "none" : "";
     }
   };
 
@@ -108,14 +129,17 @@ class DebouncedFrameInner extends Component {
       <div
         data-testid="debounced-frame-root"
         ref={(r) => {
-          if (this.props.forwardedRef) {
-            if (typeof this.props.forwardedRef === "function") {
-              this.props.forwardedRef(r);
+          const { forwardedRef } = this.props;
+          if (forwardedRef) {
+            if (typeof forwardedRef === "function") {
+              forwardedRef(r);
             } else {
-              this.props.forwardedRef = r;
+              (
+                forwardedRef as React.MutableRefObject<HTMLDivElement | null>
+              ).current = r;
             }
           }
-          return (this._container = r);
+          this._container = r;
         }}
         className={cx(className, CS.relative)}
         style={{
@@ -124,7 +148,7 @@ class DebouncedFrameInner extends Component {
           ...style,
         }}
       >
-        {width > 0 ? (
+        {width != null && width > 0 ? (
           <div className={CS.absolute} style={{ width, height }}>
             {children}
           </div>
@@ -134,13 +158,17 @@ class DebouncedFrameInner extends Component {
   }
 }
 
-const DebouncedFrameForwardRef = forwardRef(
-  function _DebouncedFrameRefWrapper(props, ref) {
-    return <DebouncedFrameInner {...props} forwardedRef={ref} />;
-  },
-);
+const DebouncedFrameForwardRef = forwardRef<
+  HTMLDivElement,
+  Omit<DebouncedFrameInnerProps, "forwardedRef">
+>(function _DebouncedFrameRefWrapper(props, ref) {
+  return <DebouncedFrameInner {...props} forwardedRef={ref} />;
+});
 
-export const DebouncedFrame = ExplicitSize({
+// `as any` cast needed because ExplicitSize's HOC types inject width/height as
+// number | null, which is incompatible with our props' number | undefined.
+// Can be removed if ExplicitSize is replaced with a hook-based alternative.
+export const DebouncedFrame = ExplicitSize<DebouncedFrameInnerProps>({
   // Disable ExplicitSize's debounce/throttle since DebouncedFrame has a built-in debounce
   refreshMode: "none",
-})(DebouncedFrameForwardRef);
+})(DebouncedFrameForwardRef as any);
