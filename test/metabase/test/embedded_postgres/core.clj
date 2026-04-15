@@ -28,8 +28,8 @@
 (defn- start! ^EmbeddedPostgres
   [port]
   (.start
-    (doto (EmbeddedPostgres/builder)
-      (cond-> port (.setPort port)))))
+   (doto (EmbeddedPostgres/builder)
+     (cond-> port (.setPort port)))))
 
 (defn- stop!
   [pg]
@@ -56,20 +56,3 @@
        ~@body
        (finally
          (ig/halt! ~sym)))))
-
-(defn install-as-app-db!
-  "Point Metabase's app DB at a running embedded-postgres component value (the
-  map returned by the `::embedded-postgres` init-key). Sets the system properties
-  read by `metabase.app-db.env`.
-
-  Must be called before `metabase.app-db.env` is first loaded — that namespace
-  reads the env at load time, so setting properties afterward has no effect.
-  Throws if the namespace is already loaded."
-  [{::keys [jdbc-url]}]
-  (when (find-ns 'metabase.app-db.env)
-    (throw (ex-info (str "metabase.app-db.env is already loaded; install-as-app-db! "
-                         "must run before any metabase.app-db code is required.")
-                    {::jdbc-url jdbc-url})))
-  (System/setProperty "mb.db.type" "postgres")
-  (System/setProperty "mb.db.connection.uri" jdbc-url)
-  nil)
