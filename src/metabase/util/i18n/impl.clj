@@ -64,7 +64,7 @@
 
 (defn available-locale?
   "True if `locale` (a string, keyword, or `Locale`) is a valid locale available on this system. Normalizes args
-  automatically. Also accepts Metabase's internal pseudo-locales (see `extra-available-locales`)."
+  automatically. Also accepts Metabase's internal custom locales (e.g., `en_ZZ` which is used for testing)."
   [locale-or-name]
   (boolean
    (when-let [loc (locale locale-or-name)]

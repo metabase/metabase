@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.config.core :as config]
    [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.json :as json]
@@ -64,8 +63,8 @@
   (locale (user-locale-string)))
 
 (def ^:private test-only-locales
-  "Locales that should only be visible in language pickers during development, unit tests, and E2E runs — never in
-  production. Currently just the `en_ZZ` pseudo-locale. See UXW-3460."
+  "Locales that are hidden from language pickers unless `MB_ENABLE_TEST_LOCALES=true`.
+  Currently just the `en_ZZ` pseudo-locale. See UXW-3460."
   #{"en_ZZ"})
 
 (def ^:private locale-display-name-overrides
@@ -75,26 +74,23 @@
   {"en_ZZ" "English (ZZ)"})
 
 (defn- show-test-locales?
-  "Whether test-only pseudo-locales like `en_ZZ` should appear in language pickers. True for local dev, unit tests, and
-  anywhere the `MB_ENABLE_TEST_LOCALES` env var is explicitly set to `\"true\"` (e.g. by the Cypress runner)."
+  "Whether test-only pseudo-locales like `en_ZZ` should appear in language pickers.
+  True when the `MB_ENABLE_TEST_LOCALES` env var is explicitly set to `\"true\"`
+  (e.g. by the Cypress runner or local dev environment)."
   []
-  (or config/is-dev?
-      config/is-test?
-      (= "true" (System/getenv "MB_ENABLE_TEST_LOCALES"))))
+  (= "true" (System/getenv "MB_ENABLE_TEST_LOCALES")))
 
 (defn available-locales-with-names
-  "Returns all locale abbreviations and their full names. Test-only pseudo-locales (e.g. `en_ZZ`) are injected when
-  we're in dev/test mode or `MB_ENABLE_TEST_LOCALES=true`, and hidden otherwise. The pseudo-locale `.po` file is only
-  generated at build time when the env var is set (see `i18n.create-artifacts`), so `locales.clj` in a production JAR
-  will not list it — this function is responsible for adding it at runtime when appropriate."
+  "Returns all locale abbreviations and their full names"
   []
-  (let [show-test?   (show-test-locales?)
-        locale-names (cond-> (i18n.impl/available-locale-names)
-                       show-test? (into test-only-locales))]
-    (for [locale-name locale-names
+  ;; Test-only pseudo-locales (e.g. `en_ZZ`) are hidden unless `MB_ENABLE_TEST_LOCALES=true`.
+  (let [show-test? (show-test-locales?)]
+    (for [locale-name (i18n.impl/available-locale-names)
           ;; Abbreviation must be normalized or the language picker will show incorrect saved value
           ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
-          :let [normalized (normalized-locale-string locale-name)]]
+          :let [normalized (normalized-locale-string locale-name)]
+          :when (or show-test?
+                    (not (contains? test-only-locales normalized)))]
       [normalized (get locale-display-name-overrides normalized (.getDisplayName (locale locale-name)))])))
 
 (def ^:private included-locales
