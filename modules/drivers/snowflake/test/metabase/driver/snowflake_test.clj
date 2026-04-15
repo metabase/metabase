@@ -493,9 +493,10 @@
                               (jdbc/execute! {:connection conn} [stmt] {:transaction? false})))))
             qualified  (format "\"%s\".\"PUBLIC\".\"%s\"" db-name table-name)]
         (try
-          ;; step 1: create the table with a TEXT column and insert rows
-          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (id INTEGER, text_column TEXT);" qualified)
-                     (format "INSERT INTO %s (id, text_column) VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          ;; step 1: create the table with a TEXT column and insert rows. Quote identifiers so they
+          ;; are preserved lowercase (Snowflake upper-cases unquoted identifiers).
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
           ;; step 2: sync — Metabase creates Table + Field rows for our new table
           (sync/sync-database! (mt/db))
           (let [original-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
@@ -507,7 +508,7 @@
                       original-field)))
             ;; step 3: CREATE OR REPLACE the table, converting text_column to a number via TRY_TO_NUMBER
             (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
-                                    "SELECT id, TRY_TO_NUMBER(text_column) AS text_column FROM %s;")
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                qualified qualified)])
             ;; step 4: sync again
             (sync/sync-database! (mt/db))
@@ -527,11 +528,11 @@
             (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
             (t2/delete! :model/Field :table_id (:id original-table))
             (t2/delete! :model/Table :id (:id original-table)))
-          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (id INTEGER, text_column TEXT);" qualified)
-                     (format "INSERT INTO %s (id, text_column) VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
           (sync/sync-database! (mt/db))
           (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
-                                  "SELECT id, TRY_TO_NUMBER(text_column, 38, 2) AS text_column FROM %s;")
+                                  "SELECT \"id\", TRY_TO_NUMBER(\"text_column\", 38, 2) AS \"text_column\" FROM %s;")
                              qualified qualified)])
           (sync/sync-database! (mt/db))
           (let [fresh-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
