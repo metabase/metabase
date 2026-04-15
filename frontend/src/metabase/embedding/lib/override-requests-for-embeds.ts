@@ -206,11 +206,6 @@ const overrideRequests = async ({
     options.headers = {};
   }
 
-  /**
-   * Set header to indicate that this request is for guest embed.
-   */
-  options.headers["x-metabase-guest-embed"] = "true";
-
   return {
     method: transformation.method,
     url: replaceWithEmbedBase({ embedType, url: transformation.url }),
