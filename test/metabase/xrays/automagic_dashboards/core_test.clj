@@ -221,6 +221,22 @@
                                        [2 8 11 11 15 16 5 6])]
         (test-automagic-analysis table cardinality)))))
 
+(deftest ^:parallel xray-dashboard-has-filters-test
+  (testing "X-ray dashboards should include filter parameters for tables with filterable dimensions"
+    (mt/with-test-user :rasta
+      (automagic-dashboards.test/with-rollback-only-transaction
+        (doseq [table-kw [:orders :products :people]]
+          (testing (str "Table: " (name table-kw))
+            (let [table     (t2/select-one :model/Table :id (mt/id table-kw))
+                  dashboard (magic/automagic-analysis table {:show :all})]
+              (testing "Dashboard should have at least one filter parameter"
+                (is (seq (:parameters dashboard))))
+              (testing "Filter parameters should have required keys"
+                (doseq [param (:parameters dashboard)]
+                  (is (string? (:name param)))
+                  (is (string? (:slug param)))
+                  (is (string? (:type param))))))))))))
+
 (deftest ^:parallel automagic-analysis-test-2
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-rollback-only-transaction
