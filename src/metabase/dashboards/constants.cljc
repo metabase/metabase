@@ -28,6 +28,7 @@
    :smartscalar {:min {:width 2 :height 2} :default {:width 6 :height 3}}
    :map         {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :object      {:min {:width 4 :height 3} :default {:width 12 :height 9}}
+   :page        {:min {:width 4 :height 3} :default {:width 12 :height 9}}
    :row         {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :heading     {:min {:width 1 :height 1} :default {:width grid-width :height 1}}
    :text        {:min {:width 1 :height 1} :default {:width 12 :height 3}}})

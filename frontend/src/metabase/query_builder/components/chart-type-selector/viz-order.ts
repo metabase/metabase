@@ -15,6 +15,7 @@ export const DEFAULT_VIZ_ORDER: CardDisplayType[] = [
   "progress",
   "funnel",
   "object",
+  "page",
   "map",
   "scatter",
   "waterfall",
