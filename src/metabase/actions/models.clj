@@ -460,9 +460,9 @@
 (defmethod serdes/dependencies "Action" [action]
   (set
    (concat
-      ;; other stuff is implicitly referenced through a Card
+    ;; other stuff is implicitly referenced through a Card
     [[{:model "Card" :id (:model_id action)}]]
-      ;; this method is called on ingested data before transformation, and so here it always will be a string
+    ;; this method is called on ingested data before transformation, and so here it always will be a string
     (when (= (:type action) "query")
       (let [{:keys [database_id dataset_query]} (first (:query action))]
         (concat

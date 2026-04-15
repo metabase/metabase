@@ -475,7 +475,7 @@
 
 (defmethod serdes/storage-path "Field" [field _]
   (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))
-        field-name (str/join "." (map :id fields))]
+        field-name    (str/join "." (map :id fields))]
     (conj (serdes/storage-path-prefixes path)
           {:label "fields"}
           {:label field-name :key field-name})))
