@@ -372,7 +372,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it.only("should show the last visible stage and fall back to the previous stage when current is cleared", () => {
+  it("should show the last visible stage and fall back to the previous stage when current is cleared", () => {
     mountSdkContent(<InteractiveQuestion questionId="new" />);
 
     cy.log("Pick starting data");
