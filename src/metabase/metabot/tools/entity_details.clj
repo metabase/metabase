@@ -354,46 +354,6 @@
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
 
-(defn get-table-details-old
-  "Get information about the table or model with ID `table-id`.
-  `table-id` is string either encoding an integer that is the ID of a table
-  or a string containing the prefix card__ and the ID of a model (card) as suffix.
-  Alternatively, `table-id` can be an integer ID of a table.
-  `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
-  should be supplied."
-  [{:keys [model-id table-id] :as arguments}]
-  (try
-    (lib-be/with-metadata-provider-cache
-      (let [options (cond-> arguments
-                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-            details (cond
-                      (int? model-id)
-                      (let [card (card-details model-id (assoc options :only-model true))]
-                        (if (= :model (:type card))
-                          card
-                          (throw (ex-info (format "ID %s is not a valid model id, it's a question" model-id)
-                                          {:agent-error? true :status-code 400}))))
-
-                      (int? table-id)
-                      (table-details table-id options)
-
-                      (string? table-id)
-                      (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                        (card-details (parse-long card-id) options)
-                        (if (re-matches #"\d+" table-id)
-                          (table-details (parse-long table-id) options)
-                          (throw (ex-info "Invalid table_id format"
-                                          {:agent-error? true :status-code 400}))))
-
-                      :else
-                      (throw (ex-info "Invalid arguments: must provide table_id or model_id"
-                                      {:agent-error? true :status-code 400})))]
-        {:structured-output (assoc details :result-type :entity)}))
-    (catch Exception e
-      (if (= (:status-code (ex-data e)) 404)
-        {:output (ex-message e) :status-code 404}
-        (metabot.tools.u/handle-agent-error e)))))
-
 (defn get-table-details
   "Get information about the table, question or model with .
   `table-id` is string either encoding an integer that is the ID of a table
