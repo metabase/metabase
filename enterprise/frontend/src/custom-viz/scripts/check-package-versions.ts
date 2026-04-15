@@ -57,9 +57,9 @@ for (const packageName of PACKAGES) {
 
 if (failed) {
   console.error(
-    "\nVersion mismatch detected. Please align react versions across the files above.",
+    "\nVersion mismatch detected. Please align package versions across the files above.",
   );
   process.exit(1);
 }
 
-console.log("\nAll react versions are consistent.");
+console.log("\nAll package versions are consistent.");
