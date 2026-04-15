@@ -2,27 +2,27 @@ import querystring from "querystring";
 
 import _ from "underscore";
 
+import { clone } from "metabase/utils/clone";
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
+import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   ActionParametersMapping,
   Card,
   CardId,
+  DashboardParameterMapping,
+  DatasetQuery,
+  LegacyDatasetQuery,
+  Parameter,
   ParameterValuesMap,
   UnsavedCard,
-  DashboardParameterMapping,
   VirtualDashCardParameterMapping,
-  Parameter,
-  LegacyDatasetQuery,
 } from "metabase-types/api";
-
-import { clone } from "metabase/utils/clone";
-import Question from "metabase-lib/v1/Question";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
-import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
@@ -149,16 +149,28 @@ function cardVisualizationIsEquivalent(cardA: Card, cardB: Card) {
   );
 }
 
-export function cardQueryIsEquivalent(
-  cardA: Card<LegacyDatasetQuery>,
-  cardB: Card<LegacyDatasetQuery>,
-) {
-  const datasetQueryA = clone(cardA.dataset_query);
-  datasetQueryA.parameters ??= [];
+function isLegacyDatasetQuery(
+  datasetQuery: DatasetQuery,
+): datasetQuery is LegacyDatasetQuery {
+  return (
+    "type" in datasetQuery &&
+    (datasetQuery.type === "query" || datasetQuery.type === "native")
+  );
+}
 
-  const datasetQueryB = clone(cardB.dataset_query);
-  datasetQueryB.parameters ??= [];
+function datasetQueryForComparison(datasetQuery: DatasetQuery): DatasetQuery {
+  const res = clone(datasetQuery);
 
+  if (isLegacyDatasetQuery(res)) {
+    res.parameters ??= [];
+  }
+
+  return res;
+}
+
+export function cardQueryIsEquivalent(cardA: Card, cardB: Card) {
+  const datasetQueryA = datasetQueryForComparison(cardA.dataset_query);
+  const datasetQueryB = datasetQueryForComparison(cardB.dataset_query);
   return Lib.areLegacyQueriesEqual(datasetQueryA, datasetQueryB);
 }
 
@@ -166,10 +178,7 @@ export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {
   return _.isEqual(cardA.parameters || [], cardB.parameters || []);
 }
 
-export function cardIsEquivalent(
-  cardA: Card<LegacyDatasetQuery>,
-  cardB: Card<LegacyDatasetQuery>,
-) {
+export function cardIsEquivalent(cardA: Card, cardB: Card) {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
     cardVisualizationIsEquivalent(cardA, cardB)
@@ -186,7 +195,7 @@ export function applyParameters(
     | ActionParametersMapping[]
     | DashboardParameterMapping[]
     | VirtualDashCardParameterMapping[] = [],
-  { sparse = false } = {},
+  { sparse = false }: { sparse?: boolean } = {},
 ) {
   // TODO(romeovs): This cast is a hack, this function only works with LegacyDatasetQuery
   const datasetQuery = clone(card.dataset_query) as LegacyDatasetQuery;
