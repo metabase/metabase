@@ -793,6 +793,92 @@ describe("admin > custom visualizations", () => {
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
     });
+
+    it("renders in the collection list item", () => {
+      cy.visit("/collection/root");
+
+      cy.findByRole("row", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+
+    it("renders in the collection pinned section when the visualization preview is hidden", () => {
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("PUT", `/api/card/${cardId}`, { collection_position: 1 });
+      });
+      cy.visit("/collection/root");
+
+      H.getPinnedSection()
+        .findByRole("button", { name: "Actions" })
+        .click({ force: true });
+      H.popover()
+        .findByText(/Don.t show visualization/)
+        .click();
+
+      H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
+    });
+
+    it("renders in the search results page", () => {
+      cy.visit(`/search?q=${encodeURIComponent(ICON_QUESTION_NAME)}`);
+
+      cy.findAllByTestId("search-result-item")
+        .filter(`:contains(${ICON_QUESTION_NAME})`)
+        .first()
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+
+    it("renders in the home page recently-viewed section", () => {
+      cy.visit("/");
+
+      H.main()
+        .findByText("Pick up where you left off")
+        .parent()
+        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+
+    it("renders in the dashboard add-questions sidesheet", () => {
+      H.createDashboard(
+        { name: "Icon Test Dashboard" },
+        { wrapId: true, idAlias: "dashboardId" },
+      );
+      H.visitDashboard("@dashboardId");
+      H.editDashboard();
+      H.openQuestionsSidebar();
+
+      cy.findByTestId("add-card-sidebar")
+        .findByRole("menuitem", { name: ICON_QUESTION_NAME })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+
+    it("renders in the document Visualize-as picker", () => {
+      cy.get<CardId>("@questionId").then((cardId) => {
+        H.createDocument({
+          name: "Icon Doc With Card",
+          document: buildDocumentWithCustomVizCard(cardId),
+          collection_id: null,
+          idAlias: "documentId",
+        });
+      });
+
+      H.interceptPluginBundle();
+      H.visitDocument("@documentId");
+      cy.wait("@pluginBundle");
+
+      H.openDocumentCardMenu(ICON_QUESTION_NAME);
+      H.popover().findByText("Edit Visualization").click();
+      H.getDocumentSidebar()
+        .findByRole("button", { name: /demo-viz/i })
+        .click();
+
+      cy.findByRole("menu")
+        .findByRole("menuitem", { name: /demo-viz/i })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
   });
 
   describe("using a plugin — dashboard", () => {
