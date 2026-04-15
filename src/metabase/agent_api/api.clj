@@ -129,7 +129,7 @@
    [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:fields [:sequential ::field]]
+   [:fields {:optional true} [:maybe [:sequential ::field]]]
    [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
    [:metrics {:optional true} [:maybe [:sequential ::metric-summary]]]
    [:measures {:optional true} [:maybe [:sequential ::measure]]]
@@ -221,27 +221,16 @@
   {:scope "agent:database:read"
    :tool  {:name "get_database"}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [with-tables with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
-    :or   {with-tables false, with-fields false, with-field-values false, with-related-tables false,
-           with-metrics false, with-measures false, with-segments false}}
+   {:keys [with-tables with-fields]
+    :or   {with-tables false, with-fields false}}
    :- [:map
-       [:with-tables          {:optional true} [:maybe :boolean]]
-       [:with-fields          {:optional true} [:maybe :boolean]]
-       [:with-field-values    {:optional true} [:maybe :boolean]]
-       [:with-related-tables  {:optional true} [:maybe :boolean]]
-       [:with-metrics         {:optional true} [:maybe :boolean]]
-       [:with-measures        {:optional true} [:maybe :boolean]]
-       [:with-segments        {:optional true} [:maybe :boolean]]]]
+       [:with-tables {:optional true} [:maybe :boolean]]
+       [:with-fields {:optional true} [:maybe :boolean]]]]
   (check-tool-result
    (entity-details/get-database-details
-    {:database-id          id
-     :with-tables?         with-tables
-     :with-fields?         with-fields
-     :with-field-values?   with-field-values
-     :with-related-tables? with-related-tables
-     :with-metrics?        with-metrics
-     :with-measures?       with-measures
-     :with-segments?       with-segments})))
+    {:database-id  id
+     :with-tables? with-tables
+     :with-fields? with-fields})))
 
 (api.macros/defendpoint :get "/v1/table/:id" :- ::table
   "Get details for a table by ID."
