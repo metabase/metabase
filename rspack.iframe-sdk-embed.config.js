@@ -78,7 +78,6 @@ module.exports = {
     CopyJsFromTmpDirectoryPlugin({
       tmpPath: OUT_TEMP_PATH,
       outputPath: path.join(BUILD_PATH, "app/"),
-      copySourceMap: false,
       cleanupInDevMode: true,
     }),
   ],

@@ -8,7 +8,6 @@ const PLUGIN_NAME = "copy-js-from-tmp-directory-plugin";
 module.exports.CopyJsFromTmpDirectoryPlugin = ({
   tmpPath,
   outputPath,
-  copySourceMap,
   cleanupInDevMode,
 }) => ({
   name: PLUGIN_NAME,
@@ -22,15 +21,6 @@ module.exports.CopyJsFromTmpDirectoryPlugin = ({
         // copy embedding-sdk.js from the temp directory to the resources directory
         fs.mkdirSync(tmpPath, { recursive: true });
         fs.copyFileSync(tmpFilePath, outputFilePath);
-
-        if (copySourceMap) {
-          const tmpSourceMapPath = `${tmpFilePath}.map`;
-          const outputSourceMapPath = `${outputFilePath}.map`;
-
-          if (fs.existsSync(tmpSourceMapPath)) {
-            fs.copyFileSync(tmpSourceMapPath, outputSourceMapPath);
-          }
-        }
       }
       if (!IS_DEV_MODE || cleanupInDevMode) {
         // cleanup the temp directory to prevent bloat.
