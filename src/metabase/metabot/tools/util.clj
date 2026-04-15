@@ -58,8 +58,7 @@
   "Return a tool result column for `column`. Position is determined by `index`; the field ID is
   `field-id-prefix` + `index`.
 
-  `column` may use either kebab/lib-style keys (e.g. `:base-type`, `:display-name`) or snake_case
-  keys from raw t2 rows (e.g. `:base_type`, `:display_name`); both are accepted.
+  Accepts either a raw t2 row (underscore keys) or a lib-shaped column (hyphenated keys).
 
   The 3-arity takes the display name directly from the column; the 4-arity computes it via
   `(lib/display-name query column)`."
