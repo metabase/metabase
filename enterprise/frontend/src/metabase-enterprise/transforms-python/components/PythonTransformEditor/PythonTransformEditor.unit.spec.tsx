@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
+import { createMockState } from "metabase/redux/store/mocks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 import {
@@ -14,7 +15,6 @@ import {
   createMockTable,
   createMockTransform,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { PythonTransformEditor } from "./PythonTransformEditor";
 

@@ -4,9 +4,9 @@
    Fetches and caches OpenID Connect discovery documents from provider issuers.
    Falls back to manual configuration when discovery is unavailable."
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.sso.oidc.http :as oidc.http]
    [metabase.sso.settings :as sso.settings]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
@@ -45,16 +45,9 @@
    Returns the parsed JSON document or nil on error."
   [issuer]
   (let [url (discovery-url issuer)]
-    (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) url)
-      (throw (ex-info "Invalid issuer URL: address not allowed by network restrictions"
-                      {:url url})))
     (try
       (log/infof "Fetching OIDC discovery document from %s" url)
-      (let [response (http/get url {:as :json
-                                    :accept :json
-                                    :throw-exceptions false
-                                    :conn-timeout 5000
-                                    :socket-timeout 5000})]
+      (let [response (oidc.http/oidc-get url {:accept :json})]
         (if (= 200 (:status response))
           (:body response)
           (do
@@ -105,16 +98,21 @@
 
 (defn- get-endpoint
   "Extract an endpoint from the discovery document or manual configuration.
+   Validates the endpoint URL against `oidc-allowed-networks`.
 
    Parameters:
    - config: Map containing either :discovery-document or manual endpoint configurations
    - discovery-key: Key in the discovery document (e.g., :authorization_endpoint)
    - manual-key: Key in manual configuration (e.g., :authorization-endpoint)
 
-   Returns the endpoint URL string or nil."
+   Returns the endpoint URL string or nil. Throws if the URL is blocked by network restrictions."
   [config discovery-key manual-key]
-  (or (get-in config [:discovery-document discovery-key])
-      (get config manual-key)))
+  (when-let [url (or (get-in config [:discovery-document discovery-key])
+                     (get config manual-key))]
+    (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) url)
+      (throw (ex-info "OIDC endpoint blocked: address not allowed by network restrictions"
+                      {:url url :endpoint-key discovery-key})))
+    url))
 
 (defn get-authorization-endpoint
   "Get the authorization endpoint from discovery document or manual config.

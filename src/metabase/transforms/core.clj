@@ -35,6 +35,7 @@
   check-database-feature
   check-feature-enabled!
   validate-incremental-column-type!
+  validate-target-schema!
   validate-transform-query!
   get-transforms
   get-transform
