@@ -148,7 +148,7 @@
                                                 (case path
                                                   "dist/index.js"        "console.log('hi')"
                                                   "metabase-plugin.json" (str "{\"name\":\"Bad Ver\","
-                                                                              "\"metabase\":{\"version\":\">=99.0.0\"}}")
+                                                                              "\"metabase\":{\"version\":\">=1.99.0\"}}")
                                                   nil))
                       config/mb-version-info {:tag "v1.60.0"}
                       config/is-dev?         false]
