@@ -379,3 +379,12 @@
                                                                                     {:name "count"}
                                                                                     {:name "CC", :lib/expression-name "CC"}]}}]}]}]}
               (lib.util/pipeline query))))))
+
+(deftest ^:parallel unique-indexed-name-test
+  (testing "returns the base name when it is not already present"
+    (is (= "sum" (lib.util/unique-indexed-name #{} "sum")))
+    (is (= "sum" (lib.util/unique-indexed-name #{"count"} "sum"))))
+  (testing "appends _2, _3, ... when the base name (or its indexed variant) is already present"
+    (is (= "sum_2" (lib.util/unique-indexed-name #{"sum"} "sum")))
+    (is (= "sum_3" (lib.util/unique-indexed-name #{"sum" "sum_2"} "sum")))
+    (is (= "sum_4" (lib.util/unique-indexed-name #{"sum" "sum_2" "sum_3"} "sum")))))
