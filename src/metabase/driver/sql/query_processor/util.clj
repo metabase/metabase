@@ -1,5 +1,6 @@
 (ns metabase.driver.sql.query-processor.util
   (:require
+   [metabase.driver-api.core :as driver-api]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (defn nfc-field->parent-identifier
@@ -24,9 +25,11 @@
 (defn field-with-tz?
   "Given a clause, possibly a `:field` ref, return true iff its type is known to have timezone information."
   [arg]
-  (if-let [[kind _id-or-name opts] (and (vector? arg) arg)]
-    (and (= kind :field)
-         (when-let [type ((some-fn :effective-type :base-type) opts)]
-           (or (isa? type :type/DateTimeWithTZ)
-               (isa? type :type/TimeWithTZ))))
+  (if-let [opts (driver-api/match-lite arg
+                  [:field (opts :guard :lib/uuid) _] opts ;; mbql4
+                  [:field _ opts] opts ;; mbql4
+                  _ nil)]
+    (when-let [type ((some-fn :effective-type :base-type) opts)]
+      (or (isa? type :type/DateTimeWithTZ)
+          (isa? type :type/TimeWithTZ)))
     false))
