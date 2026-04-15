@@ -3563,6 +3563,32 @@
           "properties" : { }
         } ]
       },
+      "metabase.agent-api.api.database" : {
+        "description" : "Details of a database, optionally including its tables.",
+        "type" : "object",
+        "properties" : {
+          "engine" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "tables" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.table"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "engine" ]
+      },
       "metabase.agent-api.api.disjunctive-numeric-filter" : {
         "allOf" : [ {
           "type" : "object",
@@ -4465,10 +4491,14 @@
             "$ref" : "#/components/schemas/metabase.agent-api.api.entity-type"
           },
           "fields" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.agent-api.api.field"
-            }
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.field"
+              }
+            }, {
+              "type" : "null"
+            } ]
           },
           "database_schema" : {
             "oneOf" : [ {
@@ -4505,7 +4535,7 @@
             } ]
           }
         },
-        "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ]
+        "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine" ]
       },
       "metabase.agent-api.api.temporal-extraction-filter" : {
         "allOf" : [ {
@@ -8838,7 +8868,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "transform-inspector", "slackbot" ]
+        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -12974,6 +13004,13 @@
             "details" : {
               "type" : "object",
               "properties" : {
+                "channel_id" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
                 "value" : { }
               },
               "required" : [ "value" ],
@@ -14636,6 +14673,94 @@
                 "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
               }
             }
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/database" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-database",
+        "summary" : "GET /api/agent/v1/database",
+        "description" : "List all databases the current user has access to.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.agent-api.api.database"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/database/{id}" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-database-id",
+        "summary" : "GET /api/agent/v1/database/{id}",
+        "description" : "Get details for a database by ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "with-tables",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-fields",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.database"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/agent" ]
@@ -27918,6 +28043,95 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
+      }
+    },
+    "/api/ee/security-center/acknowledge" : {
+      "post" : {
+        "operationId" : "post-api-ee-security-center-acknowledge",
+        "summary" : "POST /api/ee/security-center/acknowledge",
+        "description" : "Acknowledge multiple security advisories. Skips already-acknowledged advisories.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "acknowledged_at" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "format" : "date-time"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "acknowledged_by" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "common_name" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            },
+                            "email" : {
+                              "description" : "value must be a valid email address.",
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "common_name", "email" ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "advisory_id" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                      },
+                      "match_status" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                      }
+                    },
+                    "required" : [ "advisory_id", "match_status", "acknowledged_by", "acknowledged_at" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "advisory_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  }
+                },
+                "required" : [ "advisory_ids" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/security-center" ]
