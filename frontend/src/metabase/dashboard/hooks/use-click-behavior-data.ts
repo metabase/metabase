@@ -13,6 +13,7 @@ import {
 } from "metabase/dashboard/selectors";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
+import type { State } from "metabase/redux/store";
 import { getUserAttributes } from "metabase/selectors/user";
 import { useStore } from "metabase/utils/redux";
 import type { ClickObject } from "metabase/visualizations/types";
@@ -23,7 +24,6 @@ import type {
   EntityCustomDestinationClickBehavior,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 type EntityObject = {
   id: number | string;

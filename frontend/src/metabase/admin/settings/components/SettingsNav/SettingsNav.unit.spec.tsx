@@ -4,15 +4,15 @@ import { Route } from "react-router";
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
+  createMockLocation,
+  createMockRoutingState,
+  createMockSettingsState,
+} from "metabase/redux/store/mocks";
+import {
   createMockSettings,
   createMockTokenFeatures,
   createMockVersionInfo,
 } from "metabase-types/api/mocks";
-import {
-  createMockLocation,
-  createMockRoutingState,
-  createMockSettingsState,
-} from "metabase-types/store/mocks";
 
 import { SettingsNav } from "./SettingsNav";
 
