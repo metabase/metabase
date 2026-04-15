@@ -15,7 +15,7 @@ export const BaseAppearanceSection = ({
 }: PropsWithChildren<Props>) => {
   return (
     <Flex direction="column" data-testid="appearance-section">
-      <Group justify="space-between" align="center" mb="lg">
+      <Group justify="space-between" align="center" mb="md">
         {noTitle ? null : (
           <Text size="lg" fw="bold">
             {t`Appearance`}

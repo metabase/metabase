@@ -131,7 +131,6 @@ export const ThemeSelectorSection = ({
       {showColorInputs && (
         <ColorCustomizationSection
           theme={theme}
-          noTitle={hasThemes}
           onColorChange={onColorChange}
         />
       )}

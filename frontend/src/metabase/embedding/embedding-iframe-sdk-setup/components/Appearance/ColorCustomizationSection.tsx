@@ -3,12 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { Stack, Text } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 import { originalColors, staticVizOverrides } from "metabase/ui/colors";
 
 import { getConfigurableThemeColors } from "../../utils/theme-colors";
-
-import { BaseAppearanceSection } from "./BaseAppearanceSection";
 
 const defaultMetabaseColorsWithoutAlpha = {
   ...originalColors,
@@ -18,13 +16,11 @@ const defaultMetabaseColorsWithoutAlpha = {
 interface ColorCustomizationSectionProps {
   theme?: { colors?: Partial<MetabaseColors> };
   onColorChange: (colors: Partial<MetabaseColors>) => void;
-  noTitle?: boolean;
 }
 
 export const ColorCustomizationSection = ({
   theme,
   onColorChange,
-  noTitle,
 }: ColorCustomizationSectionProps) => {
   const applicationColors = useSetting("application-colors");
 
@@ -43,7 +39,7 @@ export const ColorCustomizationSection = ({
   }, [theme?.colors]);
 
   return (
-    <BaseAppearanceSection noTitle={noTitle}>
+    <Group align="start" gap="xl">
       {getConfigurableThemeColors().map(({ key, name, originalColorKey }) => {
         // Use the default from appearance settings. If not set, use the default Metabase color.
         const originalColor =
@@ -70,6 +66,6 @@ export const ColorCustomizationSection = ({
           </Stack>
         );
       })}
-    </BaseAppearanceSection>
+    </Group>
   );
 };
