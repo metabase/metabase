@@ -1,10 +1,6 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import {
-  getDeduplicatedColorKeys,
-  getPreferredColorKey,
-} from "metabase/ui/colors/groups";
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -37,14 +33,6 @@ export function keyForSingleSeries(single: SingleSeries): string {
   if (isLegacySeriesCard(single.card)) {
     // _seriesKey is sometimes set by transformSeries
     return single.card._seriesKey || String(single.card.name);
-  }
-
-  return String(single.card.name);
-}
-
-export function nameForSingleSeries(single: SingleSeries): string {
-  if (isLegacySeriesCard(single.card)) {
-    return single.card._seriesName || String(single.card.name);
   }
 
   return String(single.card.name);
@@ -321,14 +309,13 @@ export function getColors(
 
   for (const s of series.filter(hasSingleSeriesKey)) {
     const key = keyForSingleSeries(s);
-    const name = nameForSingleSeries(s);
     const mappedValue = s.columnValuesMapping?.[key]?.[0];
-    const mappedKey =
-      typeof mappedValue === "string" ? mappedValue : mappedValue?.originalName;
 
     keys.push(key);
-    defaultKeys.push(mappedKey ?? getPreferredColorKey(name));
+    defaultKeys.push(
+      typeof mappedValue === "string" ? mappedValue : mappedValue?.originalName,
+    );
   }
 
-  return getSeriesColors(keys, settings, getDeduplicatedColorKeys(defaultKeys));
+  return getSeriesColors(keys, settings, defaultKeys);
 }

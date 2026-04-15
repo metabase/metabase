@@ -137,10 +137,10 @@
                 :lib/source-column-alias      "CATEGORY"
                 :lib/join-alias "Products"
                 :lib/desired-column-alias     "Products__CATEGORY"}
-               {:name                     "aggregation"
+               {:name                     "count"
                 :lib/source               :source/aggregations
-                :lib/source-column-alias  "aggregation"
-                :lib/desired-column-alias "aggregation"}]
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
               cols))
       (is (=? [[:field {:join-alias "Products"} (meta/id :products :category)]
                [:aggregation {} string?]]
@@ -154,19 +154,19 @@
           cols              (lib/returned-columns q)]
       (testing ":lib/desired-column-alias in previous stage (or source Card) becomes :lib/source-column-alias in next stage (see below)"
         (is (=? [{:lib/desired-column-alias "Products__CATEGORY"}
-                 {:lib/desired-column-alias "aggregation"}]
+                 {:lib/desired-column-alias "count"}]
                 (lib/returned-columns (lib/query metadata-provider (:dataset-query card))))))
       (is (=? [{:name                     "CATEGORY"
                 :lib/source               :source/card
                 :lib/source-column-alias  "Products__CATEGORY"
                 :lib/desired-column-alias "Products__CATEGORY"}
-               {:name                     "aggregation"
+               {:name                     "count"
                 :lib/source               :source/card
-                :lib/source-column-alias  "aggregation"
-                :lib/desired-column-alias "aggregation"}]
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
               cols))
       (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-               [:field {:base-type :type/Integer} "aggregation"]]
+               [:field {:base-type :type/Integer} "count"]]
               (map lib.ref/ref cols))))))
 
 (deftest ^:parallel returned-columns-31769-source-card-previous-stage-test
@@ -180,13 +180,13 @@
                 :lib/source               :source/previous-stage
                 :lib/source-column-alias  "Products__CATEGORY"
                 :lib/desired-column-alias "Products__CATEGORY"}
-               {:name                     "aggregation"
+               {:name                     "count"
                 :lib/source               :source/previous-stage
-                :lib/source-column-alias  "aggregation"
-                :lib/desired-column-alias "aggregation"}]
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
               cols))
       (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-               [:field {:base-type :type/Integer} "aggregation"]]
+               [:field {:base-type :type/Integer} "count"]]
               (map lib.ref/ref cols))))))
 
 (deftest ^:parallel card-source-query-visible-columns-test

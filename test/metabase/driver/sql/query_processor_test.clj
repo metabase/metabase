@@ -1567,15 +1567,15 @@
                                                        {:display-name "Sum of Rating"}))))]
       (is (= ["SELECT"
               "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
-              "  COUNT(*) AS \"aggregation\","
-              "  SUM(\"PUBLIC\".\"PRODUCTS\".\"PRICE\") AS \"aggregation_2\","
-              "  SUM(\"PUBLIC\".\"PRODUCTS\".\"RATING\") AS \"aggregation_3\""
+              "  COUNT(*) AS \"count\","
+              "  SUM(\"PUBLIC\".\"PRODUCTS\".\"PRICE\") AS \"sum\","
+              "  SUM(\"PUBLIC\".\"PRODUCTS\".\"RATING\") AS \"sum_2\""
               "FROM"
               "  \"PUBLIC\".\"PRODUCTS\""
               "GROUP BY"
               "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\""
               "ORDER BY"
-              "  \"aggregation_3\" ASC,"
+              "  \"sum_2\" ASC,"
               "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" ASC"]
              (-> query
                  qp.compile/compile
@@ -1666,7 +1666,7 @@
                     (lib/breakout (lib/with-temporal-bucket created-at :month))
                     (as-> $query
                           (lib/order-by $query
-                                        (m/find-first (comp #{:source/aggregations} :lib/source)
+                                        (m/find-first (comp #{"a b"} :name)
                                                       (lib/orderable-columns $query))))
                     (lib/limit 3))]
       (is (= [1 19 37]

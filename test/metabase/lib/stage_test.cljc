@@ -40,19 +40,19 @@
                       (lib/aggregate (lib/* 0.8 (lib/avg (meta/field-metadata :venues :price))))
                       (lib/aggregate (lib/* 0.8 (lib/avg (meta/field-metadata :venues :price)))))]
         (is (=? [{:base-type                :type/Float
-                  :lib/original-name        "aggregation"
-                  :lib/deduplicated-name    "aggregation"
-                  :name                     "aggregation"
+                  :lib/original-name        "expression"
+                  :lib/deduplicated-name    "expression"
+                  :name                     "expression"
                   :display-name             "0.8 × Average of Price"
-                  :lib/source-column-alias  "aggregation"
-                  :lib/desired-column-alias "aggregation"}
+                  :lib/source-column-alias  "expression"
+                  :lib/desired-column-alias "expression"}
                  {:base-type                :type/Float
-                  :lib/original-name        "aggregation_2"
-                  :lib/deduplicated-name    "aggregation_2"
-                  :name                     "aggregation_2"
+                  :lib/original-name        "expression_2"
+                  :lib/deduplicated-name    "expression_2"
+                  :name                     "expression_2"
                   :display-name             "0.8 × Average of Price"
-                  :lib/source-column-alias  "aggregation_2"
-                  :lib/desired-column-alias "aggregation_2"}]
+                  :lib/source-column-alias  "expression_2"
+                  :lib/desired-column-alias "expression_2"}]
                 (lib/returned-columns query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
@@ -326,9 +326,9 @@
                :lib/source-column-alias  "SOURCE"
                :lib/join-alias     "People"
                :lib/desired-column-alias "People__SOURCE"}
-              {:name                     "aggregation"
-               :lib/source-column-alias  "aggregation"
-               :lib/desired-column-alias "aggregation"}]
+              {:name                     "count"
+               :lib/source-column-alias  "count"
+               :lib/desired-column-alias "count"}]
              (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
@@ -350,7 +350,7 @@
   (testing "metadata for breakouts of joined columns should be calculated correctly (#29907)"
     (let [query (metadata-for-breakouts-from-joins-test-query-2)]
       (is (= [{:name "CATEGORY", :lib/source-column-alias "P2__CATEGORY", :lib/desired-column-alias "P2__CATEGORY"}
-              {:name "aggregation", :lib/source-column-alias "aggregation", :lib/desired-column-alias "aggregation"}]
+              {:name "avg", :lib/source-column-alias "avg", :lib/desired-column-alias "avg"}]
              (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
@@ -377,17 +377,17 @@
               {:name                     "SOURCE"
                :lib/source-column-alias  "People__SOURCE"
                :lib/desired-column-alias "People__SOURCE"}
-              {:name                     "aggregation"
-               :lib/source-column-alias  "aggregation"
-               :lib/desired-column-alias "aggregation"}
+              {:name                     "count"
+               :lib/source-column-alias  "count"
+               :lib/desired-column-alias "count"}
               {:name                     "CATEGORY_2"
                :lib/source-column-alias  "P2__CATEGORY"
                :lib/join-alias     "Q2"
                :lib/desired-column-alias "Q2__P2__CATEGORY"}
-              {:name                     "aggregation_2"
-               :lib/source-column-alias  "aggregation"
+              {:name                     "avg"
+               :lib/source-column-alias  "avg"
                :lib/join-alias     "Q2"
-               :lib/desired-column-alias "Q2__aggregation"}]
+               :lib/desired-column-alias "Q2__avg"}]
              (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
@@ -685,9 +685,9 @@
                   :lib/deduplicated-name "CREATED_AT_2"
                   :name                  "CREATED_AT_2"
                   :display-name          "Created At: Month"}
-                 {:lib/original-name     "aggregation"
-                  :lib/deduplicated-name "aggregation"
-                  :name                  "aggregation"
+                 {:lib/original-name     "count"
+                  :lib/deduplicated-name "count"
+                  :name                  "count"
                   :display-name          "Count"}]
                 (map #(select-keys % [:lib/original-name :lib/deduplicated-name :name :display-name])
                      (lib/returned-columns query 0)))))
@@ -696,7 +696,7 @@
                   :display-name "Created At: Year"}
                  {:name         "CREATED_AT_2"
                   :display-name "Created At: Month"}
-                 {:name         "aggregation"
+                 {:name         "count"
                   :display-name "Count"}]
                 (map #(lib/display-info query %)
                      (lib/returned-columns query)))))
@@ -704,8 +704,8 @@
         (let [query' (lib/append-stage query)]
           (are [stage-number expected] (= expected
                                           (map :name (lib/returned-columns query' stage-number (lib.util/query-stage query' stage-number))))
-            0  ["CREATED_AT" "CREATED_AT" "aggregation"]
-            1  ["CREATED_AT" "CREATED_AT_2" "aggregation"]))))))
+            0  ["CREATED_AT" "CREATED_AT" "count"]
+            1  ["CREATED_AT" "CREATED_AT_2" "count"]))))))
 
 (deftest ^:parallel do-not-duplicate-columns-with-default-temporal-bucketing-test
   (testing "Do not add a duplicate column from a join if it uses :default temporal bucketing"

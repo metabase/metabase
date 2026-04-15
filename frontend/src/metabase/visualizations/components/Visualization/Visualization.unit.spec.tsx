@@ -178,14 +178,8 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({
-                  name: "Dimension",
-                  display_name: "Dimension",
-                }),
-                createMockNumericColumn({
-                  name: "Count",
-                  display_name: "Count",
-                }),
+                createMockCategoryColumn({ name: "Dimension" }),
+                createMockNumericColumn({ name: "Count" }),
               ],
               rows: [
                 ["foo", 1],
@@ -206,15 +200,9 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({
-                  name: "Dimension",
-                  display_name: "Dimension",
-                }),
-                createMockNumericColumn({
-                  name: "Count",
-                  display_name: "Count",
-                }),
-                createMockNumericColumn({ name: "Sum", display_name: "Sum" }),
+                createMockCategoryColumn({ name: "Dimension" }),
+                createMockNumericColumn({ name: "Count" }),
+                createMockNumericColumn({ name: "Sum" }),
               ],
               rows: [
                 ["foo", 1, 3],
@@ -236,18 +224,9 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({
-                  name: "Dimension1",
-                  display_name: "Dimension1",
-                }),
-                createMockCategoryColumn({
-                  name: "Dimension2",
-                  display_name: "Dimension2",
-                }),
-                createMockNumericColumn({
-                  name: "Count",
-                  display_name: "Count",
-                }),
+                createMockCategoryColumn({ name: "Dimension1" }),
+                createMockCategoryColumn({ name: "Dimension2" }),
+                createMockNumericColumn({ name: "Count" }),
               ],
               rows: [
                 ["foo", "a", 1],
@@ -271,16 +250,8 @@ describe("Visualization", () => {
             card: createMockCard({ id: 1, name: "Card1", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({
-                  id: 1,
-                  name: "Dimension",
-                  display_name: "Dimension",
-                }),
-                createMockNumericColumn({
-                  id: 2,
-                  name: "Count",
-                  display_name: "Count",
-                }),
+                createMockCategoryColumn({ id: 1, name: "Dimension" }),
+                createMockNumericColumn({ id: 2, name: "Count" }),
               ],
               rows: [
                 ["foo", 1],
@@ -292,16 +263,8 @@ describe("Visualization", () => {
             card: createMockCard({ id: 2, name: "Card2", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({
-                  id: 1,
-                  name: "Dimension",
-                  display_name: "Dimension",
-                }),
-                createMockNumericColumn({
-                  id: 2,
-                  name: "Count",
-                  display_name: "Count",
-                }),
+                createMockCategoryColumn({ id: 1, name: "Dimension" }),
+                createMockNumericColumn({ id: 2, name: "Count" }),
               ],
               rows: [
                 ["foo", 3],

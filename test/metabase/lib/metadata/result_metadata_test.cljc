@@ -361,31 +361,31 @@
 (deftest ^:parallel aggregation-names-test
   (testing "basic aggregations"
     (testing ":count"
-      (is (= {:name "aggregation", :display-name "Count"}
+      (is (= {:name "count", :display-name "Count"}
              (aggregation-names [:count]))))))
 
 (deftest ^:parallel aggregation-names-test-2
   (testing "basic aggregations"
     (testing ":distinct"
-      (is (= {:name "aggregation", :display-name "Distinct values of ID"}
+      (is (= {:name "count", :display-name "Distinct values of ID"}
              (aggregation-names [:distinct [:field (meta/id :venues :id) nil]]))))))
 
 (deftest ^:parallel aggregation-names-test-3
   (testing "basic aggregations"
     (testing ":sum"
-      (is (= {:name "aggregation", :display-name "Sum of ID"}
+      (is (= {:name "sum", :display-name "Sum of ID"}
              (aggregation-names [:sum [:field (meta/id :venues :id) nil]]))))))
 
 (deftest ^:parallel aggregation-names-test-4
   (testing "expressions"
     (testing "simple expression"
-      (is (= {:name "aggregation", :display-name "Count + 1"}
+      (is (= {:name "expression", :display-name "Count + 1"}
              (aggregation-names [:+ [:count] 1]))))))
 
 (deftest ^:parallel aggregation-names-test-5
   (testing "expressions"
     (testing "expression with nested expressions"
-      (is (= {:name "aggregation", :display-name "Min of ID + (2 × Average of Price)"}
+      (is (= {:name "expression", :display-name "Min of ID + (2 × Average of Price)"}
              (aggregation-names
               [:+
                [:min [:field (meta/id :venues :id) nil]]
@@ -394,7 +394,7 @@
 (deftest ^:parallel aggregation-names-test-6
   (testing "expressions"
     (testing "very complicated expression"
-      (is (= {:name "aggregation", :display-name "Min of ID + (2 × Average of Price × 3 × (Max of Category ID - 4))"}
+      (is (= {:name "expression", :display-name "Min of ID + (2 × Average of Price × 3 × (Max of Category ID - 4))"}
              (aggregation-names
               [:+
                [:min [:field (meta/id :venues :id) nil]]
@@ -407,7 +407,7 @@
 (deftest ^:parallel aggregation-names-test-7
   (testing "`aggregation-options`"
     (testing "`:name` and `:display-name`"
-      (is (= {:name "aggregation", :display-name "User-specified Name"}
+      (is (= {:name "generated_name", :display-name "User-specified Name"}
              (aggregation-names
               [:aggregation-options
                [:+ [:min [:field (meta/id :venues :id) nil]] [:* 2 [:avg [:field (meta/id :venues :price) nil]]]]
@@ -416,7 +416,7 @@
 (deftest ^:parallel aggregation-names-test-8
   (testing "`aggregation-options`"
     (testing "`:name` only"
-      (is (= {:name "aggregation", :display-name "Min of ID + (2 × Average of Price)"}
+      (is (= {:name "generated_name", :display-name "Min of ID + (2 × Average of Price)"}
              (aggregation-names
               [:aggregation-options
                [:+ [:min [:field (meta/id :venues :id) nil]] [:* 2 [:avg [:field (meta/id :venues :price) nil]]]]
@@ -425,7 +425,7 @@
 (deftest ^:parallel aggregation-names-test-9
   (testing "`aggregation-options`"
     (testing "`:display-name` only"
-      (is (= {:name "aggregation", :display-name "User-specified Name"}
+      (is (= {:name "expression", :display-name "User-specified Name"}
              (aggregation-names
               [:aggregation-options
                [:+ [:min [:field (meta/id :venues :id) nil]] [:* 2 [:avg [:field (meta/id :venues :price) nil]]]]
@@ -435,7 +435,7 @@
   (testing "basic aggregation clauses"
     (testing "`:count` (no field)"
       (is (=? {:base-type    :type/Float
-               :name         "aggregation"
+               :name         "expression"
                :display-name "Count ÷ 2"}
               (col-info-for-aggregation-clause [:/ [:count] 2]))))))
 
@@ -443,7 +443,7 @@
   (testing "basic aggregation clauses"
     (testing "`:sum`"
       (is (=? {:base-type    :type/Integer
-               :name         "aggregation"
+               :name         "sum"
                :display-name "Sum of Price + 1"}
               (lib.tu.macros/$ids venues
                 (col-info-for-aggregation-clause [:sum [:+ $price 1]])))))))
@@ -453,7 +453,7 @@
     (testing "`:name` and `:display-name`"
       (is (=? {:base-type     :type/Integer
                :settings      {:is_priceless true}
-               :name          "aggregation"
+               :name          "sum_2"
                :display-name  "My custom name"}
               (lib.tu.macros/$ids venues
                 (col-info-for-aggregation-clause
@@ -464,7 +464,7 @@
     (testing "`:name` only"
       (is (=? {:base-type     :type/Integer
                :settings      {:is_priceless true}
-               :name          "aggregation"
+               :name          "sum_2"
                :display-name  "Sum of Price"}
               (lib.tu.macros/$ids venues
                 (col-info-for-aggregation-clause [:aggregation-options [:sum $price] {:name "sum_2"}])))))))
@@ -474,7 +474,7 @@
     (testing "`:display-name` only"
       (is (=? {:base-type     :type/Integer
                :settings      {:is_priceless true}
-               :name          "aggregation"
+               :name          "sum"
                :display-name  "My Custom Name"}
               (lib.tu.macros/$ids venues
                 (col-info-for-aggregation-clause

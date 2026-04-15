@@ -179,7 +179,7 @@
                     query'))
             (is (=? [[:metric {:lib/uuid string?} 100]]
                     (lib/aggregations query')))
-            (is (=? [{:name              "aggregation"
+            (is (=? [{:name              "sum_of_cans"
                       :display-name      "Sum of Cans"
                       :long-display-name "Sum of Cans"
                       :effective-type    :type/Integer

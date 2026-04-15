@@ -55,7 +55,7 @@
     (let [query                     (-> (lib/query multi-pk-provider (meta/table-metadata :orders))
                                         (lib/aggregate (lib/count))
                                         (lib/breakout (meta/field-metadata :orders :created-at)))
-          {count-col  "aggregation"
+          {count-col  "count"
            created-at "CREATED_AT"} (m/index-by :name (lib/returned-columns query))
           count-dim                 {:column     count-col
                                      :column-ref (lib/ref count-col)

@@ -246,7 +246,7 @@ describe("scenarios > question > summarize sidebar", () => {
             {
               direction: "desc",
               type: "column",
-              name: "aggregation_2",
+              name: "sum",
               displayName: "Sum of Subtotal",
             },
           ],

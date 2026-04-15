@@ -1,5 +1,4 @@
-import { useDebouncedValue } from "@mantine/hooks";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
@@ -19,14 +18,19 @@ export const usePeopleQuery = (pageSize: number, tenancy: UserTenancy) => {
   const [status, setStatus] = useState<ActiveStatus>(ACTIVE_STATUS.active);
   const [searchInputValue, setSearchInputValue] = useState("");
 
-  const [searchText] = useDebouncedValue(
-    searchInputValue.length >= MIN_SEARCH_LENGTH ? searchInputValue : "",
-    SEARCH_DEBOUNCE_DURATION,
-  );
+  const [searchText, setSearchText] = useState("");
 
-  useLayoutEffect(() => {
-    setPage(0);
-  }, [searchText, setPage]);
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      const searchText =
+        searchInputValue.length >= MIN_SEARCH_LENGTH ? searchInputValue : "";
+
+      setPage(0);
+      setSearchText(searchText);
+    }, SEARCH_DEBOUNCE_DURATION);
+
+    return () => clearTimeout(timerId);
+  }, [searchInputValue, setPage]);
 
   const updateStatus = useCallback(
     (status: ActiveStatus) => {

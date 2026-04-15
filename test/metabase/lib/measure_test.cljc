@@ -133,8 +133,8 @@
            #"does not exist"
            (lib/check-measure-overwrite 1 measure-1-def))))))
 
-(deftest ^:parallel measure-field-ref-uses-operator-name-test
-  (testing "When a measure is used in a query and referenced in a subsequent stage, the :field ref should use the operator name (e.g., 'sum') not the measure's display name"
+(deftest ^:parallel measure-field-ref-uses-measure-name-test
+  (testing "When a measure is used in a query and referenced in a subsequent stage, the :field ref uses the measure's sticky :name"
     (let [definition (measure-definition-with-aggregation
                       meta/metadata-provider
                       (lib/sum (meta/field-metadata :venues :price)))
@@ -154,9 +154,9 @@
           measure-col  (first visible-cols)
           ;; Get the field ref that would be generated for this column
           field-ref    (lib/ref measure-col)]
-      (testing "The field ref should use 'aggregation' as the field name, not 'Total Revenue'"
-        ;; field-ref is [:field {:...} "aggregation"] - the third element is the field name
-        (is (= "aggregation" (nth field-ref 2)))))))
+      (testing "The field ref should use the measure's slugified name"
+        ;; field-ref is [:field {:...} "total_revenue"] - the third element is the field name
+        (is (= "total_revenue" (nth field-ref 2)))))))
 
 (deftest ^:parallel type-of-test
   (testing "type-of returns the type of the measure's aggregation"

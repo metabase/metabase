@@ -706,7 +706,7 @@
                                             col))
                                         (lib/breakoutable-columns $))))
           viz-settings {:column_settings {}
-                        :pivot_table.column_split {:rows ["ID" "ID_2"], :columns [], :values ["aggregation"]}
+                        :pivot_table.column_split {:rows ["ID" "ID_2"], :columns [], :values ["count"]}
                         :pivot_table.collapsed_rows {:value [], :rows ["ID" "ID_2"]}
                         :pivot.show_row_totals true
                         :pivot.show_column_totals true

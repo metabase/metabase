@@ -190,12 +190,12 @@
                   :base-type          :type/Integer}
                  {:lib/type     :metadata/column
                   :base-type    :type/Integer
-                  :name         "aggregation"
+                  :name         "sum"
                   :display-name "Sum of Price"
                   :lib/source   :source/aggregations}
                  {:lib/type     :metadata/column
                   :base-type    :type/Float
-                  :name         "aggregation_2"
+                  :name         "avg"
                   :display-name "Average of Price + 1"
                   :lib/source   :source/aggregations}]
                 (lib/orderable-columns query)))))))

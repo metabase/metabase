@@ -1152,7 +1152,7 @@
           (mt/with-native-query-testing-context legacy-query
             (let [results (qp/process-query legacy-query)]
               (is (= [["Products → Category"                     "Products__CATEGORY"]
-                      ["Count"                                   "aggregation"]
+                      ["Count"                                   "count"]
                       ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
                      (map (juxt :display_name :lib/desired-column-alias)
                           (mt/cols results))))

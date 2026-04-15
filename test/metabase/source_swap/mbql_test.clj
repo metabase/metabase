@@ -557,14 +557,14 @@
                          :aggregation  [[:sum {} [:field {} (meta/id :orders :id)]]]
                          :breakout     [[:field {} (meta/id :orders :created-at)]]}
                         {:filters [[:not-null {} [:field {} "CREATED_AT"]]
-                                   [:not-null {} [:field {} "aggregation"]]]}]}
+                                   [:not-null {} [:field {} "sum"]]]}]}
               upgraded-query)))
     (testing "should swap first stage to new table id-based refs and preserve name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :aggregation  [[:sum {} [:field {} (meta/id :products :id)]]]
                          :breakout     [[:field {} (meta/id :products :created-at)]]}
                         {:filters [[:not-null {} [:field {} "CREATED_AT"]]
-                                   [:not-null {} [:field {} "aggregation"]]]}]}
+                                   [:not-null {} [:field {} "sum"]]]}]}
               swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-multi-stage-temporal-breakouts-test
@@ -585,7 +585,7 @@
                                         [:field {:temporal-unit :month} (meta/id :orders :created-at)]]}
                         {:filters [[:not-null {} [:field {} "CREATED_AT"]]
                                    [:not-null {} [:field {} "CREATED_AT_2"]]
-                                   [:not-null {} [:field {} "aggregation"]]]}]}
+                                   [:not-null {} [:field {} "sum"]]]}]}
               upgraded-query)))
     (testing "should swap first stage to new table id-based refs and preserve name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :products)
@@ -594,7 +594,7 @@
                                         [:field {:temporal-unit :month} (meta/id :products :created-at)]]}
                         {:filters [[:not-null {} [:field {} "CREATED_AT"]]
                                    [:not-null {} [:field {} "CREATED_AT_2"]]
-                                   [:not-null {} [:field {} "aggregation"]]]}]}
+                                   [:not-null {} [:field {} "sum"]]]}]}
               swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-deduplicated-name-test

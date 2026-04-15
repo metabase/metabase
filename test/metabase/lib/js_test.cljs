@@ -644,8 +644,7 @@
                     "lib/type" "mbql/query"
                     "stages"   #js [#js {"source-table" (meta/id :orders)
                                          "lib/type"     "mbql.stage/mbql"
-                                         "aggregation"  #js [#js ["count" #js {"lib/uuid" ag-uuid
-                                                                               "name"     "aggregation"}]]}
+                                         "aggregation"  #js [#js ["count" #js {"lib/uuid" ag-uuid}]]}
                                     #js {"lib/type" "mbql.stage/mbql"
                                          "filters"  #js [#js [">"
                                                               #js {"lib/uuid" filter-uuid}
@@ -653,7 +652,7 @@
                                                                    #js {"effective-type" "type/Integer"
                                                                         "lib/uuid"       field-uuid
                                                                         "base-type"      "type/Integer"}
-                                                                   "aggregation"]
+                                                                   "count"]
                                                               100]]}]}
                js-query)))
     (testing "JS to CLJS"

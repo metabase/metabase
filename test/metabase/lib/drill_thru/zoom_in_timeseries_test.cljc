@@ -43,7 +43,7 @@
                                          (= (lib.temporal-bucket/raw-temporal-bucket %) :year))
                                    (lib/returned-columns query))
           _          (assert created-at)
-          count-col  (m/find-first #(= (:name %) "aggregation") columns)
+          count-col  (m/find-first #(= (:name %) "count") columns)
           _          (assert count-col)
           drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill
                       query -1
@@ -142,12 +142,12 @@
                       (lib/aggregate (lib/max (lib.metadata/field metadata-provider (meta/id :orders :discount))))
                       (lib/breakout (-> (lib.metadata/field metadata-provider (meta/id :orders :created-at))
                                         (lib/with-temporal-bucket temporal-unit))))
-    :custom-row   (merge {"aggregation" 77, "aggregation_2" 1, "aggregation_3" nil} custom-row)
+    :custom-row   (merge {"count" 77, "sum" 1, "max" nil} custom-row)
     :expected     {:type :drill-thru/zoom-in.timeseries}}))
 
 (deftest ^:parallel returns-zoom-in-timeseries-for-datetime-column-test
   (testing "zoom-in.timeseries should be returned for DateTime dimension (#33811)"
-    (doseq [aggregation ["aggregation" "aggregation_2" "aggregation_3"]
+    (doseq [aggregation ["count" "sum" "max"]
             bucketing   (map first datetime-unit-pairs)]
       (testing (str "aggregation = " aggregation ", bucketing = " bucketing)
         (lib.drill-thru.tu/test-returns-drill
@@ -168,7 +168,7 @@
 
 (deftest ^:parallel returns-zoom-in-timeseries-for-date-column-test
   (testing "zoom-in.timeseries should be returned for Date dimension (#33811, #39366)"
-    (doseq [aggregation ["aggregation" "aggregation_2" "aggregation_3"]
+    (doseq [aggregation ["count" "sum" "max"]
             bucketing   (map first date-unit-pairs)]
       (testing (str "aggregation = " aggregation ", bucketing = " bucketing)
         (lib.drill-thru.tu/test-returns-drill
@@ -180,7 +180,7 @@
 
 (deftest ^:parallel does-not-return-zoom-in-timeseries-for-date-column-with-time-temporal-unit-test
   (testing "zoom-in.timeseries should be returned for Date dimension (#33811, #39366)"
-    (doseq [aggregation ["aggregation" "aggregation_2" "aggregation_3"]
+    (doseq [aggregation ["count" "sum" "max"]
             ;; :day is valid as a *current* unit, but the next unit will be :hour, which is invalid for a Date column,
             ;; and hence no zoom-in-timeseries drill thru should be returned.
             bucketing   [:day :hour]]
@@ -200,8 +200,8 @@
    {:drill-type   :drill-thru/zoom-in.timeseries
     :click-type   :cell
     :query-type   :aggregated
-    :column-name  "aggregation"
-    :custom-query #(lib.drill-thru.tu/append-filter-stage % "aggregation")
+    :column-name  "count"
+    :custom-query #(lib.drill-thru.tu/append-filter-stage % "count")
     :expected     {:type      :drill-thru/zoom-in.timeseries
                    :next-unit :week
                    ;; the "underlying" dimension is reconstructed from the row.
@@ -219,7 +219,7 @@
           created-at-col    (m/find-first #(= (:name %) "CREATED_AT")
                                           (lib/returned-columns base-query))
           _                 (is (some? created-at-col))
-          multi-stage-query (lib.drill-thru.tu/append-filter-stage base-query "aggregation")]
+          multi-stage-query (lib.drill-thru.tu/append-filter-stage base-query "count")]
       (doseq [[query-type query] {"single-stage" base-query
                                   "multi-stage" multi-stage-query}
               [message context]  {"pivot cell (no column, value = NULL) (#36173)"
@@ -251,7 +251,7 @@
                                                          [:field {:temporal-unit :year} (meta/id :orders :created-at)]
                                                          "2022-12-01T00:00:00+02:00"]]}]}
                                  (= query multi-stage-query)
-                                 (lib.drill-thru.tu/append-filter-stage-to-test-expectation "aggregation"))]
+                                 (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))]
             (is (= 1
                    (count drills)))
             (is (=? {:lib/type     :metabase.lib.drill-thru/drill-thru
@@ -270,7 +270,7 @@
                                 (lib/aggregate (lib/count))
                                 (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                                   (lib/with-temporal-bucket unit1))))
-          multi-stage-query (lib.drill-thru.tu/append-filter-stage base-query "aggregation")]
+          multi-stage-query (lib.drill-thru.tu/append-filter-stage base-query "count")]
       (doseq [[query-type query] {"single-stage" base-query
                                   "multi-stage"  multi-stage-query}]
         (testing (str "zoom-in.timeseries for a DateTime column in a " query-type " query should zoom from " unit1 " to " unit2)
@@ -286,14 +286,14 @@
                                                            (meta/id :orders :created-at)]
                                                           "2022-12-09T11:22:33+02:00"]]}]}
                                  (= query multi-stage-query)
-                                 (lib.drill-thru.tu/append-filter-stage-to-test-expectation "aggregation"))]
+                                 (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))]
             (lib.drill-thru.tu/test-drill-application
              {:click-type     :cell
               :query-type     :aggregated
               :custom-query   query
-              :custom-row     {"aggregation"      100
+              :custom-row     {"count"      100
                                "CREATED_AT" "2022-12-09T11:22:33+02:00"}
-              :column-name    "aggregation"
+              :column-name    "count"
               :drill-type     :drill-thru/zoom-in.timeseries
               :expected       {:type         :drill-thru/zoom-in.timeseries
                                :display-name (str "See this " (name unit1) " by " (name unit2))
@@ -317,9 +317,9 @@
          {:click-type     :cell
           :query-type     :aggregated
           :custom-query   query
-          :custom-row     {"aggregation"      100
+          :custom-row     {"count"      100
                            "CREATED_AT" "2022-12-09"}
-          :column-name    "aggregation"
+          :column-name    "count"
           :drill-type     :drill-thru/zoom-in.timeseries
           :expected       {:type         :drill-thru/zoom-in.timeseries
                            :display-name (str "See this " (name unit1) " by " (name unit2))

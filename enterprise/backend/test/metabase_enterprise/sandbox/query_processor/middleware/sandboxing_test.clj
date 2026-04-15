@@ -1654,7 +1654,7 @@
                           :id   (mt/id :products :title)
                           :lib/original-fk-field-id (mt/id :orders :product_id)
                           :remapped_from (symbol "nil #_\"key is not present.\"")}
-                         {:name "aggregation"}]
+                         {:name "count"}]
                         (mt/cols result)))
                 (is (= [["Awesome Bronze Plate" 1]
                         ["Awesome Concrete Shoes" 1]

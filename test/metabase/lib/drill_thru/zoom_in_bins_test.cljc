@@ -18,11 +18,11 @@
   (let [base-filters (get-in base-expected-query [:stages 0 :filters])]
     (-> base-expected-query
         (update-in [:stages 0] dissoc :filters)
-        (update :stages conj {:filters (into [[:> {} [:field {} "aggregation"] -1]]
+        (update :stages conj {:filters (into [[:> {} [:field {} "count"] -1]]
                                              base-filters)}))))
 
 (defn- variant-with-count-filter-stage [base-case]
-  {:custom-query (lib.drill-thru.tu/append-filter-stage (:custom-query base-case) "aggregation")
+  {:custom-query (lib.drill-thru.tu/append-filter-stage (:custom-query base-case) "count")
    :expected-query (variant-expected-query-with-count-filter-stage (:expected-query base-case))})
 
 (deftest ^:parallel zoom-in-bins-available-test
@@ -48,7 +48,7 @@
                           (lib/aggregate (lib/count))
                           (lib/breakout (-> (meta/field-metadata :orders :total)
                                             (lib/with-binning {:strategy :num-bins, :num-bins 10}))))
-      :custom-row     {"aggregation" 100
+      :custom-row     {"count" 100
                        "TOTAL" 40}
       :column-name    "TOTAL"
       :drill-type     :drill-thru/zoom-in.binning
@@ -82,7 +82,7 @@
                           (lib/aggregate (lib/count))
                           (lib/breakout (-> (meta/field-metadata :people :latitude)
                                             (lib/with-binning {:strategy :bin-width, :bin-width 1.0}))))
-      :custom-row     {"aggregation"    100
+      :custom-row     {"count"    100
                        "LATITUDE" 41.0}
       :column-name    "LATITUDE"
       :drill-type     :drill-thru/zoom-in.binning
@@ -112,7 +112,7 @@
                            (lib/aggregate (lib/count))
                            (lib/breakout (-> (meta/field-metadata :orders :quantity)
                                              (lib/with-binning {:strategy :default}))))
-          col-count    (m/find-first #(= (:name %) "aggregation")
+          col-count    (m/find-first #(= (:name %) "count")
                                      (lib/returned-columns query))
           _            (is (some? col-count))
           col-quantity (m/find-first #(= (:name %) "QUANTITY")
@@ -167,11 +167,11 @@
                                             (lib/with-binning {:strategy :num-bins, :num-bins 10})))
                           (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                             (lib/with-temporal-bucket :month))))
-      :custom-row     {"aggregation"      100
+      :custom-row     {"count"      100
                        "QUANTITY"   10
                        "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
         ;; TODO: Clicking on breakout columns in table views doesn't work properly.
-      :column-name    "aggregation"
+      :column-name    "count"
       :drill-type     :drill-thru/zoom-in.binning
       :expected       {:type        :drill-thru/zoom-in.binning
                        :column      {:name "QUANTITY"}
@@ -263,7 +263,7 @@
                                              (lib/with-binning {:strategy :default})))
                            #_(lib/breakout (-> (meta/field-metadata :orders :created-at)
                                                (lib/with-temporal-bucket :month))))
-          count-col    (m/find-first #(= (:name %) "aggregation")
+          count-col    (m/find-first #(= (:name %) "count")
                                      (lib/returned-columns query))
           _            (is (some? count-col))
           discount-col (m/find-first #(= (:name %) "DISCOUNT")
@@ -303,9 +303,9 @@
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   (add-zoom-in-filters base-query)
-        :custom-row     {"aggregation"    100
+        :custom-row     {"count"    100
                          "SUBTOTAL" 50} ;; Clicking the 50-52.5 bin
-        :column-name    "aggregation"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.binning
         :expected       {:type        :drill-thru/zoom-in.binning
                          :column      {:name "SUBTOTAL"}
@@ -326,7 +326,7 @@
                                                      52.5]]}]})}
        "multi-stage query"
        (fn [base-case]
-         {:custom-query (add-zoom-in-filters (lib.drill-thru.tu/append-filter-stage base-query "aggregation"))
+         {:custom-query (add-zoom-in-filters (lib.drill-thru.tu/append-filter-stage base-query "count"))
           :expected-query (variant-expected-query-with-count-filter-stage (:expected-query base-case))})))))
 
 (deftest ^:parallel join-order-doesnt-matter-for-zooming-53956

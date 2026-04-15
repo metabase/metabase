@@ -48,7 +48,7 @@
     :click-type  :cell
     :query-type  :aggregated
     :query-kinds [:mbql]
-    :column-name "aggregation"
+    :column-name "count"
     :expected    {:type :drill-thru/underlying-records, :row-count 77, :table-name "Orders"}}))
 
 (deftest ^:parallel returns-underlying-records-test-2
@@ -57,7 +57,7 @@
     :click-type  :cell
     :query-type  :aggregated
     :query-kinds [:mbql]
-    :column-name "aggregation_2"
+    :column-name "sum"
     :expected    {:type :drill-thru/underlying-records, :row-count 1, :table-name "Orders"}}))
 
 (deftest ^:parallel returns-underlying-records-test-3
@@ -66,7 +66,7 @@
     :click-type  :cell
     :query-type  :aggregated
     :query-kinds [:mbql]
-    :column-name "aggregation_3"
+    :column-name "max"
     :expected    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}}))
 
 (deftest ^:parallel returns-underlying-records-test-4-table-name-correct-for-nested-query
@@ -75,13 +75,13 @@
     :click-type   :cell
     :query-type   :aggregated
     :query-kinds [:mbql]
-    :column-name  "aggregation"
+    :column-name  "count"
     :custom-query (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) (:orders (lib.tu/mock-cards)))
                       (lib/aggregate (lib/count))
                       (lib/breakout (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards)
                                                         (meta/id :orders :created-at))))
-    :custom-row   {"CREATED_AT"  "2023-12-01"
-                   "aggregation" 9}
+    :custom-row   {"CREATED_AT" "2023-12-01"
+                   "count"      9}
     :expected     {:type :drill-thru/underlying-records, :row-count 9, :table-name "Mock orders card"}}))
 
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
@@ -90,7 +90,7 @@
      {:click-type  :cell
       :query-type  :aggregated
       :query-kinds [:mbql]
-      :column-name "aggregation_3"
+      :column-name "max"
       :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
 
 (deftest ^:parallel returns-underlying-records-for-multi-stage-query-test
@@ -99,13 +99,13 @@
     :click-type   :cell
     :query-type   :aggregated
     :query-kinds  [:mbql]
-    :column-name  "aggregation"
-    :custom-query #(lib.drill-thru.tu/append-filter-stage % "aggregation")
+    :column-name  "count"
+    :custom-query #(lib.drill-thru.tu/append-filter-stage % "count")
     :expected     {:type       :drill-thru/underlying-records
                    :row-count  77
                    :table-name "Orders"
                    ;; the "underlying" aggregation ref is reconstructed.
-                   :column-ref [:aggregation {:lib/source-name "aggregation"} string?]
+                   :column-ref [:aggregation {:lib/source-name "count"} string?]
                    ;; the "underlying" dimensions are reconstructed from the row.
                    :dimensions [{:column     {:name       "PRODUCT_ID"
                                               :lib/source :source/previous-stage}
@@ -285,7 +285,7 @@
                                        (lib/aggregate (lib/count))
                                        (lib/breakout (-> (meta/field-metadata :orders :quantity)
                                                          (lib/with-binning {:strategy :num-bins, :num-bins 10}))))
-          col-count                (m/find-first #(= (:name %) "aggregation")
+          col-count                (m/find-first #(= (:name %) "count")
                                                  (lib/returned-columns query))
           _                        (is (some? col-count))
           col-orders-quantity      (m/find-first #(= (:name %) "QUANTITY")
@@ -354,7 +354,7 @@
                              (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                                (lib/with-temporal-bucket :month)))
                              lib/append-stage)
-          count-col      (m/find-first #(= (:name %) "aggregation")
+          count-col      (m/find-first #(= (:name %) "count")
                                        (lib/returned-columns base-query))
           _              (is (some? count-col))
           query          (lib/filter base-query (lib/> count-col 100))
@@ -393,7 +393,7 @@
                         (lib/aggregate (lib/count))
                         (lib/breakout (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards)
                                                           (meta/id :orders :created-at))))
-          count-col (m/find-first #(= (:name %) "aggregation")
+          count-col (m/find-first #(= (:name %) "count")
                                   (lib/returned-columns query))
           _         (is (some? count-col))
           context   {:column     count-col
@@ -432,7 +432,7 @@
                            (lib/aggregate (lib/count))
                            (lib/breakout (-> (meta/field-metadata :orders :discount)
                                              (lib/with-binning {:strategy :default}))))
-          count-col    (m/find-first #(= (:name %) "aggregation")
+          count-col    (m/find-first #(= (:name %) "count")
                                      (lib/returned-columns query))
           _            (is (some? count-col))
           discount-col (m/find-first #(= (:name %) "DISCOUNT")
@@ -463,7 +463,7 @@
     (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/aggregate (lib/count))
                            (lib/breakout (meta/field-metadata :products :category)))
-          count-col    (m/find-first #(= (:name %) "aggregation")
+          count-col    (m/find-first #(= (:name %) "count")
                                      (lib/returned-columns query))
           _            (is (some? count-col))
           category-col (m/find-first #(= (:name %) "CATEGORY")
@@ -498,7 +498,7 @@
                                              (meta/field-metadata :orders :created-at)
                                              :month))
                              lib/append-stage)
-          sum-where-col  (m/find-first #(= (:name %) "aggregation")
+          sum-where-col  (m/find-first #(= (:name %) "sum_where_SUBTOTAL")
                                        (lib/returned-columns base-query))
           _              (is (some? sum-where-col))
           created-at-col (m/find-first #(= (:name %) "CREATED_AT")
@@ -523,7 +523,7 @@
                :dimensions [{:column     {:name "CREATED_AT"}
                              :column-ref [:field {} "CREATED_AT"]
                              :value      "2023-12-01"}]
-               :column-ref [:aggregation {:lib/source-name "aggregation"} string?]}
+               :column-ref [:aggregation {:lib/source-name "sum_where_SUBTOTAL"} string?]}
               drill))
       (is (=? {:lib/type :mbql/query
                :stages   [{:filters     [[:between {}
@@ -548,7 +548,7 @@
                            (lib/aggregate (lib/count))
                            (lib/breakout (-> (meta/field-metadata :orders :discount)
                                              (lib/with-binning {:strategy :default}))))
-          count-col    (m/find-first #(= (:name %) "aggregation")
+          count-col    (m/find-first #(= (:name %) "count")
                                      (lib/returned-columns query))
           _            (is (some? count-col))
           discount-col (m/find-first #(= (:name %) "DISCOUNT")
@@ -618,7 +618,7 @@
           query          (lib/expression base-query "Custom Category" (lib/ref category-col))
           cols           (lib/returned-columns query)
           custom-cat-col (m/find-first #(= (:name %) "Custom Category") cols)
-          count-col      (m/find-first #(= (:name %) "aggregation") cols)
+          count-col      (m/find-first #(= (:name %) "count") cols)
           ;; Simulate clicking on a bar chart with Custom Category on X axis
           context        {:column     custom-cat-col
                           :column-ref (lib/ref custom-cat-col)

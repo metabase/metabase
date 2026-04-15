@@ -922,18 +922,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.findByTestId("loading-indicator").should("not.exist");
     H.NativeEditor.get(".ace_line")
-      .should(
-        "include.text",
-        'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "aggregation"',
-      )
-      .and(
-        "include.text",
-        'SUM("PUBLIC"."PRODUCTS"."RATING") AS "aggregation_2"',
-      )
-      .and(
-        "include.text",
-        'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "aggregation_3"',
-      );
+      .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
+      .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
+      .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum_3"');
   });
 
   it("should not shrink the remove clause button (metabase#50128)", () => {

@@ -76,7 +76,7 @@
       (let [drill (lib.drill-thru.sort/sort-drill query -1 context)]
         (is (=? {:lib/type        :metabase.lib.drill-thru/drill-thru
                  :type            :drill-thru/sort
-                 :column          {:name "aggregation"}
+                 :column          {:name "count"}
                  :sort-directions [:asc :desc]}
                 drill))
         (testing "Apply the drill"
@@ -188,7 +188,7 @@
    {:drill-type  :drill-thru/sort
     :click-type  :header
     :query-type  :aggregated
-    :column-name "aggregation"
+    :column-name "count"
     :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
 
 (deftest ^:parallel returns-sort-test-10
@@ -196,7 +196,7 @@
    {:drill-type   :drill-thru/sort
     :click-type   :header
     :query-type   :aggregated
-    :column-name  "aggregation"
+    :column-name  "count"
     :custom-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
                       (lib/order-by (meta/field-metadata :orders :created-at) :asc))
     :expected     {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
@@ -206,7 +206,7 @@
    {:drill-type  :drill-thru/sort
     :click-type  :header
     :query-type  :aggregated
-    :column-name "aggregation_3"
+    :column-name "max"
     :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
 
 (deftest ^:parallel returns-sort-test-12

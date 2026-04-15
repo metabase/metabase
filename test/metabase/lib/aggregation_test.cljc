@@ -245,7 +245,7 @@
                   (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))]
     (is (=? [{:lib/type     :metadata/column
               :base-type    :type/Integer
-              :name         "aggregation"
+              :name         "sum"
               :display-name "Sum of double-price"}]
             (lib/aggregations-metadata query)))
     (is (= :type/Integer
@@ -431,18 +431,18 @@
                 agg-query))
         (is (=? [{:lib/type       :metadata/column
                   :effective-type :type/Integer
-                  :name           "aggregation"
+                  :name           "sum"
                   :display-name   "Sum of double-price"
                   :lib/source     :source/aggregations}
                  {:lib/type       :metadata/column
                   :effective-type :type/Integer
-                  :name           "aggregation_2"
+                  :name           "count"
                   :display-name   "Count"
                   :lib/source     :source/aggregations}
                  {:settings       {:is_priceless true}
                   :lib/type       :metadata/column
                   :effective-type :type/Integer
-                  :name           "aggregation_3"
+                  :name           "sum_2"
                   :display-name   "Sum of Price"
                   :lib/source     :source/aggregations}]
                 (lib/aggregations-metadata agg-query)))))))
@@ -625,7 +625,7 @@
       (is (=? {:settings       {:is_priceless true}
                :lib/type       :metadata/column
                :effective-type :type/Integer
-               :name           "aggregation"
+               :name           "sum"
                :display-name   "Sum of Price"
                :lib/source     :source/aggregations}
               (lib/metadata query (first (lib/aggregations-metadata query -1))))))))
@@ -637,7 +637,7 @@
           count-meta (first (lib/aggregations-metadata query -1))]
       (is (=? {:lib/type       :metadata/column
                :effective-type :type/Integer
-               :name           "aggregation"
+               :name           "count"
                :display-name   "Count"
                :lib/source     :source/aggregations}
               count-meta))
@@ -742,12 +742,12 @@
               :fingerprint              {:global {:distinct-count 28, :nil% 0.0}}}
              {:lib/type                 :metadata/column
               :base-type                :type/Integer
-              :name                     "aggregation"
+              :name                     "sum"
               :display-name             "Sum of Case"
               :lib/source               :source/aggregations
               :lib/source-uuid          string?
-              :lib/source-column-alias  "aggregation"
-              :lib/desired-column-alias "aggregation"}]
+              :lib/source-column-alias  "sum"
+              :lib/desired-column-alias "sum"}]
             (lib/returned-columns query)))))
 
 (deftest ^:parallel count-display-name-test
@@ -793,7 +793,7 @@
                                                  "Half Price"]]]}
                         {:lib/type :mbql.stage/mbql}]}
               query))
-      (is (=? [:field {:lib/uuid string?, :base-type :type/Float} "aggregation"]
+      (is (=? [:field {:lib/uuid string?, :base-type :type/Float} "avg"]
               (lib/ref expr-metadata))))))
 
 (deftest ^:parallel aggregate-by-coalesce-test
@@ -866,7 +866,7 @@
              {:name "PRICE",       :effective-type :type/Integer,    :lib/source :source/table-defaults}
              {:name "ID",          :effective-type :type/BigInteger, :lib/source :source/implicitly-joinable}
              {:name "NAME",        :effective-type :type/Text,       :lib/source :source/implicitly-joinable}
-             {:name "aggregation", :effective-type :type/Integer,    :lib/source :source/aggregations}]
+             {:name "count",       :effective-type :type/Integer,    :lib/source :source/aggregations}]
             (lib/aggregable-columns query nil)))))
 
 (deftest ^:parallel aggregable-columns-e2e-test
@@ -887,10 +887,10 @@
                                         (lib/aggregable-columns query pos))))
         query0 (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                    (lib/aggregate (lib/distinct (meta/field-metadata :venues :price))))
-        query1 (add-aggregate query0 "aggregation" "a")
-        query2 (add-aggregate query1 "aggregation_2" "b")
-        query3 (add-aggregate query2 "aggregation_3" "c")
-        all-aggregates ["aggregation" "aggregation_2" "aggregation_3" "aggregation_4"]]
+        query1 (add-aggregate query0 "count" "a")
+        query2 (add-aggregate query1 "a" "b")
+        query3 (add-aggregate query2 "b" "c")
+        all-aggregates ["count" "a" "b" "c"]]
     (is (=? [{:name "ID", :lib/source :source/table-defaults}
              {:name "NAME", :lib/source :source/table-defaults}
              {:name "CATEGORY_ID", :lib/source :source/table-defaults}
@@ -899,28 +899,17 @@
              {:name "PRICE", :lib/source :source/table-defaults}
              {:name "ID", :lib/source :source/implicitly-joinable}
              {:name "NAME", :lib/source :source/implicitly-joinable}
-             {:name "aggregation", :lib/source :source/aggregations}]
+             {:name "count", :lib/source :source/aggregations}]
             (lib/aggregable-columns query0 nil)))
-    (is (= ["aggregation" "aggregation_2"]
+    (is (= ["count" "a"]
            (aggregate-column-names query1)))
-    (is (= ["aggregation" "aggregation_2" "aggregation_3"]
+    (is (= ["count" "a" "b"]
            (aggregate-column-names query2)))
     (is (= all-aggregates
            (aggregate-column-names query3)))
     (doseq [pos (range (count all-aggregates))]
       (is (= (keep-indexed #(when (not= %1 pos) %2) all-aggregates)
              (aggregate-column-names query3 pos))))))
-
-(deftest ^:parallel aggregate-overrides-clause-name-test
-  (testing "lib/aggregate ignores any :name on the aggregation clause and assigns a unique aggregation name"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                    (lib/aggregate (lib/with-expression-name (lib/count) "my-custom-name"))
-                    (lib/aggregate (lib/with-expression-name
-                                     (lib/sum (meta/field-metadata :venues :price))
-                                     "another-name")))]
-      (is (=? [[:count {:name "aggregation"}]
-               [:sum {:name "aggregation_2"} [:field {} (meta/id :venues :price)]]]
-              (lib/aggregations query))))))
 
 (deftest ^:parallel aggregation-ref-type-of-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))

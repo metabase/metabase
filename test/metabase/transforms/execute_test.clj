@@ -71,7 +71,7 @@
                     ;; Second transform filters for category = "Gizmo", resulting in 4 products
                     (is (= [[4]]
                            (mt/formatted-rows [int] query-result)))
-                    (is (= [{:name "aggregation"}]
+                    (is (= [{:name "count"}]
                            (map #(select-keys % [:name])
                                 (mt/cols query-result))))))))))))))
 

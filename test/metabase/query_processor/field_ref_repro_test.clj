@@ -89,7 +89,7 @@
           results   (qp/process-query query)]
       (testing "should return row(s) with category and count"
         (is (= ["j__p__CATEGORY"
-                "aggregation"]
+                "count"]
                (map :lib/desired-column-alias (mt/cols results))))
         (is (= [[nil         754]
                 ["Doohickey" 3976]
@@ -258,7 +258,7 @@
                                                                (lib/visible-columns $)))))]
       (mt/with-native-query-testing-context query
         (let [results (qp/process-query query)]
-          (is (=? [{:lib/desired-column-alias "aggregation"}]
+          (is (=? [{:lib/desired-column-alias "count"}]
                   (mt/cols results)))
           (is (= [[1746]]
                  (mt/rows results))))))))

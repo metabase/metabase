@@ -37,7 +37,7 @@
    :click-type   :cell
    :query-type   :aggregated
    :query-table  "ORDERS"
-   :column-name  "aggregation"
+   :column-name  "count"
    :custom-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                      (lib/aggregate (lib/count))
                      (lib/aggregate (lib/sum (meta/field-metadata :orders :tax)))
@@ -50,8 +50,8 @@
 (deftest ^:parallel returns-pivot-test-1a-no-pivots-for-native-queries
   (mu/disable-enforcement
     (let [query   (lib/native-query meta/metadata-provider "SELECT COUNT(*) FROM Orders")
-          context {:column {:name "aggregation"}
-                   :column-ref [:field {} "aggregation"]}]
+          context {:column {:name "count"}
+                   :column-ref [:field {} "count"]}]
       (is (empty? (filter #(= (:type %) :drill-thru/pivot)
                           (lib/available-drill-thrus query -1 context)))))))
 
@@ -80,17 +80,17 @@
     :click-type   :header
     :query-type   :aggregated
     :query-table  "ORDERS"
-    :column-name  "aggregation"}
+    :column-name  "count"}
 
    "multi-stage query"
-   {:custom-query #(lib.drill-thru.tu/append-filter-stage % "aggregation")}))
+   {:custom-query #(lib.drill-thru.tu/append-filter-stage % "count")}))
 
 (defn- orders-count-with-breakouts* [base-query breakout-values]
   {:drill-type   :drill-thru/pivot
    :click-type   :cell
    :query-type   :aggregated
    :query-table  "ORDERS"
-   :column-name  "aggregation"
+   :column-name  "count"
    :custom-query (reduce #(lib/breakout %1 -1 %2)
                          (-> base-query
                              (lib/aggregate (lib/count)))
@@ -98,7 +98,7 @@
    :custom-row   (->> (for [[col value] breakout-values]
                         [(:name col) value])
                       (into {})
-                      (merge {"aggregation" 77}))})
+                      (merge {"count" 77}))})
 
 (defn- orders-count-with-breakouts [breakout-values]
   (orders-count-with-breakouts*
@@ -141,7 +141,7 @@
    6])
 
 (defn- variant-with-count-filter-stage [base-case]
-  {:custom-query (lib.drill-thru.tu/append-filter-stage (:custom-query base-case) "aggregation")})
+  {:custom-query (lib.drill-thru.tu/append-filter-stage (:custom-query base-case) "count")})
 
 (deftest ^:parallel returns-pivot-test-1d-no-pivots-date+address
   (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -290,10 +290,10 @@
    (fn [base-case]
      {:custom-query (-> base-case
                         :custom-query
-                        (lib.drill-thru.tu/append-filter-stage "aggregation"))
+                        (lib.drill-thru.tu/append-filter-stage "count"))
       :expected-query (-> base-case
                           :expected-query
-                          (lib.drill-thru.tu/append-filter-stage-to-test-expectation "aggregation"))})))
+                          (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))})))
 
 (deftest ^:parallel returns-pivot-drill-boolean-column-test
   (let [metadata-provider (lib.tu/mock-metadata-provider
@@ -310,10 +310,10 @@
      (merge {:drill-type   :drill-thru/pivot
              :click-type   :cell
              :query-type   :aggregated
-             :column-name  "aggregation"
+             :column-name  "count"
              :custom-query query
              :custom-row   {"IS_OPEN" true
-                            "aggregation"   10}}
+                            "count"   10}}
             (expecting ["IS_OPEN"] [:category :time])))))
 
 (deftest ^:parallel expression-after-aggregation-test
@@ -329,7 +329,7 @@
           query          (lib/expression base-query "Custom Category" (lib/ref category-col))
           cols           (lib/returned-columns query)
           custom-cat-col (some #(when (= (:name %) "Custom Category") %) cols)
-          count-col      (some #(when (= (:name %) "aggregation") %) cols)
+          count-col      (some #(when (= (:name %) "count") %) cols)
           ;; Simulate clicking on a cell with Custom Category as the dimension
           context        {:column     count-col
                           :column-ref (lib/ref count-col)

@@ -256,7 +256,7 @@
               (-> query
                   (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0)))
                   (lib/append-stage)
-                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "aggregation"] 1))
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/remove-clause 0 (first aggregations))))))))
 
 (defn- by-desired-alias
@@ -277,13 +277,13 @@
       (is (=? {:stages [(complement :order-by)]}
               (lib/remove-clause query (last aggregations))))
       (let [query (lib/append-stage query)
-            sum-col (by-desired-alias (lib/visible-columns query) "aggregation_3")
+            sum-col (by-desired-alias (lib/visible-columns query) "sum_2")
             query (lib/order-by query sum-col)]
         (is (=? {:stages [(complement :order-by) (complement :order-by)]}
                 (lib/remove-clause query 0 (last aggregations))))))))
 
 (deftest ^:parallel remove-clause-adjust-ref-names-test
-  (testing "Field identifiers of same name field refs are adjusted on field removal"
+  (testing "Sticky aggregation :name keeps second-stage refs valid when an earlier aggregation is removed"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
                     (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
@@ -291,19 +291,19 @@
                     lib/append-stage)
           [a0-column a1-column] (-> query
                                     lib/visible-columns
-                                    (->> (filter #(#{"aggregation" "aggregation_2"} (:name %)))))
-          _ (is (=? {:name "aggregation", :lib/source-column-alias "aggregation"}
+                                    (->> (filter #(#{"sum" "sum_2"} (:name %)))))
+          _ (is (=? {:name "sum", :lib/source-column-alias "sum"}
                     a0-column))
-          _ (is (=? {:name "aggregation_2", :lib/source-column-alias "aggregation_2"}
+          _ (is (=? {:name "sum_2", :lib/source-column-alias "sum_2"}
                     a1-column))
           query (-> query
                     (lib/expression "xix" (lib/ref a0-column))
                     (lib/expression "yiy" (lib/ref a1-column)))
           a0-ref (first (lib/aggregations query 0))]
-      (testing "Base: Second stage field refs are identified as aggregation and aggregation_2"
+      (testing "Base: Second stage field refs are identified as sum and sum_2"
         (is (=? {:stages [{:lib/type :mbql.stage/mbql,
-                           :aggregation [[:sum {} [:field {} (meta/id :orders :total)]]
-                                         [:sum {} [:field {} (meta/id :orders :subtotal)]]]
+                           :aggregation [[:sum {:name "sum"} [:field {} (meta/id :orders :total)]]
+                                         [:sum {:name "sum_2"} [:field {} (meta/id :orders :subtotal)]]]
                            :breakout [[:field {} (meta/id :orders :user-id)]]}
                           {:lib/type :mbql.stage/mbql,
                            :expressions
@@ -311,16 +311,16 @@
                              {:base-type :type/Float
                               :effective-type :type/Float
                               :lib/expression-name "xix"}
-                             "aggregation"]
+                             "sum"]
                             [:field
                              {:base-type :type/Float
                               :effective-type :type/Float
                               :lib/expression-name "yiy"}
-                             "aggregation_2"]]}]}
+                             "sum_2"]]}]}
                 query)))
-      (testing "Second stage field ref identifier keeps its name after first aggregation is removed."
+      (testing "Second stage field ref identifier keeps its sticky name after first aggregation is removed."
         (is (=? {:stages [{:lib/type :mbql.stage/mbql,
-                           :aggregation [[:sum {} [:field {} (meta/id :orders :subtotal)]]]
+                           :aggregation [[:sum {:name "sum_2"} [:field {} (meta/id :orders :subtotal)]]]
                            :breakout [[:field {} (meta/id :orders :user-id)]]}
                           {:lib/type :mbql.stage/mbql,
                            :expressions
@@ -328,7 +328,7 @@
                              {:base-type :type/Float
                               :effective-type :type/Float
                               :lib/expression-name "yiy"}
-                             "aggregation_2"]]}]}
+                             "sum_2"]]}]}
                 (lib/remove-clause query 0 a0-ref)))))))
 
 (deftest ^:parallel remove-clause-expression-test
@@ -516,13 +516,13 @@
       (let [query' (-> query
                        (as-> <> (lib/aggregate <> (lib/with-expression-name (lib/aggregation-ref <> 0) "expr")))
                        (lib/append-stage)
-                       (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "aggregation_2"] 1))
+                       (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                        (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price))))
             agg0-id (get-in query' [:stages 0 :aggregation 0 1 :lib/uuid])]
-        (is (=? {:stages [{:aggregation [[:max {:name "aggregation", :lib/uuid string?} [:field {} (meta/id :venues :price)]]
+        (is (=? {:stages [{:aggregation [[:max {:lib/uuid string?} [:field {} (meta/id :venues :price)]]
                                          (second aggregations)
-                                         [:aggregation {:name "aggregation_3", :display-name "expr"} string?]]}
-                          {:filters [[:= {} [:field {} "aggregation_2"] 1]]}]}
+                                         [:aggregation {:name "expr", :display-name "expr"} string?]]}
+                          {:filters [[:= {} [:field {} "max"] 1]]}]}
                 query'))
         (is (string? agg0-id))
         (is (= agg0-id (get-in query' [:stages 0 :aggregation 2 2])))))
@@ -536,7 +536,7 @@
                     (lib/aggregate (lib/max (meta/field-metadata :products :created-at)))
                     (lib/append-stage)
                     (as-> <>
-                          (lib/expression <> "max month" (lib/get-month (lib/ref (m/find-first (comp #{"aggregation_2"} :name)
+                          (lib/expression <> "max month" (lib/get-month (lib/ref (m/find-first (comp #{"max"} :name)
                                                                                                (lib/orderable-columns <>)))))
                       (lib/filter <> (lib/= (lib/ref (m/find-first (comp #{"max month"} :name)
                                                                    (lib/filterable-columns <>)))
@@ -544,29 +544,6 @@
                       (lib/replace-clause <> 0
                                           (second (lib/aggregations <> 0))
                                           (lib/max (meta/field-metadata :products :price)))))))))))
-
-(deftest ^:parallel replace-clause-preserves-aggregation-name-test
-  (testing "replace-clause preserves the :name of the aggregation being replaced (so refs from later stages keep working)"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
-                    (lib/aggregate (lib/distinct (meta/field-metadata :venues :name))))
-          [agg1 agg2] (lib/aggregations query)
-          replaced    (lib/replace-clause query agg1 (lib/max (meta/field-metadata :venues :price)))]
-      (is (= "aggregation"   (-> agg1 second :name)))
-      (is (= "aggregation_2" (-> agg2 second :name)))
-      (is (=? [[:max {:name "aggregation"} [:field {} (meta/id :venues :price)]]
-               [:distinct {:name "aggregation_2"} [:field {} (meta/id :venues :name)]]]
-              (lib/aggregations replaced)))))
-  (testing "an explicit :name on the replacement clause is respected and not overwritten"
-    (let [query    (-> (lib.tu/venues-query)
-                       (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
-          agg      (first (lib/aggregations query))
-          replaced (lib/replace-clause query agg
-                                       (lib.options/with-clause-name
-                                         (lib/max (meta/field-metadata :venues :price))
-                                         "custom-name"))]
-      (is (=? [[:max {:name "custom-name"} [:field {} (meta/id :venues :price)]]]
-              (lib/aggregations replaced))))))
 
 (deftest ^:parallel replace-metric-test
   (testing "replacing with metric should work"
@@ -1443,8 +1420,8 @@
         (lib/aggregate q (lib/sum (lib/expression-ref q "double price"))))
       lib/append-stage
       (as-> q
-            (lib/filter q (lib/> (by-name (lib/filterable-columns q) "aggregation") 20))
-        (lib/order-by q (by-name (lib/orderable-columns q) "aggregation") :desc)
+            (lib/filter q (lib/> (by-name (lib/filterable-columns q) "sum") 20))
+        (lib/order-by q (by-name (lib/orderable-columns q) "sum") :desc)
         (lib/order-by q (by-name (lib/orderable-columns q) "name length")))
       lib/append-stage
       (as-> q
@@ -1471,8 +1448,8 @@
                        :filters [[:< {} [:expression {:effective-type :type/Integer} "increased price"] 5]
                                  [:> {} [:expression {:effective-type :type/Integer} "name length"] 9]]}
                       {:lib/type :mbql.stage/mbql
-                       :filters [[:> {} [:field {:base-type :type/Integer} "aggregation"] 20]]
-                       :order-by [[:desc {} [:field {:base-type :type/Integer} "aggregation"]]
+                       :filters [[:> {} [:field {:base-type :type/Integer} "sum"] 20]]
+                       :order-by [[:desc {} [:field {:base-type :type/Integer} "sum"]]
                                   [:asc {} [:field {:base-type :type/Integer} "name length"]]]}
                       {:lib/type :mbql.stage/mbql
                        :breakout [[:field {:effective-type :type/Integer} "name length"]]}
@@ -1498,8 +1475,8 @@
                        :breakout [[:expression {:effective-type :type/Integer} "double name len"]]
                        :aggregation [[:sum {} [:expression {:effective-type :type/Integer} "double price"]]]}
                       {:lib/type :mbql.stage/mbql,
-                       :filters [[:> {} [:field {:effective-type :type/Integer} "aggregation"] 20]]
-                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "aggregation"]]
+                       :filters [[:> {} [:field {:effective-type :type/Integer} "sum"] 20]]
+                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "sum"]]
                                   [:asc {} [:field {:effective-type :type/Integer} "double name len"]]]}
                       {:lib/type :mbql.stage/mbql
                        :breakout [[:field {:effective-type :type/Integer} "double name len"]]}
@@ -1524,8 +1501,8 @@
                                    (meta/id :venues :id)]]
                        :aggregation [[:sum {} [:expression {:effective-type :type/Integer} "double price"]]]}
                       {:lib/type :mbql.stage/mbql,
-                       :filters [[:> {} [:field {:effective-type :type/Integer} "aggregation"] 20]]
-                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "aggregation"]]
+                       :filters [[:> {} [:field {:effective-type :type/Integer} "sum"] 20]]
+                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "sum"]]
                                   [:asc {} [:field {:effective-type :type/BigInteger} "ID"]]]}
                       {:lib/type :mbql.stage/mbql
                        :breakout [[:field {:effective-type :type/BigInteger} "ID"]]}
@@ -1609,7 +1586,7 @@
                                 lib/append-stage)
         summarized-cols (lib/returned-columns products-summarized)
         orders-join (-> (lib/join-clause (meta/table-metadata :orders)
-                                         [(lib/< (by-desired-alias summarized-cols "aggregation")
+                                         [(lib/< (by-desired-alias summarized-cols "min")
                                                  (meta/field-metadata :orders :created-at))])
                         (lib/with-join-fields [(meta/field-metadata :orders :created-at)
                                                (meta/field-metadata :orders :quantity)]))
@@ -1617,8 +1594,8 @@
         joined-query-cols (lib/visible-columns joined-query)]
     (-> joined-query
         (lib/filter (lib/< (by-desired-alias joined-query-cols "Orders - Min of Created At__TOTAL") 100))
-        (lib/filter (lib/> (lib/get-month (by-desired-alias joined-query-cols "aggregation")) 6))
-        (lib/filter (lib/= (by-desired-alias joined-query-cols "aggregation_3") 3)))))
+        (lib/filter (lib/> (lib/get-month (by-desired-alias joined-query-cols "min")) 6))
+        (lib/filter (lib/= (by-desired-alias joined-query-cols "product count") 3)))))
 
 ;; TODO: do something about automagic join aliases getting out of date
 (deftest ^:parallel replace-unrelated-type-affecting-join-test
@@ -1627,11 +1604,11 @@
              [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]
                           [:field {:effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
                            (meta/id :products :created-at)]]
-               :aggregation [[:max {:name "aggregation"} [:field {:effective-type :type/DateTimeWithLocalTZ}
-                                                          (meta/id :products :created-at)]]
+               :aggregation [[:max {} [:field {:effective-type :type/DateTimeWithLocalTZ}
+                                       (meta/id :products :created-at)]]
                              [:avg {} [:field {:effective-type :type/Float}
                                        (meta/id :products :price)]]
-                             [:distinct {:name "aggregation_3"} [:field {:effective-type :type/BigInteger}
+                             [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}
                                                                  (meta/id :products :id)]]]}
               {:joins [{:stages
                         [{:source-table (meta/id :orders)}],
@@ -1642,7 +1619,7 @@
                                           :join-alias "Orders - Min of Created At"}
                                   (meta/id :orders :quantity)]],
                         :conditions [[:< {}
-                                      [:field {:effective-type :type/DateTimeWithLocalTZ} "aggregation"]
+                                      [:field {:effective-type :type/DateTimeWithLocalTZ} "max"]
                                       [:field {:effective-type :type/DateTimeWithLocalTZ
                                                :join-alias "Orders - Min of Created At"}
                                        (meta/id :orders :created-at)]]]
@@ -1652,8 +1629,8 @@
                                    :join-alias "Orders - Min of Created At"}
                            (meta/id :orders :total)]
                           100]
-                         [:> {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ} "aggregation"]] 6]
-                         [:= {} [:field {:effective-type :type/Integer} "aggregation_3"] 3]]}]}
+                         [:> {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ} "max"]] 6]
+                         [:= {} [:field {:effective-type :type/Integer} "product count"] 3]]}]}
             (lib/replace-clause join-query 0
                                 (first (lib/aggregations join-query 0))
                                 (lib/max (by-name (lib/orderable-columns join-query 0) "CREATED_AT"))))))
@@ -1662,11 +1639,11 @@
              [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]
                           [:field {:effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
                            (meta/id :products :created-at)]]
-               :aggregation [[:min {:name "aggregation"} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ}
-                                                                         (meta/id :products :created-at)]]]
+               :aggregation [[:min {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ}
+                                                      (meta/id :products :created-at)]]]
                              [:avg {} [:field {:effective-type :type/Float}
                                        (meta/id :products :price)]]
-                             [:distinct {:name "aggregation_3"} [:field {:effective-type :type/BigInteger}
+                             [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}
                                                                  (meta/id :products :id)]]]}
               {}]}
             (lib/replace-clause join-query 0

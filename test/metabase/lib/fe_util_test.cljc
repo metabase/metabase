@@ -863,15 +863,15 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
         sum   (->> (lib/aggregable-columns query nil)
-                   (m/find-first (comp #{"aggregation"} :name)))
+                   (m/find-first (comp #{"sum"} :name)))
         query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))]
     (is (=? {:lib/type :mbql/expression-parts,
              :operator :*,
-             :options  {:name "aggregation_2", :display-name "2*sum"},
+             :options  {:name "2*sum", :display-name "2*sum"},
              :args     [2
                         {:lib/type :metadata/column
                          :base-type :type/Float
-                         :name "aggregation"
+                         :name "sum"
                          :display-name "Sum of Total"
                          :effective-type :type/Float
                          :lib/source :source/aggregations

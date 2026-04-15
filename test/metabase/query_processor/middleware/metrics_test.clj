@@ -412,19 +412,19 @@
                :expressions [[:+ {:lib/expression-name "foobar"} [:field {} (meta/id :orders :discount)] 1]]
                :fields [[:expression {} "foobar"]]}
               {:lib/type :mbql.stage/mbql,
-               :aggregation [[:avg {:name "aggregation"} [:field {} "foobar"]]]}]}
+               :aggregation [[:avg {:name "avg"} [:field {} "foobar"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-aggregate-column-model-test
   (let [mp meta/metadata-provider
         query (as-> (lib/query mp (meta/table-metadata :orders)) $q
                 (lib/aggregate $q (lib/sum (meta/field-metadata :orders :discount))))
-        question (model-based-metric-question mp query (comp #{"aggregation"} :name))]
+        question (model-based-metric-question mp query (comp #{"sum"} :name))]
     (is (=? {:stages
              [{:source-table (meta/id :orders)
-               :aggregation [[:sum {:name "aggregation"} [:field {} (meta/id :orders :discount)]]]}
+               :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
               {:lib/type :mbql.stage/mbql,
-               :aggregation [[:avg {:name "aggregation"} [:field {} "aggregation"]]]}]}
+               :aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-model-based-on-model-test
@@ -450,22 +450,22 @@
                [{:source-table (meta/id :orders)
                  :filters [[:> {} [:field {} (meta/id :orders :discount)] 3]]}
                 {}
-                {:aggregation [[:avg {:name "aggregation"} [:field {} "QUANTITY"]]]}]}
+                {:aggregation [[:avg {:name "avg"} [:field {} "QUANTITY"]]]}]}
               (adjust question))))))
 
 (deftest ^:parallel metric-question-on-multi-stage-model-test
   (let [mp meta/metadata-provider
-        agg-pred (comp #{"aggregation"} :name)
+        sum-pred (comp #{"sum"} :name)
         query (as-> (lib/query mp (meta/table-metadata :orders)) $q
                 (lib/aggregate $q (lib/sum (meta/field-metadata :orders :discount)))
                 (lib/append-stage $q)
-                (lib/filter $q (lib/> (m/find-first agg-pred (lib/visible-columns $q)) 2)))
-        question (model-based-metric-question mp query agg-pred)]
+                (lib/filter $q (lib/> (m/find-first sum-pred (lib/visible-columns $q)) 2)))
+        question (model-based-metric-question mp query sum-pred)]
     (is (=? {:stages
              [{:source-table (meta/id :orders)
-               :aggregation [[:sum {:name "aggregation"} [:field {} (meta/id :orders :discount)]]]}
-              {:filters [[:> {} [:field {} "aggregation"] 2]]}
-              {:aggregation [[:avg {:name "aggregation"} [:field {} "aggregation"]]]}]}
+               :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
+              {:filters [[:> {} [:field {} "sum"] 2]]}
+              {:aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-native-model-test
@@ -476,7 +476,7 @@
     (is (=? {:stages
              [{:lib/type :mbql.stage/native,
                :native "SELECT whatever"}
-              {:aggregation [[:avg {:name "aggregation"} [:field {} "sum"]]]}]}
+              {:aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel maintain-aggregation-refs-test
@@ -621,7 +621,7 @@
 (deftest ^:parallel default-metric-names-test
   (let [[source-metric mp] (mock-metric)]
     (is (=?
-         {:stages [{:aggregation [[:avg {:display-name (symbol "nil #_\"key is not present.\""), :name "aggregation"} some?]]}]}
+         {:stages [{:aggregation [[:avg {:display-name (symbol "nil #_\"key is not present.\""), :name "avg"} some?]]}]}
          (adjust (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
@@ -629,7 +629,7 @@
   (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
                                             (add-aggregation-options {:display-name "My cool metric" :name "Named Metric"})))]
     (is (=?
-         {:stages [{:aggregation [[:avg {:display-name "My cool metric" :name "aggregation"} some?]]}]}
+         {:stages [{:aggregation [[:avg {:display-name "My cool metric" :name "Named Metric"} some?]]}]}
          (adjust (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
@@ -656,7 +656,7 @@
     (is (=?
          {:stages
           [{:source-table (meta/id :products)
-            :aggregation [[:avg {:name "aggregation"}
+            :aggregation [[:avg {:name "avg"}
                            [:case {}
                             [[[:= {} [:field {} (meta/id :venues :name)] some?]
                               [:field {} (meta/id :products :rating)]]]]]]}]}
@@ -767,11 +767,11 @@
     (testing "model based metrics can be used in question based on that model"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:> {} [:field {} (meta/id :products :rating)] 2]]}
-                        {:aggregation [[:avg {:name "aggregation"}
+                        {:aggregation [[:avg {:name "avg"}
                                         [:case {}
                                          [[[:< {} [:field {} "RATING"] [:value {} 5]]
                                            [:field {} "RATING"]]]]]
-                                       [:sum {:name "aggregation_2"}
+                                       [:sum {:name "count"}
                                         [:case {}
                                          [[[:> {} [:field {} "RATING"] [:value {} 3]]
                                            1]]
@@ -926,7 +926,7 @@
           query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib.metadata/metric mp 1)))
           stage        (get-in query [:stages 0])]
-      (is (=? [:sum {:name "aggregation"} [:field {} pos-int?]]
+      (is (=? [:sum {:name (symbol "nil #_\"key is not present.\"")} [:field {} pos-int?]]
               (get-in (#'metrics/fetch-referenced-metrics query stage)
                       [1 :aggregation]))))))
 

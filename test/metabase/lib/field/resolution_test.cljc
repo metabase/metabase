@@ -195,10 +195,10 @@
                 :lib/breakout?            true
                 :lib/source-column-alias "LAST_LOGIN"
                 :lib/desired-column-alias "LAST_LOGIN"}
-               {:name                     "aggregation"
+               {:name                     "avg"
                 :lib/source               :source/aggregations
-                :lib/source-column-alias  "aggregation"
-                :lib/desired-column-alias "aggregation"}]
+                :lib/source-column-alias  "avg"
+                :lib/desired-column-alias "avg"}]
               (lib/returned-columns query))))))
 
 (deftest ^:parallel source-card-table-display-info-test
@@ -842,7 +842,7 @@
     (is (=? {:name "PRICE", :id (meta/id :products :price)}
             (#'lib.field.resolution/resolve-from-previous-stage-or-source q2 0 "PRICE")))
     (is (= [{:name "CREATED_AT_2", :lib/source-column-alias "Reviews__CREATED_AT"}
-            {:name "aggregation", :lib/source-column-alias "aggregation"}]
+            {:name "sum", :lib/source-column-alias "sum"}]
            (map #(select-keys % [:name :lib/source-column-alias])
                 (lib/returned-columns q2))))
     (let [mp (lib.tu/mock-metadata-provider
@@ -853,7 +853,7 @@
                         :type          :model}]})
           q3 (lib/query mp (lib.metadata/card mp 2))]
       (is (= [{:name "CREATED_AT_2", :lib/source-column-alias "Reviews__CREATED_AT"}
-              {:name "aggregation", :lib/source-column-alias "aggregation"}]
+              {:name "sum", :lib/source-column-alias "sum"}]
              (map #(select-keys % [:name :lib/source-column-alias])
                   (lib/visible-columns q3))))
       (is (=? {:lib/source-column-alias  "Reviews__CREATED_AT"

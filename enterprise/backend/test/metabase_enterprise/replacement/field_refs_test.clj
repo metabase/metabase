@@ -87,7 +87,7 @@
                   :pivot_table.column_split
                   {:rows    ["ID"]
                    :columns ["CREATED_AT"]
-                   :values  ["aggregation" "aggregation_2"]}
+                   :values  ["count" "count_2"]}
 
                   :pivot_table.collapsed_rows
                   {:rows  ["ID"]
@@ -112,7 +112,7 @@
                  {:pivot_table.column_split
                   {:rows    ["ID"]
                    :columns [[:field 9999 nil]]
-                   :values  ["aggregation" [:aggregation 1]]}}}
+                   :values  ["count" [:aggregation 1]]}}}
                 (t2/select-one :model/Card card-id)))))))
 
 (deftest card-upgrade-field-refs!-parameters-test
@@ -483,7 +483,7 @@
             (is (=? {:click_behavior
                      {:targetId target-card-id
                       :parameterMapping
-                      {viz-key {:target {:dimension [:dimension [:field "ID" {}] {:stage-number 1}]}}}}}
+                      {viz-key {:target {:dimension ["dimension" [:field "ID" {}] {:stage-number 1}]}}}}}
                     viz)))
           (testing "per-column click behavior dimension should be upgraded"
             (is (=? {:column_settings
@@ -491,7 +491,7 @@
                       {:click_behavior
                        {:targetId target-card-id
                         :parameterMapping
-                        {viz-key {:target {:dimension [:dimension [:field "ID" {}] {:stage-number 1}]}}}}}}}
+                        {viz-key {:target {:dimension ["dimension" [:field "ID" {}] {:stage-number 1}]}}}}}}}
                     viz))))))))
 
 (deftest dashboard-upgrade-field-refs!-no-changes-test

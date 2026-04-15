@@ -102,7 +102,7 @@ const getHashBasedMapping = (
     ? sortedKeys.map((k) => seriesVizSettingsDefaultKeys[keys.indexOf(k)])
     : undefined;
   const keyHashes = Object.fromEntries(
-    sortedKeys.map((k, i) => [k, getHashCode(sortedDefaultKeys?.[i] ?? k)]),
+    keys.map((k, i) => [k, getHashCode(sortedDefaultKeys?.[i] ?? k)]),
   );
   const unsetKeys = new Set(keys);
   const usedValues = new Set<string>();

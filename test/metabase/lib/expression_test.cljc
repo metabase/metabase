@@ -618,12 +618,13 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
           sum (->> (lib/aggregable-columns query nil)
-                   (m/find-first (comp #{"aggregation"} :name)))
-          query2 (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
+                   (m/find-first (comp #{"sum"} :name)))
+          expr-name "2*sum"
+          query2 (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) expr-name))
           expr (->> (lib/aggregable-columns query2 nil)
-                    (m/find-first (comp #{"aggregation_2"} :name))
+                    (m/find-first (comp #{expr-name} :name))
                     (lib/* 2))]
-      (is (=? {:message "Cycle detected: 2*sum → 2*sum"}
+      (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
 
 (deftest ^:parallel diagnose-expression-incompatible-types-test

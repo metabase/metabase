@@ -182,7 +182,7 @@
                          (lib/aggregate (lib/count))
                          lib/append-stage)
           prev-cols (lib/returned-columns base-query)
-          count-col (m/find-first #(= (:name %) "aggregation") prev-cols)
+          count-col (m/find-first #(= (:name %) "count") prev-cols)
           filter-query (lib/filter base-query (lib/> count-col 100))
           bad-query (assoc-in filter-query [:stages 1 :filters 0 2 2] "missingcol")
           errors (lib/find-bad-refs-with-source bad-query)]

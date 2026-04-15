@@ -51,7 +51,7 @@
      {:drill-type  :drill-thru/fk-filter
       :click-type  :cell
       :query-type  :aggregated
-      :column-name "aggregation_3"})))
+      :column-name "max"})))
 
 (deftest ^:parallel return-fk-filter-for-null-fk-test
   (testing "#35561 FK filter drill should be available for NULL FK values to filter by IS NULL"

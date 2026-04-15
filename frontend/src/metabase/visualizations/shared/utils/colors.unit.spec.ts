@@ -49,8 +49,6 @@ describe("getSeriesColors", () => {
       {
         "Series 2": "#FF0000",
       },
-      undefined,
-      ["Series 1", "Series 2"],
     );
 
     expect(result).toEqual({
@@ -96,8 +94,6 @@ describe("getSeriesColors", () => {
     expect(mockGetColorsForValues).toHaveBeenCalledWith(
       ["Series 1", "Series 2", "Series 3"],
       {},
-      undefined,
-      ["Series 1", "Series 2", "Series 3"],
     );
   });
 
@@ -132,36 +128,6 @@ describe("getSeriesColors", () => {
         "Series 1": "#FF0000",
         "Series 2": "#00FF00",
       },
-      undefined,
-      ["Series 1", "Series 2"],
-    );
-  });
-
-  it("should pass seriesName as defaultKeys so preferred colors use display names", () => {
-    const settings = {};
-
-    const series = [
-      {
-        seriesKey: "aggregation",
-        seriesName: "Count",
-        xAccessor: (d: any) => d.x,
-        yAccessor: (d: any) => d.y,
-      },
-      {
-        seriesKey: "aggregation_2",
-        seriesName: "Sum of Total",
-        xAccessor: (d: any) => d.x,
-        yAccessor: (d: any) => d.y,
-      },
-    ];
-
-    getSeriesColors(settings, series);
-
-    expect(mockGetColorsForValues).toHaveBeenCalledWith(
-      ["aggregation", "aggregation_2"],
-      {},
-      undefined,
-      ["Count", "Sum of Total"],
     );
   });
 });

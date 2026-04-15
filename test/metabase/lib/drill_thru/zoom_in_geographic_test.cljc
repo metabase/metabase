@@ -51,9 +51,9 @@
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   query
-        :custom-row     {"aggregation"   100
+        :custom-row     {"count"   100
                          "COUNTRY" "United States"}
-        :column-name    "aggregation"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
@@ -66,8 +66,8 @@
         :expected-query expected-query}
 
        "mutli-stage query"
-       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "aggregation")
-        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "aggregation")})
+       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
+        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
 
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -76,13 +76,13 @@
          {:click-type     :cell
           :query-type     :aggregated
           :custom-query   query
-          :custom-row     {"aggregation"   100
+          :custom-row     {"count"   100
                            "COUNTRY" nil}
-          :column-name    "aggregation"
+          :column-name    "count"
           :drill-type     :drill-thru/zoom-in.geographic}
 
          "multi-stage query"
-         {:custom-query   (lib.drill-thru.tu/append-filter-stage query "aggregation")})))))
+         {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")})))))
 
 (deftest ^:parallel state-test
   (testing "State => Binned LatLon"
@@ -107,9 +107,9 @@
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   query
-        :custom-row     {"aggregation" 100
+        :custom-row     {"count" 100
                          "STATE" "California"}
-        :column-name    "aggregation"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
@@ -122,8 +122,8 @@
         :expected-query expected-query}
 
        "multi-stage query"
-       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "aggregation")
-        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "aggregation")})
+       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
+        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
 
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -132,13 +132,13 @@
          {:click-type   :cell
           :query-type   :aggregated
           :custom-query query
-          :custom-row   {"aggregation" 100
+          :custom-row   {"count" 100
                          "STATE" nil}
-          :column-name  "aggregation"
+          :column-name  "count"
           :drill-type   :drill-thru/zoom-in.geographic}
 
          "multi-stage query"
-         {:custom-query (lib.drill-thru.tu/append-filter-stage query "aggregation")})))))
+         {:custom-query (lib.drill-thru.tu/append-filter-stage query "count")})))))
 
 (deftest ^:parallel update-existing-breakouts-on-lat-lon-test
   (testing "If there are already breakouts on lat/lon, we should update them rather than append new ones (#34874)"
@@ -170,11 +170,11 @@
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   query
-        :custom-row     {"aggregation"    100
+        :custom-row     {"count"    100
                          "NAME"     "Niblet Cockatiel"
                          "STATE"    "California"
                          "LATITUDE" 100}
-        :column-name    "aggregation"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
@@ -187,8 +187,8 @@
         :expected-query expected-query}
 
        "multi-stage query"
-       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "aggregation")
-        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "aggregation")}))))
+       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
+        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")}))))
 
 (deftest ^:parallel city-test
   (testing "City => Binned LatLon"
@@ -213,7 +213,7 @@
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   query
-        :custom-row     {"aggregation" 100
+        :custom-row     {"count" 100
                          "CITY"  "Long Beach"}
         :column-name    "CITY"
         :drill-type     :drill-thru/zoom-in.geographic
@@ -228,8 +228,8 @@
         :expected-query expected-query}
 
        "multi-stage query"
-       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "aggregation")
-        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "aggregation")})
+       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
+        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")})
 
       (testing "nil breakout value means we can't zoom in"
         (lib.drill-thru.tu/test-drill-variants-with-merged-args
@@ -238,13 +238,13 @@
          {:click-type     :cell
           :query-type     :aggregated
           :custom-query   query
-          :custom-row     {"aggregation" 100
+          :custom-row     {"count" 100
                            "CITY"  nil}
-          :column-name    "aggregation"
+          :column-name    "count"
           :drill-type     :drill-thru/zoom-in.geographic}
 
          "multi-stage query"
-         {:custom-query (lib.drill-thru.tu/append-filter-stage query "aggregation")})))))
+         {:custom-query (lib.drill-thru.tu/append-filter-stage query "count")})))))
 
 (deftest ^:parallel binned-lat-lon-large-bin-size-test
   (testing "Binned LatLon (width >= 20) => Binned LatLon (width = 10)"
@@ -280,10 +280,10 @@
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   query
-        :custom-row     {"aggregation"     100
+        :custom-row     {"count"     100
                          "LATITUDE"  20
                          "LONGITUDE" 50}
-        :column-name    "aggregation"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
@@ -298,8 +298,8 @@
         :expected-query expected-query}
 
        "multi-stage query"
-       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "aggregation")
-        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "aggregation")}))))
+       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
+        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")}))))
 
 (deftest ^:parallel binned-lat-lon-small-bin-size-test
   (testing "Binned LatLon (width < 20) => Binned LatLon (width ÷= 10)"
@@ -335,10 +335,10 @@
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   query
-        :custom-row     {"aggregation"     100
+        :custom-row     {"count"     100
                          "LATITUDE"  20
                          "LONGITUDE" 50}
-        :column-name    "aggregation"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
@@ -353,8 +353,8 @@
         :expected-query expected-query}
 
        "multi-stage query"
-       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "aggregation")
-        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "aggregation")}))))
+       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
+        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")}))))
 
 (deftest ^:parallel binned-lat-lon-default-binning-test
   (testing "Binned LatLon (default 'Auto-Bin') => Binned LatLon. Should use :dimensions (#36247)"
@@ -364,7 +364,7 @@
                                               (lib/with-binning {:strategy :default})))
                             (lib/breakout (-> (meta/field-metadata :people :longitude)
                                               (lib/with-binning {:strategy :default}))))
-          col-count     (m/find-first #(= (:name %) "aggregation")
+          col-count     (m/find-first #(= (:name %) "count")
                                       (lib/returned-columns query))
           _             (is (some? col-count))
           col-latitude  (m/find-first #(= (:name %) "LATITUDE")
@@ -448,7 +448,7 @@
                                               (lib/with-binning {:strategy :default})))
                             (lib/breakout (-> (meta/field-metadata :people :longitude)
                                               (lib/with-binning {:strategy :default}))))
-          col-count     (m/find-first #(= (:name %) "aggregation")
+          col-count     (m/find-first #(= (:name %) "count")
                                       (lib/returned-columns query))
           _             (is (some? col-count))
           col-latitude  (m/find-first #(= (:name %) "LATITUDE")
@@ -523,10 +523,10 @@
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   query
-        :custom-row     {"aggregation"     100
+        :custom-row     {"count"     100
                          "LATITUDE"  20
                          "LONGITUDE" 50}
-        :column-name    "aggregation"
+        :column-name    "count"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic
                          :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
@@ -541,8 +541,8 @@
         :expected-query expected-query}
 
        "multi-stage query"
-       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "aggregation")
-        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "aggregation")}))))
+       {:custom-query   (lib.drill-thru.tu/append-filter-stage query "count")
+        :expected-query (lib.drill-thru.tu/append-filter-stage-to-test-expectation expected-query "count")}))))
 
 ;; This actually tests pivots as well.
 (deftest ^:parallel zoom-in-on-legend-state-test

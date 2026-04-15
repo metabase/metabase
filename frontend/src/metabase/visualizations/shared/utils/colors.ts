@@ -23,7 +23,5 @@ export const getSeriesColors = <TDatum, TSeriesInfo>(
   return getColorsForValues(
     series.map((series) => series.seriesKey),
     settingsColorMapping,
-    undefined,
-    series.map((series) => series.seriesName),
   );
 };

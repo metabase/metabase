@@ -36,13 +36,13 @@
                                            {:effective-type :type/BigInteger, :base-type :type/BigInteger}
                                            ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
                                           1]]
-                          :aggregation  [[:count {:name "aggregation" :lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                          :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
                           :order-by     [[:asc
                                           {}
                                           [:aggregation
                                            {:base-type       :type/Integer
                                             :effective-type  :type/Integer
-                                            :lib/source-name "aggregation"}
+                                            :lib/source-name "count"}
                                            "00000000-0000-0000-0000-000000000000"]]]}]}
              (serdes/export-mbql query))))))
 

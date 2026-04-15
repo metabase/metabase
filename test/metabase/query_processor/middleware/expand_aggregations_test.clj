@@ -27,14 +27,14 @@
 (deftest ^:parallel expand-aggregations-test
   (let [query (expand-aggregations-test-query)]
     (testing "simple reference"
-      (is (= {:columns ["aggregation" "aggregation_2"]
+      (is (= {:columns ["sum" "2*sum"]
               :rows [[1510617.7 3021235.4]]}
              (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))
 
 (deftest ^:parallel expand-aggregations-test-2
   (let [query (expand-aggregations-test-query)]
     (testing "multiple references"
-      (is (= {:columns ["aggregation" "aggregation_2" "aggregation_3"]
+      (is (= {:columns ["sum" "2*sum" "3*sum"]
               :rows [[1510617.7 3021235.4 4531853.1]]}
              (let [query (lib/aggregate query (lib/with-expression-name (lib/* 3 (expand-aggregaations-test-find-sum-of-total query)) "3*sum"))]
                (mt/formatted-rows+column-names [2.0 2.0 2.0] (qp/process-query query))))))))
@@ -42,7 +42,7 @@
 (deftest ^:parallel expand-aggregations-test-3
   (let [query (expand-aggregations-test-query)]
     (testing "multiple reference levels"
-      (is (= {:columns ["aggregation" "aggregation_2" "aggregation_3"]
+      (is (= {:columns ["sum" "2*sum" "6*sum"]
               :rows [[1510617.7 3021235.4 9063706.2]]}
              (let [query (lib/aggregate query (lib/with-expression-name (lib/* 3 (expand-aggregations-test-find-col query "2*sum")) "6*sum"))]
                (mt/formatted-rows+column-names [2.0 2.0 2.0] (qp/process-query query))))))))
@@ -56,7 +56,7 @@
                                             (lib/+ (expand-aggregations-test-find-col $query "2*sum")
                                                    (expand-aggregations-test-find-col $query "6*sum"))
                                             "8*sum")))]
-        (is (= {:columns ["aggregation" "aggregation_2" "aggregation_3" "aggregation_4"]
+        (is (= {:columns ["sum" "2*sum" "6*sum" "8*sum"]
                 :rows [[1510617.7 3021235.4 9063706.2 12084941.6]]}
                (mt/formatted-rows+column-names [2.0 2.0 2.0 2.0] (qp/process-query query))))
         (testing "cyclic definition"
@@ -82,7 +82,7 @@
                            :database-id   (mt/id)
                            :name          "Orders, Sum of Total and double Sum of Total"}]})
           query (lib/query mp (lib.metadata/card mp 1))]
-      (is (= {:columns ["aggregation" "aggregation_2"]
+      (is (= {:columns ["sum" "2*sum"]
               :rows    [[1510617.7 3021235.4]]}
              (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))
 
@@ -106,7 +106,7 @@
                            (as-> $query (lib/aggregate $query (lib/with-expression-name
                                                                 (lib/* 2 (find-col $query "Order Total"))
                                                                 "2*total"))))]
-      (is (= {:columns ["aggregation" "aggregation_2"]
+      (is (= {:columns ["sum" "2*total"]
               :rows    [[1510617.7 3021235.4]]}
              (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))
 
@@ -121,6 +121,6 @@
                                    "Custom Sum"))
                 (lib/aggregate $ (lib/with-expression-name (lib/ref (find-col $ "Custom Sum")) "Derived")))]
     (testing "names are preserved"
-      (is (= {:columns ["aggregation" "aggregation_2"]
+      (is (= {:columns ["Custom Sum" "Derived"]
               :rows [[1510617.7 1510617.7]]}
              (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))

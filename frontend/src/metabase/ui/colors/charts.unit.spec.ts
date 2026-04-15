@@ -49,16 +49,6 @@ describe("charts", () => {
     });
   });
 
-  it("should use defaultKeys for preferred color and hash regardless of key order", () => {
-    const keys = ["aggregation", "Q2"];
-    const defaultKeys = ["sum", undefined];
-
-    const mapping = getColorsForValues(keys, null, undefined, defaultKeys);
-
-    expect(mapping["aggregation"]).toBe(color("accent1"));
-    expect(mapping["Q2"]).not.toBe(color("accent1"));
-  });
-
   it("should reuse colors for > 24 series", () => {
     const keys = ["count", "sum", "profit", ..._.times(48, (i) => `S${i}`)];
     const existingMapping = { count: color("accent1") };

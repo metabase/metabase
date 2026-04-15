@@ -256,7 +256,7 @@
                                       (lib/with-binning {:strategy :default})))
                     lib/append-stage
                     qp.preprocess/preprocess)]
-      (is (=? {:stages [{:aggregation [[:count {:name "aggregation"}]]
+      (is (=? {:stages [{:aggregation [[:count {}]]
                          :breakout    [[:field {:binning {:bin-width 20.0, :max-value 160.0, :min-value 0.0, :num-bins 8, :strategy :num-bins}}
                                         any?]]
                          :order-by    [[:asc
@@ -264,7 +264,7 @@
                                         [:field {:binning {:bin-width 20.0, :max-value 160.0, :min-value 0.0, :num-bins 8, :strategy :num-bins}}
                                          any?]]]}
                         {:fields [[:field {:lib/original-binning {:bin-width 20.0, :max-value 160.0, :min-value 0.0, :num-bins 8, :strategy :num-bins}} "TOTAL"]
-                                  [:field {} "aggregation"]]}]}
+                                  [:field {} "count"]]}]}
               query))
       (testing `lib/returned-columns
         (letfn [(returned-columns [stage-number]
@@ -274,16 +274,16 @@
             (is (= [{:lib/desired-column-alias   "TOTAL"
                      :lib/binning {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}
                      :lib/original-binning       {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}}
-                    {:lib/desired-column-alias "aggregation"}]
+                    {:lib/desired-column-alias "count"}]
                    (returned-columns 0))))
           (testing "second stage"
             (is (= [{:lib/desired-column-alias "TOTAL"
                      :lib/original-binning     {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}}
-                    {:lib/desired-column-alias "aggregation"}]
+                    {:lib/desired-column-alias "count"}]
                    (returned-columns 1))))))
       (testing `lib.metadata.result-metadata/returned-columns
         (is (=? [{:lib/desired-column-alias "TOTAL"
                   :binning-info             {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}}
-                 {:lib/desired-column-alias "aggregation"}]
+                 {:lib/desired-column-alias "count"}]
                 (map #(select-keys % [:lib/desired-column-alias :binning-info])
                      (lib.metadata.result-metadata/returned-columns query))))))))

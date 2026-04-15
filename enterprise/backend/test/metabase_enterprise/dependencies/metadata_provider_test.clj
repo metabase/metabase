@@ -54,14 +54,14 @@
       (testing "upstream card's columns are correct"
         (is (=? [{:name "CATEGORY"}
                  {:name "CREATED_AT"}
-                 {:name "aggregation"}]
+                 {:name "count"}]
                 (->> (lib.metadata/card mp 1)
                      (lib/query mp)
                      lib/returned-columns))))
       (testing "downstream card (which selects all) is also correct"
         (is (=? [{:name "CATEGORY"}
                  {:name "CREATED_AT"}
-                 {:name "aggregation"}]
+                 {:name "count"}]
                 (->> (lib.metadata/card mp 2)
                      (lib/query mp)
                      lib/returned-columns)))))))
@@ -117,13 +117,13 @@
 
       (testing "upstream card's columns are correct"
         (is (=? [{:name "CREATED_AT"}
-                 {:name "aggregation"}]
+                 {:name "count"}]
                 (->> (lib.metadata/card mp 1)
                      (lib/query mp)
                      lib/returned-columns))))
       (testing "downstream card (which selects all) is also correct"
         (is (=? [{:name "CREATED_AT"}
-                 {:name "aggregation"}]
+                 {:name "count"}]
                 (->> (lib.metadata/card mp 2)
                      (lib/query mp)
                      lib/returned-columns

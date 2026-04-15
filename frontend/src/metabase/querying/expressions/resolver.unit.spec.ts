@@ -624,7 +624,7 @@ describe("resolver", () => {
   describe("query with aggregation in first stage > later stages", () => {
     const query = Lib.appendStage(queryWithAggregation);
     const aggregations = {
-      BAR_AGGREGATION: findField(query, "aggregation"),
+      BAR_AGGREGATION: findField(query, "Bar Aggregation"),
     };
 
     const resolve = makeResolver({

@@ -111,9 +111,9 @@
      {:drill-type  :drill-thru/column-filter
       :click-type  :header
       :query-type  :aggregated
-      :column-name "aggregation"
+      :column-name "count"
       :expected    {:type   :drill-thru/column-filter
-                    :column {:name "aggregation"}}})))
+                    :column {:name "count"}}})))
 
 (deftest ^:parallel returns-column-filter-test-11
   (testing "column-filter should be available for aggregated query metric column (#34223)"
@@ -121,9 +121,9 @@
      {:drill-type  :drill-thru/column-filter
       :click-type  :header
       :query-type  :aggregated
-      :column-name "aggregation_3"
+      :column-name "max"
       :expected    {:type   :drill-thru/column-filter
-                    :column {:name "aggregation_3"}}})))
+                    :column {:name "max"}}})))
 
 (deftest ^:parallel column-filter-not-returned-for-nil-dimension-test
   (testing "column-filter should not be returned for nil dimension values (#49740, #51741)"
@@ -131,7 +131,7 @@
      {:drill-type  :drill-thru/column-filter
       :click-type  :cell
       :query-type  :aggregated
-      :column-name "aggregation_3"
+      :column-name "max"
       :custom-row  #(assoc % "CREATED_AT" nil)})))
 
 (deftest ^:parallel aggregation-adds-extra-stage-test
@@ -148,7 +148,7 @@
                :stage-number -1
                :column       (->> new-stage
                                   lib/filterable-columns
-                                  (m/find-first #(= (:name %) "aggregation")))}
+                                  (m/find-first #(= (:name %) "count")))}
               (->> {:column     count-col
                     :column-ref (lib/ref count-col)
                     :value      nil}

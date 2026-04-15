@@ -665,9 +665,9 @@
         query-col (fn [col-name] (m/find-first #(= (:name %) col-name) query-cols))
         filtered-query (-> query
                            (lib/filter (lib/not-null (query-col "expr")))
-                           (lib/filter (lib/>= (query-col "aggregation_2") 7))
+                           (lib/filter (lib/>= (query-col "max") 7))
                            (lib/filter (lib/!= (query-col "ID") 42))
-                           (lib/filter (lib/< (query-col "aggregation_2") 17)))
+                           (lib/filter (lib/< (query-col "max") 17)))
         filtered-query-cols (lib/filterable-columns filtered-query)
         signature-fn (juxt :display-name :filter-positions)]
     (testing "no filters"

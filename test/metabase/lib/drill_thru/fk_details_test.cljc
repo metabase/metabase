@@ -49,7 +49,7 @@
     (lib.drill-thru.tu/test-drill-not-returned
      {:click-type  :cell
       :query-type  :aggregated
-      :column-name "aggregation_3"
+      :column-name "max"
       :drill-type  :drill-thru/fk-details})))
 
 (deftest ^:parallel apply-fk-details-test

@@ -42,11 +42,11 @@
                 (lib/breakout (meta/field-metadata :orders :product-id))
                 (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                   (lib/with-temporal-bucket :month))))
-     :row   {"PRODUCT_ID"    3
-             "CREATED_AT"    "2022-12-01T00:00:00+02:00"
-             "aggregation"   77
-             "aggregation_2" 1
-             "aggregation_3" nil}}}
+     :row   {"PRODUCT_ID" 3
+             "CREATED_AT" "2022-12-01T00:00:00+02:00"
+             "count"      77
+             "sum"        1
+             "max"        nil}}}
 
    "PRODUCTS"
    {:unaggregated
@@ -62,7 +62,7 @@
     :aggregated
     {:query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                 (lib/aggregate (lib/count)))
-     :row   {"aggregation" 200}}}})
+     :row   {"count" 200}}}})
 
 (defn- schema-or-update-fn
   [schema]

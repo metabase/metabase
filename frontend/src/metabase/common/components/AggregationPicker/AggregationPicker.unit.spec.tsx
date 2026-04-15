@@ -243,7 +243,7 @@ describe("AggregationPicker", () => {
       await userEvent.click(screen.getByText("Count of rows"));
 
       expect(getRecentClauseInfo()).toMatchObject({
-        name: "aggregation",
+        name: "count",
         displayName: "Count",
       });
     });
@@ -255,7 +255,7 @@ describe("AggregationPicker", () => {
       await userEvent.click(screen.getByText("Quantity"));
 
       expect(getRecentClauseInfo()).toMatchObject({
-        name: "aggregation",
+        name: "avg",
         displayName: "Average of Quantity",
       });
     });
@@ -268,7 +268,7 @@ describe("AggregationPicker", () => {
       await userEvent.click(screen.getByText("Rating"));
 
       expect(getRecentClauseInfo()).toMatchObject({
-        name: "aggregation",
+        name: "avg",
         displayName: "Average of Rating",
       });
     });
@@ -317,6 +317,7 @@ describe("AggregationPicker", () => {
       await userEvent.click(screen.getByText("Quantity"));
 
       expect(getRecentClauseInfo()).toMatchObject({
+        name: "avg",
         displayName: "Average of Quantity",
       });
     });
@@ -329,6 +330,7 @@ describe("AggregationPicker", () => {
       await userEvent.click(screen.getByText("Discount"));
 
       expect(getRecentClauseInfo()).toMatchObject({
+        name: "max",
         displayName: "Max of Discount",
       });
     });

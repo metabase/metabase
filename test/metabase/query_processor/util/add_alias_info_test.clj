@@ -930,7 +930,7 @@
                                               {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]
                        :aggregation         [[:aggregation-options
                                               [:avg [:field "RATING" {::add/source-alias "RATING"}]]
-                                              {:name "aggregation", ::add/desired-alias "aggregation"}]]
+                                              {::add/desired-alias "avg"}]]
                        :order-by            [[:asc
                                               [:field
                                                "Reviews__CREATED_AT"

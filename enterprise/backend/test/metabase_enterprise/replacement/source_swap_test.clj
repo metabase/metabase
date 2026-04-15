@@ -306,7 +306,7 @@
                        {:targetId target-card-id
                         :parameterMapping
                         {viz-key
-                         {:target {:dimension [:dimension
+                         {:target {:dimension ["dimension"
                                                [:field (mt/id :products :category)
                                                 {:source-field (mt/id :reviews :product_id)}]]}}}}}
                       viz)))))))))

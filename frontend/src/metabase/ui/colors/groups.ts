@@ -1,5 +1,4 @@
 import Color from "color";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { ACCENT_COUNT, color } from "./palette";
@@ -114,66 +113,7 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
       return color("accent0", palette);
     case "sum":
       return color("accent1", palette);
-    // NOTE - the correct column name is "avg", but this used "average" historically
-    // fixing this would change colors in charts
     case "average":
       return color("accent2", palette);
   }
 };
-
-// Maps aggregation display names to legacy column names (e.g. "Sum of Price" → "sum",
-// "Count" → "count"). This is needed to get the same preferred color and the same
-// color hash as before aggregation columns switched to generic names.
-// The strings below must match the translations produced by
-// `count-aggregation-no-arg-display-name-fns`, `count-aggregation-display-name-fns`
-// and `unary-aggregation-display-name-fns` in src/metabase/lib/aggregation.cljc.
-export function getPreferredColorKey(name: string): string | undefined {
-  // No-argument aggregation names — matched exactly.
-  const exactMapping = [
-    [t`Count`, "count"],
-    [t`Cumulative count`, "count"],
-  ];
-  // Aggregation names that include a column argument — matched as a prefix,
-  // since the argument is substituted into "{0}".
-  const prefixMapping = [
-    [t`Average of ${""}`, "avg"],
-    [t`Cumulative sum of ${""}`, "sum"],
-    [t`Distinct values of ${""}`, "count"],
-    [t`Max of ${""}`, "max"],
-    [t`Median of ${""}`, "median"],
-    [t`Min of ${""}`, "min"],
-    [t`Standard deviation of ${""}`, "stddev"],
-    [t`Sum of ${""}`, "sum"],
-    [t`Variance of ${""}`, "var"],
-    [t`Count of ${""}`, "count"],
-    [t`Cumulative count of ${""}`, "count"],
-  ];
-
-  for (const [exact, key] of exactMapping) {
-    if (name === exact) {
-      return key;
-    }
-  }
-  for (const [prefix, key] of prefixMapping) {
-    if (name.startsWith(prefix)) {
-      return key;
-    }
-  }
-  return undefined;
-}
-
-// Deduplicates color keys to match legacy column names (e.g. "count", "count_2", "sum")
-// so that series colors don't regress when multiple aggregations of the same type are used.
-export function getDeduplicatedColorKeys(
-  colorKeys: (string | undefined)[],
-): (string | undefined)[] {
-  const counts = new Map<string, number>();
-  return colorKeys.map((key) => {
-    if (key == null) {
-      return undefined;
-    }
-    const count = counts.get(key) ?? 0;
-    counts.set(key, count + 1);
-    return count === 0 ? key : `${key}_${count + 1}`;
-  });
-}

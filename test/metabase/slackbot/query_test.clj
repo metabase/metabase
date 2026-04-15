@@ -50,7 +50,7 @@
         (testing "has correct columns for aggregation"
           (let [col-names (map :name (get-in results [:data :cols]))]
             (is (some #(re-find #"(?i)category" %) col-names))
-            (is (some #(re-find #"(?i)aggregation" %) col-names))))))))
+            (is (some #(re-find #"(?i)count" %) col-names))))))))
 
 ;;; ------------------------------------------------ PNG Generation --------------------------------------------------
 

@@ -1114,7 +1114,7 @@
             {:source-table $$venues
              :aggregation [[:aggregation-options
                             [:cum-count [:field %id {:base-type :type/BigInteger}]]
-                            {:name "aggregation"}]]})
+                            {:name "count"}]]})
           (lib.convert/->legacy-MBQL
            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                (lib/aggregate (lib.options/update-options
@@ -1129,7 +1129,7 @@
                              [:+
                               [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
                               [:aggregation-options [:cum-count] {:name "b"}]]
-                             {:name "aggregation"}]]})
+                             {:name "xixix"}]]})
            (lib.convert/->legacy-MBQL
             (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                 (lib/aggregate (lib.options/update-options
@@ -1242,7 +1242,7 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
         sum   (->> (lib/aggregable-columns query nil)
-                   (m/find-first (comp #{"aggregation"} :name)))
+                   (m/find-first (comp #{"sum"} :name)))
         query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
         legacy-query (lib.convert/->legacy-MBQL query)]
     (is (= legacy-query

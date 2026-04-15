@@ -104,11 +104,11 @@
               query         (-> base-query
                                 lib/append-stage
                                 (as-> q
-                                      (let [count-col (m/find-first #(= (:name %) "aggregation")
+                                      (let [count-col (m/find-first #(= (:name %) "count")
                                                                     (lib/filterable-columns q))]
                                         (lib/filter q (lib/> count-col 1)))))
               returned-cols (lib/returned-columns query)
-              count-col     (m/find-first #(= (:name %) "aggregation") returned-cols)
+              count-col     (m/find-first #(= (:name %) "count") returned-cols)
               category-col  (m/find-first #(= (:name %) "CATEGORY") returned-cols)
               drill-context {:column     count-col
                              :column-ref (lib.ref/ref count-col)
@@ -130,10 +130,10 @@
               query'        (lib/drill-thru query -1 nil pivot-drill people-source)]
           ;; Overspecification?
           (is (=? {:stages [{:source-table (mt/id :orders)
-                             :aggregation  [[:count {:name "aggregation"}]]
+                             :aggregation  [[:count {}]]
                              :breakout     [[:field {} (mt/id :people :source)]]
                              :filters      [[:= {} [:field {} (mt/id :products :category)] "Doohickey"]]}
-                            {:filters [[:> {} [:field {} "aggregation"] 1]]}]}
+                            {:filters [[:> {} [:field {} "count"] 1]]}]}
                   query'))
           (mt/with-native-query-testing-context query'
             (is (= [["Affiliate" 783]

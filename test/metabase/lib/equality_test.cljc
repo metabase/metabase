@@ -514,7 +514,7 @@
       (testing "fails with bad UUID but good source-name"
         (is (nil? (lib.equality/find-matching-column
                    [:aggregation {:lib/uuid        (str (random-uuid))
-                                  :lib/source-name "aggregation"}
+                                  :lib/source-name "count"}
                     "this is a bad UUID"]
                    (lib/returned-columns query))))))
     (testing "when passing query"
@@ -529,7 +529,7 @@
                 (lib.equality/find-matching-column
                  query -1
                  [:aggregation {:lib/uuid        (str (random-uuid))
-                                :lib/source-name "aggregation"}
+                                :lib/source-name "count"}
                   "this is a bad UUID"]
                  (lib/returned-columns query))))))))
 
@@ -575,7 +575,7 @@
 (deftest ^:parallel find-column-for-legacy-ref-aggregation-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/count)))]
-    (are [legacy-ref] (=? {:name           "aggregation"
+    (are [legacy-ref] (=? {:name           "count"
                            :effective-type :type/Integer
                            :lib/source     :source/aggregations}
                           (lib/find-column-for-legacy-ref
@@ -699,11 +699,11 @@
                 :inherited-temporal-unit :year}
                {:lib/source-column-alias "CREATED_AT_2"
                 :inherited-temporal-unit :month}
-               {:lib/source-column-alias "aggregation"}]
+               {:lib/source-column-alias "count"}]
               columns))
       (is (=? [[:field {:inherited-temporal-unit :year} "CREATED_AT"]
                [:field {:inherited-temporal-unit :month} "CREATED_AT_2"]
-               [:field {} "aggregation"]]
+               [:field {} "count"]]
               column-refs))
       (is (=? [:field {} "CREATED_AT"]
               (lib.equality/find-matching-ref (first columns) column-refs)))
