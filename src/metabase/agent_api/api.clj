@@ -194,6 +194,33 @@
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
 
+(mr/def ::table-overview
+  "A table within a schema, with the names of its fields."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:schema {:optional true} [:maybe :string]]
+   [:fields [:sequential :string]]])
+
+(mr/def ::schema-overview
+  "A schema within a database, containing its tables."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
+   [:name {:optional true} [:maybe :string]]
+   [:tables [:sequential ::table-overview]]])
+
+(mr/def ::database-overview
+  "Summary view of a database including its schemas, tables, and field names."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:engine :string]
+   [:schemas [:sequential ::schema-overview]]])
+
+(mr/def ::database-overview-response
+  "Response listing all databases visible to the current user with their structure."
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
+   [:databases [:sequential ::database-overview]]])
+
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
@@ -305,6 +332,19 @@
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
+
+(api.macros/defendpoint :get "/v1/database/overview" :- ::database-overview-response
+  "Get a structural overview of all databases visible to the current user,
+  listing their schemas, tables, and field names.
+
+  Lightweight by design — use /v1/table/:id for full table details."
+  {:scope metabot/agent-table-read
+   :tool  {:name "get_database_overview"
+           :description (str "Get a high-level overview of all accessible databases, "
+                             "including their schemas, tables, and field names.")
+           :annotations {:read-only? true}}}
+  []
+  (check-tool-result (entity-details/get-database-overview {})))
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 

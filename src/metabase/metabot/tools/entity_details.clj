@@ -9,6 +9,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
@@ -393,6 +394,83 @@
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
         (metabot.tools.u/handle-agent-error e)))))
+
+(def ^:private database-overview-db-filter
+  "SQL filter for databases included in the database overview."
+  [:and
+   [:= :db.is_audit false]
+   [:= :db.router_database_id nil]])
+
+(def ^:private database-overview-table-filter
+  "SQL filter for tables included in the database overview."
+  [:and
+   [:= :t.active true]
+   [:= :t.visibility_type nil]])
+
+(def ^:private database-overview-field-filter
+  "SQL filter for fields included in the database overview."
+  [:and
+   [:= :f.active true]
+   [:not-in :f.visibility_type ["sensitive" "retired"]]])
+
+(defn get-database-overview
+  "Get a structural overview of all databases visible to the current user, listing their
+   schemas, tables, and field names. Lightweight by design — no display names, descriptions,
+   types, or field metadata."
+  [_arguments]
+  (try
+    (let [dbs               (->> (t2/select :model/Database
+                                            {:select [:db.id :db.name :db.engine]
+                                             :from   [[:metabase_database :db]]
+                                             :where  database-overview-db-filter})
+                                 (filterv mi/can-read?)
+                                 (sort-by :name))
+          allowed-db-ids    (into #{} (map :id) dbs)
+          tables            (->> (t2/select :model/Table
+                                            {:select [:t.id :t.db_id :t.name :t.schema]
+                                             :from   [[:metabase_table :t]]
+                                             :join   [[:metabase_database :db] [:= :t.db_id :db.id]]
+                                             :where  [:and
+                                                      database-overview-db-filter
+                                                      database-overview-table-filter]})
+                                 (filterv (every-pred (comp allowed-db-ids :db_id) mi/can-read?))
+                                 (sort-by (juxt :schema :name)))
+          allowed-table-ids (into #{} (map :id) tables)
+          fields            (->> (t2/select :model/Field
+                                            {:select [:f.id :f.name :f.table_id :f.position]
+                                             :from   [[:metabase_field :f]]
+                                             :join   [[:metabase_table :t]     [:= :f.table_id :t.id]
+                                                      [:metabase_database :db] [:= :t.db_id :db.id]]
+                                             :where  [:and
+                                                      database-overview-db-filter
+                                                      database-overview-table-filter
+                                                      database-overview-field-filter]})
+                                 (filterv (comp allowed-table-ids :table_id))
+                                 (sort-by (juxt :position :id)))
+          db-id->tables     (group-by :db_id tables)
+          table-id->fields  (group-by :table_id fields)]
+      {:structured-output
+       {:databases
+        (mapv
+         (fn [db]
+           {:id      (:id db)
+            :name    (:name db)
+            :engine  (name (:engine db))
+            :schemas (->> (get db-id->tables (:id db))
+                          (group-by :schema)
+                          (sort-by (comp str first))
+                          (mapv (fn [[schema-name schema-tables]]
+                                  {:name   schema-name
+                                   :tables (mapv
+                                            (fn [table]
+                                              {:id     (:id table)
+                                               :name   (:name table)
+                                               :schema (:schema table)
+                                               :fields (mapv :name (get table-id->fields (:id table)))})
+                                            schema-tables)})))})
+         dbs)}})
+    (catch Exception e
+      (metabot.tools.u/handle-agent-error e))))
 
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
