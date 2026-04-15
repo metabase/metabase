@@ -11,27 +11,20 @@
 
 (deftest ^:parallel aggregation-column-names-test
   (testing "empty when there are no aggregations"
-    (is (= #{} (#'lib.aggregation.util/aggregation-column-names (venues-query) 0))))
-  (testing "returns the effective :name of each aggregation clause"
+    (is (= [] (#'lib.aggregation.util/aggregation-column-names (venues-query) 0))))
+  (testing "returns the effective :name of each aggregation clause in order"
     (let [query (-> (venues-query)
                     (lib/aggregate (lib/count))
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))]
-      (is (= #{"count" "sum"}
+      (is (= ["count" "sum"]
              (#'lib.aggregation.util/aggregation-column-names query 0)))))
-  (testing "deduplicates computed names from siblings without an explicit :name"
+  (testing "deduplicates computed names from siblings without an explicit :name, preserving order"
     (let [query (-> (lib/aggregate (venues-query) (lib/count))
                     (lib/aggregate (lib/count))
                     (update-in [:stages 0 :aggregation 0] lib.options/update-options dissoc :name)
                     (update-in [:stages 0 :aggregation 1] lib.options/update-options dissoc :name))]
-      (is (= #{"count" "count_2"}
-             (#'lib.aggregation.util/aggregation-column-names query 0)))))
-  (testing "except-uuid drops that clause"
-    (let [query (-> (venues-query)
-                    (lib/aggregate (lib/count))
-                    (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
-          [agg1 _] (lib/aggregations query)]
-      (is (= #{"sum"}
-             (#'lib.aggregation.util/aggregation-column-names query 0 (lib.options/uuid agg1)))))))
+      (is (= ["count" "count_2"]
+             (#'lib.aggregation.util/aggregation-column-names query 0))))))
 
 (deftest ^:parallel with-unique-aggregation-name-test
   (testing "sets :name to the clause's column-name when no siblings collide"
@@ -68,15 +61,7 @@
                     (lib/aggregate (lib/count)))]
       (is (= "count_3"
              (:name (lib.options/options
-                     (lib.aggregation.util/with-unique-aggregation-name query 0 (lib/count))))))))
-  (testing "except-uuid removes that sibling from the dedup set"
-    (let [query    (lib/aggregate (venues-query) (lib/sum (meta/field-metadata :venues :id)))
-          [sibling] (lib/aggregations query)
-          another  (lib/sum (meta/field-metadata :venues :price))]
-      (is (= "sum"
-             (:name (lib.options/options
-                     (lib.aggregation.util/with-unique-aggregation-name
-                       query 0 another (lib.options/uuid sibling)))))))))
+                     (lib.aggregation.util/with-unique-aggregation-name query 0 (lib/count)))))))))
 
 (deftest ^:parallel with-unique-aggregation-name-after-replacement-test
   (testing "returns the replacement as-is when it already has :name"
@@ -96,13 +81,12 @@
              (:name (lib.options/options
                      (lib.aggregation.util/with-unique-aggregation-name-after-replacement
                        query 0 target replacement)))))))
-  (testing "regenerates a unique :name when column-names differ"
+  (testing "returns the replacement unchanged when column-names differ (no auto-rename)"
     (let [query       (-> (venues-query)
                           (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
                           (lib/aggregate (lib/count)))
           [_ target]  (lib/aggregations query) ; count
           replacement (lib/avg (meta/field-metadata :venues :price))]
-      (is (= "avg"
-             (:name (lib.options/options
-                     (lib.aggregation.util/with-unique-aggregation-name-after-replacement
-                       query 0 target replacement))))))))
+      (is (= replacement
+             (lib.aggregation.util/with-unique-aggregation-name-after-replacement
+               query 0 target replacement))))))

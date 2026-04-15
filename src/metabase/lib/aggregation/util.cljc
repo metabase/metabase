@@ -20,43 +20,29 @@
    a-name   :- :string]
   (lib.options/update-options a-clause assoc :name a-name))
 
-(mu/defn- aggregation-column-names :- [:set :string]
-  "Compute the set of deduplicated effective column names for the aggregations currently in `stage-number` of
-  `query`, optionally excluding the clause with `except-uuid`. Each aggregation's effective name is its `:name`
-  option if set (via [[lib.metadata.calculation/column-name]]) or the computed
-  [[lib.metadata.calculation/column-name-method]] otherwise. The raw sequence is fed through a
-  [[lib.util.unique-name-generator/non-truncating-unique-name-generator]] so that several existing aggregations
-  sharing the same computed name get distinct `_2`/`_3`/... suffixes before the set is built. Callers must pass
-  `except-uuid` *before* deduplication so the suffix order of the remaining siblings is not affected by the
-  excluded clause."
-  ([query stage-number]
-   (aggregation-column-names query stage-number nil))
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    except-uuid  :- [:maybe :string]]
-   (let [generator (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
-     (into #{}
-           (comp (remove #(and except-uuid (= (lib.options/uuid %) except-uuid)))
-                 (map #(lib.metadata.calculation/column-name query stage-number %))
-                 (map generator))
-           (:aggregation (lib.util/query-stage query stage-number))))))
+(mu/defn- aggregation-column-names :- [:sequential :string]
+  "Compute the ordered list of deduplicated effective column names for the aggregations currently in `stage-number`
+  of `query`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [generator (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
+    (into []
+          (comp (map #(lib.metadata.calculation/column-name query stage-number %))
+                (map generator))
+          (:aggregation (lib.util/query-stage query stage-number)))))
 
 (mu/defn with-unique-aggregation-name :- ::lib.schema.expression/expression
   "Set a unique `:name` on the aggregation `a-clause` that is derived from its effective column name (its existing
   `:name` option if set, otherwise the computed `column-name-method` — e.g. `sum`, `count`, `avg`) and deduplicated
-  against the effective column names of the other aggregations on `stage-number`, excluding the clause with
-  `except-uuid` when provided."
-  ([query stage-number a-clause]
-   (with-unique-aggregation-name query stage-number a-clause nil))
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    a-clause     :- ::lib.schema.expression/expression
-    except-uuid  :- [:maybe :string]]
-   (with-clause-name
-     a-clause
-     (lib.util/unique-indexed-name
-      (aggregation-column-names query stage-number except-uuid)
-      (lib.metadata.calculation/column-name query stage-number a-clause)))))
+  against the effective column names of the existing aggregations on `stage-number`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   a-clause     :- ::lib.schema.expression/expression]
+  (with-clause-name
+    a-clause
+    (lib.util/unique-indexed-name
+     (set (aggregation-column-names query stage-number))
+     (lib.metadata.calculation/column-name query stage-number a-clause))))
 
 (mu/defn with-unique-aggregation-name-after-replacement :- ::lib.schema.expression/expression
   "When replacing an aggregation, decide what `:name` the replacement clause should carry.
@@ -64,8 +50,8 @@
     * If the replacement already has `:name` set, use it as-is.
     * Otherwise, if the target had `:name` and the two clauses compute the same column name (ignoring `:name` on the
       target), preserve the target's `:name` on the replacement so refs from later stages stay valid.
-    * Otherwise, regenerate a unique `:name` from the replacement's computed column name, deduplicated against the
-      effective column names of the other aggregations in the stage."
+    * Otherwise return the replacement unchanged — we deliberately don't regenerate a unique name here since that
+      would silently rewrite unrelated references when the aggregation shape changes."
   [query        :- ::lib.schema/query
    stage-number :- :int
    target       :- ::lib.schema.expression/expression
@@ -81,5 +67,4 @@
       (with-clause-name replacement target-name)
 
       :else
-      (with-unique-aggregation-name
-        query stage-number replacement (lib.options/uuid target)))))
+      replacement)))
