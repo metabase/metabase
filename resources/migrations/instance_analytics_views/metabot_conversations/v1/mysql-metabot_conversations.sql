@@ -19,7 +19,7 @@ SELECT
        AND mm.role = 'assistant'
        AND mm.deleted_at IS NULL
      ORDER BY mm.created_at
-     LIMIT 1)                                                         AS profile
+     LIMIT 1)                                                         AS model
 FROM metabot_conversation c
 LEFT JOIN core_user u
     ON u.id = c.user_id
