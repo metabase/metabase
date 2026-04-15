@@ -535,3 +535,60 @@
             (is (= {:previous {:resolved_commit "old-sha"}
                     :new      {:resolved_commit "new-sha"}}
                    (select-keys (:details entry) [:previous :new])))))))))
+
+;;; ------------------------------------------------ Dev Mode Gating ------------------------------------------------
+
+(deftest dev-mode-gating-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "POST /dev returns 403 when dev mode is disabled"
+      (is (= "Custom visualization plugin dev mode is not enabled."
+             (mt/user-http-request :crowberto :post 403 "ee/custom-viz-plugin/dev"
+                                   {:dev_bundle_url "http://localhost:5174"}))))
+    (testing "PUT /:id/dev-url returns 403 when dev mode is disabled"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/dev-gate"
+                                                      :identifier   "dev-gate"
+                                                      :display_name "dev-gate"
+                                                      :status       :active}]
+        (is (= "Custom visualization plugin dev mode is not enabled."
+               (mt/user-http-request :crowberto :put 403 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                     {:dev_bundle_url "http://localhost:5174"})))))
+    (testing "GET /:id/dev-sse returns 403 when dev mode is disabled"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/dev-gate-sse"
+                                                      :identifier   "dev-gate-sse"
+                                                      :display_name "dev-gate-sse"
+                                                      :status       :active}]
+        (is (= "Custom visualization plugin dev mode is not enabled."
+               (mt/user-http-request :crowberto :get 403 (str "ee/custom-viz-plugin/" id "/dev-sse"))))))
+    (testing "dev endpoints work when dev mode is enabled"
+      (with-dev-mode-enabled
+        (mt/with-model-cleanup [:model/CustomVizPlugin]
+          (with-redefs [cache/fetch-dev-manifest    (constantly {:name "gated-dev" :icon "icon.svg"})
+                        cache/set-or-clear-dev-bundle! (constantly nil)]
+            (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (= "gated-dev" (:identifier resp))))))))))
+
+(deftest list-excludes-dev-plugins-when-dev-mode-disabled-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/git-viz-list"
+                                             :identifier   "git-viz-list"
+                                             :display_name "Git Viz"
+                                             :status       :active
+                                             :enabled      true}
+                   :model/CustomVizPlugin _ {:repo_url       "dev://local/dev-viz-list"
+                                             :identifier     "dev-viz-list"
+                                             :display_name   "Dev Viz"
+                                             :status         :active
+                                             :enabled        true
+                                             :dev_bundle_url "http://localhost:5174"}]
+      (testing "dev-only plugins are hidden from /list when dev mode is off"
+        (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+              identifiers (set (map :identifier result))]
+          (is (contains? identifiers "git-viz-list"))
+          (is (not (contains? identifiers "dev-viz-list")))))
+      (testing "dev-only plugins are visible in /list when dev mode is on"
+        (with-dev-mode-enabled
+          (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+                identifiers (set (map :identifier result))]
+            (is (contains? identifiers "git-viz-list"))
+            (is (contains? identifiers "dev-viz-list"))))))))
