@@ -8,6 +8,7 @@
   (:require
    [metabase.actions.init]
    [metabase.activity-feed.init]
+   [metabase.agent-api.init]
    [metabase.analytics.init]
    [metabase.api.init]
    [metabase.app-db.init]

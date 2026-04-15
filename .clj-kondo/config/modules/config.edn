@@ -155,14 +155,17 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api}
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init}
    :uses    #{api
               auth-identity
               lib
+              llm
               metabot
               query-processor
               request
               server
+              settings
               util}
    :model-imports #{:model/User}}
 
@@ -1146,6 +1149,7 @@
    :uses #{agent-api
            api
            config
+           llm
            oauth-server
            request
            server
@@ -1496,6 +1500,7 @@
            config
            events
            internal-stats
+           llm
            settings
            startup
            task
