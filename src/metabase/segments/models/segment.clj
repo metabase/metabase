@@ -239,8 +239,8 @@
                              {::serdes/fk true
                               :export-with-context
                               (fn [{:keys [definition table_id]} _k _v]
-                                (if (and (seq definition)
-                                         (lib/primary-source-table-id definition))
+                                (if (try (lib/primary-source-table-id definition)
+                                         (catch Exception _ nil))
                                   ::serdes/skip
                                   (when table_id
                                     (serdes/*export-table-fk* table_id))))

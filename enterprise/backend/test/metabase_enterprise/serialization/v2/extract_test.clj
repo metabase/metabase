@@ -368,11 +368,14 @@
                    :created_at         string?}
                   ser))
           (is (not (contains? ser :id)))
-          (is (not (contains? ser :table_id)) "table_id stripped even with empty query")
+          (is (contains? ser :table_id) "table_id kept when query is empty — can't derive from {}")
           (is (contains? ser :database_id) "database_id kept when query is empty")
 
-          (testing "cards depend on their Database (kept because query is empty), Collection, and parameter_mappings refs"
+          (testing "cards depend on their Database (kept because query is empty), Table (kept because query is empty), Collection, and parameter_mappings refs"
             (is (= #{[{:model "Database" :id "My Database"}]
+                     [{:model "Database" :id "My Database"}
+                      {:model "Schema" :id "PUBLIC"}
+                      {:model "Table" :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c1-eid}]
                      [{:model "Database" :id "My Database"}
@@ -414,8 +417,11 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Database (kept, query empty), Collection, and visualization_settings refs"
+          (testing "cards depend on their Database (kept, query empty), Table (kept, query empty), Collection, and visualization_settings refs"
             (is (= #{[{:model "Database" :id "My Database"}]
+                     [{:model "Database" :id "My Database"}
+                      {:model "Schema" :id "PUBLIC"}
+                      {:model "Table" :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}
@@ -1297,6 +1303,9 @@
           (is (= #{[{:model "Database"   :id "My Database"}]
                    [{:model "Collection" :id coll-eid-2}]
                    [{:model "Card"       :id card-eid-1}]
+                   ;; table_id kept — card has no dataset_query; dep emitted alongside field dep
+                   [{:model "Database"   :id "My Database"}
+                    {:model "Table"      :id "Schemaless Table"}]
                    [{:model "Database"   :id "My Database"}
                     {:model "Table"      :id "Schemaless Table"}
                     {:model "Field"      :id "A Field"}]}

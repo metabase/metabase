@@ -205,8 +205,9 @@
   Converts portable IDs back to numeric IDs, then converts MBQL4 to MBQL5."
   [exported]
   (let [with-ids (serdes/import-mbql exported)]
-    (when (seq with-ids)
-      (lib-be/normalize-query with-ids))))
+    (if (seq with-ids)
+      (lib-be/normalize-query with-ids)
+      with-ids)))
 
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
   {:copy [:name :archived :description :entity_id]
@@ -222,8 +223,8 @@
                              {::serdes/fk true
                               :export-with-context
                               (fn [{:keys [definition table_id]} _k _v]
-                                (if (and (seq definition)
-                                         (lib/primary-source-table-id definition))
+                                (if (try (lib/primary-source-table-id definition)
+                                         (catch Exception _ nil))
                                   ::serdes/skip
                                   (when table_id
                                     (serdes/*export-table-fk* table_id))))

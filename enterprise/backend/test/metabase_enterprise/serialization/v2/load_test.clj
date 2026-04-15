@@ -2247,3 +2247,123 @@
                 table   (t2/select-one :model/Table :name "sales")]
             (is (some? measure))
             (is (= (:id table) (:table_id measure)) "table_id backfilled from definition")))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Keep-side round-trips: fields that cannot be derived are exported and then
+;;; correctly resolved on import.
+;;; ---------------------------------------------------------------------------
+
+(deftest card-kept-fields-round-trip-test
+  (testing "Card round-trip: table_id and database_id are exported and resolved when dataset_query is empty"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "orders" :db_id (:id db))
+                user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                ;; Empty dataset_query — populate-query-fields does not run, so database_id
+                ;; and table_id come only from the explicit fields we pass.
+                _card (ts/create! :model/Card
+                                  :collection_id nil
+                                  :creator_id    (:id user)
+                                  :name          "Empty Query Card"
+                                  :database_id   (:id db)
+                                  :table_id      (:id table)
+                                  :dataset_query {}
+                                  :display       :table)]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [card-ser (first (filter #(= "Card" (-> % :serdes/meta last :model)) @serialized))]
+              (is (contains? card-ser :table_id)    "table_id exported — not derivable from empty query")
+              (is (contains? card-ser :database_id) "database_id exported — not derivable from empty query"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [card  (t2/select-one :model/Card :name "Empty Query Card")
+                db    (t2/select-one :model/Database :name "my-db")
+                table (t2/select-one :model/Table :name "orders")]
+            (is (some? card))
+            (is (= (:id db)    (:database_id card)) "database_id resolved from exported portable ref")
+            (is (= (:id table) (:table_id card))    "table_id resolved from exported portable ref")))))))
+
+(deftest card-broken-query-exports-kept-fields-test
+  (testing "Card with a non-empty but broken dataset_query still exports table_id and database_id"
+    (ts/with-dbs [source-db _dest-db]
+      (ts/with-db source-db
+        (let [db    (ts/create! :model/Database :name "my-db")
+              table (ts/create! :model/Table :name "orders" :db_id (:id db))
+              user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+              card  (ts/create! :model/Card
+                                :creator_id    (:id user)
+                                :name          "Broken Query Card"
+                                :database_id   (:id db)
+                                :table_id      (:id table)
+                                :dataset_query {}
+                                :display       :table)]
+          ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
+          ;; model hooks. This simulates a card whose query became malformed after migrations.
+          (t2/query {:update :report_card
+                     :set    {:dataset_query (json/encode {:broken true})}
+                     :where  [:= :id (:id card)]})
+          (let [serialized (into [] (serdes.extract/extract {}))
+                card-ser   (first (filter #(= "Card" (-> % :serdes/meta last :model)) serialized))]
+            (is (contains? card-ser :table_id)    "table_id exported — not derivable from broken query")
+            (is (contains? card-ser :database_id) "database_id exported — not derivable from broken query")))))))
+
+(deftest segment-kept-table-id-round-trip-test
+  (testing "Segment round-trip: table_id is exported and resolved when definition is nil"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "customers" :db_id (:id db))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                ;; Empty definition — before-insert does not set table_id from it, so table_id
+                ;; comes only from the explicit field we pass.  {} is non-null so the DB
+                ;; constraint is satisfied, but has no [:stages 0 :source-table], so the
+                ;; export-with-context logic still emits table_id.
+                _segment (ts/create! :model/Segment
+                                     :table_id   (:id table)
+                                     :name       "Shell Segment"
+                                     :definition {}
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [seg-ser (first (filter #(= "Segment" (-> % :serdes/meta last :model)) @serialized))]
+              (is (contains? seg-ser :table_id) "table_id exported — not derivable from nil definition"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [segment (t2/select-one :model/Segment :name "Shell Segment")
+                table   (t2/select-one :model/Table :name "customers")]
+            (is (some? segment))
+            (is (= (:id table) (:table_id segment)) "table_id resolved from exported portable ref")))))))
+
+(deftest measure-kept-table-id-round-trip-test
+  (testing "Measure round-trip: table_id is exported and resolved when definition is nil"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "sales" :db_id (:id db))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                ;; Empty definition — before-insert does not set table_id from it, so table_id
+                ;; comes only from the explicit field we pass.  {} is non-null so the DB
+                ;; constraint is satisfied, but has no [:stages 0 :source-table], so the
+                ;; export-with-context logic still emits table_id.
+                _measure (ts/create! :model/Measure
+                                     :table_id   (:id table)
+                                     :name       "Shell Measure"
+                                     :definition {}
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [msr-ser (first (filter #(= "Measure" (-> % :serdes/meta last :model)) @serialized))]
+              (is (contains? msr-ser :table_id) "table_id exported — not derivable from nil definition"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [measure (t2/select-one :model/Measure :name "Shell Measure")
+                table   (t2/select-one :model/Table :name "sales")]
+            (is (some? measure))
+            (is (= (:id table) (:table_id measure)) "table_id resolved from exported portable ref")))))))

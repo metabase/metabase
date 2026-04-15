@@ -1317,8 +1317,8 @@
           :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
           :legacy_query
-          ;; derived from dataset_query by populate-query-fields on insert/update
-          :query_type :table_id :source_card_id]
+          ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
+          :query_type]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
@@ -1331,6 +1331,33 @@
                                    ::serdes/skip
                                    (when database_id
                                      (serdes/*export-database-fk* database_id))))
+                               :import import})
+    ;; table_id is derivable when the query has a source-table or source-card in stage 0;
+    ;; kept when query is empty/broken so the reference isn't lost on round-trip.
+    :table_id               (let [{:keys [import]} (serdes/fk :model/Table)]
+                              {::serdes/fk true
+                               :export-with-context
+                               (fn [{:keys [dataset_query table_id]} _k _v]
+                                 (if (and (seq dataset_query)
+                                          (try (or (lib/primary-source-table-id dataset_query)
+                                                   (lib/primary-source-card-id dataset_query))
+                                               (catch Exception _ nil)))
+                                   ::serdes/skip
+                                   (when table_id
+                                     (serdes/*export-table-fk* table_id))))
+                               :import import})
+    ;; source_card_id is derivable when the query has a source-card in stage 0;
+    ;; kept otherwise so the reference isn't lost on round-trip.
+    :source_card_id         (let [{:keys [import]} (serdes/fk :model/Card)]
+                              {::serdes/fk true
+                               :export-with-context
+                               (fn [{:keys [dataset_query source_card_id]} _k _v]
+                                 (if (and (seq dataset_query)
+                                          (try (lib/primary-source-card-id dataset_query)
+                                               (catch Exception _ nil)))
+                                   ::serdes/skip
+                                   (when source_card_id
+                                     (serdes/*export-fk* source_card_id :model/Card))))
                                :import import})
     :collection_id          (serdes/fk :model/Collection)
     :dashboard_id           (serdes/fk :model/Dashboard)
