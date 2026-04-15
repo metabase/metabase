@@ -250,6 +250,8 @@
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
                            :path   full-path}
+             ;; MCP requires every tool to have an inputSchema object, so default to an empty
+             ;; object for no-arg endpoints
              :inputSchema (or input-schema {:type "object" :properties {}})}
       resp-schema       (assoc :responseSchema resp-schema)
       (seq annotations) (assoc :annotations annotations)
