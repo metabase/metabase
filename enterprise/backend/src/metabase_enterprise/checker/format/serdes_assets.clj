@@ -47,8 +47,7 @@
    [metabase-enterprise.checker.source :as source]
    [metabase.util.yaml :as yaml])
   (:import
-   (java.io File)
-   (java.util Locale)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 

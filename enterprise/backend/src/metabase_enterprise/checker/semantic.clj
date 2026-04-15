@@ -770,16 +770,14 @@
 
 (comment
   ;; REPL workflow:
-  (time
-   (check "/Users/dan/projects/work/stats-remote-sync"
-          "/Users/dan/projects/work/exports-root/metadata/metadata/databases"))
+  (check "/Users/dan/projects/work/stats-remote-sync"
+         "/Users/dan/projects/work/exports-root/metadata/metadata/databases")
 
-  (time
-   (->> (check "/Users/dan/projects/work/representations/examples/v1"
-               "/Users/dan/projects/work/yaml-checked-files-v1/exports/sqlite-based/databases")
-        (into {} (filter (fn [[_id stuff]]
-                           (letfn [(bad [x] ((some-fn :bad-refs :unresolved :native-errors) x))]
-                             (bad stuff)))))))
+  (->> (check "/Users/dan/projects/work/representations/examples/v1"
+              "/Users/dan/projects/work/yaml-checked-files-v1/exports/sqlite-based/databases")
+       (into {} (filter (fn [[_id stuff]]
+                          (letfn [(bad [x] ((some-fn :bad-refs :unresolved :native-errors) x))]
+                            (bad stuff))))))
   (setup
    "/Users/dan/projects/work/stats-remote-sync"
    "/Users/dan/projects/work/stats-remote-sync/databases")
