@@ -5,13 +5,20 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const files: Record<string, string> = {
-  "metabase root": resolve(__dirname, "../../../../../package.json"),
-  "custom-viz sdk": resolve(__dirname, "../package.json"),
-  "viz template": resolve(__dirname, "../src/templates/package.json"),
-};
+const files = new Map([
+  ["metabase root", resolve(__dirname, "../../../../../package.json")],
+  ["custom-viz sdk", resolve(__dirname, "../package.json")],
+  ["viz template", resolve(__dirname, "../src/templates/package.json")],
+]);
 
-const PACKAGES = ["react", "@types/react"];
+const parsedFiles = new Map(
+  [...files].map(([label, filePath]) => [
+    label,
+    JSON.parse(readFileSync(filePath, "utf-8")),
+  ]),
+);
+
+const PACKAGES = new Set(["react", "@types/react"]);
 
 function getVersion(
   pkg: Record<string, Record<string, string> | undefined>,
@@ -29,10 +36,10 @@ function getVersion(
 let failed = false;
 
 for (const packageName of PACKAGES) {
-  const versions = Object.entries(files).map(([label, filePath]) => {
-    const pkg = JSON.parse(readFileSync(filePath, "utf-8"));
-    return { label, version: getVersion(pkg, packageName) };
-  });
+  const versions = [...parsedFiles].map(([label, pkg]) => ({
+    label,
+    version: getVersion(pkg, packageName),
+  }));
 
   const declared = versions.filter((v) => v.version !== undefined);
   const unique = new Set(declared.map((v) => v.version));
