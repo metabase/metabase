@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.interestingness.core :as interestingness]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
@@ -78,12 +79,31 @@
   (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
       metrics/filter-dimensions-for-user))
 
+(defn- score-dimensions
+  "Score dimensions by interestingness, sort by score descending, and optionally filter by cutoff."
+  [entity cutoff]
+  (let [dims (:dimensions entity)]
+    (assoc entity :dimensions
+           (cond->> dims
+             true   (mapv (fn [d]
+                            (let [{:keys [score]} (interestingness/score-field
+                                                    interestingness/metrics-viewer-weights d)]
+                              (assoc d :interestingness-score score))))
+             true   (sort-by :interestingness-score >)
+             true   vec
+             cutoff (filterv #(>= (:interestingness-score %) cutoff))))))
+
 (api.macros/defendpoint :get "/:id" :- ::measure
-  "Fetch `Measure` with ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  "Fetch `Measure` with ID.
+
+  Dimensions are scored by interestingness and sorted highest-first.
+  Pass `interestingness_cutoff` (0.0-1.0) to filter out low-scoring dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [interestingness_cutoff]} :- [:map [:interestingness_cutoff {:optional true} [:maybe :double]]]]
   (let [measure (hydrated-measure id)]
-    (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
+    (-> measure
+        (score-dimensions interestingness_cutoff)
+        (assoc :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure))))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."

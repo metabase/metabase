@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.interestingness.core :as interestingness]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
@@ -91,13 +92,32 @@
   (-> (t2/select-one :model/Card :id id :type "metric")
       metrics.perms/filter-dimensions-for-user))
 
+(defn- score-dimensions
+  "Score dimensions by interestingness, sort by score descending, and optionally filter by cutoff."
+  [entity cutoff]
+  (let [dims (:dimensions entity)]
+    (assoc entity :dimensions
+           (cond->> dims
+             true   (mapv (fn [d]
+                            (let [{:keys [score]} (interestingness/score-field
+                                                    interestingness/metrics-viewer-weights d)]
+                              (assoc d :interestingness-score score))))
+             true   (sort-by :interestingness-score >)
+             true   vec
+             cutoff (filterv #(>= (:interestingness-score %) cutoff))))))
+
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
-  Returns the metric with hydrated dimensions and dimension mappings."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  Returns the metric with hydrated dimensions and dimension mappings.
+  Dimensions are scored by interestingness and sorted highest-first.
+  Pass `interestingness_cutoff` (0.0-1.0) to filter out low-scoring dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [interestingness_cutoff]} :- [:map [:interestingness_cutoff {:optional true} [:maybe :double]]]]
   (let [metric (hydrated-metric id)]
-    (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
+    (-> metric
+        (score-dimensions interestingness_cutoff)
+        (assoc :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |
