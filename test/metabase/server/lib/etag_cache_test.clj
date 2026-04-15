@@ -128,3 +128,64 @@
         (is (= "" (:body resp)))
         (is (= (format "W/\"%s\"" config/mb-version-hash)
                (get-in resp [:headers "ETag"])))))))
+
+(deftest with-etag-304-carries-over-rfc-9110-headers
+  (testing "304 echoes Vary, Cache-Control, Content-Location, and Expires from original response"
+    (let [original-headers {"Vary"             "Accept-Encoding"
+                            "Cache-Control"    "max-age=31536000"
+                            "Content-Location" "/static/app/main.js"
+                            "Expires"          "Thu, 16 Apr 2026 12:00:00 GMT"}
+          etag             (format "\"%s\"" config/mb-version-hash)
+          resp             (lib.etag-cache/with-etag
+                             (base-response original-headers)
+                             {:headers {"if-none-match" etag}}
+                             {})]
+      (is (= 304 (:status resp)))
+      (is (= "" (:body resp)))
+      (is (= "Accept-Encoding"                 (get-in resp [:headers "Vary"])))
+      (is (= "max-age=31536000"                (get-in resp [:headers "Cache-Control"])))
+      (is (= "/static/app/main.js"             (get-in resp [:headers "Content-Location"])))
+      (is (= "Thu, 16 Apr 2026 12:00:00 GMT"   (get-in resp [:headers "Expires"])))
+      (is (= etag                              (get-in resp [:headers "ETag"])))))
+
+  (testing "304 does NOT carry over non-cacheable headers like Content-Type or X-Custom"
+    (let [original-headers {"Content-Type" "application/javascript"
+                            "X-Custom"     "secret"
+                            "Vary"         "Accept-Encoding"}
+          etag             (format "\"%s\"" config/mb-version-hash)
+          resp             (lib.etag-cache/with-etag
+                             (base-response original-headers)
+                             {:headers {"if-none-match" etag}}
+                             {})]
+      (is (= 304 (:status resp)))
+      (is (nil? (get-in resp [:headers "Content-Type"])))
+      (is (nil? (get-in resp [:headers "X-Custom"])))
+      (is (= "Accept-Encoding" (get-in resp [:headers "Vary"])))))
+
+  (testing "304 with weak ETag also carries over cacheable headers"
+    (let [original-headers {"Vary" "Accept-Encoding" "Cache-Control" "no-cache"}
+          etag             (format "\"%s\"" config/mb-version-hash)
+          resp             (lib.etag-cache/with-etag
+                             (base-response original-headers)
+                             {:headers {"if-none-match" etag}}
+                             {:weak? true})]
+      (is (= 304 (:status resp)))
+      (is (= "Accept-Encoding" (get-in resp [:headers "Vary"])))
+      (is (= "no-cache"        (get-in resp [:headers "Cache-Control"])))
+      (is (= (format "W/\"%s\"" config/mb-version-hash)
+             (get-in resp [:headers "ETag"])))))
+
+  (testing "304 carries over headers regardless of case in original response"
+    (let [original-headers {"vary"          "Accept-Encoding"
+                            "cache-control" "max-age=600"
+                            "content-type"  "application/javascript"}
+          etag             (format "\"%s\"" config/mb-version-hash)
+          resp             (lib.etag-cache/with-etag
+                             (base-response original-headers)
+                             {:headers {"if-none-match" etag}}
+                             {})]
+      (is (= 304 (:status resp)))
+      (is (= "Accept-Encoding" (get-in resp [:headers "Vary"])))
+      (is (= "max-age=600"     (get-in resp [:headers "Cache-Control"])))
+      (is (nil? (get-in resp [:headers "Content-Type"])))
+      (is (nil? (get-in resp [:headers "content-type"]))))))
