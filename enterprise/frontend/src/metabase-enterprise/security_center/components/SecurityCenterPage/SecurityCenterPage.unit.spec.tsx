@@ -13,7 +13,14 @@ import * as advisoriesHook from "../../hooks/use-security-advisories";
 
 import { SecurityCenterPage } from "./SecurityCenterPage";
 
+jest.mock("metabase/common/components/AdminLayout/AdminSettingsLayout", () => ({
+  AdminSettingsLayout: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
 const mockAcknowledge = jest.fn();
+const mockAcknowledgeAll = jest.fn();
 
 function setup(
   advisories: Advisory[] = [],
@@ -25,6 +32,7 @@ function setup(
     isLoading: false,
     isError: false,
     acknowledgeAdvisory: mockAcknowledge,
+    acknowledgeAdvisories: mockAcknowledgeAll,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
@@ -62,22 +70,27 @@ describe("SecurityCenterPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
     mockAcknowledge.mockClear();
+    mockAcknowledgeAll.mockClear();
   });
 
-  it("renders the title and current version", () => {
+  it("renders the title and current version", async () => {
     setup();
 
     expect(screen.getByText("Security Center")).toBeInTheDocument();
     expect(screen.getByTestId("current-version")).toHaveTextContent("v0.59.3");
   });
 
-  it("renders the empty state when there are no advisories", () => {
+  it("renders the empty state when there are no advisories", async () => {
     setup([]);
 
-    expect(screen.getByText(/Your instance is up to date/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /No known security issues that impact your Metabase version/,
+      ),
+    ).toBeInTheDocument();
   });
 
-  it("renders advisory cards in the correct order (affected first, then by severity)", () => {
+  it("renders advisory cards in the correct order (affected first, then by severity)", async () => {
     const advisories = [
       createAdvisory({
         advisory_id: "1",
@@ -109,7 +122,7 @@ describe("SecurityCenterPage", () => {
     expect(within(cards[2]).getByText("Low not affected")).toBeInTheDocument();
   });
 
-  it("shows affected status on cards", () => {
+  it("shows 'not affected' badge on non-affecting cards", async () => {
     const advisories = [
       createAdvisory({ advisory_id: "1", match_status: "active" }),
       createAdvisory({ advisory_id: "2", match_status: "not_affected" }),
@@ -117,12 +130,12 @@ describe("SecurityCenterPage", () => {
 
     setup(advisories);
 
-    const statuses = screen.getAllByTestId("affected-status");
-    expect(statuses[0]).toHaveTextContent("Affected");
-    expect(statuses[1]).toHaveTextContent("Not affected");
+    expect(
+      screen.getByText("Your instance is not affected"),
+    ).toBeInTheDocument();
   });
 
-  it("renders external links with correct targets", () => {
+  it("renders external links with correct targets", async () => {
     const advisories = [
       createAdvisory({
         advisory_id: "1",
@@ -151,6 +164,68 @@ describe("SecurityCenterPage", () => {
     expect(mockAcknowledge).toHaveBeenCalledWith("SA-001");
   });
 
+  it("calls acknowledgeAdvisories with only undismissed non-affecting advisory ids when 'Dismiss all' is clicked", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "SA-001",
+        match_status: "active",
+        severity: "critical",
+      }),
+      createAdvisory({
+        advisory_id: "SA-002",
+        match_status: "not_affected",
+        severity: "medium",
+      }),
+      createAdvisory({
+        advisory_id: "SA-003",
+        match_status: "not_affected",
+        severity: "low",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+    ];
+
+    setup(advisories);
+
+    await userEvent.click(screen.getByText("Dismiss all"));
+    expect(mockAcknowledgeAll).toHaveBeenCalledWith(["SA-002"]);
+  });
+
+  it("does not show 'Dismiss all' when there are no non-affecting advisories", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "SA-001",
+        match_status: "active",
+        severity: "critical",
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Dismiss all")).not.toBeInTheDocument();
+  });
+
+  it("does not show 'Dismiss all' when all non-affecting advisories are already dismissed", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "SA-001",
+        match_status: "not_affected",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+      createAdvisory({
+        advisory_id: "SA-002",
+        match_status: "not_affected",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+    ];
+
+    setup(advisories);
+
+    // Enable showing dismissed advisories so they appear in the list
+    await userEvent.click(screen.getByTestId("show-acknowledged-filter"));
+
+    expect(screen.queryByText("Dismiss all")).not.toBeInTheDocument();
+  });
+
   it("does not show dismiss button for already dismissed advisories", async () => {
     const advisories = [
       createAdvisory({
@@ -164,13 +239,12 @@ describe("SecurityCenterPage", () => {
     // Dismissed advisories are hidden by default — enable the checkbox first
     await userEvent.click(screen.getByTestId("show-acknowledged-filter"));
 
-    expect(screen.queryByTestId("acknowledge-button")).not.toBeInTheDocument();
-    expect(screen.getByTestId("acknowledged-badge")).toHaveTextContent(
-      "Dismissed",
-    );
+    const button = screen.getByTestId("acknowledge-button");
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent("Dismissed");
   });
 
-  it("hides dismissed advisories by default", () => {
+  it("hides dismissed advisories by default", async () => {
     const advisories = [
       createAdvisory({
         advisory_id: "1",
@@ -190,14 +264,14 @@ describe("SecurityCenterPage", () => {
     expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
   });
 
-  it("renders the filter bar", () => {
+  it("renders the filter bar", async () => {
     setup([]);
 
     expect(screen.getByTestId("advisory-filter-bar")).toBeInTheDocument();
   });
 
   describe("upgrade banner", () => {
-    it("shows the upgrade banner when there are active advisories", () => {
+    it("shows the upgrade banner when there are active advisories", async () => {
       const advisories = [
         createAdvisory({
           advisory_id: "1",
@@ -214,7 +288,7 @@ describe("SecurityCenterPage", () => {
       expect(banner).toHaveTextContent("A security update is available");
     });
 
-    it("does not show the upgrade banner when there are no active advisories", () => {
+    it("does not show the upgrade banner when there are no active advisories", async () => {
       const advisories = [
         createAdvisory({
           advisory_id: "1",
@@ -227,7 +301,7 @@ describe("SecurityCenterPage", () => {
       expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
     });
 
-    it("shows the highest fixed version across multiple active advisories", () => {
+    it("shows the highest fixed version across multiple active advisories", async () => {
       const advisories = [
         createAdvisory({
           advisory_id: "1",
@@ -247,7 +321,7 @@ describe("SecurityCenterPage", () => {
       expect(banner).toHaveTextContent("0.59.5");
     });
 
-    it("includes a link to upgrade instructions", () => {
+    it("includes a link to upgrade instructions", async () => {
       const advisories = [
         createAdvisory({
           advisory_id: "1",
@@ -266,7 +340,7 @@ describe("SecurityCenterPage", () => {
       expect(link).toHaveAttribute("target", "_blank");
     });
 
-    it("does not show the upgrade banner when there are no advisories", () => {
+    it("does not show the upgrade banner when there are no advisories", async () => {
       setup([]);
 
       expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
