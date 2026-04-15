@@ -1,10 +1,6 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useRefreshCustomVizPluginMutation,
-  useUpdateCustomVizPluginMutation,
-} from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import {
   ActionIcon,
@@ -17,6 +13,10 @@ import {
   Text,
 } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
+import {
+  useRefreshCustomVizPluginMutation,
+  useUpdateCustomVizPluginMutation,
+} from "metabase-enterprise/api";
 import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizIcon } from "./CustomVizIcon";
