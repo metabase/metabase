@@ -232,14 +232,17 @@
           entry   (cache/resolve-bundle plugin)]
       (if entry
         (respond {:status  200
-                  :headers (cond-> {"Content-Type" "application/javascript"
-                                    "ETag"         (:hash entry)}
-                             dev-url     (assoc "Cache-Control" "no-store")
+                  :headers (cond-> {"Content-Type"                 "application/javascript"
+                                    "X-Content-Type-Options"       "nosniff"
+                                    "Cross-Origin-Resource-Policy" "same-origin"
+                                    "Referrer-Policy"              "no-referrer"
+                                    "ETag"                       (:hash entry)}
+                             dev-url       (assoc "Cache-Control" "no-store")
                              (not dev-url) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
                   :body    (:content entry)})
-        (respond {:status 503
+        (respond {:status  503
                   :headers {"Content-Type" "application/json"}
-                  :body   "{\"error\": \"Bundle not available\"}"})))
+                  :body    "{\"error\": \"Bundle not available\"}"})))
     (catch Throwable e
       (raise e))))
 
@@ -263,7 +266,10 @@
           bytes        (cache/resolve-asset plugin path)]
       (if bytes
         (respond {:status  200
-                  :headers (cond-> {"Content-Type" content-type}
+                  :headers (cond-> {"Content-Type"                 content-type
+                                    "X-Content-Type-Options"       "nosniff"
+                                    "Cross-Origin-Resource-Policy" "same-origin"
+                                    "Referrer-Policy"              "no-referrer"}
                              dev?       (assoc "Cache-Control" "no-store")
                              (not dev?) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
                   :body    (java.io.ByteArrayInputStream. bytes)})
