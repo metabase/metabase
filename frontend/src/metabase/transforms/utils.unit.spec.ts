@@ -1,52 +1,7 @@
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
-import {
-  getDatabaseTransformDisabledReason,
-  parseTimestampWithTimezone,
-  validateDatabase,
-} from "./utils";
-
-const UNSUPPORTED_DB_TOOLTIP = "This database does not support transforms";
-
-describe("getDatabaseTransformDisabledReason", () => {
-  it("returns undefined when database is undefined", () => {
-    expect(getDatabaseTransformDisabledReason(undefined)).toBeUndefined();
-  });
-
-  it("returns a reason when the database has router_user_attribute set (DB routing enabled)", () => {
-    const database = createMockDatabase({ router_user_attribute: "user_id" });
-    expect(getDatabaseTransformDisabledReason(database)).toBe(
-      "Transforms can't be created on databases with DB routing enabled",
-    );
-  });
-
-  it("returns a reason when the database has router_database_id set (is a routing destination)", () => {
-    const database = createMockDatabase({ router_database_id: 42 });
-    expect(getDatabaseTransformDisabledReason(database)).toBe(
-      "Transforms can't be created on databases with DB routing enabled",
-    );
-  });
-
-  it("returns a reason for a database without the transforms/table feature", () => {
-    const database = createMockDatabase({
-      router_user_attribute: null,
-      router_database_id: null,
-    });
-    expect(getDatabaseTransformDisabledReason(database)).toBe(
-      UNSUPPORTED_DB_TOOLTIP,
-    );
-  });
-
-  it("returns undefined for a database that supports transforms", () => {
-    const database = createMockDatabase({
-      features: ["transforms/table"],
-      router_user_attribute: null,
-      router_database_id: null,
-    });
-    expect(getDatabaseTransformDisabledReason(database)).toBeUndefined();
-  });
-});
+import { parseTimestampWithTimezone, validateDatabase } from "./utils";
 
 describe("parseTimestamp", () => {
   const value = "2025-09-04T16:25:03.000Z";

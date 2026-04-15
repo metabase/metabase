@@ -151,7 +151,7 @@ export function QueryEditorBody({
         id: database.id,
         model: "database",
         name: "",
-      } as OmniPickerItem);
+      });
   }, [getItemTooltip]);
 
   const setQuestion = (newQuestion: Question) => {

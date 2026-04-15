@@ -102,29 +102,6 @@ export function doesDatabaseSupportTransforms(database?: Database): boolean {
   return validateDatabase(database).isValid;
 }
 
-/**
- * Returns a human-readable explanation for why a database cannot be used with
- * transforms, or `undefined` if no specific explanation is needed (e.g. the
- * database simply lacks the feature flag).
- */
-export function getDatabaseTransformDisabledReason(
-  database?: Database,
-): string | undefined {
-  if (!database) {
-    return undefined;
-  }
-
-  if (database.router_user_attribute || database.router_database_id) {
-    return t`Transforms can't be created on databases with DB routing enabled`;
-  }
-
-  if (!hasFeature(database, "transforms/table")) {
-    return t`This database does not support transforms`;
-  }
-
-  return undefined;
-}
-
 export function sourceDatabaseId(source: TransformSource): DatabaseId | null {
   if (source.type === "query") {
     return source.query.database;

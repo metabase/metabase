@@ -3,10 +3,7 @@ import { t } from "ttag";
 import type { QueryEditorUiOptions } from "metabase/querying/editor/types";
 import type { Database } from "metabase-types/api";
 
-import {
-  doesDatabaseSupportTransforms,
-  getDatabaseTransformDisabledReason,
-} from "../../utils";
+import { doesDatabaseSupportTransforms, validateDatabase } from "../../utils";
 
 export function getEditorOptions(
   databases: Database[],
@@ -47,7 +44,7 @@ export function getEditorOptions(
     getDataPickerItemTooltip: (item) => {
       if (item.model === "database") {
         const database = databases.find((db) => db.id === item.id);
-        return getDatabaseTransformDisabledReason(database);
+        return database ? validateDatabase(database).message : undefined;
       }
 
       if (
@@ -58,7 +55,7 @@ export function getEditorOptions(
       ) {
         const databaseId = "db_id" in item ? item.db_id : item.database_id;
         const database = databases.find((db) => db.id === databaseId);
-        return getDatabaseTransformDisabledReason(database);
+        return database ? validateDatabase(database).message : undefined;
       }
 
       return undefined;
