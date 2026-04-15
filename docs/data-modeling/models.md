@@ -224,7 +224,7 @@ See [Model persistence](./model-persistence.md)
 
 If you're an admin, you can convert existing models to transforms one at a time. Conversion creates a transform from the model's query, runs it to produce the output table, and then updates all questions and dashboards that used the model to use the transform's table instead. The model itself becomes a saved question.
 
-See [Convert existing models to transforms](../data-studio/transforms/transforms-overview.md#convert-existing-models-to-transforms).
+See [Convert existing models to transforms](../data-studio/transforms/transforms-overview.md#convert-models-to-transforms).
 
 ## Further reading
 

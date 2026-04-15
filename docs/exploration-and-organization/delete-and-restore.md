@@ -136,7 +136,7 @@ Segments can be retired. See [Retiring Segments](../data-modeling/segments.md#ed
 
 ## Deleting measures
 
-See [Delete measures](../data-studio/measures.md#delete-a-measure). Deleting measures is permanent.
+See [Delete measures](../data-studio/measures.md#delete-measures). Deleting measures is permanent.
 
 ## Deleting subscriptions and alerts
 
