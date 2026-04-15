@@ -11,19 +11,57 @@
    [ring.util.response :as response]))
 
 (def ^:private encoding->extension
-  {:gzip   ".gz"
-   :brotli ".br"})
+  {:gzip     ".gz"
+   :brotli   ".br"
+   :identity nil})
 
 (def ^:private encoding->header
-  {:gzip   "gzip"
-   :brotli "br"})
+  {:gzip     "gzip"
+   :brotli   "br"
+   :identity "identity"})
+
+(def ^:private header->encoding
+  {"gzip"     :gzip
+   "br"       :brotli
+   "identity" :identity
+   "*"        :*})
+
+(defn- parse-quality
+  [str]
+  (when-let [[_ q] (re-matches #"(?i)q\s*=\s*(\d+(?:\.\d+)?)" (or str ""))]
+    (parse-double q)))
+
+(defn- parse-encoding-part
+  [part]
+  (let [tokens   (str/split (str/trim part) #"\s*;\s*")
+        encoding (some-> (first tokens) str/trim header->encoding)
+        q-value  (or (parse-quality (second tokens)) 1.0)]
+    (when encoding
+      [encoding q-value])))
+
+(defn- parse-accept-encoding
+  "Parses an Accept-Encoding header value into a map of encoding name to quality
+   value (a double between 0.0 and 1.0). Encodings without an explicit q parameter
+   default to 1.0.
+
+   Example:
+     (parse-accept-encoding \"gzip, br;q=1.0, identity;q=0.5\")
+     ;; => {\"gzip\" 1.0, \"br\" 1.0, \"identity\" 0.5}"
+  [header-value]
+  (let [header-value (-> (or header-value "") str/trim)
+        parts        (str/split header-value #",")]
+    (into {:identity 1.0 :* 0.0} (keep parse-encoding-part parts))))
 
 (defn- accepts-encoding?
-  "Returns true if the request Accept-Encoding header includes `encoding`."
+  "Returns true if the request Accept-Encoding header includes `encoding` with a
+   quality value greater than 0."
   [request encoding]
-  (when-let [accept-encoding (encoding->header encoding)]
-    (some-> (response/get-header request "accept-encoding")
-            (str/includes? accept-encoding))))
+  (let [accepted (-> request
+                     (response/get-header "accept-encoding")
+                     parse-accept-encoding)
+        quality  (or (get accepted encoding)
+                     (get accepted :*))]
+    (> quality 0.0)))
 
 (defn- compressed-path
   "Returns the path of the pre-compressed artifact for a given encoding."
@@ -41,19 +79,12 @@
             (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
             (assoc-in [:headers "Vary"] "Accept-Encoding"))))
 
-(defn- uncompressed-resource
-  "Serve the uncompressed version of `resource-path` if it exists."
-  [resource-path]
-  (some-> (response/resource-response resource-path)
-          (response/content-type (mime/ext-mime-type resource-path))
-          (assoc-in [:headers "Vary"] "Accept-Encoding")))
-
 (defn static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
   [request resource-path]
   (or (compressed-resource request resource-path :brotli)
       (compressed-resource request resource-path :gzip)
-      (uncompressed-resource resource-path)))
+      (compressed-resource request resource-path :identity)))
 
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
