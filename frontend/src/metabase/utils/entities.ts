@@ -75,7 +75,7 @@ import inflection from "inflection"; // NOTE: need to use inflection directly he
 import { denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import type React from "react";
-import _, { omit } from "underscore";
+import _ from "underscore";
 
 import { requestsReducer, setRequestUnloaded } from "metabase/redux/requests";
 import type { EntitiesState } from "metabase/redux/store";
@@ -233,6 +233,7 @@ export type Entity = {
   objectSelectors: Record<string, (object: any, ...args: any[]) => any>;
 
   // Reducers
+  reducer?: EntitiesReducer;
   reducers: Record<string, EntitiesReducer>;
   requestsReducer: (
     state: Record<string, unknown> | undefined,
@@ -360,7 +361,7 @@ export function handleEntities(
 export function createEntity(def: EntityDef): Entity {
   // We use a mutable object internally during construction
   // then return it typed as Entity at the end.
-  const entity = { ...omit(def, ["reducer"]) } as Entity;
+  const entity = { ...def } as Entity;
 
   if (!entity.nameOne) {
     entity.nameOne = inflection.singularize(entity.name);

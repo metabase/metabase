@@ -123,7 +123,10 @@ describe("entities", () => {
           { actions: { id: 1, name: "foo" } },
           { questions: { id: 2, name: "bar" } },
         ),
-      ).toEqual({ 1: { id: 1, name: "foo" }, 2: { id: 2, name: "bar" } });
+      ).toEqual({
+        actions: { id: 1, name: "foo" },
+        questions: { id: 2, name: "bar" },
+      });
     });
 
     it("merge entity keys", () => {
@@ -139,7 +142,7 @@ describe("entities", () => {
       expect(
         mergeEntities(
           { databases: { id: 1 }, questions: { id: 2 } },
-          { dashboards: undefined },
+          { questions: undefined },
         ),
       ).toEqual({ databases: { id: 1 } });
     });
