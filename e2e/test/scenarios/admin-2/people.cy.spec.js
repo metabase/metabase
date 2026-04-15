@@ -723,7 +723,7 @@ describe("scenarios > admin > people > group managers", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
 
     cy.visit("/admin/people");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

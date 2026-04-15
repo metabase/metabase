@@ -107,7 +107,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     cy.viewport(1600, 1400);
     H.resetSnowplow();

@@ -456,7 +456,7 @@ describe("command palette", () => {
 
   describe("ee", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      // H.activateToken("bleeding-edge");
     });
 
     it("should have a 'New document' item", () => {

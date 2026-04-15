@@ -82,7 +82,7 @@ describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     createContent();
     H.resetSnowplow();
   });

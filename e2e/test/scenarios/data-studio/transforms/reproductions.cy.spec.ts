@@ -12,7 +12,7 @@ describe("issue #68378", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
   });
 
   it("should show empty schemas when picking a target schema (metabase#68378)", () => {
@@ -40,7 +40,7 @@ describe("issue GDGT-1776", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
 
     const ITEMS_COUNT = 1000;
 
@@ -88,7 +88,7 @@ describe("issue GDGT-1774", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
   });
 

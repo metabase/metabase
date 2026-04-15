@@ -5,7 +5,7 @@ describe("scenarios > data studio > snippets", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
 
     // TODO: We likely shouldn't need to do this to access the data studio library page
     H.createLibrary();

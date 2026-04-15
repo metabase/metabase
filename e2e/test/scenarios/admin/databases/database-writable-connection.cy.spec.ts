@@ -33,7 +33,7 @@ describe("scenarios > admin > databases > writable connection", () => {
   beforeEach(() => {
     H.restore("mysql-writable");
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     createUser(READ_ONLY_USER);
     setupTableData();
   });

@@ -18,7 +18,7 @@ describe("scenarios > collections > collection picker with tenants", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.updateSetting("use-tenants", true);
   });
 

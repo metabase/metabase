@@ -30,7 +30,7 @@ describe("scenarios > data studio > workspaces", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     // TODO (Stas 2025-12-31) -- Is this correct way to grant querying permissions?

@@ -13,7 +13,7 @@ describe("scenarios > data studio > measures > queries", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
   });
 
   describe("measures queries", () => {

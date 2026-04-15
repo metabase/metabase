@@ -394,7 +394,7 @@ describe("scenarios > documents > public", () => {
   });
 
   it("should not display footer for premium", () => {
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
 
     // Create a document
     createTestDocument(

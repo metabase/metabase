@@ -93,7 +93,7 @@ describe("Tenants - management", () => {
     cy.intercept("GET", "/api/user/*").as("getUser");
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
   });
 
   it("should disable the feature if the token feature is not enabled", () => {
@@ -605,7 +605,7 @@ describe("Tenants - management", () => {
 
   it("should show tenant attributes in user attribute lists when multi tenancy is enabled", () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
 
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
@@ -702,7 +702,7 @@ describe("tenant users", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
 
     cy.request("PUT", "/api/setting", {
       "jwt-attribute-email": "email",

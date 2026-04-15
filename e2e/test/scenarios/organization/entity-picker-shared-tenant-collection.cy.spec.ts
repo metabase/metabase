@@ -39,7 +39,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.updateSetting("use-tenants", true);
   });
 

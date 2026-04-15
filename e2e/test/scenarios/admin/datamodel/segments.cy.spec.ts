@@ -391,7 +391,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     const SEGMENT_IN_PEOPLE = "Segment in People table (Unpublished)";
 
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      // H.activateToken("bleeding-edge");
       cy.log("set up remote sync");
       H.setupGitSync();
       H.configureGit("read-only");

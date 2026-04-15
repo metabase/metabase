@@ -17,7 +17,7 @@ describe(suiteTitle, () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.enableTracking();
     H.updateSetting("enable-embedding-static", true);
     H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);

@@ -87,7 +87,7 @@ describe(suiteTitle, () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
     H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");

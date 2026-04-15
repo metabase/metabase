@@ -9,7 +9,7 @@ describe("AI Controls > Metabot access and customization", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.updateSetting("metabot-enabled?", true);
     llmMockServerSetup();
   });
@@ -307,7 +307,7 @@ describe("AI controls > AI usage limits", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     llmMockServerSetup();
   });
 
@@ -603,7 +603,7 @@ describe("AI Controls > Tenant usage limits", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.updateSetting("metabot-enabled?", true);
 
     cy.request("PUT", "/api/setting/metabot-quota-reached-message", {

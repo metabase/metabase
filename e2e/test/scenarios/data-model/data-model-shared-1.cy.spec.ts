@@ -35,7 +35,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
 
     getInterceptsForArea(area);
   });
@@ -283,7 +283,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       () => {
         beforeEach(() => {
           H.restore("postgres-writable");
-          H.activateToken("bleeding-edge");
+          // H.activateToken("bleeding-edge");
 
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });

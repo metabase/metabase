@@ -21,7 +21,7 @@ describe("Metabot Query Builder", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
   });

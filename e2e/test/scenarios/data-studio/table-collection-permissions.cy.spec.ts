@@ -53,7 +53,7 @@ describe("scenarios > data studio > table collection permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // H.activateToken("bleeding-edge");
     H.createLibrary();
   });
 

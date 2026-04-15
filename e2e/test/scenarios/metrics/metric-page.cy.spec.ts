@@ -326,7 +326,7 @@ describe("scenarios > metrics > metric page", () => {
 
   describe("ee features", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      // H.activateToken("bleeding-edge");
     });
 
     it("should show and hide 'Open in Data Studio' based on context", () => {
