@@ -65,16 +65,16 @@
   "Build the base agent result map for a table (without `:fields`).
   Accepts either a raw t2 row (underscore keys) or a lib-shaped table (hyphenated keys)."
   [table db-engine]
-  (cond-> {:id              (:id table)
-           :type            :table
-           :name            (:name table)
-           :display_name    (or (:display_name table)
-                                (:display-name table)
-                                (some->> (:name table) (u.humanization/name->human-readable-name :simple)))
-           :database_id     (or (:db_id table) (:db-id table))
-           :database_engine db-engine
-           :database_schema (:schema table)}
-    (:description table) (assoc :description (:description table))))
+  (let [table (u/kebab->snake-keys table)]
+    (cond-> {:id              (:id table)
+             :type            :table
+             :name            (:name table)
+             :display_name    (or (:display_name table)
+                                  (some->> (:name table) (u.humanization/name->human-readable-name :simple)))
+             :database_id     (:db_id table)
+             :database_engine db-engine
+             :database_schema (:schema table)}
+      (:description table) (assoc :description (:description table)))))
 
 (defn ->result-column
   "Return a tool result column for `column`. Position is determined by `index`; the field ID is
