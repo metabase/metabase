@@ -199,9 +199,11 @@
     (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle
-  "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil."
+  "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.
+   Always returns nil when dev mode is disabled."
   [id]
-  (not-empty (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id)))
+  (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
+    (not-empty (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 
