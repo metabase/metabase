@@ -16,16 +16,16 @@
 (deftest with-etag-returns-304-when-etag-matches
   (testing "Exact strong ETag match returns 304 with only ETag header added"
     (let [etag (format "\"%s\"" config/mb-version-hash)
-          resp (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag}})]
+          resp (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag}} {})]
       (is (= 304 (:status resp)))
       (is (= "" (:body resp)))
       (is (= etag (get-in resp [:headers "ETag"])))
       (is (nil? (get-in resp [:headers "Cache-Control"])))
       (is (nil? (get-in resp [:headers "Content-Type"])))))
 
-  (testing "Weak ETag (W/) is treated as match"
+  (testing "Weak ETag (W/) in request is treated as match"
     (let [etag-weak (format "W/\"%s\"" config/mb-version-hash)
-          resp      (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag-weak}})]
+          resp      (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag-weak}} {})]
       (is (= 304 (:status resp)))
       (is (= "" (:body resp)))
       (is (= (format "\"%s\"" config/mb-version-hash)
@@ -33,16 +33,17 @@
 
   (testing "Multiple ETags in If-None-Match; any match triggers 304"
     (let [header (format "\"other\", W/\"%s\", \"another\"" config/mb-version-hash)
-          resp   (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" header}})]
+          resp   (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" header}} {})]
       (is (= 304 (:status resp)))
       (is (= (format "\"%s\"" config/mb-version-hash)
              (get-in resp [:headers "ETag"]))))))
 
 (deftest with-etag-returns-200-and-adds-etag-when-no-match
-  (testing "ETag does not match → 200; adds ETag, preserves existing headers; no Cache-Control/Content-Type"
+  (testing "ETag does not match -> 200; adds ETag, preserves existing headers; no Cache-Control/Content-Type"
     (let [resp (lib.etag-cache/with-etag
                  (base-response {"X-Foo" "bar"})
-                 {:headers {"if-none-match" "\"different\""}})]
+                 {:headers {"if-none-match" "\"different\""}}
+                 {})]
       (is (= 200 (:status resp)))
       (is (= "dummy js" (:body resp)))
       (is (= (format "\"%s\"" config/mb-version-hash)
@@ -51,8 +52,8 @@
       (is (nil? (get-in resp [:headers "Cache-Control"])))
       (is (nil? (get-in resp [:headers "Content-Type"])))))
 
-  (testing "Missing If-None-Match → 200; adds ETag only"
-    (let [resp (lib.etag-cache/with-etag (base-response) {:headers {}})]
+  (testing "Missing If-None-Match -> 200; adds ETag only"
+    (let [resp (lib.etag-cache/with-etag (base-response) {:headers {}} {})]
       (is (= 200 (:status resp)))
       (is (= "dummy js" (:body resp)))
       (is (= (format "\"%s\"" config/mb-version-hash)
@@ -65,10 +66,65 @@
     (doseq [if-none-match-value ["*" "   *   " "*  " "  *"]]
       (let [resp (lib.etag-cache/with-etag
                    {:status 200 :headers {} :body "dummy js"}
-                   {:headers {"if-none-match" if-none-match-value}})]
+                   {:headers {"if-none-match" if-none-match-value}}
+                   {})]
         (is (= 304 (:status resp)))
         (is (= "" (:body resp)))
         (is (= (format "\"%s\"" config/mb-version-hash)
                (get-in resp [:headers "ETag"])))
         (is (nil? (get-in resp [:headers "Cache-Control"])))
         (is (nil? (get-in resp [:headers "Content-Type"])))))))
+
+(deftest with-etag-weak-returns-304-when-etag-matches
+  (testing "Strong ETag match returns 304 with weak ETag in response"
+    (let [etag (format "\"%s\"" config/mb-version-hash)
+          weak-etag (format "W/\"%s\"" config/mb-version-hash)
+          resp (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag}} {:weak? true})]
+      (is (= 304 (:status resp)))
+      (is (= "" (:body resp)))
+      (is (= weak-etag (get-in resp [:headers "ETag"])))))
+
+  (testing "Weak ETag in request matches and response contains weak ETag"
+    (let [etag-weak (format "W/\"%s\"" config/mb-version-hash)
+          resp      (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag-weak}} {:weak? true})]
+      (is (= 304 (:status resp)))
+      (is (= "" (:body resp)))
+      (is (= etag-weak (get-in resp [:headers "ETag"])))))
+
+  (testing "Multiple ETags in If-None-Match; match triggers 304 with weak ETag in response"
+    (let [header (format "\"other\", \"%s\", \"another\"" config/mb-version-hash)
+          resp   (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" header}} {:weak? true})]
+      (is (= 304 (:status resp)))
+      (is (= (format "W/\"%s\"" config/mb-version-hash)
+             (get-in resp [:headers "ETag"]))))))
+
+(deftest with-etag-weak-returns-200-and-adds-weak-etag-when-no-match
+  (testing "ETag does not match -> 200; adds weak ETag, preserves existing headers"
+    (let [resp (lib.etag-cache/with-etag
+                 (base-response {"X-Foo" "bar"})
+                 {:headers {"if-none-match" "\"different\""}}
+                 {:weak? true})]
+      (is (= 200 (:status resp)))
+      (is (= "dummy js" (:body resp)))
+      (is (= (format "W/\"%s\"" config/mb-version-hash)
+             (get-in resp [:headers "ETag"])))
+      (is (= "bar" (get-in resp [:headers "X-Foo"])))))
+
+  (testing "Missing If-None-Match -> 200; adds weak ETag only"
+    (let [resp (lib.etag-cache/with-etag (base-response) {:headers {}} {:weak? true})]
+      (is (= 200 (:status resp)))
+      (is (= "dummy js" (:body resp)))
+      (is (= (format "W/\"%s\"" config/mb-version-hash)
+             (get-in resp [:headers "ETag"]))))))
+
+(deftest with-etag-weak-returns-304-on-wildcard
+  (testing "If-None-Match: * returns 304 with weak ETag in response"
+    (doseq [if-none-match-value ["*" "   *   "]]
+      (let [resp (lib.etag-cache/with-etag
+                   {:status 200 :headers {} :body "dummy js"}
+                   {:headers {"if-none-match" if-none-match-value}}
+                   {:weak? true})]
+        (is (= 304 (:status resp)))
+        (is (= "" (:body resp)))
+        (is (= (format "W/\"%s\"" config/mb-version-hash)
+               (get-in resp [:headers "ETag"])))))))

@@ -27,7 +27,7 @@
 (defn- serve-for-prod
   [request resource]
   (some-> (static/static-resource request resource)
-          (lib.etag-cache/with-etag request)
+          (lib.etag-cache/with-etag request {:weak? true})
           (assoc-in [:headers "Cache-Control"] short-cache-header)))
 
 (defn- serve-chunk

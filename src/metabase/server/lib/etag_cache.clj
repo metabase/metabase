@@ -7,8 +7,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- current-etag-header []
-  {"ETag" (format "\"%s\"" config/mb-version-hash)})
+(defn- format-etag [hash weak?]
+  (if weak?
+    (format "W/\"%s\"" hash)
+    (format "\"%s\"" hash)))
+
+(defn- current-etag-header [weak?]
+  {"ETag" (format-etag config/mb-version-hash weak?)})
 
 (defn- parse-if-none-match [if-none-match]
   (->> (some-> if-none-match (str/split #"\s*,\s*"))
@@ -24,10 +29,10 @@
 
 (defn with-etag
   "Return 304 + ETag if If-None-Match matches; else 200 base + ETag."
-  [response request]
+  [response request {weak? :weak?}]
   (if (etag-matches? (get-in request [:headers "if-none-match"]))
     (-> (response/response "")
         (response/status 304)
-        (update :headers merge (current-etag-header)))
+        (update :headers merge (current-etag-header weak?)))
     (-> response
-        (update :headers merge (current-etag-header)))))
+        (update :headers merge (current-etag-header weak?)))))
