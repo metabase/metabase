@@ -641,7 +641,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.wait("@getEmbeddedDashboard").then(({ request }) => {
         expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe",
+          "embedding-iframe-static",
         );
       });
     });

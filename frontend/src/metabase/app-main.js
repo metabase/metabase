@@ -11,6 +11,7 @@ import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
 import { getRoutes } from "metabase/routes";
 import api from "metabase/utils/api";
+import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [
@@ -19,6 +20,10 @@ const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/card\/\d+$/,
   /\/api\/pulse\/\d+$/,
 ];
+
+if (isWithinIframe() && !IFRAMED_IN_SELF) {
+  api.requestClient = "embedding-iframe-full-app";
+}
 
 init(mainReducers, getRoutes, (store) => {
   // received a 401 response
