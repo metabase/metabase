@@ -621,6 +621,9 @@ describe("admin > custom visualizations", () => {
       cy.wait("@dataset");
 
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
+      // The demo plugin's query is `count(Orders)` with no breakout, so the
+      // underlying-records drill produces an unfiltered Orders query.
+      H.queryBuilderFiltersPanel().should("not.exist");
       H.tableInteractive().findByText("37.65").should("be.visible");
     });
 
@@ -771,10 +774,12 @@ describe("admin > custom visualizations", () => {
           .should("be.visible");
         H.getDashboardCard().findByTestId("demo-viz-click-target").click();
 
-        // The crossfilter behavior sets the dashboard parameter; the value is
-        // derived from the clicked column on the card. We assert the URL picks
-        // up the slug to verify the behavior fired.
-        cy.location("search").should("include", `${parameter.slug}=`);
+        // The crossfilter behavior sets the dashboard parameter to the value of
+        // the clicked column.
+        cy.location("search").should(
+          "include",
+          `${parameter.slug}=${AGGREGATED_VALUE}`,
+        );
       });
     });
   });
