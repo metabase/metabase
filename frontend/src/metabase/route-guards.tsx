@@ -2,20 +2,24 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
-import { MetabaseReduxContext } from "metabase/lib/redux";
-import {
-  PLUGIN_DATA_STUDIO,
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-  PLUGIN_TRANSFORMS,
-} from "metabase/plugins";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
-import type { State } from "metabase-types/store";
+import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
+import { MetabaseReduxContext } from "metabase/utils/redux";
 
 import { getCanAccessOnboardingPage } from "./home/selectors";
 import { getIsEmbeddingIframe } from "./selectors/embed";
+import { canAccessTransforms } from "./transforms/selectors";
 
 type Props = { children: React.ReactElement };
+
+/** Paths that are handled by the backend server, not the frontend SPA router. */
+export const BACKEND_ONLY_PATH_PREFIXES = ["/oauth/"];
+
+export const isBackendOnlyPath = (path: string): boolean =>
+  BACKEND_ONLY_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
 
 const getRedirectUrl = () => {
   const params = new URLSearchParams(window.location.search);
@@ -27,7 +31,7 @@ const getRedirectUrl = () => {
 };
 
 const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
-  // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
   wrapperDisplayName: "MetabaseIsSetup",
   redirectPath: "/setup",
   allowRedirectBack: false,
@@ -70,7 +74,19 @@ const UserIsNotAuthenticated = connectedReduxRedirect<Props, State>({
   authenticatingSelector: (state) =>
     state.auth.loginPending || !state.auth.redirect,
   authenticatedSelector: (state) => !state.currentUser,
-  redirectAction: routerActions.replace,
+  redirectAction: (location: {
+    pathname: string;
+    query?: Record<string, string>;
+  }) => {
+    if (isBackendOnlyPath(location.pathname)) {
+      const params = new URLSearchParams(location.query);
+      const qs = params.toString();
+      const url = qs ? `${location.pathname}?${qs}` : location.pathname;
+      window.location.replace(url);
+      return routerActions.replace("/");
+    }
+    return routerActions.replace(location);
+  },
   context: MetabaseReduxContext,
 });
 
@@ -106,8 +122,7 @@ const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessDataStudio",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: (state) =>
-    PLUGIN_DATA_STUDIO.canAccessDataStudio(state),
+  authenticatedSelector: (state) => canAccessDataStudio(state),
   redirectAction: routerActions.replace,
   context: MetabaseReduxContext,
 });
@@ -116,8 +131,7 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessTransforms",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: (state) =>
-    PLUGIN_TRANSFORMS.canAccessTransforms(state),
+  authenticatedSelector: (state) => canAccessTransforms(state),
   redirectAction: routerActions.replace,
   context: MetabaseReduxContext,
 });
@@ -141,7 +155,7 @@ export const CanAccessOnboarding = UserCanAccessOnboarding(
   ({ children }) => children,
 );
 
-// Must be in sync with canAccessDataStudio in enterprise/frontend/src/metabase-enterprise/data-studio/selectors.ts
+// Must be in sync with canAccessDataStudio in frontend/src/metabase/data-studio/selectors.ts
 export const CanAccessDataStudio = MetabaseIsSetup(
   UserIsAuthenticated(
     UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),

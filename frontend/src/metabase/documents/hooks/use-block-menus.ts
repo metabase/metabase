@@ -1,19 +1,17 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
 import type { Editor, NodeViewProps } from "@tiptap/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
+import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import { documentWithAnchor } from "metabase/lib/urls";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { useSelector } from "metabase/utils/redux";
+import { documentWithAnchor } from "metabase/utils/urls";
 
 interface UseBlockMenusOptions {
   node: NodeViewProps["node"];
@@ -38,21 +36,15 @@ export function useBlockMenus({
   const childTargetId = useSelector(getChildTargetId);
   const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
-  );
-  const comments = commentsData?.comments;
+  const { _id } = node.attrs;
+
+  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
+
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false);
 
-  const { _id } = node.attrs;
   const isOpen = childTargetId === _id;
   const isHovered = hoveredChildTargetId === _id;
-
-  const threads = useMemo(
-    () => getTargetChildCommentThreads(comments, _id),
-    [comments, _id],
-  );
 
   const { refs: commentsRefs, floatingStyles: commentsFloatingStyles } =
     useFloating({
@@ -105,7 +97,7 @@ export function useBlockMenus({
     isHovered,
     hovered,
     setHovered,
-    threads,
+    unresolvedCommentsCount,
     document,
     shouldShowMenus,
     anchorUrl,

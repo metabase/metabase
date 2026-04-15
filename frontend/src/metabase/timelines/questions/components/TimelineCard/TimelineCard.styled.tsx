@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import CheckBox from "metabase/common/components/CheckBox";
+import { CheckBox } from "metabase/common/components/CheckBox";
 import { Icon } from "metabase/ui";
 
 export const CardRoot = styled.div`

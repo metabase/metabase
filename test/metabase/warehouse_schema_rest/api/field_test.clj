@@ -492,6 +492,45 @@
                (mt/user-http-request :rasta :post 403 (format "field/%d/dimension" field-id)
                                      {:name "some dimension name", :type "external"})))))))
 
+(deftest fk-target-field-cross-database-test
+  (testing "PUT /api/field/:id rejects fk_target_field_id from a different database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Database db2    {:name "db2" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db2)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (= "Target field must belong to the same database"
+             (-> (mt/user-http-request :crowberto :put 400 (format "field/%d" (:id field1))
+                                       {:semantic_type :type/FK :fk_target_field_id (:id field2)})
+                 :errors vals first))))))
+
+(deftest dimension-human-readable-field-cross-database-test
+  (testing "POST /api/field/:id/dimension rejects human_readable_field_id from a different database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Database db2    {:name "db2" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db2)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (= "Target field must belong to the same database"
+             (-> (create-dimension-via-API! (:id field1)
+                                            {:name "test dim" :type "external" :human_readable_field_id (:id field2)}
+                                            :expected-status-code 400)
+                 :errors vals first))))))
+
+(deftest dimension-human-readable-field-same-database-test
+  (testing "POST /api/field/:id/dimension accepts human_readable_field_id from the same database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db1)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (=? {:field_id (:id field1)
+               :human_readable_field_id (:id field2)}
+              (create-dimension-via-API! (:id field1)
+                                         {:name "test dim" :type "external" :human_readable_field_id (:id field2)}))))))
+
 (deftest delete-dimension-test
   (testing "DELETE /api/field/:id/dimension"
     (testing "Ensure we can delete a dimension"

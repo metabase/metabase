@@ -10,7 +10,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.extraction :as lib.schema.extraction]
-   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
@@ -161,7 +160,6 @@
    ::drill-thru.common.with-column
    [:map
     [:type         [:= :drill-thru/column-filter]]
-    [:initial-op   [:maybe ::lib.schema.filter/operator]]
     [:column       [:ref ::lib.schema.metadata/column]]
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]])

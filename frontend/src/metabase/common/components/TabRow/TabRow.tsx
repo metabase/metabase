@@ -1,9 +1,7 @@
-import type { DragEndEvent, UniqueIdentifier } from "@dnd-kit/core";
 import {
   DndContext,
-  MouseSensor,
-  PointerSensor,
-  useSensor,
+  type DragEndEvent,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   restrictToHorizontalAxis,
@@ -26,7 +24,8 @@ import {
 } from "react";
 import { usePreviousDistinct } from "react-use";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { useDndSensors } from "metabase/common/hooks";
 import { Icon } from "metabase/ui";
 
 import type { TabListProps } from "../TabList/TabList";
@@ -65,15 +64,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
     const itemsCount = itemIds?.length ?? 0;
     const previousItemsCount = usePreviousDistinct(itemsCount) ?? 0;
 
-    const pointerSensor = useSensor(PointerSensor, {
-      activationConstraint: { distance: 10 },
-    });
-
-    // Needed for DnD e2e tests to work
-    // See https://github.com/clauderic/dnd-kit/issues/208#issuecomment-824469766
-    const mouseSensor = useSensor(MouseSensor, {
-      activationConstraint: { distance: 10 },
-    });
+    const sensors = useDndSensors({ distance: 10 });
 
     const scroll = useCallback(
       (direction: "left" | "right") => {
@@ -125,7 +116,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
         <DndContext
           onDragEnd={onDragEnd}
           modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
-          sensors={[pointerSensor, mouseSensor]}
+          sensors={sensors}
           collisionDetection={tabsCollisionDetection}
         >
           <SortableContext

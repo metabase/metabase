@@ -2,8 +2,8 @@ import { useMemo } from "react";
 
 import type { SdkQuestionProps } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
-import * as Urls from "metabase/lib/urls";
-import { deserializeCard, parseHash } from "metabase/query_builder/actions";
+import { deserializeCard, parseHash } from "metabase/utils/card";
+import * as Urls from "metabase/utils/urls";
 
 import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
 
@@ -14,7 +14,6 @@ interface SdkAdHocQuestionProps {
 
 export const SdkAdHocQuestion = ({
   questionPath,
-  withResetButton = true,
   title,
   plugins,
   height,
@@ -25,6 +24,7 @@ export const SdkAdHocQuestion = ({
   onBeforeSave,
   onSave,
   entityTypes,
+  dataPicker,
   isSaveEnabled,
   targetCollection,
   withChartTypeSelector = true,
@@ -32,10 +32,10 @@ export const SdkAdHocQuestion = ({
   initialSqlParameters,
   onNavigateBack,
   onVisualizationChange,
+  navigateToNewCard,
 }: SdkAdHocQuestionProps &
   Pick<
     SdkQuestionProps,
-    | "withResetButton"
     | "title"
     | "plugins"
     | "height"
@@ -46,12 +46,14 @@ export const SdkAdHocQuestion = ({
     | "onBeforeSave"
     | "onSave"
     | "entityTypes"
+    | "dataPicker"
     | "isSaveEnabled"
     | "targetCollection"
     | "withChartTypeSelector"
     | "withDownloads"
     | "initialSqlParameters"
     | "onVisualizationChange"
+    | "navigateToNewCard"
   >) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
@@ -63,7 +65,9 @@ export const SdkAdHocQuestion = ({
 
   const { options, deserializedCard } = useMemo(() => {
     const { options, serializedCard } = parseHash(location.hash);
-    const deserializedCard = serializedCard && deserializeCard(serializedCard);
+    const deserializedCard = serializedCard
+      ? deserializeCard(serializedCard)
+      : undefined;
 
     return { options, deserializedCard };
   }, [location.hash]);
@@ -77,17 +81,18 @@ export const SdkAdHocQuestion = ({
       onBeforeSave={onBeforeSave}
       onSave={onSave}
       entityTypes={entityTypes}
+      dataPicker={dataPicker}
       isSaveEnabled={isSaveEnabled}
       targetCollection={targetCollection}
       initialSqlParameters={initialSqlParameters}
       withDownloads={withDownloads}
       onNavigateBack={onNavigateBack}
+      navigateToNewCard={navigateToNewCard}
       height={height}
       width={width}
       className={className}
       style={style}
       title={title}
-      withResetButton={withResetButton}
       withChartTypeSelector={withChartTypeSelector}
       onVisualizationChange={onVisualizationChange}
     >

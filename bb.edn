@@ -85,7 +85,7 @@
 
   fix-unused-requires
   {:doc "Removes unused requires flagged by clj-kondo"
-   :examples [["./bin/mage fix-unused-requires src/metabase/lib/validate.cljc" "Fix unused requires in a specific file"]
+   :examples [["./bin/mage fix-unused-requires src/metabase/utils/validate.cljc" "Fix unused requires in a specific file"]
               ["./bin/mage fix-unused-requires src" "Fix unused requires in all files in src"]]
    :requires [[mage.fix-unused-requires :as fix]]
    :arg-schema [:sequential [:string {:name "file-or-directory"
@@ -162,6 +162,15 @@
              (p/shell "bin/pre-lint-migrations-file.sh")
              (lint-migrations-file/-main))}
 
+  new-migration
+  {:doc "Create a new directory-based migration file (v60+)"
+   :requires [[mage.new-migration :as new-migration]]
+   :examples [["./bin/mage new-migration 60 mq_indexes" "Create resources/migrations/060/20260905_mq_indexes.yaml"]]
+   :arg-schema [:tuple
+                [:int {:name "version" :description "Major version number (e.g., 60)"}]
+                [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]
+   :task (task! (new-migration/new-migration parsed))}
+
   jar-download
   {:doc "Download (and optionally run) jar for a metabase version or branch"
    :examples [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
@@ -209,18 +218,20 @@
              (nrepl-eval "metabase.comments.core" code)))}
 
   run-tests
-  {:doc "Quickly run tests locally. Pass dirs/files as arguments to run them."
+  {:doc "Quickly run tests locally. Pass dirs, files, namespaces, or single tests as arguments."
    :examples [["./bin/mage run-tests" "launch interactive test picker"]
               ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
-              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and src/metabase/api_keys"]
-              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]]
+              ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and test/metabase/api_keys"]
+              ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]
+              ["./bin/mage run-tests metabase.config-test" "run all tests in the metabase.config-test namespace (by name)"]
+              ["./bin/mage run-tests metabase.config-test/config-test" "run a single test by namespace/test-name"]]
    ;; TODO: add option to select files as well as dirs from fzf with styles
    :options [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
                 ;; all, file, dir
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
-                [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
+                [:string {:name "file-dir-ns-or-test" :description "Files, directories (recursive), namespaces, or namespace/test-name to test"}]]
    :requires [[mage.quick-test-runner :as qtr]]
    :task (task! (qtr/go parsed))}
 
@@ -244,6 +255,14 @@
    :examples [["./bin/mage ls" "List all tasks"]]
    :requires [[mage.util :as u]]
    :task (task! (u/print-tasks parsed))}
+
+  generate-cursive-resolve-as
+  {:doc "Generate XML configuration for Cursive's symbol resolution based on the current clj-kondo lint-as configuration."
+   :examples [["./bin/mage generate-cursive-resolve-as" "Generate resolve-as XML configuration"]
+              ["./bin/mage generate-cursive-resolve-as > /Users/bgrabow/Library/Application\\ Support/JetBrains/IntelliJIdea2025.3/options/ClojureResolveSettings.xml"
+              "Generate resolve-as XML configuration and install it in your global editor configuration"]]
+   :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
+   :task (task! (cursive-resolve-as/do-it))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"
@@ -284,19 +303,27 @@
    :task (task! (doctor/doctor!))}
 
   ci-report
-  {:doc "Generate a CI failure report for a PR"
-   :examples [["./bin/mage ci-report" "Check current branch, find its PR, and generate report"]
+  {:doc "Generate a CI failure report for a PR, branch, or commit"
+   :examples [["./bin/mage ci-report" "Check current branch (PR or branch CI)"]
               ["./bin/mage ci-report 68292" "Generate report for PR #68292"]
-              ["./bin/mage ci-report https://github.com/metabase/metabase/pull/68292" "Generate report from PR URL"]]
+              ["./bin/mage ci-report source-replacement" "Report for a branch by name"]
+              ["./bin/mage ci-report abc123def" "Report for a specific commit SHA"]
+              ["./bin/mage ci-report --detailed 68292" "Detailed report with full FAIL/ERROR blocks"]
+              ["./bin/mage ci-report --detailed > ci_report.md"
+               "Save detailed report to markdown file and print progress."]]
+   :options [["-d" "--detailed" "Include full FAIL/ERROR blocks with expected/actual diffs"]]
    :usage-fn (fn [_]
                (str "Fetches CI check status and failed job logs from GitHub Actions.\n"
                     "Parses Trunk test reports to extract test failure details.\n\n"
-                    "With no arguments, looks up the PR for your current git branch.\n\n"
+                    "Accepts a PR number/URL, branch name, or commit SHA.\n"
+                    "With no arguments, uses the current branch's PR if one exists,\n"
+                    "otherwise falls back to the current branch's latest CI run.\n\n"
+                    "Use --detailed to get full test failure output with expected/actual diffs.\n\n"
                     "Requires GitHub CLI (gh) to be installed and authenticated.\n"
                     "If you see 'gh: command not found' or auth errors, run: gh auth login"))
    :requires [[mage.ci-report :as ci-report]]
    :task (task! (ci-report/generate-report! parsed))}
-  
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
@@ -306,6 +333,8 @@
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
    :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
               ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]
+              ["./bin/mage -driver-decisions --pr-labels=ci:run-mysql-mariadb" "Force-run a specific driver via label"]
+              ["./bin/mage -driver-decisions --pr-labels=ci:run-all-drivers" "Force-run all drivers via label"]
               ["./bin/mage -driver-decisions --github-output-only" "Output only GITHUB_OUTPUT format (for CI)"]]
    :requires [[clojure.string :as str]
               [table.core :as table]
@@ -319,20 +348,32 @@
           (table/table [["Priority" "Condition" "Result" "Reason"]
                         ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
                         ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
-                        ["3"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
-                        ["3(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
-                        ["4"    "On master or release branch"             "RUN"  "master/release branch"]
-                        ["5"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
-                        ["6"
+                        ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
+                        ["4"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
+                        ["4(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
+                        ["5"    "On master or release branch"             "RUN"  "master/release branch"]
+                        ["6"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
+                        ["7"
                          "Cloud driver + its files changed"
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by cloud-driver module changes")]
-                        ["7"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
-                        ["8"
+                        ["8"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
+                        ["9"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
+                        ["10"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["11"
                          (str (pr-str driver-triggers) " module deps affected")
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by module changes")]
-                        ["9"    "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]])))))
+                        ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
+        "\n\n## Labels of Interest\n\n"
+        "These PR labels influence driver test decisions:\n\n"
+        "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"
+        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides quarantine)\n"
+        "  ci:all-cloud-drivers      Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
+        "  break-quarantine-DRIVER   Un-quarantine a specific driver, e.g. break-quarantine-mysql\n"
+        "\n## All Drivers\n\n"
+        (str/join ", " (map name (sort mage.modules/all-drivers)))
+        "\n")))
    :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
              [nil "--is-master-or-release MASTER_OR_RELEASE"]
              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
@@ -518,4 +559,53 @@
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
    :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
    :arg-schema [:sequential [:string {:name "glob-pattern" :description "Glob pattern to match files"}]]
-   :task (task! (fix-whitespace/run-clean parsed))}}}
+   :task (task! (fix-whitespace/run-clean parsed))}
+
+  -edpaget-dev-env
+  {:doc "Stand up (or tear down) an isolated dev environment for this worktree"
+   :examples [["./bin/mage -edpaget-dev-env --app-db postgres" "Postgres app-db with auto ports"]
+              ["./bin/mage -edpaget-dev-env --app-db postgres --with mysql --with mongo" "Full stack"]
+              ["./bin/mage -edpaget-dev-env" "Minimal: just port config (H2 app-db)"]
+              ["./bin/mage -edpaget-dev-env --down" "Tear down containers for this worktree"]
+              ["./bin/mage -edpaget-dev-env --status" "Show running containers and ports"]]
+   :requires [[mage.edpaget.dev-env :as dev-env]]
+   :options [[nil "--app-db DB" "App database: h2 (default), postgres, mysql" :default "h2"]
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+              :multi true :default [] :update-fn conj]
+             [nil "--down" "Tear down all containers for this worktree"]
+             [nil "--status" "Show current env status"]
+             [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]]
+   :task (task! (dev-env/dev-env! parsed))}
+
+  -johnswanson-dev-env
+  {:doc "Stand up (or tear down) an isolated dev environment for this worktree. Interactive prompts when flags omitted."
+   :examples [["./bin/mage -johnswanson-dev-env" "Interactive TUI to configure infra (saves config)"]
+              ["./bin/mage -johnswanson-dev-env --run" "Configure + launch backend/frontend"]
+              ["./bin/mage -johnswanson-dev-env --run --no-frontend" "Configure + backend only"]
+              ["./bin/mage -johnswanson-dev-env --down" "Stop everything for this worktree"]
+              ["./bin/mage -johnswanson-dev-env --status" "Show running containers and processes"]]
+   :requires [[mage.johnswanson.dev-env :as jds-dev-env]]
+   :options [["-e" "--edition EDITION" "ee or oss (default: prompt)"]
+             ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
+             [nil "--app-db DB" "App database: h2, postgres, mysql, mariadb (default: prompt)"]
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+              :multi true :default [] :update-fn conj]
+             [nil "--run" "Also launch backend + frontend in background"]
+             [nil "--no-frontend" "Skip frontend dev server (only with --run)"]
+             [nil "--down" "Stop everything for this worktree"]
+             [nil "--status" "Show current env status"]
+             [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
+             [nil "--fresh" "Recreate containers from scratch"]]
+   :task (task! (jds-dev-env/dev-env! parsed))}
+
+  -bgrabow-ci-test-repl
+  {:doc "Start a REPL replicating a CI test job environment (Docker + env vars)"
+   :examples [["./bin/mage -bgrabow-ci-test-repl" "Interactive selection with fzf"]
+              ["./bin/mage -bgrabow-ci-test-repl app-db/be-tests-mysql" "Start REPL for a specific job"]
+              ["./bin/mage -bgrabow-ci-test-repl -n app-db/be-tests-mysql" "Dry run: print commands without executing"]]
+   :requires [[mage.bgrabow.ci-test-repl :as ci-test-repl]]
+   :options [["-n" "--dry-run" "Print docker, env, and clojure commands without executing"]]
+   :task (task!
+           (let [wj (first (:arguments parsed))
+                 [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
+             (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}}}

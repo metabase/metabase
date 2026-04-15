@@ -1,7 +1,7 @@
 (ns metabase.query-processor.execute-test
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (deftest ^:parallel native-form-test

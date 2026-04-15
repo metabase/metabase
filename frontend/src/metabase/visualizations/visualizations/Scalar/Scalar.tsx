@@ -70,6 +70,9 @@ export class Scalar extends Component<
 
   static settings = {
     ...fieldSetting("scalar.field", {
+      get section() {
+        return t`Formatting`;
+      },
       get title() {
         return t`Field to show`;
       },
@@ -84,6 +87,11 @@ export class Scalar extends Component<
         },
       ]) => cols.length < 2,
     }),
+    // used by metrics viewer to set the color, overrides "scalar.segments"
+    "scalar.color": {
+      hidden: true,
+      getDefault: () => undefined,
+    },
     "scalar.segments": {
       get section() {
         return t`Conditional colors`;
@@ -93,10 +101,13 @@ export class Scalar extends Component<
       },
       widget: ChartSettingSegmentsEditor,
       persistDefault: true,
-      noPadding: true,
-      props: {
+      getWrapperStyle: () => ({
+        marginLeft: 0,
+        marginRight: 0,
+      }),
+      getProps: () => ({
         canRemoveAll: true,
-      },
+      }),
     },
     ...columnSettings({
       getColumns: (
@@ -115,15 +126,15 @@ export class Scalar extends Component<
     "scalar.locale": {
       // title: t`Separator style`,
       // widget: "select",
-      // props: {
+      // getProps: () => ({
       //   options: [
       //     { name: "100000.00", value: null },
       //     { name: "100,000.00", value: "en" },
       //     { name: "100 000,00", value: "fr" },
       //     { name: "100.000,00", value: "de" },
       //   ],
-      // },
-      // default: "en",
+      // }),
+      // getDefault:() => "en",
     },
     "scalar.decimals": {
       // title: t`Number of decimal places`,
@@ -195,10 +206,13 @@ export class Scalar extends Component<
       jsx: true,
     };
 
-    const segments = settings["scalar.segments"]?.filter(segmentIsValid);
+    const segments = settings["scalar.segments"]?.filter((segment) =>
+      segmentIsValid(segment, { allowOpenEnded: true }),
+    );
 
-    const color = getColor(value, segments);
-    const tooltipContent = getTooltipContent(segments);
+    const explicitColor = settings["scalar.color"];
+    const color = explicitColor ?? getColor(value, segments);
+    const tooltipContent = explicitColor ? null : getTooltipContent(segments);
 
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
@@ -251,6 +265,7 @@ export class Scalar extends Component<
             >
               <ScalarValue
                 color={color}
+                disableHover={!!explicitColor}
                 fontFamily={fontFamily}
                 gridSize={gridSize}
                 height={Math.max(height - PADDING * 2, 0)}

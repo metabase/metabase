@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ENTITY_ID,
@@ -7,8 +8,9 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
+const { ORDERS_ID: ORDERS_TABLE_ID, ORDERS } = SAMPLE_DATABASE;
 
-describe("scenarios > embedding > sdk iframe embedding", () => {
+describe("scenarios > embedding > modular embedding", () => {
   beforeEach(() => {
     H.prepareSdkIframeEmbedTest({ signOut: true });
   });
@@ -76,6 +78,62 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
     frame.within(() => {
       H.assertSdkInteractiveQuestionOrdersUsable();
+    });
+  });
+
+  it("table visualization should span the full width of the container (metabase#69831)", () => {
+    cy.signInAsAdmin();
+    H.createQuestion({
+      name: "Narrow table question",
+      query: {
+        "source-table": ORDERS_TABLE_ID,
+        fields: [
+          ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+          ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+        ],
+        limit: 5,
+      },
+    }).then(({ body: question }) => {
+      cy.signOut();
+
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: question.id,
+            },
+          },
+        ],
+      });
+
+      cy.wait("@getCardQuery");
+
+      frame.within(() => {
+        // clientWidth excludes the scrollbar gutter, giving us the actual content area.
+        // Use .should() instead of .then() so Cypress retries until the
+        // async column-expansion cycle has finished painting.
+        H.tableInteractive()
+          .findByTestId("table-scroll-container")
+          .should(($scrollContainer) => {
+            const contentWidth = $scrollContainer[0].clientWidth;
+            expect(contentWidth).to.be.greaterThan(0);
+
+            const $headerCells = $scrollContainer.find(
+              '[data-testid="header-cell"]',
+            );
+            expect($headerCells.length).to.be.greaterThan(0);
+
+            let totalHeaderWidth = 0;
+            $headerCells.each((_, el) => {
+              totalHeaderWidth += el.getBoundingClientRect().width;
+            });
+
+            expect(Math.round(totalHeaderWidth)).to.be.at.least(
+              Math.round(contentWidth),
+            );
+          });
+      });
     });
   });
 
@@ -268,6 +326,76 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
   });
 
+  describe("auto-refreshing dashboard", () => {
+    /**
+     * Unfortunately, cy.clock() doesn't seem to work with mocking the timing inside the iframe,
+     * so we have to use real timeouts here.
+     */
+    it('does not automatically refresh the dashboard when "auto-refresh-interval" is not set', () => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
+
+      cy.get("@getDashCardQuery.all").then((requests) => {
+        cy.wrap(requests.length).as("initialRequestCount");
+      });
+
+      cy.log("wait for the retrigger");
+      cy.wait(1000);
+      cy.get("@initialRequestCount").then((initialRequestCount) => {
+        cy.get("@getDashCardQuery.all").should(
+          "have.length",
+          initialRequestCount,
+        );
+      });
+    });
+
+    it('automatically refresh the dashboard when "auto-refresh-interval" is set', () => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+              autoRefreshInterval: 1,
+            },
+          },
+        ],
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
+
+      cy.get("@getDashCardQuery.all").then((requests) => {
+        cy.wrap(requests.length).as("initialRequestCount");
+      });
+
+      cy.log("wait for the retrigger");
+      cy.get("@initialRequestCount").then((initialRequestCount) => {
+        cy.get("@getDashCardQuery.all").should(
+          "have.length.above",
+          initialRequestCount,
+        );
+      });
+    });
+  });
+
   it("CSP nonces are set for custom expression styles (EMB-707)", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       elements: [
@@ -305,134 +433,413 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.findByRole("button", { name: "Cancel" }).click();
     });
   });
-});
 
-describe("scenarios > embedding > Modular embedding", () => {
-  beforeEach(() => {
-    H.resetSnowplow();
-    H.prepareSdkIframeEmbedTest({
-      enabledAuthMethods: ["jwt"],
-      signOut: false,
+  describe("handleLink", () => {
+    beforeEach(() => {
+      // Create a question with a URL column for testing handleLink
+      cy.signInAsAdmin();
+      H.createDashboardWithQuestions({
+        dashboardName: "Dashboard with links",
+        questions: [
+          {
+            name: "Question with link column",
+            query: {
+              "source-table": ORDERS_TABLE_ID,
+              expressions: {
+                "link url": [
+                  "concat",
+                  "https://example.org/order/",
+                  ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                ],
+              },
+              fields: [
+                ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                ["expression", "link url", { "base-type": "type/Text" }],
+              ],
+              limit: 5,
+            },
+            visualization_settings: {
+              column_settings: {
+                '["name","ID"]': {
+                  view_as: "link",
+                  link_text: "Order {{ID}}",
+                  link_url: "https://example.org/order/{{ID}}",
+                },
+              },
+            },
+          },
+        ],
+        cards: [{ size_x: 24, size_y: 6, col: 0, row: 0 }],
+      }).then(({ dashboard }) => {
+        cy.wrap(dashboard.id).as("linkDashboardId");
+      });
+
+      cy.signOut();
     });
-    H.enableTracking();
+
+    it("calls handleLink when a link is clicked and prevents navigation when handled: true", function () {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: this.linkDashboardId,
+            },
+          },
+        ],
+        insertHtml: {
+          afterEmbed: `
+            <script>
+              window.handleLinkCalls = [];
+              window.metabaseConfig.pluginsConfig = {
+                handleLink: (url) => {
+                  window.handleLinkCalls.push(url);
+                  return { handled: true };
+                },
+              };
+            </script>
+          `,
+        },
+      });
+
+      cy.wait("@getDashCardQuery");
+
+      // Spy on the iframe's anchor clicks and window.open
+      // so we can check the default behavior is prevented
+      cy.get("iframe").then(($iframe) => {
+        const iframeWin: any = $iframe[0].contentWindow;
+        expect(iframeWin).to.not.be.null;
+
+        iframeWin.__blankLinkClicks = [];
+        iframeWin.__windowOpenCalls = [];
+
+        iframeWin.HTMLAnchorElement.prototype.click = function () {
+          iframeWin.__blankLinkClicks.push(this.href);
+        };
+
+        iframeWin.open = function (...args: unknown[]) {
+          iframeWin.__windowOpenCalls.push(args);
+        };
+      });
+
+      frame.within(() => {
+        cy.findByText("Order 448").click();
+      });
+
+      cy.log("Verify handleLink was called with the correct URL");
+      cy.window()
+        .its("handleLinkCalls")
+        .should("have.length", 1)
+        .its(0)
+        .should("include", "https://example.org/order/448");
+
+      cy.log("Verify that no default navigation happened");
+      cy.get("iframe")
+        .its("0.contentWindow.__blankLinkClicks")
+        .should("have.length", 0);
+      cy.get("iframe")
+        .its("0.contentWindow.__windowOpenCalls")
+        .should("have.length", 0);
+    });
   });
 
-  it("should send an modular embedding usage event", () => {
-    cy.signOut();
-    cy.visit("http://localhost:4000");
-    const frame = H.loadSdkIframeEmbedTestPage({
-      origin: "http://different-than-metabase-instance.com",
-      elements: [
-        {
-          component: "metabase-dashboard",
-          attributes: {
-            dashboardId: ORDERS_DASHBOARD_ID,
-            "with-subscriptions": true,
+  describe("analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.prepareSdkIframeEmbedTest({
+        enabledAuthMethods: ["jwt"],
+        signOut: false,
+      });
+      H.enableTracking();
+    });
+
+    it("should send an modular embedding usage event", () => {
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      const frame = H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+              "with-subscriptions": true,
+            },
           },
-        },
-        {
-          component: "metabase-question",
-          attributes: {
-            questionId: ORDERS_QUESTION_ID,
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: ORDERS_QUESTION_ID,
+            },
           },
-        },
-        {
-          component: "metabase-question",
-          attributes: {
-            questionId: "new",
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: "new",
+            },
           },
-        },
-        {
-          component: "metabase-browser",
-          attributes: {},
-        },
-      ],
-      selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`, // get only the first iframe
-    });
+          {
+            component: "metabase-browser",
+            attributes: {},
+          },
+        ],
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`, // get only the first iframe
+      });
 
-    frame.within(() => {
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      cy.findByText("Orders").should("be.visible");
-      H.assertTableRowsCount(2000);
-    });
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "setup",
-      global: {
-        auth_method: "sso",
-      },
-      dashboard: {
-        with_title: {
-          false: 0,
-          true: 1,
-        },
-        with_downloads: {
-          false: 1,
-          true: 0,
-        },
-        drills: {
-          false: 0,
-          true: 1,
-        },
-        with_subscriptions: {
-          false: 0,
-          true: 1,
-        },
-      },
-      question: {
-        drills: {
-          false: 0,
-          true: 1,
-        },
-        with_downloads: {
-          false: 1,
-          true: 0,
-        },
-        with_title: {
-          false: 0,
-          true: 1,
-        },
-        is_save_enabled: {
-          false: 1,
-          true: 0,
-        },
-      },
-      exploration: {
-        is_save_enabled: {
-          false: 1,
-          true: 0,
-        },
-      },
-      browser: {
-        read_only: {
-          false: 0,
-          true: 1,
-        },
-      },
-    });
-  });
-
-  it("should not send an modular embedding usage event in the preview", () => {
-    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
-
-    H.openEmbedJsModal();
-    H.embedModalEnableEmbedding();
-
-    H.waitForSimpleEmbedIframesToLoad();
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Orders").should("be.visible");
-    });
-
-    H.expectUnstructuredSnowplowEvent(
-      {
+      H.expectUnstructuredSnowplowEvent({
         event: "setup",
         global: {
-          auth_method: "session",
+          auth_method: "sso",
+          locale_used: false,
         },
-      },
-      // Expect that the usage event shouldn't be sent
-      0,
-    );
+        components: [
+          {
+            name: "dashboard",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_subscriptions",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "auto_refresh_interval",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
+          },
+          {
+            name: "question",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "is_save_enabled",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_alerts",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
+          },
+          {
+            name: "exploration",
+            properties: [
+              {
+                name: "is_save_enabled",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "id_new_native",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "id_new",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+            ],
+          },
+          {
+            name: "browser",
+            properties: [
+              {
+                name: "read_only",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("should send locale_used=true when locale is configured", () => {
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      const frame = H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
+        metabaseConfig: {
+          locale: "de",
+        },
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`,
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "setup",
+        global: {
+          auth_method: "sso",
+          locale_used: true,
+        },
+        components: [
+          {
+            name: "dashboard",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_subscriptions",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "auto_refresh_interval",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("should not send an modular embedding usage event in the preview", () => {
+      cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+
+      H.openEmbedJsModal();
+      H.embedModalEnableEmbedding();
+
+      H.waitForSimpleEmbedIframesToLoad();
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Orders").should("be.visible");
+      });
+
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "setup",
+          global: {
+            auth_method: "session",
+            locale_used: false,
+          },
+          components: [],
+        },
+        // Expect that the usage event shouldn't be sent
+        0,
+      );
+    });
   });
 });
 

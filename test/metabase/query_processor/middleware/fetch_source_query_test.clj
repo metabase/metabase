@@ -11,18 +11,18 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (defn resolve-source-cards* [query]
-  ;; Handle old tests written with legacy queries. Convert legacy query to pMBQL and then convert results
+  ;; Handle old tests written with legacy queries. Convert legacy query to MBQL 5 and then convert results
   ;; back. That way we don't need to update all the tests immediately and can do so at our leisure.
-  (letfn [(thunk [] (let [mlv2-query (lib.query/query (qp.store/metadata-provider) query)
-                          resolved   (fetch-source-query/resolve-source-cards mlv2-query)]
+  (letfn [(thunk [] (let [mbql5-query (lib.query/query (qp.store/metadata-provider) query)
+                          resolved    (fetch-source-query/resolve-source-cards mbql5-query)]
                       (cond-> resolved
                         (not (:lib/type query)) lib.convert/->legacy-MBQL)))]
     (if (qp.store/initialized?)
@@ -43,7 +43,7 @@
 
 (defn- remove-irrelevant-keys [col]
   (as-> col col
-    (dissoc col :field_ref)
+    (dissoc col :field_ref :source)
     (m/filter-keys simple-keyword? col)))
 
 (defn- default-result-with-inner-query

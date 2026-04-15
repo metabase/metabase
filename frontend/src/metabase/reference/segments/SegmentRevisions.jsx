@@ -4,14 +4,15 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Revision from "metabase/admin/datamodel/components/revisions/Revision";
-import EmptyState from "metabase/common/components/EmptyState";
+import { Revision } from "metabase/admin/datamodel/components/revisions/Revision";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { assignUserColors } from "metabase/lib/formatting";
-import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { getShallowTables as getTables } from "metabase/selectors/metadata";
+import { assignUserColors } from "metabase/ui/colors/formatting-colors";
+import { connect } from "metabase/utils/redux";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
@@ -19,7 +20,6 @@ import {
   getLoading,
   getSegment,
   getSegmentRevisions,
-  getTables,
   getUser,
 } from "../selectors";
 
@@ -127,4 +127,5 @@ class SegmentRevisions extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(SegmentRevisions);

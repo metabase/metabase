@@ -1,101 +1,81 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useField } from "formik";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
-import { forwardRef, useCallback } from "react";
+import { type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import CS from "metabase/css/core/index.css";
-import { UtilApi } from "metabase/services";
-import type { TextInputProps } from "metabase/ui";
-import { Button, Flex, TextInput } from "metabase/ui";
+import {
+  Button,
+  Stack,
+  Text,
+  TextInput,
+  type TextInputProps,
+} from "metabase/ui";
+
+import S from "./FormSecretKey.module.css";
+import { SetupKeyModal } from "./SetupKeyModal";
 
 export interface FormSecretKeyProps
   extends Omit<TextInputProps, "value" | "error"> {
   name: string;
   nullable?: boolean;
-  confirmation: {
-    header: string;
-    dialog: string;
-  };
 }
 
 export const FormSecretKey = forwardRef(function FormSecretKey(
-  {
-    name,
-    nullable,
-    confirmation,
-    onChange,
-    onBlur,
-    ...props
-  }: FormSecretKeyProps,
+  { name, nullable, onChange, onBlur, readOnly, ...props }: FormSecretKeyProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
-  const [{ value }, { error, touched }, { setValue, setTouched }] =
-    useField(name);
+  const [showModal, { open: openModal, close: closeModal }] = useDisclosure();
+  const [{ value }, { error }, { setValue }] = useField(name);
 
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const newValue = event.target.value;
-      if (newValue === "") {
-        setValue(nullable ? null : undefined);
-      } else {
-        setValue(newValue);
-      }
-      onChange?.(event);
-    },
-    [nullable, setValue, onChange],
-  );
-
-  const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
-      setTouched(true);
-      onBlur?.(event);
-    },
-    [setTouched, onBlur],
-  );
-  const generateToken = async () => {
-    const result = await UtilApi.random_token();
-    setValue(result.token);
-  };
+  const generateSecretButtonProps = readOnly
+    ? null
+    : {
+        rightSection: (
+          <Button
+            className={S.generateButton}
+            miw={value ? undefined : "10rem"}
+            onClick={openModal}
+            variant="filled"
+          >
+            {value ? t`Regenerate key` : t`Set up key`}
+          </Button>
+        ),
+        rightSectionProps: { className: S.rightSection },
+      };
 
   return (
     <>
-      <Flex align="end" gap="1rem">
+      <Stack gap="sm">
         <TextInput
           {...props}
           ref={ref}
           name={name}
-          value={value ?? ""}
-          error={touched ? error : null}
-          onChange={handleChange}
-          onBlur={handleBlur}
+          readOnly
+          value={obfuscateValue(value)}
+          classNames={{
+            wrapper: S.inputWrapper,
+            input: cx(S.input, {
+              [S.unset]: !value, // Just show the 'Set up key' button when no key is set yet
+            }),
+          }}
+          {...generateSecretButtonProps}
         />
-        {value ? (
-          <Button
-            variant="filled"
-            onClick={openModal}
-            className={CS.flexNoShrink}
-          >{t`Regenerate key`}</Button>
-        ) : (
-          <Button
-            className={CS.flexNoShrink}
-            variant="filled"
-            onClick={generateToken}
-          >{t`Generate key`}</Button>
-        )}
-      </Flex>
-      <ConfirmModal
-        opened={modalOpened}
-        title={t`Regenerate JWT signing key?`}
-        content={t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`}
-        onConfirm={() => {
-          generateToken();
-          closeModal();
-        }}
-        onClose={closeModal}
-      />
+        {!!error && <Text c="error">{error}</Text>}
+      </Stack>
+      {showModal && (
+        <SetupKeyModal
+          onConfirm={(newValue) => {
+            setValue(newValue);
+            closeModal();
+          }}
+          onClose={closeModal}
+          currentValue={value}
+        />
+      )}
     </>
   );
 });
+
+const obfuscateValue = (value: string) =>
+  value ? "**********" + value.slice(-2) : "";

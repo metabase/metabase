@@ -1,8 +1,9 @@
 import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
-import { defer } from "metabase/lib/promise";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { defer } from "metabase/utils/promise";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -21,7 +22,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { runQuestionQuery } from "./services";
 
@@ -198,6 +198,66 @@ describe("metabase/services > runQuestionQuery", () => {
       const question = createMockAdHocQuestion();
       const { result, mockResult } = await setupRunQuestionQuery(question);
       expect(result).toEqual([mockResult]);
+    });
+  });
+
+  describe("error handling", () => {
+    it("should convert 4xx errors to successful responses with error data (saved question)", async () => {
+      const question = createMockSavedQuestion();
+      const errorData = {
+        error: "Query failed",
+        error_type: "client-error",
+        status: "failed",
+      };
+
+      fetchMock.post(getQueryEndpointPath(question), {
+        status: 400,
+        body: errorData,
+      });
+
+      const result = await runQuestionQuery(question, {
+        cancelDeferred: defer(),
+      });
+
+      // 4xx errors should be returned as successful responses with error data
+      expect(result).toEqual([errorData]);
+    });
+
+    it("should convert 4xx errors to successful responses with error data (ad-hoc question)", async () => {
+      const question = createMockAdHocQuestion();
+      const errorData = {
+        error: "Permission denied",
+        error_type: "permission-error",
+        status: "failed",
+      };
+
+      fetchMock.post(getQueryEndpointPath(question), {
+        status: 403,
+        body: errorData,
+      });
+
+      const result = await runQuestionQuery(question, {
+        cancelDeferred: defer(),
+      });
+
+      // 4xx errors should be returned as successful responses with error data
+      expect(result).toEqual([errorData]);
+    });
+
+    it("should throw on 5xx server errors", async () => {
+      const question = createMockSavedQuestion();
+
+      fetchMock.post(getQueryEndpointPath(question), {
+        status: 500,
+        body: { error: "Internal server error" },
+      });
+
+      // 5xx errors should still throw
+      await expect(
+        runQuestionQuery(question, { cancelDeferred: defer() }),
+      ).rejects.toMatchObject({
+        status: 500,
+      });
     });
   });
 });

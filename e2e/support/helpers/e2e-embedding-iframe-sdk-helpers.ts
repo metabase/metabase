@@ -15,7 +15,7 @@ import {
   mockAuthProviderAndJwtSignIn,
 } from "./embedding-sdk-testing";
 
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
@@ -26,6 +26,7 @@ export interface BaseEmbedTestPageOptions {
   // Passed to defineMetabaseConfig
   metabaseConfig?: {
     isGuest?: boolean;
+    guestEmbedProviderUri?: string;
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
@@ -318,6 +319,7 @@ export const getNewEmbedScriptTag = ({
 export const getNewEmbedConfigurationScript = ({
   instanceUrl = "http://localhost:4000",
   isGuest,
+  guestEmbedProviderUri,
   theme,
   apiKey,
   useExistingUserSession,
@@ -327,6 +329,7 @@ export const getNewEmbedConfigurationScript = ({
   const config = {
     instanceUrl,
     isGuest,
+    guestEmbedProviderUri,
     apiKey,
     useExistingUserSession,
     theme,
@@ -373,7 +376,7 @@ export const visitCustomHtmlPage = (
  * to point it to the rspack dev server.
  */
 export const mockEmbedJsToDevServer = () => {
-  if (Cypress.env("CI")) {
+  if (Cypress.expose("CI")) {
     // we don't need this logic in CI, let's skip the check to avoid slowing down the tests
     return;
   }

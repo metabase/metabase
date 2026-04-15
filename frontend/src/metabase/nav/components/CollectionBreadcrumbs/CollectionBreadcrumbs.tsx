@@ -3,9 +3,10 @@ import { t } from "ttag";
 
 import { Badge } from "metabase/common/components/Badge";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import * as Urls from "metabase/lib/urls";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type {
   Collection,
   CollectionEssentials,
@@ -29,6 +30,7 @@ export const CollectionBreadcrumbs = ({
   baseCollectionId = null,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
+  const tc = useTranslateContent();
 
   if (!collection) {
     return null;
@@ -100,7 +102,7 @@ export const CollectionBreadcrumbs = ({
             isSingleLine
             to={Urls.dashboard(dashboard)}
           >
-            {dashboard.name}
+            {tc(dashboard.name)}
           </Badge>
         </>
       )}

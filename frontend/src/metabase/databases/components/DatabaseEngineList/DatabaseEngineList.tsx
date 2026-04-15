@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import LogoIcon from "metabase/common/components/LogoIcon";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSetting } from "metabase/common/hooks";
 import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
 import { getEngines } from "metabase/databases/selectors";
@@ -9,7 +9,6 @@ import {
   getEngineLogo,
   getEngineOptions,
 } from "metabase/databases/utils/engine";
-import { useSelector } from "metabase/lib/redux";
 import {
   Button,
   Center,
@@ -22,6 +21,7 @@ import {
   Text,
   useCombobox,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "./DatabaseEngineList.module.css";
 
@@ -228,7 +228,7 @@ const SampleDatabaseIndicator = () => {
         <Text ml="sm" mr="xs">
           {t`Sample Database for testing`}
         </Text>
-        {/* eslint-disable-next-line no-literal-metabase-strings -- only shown to admins during setup */}
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown to admins during setup */}
         <Text inline c="text-tertiary">{t`(by Metabase)`}</Text>
       </Flex>
       <Group gap="xs">

@@ -129,7 +129,7 @@ describe("scenarios > question > snippets", () => {
     cy.findByTestId("query-visualization-root")
       .as("results")
       .findByText("37.65");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1
@@ -258,7 +258,7 @@ describe("scenarios > question > snippets (EE)", () => {
     // create folder
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").as("sidebar").find(".Icon-add").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("New folder").click());
     H.modal().within(() => {
       cy.findByText("Create your new folder");
@@ -282,7 +282,7 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.findByText("Edit").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.modal().within(() => cy.findByText("SQL snippets").click());
     H.entityPickerModal().within(() => {
       cy.findByText("my favorite snippets").click();
@@ -291,16 +291,16 @@ describe("scenarios > question > snippets (EE)", () => {
     cy.intercept("/api/collection/root/items?namespace=snippets").as(
       "updateList",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.modal().within(() => cy.findByText("Save").click());
 
     // check that everything is in the right spot
     cy.wait("@updateList");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("my favorite snippets").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1");
 
     cy.log("via collection picker (metabase#44930");
@@ -313,7 +313,7 @@ describe("scenarios > question > snippets (EE)", () => {
 
     H.modal().findByTestId("collection-picker-button").click();
     H.entityPickerModal()
-      .findByRole("button", { name: /New collection/ })
+      .findByRole("button", { name: /New folder/ })
       .click();
     H.collectionOnTheGoModal()
       .findByLabelText("Give it a name")
@@ -419,7 +419,7 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.visit("/collection/root");
 
       cy.wait("@collections");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Snippet Folder").should("not.exist");
     });
 
@@ -434,8 +434,8 @@ describe("scenarios > question > snippets (EE)", () => {
       // Edit permissions for a snippet folder
       H.rightSidebar()
         .findByText("Snippet Folder")
-        .next()
-        .find(".Icon-ellipsis")
+        .parent()
+        .findByRole("button", { name: "Snippet folder options" })
         .click({ force: true });
 
       H.popover().findByText("Change permissions").click();
@@ -471,6 +471,60 @@ describe("scenarios > question > snippets (EE)", () => {
           const allUsers = body.groups[ALL_USERS_GROUP];
           expect(allUsers.root).to.equal("write");
         },
+      );
+    });
+  });
+});
+
+describe("scenarios > question > read-only snippets", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.createSnippet({
+      name: "stuff-snippet",
+      content: "select 'snippet 1'",
+    });
+    H.createSnippetFolder({
+      name: "My favorite snippets",
+      description: "the more you know",
+    });
+    H.setupGitSync();
+  });
+
+  it("should not let you create or edit a snippet", () => {
+    H.configureGitAndPullChanges("read-only");
+    H.startNewNativeQuestion();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("snippet")
+      .click();
+    cy.findByTestId("sidebar-content")
+      .findByText("Create snippet")
+      .should("not.exist");
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("stuff-snippet").click();
+      cy.findByRole("button", { name: /pencil icon edit/i }).should(
+        "not.exist",
+      );
+    });
+  });
+
+  it("should not let you create or edit a snippet folder", () => {
+    H.configureGitAndPullChanges("read-only");
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+
+    cy.log("Menu that allows creating a snippet folder is not rendered");
+    cy.findByTestId("sidebar-right")
+      .as("sidebar")
+      .find(".Icon-add")
+      .should("not.exist");
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("My favorite snippets").should("be.visible");
+      cy.findByRole("button", { name: "Snippet folder options" }).should(
+        "not.exist",
       );
     });
   });

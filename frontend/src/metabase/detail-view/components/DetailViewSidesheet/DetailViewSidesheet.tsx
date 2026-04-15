@@ -10,10 +10,10 @@ import {
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import {
   DetailsGroup,
   Header,
@@ -24,9 +24,6 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { useDispatch } from "metabase/lib/redux";
-import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
 import {
   Box,
@@ -38,6 +35,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -65,6 +63,7 @@ interface Props {
   table: Table | undefined;
   tableForeignKeys?: ForeignKey[];
   url: string | undefined;
+  onActionSuccess?: () => void;
   onClose: () => void;
   onNextClick: (() => void) | undefined;
   onPreviousClick: (() => void) | undefined;
@@ -82,6 +81,7 @@ export function DetailViewSidesheet({
   table,
   tableForeignKeys,
   url,
+  onActionSuccess,
   onClose,
   onNextClick,
   onPreviousClick,
@@ -98,7 +98,6 @@ export function DetailViewSidesheet({
     [dataset, columnsFromProp, columnSettings, rowFromProps],
   );
 
-  const dispatch = useDispatch();
   const [linkCopied, setLinkCopied] = useState(false);
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = useMemo(() => {
@@ -160,8 +159,8 @@ export function DetailViewSidesheet({
   }, [actionId, rowId]);
 
   const handleActionSuccess = useCallback(() => {
-    dispatch(runQuestionQuery());
-  }, [dispatch]);
+    onActionSuccess?.();
+  }, [onActionSuccess]);
 
   const handleDeleteSuccess = useCallback(() => {
     handleActionSuccess();

@@ -28,14 +28,15 @@ import {
   isTrashedCollection,
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
-import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
+import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Collections } from "metabase/entities/collections";
 import { Search } from "metabase/entities/search";
-import { useDispatch } from "metabase/lib/redux";
+import type { State } from "metabase/redux/store";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
+import { useDispatch } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -43,8 +44,6 @@ import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
-import { SortDirection } from "metabase-types/api/sorting";
-import type { State } from "metabase-types/store";
 
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
@@ -338,7 +337,7 @@ export const CollectionContentView = Search.loadList({
     collection: collectionId,
     pinned_state: "is_pinned",
     sort_column: "name",
-    sort_direction: SortDirection.Asc,
+    sort_direction: "asc",
   }),
   loadingAndErrorWrapper: false,
   wrapped: true,

@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import type { CollectionItem } from "metabase-types/api/collection";
 
 export const trackDataReferenceClicked = () => {
@@ -15,8 +15,17 @@ export const trackCollectionBookmarked = () => {
   });
 };
 
-export const trackCollectionItemBookmarked = (item: CollectionItem) => {
-  if (item.model === "indexed-entity" || item.model === "snippet") {
+export const trackCollectionItemBookmarked = (
+  item: CollectionItem & {
+    model: CollectionItem["model"];
+  },
+) => {
+  if (
+    item.model === "indexed-entity" ||
+    item.model === "snippet" ||
+    item.model === "transform"
+  ) {
+    // can't bookmark these
     return;
   }
 

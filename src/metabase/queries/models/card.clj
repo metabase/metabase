@@ -17,15 +17,14 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -100,6 +99,17 @@
   (fn [_card target-schema-version]
     target-schema-version))
 
+;;; ------------------------------------------------- Dimension Transforms -------------------------------------------------
+
+;;; ------------------------------------------------- Metric Dimension Persistence --------------------------------------------------
+
+(defmethod metrics/save-dimensions! :metadata/metric
+  [metric dimensions dimension-mappings]
+  (when-let [metric-id (:id metric)]
+    (t2/update! :model/Card metric-id
+                {:dimensions         dimensions
+                 :dimension_mappings dimension-mappings})))
+
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
    :display                mi/transform-keyword
@@ -109,7 +119,9 @@
    :visualization_settings mi/transform-visualization-settings
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings
-   :type                   mi/transform-keyword})
+   :type                   mi/transform-keyword
+   :dimensions             metrics/transform-dimensions
+   :dimension_mappings     metrics/transform-dimension-mappings})
 
 (doto :model/Card
   (derive :metabase/model)
@@ -203,7 +215,7 @@
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
   [query :- [:maybe ::queries.schema/query]]
-  (some-> query not-empty lib/source-card-id))
+  (some-> query not-empty lib/primary-source-card-id))
 
 (mu/defn- card->integer-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Return integer source table ids for card's :dataset_query."
@@ -338,13 +350,7 @@
   [{query :dataset_query, :as card} :- ::queries.schema/card]
   (merge
    card
-   ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
-   ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
-   ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
-   ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-   (when (and (seq query)
-              (map? query)
-              (not mi/*deserializing?*))
+   (when (and (seq query) (map? query))
      (merge
       ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
       {:source_card_id (source-card-id query)}
@@ -360,7 +366,7 @@
            (when table-id
              {:table_id table-id}))))))))
 
-;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
+;;; TODO -- move this to [[metabase.query-processor.card]] or Lib so the logic can be shared between the backend and
 ;;; frontend (?)
 ;;;
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
@@ -377,10 +383,14 @@
                                            (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                                                (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
     {:id       (:id tag)
-     :type     (or widget-type (cond (= tag-type :date)   :date/single
-                                     (= tag-type :string) :string/=
-                                     (= tag-type :number) :number/=
-                                     :else                :category))
+     :type     (or widget-type (case tag-type
+                                 :date    :date/single
+                                 :text    :string/=
+                                 :number  :number/=
+                                 :boolean :boolean/=
+                                ;; fallback; should be unreachable since :when filters
+                                ;; to raw-value-template-tag-types
+                                 :string/=))
      :target   (if (= tag-type :dimension)
                  [:dimension [:template-tag (:name tag)]]
                  [:variable  [:template-tag (:name tag)]])
@@ -738,8 +748,8 @@
              (pr-str (dissoc post-cleaning-query :lib/metadata))
              (:legacy_query untransformed-card)))
 
-;; Dynamically binds [[lib.convert/*card-clean-hook*]] to a function that logs the impact of cleaning,
-;; during `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
+;; Uses [[lib/with-card-clean-hook]] to bind a callback which logs the impact of the cleaning process during
+;; `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
 ;; changes, which likely indicates a bug.
 (methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Card]
   [query-type model]
@@ -751,7 +761,7 @@
           ([acc]
            (rf' acc))
           ([acc card]
-           (binding [lib.convert/*card-clean-hook* (partial mbql5-conversion-clean-callback card)]
+           (lib/with-card-clean-hook (partial mbql5-conversion-clean-callback card)
              (rf' acc card))))))))
 
 (t2/define-after-select :model/Card
@@ -811,7 +821,7 @@
             (not verified-result-metadata?)
             (contains? (t2/changes card) :type))
         (card.metadata/populate-result-metadata changes))
-      (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
+      (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -837,7 +847,16 @@
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
   (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! :model/Revision :model "Card", :model_id id))
+  (t2/delete! :model/Revision :model "Card", :model_id id)
+  ;; delete any card-type notifications for this card — must materialize IDs first because
+  ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
+  ;; return empty by the time the actual DELETE executes.
+  (when-let [notification-ids (seq (t2/select-pks-set :model/Notification
+                                                      :payload_type :notification/card
+                                                      :payload_id [:in {:select [:id]
+                                                                        :from   [:notification_card]
+                                                                        :where  [:= :card_id id]}]))]
+    (t2/delete! :model/Notification :id [:in notification-ids])))
 
 (defmethod serdes/hash-fields :model/Card
   [_card]
@@ -1271,6 +1290,23 @@
                                    (serdes/field->path (:fk_target_field_id m))))))
         (disj nil))))
 
+(defmethod serdes/storage-path "Card" [card ctx]
+  (let [base (serdes/storage-default-collection-path card ctx)]
+    (cond
+      (:dashboard_id card)
+      (let [dash-segment (get (:dashboards ctx) (:dashboard_id card))]
+        (if dash-segment
+          (into (vec (butlast base)) [dash-segment (last base)])
+          base))
+
+      (:document_id card)
+      (let [doc-segment (get (:documents ctx) (:document_id card))]
+        (if doc-segment
+          (into (vec (butlast base)) [doc-segment (last base)])
+          base))
+
+      :else base)))
+
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
@@ -1284,13 +1320,13 @@
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
           :cache_ttl
-          ;; dependencies aren't serialized, so the version of dependency analysis done shouldn't be serialized
-          :dependency_analysis_version
+          ;; dimensions are computed from the query and reconciled on read, not serialized
+          :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
           :legacy_query]
    :transform
    {:created_at             (serdes/date)
-    :database_id            (serdes/fk :model/Database :name)
+    :database_id            (serdes/fk :model/Database)
     :table_id               (serdes/fk :model/Table)
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
@@ -1302,7 +1338,11 @@
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
+    :result_metadata        {:export export-result-metadata :import import-result-metadata}}
+   :defaults {:archived            false
+              :archived_directly   false
+              :collection_preview  true
+              :enable_embedding    false}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
@@ -1312,7 +1352,7 @@
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
-    [[{:model "Database" :id database_id}]]
+    (when database_id [[{:model "Database" :id database_id}]])
     (when table_id #{(serdes/table->path table_id)})
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
@@ -1354,30 +1394,31 @@
         ;; Dimensions are columns that are not aggregations
         (remove (comp #{:source/aggregations} :lib/source) columns)))))
 
-(defn- extract-non-temporal-dimension-ids
-  "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)
-        dim-ids    (->> dimensions
-                        (remove lib.types/temporal?)
-                        (keep :id)
-                        sort)]
-    (json/encode (or dim-ids []))))
-
-(defn- has-temporal-dimension?
-  "Return true if the query has any temporal dimensions. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)]
-    (boolean (some lib.types/temporal? dimensions))))
+(defn- extract-temporal-info
+  "Compute has-temporal-dim and non-temporal-dim-ids in a single dataset-query->dimensions call.
+  Returns a map with snake_case keys so the ingestion layer can merge them directly into the document,
+  avoiding the cost of calling dataset-query->dimensions twice per card. See PR 60912.
+  Short-circuits for native queries: they have no returnable column metadata so temporal dims are always absent."
+  [{:keys [dataset_query query_type]}]
+  (if (= query_type "native")
+    {:has_temporal_dim false :non_temporal_dim_ids "[]"}
+    (let [dimensions   (dataset-query->dimensions dataset_query)
+          non-temp-ids (->> dimensions
+                            (remove lib.types/temporal?)
+                            (keep :id)
+                            sort)]
+      {:has_temporal_dim     (boolean (some lib.types/temporal? dimensions))
+       :non_temporal_dim_ids (json/encode (or (seq non-temp-ids) []))})))
 
 (defn- maybe-extract-native-query
-  "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil."
-  [{query :dataset_query, :as _card}]
-  (let [query ((:out lib-be/transform-query) query)
-        query-text (when (lib/native-only-query? query)
-                     (:native (lib/query-stage query 0)))]
-    (when query-text
-      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
+  "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil.
+  Uses `query_type` to short-circuit without parsing JSON for non-native cards."
+  [{:keys [dataset_query query_type]}]
+  (when (= query_type "native")
+    (let [query      ((:out lib-be/transform-query) dataset_query)
+          query-text (:native (lib/query-stage query 0))]
+      (when query-text
+        (subs query-text 0 (min (count query-text) search/max-searchable-value-length))))))
 
 (defn ^:private base-search-spec
   []
@@ -1392,7 +1433,7 @@
                   :database-id          true
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query
-                                         :fields [:dataset_query]}
+                                         :fields [:dataset_query :query_type]}
                   :official-collection  [:= "official" :collection.authority_level]
                   :last-edited-at       :r.timestamp
                   :last-editor-id       :r.user_id
@@ -1402,10 +1443,9 @@
                   :created-at           true
                   :updated-at           true
                   :display-type         :this.display
-                  :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
-                                         :fields [:dataset_query]}
-                  :has-temporal-dim     {:fn has-temporal-dimension?
-                                         :fields [:dataset_query]}}
+                  :temporal-info        {:fn       extract-temporal-info
+                                         :fields   [:dataset_query :query_type]
+                                         :provides [:has-temporal-dim :non-temporal-dim-ids]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

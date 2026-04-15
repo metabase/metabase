@@ -3,13 +3,13 @@ import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { getAllowedIframeAttributes } from "metabase/dashboard/visualizations/IFrameViz/utils";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import {
   isActionDashCard,
   isQuestionDashCard,
   isVirtualDashCard,
-} from "metabase/dashboard/utils";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
-import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
+} from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
@@ -46,7 +46,7 @@ export type StructuredQuerySectionOption = {
   name: string;
   icon: string;
   target: StructuredParameterDimensionTarget;
-  isForeign: boolean;
+  isForeign?: boolean;
 };
 
 function buildStructuredQuerySectionOptions(

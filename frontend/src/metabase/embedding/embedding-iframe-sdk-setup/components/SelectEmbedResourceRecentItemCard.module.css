@@ -10,7 +10,7 @@
 }
 
 .ResourceCard:hover {
-  background: var(--mb-color-background-hover-light);
+  background: var(--mb-color-background-hover);
 }
 
 @media (prefers-reduced-motion) {

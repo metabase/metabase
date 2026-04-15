@@ -1,15 +1,12 @@
 import { type HTMLAttributes, useCallback, useMemo } from "react";
 import { c, t } from "ttag";
 
+import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import {
   cronToScheduleSettings,
   cronUnitToNumber,
   isRepeatingEvery,
-} from "metabase/admin/performance/utils";
-import { Schedule } from "metabase/common/components/Schedule/Schedule";
-import { getScheduleExplanation } from "metabase/lib/cron";
-import { formatNotificationScheduleDescription } from "metabase/lib/notifications";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/common/components/Schedule/cron";
 import {
   DEFAULT_ALERT_CRON_SCHEDULE,
   DEFAULT_ALERT_SCHEDULE,
@@ -17,6 +14,9 @@ import {
 import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, type BoxProps, Flex, Text } from "metabase/ui";
+import { getScheduleExplanation } from "metabase/utils/cron";
+import { formatNotificationScheduleDescription } from "metabase/utils/notifications";
+import { useSelector } from "metabase/utils/redux";
 import type {
   NotificationCronSubscription,
   ScheduleSettings,

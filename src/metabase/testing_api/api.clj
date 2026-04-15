@@ -10,9 +10,15 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.task.search-index :as task.search-index]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -55,6 +61,8 @@
   "Snapshot the database for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  (task.search-index/wait-for-init!)
+  (search.ingestion/wait-for-idle!)
   (save-snapshot! snapshot-name)
   nil)
 
@@ -109,7 +117,7 @@
       (mdb/increment-app-db-unique-indentifier!)
       (finally
         (.. lock writeLock unlock)
-        ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend`
+        ;; don't know why this happens but when I try to test things locally with `bun run test-cypress-open-no-backend`
         ;; and a backend server started with `dev/start!` the snapshots are always missing columns added by DB
         ;; migrations. So let's just check and make sure it's fully up to date in this scenario. Not doing this outside
         ;; of dev because it seems to work fine for whatever reason normally and we don't want tests taking 5 million
@@ -130,9 +138,11 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  ;; reset the system clock, in case `/set-time` was called without cleanup
+  (alter-var-root #'java-time.clock/*clock* (constantly nil))
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
-  (search/reindex! {:async? false})
+  (search/sync-from-restored-db!)
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -227,6 +237,12 @@
   metabase-enterprise.cache.task.refresh-cache-configs
   [])
 
+(defenterprise clear-metabot-limit-cache!
+  "Clears the metabot usage limit memoization cache on EE so that limit checks re-evaluate immediately.
+  No-op on OSS."
+  metabase-enterprise.metabot.usage
+  [])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -235,3 +251,86 @@
   "Manually triggers the cache refresh task, if Enterprise code is available."
   []
   (refresh-cache-configs!))
+
+(api.macros/defendpoint :post "/query" :- ::lib.schema/query
+  "Creates a query from a test query spec."
+  [_route-params
+   _query-params
+   {:keys [database], :as query-spec} :- [:merge
+                                          [:map
+                                           [:database ::lib.schema.id/database]]
+                                          [:ref ::lib.schema.test-spec/test-query-spec]]]
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-query query-spec)))
+
+(def ^:private TestAdvisory
+  "Schema for a single advisory in the testing seed endpoint."
+  [:map
+   [:advisory_id       ms/NonBlankString]
+   [:title             ms/NonBlankString]
+   [:severity          [:enum "critical" "high" "medium" "low"]]
+   [:description       ms/NonBlankString]
+   [:advisory_url      {:optional true} [:maybe ms/NonBlankString]]
+   [:remediation       ms/NonBlankString]
+   [:affected_versions [:sequential [:map [:min :string] [:fixed :string]]]]
+   [:matching_query    {:optional true} [:maybe [:map-of :keyword :string]]]
+   [:match_status      [:enum "unknown" "active" "resolved" "not_affected" "error"]]
+   [:published_at      :any]
+   [:updated_at        :any]])
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/security-advisories"
+  "Nuke all existing security advisories and insert the provided ones."
+  [_route-params
+   _query-params
+   {:keys [advisories]} :- [:map
+                            [:advisories [:sequential TestAdvisory]]]]
+  (t2/delete! :model/SecurityAdvisory)
+  (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
+
+(api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
+  "Creates a native query from a test query spec."
+  [_route-params
+   _query-params
+   {:keys [database], :as native-query-spec} :- [:merge
+                                                 [:map
+                                                  [:database ::lib.schema.id/database]]
+                                                 [:ref ::lib.schema.test-spec/test-native-query-spec]]]
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-native-query native-query-spec)))
+
+;;;; Metabot AI usage seeding
+
+(def ^:private e2e-usage-source "e2e-test")
+
+(api.macros/defendpoint :post "/metabot/seed-ai-usage"
+  :- [:map [:inserted :int]]
+  "Insert `count` rows into `ai_usage_log` for the given `user_id`, then clear the metabot limit
+  cache so limit checks re-evaluate immediately.  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id count]} :- [:map
+                               [:user_id ms/PositiveInt]
+                               [:count   ms/PositiveInt]]]
+  (dotimes [_ count]
+    (t2/insert! :model/AiUsageLog
+                {:source            e2e-usage-source
+                 :model             "test/model"
+                 :prompt_tokens     0
+                 :completion_tokens 0
+                 :total_tokens      0
+                 :user_id           user_id}))
+  (clear-metabot-limit-cache!)
+  {:inserted count})
+
+(api.macros/defendpoint :delete "/metabot/seed-ai-usage"
+  :- [:map [:deleted :int]]
+  "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then
+  clear the metabot limit cache.  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id]} :- [:map
+                         [:user_id ms/PositiveInt]]]
+  (let [deleted (t2/delete! :model/AiUsageLog :user_id user_id :source e2e-usage-source)]
+    (clear-metabot-limit-cache!)
+    {:deleted deleted}))

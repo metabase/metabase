@@ -12,12 +12,12 @@ import {
   getIsSavedQuestionChanged,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import type { State } from "metabase/redux/store";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
 
 import { getSetting } from "./settings";
 
@@ -35,10 +35,6 @@ const PATHS_WITHOUT_NAVBAR = [
   /\/model\/query/,
   /\/model\/columns/,
   /\/model\/metadata/,
-  /\/metric\/.*\/query/,
-  /\/metric\/.*\/metadata/,
-  /\/metric\/query/,
-  /\/metric\/metadata/,
   /\/transform\/new\/.*\/query/,
 ];
 
@@ -204,7 +200,7 @@ export const getIsNewButtonVisible = createSelector(
   },
 );
 
-export const getIsProfileLinkVisible = createSelector(
+export const getIsAppSwitcherVisible = createSelector(
   [getIsEmbeddingIframe],
   (isEmbeddingIframe) => !isEmbeddingIframe,
 );

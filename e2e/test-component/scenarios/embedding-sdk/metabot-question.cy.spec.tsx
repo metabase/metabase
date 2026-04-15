@@ -1,6 +1,9 @@
 const { H } = cy;
 
-import { MetabotQuestion } from "@metabase/embedding-sdk-react";
+import {
+  InteractiveQuestion,
+  MetabotQuestion,
+} from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -35,12 +38,14 @@ const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuest
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
 
     H.mockMetabotResponse({
       statusCode: 200,
       body: response,
     });
 
+    cy.log("Create a question");
     H.createQuestion({
       name: "1",
       query: {
@@ -54,9 +59,41 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       cy.wrap(question.entity_id).as("questionEntityId");
     });
 
+    cy.log("Create a collection");
+    cy.request("POST", "/api/collection", {
+      name: "first_collection",
+      description: "First collection",
+    }).then(({ body }) => {
+      cy.wrap(body.id).as("collectionId");
+    });
+
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
   };
+
+  it("should show drill-through results after drilling from a metabot question", () => {
+    setup(metabotResponseWithNavigateTo);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+      cy.findByTestId("visualization-root").should("exist");
+
+      H.tableInteractiveBody().findAllByRole("gridcell", { name: "2" }).click();
+    });
+
+    H.popover().findByText("View this Product's Orders").click();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+
+      H.assertTableData({
+        columns: ["Product ID", "Max of Quantity"],
+        firstRows: [["2", "18"]],
+      });
+    });
+  });
 
   it("should automatically show the ad-hoc question for the last agent message containing ad-hoc question link", () => {
     setup(metabotResponseWithNavigateTo);
@@ -67,6 +104,43 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
 
       cy.findByTestId("visualization-root").should("exist");
+    });
+  });
+
+  it("should allow saving a question", () => {
+    cy.intercept("POST", "/api/card").as("postCard");
+
+    setup(metabotResponseWithNavigateTo);
+
+    cy.get("@collectionId").then((collectionId) => {
+      mountSdkContent(
+        <MetabotQuestion isSaveEnabled targetCollection={collectionId} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+        cy.findByTestId("visualization-root").should("exist");
+
+        cy.findByText("Save").should("be.visible").click();
+
+        H.modal().within(() => {
+          cy.findByText("Save new question").should("be.visible");
+          cy.findByRole("button", { name: "Save" }).click();
+        });
+      });
+
+      cy.wait("@postCard").then((interception) => {
+        const response = interception.response?.body;
+        const questionId = response.id;
+
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+        getSdkRoot().within(() => {
+          cy.findByText(
+            "Orders, Max of Quantity, Grouped by Product ID, 2 rows",
+          ).should("be.visible");
+        });
+      });
     });
   });
 
@@ -264,10 +338,32 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 });
 
+describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
+  it("should show an error when embedded-metabot-enabled? is false", () => {
+    signInAsAdminAndEnableEmbeddingSdk();
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+
+    cy.log("Disable embedded metabot");
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
+
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByText("Metabot is not enabled for embedded analytics.").should(
+        "be.visible",
+      );
+      cy.findByTestId("metabot-question-container").should("not.exist");
+    });
+  });
+});
+
 const mockSuggestedPrompts = () => {
   cy.intercept(
     "GET",
-    "/api/ee/metabot-v3/metabot/2/prompt-suggestions?limit=3&sample=true",
+    "/api/metabot/metabot/2/prompt-suggestions?limit=3&sample=true",
     {
       statusCode: 200,
       body: {

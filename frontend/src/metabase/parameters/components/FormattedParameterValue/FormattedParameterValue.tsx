@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useSetting } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
+import { Ellipsified } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
@@ -42,10 +43,13 @@ function FormattedParameterValue({
   placeholder,
   isPopoverOpen = false,
 }: FormattedParameterValueProps) {
+  const tc = useTranslateContent();
   const formattingSettings = useSetting("custom-formatting");
 
   if (parameterHasNoDisplayValue(value)) {
-    return placeholder;
+    return (
+      <Ellipsified showTooltip={!isPopoverOpen}>{placeholder}</Ellipsified>
+    );
   }
 
   const first = getValue(value);
@@ -80,17 +84,19 @@ function FormattedParameterValue({
     if (label) {
       return (
         <span>
-          {formatParameterValue(label, parameter, formattingSettings)}
+          {formatParameterValue(tc(label), parameter, formattingSettings)}
         </span>
       );
     }
 
     return (
-      <span>{formatParameterValue(value, parameter, formattingSettings)}</span>
+      <span>
+        {formatParameterValue(tc(value), parameter, formattingSettings)}
+      </span>
     );
   };
 
-  if (isStringParameter(parameter)) {
+  if (isStringParameter(parameter) || isDateParameter(parameter)) {
     const hasLongValue = typeof first === "string" && first.length > 80;
     return (
       <Ellipsified

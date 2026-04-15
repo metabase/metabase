@@ -1,6 +1,8 @@
 (ns metabase.login-history.api-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase.request.util :as req.util]
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -48,46 +50,49 @@
                                                :device_id          device-id
                                                :device_description windows-user-agent
                                                :ip_address         "52.206.149.9"}]
-        ;; GeoJS is having issues. We have safe error handling so we expect either nil or the expected values.
-        ;; https://github.com/jloh/geojs/issues/48
-        ;; The timestamps will also need to be updated (to be in the TZ, not in Zulu time)
-        ;;
-        ;; A Slack reminder has been set to follow up on this
-        (is (malli= [:cat
-                     ;; localhost ipv6
-                     [:map
-                      [:timestamp          [:= "2021-03-18T20:55:50.955232Z"]]
-                      [:device_description [:= "Mobile Browser (Mobile Safari/iOS)"]]
-                      [:ip_address         [:= "0:0:0:0:0:0:0:1"]]
-                      [:active             [:= false]]
-                      [:location           [:maybe [:= "Unknown location"]]]
-                      [:timezone           nil?]]
-                     ;; localhost ipv4
-                     [:map
-                      [:timestamp          [:= "2021-03-18T20:04:24.7273Z"]]
-                      [:device_description [:= "Library (Apache-HttpClient/JVM (Java))"]]
-                      [:ip_address         [:= "127.0.0.1"]]
-                      [:active             [:= false]]
-                      [:location           [:maybe [:= "Unknown location"]]]
-                      [:timezone           nil?]]
-                     ;; France
-                     [:map
-                      [:timestamp          [:enum
-                                            "2021-03-18T20:52:41.808482+01:00"
-                                            "2021-03-18T19:52:41.808482Z"]]
-                      [:device_description [:= "Browser (Chrome/Windows)"]]
-                      [:ip_address         [:= "185.233.100.23"]]
-                      [:active             [:= true]]
-                      [:location           [:maybe [:re #"France"]]]
-                      [:timezone           [:maybe [:= "CET"]]]]
-                     ;; Virginia
-                     [:map
-                      [:timestamp          [:enum
-                                            "2021-03-18T15:52:20.172351-04:00"
-                                            "2021-03-18T19:52:20.172351Z"]]
-                      [:device_description [:= "Browser (Chrome/Windows)"]]
-                      [:ip_address         [:= "52.206.149.9"]]
-                      [:active             [:= false]]
-                      [:location           [:maybe [:re "Virginia, United States"]]]
-                      [:timezone           [:maybe [:= "ET"]]]]]
-                    (mt/client session-key :get 200 "login-history/current")))))))
+        ;; Mock geocoding to avoid external GeoJS dependency
+        (with-redefs [req.util/geocode-ip-addresses
+                      (fn [ip-addresses]
+                        (into {}
+                              (for [ip ip-addresses]
+                                [ip (case ip
+                                      "185.233.100.23" {:description "Paris, France"
+                                                        :timezone    (t/zone-id "Europe/Paris")}
+                                      "52.206.149.9"   {:description "Virginia, United States"
+                                                        :timezone    (t/zone-id "America/New_York")}
+                                      {:description "Unknown location"
+                                       :timezone    nil})])))]
+          (is (malli= [:cat
+                       ;; localhost ipv6
+                       [:map
+                        [:timestamp          [:= "2021-03-18T20:55:50.955232Z"]]
+                        [:device_description [:= "Mobile Browser (Mobile Safari/iOS)"]]
+                        [:ip_address         [:= "0:0:0:0:0:0:0:1"]]
+                        [:active             [:= false]]
+                        [:location           [:= "Unknown location"]]
+                        [:timezone           nil?]]
+                       ;; localhost ipv4
+                       [:map
+                        [:timestamp          [:= "2021-03-18T20:04:24.7273Z"]]
+                        [:device_description [:= "Library (Apache-HttpClient/JVM (Java))"]]
+                        [:ip_address         [:= "127.0.0.1"]]
+                        [:active             [:= false]]
+                        [:location           [:= "Unknown location"]]
+                        [:timezone           nil?]]
+                       ;; France (Paris) - timestamp converted to Europe/Paris timezone
+                       [:map
+                        [:timestamp          [:= "2021-03-18T20:52:41.808482+01:00"]]
+                        [:device_description [:= "Browser (Chrome/Windows)"]]
+                        [:ip_address         [:= "185.233.100.23"]]
+                        [:active             [:= true]]
+                        [:location           [:= "Paris, France"]]
+                        [:timezone           [:= "CET"]]]
+                       ;; Virginia - timestamp converted to America/New_York timezone
+                       [:map
+                        [:timestamp          [:= "2021-03-18T15:52:20.172351-04:00"]]
+                        [:device_description [:= "Browser (Chrome/Windows)"]]
+                        [:ip_address         [:= "52.206.149.9"]]
+                        [:active             [:= false]]
+                        [:location           [:= "Virginia, United States"]]
+                        [:timezone           [:= "ET"]]]]
+                      (mt/client session-key :get 200 "login-history/current"))))))))

@@ -307,12 +307,11 @@ describe("scenarios > table-editing", () => {
       cases.forEach(({ dataType, column, value }) => {
         it(`should allow to edit a cell with type ${dataType}`, () => {
           // Locate the table and the specific cell to edit
-          cy.findByTestId("table-root")
-            .findAllByRole("row")
+          H.tableInteractiveBody()
+            .find(`[data-column-id='${column}']`)
             .eq(1) // Select the second row (index 1)
-            .within(() => {
-              cy.get(`[data-column-id='${column}']`).as("targetCell").click(); // Activate inline editing
-            });
+            .as("targetCell")
+            .click(); // Activate inline editing
 
           // Edit the cell value
           cy.get("@targetCell")
@@ -351,14 +350,11 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with date type", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        H.tableInteractiveBody()
+          .find("[data-column-id='date']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='date']").as("targetCell").click({
-              scrollBehavior: false,
-            });
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false });
 
         const day = Math.floor(Math.random() * 10) + 10; // 10-20
 
@@ -379,7 +375,8 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with datetime type", () => {
-        cy.findByTestId("table-root")
+        H.tableInteractiveBody()
+          .findByTestId("center-center-quadrant")
           .findAllByRole("row")
           .eq(1)
           .within(() => {
@@ -399,7 +396,7 @@ describe("scenarios > table-editing", () => {
           cy.get('select[data-am-pm="true"]').as("ampmSelect");
           cy.get("@ampmSelect").select("AM");
           // It's safe to click the last button because we're in the popover
-          // eslint-disable-next-line no-unsafe-element-filtering
+          // eslint-disable-next-line metabase/no-unsafe-element-filtering
           cy.findAllByRole("button").last().click();
         });
 
@@ -423,14 +420,11 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with select type", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        H.tableInteractiveBody()
+          .find("[data-column-id='boolean']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='boolean']").as("targetCell").click({
-              scrollBehavior: false,
-            });
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false });
 
         H.popover().within(() => {
           // 3: true, false, null
@@ -445,37 +439,27 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should not allow to edit PK cells", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        H.tableInteractiveBody()
+          .find("[data-column-id='id']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='id']")
-              .as("targetCell")
-              .click({
-                scrollBehavior: false,
-              })
-              .find("input")
-              .should("not.exist");
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false })
+          .find("input")
+          .should("not.exist");
       });
 
       it("should handle errors", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        H.tableInteractiveBody()
+          .find("[data-column-id='tinyint']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='tinyint']")
-              .as("targetCell")
-              .click({
-                scrollBehavior: false,
-              })
-              .find("input")
-              // Entering a big number into tinyint column
-              .type("{selectAll}{backspace}9999999", {
-                scrollBehavior: false,
-              })
-              .blur(); // Trigger the save action by blurring the input
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false })
+          .find("input")
+          // Entering a big number into tinyint column
+          .type("{selectAll}{backspace}9999999", {
+            scrollBehavior: false,
+          })
+          .blur(); // Trigger the save action by blurring the input
 
         H.undoToast()
           .findByText("Couldn't save table changes")
@@ -676,8 +660,19 @@ function openTableEdit(tableName: RegExp) {
 function openEditRowModal(rowIndex: number) {
   cy.findByTestId("table-root")
     .findAllByRole("row")
-    .should("have.length.gte", 2)
-    .eq(rowIndex)
+    .should("have.length.gte", 4)
+    .filter((_, el) => rowIndex === Number(el.dataset.datasetIndex))
+    .as("rowSections");
+
+  cy.get("@rowSections")
+    .eq(0)
+    .within(() => {
+      cy.get("[data-column-id]").first().realHover();
+      cy.findByTestId("row-edit-icon").click();
+    });
+
+  cy.get("@rowSections")
+    .eq(1)
     .within(() => {
       cy.findAllByTestId("cell-data")
         .eq(0)
@@ -685,10 +680,6 @@ function openEditRowModal(rowIndex: number) {
         .then((text) => {
           cy.wrap(text).as("rowId");
         });
-
-      cy.findAllByTestId("cell-data").first().realHover();
-
-      cy.findByTestId("row-edit-icon").click();
     });
 
   H.modal().findByText("Edit record").should("be.visible");

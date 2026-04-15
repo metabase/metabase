@@ -9,6 +9,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -16,11 +17,7 @@
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
@@ -218,23 +215,12 @@
    :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
               json-out-with-keywordization)})
 
-(defn- normalize-result-metadata-column [col]
-  (if (:lib/type col)
-    (lib.normalize/normalize ::lib.schema.metadata/column col)
-    ;; legacy usages -- do not use these going forward
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (-> col
-        (->> (lib/normalize :metabase.query-processor.schema/result-metadata.column))
-        ;; This is necessary, because in the wild, there may be cards created prior to this change.
-        lib.temporal-bucket/ensure-temporal-unit-in-display-name
-        lib.binning/ensure-binning-in-display-name)))
-
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (not-empty (mapv normalize-result-metadata-column metadata))))
+    (not-empty (mapv lib/normalize-result-metadata-column metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
@@ -246,10 +232,23 @@
   {:in  u/qualified-name
    :out keyword})
 
+(def transform-trim
+  "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
+  {:in  str/trim
+   :out str/trim})
+
 (def transform-json-no-keywordization
   "Transform for json-no-keywordization"
   {:in  json-in
    :out json-out-without-keywordization})
+
+(def transform-edn
+  "Transform that stores Clojure data as EDN strings. Preserves keywords, sets, and other
+   types that JSON cannot represent. Strings are assumed to already be EDN and passed through."
+  {:in  (fn [v] (cond (nil? v)    nil
+                      (string? v) v
+                      :else       (pr-str v)))
+   :out (fn [s] (when (string? s) (edn/read-string s)))})
 
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
@@ -274,6 +273,23 @@
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
 
+(defn transform-validator-with-fixes
+  "Like [[transform-validator]], but applies `fixes` (a fn of old-value->new-value) before validation on both read
+   and write. Use this when an enum has been renamed and old values may still exist in the database or in
+   serialization exports."
+  [tf assert-fn fixes]
+  (-> tf
+      (update :out (fn [f]
+                     (fn [x]
+                       (let [out (fixes (f x))]
+                         (assert-fn out)
+                         out))))
+      (update :in (fn [f]
+                    (fn [x]
+                      (let [x (fixes x)]
+                        (assert-fn x)
+                        (f x)))))))
+
 (defn transform-validator
   "Given a transform, returns a transform that call `assert-fn` on the \"out\" value.
 
@@ -283,18 +299,7 @@
       (when-not (-> x namespace some?)
         (throw (ex-info \"Value is not namespaced\")))))"
   [tf assert-fn]
-  (-> tf
-      ;; deserialization
-      (update :out (fn [f]
-                     (fn [x]
-                       (let [out (f x)]
-                         (assert-fn out)
-                         out))))
-      ;; serialization
-      (update :in (fn [f]
-                    (fn [x]
-                      (assert-fn x)
-                      (f x))))))
+  (transform-validator-with-fixes tf assert-fn identity))
 
 (def encrypted-json-in
   "Serialize encrypted json."
@@ -342,6 +347,9 @@
    [:= {:decode/normalize keyword} :name]
    :string])
 
+;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
+;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
+;;; also [[metabase.models.visualization-settings]].
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to MBQL 4 clauses so things work correctly."
@@ -355,11 +363,18 @@
                          (not (sequential? x)) x
                          (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
                          (= (first x) "name")  (lib/normalize ::viz-settings-name x)
-                         :else                 (mbql.normalize/normalize x))))
+                         :else                 (try
+                                                 (mbql.normalize/normalize x)
+                                                 (catch Throwable e
+                                                   (log/debugf e "Error normalizing column settings key %s" (pr-str x))
+                                                   nil)))))
                     json/encode))
           (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings]
-                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+            (into {} (for [[k v] column-settings
+                           ;; remove nil (bad) keys
+                           :let  [k (normalize-column-settings-key k)]
+                           :when (some? k)]
+                       [k (walk/keywordize-keys v)])))
           (mbql-field-clause? [form]
             (and (vector? form)
                  (#{"field-id"

@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 
 import { GitSyncControls } from "./GitSyncControls";
 import {
@@ -16,6 +16,8 @@ const setup = ({
   isAdmin = true,
   remoteSyncEnabled = true,
   hasRemoteChanges = true,
+  hasRemoteChangesDelay = 0,
+  hasRemoteChangesError = false,
   currentBranch = "main",
   syncType = "read-write",
   dirty = [],
@@ -24,12 +26,20 @@ const setup = ({
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
   hasRemoteChanges?: boolean;
+  hasRemoteChangesDelay?: number;
+  hasRemoteChangesError?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
 } = {}) => {
-  setupRemoteSyncEndpoints({ branches, dirty, hasRemoteChanges });
+  setupRemoteSyncEndpoints({
+    branches,
+    dirty,
+    hasRemoteChanges,
+    hasRemoteChangesDelay,
+    hasRemoteChangesError,
+  });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
 
@@ -197,10 +207,12 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      expect(await findOption(/Pull changes/)).not.toHaveAttribute(
-        "data-combobox-disabled",
-        "true",
-      );
+      await waitFor(async () => {
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
+          "true",
+        );
+      });
     });
 
     it("is disabled when there are no changes to pull", async () => {
@@ -214,6 +226,41 @@ describe("GitSyncControls", () => {
         "data-combobox-disabled",
         "true",
       );
+    });
+
+    it("is disabled when pull changes are loading", async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      setup({ hasRemoteChanges: true, hasRemoteChangesDelay: 10000 });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      expect(await findOption(/Pull changes/)).toHaveAttribute(
+        "data-combobox-disabled",
+        "true",
+      );
+      expect(
+        await within(await findOption(/Pull changes/)).findByTestId(
+          "pull-changes-loader",
+        ),
+      ).toBeInTheDocument();
+      jest.advanceTimersByTime(10000);
+      jest.useRealTimers();
+    });
+  });
+
+  describe("pull error handling", () => {
+    it("shows error message when remote changes check fails", async () => {
+      setup({ hasRemoteChangesError: true });
+
+      await userEvent.click(await screen.findByTestId("git-sync-controls"));
+
+      expect(
+        await screen.findByText(
+          "Failed to check for changes — check your authentication token",
+        ),
+      ).toBeInTheDocument();
     });
   });
 

@@ -14,18 +14,17 @@ import {
 } from "react-transition-group";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
-import { capitalize, inflect } from "metabase/lib/formatting";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { Undo } from "metabase/redux/store/undo";
 import {
   dismissUndo,
   pauseUndo,
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Portal, Progress } from "metabase/ui";
-import type { Undo } from "metabase-types/store/undo";
+import { Ellipsified, Portal, Progress } from "metabase/ui";
+import { capitalize, inflect } from "metabase/utils/formatting";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import CS from "./UndoListing.module.css";
 import {

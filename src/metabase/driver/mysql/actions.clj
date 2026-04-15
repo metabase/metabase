@@ -118,7 +118,7 @@
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-permission-constraint]
   [_driver error-type _database action-type error-message]
   (or (when-let [[_match _command _table-name]
-                 (re-find #"(INSERT|UPDATE|DELETE) command denied to user .* for table '(.+)'" error-message)]
+                 (re-find #"(INSERT|UPDATE|DELETE) command denied to user .* for table (.+)" error-message)]
         (merge {:type error-type}
                (case action-type
                  (:table.row/create :model.row/create)

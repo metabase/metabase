@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
+import type { State } from "metabase/redux/store";
 import { FieldSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -8,6 +9,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
+import Metric from "metabase-lib/v1/metadata/Metric";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import Segment from "metabase-lib/v1/metadata/Segment";
 import Table from "metabase-lib/v1/metadata/Table";
@@ -22,11 +24,11 @@ import type {
   NormalizedField,
   NormalizedForeignKey,
   NormalizedMeasure,
+  NormalizedMetric,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { getSettings } from "./settings";
 
@@ -89,6 +91,7 @@ const getNormalizedFields = createSelector(
 
 const getNormalizedSegments = (state: State) => state.entities.segments;
 const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
+const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 const getNormalizedSnippets = (state: State) => state.entities.snippets;
 
@@ -96,7 +99,6 @@ export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
-export const getShallowMeasures = getNormalizedMeasures;
 
 export const getMetadata: (
   state: State,
@@ -109,6 +111,7 @@ export const getMetadata: (
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMeasures,
+    getNormalizedMetrics,
     getNormalizedQuestions,
     getNormalizedSnippets,
     getSettings,
@@ -120,6 +123,7 @@ export const getMetadata: (
     fields,
     segments,
     measures,
+    metrics,
     questions,
     snippets,
     settings,
@@ -145,6 +149,9 @@ export const getMetadata: (
     );
     metadata.measures = Object.fromEntries(
       Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
+    );
+    metadata.metrics = Object.fromEntries(
+      Object.values(metrics).map((m) => [m.id, createMetric(m, metadata)]),
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
@@ -266,6 +273,12 @@ function createMeasure(
   metadata: Metadata,
 ): Measure {
   const instance = new Measure(measure);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
+  const instance = new Metric(metric);
   instance.metadata = metadata;
   return instance;
 }

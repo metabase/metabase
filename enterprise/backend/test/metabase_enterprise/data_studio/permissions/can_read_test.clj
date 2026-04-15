@@ -14,8 +14,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest database-can-read-with-published-table-test
-  (testing "can-read? for Database considers published table access only with data-studio enabled\n"
-    (doseq [features             [#{} #{:data-studio}]
+  (testing "can-read? for Database considers published table access only with library enabled\n"
+    (doseq [features             [#{} #{:library}]
             collection-readable? [false true]
             table-is-published?  [false true]
             view-data            [:unrestricted :blocked]]
@@ -49,9 +49,9 @@
                                                                   #{(perms/collection-read-path collection-id)}
                                                                   #{}))]
                   (perms/disable-perms-cache
-                    ;; Database is readable when: data-studio enabled AND collection readable AND table is published
+                    ;; Database is readable when: library enabled AND collection readable AND table is published
                     ;; view-data permission should NOT affect can-read? for Database
-                    (is (= (and (contains? features :data-studio)
+                    (is (= (and (contains? features :library)
                                 collection-readable?
                                 table-is-published?)
                            (mi/can-read? :model/Database (mt/id))))))))))))))

@@ -5,7 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (deftest ^:parallel order-by-test

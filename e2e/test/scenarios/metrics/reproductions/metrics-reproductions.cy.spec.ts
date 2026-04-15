@@ -46,9 +46,6 @@ describe("issue 47058", () => {
       cy.findByText("[Unknown Metric]").should("not.exist");
 
       cy.wait("@metadata");
-      cy.log(
-        "Only renders the notebook editor (with the summarize button that has the metrics' name on it) after the metadata is loaded",
-      );
 
       cy.findByText("Loading...").should("not.exist");
       H.getNotebookStep("summarize").should("be.visible");
@@ -98,7 +95,7 @@ describe("issue 44171", () => {
     cy.signInAsAdmin();
 
     H.createQuestion(METRIC_A);
-    H.createQuestion(METRIC_B, { visitQuestion: true });
+    H.createQuestion(METRIC_B, { wrapId: true, idAlias: "metricBId" });
     H.createDashboard(
       {
         name: "Dashboard 44171",
@@ -112,22 +109,22 @@ describe("issue 44171", () => {
     cy.intercept("PUT", "/api/card/*").as("saveCard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    H.openQuestionActions();
-    H.popover().findByText("Edit metric definition").click();
-    H.getNotebookStep("summarize").button("Count").click();
+    cy.get<number>("@metricBId").then((metricBId) => {
+      cy.visit(`/metric/${metricBId}/query`);
+    });
+    H.MetricPage.queryEditor().should("be.visible");
+
+    H.getNotebookStep("summarize").findByText("Count").click();
     H.popover().within(() => {
       cy.findByText("Sum of ...").click();
       cy.findByText("Total").click();
     });
-    cy.button("Save changes").click();
+    H.MetricPage.saveButton().click();
+    cy.wait("@saveCard");
+
     cy.get<number>("@dashboardId").then((id) => {
       H.visitDashboard(id);
     });
-
-    cy.get("@saveCard")
-      .its("request.body")
-      .its("visualization_settings")
-      .should("not.exist");
 
     H.editDashboard();
     cy.findByTestId("dashboard-header")
@@ -154,50 +151,52 @@ describe("issue 32037", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    H.createQuestion({
-      name: "Metric 32037",
-      type: "metric",
-      display: "line",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            { "temporal-unit": "month", "base-type": "type/DateTime" },
+    H.createQuestion(
+      {
+        name: "Metric 32037",
+        type: "metric",
+        display: "line",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              { "temporal-unit": "month", "base-type": "type/DateTime" },
+            ],
           ],
-        ],
+        },
       },
-    });
+      { wrapId: true, idAlias: "metricId" },
+    );
   });
 
   it("should show unsaved changes modal and allow to discard changes when editing a metric (metabase#32037)", () => {
-    cy.visit("/browse/metrics");
-    cy.findByLabelText("Metric 32037").click();
-    H.cartesianChartCircle().should("be.visible");
-    cy.location("pathname").as("metricPathname");
-    H.openQuestionActions("Edit metric definition");
-    cy.button("Save changes").should("be.disabled");
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("Total").click();
-      cy.findByPlaceholderText("Min").type("0");
-      cy.findByPlaceholderText("Max").type("100");
-      cy.button("Add filter").click();
+    cy.get<number>("@metricId").then((metricId) => {
+      cy.visit(`/metric/${metricId}/query`);
     });
-    cy.button("Save changes").should("be.enabled");
-    cy.go("back");
+    H.MetricPage.queryEditor().should("be.visible");
+    H.MetricPage.saveButton().should("not.exist");
+
+    H.getNotebookStep("summarize").findByText("Count").click();
+    H.popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Total").click();
+    });
+
+    H.MetricPage.saveButton().should("be.visible");
+
+    H.MetricPage.aboutTab().click();
 
     H.modal().within(() => {
       cy.findByText("Discard your changes?").should("be.visible");
       cy.findByText("Discard changes").click();
     });
 
-    H.appBar().should("be.visible");
-    cy.button("Save changes").should("not.exist");
-    cy.get("@metricPathname").then((metricPathname) => {
-      cy.location("pathname").should("eq", metricPathname);
+    H.MetricPage.aboutPage().should("be.visible");
+    cy.get<number>("@metricId").then((metricId) => {
+      cy.location("pathname").should("eq", `/metric/${metricId}`);
     });
   });
 });
@@ -213,21 +212,22 @@ describe("issue 30574", () => {
 
     cy.log("create the first metric");
     H.main().findByText("Create metric").click();
+    H.MetricPage.queryEditor().should("be.visible");
     H.miniPicker().within(() => {
       cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
-    cy.findByTestId("edit-bar").button("Save").click();
+    H.MetricPage.saveButton().click();
     H.modal().within(() => {
       cy.findByLabelText("Name").clear().type("M1");
       cy.button("Save").click();
     });
-    H.queryBuilderHeader().should("be.visible");
+    H.MetricPage.aboutPage().should("be.visible");
 
     cy.log("create the second metric");
-    H.openNavigationSidebar();
     H.navigationSidebar().findByText("Metrics").click();
     H.main().findByLabelText("Create a new metric").click();
+    H.MetricPage.queryEditor().should("be.visible");
     H.miniPicker().within(() => {
       cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
@@ -239,12 +239,11 @@ describe("issue 30574", () => {
       formula: "[M1]/[M1]",
     });
     H.popover().button("Update").click();
-    cy.findByTestId("edit-bar").button("Save").click();
+    H.MetricPage.saveButton().click();
     H.modal().within(() => {
       cy.findByLabelText("Name").clear().type("M2");
       cy.button("Save").click();
     });
-    H.queryBuilderHeader().should("be.visible");
-    H.assertQueryBuilderRowCount(1);
+    H.MetricPage.aboutPage().should("be.visible");
   });
 });

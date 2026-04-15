@@ -8,10 +8,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  actions: read
+
 jobs:
   # Only run if the PR has the minimal-tests label
   check-label:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 1
     outputs:
       should-run: ${{ steps.check.outputs.result }}
@@ -29,10 +35,10 @@ jobs:
   postgres-app-db-test:
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
     env:
-      CI: 'true'
+      CI: "true"
       DRIVERS: postgres
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
@@ -53,10 +59,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test Postgres App DB
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: true
-          junit-name: 'minimal-be-tests-postgres-ee'
+          junit-name: "minimal-be-tests-postgres-ee"
           test-args: >-
             :only '["test" "enterprise/backend/test"]'
             :exclude-tags '[:mb/driver-tests :mb/transforms-python-test]'
@@ -69,19 +76,19 @@ jobs:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   # Postgres driver tests
   postgres-driver-test:
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
     env:
-      CI: 'true'
+      CI: "true"
       DRIVERS: postgres
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
@@ -102,9 +109,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test Postgres Driver
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
-          junit-name: 'minimal-be-tests-postgres-driver-ee'
+          junit-name: "minimal-be-tests-postgres-driver-ee"
           test-args: >-
             :only-tags [:mb/driver-tests]
             :exclude-tags [:mb/transforms-python-test]
@@ -115,16 +123,16 @@ jobs:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   # Frontend unit tests
   frontend-unit-tests:
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
@@ -137,7 +145,8 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests
-        run: yarn run test-unit --silent
+        id: run-tests
+        run: bun run test-unit --silent
         continue-on-error: true
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -146,10 +155,10 @@ jobs:
           input-path: ./target/junit
           output-name: frontend-unit
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.run-tests.outcome }}
 
   # Summary job
   minimal-tests-result:
@@ -157,7 +166,7 @@ jobs:
       - postgres-app-db-test
       - postgres-driver-test
       - frontend-unit-tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: minimal-tests-result
     if: always() && !cancelled()

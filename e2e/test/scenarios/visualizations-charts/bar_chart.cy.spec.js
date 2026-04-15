@@ -54,7 +54,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)").should("not.exist");
     });
 
@@ -67,7 +67,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)");
     });
   });
@@ -89,9 +89,9 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       H.chartPathWithFillColor("#509EE3").should("have.length", 5); // there are six bars when null isn't filtered
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("16,000").should("not.exist"); // If nulls are included the y-axis stretches much higher
     });
   });
@@ -136,7 +136,10 @@ describe("scenarios > visualizations > bar chart", () => {
 
     it("should allow you to show/hide and reorder columns", () => {
       H.getDraggableElements().eq(0).as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: 100,
+        useMouseEvents: true,
+      });
 
       cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
       cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
@@ -176,7 +179,10 @@ describe("scenarios > visualizations > bar chart", () => {
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
       H.getDraggableElements().first().as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: 100,
+        useMouseEvents: true,
+      });
 
       H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
@@ -322,10 +328,10 @@ describe("scenarios > visualizations > bar chart", () => {
         });
 
         cy.findAllByTestId("legend-item").findByText("Doohickey").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Products").click();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Category is Doohickey").should("be.visible");
       });
     });
@@ -853,7 +859,7 @@ describe("scenarios > visualizations > bar chart", () => {
         H.popover()
           .findByTestId("graph-other-category-aggregation-fn-picker")
           .click();
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.popover().last().findByText(fnName).click();
       }
 

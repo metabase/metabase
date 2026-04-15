@@ -6,8 +6,8 @@
   (:require
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.jwt :as jwt]
+   [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
    [metabase-enterprise.sso.integrations.saml]
-   [metabase-enterprise.sso.integrations.slack-connect]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
@@ -124,7 +124,7 @@
    _query-params
    {:keys [jwt]} :- [:map [:jwt ms/NonBlankString]]
    request]
-  (when-not (sso-settings/jwt-enabled)
+  (when-not (sso-settings/jwt-enabled-and-configured)
     (throw (ex-info "JWT authentication is not enabled"
                     {:status-code 400})))
   {:session_token (jwt/jwt->session jwt request)})
@@ -149,3 +149,33 @@
     (catch Throwable e
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
+
+;; Key schema that excludes `/` so /:key does not greedily match /:key/callback
+(def ^:private ProviderKey
+  [:string {:api/regex #"[a-z0-9][a-z0-9-]*"}])
+
+;; GET /auth/sso/:key
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:key"
+  "Initiate OIDC SSO for a specific provider."
+  [{provider-key :key} :- [:map [:key ProviderKey]]
+   _query-params _body request]
+  (try
+    (oidc-integration/sso-initiate provider-key request)
+    (catch Throwable e
+      (log/error e "Error initiating OIDC SSO")
+      (throw e))))
+
+;; GET /auth/sso/:key/callback
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:key/callback"
+  "OIDC callback for a specific provider."
+  [{provider-key :key} :- [:map [:key ProviderKey]]
+   _query-params _body request]
+  (try
+    (oidc-integration/sso-callback provider-key request)
+    (catch Throwable e
+      (log/error e "Error handling OIDC callback")
+      (throw e))))

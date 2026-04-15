@@ -69,6 +69,8 @@
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 (derive :event/table-manual-sync ::table-event)
+(derive :event/table-publish ::table-event)
+(derive :event/table-unpublish ::table-event)
 
 (methodical/defmethod events/publish-event! ::table-event
   [topic event]
@@ -326,6 +328,8 @@
 (derive :event/update-transform ::transform-event)
 (derive :event/transform-delete ::transform-event)
 (derive :event/transform-run-start ::transform-event)
+(derive :event/transform-inspect-discover ::transform-event)
+(derive :event/transform-inspect-lens ::transform-event)
 
 (methodical/defmethod events/publish-event! ::transform-event
   [topic event]
@@ -372,5 +376,13 @@
 (derive :event/tenant-update ::tenant-event)
 
 (methodical/defmethod events/publish-event! ::tenant-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::security-advisory-event ::event)
+(derive :event/security-advisory-acknowledge ::security-advisory-event)
+(derive :event/security-advisory-match ::security-advisory-event)
+
+(methodical/defmethod events/publish-event! ::security-advisory-event
   [topic event]
   (audit-log/record-event! topic event))

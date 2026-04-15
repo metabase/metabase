@@ -3,6 +3,9 @@ import fetchMock from "fetch-mock";
 
 import {
   findRequests,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupCurrentUserEndpoint,
   setupDashboardEndpoints,
   setupPropertiesEndpoints,
@@ -10,9 +13,16 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import {
+  createMockCollection,
+  createMockCollectionItem,
   createMockDashboard,
   createMockRecentCollectionItem,
   createMockSettingDefinition,
@@ -33,7 +43,42 @@ const setup = (
     "dismissed-custom-dashboard-toast": false,
   },
 ) => {
+  mockGetBoundingClientRect();
   const settings = createMockSettings(props);
+
+  const collection = createMockCollection({
+    id: 1,
+    name: "Good Collection",
+  });
+
+  setupCollectionsEndpoints({
+    collections: [collection],
+  });
+
+  setupCollectionByIdEndpoint({ collections: [collection] });
+  setupCollectionItemsEndpoint({
+    collection: { id: "root" },
+    collectionItems: [
+      createMockCollectionItem({
+        model: "dashboard",
+        id: 4242,
+        can_write: true,
+        name: "My dashboard",
+      }),
+    ],
+  });
+
+  setupCollectionItemsEndpoint({
+    collection: { id: 1 },
+    collectionItems: [
+      createMockCollectionItem({
+        model: "dashboard",
+        id: 4243,
+        can_write: true,
+        name: "My other dashboard",
+      }),
+    ],
+  });
 
   setupRecentViewsAndSelectionsEndpoints([
     createMockRecentCollectionItem({
@@ -133,7 +178,8 @@ describe("CustomHomepageDashboardSetting", () => {
         "custom-homepage-dashboard": 4242,
       }),
     );
-    await userEvent.click(screen.getByText("My dashboard"));
+
+    await userEvent.click(await screen.findByText(/My dashboard/));
     await waitFor(() => {
       // modal closes
       expect(screen.queryByText("Choose a dashboard")).not.toBeInTheDocument();
@@ -165,7 +211,7 @@ describe("CustomHomepageDashboardSetting", () => {
     const dashboardSelector = await screen.findByText("Pick a dashboard");
     await userEvent.click(dashboardSelector);
 
-    await userEvent.click(await screen.findByText("My dashboard"));
+    await userEvent.click(await screen.findByText(/My dashboard/));
 
     await waitFor(() => {
       const calls = fetchMock.callHistory.calls();

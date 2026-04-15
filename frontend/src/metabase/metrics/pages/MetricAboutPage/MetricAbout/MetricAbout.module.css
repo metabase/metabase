@@ -1,0 +1,38 @@
+.root {
+  overflow: auto;
+}
+
+.chartContainer {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: box-shadow 200ms ease;
+  border-radius: var(--default-border-radius) 0 0 var(--default-border-radius);
+
+  &:hover {
+    box-shadow: var(--mantine-shadow-md);
+  }
+}
+
+.descriptionSection {
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-left: none;
+  border-top-right-radius: var(--default-border-radius);
+  border-bottom-right-radius: var(--default-border-radius);
+  overflow: auto;
+}
+
+.visualizationPanel {
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-top-left-radius: var(--default-border-radius);
+  border-bottom-left-radius: var(--default-border-radius);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.innerVisualization {
+  overflow: hidden;
+  flex: 1;
+}

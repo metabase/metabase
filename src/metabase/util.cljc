@@ -130,6 +130,11 @@
     (zero? (count v))       nil
     :else                   (nth v (dec (count v)))))
 
+(defn keepv
+  "Like `keep`, but returns a vector."
+  [f coll]
+  (into [] (keep f) coll))
+
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.
@@ -546,6 +551,13 @@
                               (reduced cur-slug)))
                           "")
        true str/join))))
+
+(defn valid-slug?
+  "Check that a given string is a valid slug."
+  [slug]
+  (and (string? slug)
+       (not (str/blank? slug))
+       (re-matches #"^[a-z0-9][a-z0-9\-]*$" slug)))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -1292,7 +1304,8 @@
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
-  ([] (encore/nanoid))
+  ([]
+   (encore/nanoid false 21))
   ([seed-str]
    #?(:clj  (let [seed (Long/parseLong seed-str 16)
                   rnd  (Random. seed)
@@ -1353,3 +1366,8 @@
   "Finds the first map in `maps` that contains the value at the given key path."
   [maps ks value]
   (second (find-first-map-indexed maps ks value)))
+
+(defn tee-xf
+  "Transducer that collects items into an atom while passing them through unchanged."
+  [atom]
+  (map (fn [x] (swap! atom conj x) x)))

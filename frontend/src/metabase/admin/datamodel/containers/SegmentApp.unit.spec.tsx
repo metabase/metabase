@@ -20,11 +20,11 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import SegmentApp from "./SegmentApp";
+import { SegmentApp } from "./SegmentApp";
 
 const TestHome = () => <div />;
 
@@ -40,8 +40,10 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupCardDataset({
-    data: {
-      rows: [[null]],
+    dataset: {
+      data: {
+        rows: [[1, 2, 3]],
+      },
     },
   });
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
@@ -144,6 +146,8 @@ describe("SegmentApp", () => {
 
     await waitForLoaderToBeRemoved();
 
+    await userEvent.click(await screen.findByText("Databases"));
+    await userEvent.click(await screen.findByText("Sample Database"));
     await userEvent.click(await screen.findByText("Orders"));
 
     await waitForLoaderToBeRemoved();

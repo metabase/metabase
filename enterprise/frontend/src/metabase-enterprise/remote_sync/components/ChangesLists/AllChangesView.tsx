@@ -1,6 +1,5 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
@@ -15,31 +14,23 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  type CollectionGroup,
+  TRANSFORMS_ROOT_ID,
+  buildNamespaceCollectionMap,
+  findLibraryCollectionId,
+  getGroupIcon,
+  groupEntitiesByCollection,
+} from "metabase-enterprise/remote_sync/displayGroups";
+import {
   buildCollectionMap,
   getCollectionPathSegments,
   getSyncStatusColor,
   getSyncStatusIcon,
-  isTableChildModel,
 } from "metabase-enterprise/remote_sync/utils";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { CollectionPath } from "./CollectionPath";
 import { EntityLink } from "./EntityLink";
-
-/** A table group with optional entity (when table itself is dirty) and its nested children */
-type TableGroup = {
-  tableId: number;
-  tableName: string;
-  table?: RemoteSyncEntity;
-  children: RemoteSyncEntity[];
-};
-
-const SYNC_STATUS_ORDER: RemoteSyncEntity["sync_status"][] = [
-  "create",
-  "update",
-  "touch",
-  "delete",
-];
 
 interface AllChangesViewProps {
   entities: RemoteSyncEntity[];
@@ -59,9 +50,38 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
     "include-library": true,
   });
 
+  // Fetch snippets namespace collections separately
+  const { data: snippetCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "snippets",
+  });
+
+  // Build namespace-to-collection-ids map in a single pass
+  const namespaceCollectionMap = useMemo(
+    () =>
+      buildNamespaceCollectionMap([
+        ...collectionTree,
+        ...snippetCollectionTree,
+      ]),
+    [collectionTree, snippetCollectionTree],
+  );
+
+  // Find the Transforms root entity (id=-1) if it exists
+  const transformsRootEntity = useMemo(() => {
+    return entities.find(
+      (e) => e.model === "collection" && e.id === TRANSFORMS_ROOT_ID,
+    );
+  }, [entities]);
+
+  // Find the library collection ID for placing snippets without a collection_id
+  const libraryCollectionId = useMemo(
+    () => findLibraryCollectionId(collectionTree),
+    [collectionTree],
+  );
+
   const collectionMap = useMemo(() => {
-    return buildCollectionMap(collectionTree);
-  }, [collectionTree]);
+    // Merge regular collections with snippet collections
+    return buildCollectionMap([...collectionTree, ...snippetCollectionTree]);
+  }, [collectionTree, snippetCollectionTree]);
 
   const hasRemovals = useMemo(() => {
     return (
@@ -71,87 +91,24 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
     );
   }, [entities]);
 
-  const groupedData = useMemo(() => {
-    const byCollection = _.groupBy(entities, (e) => e.collection_id || 0);
-
-    const sortByStatus = (items: RemoteSyncEntity[]) =>
-      items.sort((a, b) => {
-        const statusOrderA = SYNC_STATUS_ORDER.indexOf(a.sync_status);
-        const statusOrderB = SYNC_STATUS_ORDER.indexOf(b.sync_status);
-        if (statusOrderA !== statusOrderB) {
-          return statusOrderA - statusOrderB;
-        }
-        return a.name.localeCompare(b.name);
-      });
-
-    return Object.entries(byCollection)
-      .map(([collectionId, items]) => {
-        const collectionEntity = items.find(
-          (item) =>
-            item.model === "collection" && item.id === Number(collectionId),
-        );
-
-        // Separate tables, table children, and other items
-        const tables = items.filter((item) => item.model === "table");
-        const tableChildren = items.filter((item) =>
-          isTableChildModel(item.model),
-        );
-        const otherItems = items.filter(
-          (item) =>
-            item.model !== "table" &&
-            !isTableChildModel(item.model) &&
-            !(item.model === "collection" && item.id === Number(collectionId)),
-        );
-
-        // Group table children by their parent table_id
-        const childrenByTableId = _.groupBy(
-          tableChildren,
-          (e) => e.table_id || 0,
-        );
-
-        // Create table groups for dirty tables
-        const tableIds = new Set(tables.map((t) => t.id));
-        const dirtyTableGroups: TableGroup[] = tables.map((table) => ({
-          tableId: table.id,
-          tableName: table.name,
-          table,
-          children: sortByStatus(childrenByTableId[table.id] || []),
-        }));
-
-        // Create table groups for orphan children (children whose parent table is not dirty)
-        const orphanTableGroups: TableGroup[] = Object.entries(
-          childrenByTableId,
-        )
-          .filter(([tableId]) => !tableIds.has(Number(tableId)))
-          .map(([tableId, children]) => ({
-            tableId: Number(tableId),
-            tableName: children[0]?.table_name ?? t`Unknown table`,
-            children: sortByStatus(children),
-          }));
-
-        // Combine and sort all table groups
-        const tableGroups = [...dirtyTableGroups, ...orphanTableGroups].sort(
-          (a, b) => a.tableName.localeCompare(b.tableName),
-        );
-
-        return {
-          pathSegments: getCollectionPathSegments(
-            Number(collectionId) || undefined,
-            collectionMap,
-          ),
-          collectionId: Number(collectionId) || undefined,
-          collectionEntity,
-          tableGroups,
-          items: sortByStatus(otherItems),
-        };
-      })
-      .sort((a, b) =>
-        a.pathSegments
-          .map((s) => s.name)
-          .join(" / ")
-          .localeCompare(b.pathSegments.map((s) => s.name).join(" / ")),
-      );
-  }, [entities, collectionMap]);
+  const groupedData: CollectionGroup[] = useMemo(
+    () =>
+      groupEntitiesByCollection({
+        entities,
+        transformsRootEntity,
+        namespaceCollectionMap,
+        collectionMap,
+        libraryCollectionId,
+        getCollectionPathSegments,
+      }),
+    [
+      entities,
+      collectionMap,
+      namespaceCollectionMap,
+      libraryCollectionId,
+      transformsRootEntity,
+    ],
+  );
 
   return (
     <Box>
@@ -188,7 +145,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                     bdrs="md"
                   >
                     <Icon
-                      name="synced_collection"
+                      name={getGroupIcon(group.spec)}
                       size={16}
                       c="text-secondary"
                     />

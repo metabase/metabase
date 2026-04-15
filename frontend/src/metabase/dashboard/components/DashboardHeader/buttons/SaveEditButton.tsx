@@ -1,14 +1,14 @@
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export const SaveEditButton = () => {

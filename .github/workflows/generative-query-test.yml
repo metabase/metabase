@@ -24,7 +24,7 @@ on:
 # TODO: Consider renaming the job in next milestones
 jobs:
   generative-query-test:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     name: Generative Query Test
     env:
@@ -47,7 +47,7 @@ jobs:
         run: clojure -X:dev:ci:test:ee:ee-dev :only '${{ inputs.test }}'
 
       - name: Publish Test Report (JUnit)
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@3eeb9fc888e82e8be2fb356bbeec2750231672bc # v1
         if: failure()
         with:
           path: "target/junit/**/*_test.xml"

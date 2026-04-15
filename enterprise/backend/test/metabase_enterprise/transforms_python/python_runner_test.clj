@@ -8,7 +8,6 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
@@ -16,6 +15,8 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.util :as tu]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.test-util :as transforms.tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -55,29 +56,36 @@
 
 (defn- jsonl-output [expected] #(= expected (parse-jsonl %)))
 
+(defn- tables-map->source-tables
+  "Convert old test map format {\"alias\" table_id} to new source-table-entry format."
+  [tables]
+  (mapv (fn [[alias table-id]]
+          (transforms.tu/source-table-entry (name alias) table-id))
+        tables))
+
 (defn execute! [{:keys [code tables]}]
-  (with-open [shared-storage-ref (s3/open-shared-storage! (or tables {}))]
-    (let [server-url     (transforms-python.settings/python-runner-url)
-          cancel-chan    (a/promise-chan)
-          table-name->id (or tables {})
-          test-id        (next-job-run-id)
-          _              (python-runner/copy-tables-to-s3! {:run-id         test-id
-                                                            :shared-storage @shared-storage-ref
-                                                            :source         {:source-tables table-name->id}
-                                                            :cancel-chan    cancel-chan})
-          response       (python-runner/execute-python-code-http-call! {:server-url     server-url
-                                                                        :code           code
-                                                                        :run-id         test-id
-                                                                        :table-name->id table-name->id
-                                                                        :shared-storage @shared-storage-ref})
-          events (python-runner/read-events @shared-storage-ref)
-          output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
+  (let [source-tables (if (seq tables) (tables-map->source-tables tables) [])]
+    (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
+      (let [server-url     (transforms-python.settings/python-runner-url)
+            cancel-chan    (a/promise-chan)
+            test-id        (next-job-run-id)
+            _              (python-runner/copy-tables-to-s3! {:run-id         test-id
+                                                              :shared-storage @shared-storage-ref
+                                                              :source         {:source-tables source-tables}
+                                                              :cancel-chan    cancel-chan})
+            response       (python-runner/execute-python-code-http-call! {:server-url     server-url
+                                                                          :code           code
+                                                                          :run-id         test-id
+                                                                          :source-tables  source-tables
+                                                                          :shared-storage @shared-storage-ref})
+            events (python-runner/read-events @shared-storage-ref)
+            output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
       ;; not sure about munging this all together but its what tests expect for now
-      (merge (:body response)
-             {:output          (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
-              :output-manifest output-manifest
-              :stdout          (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
-              :stderr          (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
+        (merge (:body response)
+               {:output          (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
+                :output-manifest output-manifest
+                :stdout          (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
+                :stderr          (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))})))))
 
 (defn ok-stdout [num-rows num-cols]
   (format (str "Successfully saved %d rows to S3\n"
@@ -395,11 +403,11 @@
 (deftest transform-function-without-libraries-test
   (testing "transform function works when no libraries exist"
     (mt/test-drivers #{:postgres}
-      (with-redefs [t2/select-fn->fn (fn [k v model]
-                                       (when (and (= k :path)
-                                                  (= v :source)
-                                                  (= model :model/PythonLibrary))
-                                         {}))]
+      (mt/with-dynamic-fn-redefs [t2/select-fn->fn (fn [k v model]
+                                                     (when (and (= k :path)
+                                                                (= v :source)
+                                                                (= model :model/PythonLibrary))
+                                                       {}))]
         (let [transform-code (str "import pandas as pd\n"
                                   "\n"
                                   "def transform():\n"
@@ -412,11 +420,11 @@
 (deftest transform-function-library-import-error-test
   (testing "transform function handles missing library gracefully"
     (mt/test-drivers #{:postgres}
-      (with-redefs [t2/select-fn->fn (fn [k v model]
-                                       (when (and (= k :path)
-                                                  (= v :source)
-                                                  (= model :model/PythonLibrary))
-                                         {"utils" "def helper():\n    return 42"}))]
+      (mt/with-dynamic-fn-redefs [t2/select-fn->fn (fn [k v model]
+                                                     (when (and (= k :path)
+                                                                (= v :source)
+                                                                (= model :model/PythonLibrary))
+                                                       {"utils" "def helper():\n    return 42"}))]
         (let [transform-code (str "import pandas as pd\n"
                                   "from common import some_function  # This library doesn't exist\n"
                                   "\n"
@@ -452,7 +460,7 @@
                                     {:name "created_date"  :type :type/Date     :nullable? true}
                                     {:name "description"   :type :type/Text     :nullable? true}]}
             _ (mt/as-admin
-                (transforms.util/create-table-from-schema! driver db-id table-schema))
+                (transforms-base.u/create-table-from-schema! driver db-id table-schema))
 
             row-values   [[1
                            19.99
@@ -480,7 +488,7 @@
                  (set (map :name (:fields metadata))))))
 
         (testing "types are preserved correctly"
-          (is (= {"id"           (if (= :snowflake driver) :type/Number :type/Integer)
+          (is (= {"id"           (if (= :snowflake driver) :type/BigInteger :type/Integer)
                   "price"        :type/Float
                   "active"       :type/Boolean
                   "created_tz"   (case driver
@@ -498,7 +506,7 @@
 
 (deftest python-runner-timeout-test
   (testing "Python script execution respects timeout setting"
-    (mt/with-premium-features #{:transforms-python}
+    (mt/with-premium-features #{:transforms-python :transforms-basic}
       (tu/with-temporary-setting-values [python-runner-timeout-seconds 5]
         (let [long-running-code (str "import time\n"
                                      "import pandas as pd\n"

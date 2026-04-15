@@ -2,7 +2,8 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_AI_ENTITY_ANALYSIS, PLUGIN_METABOT } from "metabase/plugins";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -160,8 +161,9 @@ function getVisualizationDataUri(question: Question) {
   const display = question.card().display;
 
   const format =
-    PLUGIN_AI_ENTITY_ANALYSIS.chartAnalysisRenderFormats[display] ??
-    ("none" as const);
+    (CHART_ANALYSIS_RENDER_FORMATS as Record<string, "png" | "svg" | "none">)[
+      display
+    ] ?? ("none" as const);
 
   return match(format)
     .with("none", () => undefined)
@@ -207,14 +209,16 @@ export const registerQueryBuilderMetabotContextFn = async ({
   visualizationSettings,
   timelineEvents,
   queryResult,
+  isMetabotEnabled,
 }: {
   question: Question | undefined;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelineEvents: TimelineEvent[];
   queryResult: any;
+  isMetabotEnabled: boolean;
 }) => {
-  if (!PLUGIN_METABOT.isEnabled()) {
+  if (!isMetabotEnabled) {
     return {};
   }
   if (!question) {
@@ -230,7 +234,10 @@ export const registerQueryBuilderMetabotContextFn = async ({
   const queryCtx = {
     query: question.datasetQuery(),
     sql_engine: isNative ? Lib.engine(query) : undefined,
-    error: queryResult?.error,
+    // Coerce to string to avoid passing objects with circular references
+    // (e.g. Metadata ↔ Database) that would break JSON.stringify in the
+    // streaming request body.
+    error: queryResult?.error?.toString(),
   };
 
   const chart_configs = await getChartConfigs({
@@ -252,19 +259,25 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  useRegisterMetabotContextProvider(async (state) => {
-    const question = getQuestion(state);
-    const series = getTransformedSeries(state);
-    const visualizationSettings = getVisualizationSettings(state);
-    const timelineEvents = getVisibleTimelineEvents(state);
-    const queryResult = getFirstQueryResult(state);
+  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
 
-    return registerQueryBuilderMetabotContextFn({
-      question,
-      series,
-      visualizationSettings,
-      timelineEvents,
-      queryResult,
-    });
-  }, []);
+  useRegisterMetabotContextProvider(
+    async (state) => {
+      const question = getQuestion(state);
+      const series = getTransformedSeries(state);
+      const visualizationSettings = getVisualizationSettings(state);
+      const timelineEvents = getVisibleTimelineEvents(state);
+      const queryResult = getFirstQueryResult(state);
+
+      return registerQueryBuilderMetabotContextFn({
+        question,
+        series,
+        visualizationSettings,
+        timelineEvents,
+        queryResult,
+        isMetabotEnabled,
+      });
+    },
+    [isMetabotEnabled],
+  );
 };

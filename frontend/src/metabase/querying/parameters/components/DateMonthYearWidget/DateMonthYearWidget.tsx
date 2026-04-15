@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 
-import { MonthYearPicker } from "metabase/querying/filters/components/MonthYearPicker";
-import type { MonthYearPickerValue } from "metabase/querying/filters/types";
+import { MonthYearPicker } from "metabase/querying/common/components/MonthYearPicker";
+import type { MonthYearPickerValue } from "metabase/querying/common/types";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,

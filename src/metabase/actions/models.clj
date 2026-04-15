@@ -426,7 +426,7 @@
    :skip      [;; this is a temporary column to power v57 => v56 rollbacks, and we can remove it in v58.
                :legacy_query]
    :transform {:action_id     (serdes/parent-ref)
-               :database_id   (serdes/fk :model/Database :name)
+               :database_id   (serdes/fk :model/Database)
                :dataset_query {:export serdes/export-mbql :import serdes/import-mbql}}})
 
 (defmethod serdes/generate-path "HTTPAction" [_ _] nil)
@@ -454,7 +454,8 @@
                :parameter_mappings     {:export serdes/export-parameter-mappings
                                         :import serdes/import-parameter-mappings}
                :visualization_settings {:export serdes/export-visualization-settings
-                                        :import serdes/import-visualization-settings}}})
+                                        :import serdes/import-visualization-settings}}
+   :defaults {:archived false}})
 
 (defmethod serdes/dependencies "Action" [action]
   (set
@@ -469,8 +470,7 @@
          (serdes/mbql-deps dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
-  (let [{:keys [id label]} (-> action serdes/path last)]
-    ["actions" (serdes/storage-leaf-file-name id label)]))
+  [{:label "actions"} {:label (:name action) :key (:entity_id action)}])
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

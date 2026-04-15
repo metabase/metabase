@@ -325,31 +325,31 @@ export function createQ9Query(source: Card): StructuredQuery {
 type CreateQuery = (source: Card) => StructuredQuery;
 
 export function createAndVisitDashboardWithCardMatrix(
-  createQuery: CreateQuery,
+  createQueryFromCard: CreateQuery,
 ) {
   cy.then(function () {
     H.createQuestion({
       type: "question",
-      query: createQuery(this.baseQuestion),
+      query: createQueryFromCard(this.baseQuestion),
       name: "Question-based Question",
     }).then((response) => cy.wrap(response.body).as("qbq"));
 
     H.createQuestion({
       type: "question",
-      query: createQuery(this.baseModel),
+      query: createQueryFromCard(this.baseModel),
       name: "Model-based Question",
     }).then((response) => cy.wrap(response.body).as("mbq"));
 
     H.createQuestion({
       type: "model",
       name: "Question-based Model",
-      query: createQuery(this.baseQuestion),
+      query: createQueryFromCard(this.baseQuestion),
     }).then((response) => cy.wrap(response.body).as("qbm"));
 
     H.createQuestion({
       type: "model",
       name: "Model-based Model",
-      query: createQuery(this.baseModel),
+      query: createQueryFromCard(this.baseModel),
     }).then((response) => cy.wrap(response.body).as("mbm"));
   });
 
@@ -711,7 +711,7 @@ export function getPopoverItem(name: string, index = 0) {
    * Without scrollIntoView() the popover may scroll automatically to a different
    * place when clicking the item (unclear why).
    */
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByText(name).eq(index).scrollIntoView();
 }
 
@@ -836,10 +836,12 @@ export function verifyDashcardCellValues({
   for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
     const value = values[valueIndex];
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.getDashboardCard(dashcardIndex)
-      .findByRole("row")
-      .findAllByRole("gridcell")
+      .findByTestId("table-body")
+      .findAllByRole("row")
+      .first()
+      .findAllByTestId("cell-data")
       .eq(valueIndex)
       .should("have.text", value);
   }
@@ -852,7 +854,10 @@ export function verifyDashcardCellValues({
   for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
     const value = values[valueIndex];
 
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByRole("gridcell").eq(valueIndex).should("have.text", value);
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .eq(valueIndex)
+      .should("have.text", value);
   }
 }

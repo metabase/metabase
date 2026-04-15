@@ -1,14 +1,18 @@
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
+import * as MetabaseErrors from "embedding-sdk-bundle/errors";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
+import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
+import { decodeJwt } from "metabase/utils/jwt";
 
 import { debouncedReportAnalytics } from "./analytics";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   DISABLE_UPDATE_FOR_KEYS,
+  EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
   METABASE_CONFIG_IS_PROXY_FIELD_NAME,
 } from "./constants";
 import type {
@@ -139,13 +143,13 @@ function assertValidMetabaseConfigField(
   }
 }
 
-export abstract class MetabaseEmbedElement
+export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   extends HTMLElement
   implements EmbedAuthManagerContext
 {
   private _iframe: HTMLIFrameElement | null = null;
   protected abstract _componentName: string;
-  protected abstract _attributeNames: readonly string[];
+  protected abstract _attributeNames: T;
 
   static readonly VERSION = "1.1.0";
 
@@ -155,6 +159,12 @@ export abstract class MetabaseEmbedElement
     Set<SdkIframeEmbedEventHandler>
   > = new Map();
   private _authManager: EmbedAuthManager | null = null;
+  ["custom-context"]: unknown;
+
+  constructor() {
+    super();
+    this["custom-context"] = undefined;
+  }
 
   get globalSettings() {
     return (window as any).metabaseConfig || {};
@@ -345,7 +355,7 @@ export abstract class MetabaseEmbedElement
     // Random query param is needed to allow parallel EmbedJS iframes loading.
     // Without it multiple EmbedJS iframes on a page loaded sequentially.
     // We don't cache the iframe content, so random query parameter does not break caching.
-    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?v=${_iframeCounter++}`;
+    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?${EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME}=${_iframeCounter++}`;
     this._iframe.style.width = "100%";
     this._iframe.style.height = "100%";
     this._iframe.style.border = "none";
@@ -376,7 +386,11 @@ export abstract class MetabaseEmbedElement
       console.error("unable to construct the URL:", error);
     }
 
-    return hostname === "localhost" || hostname === "127.0.0.1";
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]"
+    );
   }
 
   private _validateEmbedSettings(settings: SdkIframeEmbedElementSettings) {
@@ -422,12 +436,49 @@ export abstract class MetabaseEmbedElement
         // this is used from tests to await the loading of the iframe
         this._iframe.setAttribute("data-iframe-loaded", "true");
       }
-      this._updateSettings(this.properties);
+
+      const { guestEmbedProviderUri, token } = this.properties;
+
+      // No static token provided — fetch initial guest token first, then send settings
+      if (guestEmbedProviderUri && !token) {
+        await this._fetchInitialGuestToken();
+      } else {
+        this._updateSettings(this.properties);
+      }
+
       this._emitEvent({ type: "ready" });
     }
 
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
+    }
+
+    if (event.data.type === "metabase.embed.requestGuestTokenRefresh") {
+      await this._refreshGuestToken(event.data.data.expiredToken);
+    }
+
+    // Note: if we wrap other functions like this, let's come up with a generic utility function
+    if (event.data.type === "metabase.embed.handleLink") {
+      const { url, requestId } = event.data.data;
+      const handleLink = this.globalSettings.pluginsConfig?.handleLink;
+
+      let handled = false;
+      if (typeof handleLink === "function") {
+        try {
+          const result = handleLink(url);
+          handled = result?.handled ?? false;
+        } catch (e) {
+          console.error("[metabase.embed] handleLink error:", e);
+        }
+      }
+
+      this._iframe?.contentWindow?.postMessage(
+        {
+          type: "metabase.embed.handleLinkResponse",
+          data: { requestId, handled },
+        },
+        "*",
+      );
     }
   };
 
@@ -439,7 +490,8 @@ export abstract class MetabaseEmbedElement
       const normalizedData = Object.entries(data).reduce(
         (acc, [key, value]) => {
           // Functions are not serializable, so we ignore them.
-          if (typeof value === "function") {
+          // `pluginsConfig` contains functions so we also skip it.
+          if (typeof value === "function" || key === "pluginsConfig") {
             return acc;
           }
 
@@ -457,29 +509,150 @@ export abstract class MetabaseEmbedElement
     }
   }
 
+  private reportAuthenticationError(error: unknown) {
+    this.sendMessage("metabase.embed.reportAuthenticationError", {
+      error:
+        error instanceof MetabaseError
+          ? error
+          : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+              url: this.properties.guestEmbedProviderUri ?? "",
+              message: error instanceof Error ? error.message : String(error),
+            }),
+    });
+  }
+
   private async _authenticate() {
     if (!this._authManager) {
-      this.sendMessage("metabase.embed.reportAuthenticationError", {
-        error: SSO_NOT_ALLOWED(),
-      });
+      this.reportAuthenticationError(SSO_NOT_ALLOWED());
 
       return;
     }
 
     await this._authManager.authenticate();
   }
+
+  private async _fetchInitialGuestToken(): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider();
+      this._updateSettings({
+        token,
+        /**
+         * Clear these so SdkIframeEmbedRoute routes via the guest token branch, not the
+         * other branches (which matches on dashboardId/questionId). This applies to the
+         * call below too.
+         */
+        dashboardId: undefined,
+        questionId: undefined,
+      });
+    } catch (error) {
+      this.reportAuthenticationError(error);
+      // Send settings without a token so ComponentProvider can mount and display the error.
+      this._updateSettings({
+        dashboardId: undefined,
+        questionId: undefined,
+      });
+    }
+  }
+
+  private async _refreshGuestToken(expiredToken: string): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider(expiredToken);
+      this.sendMessage("metabase.embed.submitRefreshedGuestToken", {
+        guestToken: token,
+      });
+    } catch (error) {
+      this.reportAuthenticationError(error);
+    }
+  }
+
+  /**
+   * Handles token refresh, and the initial token fetch if no static token is provided.
+   * Unlike the SSO counterpart which lives in the plugin system (AuthManager.ts),
+   * guest embeds are OSS so this is implemented directly here in embed.ts.
+   */
+  private async _callGuestTokenProvider(
+    expiredToken?: string,
+  ): Promise<string> {
+    const { guestEmbedProviderUri, componentName, dashboardId, questionId } =
+      this.properties;
+
+    if (!guestEmbedProviderUri) {
+      throw MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+        url: String(guestEmbedProviderUri),
+        message: "Guest embed provider URI is not configured.",
+      });
+    }
+
+    const guestEmbedProviderUriFullPath = new URL(
+      guestEmbedProviderUri,
+      window.location.origin,
+    );
+    guestEmbedProviderUriFullPath.searchParams.set("response", "json");
+
+    const entityType =
+      componentName === "metabase-dashboard" ? "dashboard" : "question";
+
+    const isRefreshingToken = expiredToken !== undefined;
+
+    // Prefer the attribute resource ID; fall back to decoding the expired token
+    // for the static token case (no dashboardId/questionId attribute).
+    const attributeResourceId =
+      componentName === "metabase-dashboard" ? dashboardId : questionId;
+    const tokenResourceId = isRefreshingToken
+      ? decodeJwt(expiredToken)?.resource?.[entityType]
+      : undefined;
+    const resourceId = attributeResourceId ?? tokenResourceId;
+
+    // Only works in React 19
+    const objectCustomContext = this["custom-context"];
+    const stringCustomContext = this.getAttribute("custom-context");
+    const customContext = objectCustomContext ?? stringCustomContext;
+    const body = {
+      entityType,
+      entityId: resourceId,
+      ...(customContext !== undefined && { customContext }),
+    };
+
+    const response = await fetch(guestEmbedProviderUriFullPath.toString(), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+        url: guestEmbedProviderUri,
+        status: String(response.status),
+      });
+    }
+
+    const data = await response.json();
+
+    if (
+      data == null ||
+      typeof data !== "object" ||
+      typeof data.jwt !== "string"
+    ) {
+      throw MetabaseErrors.DEFAULT_ENDPOINT_ERROR({
+        actual: JSON.stringify(data),
+      });
+    }
+
+    return data.jwt;
+  }
 }
 
-function createCustomElement<Arr extends readonly string[]>(
-  componentName: string,
-  attributeNames: Arr,
-) {
-  const CustomEmbedElement = class extends MetabaseEmbedElement {
+function createCustomElement<
+  T extends keyof ComponentToAttributes,
+  U extends (keyof ComponentToAttributes[T] & string)[],
+>(componentName: T, attributeNames: U) {
+  const CustomEmbedElement = class extends MetabaseEmbedElement<U> {
     protected _componentName: string = componentName;
-    protected _attributeNames: readonly string[] = attributeNames;
+    protected _attributeNames: U = attributeNames;
 
     static get observedAttributes() {
-      return attributeNames as readonly string[];
+      return attributeNames;
     }
   };
 
@@ -493,12 +666,14 @@ function createCustomElement<Arr extends readonly string[]>(
 const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "dashboard-id",
   "token",
+  "auto-refresh-interval",
   "with-title",
   "with-downloads",
   "with-subscriptions",
   "drills",
   "initial-parameters",
   "hidden-parameters",
+  "enable-entity-navigation",
 ]);
 
 const MetabaseQuestionElement = createCustomElement("metabase-question", [
@@ -506,6 +681,7 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "token",
   "with-title",
   "with-downloads",
+  "with-alerts",
   "drills",
   "initial-sql-parameters",
   "hidden-parameters",
@@ -523,10 +699,13 @@ const MetabaseManageContentElement = createCustomElement("metabase-browser", [
   "with-new-question",
   "with-new-dashboard",
   "read-only",
+  "enable-entity-navigation",
 ]);
 
 const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
   "layout",
+  "is-save-enabled",
+  "target-collection",
 ]);
 
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it

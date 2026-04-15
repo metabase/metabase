@@ -13,20 +13,20 @@ import { c, t } from "ttag";
 
 import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import CollectionName from "metabase/common/components/CollectionName";
+import { CollectionName } from "metabase/common/components/CollectionName";
 import {
-  type CollectionPickerItem,
   CollectionPickerModal,
-} from "metabase/common/components/Pickers/CollectionPicker";
+  type OmniPickerItem,
+} from "metabase/common/components/Pickers";
 import { UploadInput } from "metabase/common/components/upload";
-import { useDispatch } from "metabase/lib/redux";
+import { UploadMode } from "metabase/redux/store/upload";
 import {
   MAX_UPLOAD_SIZE,
   MAX_UPLOAD_STRING,
   uploadFile,
 } from "metabase/redux/uploads";
 import { Box, Button, Center, Group, Icon, Stack, Text } from "metabase/ui";
-import { UploadMode } from "metabase-types/store/upload";
+import { useDispatch } from "metabase/utils/redux";
 
 import S from "../AddDataModal.module.css";
 import { trackCSVFileInputSelect } from "../analytics";
@@ -66,7 +66,7 @@ export const CSVUpload = ({
   );
 
   const handleCollectionChange = useCallback(
-    (item: CollectionPickerItem) => {
+    (item: OmniPickerItem) => {
       // The model should always be a collection since we explicitly set it in the CollectionPickerModal.
       // In case anything ever changes in the picker, we want to ignore it in this handler.
       if (item.model !== "collection") {
@@ -294,18 +294,12 @@ export const CSVUpload = ({
           onChange={handleCollectionChange}
           onClose={() => closeCollectionPicker()}
           options={{
-            showPersonalCollections: true,
-            showRootCollection: true,
-            showSearch: true,
+            hasPersonalCollections: true,
+            hasRootCollection: true,
+            hasSearch: true,
             confirmButtonText: t`Select this collection`,
           }}
-          models={["collection"]}
           entityType="dataset"
-          recentFilter={(items) =>
-            items.filter((item) => {
-              return item.model !== "table" && item.can_write;
-            })
-          }
         />
       )}
     </>

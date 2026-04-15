@@ -88,6 +88,31 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
 
+(deftest user-list-for-data-analysts-test
+  (testing "GET /api/user"
+    (testing "A data analyst can get a list of all active users"
+      (mt/with-temp [:model/User {analyst-id :id :as analyst} {:first_name "Analyst"
+                                                               :last_name  "Testuser"
+                                                               :email      "analyst-list@metabase.com"
+                                                               :is_data_analyst true}]
+        (let [result (->> (:data (mt/user-http-request analyst :get 200 "user"))
+                          (filter #(or (mt/test-user? %) (= (:id %) analyst-id))))]
+          (is (= #{"crowberto@metabase.com"
+                   "lucky@metabase.com"
+                   "rasta@metabase.com"
+                   "analyst-list@metabase.com"}
+                 (set (map :email result)))))))
+
+    (testing "A sandboxed data analyst only sees themselves"
+      (mt/with-temp [:model/User {_ :id :as analyst} {:first_name "Sandboxed"
+                                                      :last_name  "Analyst"
+                                                      :email      "sandboxed-analyst@metabase.com"
+                                                      :is_data_analyst true}]
+        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+          (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
+            (is (= ["sandboxed-analyst@metabase.com"]
+                   (map :email result)))))))))
+
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
     (mt/with-premium-features #{:advanced-permissions}
@@ -1562,6 +1587,14 @@
             (is (= {:is_active true, :sso_source nil}
                    (mt/derecordize (t2/select-one [:model/User :is_active :sso_source] :id (u/the-id user)))))))))))
 
+(deftest reactivate-second-to-last-admin-test
+  (mt/with-single-admin-user! [{id :id}]
+    (testing "With two admins, one deactivated"
+      (mt/with-temp [:model/User {other-user :id} {:is_superuser true}]
+        (mt/user-http-request id :delete 200 (format "user/%d" other-user))
+        (testing "We can reactivate the other admin"
+          (mt/user-http-request id :put 200 (format "user/%d/reactivate" other-user)))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1731,3 +1764,40 @@
                             :previous {:first_name "John"
                                        :last_name "Cena"}}}
                  (mt/latest-audit-log-entry :user-update id))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                  Password Reset URL -- POST /api/user/:id/password-reset-url                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest password-reset-url-admin-can-generate-test
+  (testing "POST /api/user/:id/password-reset-url admin can generate a password reset URL"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl@test.com"}]
+      (let [response (mt/user-http-request :crowberto :post 200
+                                           (format "user/%d/password-reset-url" user-id))]
+        (is (contains? response :password_reset_url))
+        (is (string? (:password_reset_url response)))
+        (is (re-find #"/auth/reset_password/" (:password_reset_url response)))))))
+
+(deftest password-reset-url-non-admin-forbidden-test
+  (testing "POST /api/user/:id/password-reset-url non-admin gets 403"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl2@test.com"}]
+      (mt/user-http-request :rasta :post 403
+                            (format "user/%d/password-reset-url" user-id)))))
+
+(deftest password-reset-url-inactive-user-not-found-test
+  (testing "POST /api/user/:id/password-reset-url inactive user gets 404"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl3@test.com"
+                                              :is_active false}]
+      (mt/user-http-request :crowberto :post 404
+                            (format "user/%d/password-reset-url" user-id)))))
+
+(deftest password-reset-url-nonexistent-user-not-found-test
+  (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"
+    (mt/user-http-request :crowberto :post 404
+                          "user/999999/password-reset-url")))

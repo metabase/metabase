@@ -8,8 +8,6 @@ import {
 import { t } from "ttag";
 
 import { resetParameterMapping } from "metabase/dashboard/actions";
-import { isQuestionDashCard } from "metabase/dashboard/utils";
-import { useDispatch } from "metabase/lib/redux";
 import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
@@ -25,6 +23,8 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { useDispatch } from "metabase/utils/redux";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";

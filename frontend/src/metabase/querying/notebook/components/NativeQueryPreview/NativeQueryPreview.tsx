@@ -4,16 +4,17 @@ import { useGetNativeDatasetQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { formatNativeQuery } from "metabase/lib/engine";
-import { useSelector } from "metabase/lib/redux";
-import { language } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { formatNativeQuery } from "metabase/databases/utils/engine";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon, Loader, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { NativeDatasetResponse } from "metabase-types/api";
+
+import { language } from "../../../components/CodeMirrorEditor/language";
 
 import S from "./NativeQueryPreview.module.css";
 

@@ -5,8 +5,6 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import { trackStaticEmbedCodeCopied } from "metabase/public/lib/analytics";
@@ -23,6 +21,8 @@ import type {
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Paper, Stack, Tabs } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { LookAndFeelSettings } from "./LookAndFeelSettings";
@@ -209,13 +209,7 @@ export const StaticEmbedSetupPane = ({
 
   return (
     <Stack gap={0}>
-      <Paper
-        withBorder
-        shadow="sm"
-        m="1.5rem 2rem"
-        p="0.75rem 1rem"
-        data-testid="embed-modal-content-status-bar"
-      >
+      <Paper withBorder shadow="sm" m="1.5rem 2rem" p="0.75rem 1rem">
         <EmbedModalContentStatusBar
           resourceType={resourceType}
           isPublished={resource.enable_embedding}

@@ -73,7 +73,7 @@ export function GlossaryRowEditor({
           fw="bold"
           variant="unstyled"
           autoFocus={autoFocusField === "term"}
-          placeholder={t`Bird`}
+          placeholder={t`Boat`}
           value={term}
           onChange={(e) => setTerm(e.currentTarget.value)}
           miw="8rem"
@@ -95,7 +95,7 @@ export function GlossaryRowEditor({
               input: S.input,
             }}
             variant="unstyled"
-            placeholder={t`A warm-blooded, egg-laying vertebrate of the class Aves.`}
+            placeholder={t`A small vessel propelled on water by oars, sails, or an engine.`}
             value={definition}
             onChange={(e) => setDefinition(e.currentTarget.value)}
             autosize

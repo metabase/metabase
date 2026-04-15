@@ -26,6 +26,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.task.bootstrap]
    [metabase.task.job-factory :as job-factory]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -352,11 +353,12 @@
 
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmacro defjob
-  "Like `clojurewerkz.quartzite.task/defjob` but with a log context."
+  "Like `clojurewerkz.quartzite.task/defjob` but with a log context and an OpenTelemetry tracing span."
   [jtype args & body]
   `(jobs/defjob ~jtype ~args
      (log/with-context {:quartz-job-type (quote ~jtype)}
-       ~@body)))
+       (tracing/with-span :tasks (str "task." (quote ~jtype)) {:task/name (str (quote ~jtype))}
+         ~@body))))
 
 (defn add-job-listener!
   "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will

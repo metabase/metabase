@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/utils/types";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
@@ -53,8 +54,8 @@ const getSettingsWithDefaultMetricsAndDimensions = (series: SingleSeries) => {
   const { dimensions, metrics } = getSingleSeriesDimensionsAndMetrics(series);
   const settingsWithDefaults = { ...settings };
 
-  settingsWithDefaults["graph.dimensions"] = dimensions;
-  settingsWithDefaults["graph.metrics"] = metrics;
+  settingsWithDefaults["graph.dimensions"] = dimensions.filter(isNotNull);
+  settingsWithDefaults["graph.metrics"] = metrics.filter(isNotNull);
 
   return settingsWithDefaults;
 };
@@ -176,17 +177,18 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const { leftAxisModel, rightAxisModel } = getYAxesModels(
-    seriesModels,
-    dataset,
-    transformedDataset,
-    settings,
-    columnByDataKey,
-    true,
-    stackModels,
-    isCompactFormatting,
-    gridSize,
-  );
+  const { leftAxisModel, rightAxisModel, splitPanelYAxisModels } =
+    getYAxesModels(
+      seriesModels,
+      dataset,
+      transformedDataset,
+      settings,
+      columnByDataKey,
+      true,
+      stackModels,
+      isCompactFormatting,
+      gridSize,
+    );
 
   const trendLinesModel = getTrendLines(
     rawSeries,
@@ -210,6 +212,7 @@ export const getCartesianChartModel = (
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
+    splitPanelYAxisModels,
     trendLinesModel,
     seriesLabelsFormatters,
     stackedLabelsFormatters,

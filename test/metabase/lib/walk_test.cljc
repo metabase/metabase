@@ -287,7 +287,9 @@
                (lib.util.match/match-lite clause
                  [:field opts id]
                  (let [col (lib.metadata/field query id)]
-                   [:field (merge (select-keys col [:base-type]) opts) (:name col)]))))))))
+                   [:field (merge (select-keys col [:base-type]) opts) (:name col)])
+
+                 _ nil)))))))
 
 (deftest ^:parallel walk-clauses-identity-test
   (testing "If we don't update any clauses then we should return the original query"

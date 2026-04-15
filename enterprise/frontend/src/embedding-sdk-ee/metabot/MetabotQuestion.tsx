@@ -1,16 +1,24 @@
 import { useElementSize } from "@mantine/hooks";
 import { useId, useMemo } from "react";
 import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
-import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
-import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import {
+  SdkError,
+  withPublicComponentWrapper,
+} from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { ResizeWrapper } from "embedding-sdk-bundle/components/private/ResizeWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import {
+  useMetabotEnabledEmbeddingAware,
+  useMetabotName,
+} from "metabase/metabot/hooks";
+import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import { Stack } from "metabase/ui";
-import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
 import { MetabotChatInput } from "./MetabotChatInput";
@@ -36,7 +44,11 @@ const MetabotQuestionInner = ({
   className,
   style,
   layout = "auto",
+  isSaveEnabled = false,
+  targetCollection,
 }: MetabotQuestionProps) => {
+  const isEmbeddedMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const metabotName = useMetabotName();
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -59,6 +71,14 @@ const MetabotQuestionInner = ({
       });
   }, [layout, containerWidth]);
 
+  if (isEmbeddedMetabotEnabled === false) {
+    return (
+      <SdkError
+        message={t`${metabotName} is not enabled for embedded analytics.`}
+      />
+    );
+  }
+
   function renderQuestion() {
     if (!hasQuestion || isLocaleLoading) {
       return <MetabotQuestionEmptyState />;
@@ -68,7 +88,8 @@ const MetabotQuestionInner = ({
       <SdkAdHocQuestion
         questionPath={navigateToPath}
         title={false}
-        isSaveEnabled={false}
+        isSaveEnabled={isSaveEnabled}
+        targetCollection={targetCollection}
       >
         <SdkQuestionDefaultView
           height="100%"
@@ -84,13 +105,13 @@ const MetabotQuestionInner = ({
     );
   }
 
+  // avoids initial flickering
+  if (!derivedLayout || containerWidth == null) {
+    return null;
+  }
+
   return (
-    <FlexibleSizeComponent
-      height={height}
-      width={width}
-      className={className}
-      style={style}
-    >
+    <ResizeWrapper h={height} w={width} className={className} style={style}>
       <div
         ref={containerRef}
         className={S.container}
@@ -111,7 +132,7 @@ const MetabotQuestionInner = ({
           </Stack>
         </div>
       </div>
-    </FlexibleSizeComponent>
+    </ResizeWrapper>
   );
 };
 

@@ -28,6 +28,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -42,6 +43,7 @@
     Connection
     ResultSet
     ResultSetMetaData
+    Statement
     Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
@@ -89,7 +91,8 @@
                               :transforms/table         true
                               :transforms/python        true
                               :transforms/index-ddl     true
-                              :metadata/table-existence-check true}]
+                              :metadata/table-existence-check true
+                              :workspace                true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -314,6 +317,18 @@
   ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
 
+(defn- nullable-in
+  "Build a HoneySQL clause that handles nil values in `xs` correctly.
+  SQL `IN (NULL)` never matches NULL rows, so when `xs` contains nil we need an explicit `IS NULL` check."
+  [column xs]
+  (when xs
+    (let [non-nil (seq (remove nil? xs))
+          has-nil? (some nil? xs)]
+      (cond
+        (and non-nil has-nil?) [:or [:in column non-nil] [:= column nil]]
+        non-nil                [:in column non-nil]
+        has-nil?               [:= column nil]))))
+
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
   [driver & {:keys [schema-names table-names]}]
@@ -369,7 +384,7 @@
                    [:= :c.column_name :pk.column_name]]]
       :where [:and
               [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-              (when schema-names [:in :c.table_schema schema-names])
+              (nullable-in :c.table_schema schema-names)
               (when table-names [:in :c.table_name table-names])]}
      {:select [[:pa.attname :name]
                [[:case
@@ -396,7 +411,7 @@
       :where [:and
               [:= :pc.relkind [:inline "m"]]
               [:>= :pa.attnum [:inline 1]]
-              (when schema-names [:in :pn.nspname schema-names])
+              (nullable-in :pn.nspname schema-names)
               (when table-names [:in :pc.relname table-names])]}]
     :order-by [:table-schema :table-name :database-position]}
    :dialect (sql.qp/quote-style driver)))
@@ -1279,8 +1294,11 @@
 
 (defmethod driver/create-schema-if-needed! :postgres
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
-    (driver/execute-raw-queries! driver conn-spec sql)))
+  ;; Without the blank check, `format` stringifies nil to "null" and creates a schema
+  ;; literally named "null" on the target DB.
+  (when-not (str/blank? schema)
+    (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+      (driver/execute-raw-queries! driver conn-spec sql))))
 
 (defmethod driver/extra-info :postgres
   [_driver]
@@ -1312,3 +1330,86 @@
   (let [type  (nippy/thaw-from-in! data-input)
         value (nippy/thaw-from-in! data-input)]
     (doto (PGobject.) (.setType type) (.setValue value))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- user-exists?
+  "Check if a PostgreSQL user exists. Uses pg_user which also works in Redshift."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
+(defmethod driver/init-workspace-isolation! :postgres
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
+                     :password (driver.u/random-workspace-password)}]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      ;; Create user if not exists, otherwise update password
+      ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
+      (let [user-sql (if (user-exists? t-conn (:user read-user))
+                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
+                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user)))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
+                       (format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
+                       user-sql
+                       ;; grant schema access (CREATE to create tables, USAGE to access them)
+                       ;; GRANT is idempotent in PostgreSQL
+                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
+                       ;; grant all privileges on future tables created in this schema (by admin)
+                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))
+                       ;; grant role membership to admin so DROP OWNED BY works during cleanup
+                       (format "GRANT \"%s\" TO CURRENT_USER" (:user read-user))]]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))
+    {:schema           schema-name
+     :database_details read-user}))
+
+(defmethod driver/destroy-workspace-isolation! :postgres
+  [_driver database workspace]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :user)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)]
+                      (user-exists? t-conn username)
+                      (into [(format "DROP OWNED BY \"%s\"" username)
+                             (format "DROP USER IF EXISTS \"%s\"" username)]))]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/grant-workspace-read-access! :postgres
+  [_driver database workspace tables]
+  (let [username       (-> workspace :database_details :user)
+        qu             (sql.u/quote-name :postgres :field username)
+        ;; Collect all unique source schemas that contain the tables we need to grant access to
+        source-schemas (into #{} (keep :schema) tables)
+        ;; Grant USAGE on source schemas, then SELECT on each table
+        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
+        sqls           (concat
+                        ;; USAGE on each source schema containing tables we're granting access to
+                        (for [s source-schemas]
+                          (format "GRANT USAGE ON SCHEMA %s TO %s"
+                                  (sql.u/quote-name :postgres :schema s) qu))
+                        ;; SELECT on each table
+                        (for [{s :schema, t :name} tables]
+                          (if (str/blank? s)
+                            (format "GRANT SELECT ON TABLE %s TO %s"
+                                    (sql.u/quote-name :postgres :table t) qu)
+                            (format "GRANT SELECT ON TABLE %s.%s TO %s"
+                                    (sql.u/quote-name :postgres :schema s)
+                                    (sql.u/quote-name :postgres :table t) qu))))]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/llm-sql-dialect-resource :postgres [_]
+  "metabot/prompts/dialects/postgresql.md")
+
+(defmethod driver/validate-impersonated-query :postgres
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))

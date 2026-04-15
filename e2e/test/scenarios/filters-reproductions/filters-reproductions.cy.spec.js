@@ -29,12 +29,12 @@ describe("issue 9339", () => {
     H.openOrdersTable();
 
     H.tableHeaderClick("Total");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     H.selectFilterOperator("Greater than");
     cy.findByPlaceholderText("Enter a number").type("9339,1234").blur();
     cy.findByDisplayValue("9339").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1,234").should("not.exist");
     cy.button("Add filter").should("be.enabled");
   });
@@ -249,7 +249,7 @@ describe("issue 22230", () => {
   });
 
   it("should be able to filter on an aggregation (metabase#22230)", () => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.clauseStepPopover().within(() => {
@@ -293,7 +293,7 @@ describe("issue 22730", () => {
   });
 
   it("allows filtering by time column (metabase#22730)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").click();
     cy.wait("@dataset");
 
@@ -305,9 +305,9 @@ describe("issue 22730", () => {
       cy.button("Add filter").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("before-row");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("after-row").should("not.exist");
   });
 });
@@ -391,15 +391,15 @@ describe("issue 24994", () => {
     // Three filters
     cy.findByTestId("filters-visibility-control").contains("3").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is 2 selections").click();
     assertFilterValueIsSelected("Gadget");
     assertFilterValueIsSelected("Gizmo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").click();
     assertFilterValueIsSelected("Doohickey");
     cy.button("Update filter").should("not.be.disabled").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is 3 selections");
   });
 });
@@ -457,7 +457,7 @@ describe("issue 25378", () => {
   });
 
   it("should be able to use relative date filter on a breakout after the aggregation (metabase#25378)", () => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.clauseStepPopover().within(() => {
@@ -602,7 +602,7 @@ describe("issue 25994", () => {
   });
 
   it("should be possible to use 'between' dates filter after aggregation (metabase#25994)", () => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().within(() => {
@@ -651,12 +651,12 @@ describe("issue 26861", { tags: "@skip" }, () => {
 
   it("exclude filter shouldn't break native questions with field filters (metabase#26861)", () => {
     H.filterWidget().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exclude…").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Days of the week…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tuesday").click();
 
     cy.button("Update filter").click();
@@ -664,9 +664,9 @@ describe("issue 26861", { tags: "@skip" }, () => {
     // A part of this bug is that we have to manually run the query so the next step will fail
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CREATED_AT excludes Tuesday");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("117.03").should("not.exist");
   });
 });
@@ -688,11 +688,11 @@ describe("issue 27123", () => {
 
   it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
     H.tableHeaderClick("Created At");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exclude…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Months of the year…").click();
 
     H.popover()
@@ -1205,7 +1205,7 @@ describe("issue 47887", () => {
     });
 
     cy.findByTestId("notebook-button").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().within(() => {
@@ -1259,7 +1259,7 @@ describe("issue 49321", () => {
       cy.findByText("Title").click();
       cy.findByText("Is").click();
     });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
 
     H.popover().then(($popover) => {
@@ -1344,7 +1344,7 @@ describe("issue 44665", () => {
   it("should use the correct widget for the default value picker (metabase#44665)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from {{param");
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {
@@ -1358,7 +1358,7 @@ describe("issue 44665", () => {
       cy.button("Done").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar().last().findByText("Enter a default value…").click();
     H.popover().within(() => {
       cy.findByPlaceholderText("Enter a default value…")
@@ -1371,7 +1371,7 @@ describe("issue 44665", () => {
       cy.findByText("baz").should("not.exist");
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {

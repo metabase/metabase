@@ -3,8 +3,8 @@ import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 
@@ -60,7 +60,7 @@ type Props = {
 
 const TOOLTIP_DELAY = 700;
 
-function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
+export function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const isHovering = useHoverDirty(rootRef);
   const resultMetadata = dataset.getResultMetadata();
@@ -98,6 +98,3 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
     </Box>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatasetMetadataStrengthIndicator;

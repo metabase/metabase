@@ -2,20 +2,16 @@ import cx from "classnames";
 import Color from "color";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
+import { Ellipsified } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import {
   formatChangeWithSign,
   formatNumber,
   formatValue,
-} from "metabase/lib/formatting";
-import { formatNullable } from "metabase/lib/formatting/nullable";
-import { isNotNull } from "metabase/lib/types";
-import {
-  calculateFunnelSteps,
-  calculateStepOpacity,
-} from "metabase/static-viz/components/FunnelChart/utils/funnel";
+} from "metabase/utils/formatting";
+import { formatNullable } from "metabase/utils/formatting/nullable";
+import { isNotNull } from "metabase/utils/types";
 import {
   FunnelNormalRoot,
   FunnelStart,
@@ -25,12 +21,17 @@ import {
   Subtitle,
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
+import {
+  calculateFunnelSteps,
+  calculateStepOpacity,
+} from "metabase/visualizations/lib/funnel/utils";
 import type {
   ClickObject,
   HoveredObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { RowValue } from "metabase-types/api";
+import type { RowValue, RowValues } from "metabase-types/api";
+import { getRowsForStableKeys } from "metabase-types/api";
 
 import { computeChange } from "../lib/numeric";
 
@@ -47,6 +48,27 @@ type FunnelStepInfo = {
   hovered?: HoveredObject;
   clicked?: ClickObject;
 };
+
+export function getSortedRows(
+  rows: RowValues[],
+  rowsForKeys: RowValues[],
+  dimensionIndex: number,
+  funnelRows: { key: string | number; enabled: boolean }[] | undefined,
+) {
+  if (!funnelRows) {
+    return rows;
+  }
+
+  return funnelRows
+    .filter((fr) => fr.enabled)
+    .map((fr) => {
+      const idx = rowsForKeys.findIndex(
+        (row) => formatNullable(row[dimensionIndex]) === fr.key,
+      );
+      return idx !== -1 ? rows[idx] : undefined;
+    })
+    .filter(isNotNull);
+}
 
 export function FunnelNormal({
   className,
@@ -71,14 +93,18 @@ export function FunnelNormal({
     (col) => col.name === settings["funnel.metric"],
   );
 
-  const sortedRows = settings["funnel.rows"]
-    ? settings["funnel.rows"]
-        .filter((fr) => fr.enabled)
-        .map((fr) =>
-          rows.find((row) => formatNullable(row[dimensionIndex]) === fr.key),
-        )
-        .filter(isNotNull)
-    : rows;
+  // funnel.rows keys are generated from untranslated rows (via
+  // getRowsForStableKeys in Funnel.tsx) so that they stay stable across
+  // locales. We must match against the same untranslated values here,
+  // otherwise content-translated dimension values won't match their keys
+  // and the funnel renders empty (metabase#71488).
+  const rowsForKeys = getRowsForStableKeys(series.data);
+  const sortedRows = getSortedRows(
+    rows,
+    rowsForKeys,
+    dimensionIndex,
+    settings["funnel.rows"],
+  );
 
   const isNarrow = Boolean(gridSize && gridSize.width < 7);
   const isShort = Boolean(gridSize && gridSize.height <= 5);

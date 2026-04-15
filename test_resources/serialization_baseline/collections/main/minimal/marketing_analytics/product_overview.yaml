@@ -1,0 +1,139 @@
+name: Product Overview
+entity_id: f1C68pznmrpN1F5xFDj6d
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: M-Q4pcV0qkiyJ0kiSWECl
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - count
+      - lib/uuid: 11111111-1111-1111-1111-111111111111
+    - - avg
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+    - - avg
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - RATING
+    breakout:
+    - - field
+      - {}
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+    order-by:
+    - - desc
+      - {}
+      - - aggregation
+        - {}
+        - 11111111-1111-1111-1111-111111111111
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Category
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - CATEGORY
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CATEGORY
+  name: CATEGORY
+  position: 3
+  semantic_type: type/Category
+  source: breakout
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/breakout?: true
+  lib/deduplicated-name: CATEGORY
+  lib/desired-column-alias: CATEGORY
+  lib/original-display-name: Category
+  lib/original-name: CATEGORY
+  lib/source: source/table-defaults
+  lib/source-column-alias: CATEGORY
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+- base_type: type/Float
+  display_name: Average of Price
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 1
+  name: avg
+  source: aggregation
+  lib/deduplicated-name: avg
+  lib/desired-column-alias: avg
+  lib/original-name: avg
+  lib/source: source/aggregations
+  lib/source-column-alias: avg
+- base_type: type/Float
+  display_name: Average of Rating
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 2
+  name: avg_2
+  semantic_type: type/Score
+  source: aggregation
+  lib/deduplicated-name: avg_2
+  lib/desired-column-alias: avg_2
+  lib/original-name: avg
+  lib/source: source/aggregations
+  lib/source-column-alias: avg
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: f1C68pznmrpN1F5xFDj6d
+  label: product_overview
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

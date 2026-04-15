@@ -38,7 +38,7 @@ export const useLogVersionInfo = () => {
     ) {
       console.warn(
         `SDK package version ${sdkPackageVersion} is not compatible with SDK bundle version ${sdkBundleVersion}, this might cause issues.`,
-        // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+        // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
         "Learn more at https://www.metabase.com/docs/latest/embedding/sdk/version",
       );
     }
@@ -46,7 +46,7 @@ export const useLogVersionInfo = () => {
     if (allowConsoleLog) {
       // eslint-disable-next-line no-console
       console.log(
-        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
         `Using Metabase modular embedding SDK package version ${sdkPackageVersion}, Metabase Embedding SDK bundle version ${sdkBundleVersion}`,
       );
     }

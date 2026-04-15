@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -65,23 +66,45 @@
 (defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
+;;; `MB_REDSHIFT_TEST_HOSTS`
+;;;
+;;; We've had lots of problems with Redshift timing out because of too much CPU load on our single cluster in the past;
+;;; instead of continuing to increase the size of the cluster (which doesn't seem to help much) we're switching to a
+;;; handful of smaller clusters, and picking one randomly; there is nothing shared between test runs and no reason they
+;;; all need to be done on a single cluster anyway. Other than the `:host` these are all configured identically with the
+;;; same user, password, and database name.
+
+(defonce ^:private hosts
+  (delay
+    (when-let [hosts (not-empty (tx/db-test-env-var :redshift :hosts))]
+      (str/split hosts #","))))
+
+(defn- random-host
+  "Pick a random host to test against from `MB_REDSHIFT_TEST_HOSTS` if it's set; otherwise fall back to the host in
+  `MB_REDSHIFT_TEST_HOST`."
+  []
+  (u/prog1 (if (seq @hosts)
+             (rand-nth @hosts)
+             (tx/db-test-env-var-or-throw :redshift :host))
+    ;; using println on purpose here for purposes of debugging CI, we can remove in the future when we're happy that
+    ;; multiple hosts works as expected
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "Using Redshift host" (pr-str (first (str/split <> #"\."))))))
+
+(defonce ^:private host (delay (random-host)))
+
 (def db-connection-details
-  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db)
-          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+  (delay {:host                    @host
+          :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
+          :db                      (tx/db-test-env-var :redshift :db "testdb")
+          :user                    (tx/db-test-env-var :redshift :user "metabase_ci")
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
           :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
 (def db-routing-connection-details
-  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db-routing)
-          :user                    (tx/db-test-env-var-or-throw :redshift :user)
-          :password                (tx/db-test-env-var-or-throw :redshift :password)
-          :schema-filters-type     "inclusion"
-          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
+  (delay
+    (assoc @db-connection-details :db (tx/db-test-env-var :redshift :db-routing "dev"))))
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
@@ -165,34 +188,76 @@
                               :unknown-error)))]
         (group-by classify schemas)))))
 
+(defn- classify-isolation-schemas
+  "Classifies workspace isolation schemas by age using a single query. Returns a map:
+   {:expired  schemas older than threshold (safe to delete)
+    :recent   schemas created within threshold (might be from parallel test)}"
+  [^java.sql.Connection conn schemas]
+  (if (empty? schemas)
+    {}
+    (let [threshold    (t/minus (t/instant) (t/hours hours-before-expired-threshold))
+          schema-list  (str/join "," (map #(str "'" % "'") schemas))
+          ;; Use pg_class_info joined with pg_namespace to get oldest object creation time per schema
+          sql          (str "SELECT TRIM(n.nspname) as schema_name, MIN(c.relcreationtime) as oldest "
+                            "FROM pg_class_info c "
+                            "JOIN pg_namespace n ON c.relnamespace = n.oid "
+                            "WHERE TRIM(n.nspname) IN (" schema-list ") "
+                            "GROUP BY n.nspname")
+          schema->time (with-open [stmt (.createStatement conn)
+                                   rset (.executeQuery stmt sql)]
+                         (loop [result {}]
+                           (if (.next rset)
+                             (recur (assoc result
+                                           (.getString rset "schema_name")
+                                           (.getTimestamp rset "oldest")))
+                             result)))]
+      (group-by (fn [schema-name]
+                  (if-let [oldest (get schema->time schema-name)]
+                    (if (t/before? (t/instant oldest) threshold)
+                      :expired
+                      :recent)
+                    ;; Schema not in pg_class_info means no objects - treat as expired
+                    :expired))
+                schemas))))
+
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
   not have this luxury. Test runs can create schemas where models are persisted and nothing cleans these up, leading
-  to redshift clusters hitting the max number of tables allowed."
+  to redshift clusters hitting the max number of tables allowed.
+
+  Also cleans up workspace isolation schemas (mb__isolation_*) and their associated users that may have been
+  left behind by workspace tests. Only deletes isolation schemas older than [[hours-before-expired-threshold]]
+  to avoid interfering with parallel test runs."
   [^java.sql.Connection conn]
   (let [{old-convention   :old
-         caches-with-info :cache}    (reduce (fn [acc s]
-                                               (cond (sql.tu.unique-prefix/old-dataset-name? s)
-                                                     (update acc :old conj s)
-                                                     (str/starts-with? s "metabase_cache_")
-                                                     (update acc :cache conj s)
-                                                     :else acc))
-                                             {:old [] :cache []}
-                                             (fetch-schemas conn))
+         caches-with-info :cache
+         isolation        :isolation} (reduce (fn [acc s]
+                                                (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                                      (update acc :old conj s)
+                                                      (str/starts-with? s "metabase_cache_")
+                                                      (update acc :cache conj s)
+                                                      (driver.u/workspace-isolated-schema? s)
+                                                      (update acc :isolation conj s)
+                                                      :else acc))
+                                              {:old [] :cache [] :isolation []}
+                                              (fetch-schemas conn))
         {:keys [expired
                 old-style-cache
-                lacking-created-at]} (classify-cache-schemas conn caches-with-info)
-        drop-sql                     (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;"
-                                                               schema-name))]
-    ;; don't delete unknown-error and recent.
+                lacking-created-at]}  (classify-cache-schemas conn caches-with-info)
+        {expired-isolation :expired}  (classify-isolation-schemas conn isolation)
+        drop-sql                      (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
     (with-open [stmt (.createStatement conn)]
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]
-                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]]
+                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]
+                                    [expired-isolation "Dropping expired workspace isolation schema: %s"]]
               schema               collection]
         (log/infof fmt-str schema)
-        (.execute stmt (drop-sql schema))))))
+        (try
+          (.execute stmt (drop-sql schema))
+          (catch Throwable e
+            (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e))))))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]
@@ -295,19 +360,35 @@
    ;; if this is a dataset with no tables (for example when using [[metabase.actions.test-util/with-empty-db]]) then we
    ;; can consider the dataset to already be loaded
    (empty? (:table-definitions dbdef))
-   ;; otherwise, check and make sure the first table in the dbdef has been created.
+   ;; otherwise, probe the first table directly. Retry a few times because fresh connections may be routed to
+   ;; Redshift compute nodes that haven't propagated DDL changes yet (eventual consistency).
    (let [session-schema (unique-session-schema)
          tabledef       (first (:table-definitions dbdef))
-         ;; table-name should be something like test_data_venues
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
-         ;; Use direct SQL query instead of JDBC metadata API (.getTables) because the metadata API
-         ;; can return stale/cached results on Redshift, causing flaky test failures.
          jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
-         results        (jdbc/query jdbc-spec
-                                    ["SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1"
-                                     session-schema
-                                     table-name])]
-     (seq results))))
+         probe-sql      (format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)
+         probe!         (fn []
+                          (sql-jdbc.execute/do-with-connection-with-options
+                           driver jdbc-spec {:write? false}
+                           (fn [^java.sql.Connection conn]
+                             (jdbc/query {:connection conn} [probe-sql])
+                             true)))]
+     (try
+       (probe!)
+       (catch com.amazon.redshift.util.RedshiftException e
+         (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
+           false
+           (throw e)))
+       (catch Exception e
+         ;; Transient error (timeout, network, etc.) - retry once after a short delay.
+         (log/warnf e "dataset-already-loaded? probe failed for %s.%s, retrying" session-schema table-name)
+         (Thread/sleep 1000)
+         (try
+           (probe!)
+           (catch com.amazon.redshift.util.RedshiftException e2
+             (if (re-find #"relation .* does not exist" (or (ex-message e2) ""))
+               false
+               (throw e2)))))))))
 
 (defmethod driver/database-supports? [:redshift :test/use-fake-sync]
   [_driver _feature _database]

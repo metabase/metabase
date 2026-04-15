@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
-import { PivotTable } from "./PivotTable";
+import { PivotTableView } from "./PivotTable";
 
 const cols = [
   {
@@ -87,7 +87,7 @@ export function PivotTableTestWrapper(props?: any) {
   );
 
   return (
-    <PivotTable
+    <PivotTableView
       settings={vizSettings}
       data={{ rows, cols }}
       onVisualizationClick={() => {}}

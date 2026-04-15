@@ -1,0 +1,6 @@
+.SecondaryCTALink {
+  display: inline;
+  color: var(--mb-color-metabase-brand);
+  font-weight: 700;
+  margin-left: 0.25rem;
+}

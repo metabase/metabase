@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type CSSProperties, forwardRef, useMemo } from "react";
+import { type CSSProperties, forwardRef } from "react";
 import { createPortal } from "react-dom";
 
 import type { CommentThread } from "metabase/comments/types";
@@ -15,7 +15,7 @@ interface Props {
   href: string;
   show: boolean;
   style: CSSProperties;
-  threads: CommentThread[];
+  unresolvedCommentsCount: number;
 }
 
 export const getUnresolvedComments = (
@@ -29,11 +29,10 @@ export const getUnresolvedComments = (
 };
 
 export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
-  function CommentsMenu({ active, href, show, style, threads }: Props, ref) {
-    const unresolvedCommentsCount = useMemo(
-      () => getUnresolvedComments(threads).length,
-      [threads],
-    );
+  function CommentsMenu(
+    { active, href, show, style, unresolvedCommentsCount }: Props,
+    ref,
+  ) {
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
 
     return createPortal(

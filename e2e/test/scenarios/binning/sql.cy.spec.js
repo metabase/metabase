@@ -59,7 +59,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       waitAndAssertOnRequest("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
       H.cartesianChartCircle();
     });
@@ -73,7 +73,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       waitAndAssertOnRequest("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
       H.chartPathWithFillColor("#509EE3");
     });
@@ -87,7 +87,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       waitAndAssertOnRequest("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
       H.chartPathWithFillColor("#509EE3");
     });
@@ -108,9 +108,9 @@ describe("scenarios > binning > from a saved sql question", () => {
         },
         { mode: "notebook" },
       );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Summarize").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
     });
 
@@ -121,7 +121,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         toBinning: "Year",
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
 
       H.visualize((response) => {
@@ -138,7 +138,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         toBinning: "50 bins",
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
 
       H.visualize((response) => {
@@ -155,7 +155,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         toBinning: "Bin every 10 degrees",
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
 
       H.visualize((response) => {
@@ -177,46 +177,46 @@ describe("scenarios > binning > from a saved sql question", () => {
 
     it("should work for time series", () => {
       H.tableHeaderClick("CREATED_AT");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "CREATED_AT", yLabel: "Count" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Month");
       H.cartesianChartCircle();
 
       // Open a popover with bucket options from the time series footer
       cy.findByTestId("timeseries-bucket-button").contains("Month").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Quarter");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
 
     it("should work for number", () => {
       H.tableHeaderClick("TOTAL");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: Auto binned");
       H.chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
       H.tableHeaderClick("LONGITUDE");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "LONGITUDE", yLabel: "Count" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: Auto binned");
       H.chartPathWithFillColor("#509EE3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
   });

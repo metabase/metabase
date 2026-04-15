@@ -22,7 +22,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     enterSamlSettings();
     cy.button("Save and enable").click();
     cy.wait("@updateSamlSettings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success").should("exist");
 
     H.goToAuthOverviewPage();
@@ -79,7 +79,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     cy.visit("/admin/settings/authentication/saml");
 
     cy.findByTestId("saml-user-provisioning-enabled?-setting")
-      .findByText("Enabled")
+      .findByText(/^Disabled/)
       .click();
     cy.wait("@updateSetting");
     H.undoToast().findByText("Changes saved").should("exist");

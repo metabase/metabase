@@ -1,8 +1,16 @@
 .queryResizableBox {
-  display: flex;
   border-bottom: 1px solid var(--mb-color-border);
+  display: flex;
+  max-height: 100%;
 }
 
 .nativeQueryEditor {
   border-bottom: 1px solid var(--mb-color-border);
+  max-height: 100%;
+  overflow: hidden;
+
+  &.readOnly {
+    border-bottom: none;
+    height: 100%;
+  }
 }

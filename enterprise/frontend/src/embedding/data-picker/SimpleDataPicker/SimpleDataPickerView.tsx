@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { CONTAINER_WIDTH } from "metabase/query_builder/components/DataSelector/constants";
 import { Flex, Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
@@ -75,7 +75,7 @@ export function SimpleDataPickerView({
               const isSelected = selectedEntity === option.id;
               const iconColor = isSelected
                 ? "text-primary-inverse"
-                : "icon-primary";
+                : "icon-brand";
               return (
                 <NavLink
                   key={option.id}

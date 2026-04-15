@@ -1,18 +1,23 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
+   [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
+   [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
+   [metabase.upload.impl-test :as upload-test]
    [taoensso.nippy :as nippy]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -56,7 +61,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -95,7 +100,7 @@
 
 (deftest ^:parallel clickhouse-connection-string-select-sequential-consistency
   (testing "connection with no additional options"
-    (is (= (assoc ctd/default-connection-params :select_sequential_consistency true)
+    (is (= ctd/default-connection-params
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {})))))
@@ -163,6 +168,29 @@
          (let [details (merge {:user username :password password}
                               (mt/dbdef->connection-details :clickhouse :db {:database-name database}))]
            (is (true? (driver/can-connect? :clickhouse details)))))))))
+
+(deftest ^:parallel clickhouse-additional-options-test
+  (testing "additional options not prefixed with `clickhouse_setting_` are moved to custom_http_params (#70777)"
+    (mt/test-driver :clickhouse
+      (let [details (assoc (:details (mt/db))
+                           :additional-options "clickhouse_setting_max_threads=5&max_block_size=50"
+                           :clickhouse-settings "max_result_rows=10,max_columns_to_read=20")
+            spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+        (is (true? (driver/can-connect? :clickhouse details)))
+        (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&max_block_size=50"
+               (:subname spec)))
+        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20"
+               (:custom_http_params spec)))
+        (is (= {:max_threads 5
+                :max_block_size 65409 ;; unknown key is ignored
+                :max_results_rows 10
+                :max_columns_to_read 20}
+               (->> ["SELECT getSetting('max_threads') as max_threads,
+                             getSetting('max_block_size') as max_block_size,
+                             getSetting('max_result_rows') as max_results_rows,
+                             getSetting('max_columns_to_read') as max_columns_to_read;"]
+                    (jdbc/query spec)
+                    first)))))))
 
 (deftest clickhouse-qp-extract-datetime-timezone
   (mt/test-driver :clickhouse
@@ -325,11 +353,12 @@
                                                  :output-table "PRODUCTS_COPY"}))))))
 
 (deftest ^:parallel clickhouse-db-supports-schemas-test
-  (doseq [[schemas-supported? details] [[false? {}]
-                                        [false? {:enable-multiple-db nil}]
-                                        [false? {:enable-multiple-db false}]
-                                        [true? {:enable-multiple-db true}]]]
-    (is (schemas-supported? (driver/database-supports? :clickhouse :schemas {:details details})))))
+  (doseq [details [{}
+                   {:enable-multiple-db nil}
+                   {:enable-multiple-db false}
+                   {:enable-multiple-db true}]]
+    ;; clickhouse will always use schemas after reversions in 65984 and 68517
+    (is (true? (driver/database-supports? :clickhouse :schemas {:details details})))))
 
 (deftest ^:parallel humanize-connection-error-message-test
   (is (= "random message" (driver/humanize-connection-error-message :clickhouse ["random message"])))
@@ -337,11 +366,80 @@
                                                                                                 "Failed to get server info"
                                                                                                 "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))
 
+;; Dataset for testing reserved SQL keyword as table name (#68423)
+;; The table name "transaction" is a SQL keyword that causes parsing issues with JDBC driver 0.9.5
+(mt/defdataset reserved-keyword-table-name
+  [["transaction"
+    [{:field-name "event_id", :base-type :type/Integer}
+     {:field-name "event_name", :base-type :type/Text}
+     {:field-name "amount", :base-type :type/Float}]
+    [[1 "purchase" 99.99]
+     [2 "refund" -25.00]
+     [3 "purchase" 149.50]]]])
+
+(deftest ^:parallel reserved-keyword-table-name-native-query-test
+  (mt/test-driver :clickhouse
+    (testing "native query against a table named 'transaction' (SQL keyword) should work (#68423)"
+      (mt/dataset reserved-keyword-table-name
+        (let [db-name (-> (mt/db) :details :db)
+              results (qp/process-query
+                       (mt/native-query
+                        {:query (format "SELECT * FROM %s.transaction" db-name)}))]
+          (is (= [[1 1 "purchase" 99.99]
+                  [2 2 "refund" -25.0]
+                  [3 3 "purchase" 149.5]]
+                 (mt/rows results))))))))
+
 (deftest ^:parallel uploads-supported-test
   (mt/test-driver :clickhouse
     (is (false? (driver/database-supports? driver/*driver* :uploads (mt/db))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms-version :cloud] true))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
+
+(deftest ^:synchronized csv-upload-and-sync-test
+  (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
+    (mt/test-driver :clickhouse
+      (with-redefs [clickhouse-version/dbms-version (constantly {:cloud true
+                                                                 :version "24.8.1"
+                                                                 :semantic-version {:major 24 :minor 8}})]
+        (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
+                            (assoc :enable-multiple-db false))
+              conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+          (driver/create-schema-if-needed! :clickhouse conn-spec "uploads_schema")
+          (try
+            (mt/with-temp [:model/Database db {:engine  :clickhouse
+                                               :details details}]
+              (is (true? (driver/database-supports? :clickhouse :uploads db)))
+              (testing "an upload schema is required"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"A schema has not been set."
+                     (upload-test/do-with-uploaded-example-csv!
+                      {:db-id (:id db)
+                       :auxiliary-sync-steps :synchronous
+                       :schema-name ""}
+                      identity))))
+              (testing "upload models work after sync"
+                (upload-test/do-with-uploaded-example-csv!
+                 {:db-id (:id db)
+                  :auxiliary-sync-steps :synchronous
+                  :schema-name "uploads_schema"}
+                 (fn [model]
+                   (let [query-model (fn []
+                                       (let [mp   (lib-be/application-database-metadata-provider (:id db))
+                                             card (lib.metadata/card mp (:id model))]
+                                         (->> (lib/query mp card)
+                                              (qp/process-query)
+                                              (mt/formatted-rows [int str]))))]
+                     (is (= [[1 " Luke Skywalker"]
+                             [2 " Darth Vader"]]
+                            (query-model)))
+                     (sync/sync-database! db {:scan :schema})
+                     (is (= [[1 " Luke Skywalker"]
+                             [2 " Darth Vader"]]
+                            (query-model))))))))
+            (finally
+              (jdbc/execute! conn-spec ["DROP DATABASE IF EXISTS `uploads_schema`"]))))))))
 
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct ClickHouse types"
@@ -388,3 +486,36 @@
                        (lib/filter (lib/= val-col "abc"))
                        (qp/process-query)
                        (mt/rows))))))))))
+
+(deftest ^:parallel handle-db-names-with-spaces-test
+  (mt/test-driver :clickhouse
+    (are [dbname exp-name] (let [details (assoc (:details (mt/db)) :dbname dbname)
+                                 spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+                             (is (true? (driver/can-connect? :clickhouse details)))
+                             (is (= (format "//localhost:8123/%s" exp-name)
+                                    (:subname spec))))
+      "test_data default fake_db" "test_data"
+      "test_data" "test_data"
+      "" ""
+      nil "default")))
+
+;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
+;;                           at the moment to avoid potential log flooding. We should revisit this during further
+;;                           parsing work.
+#_(deftest ^:parallel parse-final-identifier-test
+    (mt/test-driver
+      :clickhouse
+      (testing "`final` is not allowed as identifier on Clickhouse, parsing fails with an exception"
+        (mt/with-temp [:model/Database db {:engine "clickhouse"
+                                           :name "final"
+                                           :initial_sync_status "complete"}]
+          (mt/with-db
+            db
+            (let [mp (mt/metadata-provider)
+                  broken-query (lib/native-query mp "select final from final")]
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/native-query-deps :clickhouse broken-query)))
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/native-result-metadata :clickhouse broken-query)))
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/validate-native-query-fields :clickhouse broken-query)))))))))

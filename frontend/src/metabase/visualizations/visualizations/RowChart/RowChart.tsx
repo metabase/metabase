@@ -1,10 +1,9 @@
-import type * as React from "react";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
-import { measureTextWidth } from "metabase/lib/measure-text";
+import { measureTextWidth } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
   getCartesianChartColumns,
@@ -44,6 +43,7 @@ import {
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedChartData,
+  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import {
@@ -53,7 +53,12 @@ import {
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type {
+  Card,
+  DatasetData,
+  TransformedCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   RowChartContainer,
@@ -82,7 +87,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
-    <RowChartContainer>
+    <RowChartContainer data-testid="row-chart-container">
       <RowChart {...props} />
     </RowChartContainer>
   );
@@ -114,6 +119,7 @@ const RowChartVisualization = ({
   width: outerWidth,
   height: outerHeight,
   getHref,
+  hideLegend,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -132,8 +138,7 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () =>
-      getGroupedDataset(data.rows, chartColumns, settings, formatColumnValue),
+    () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
@@ -273,7 +278,7 @@ const RowChartVisualization = ({
 
   const hasBreakout =
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
-  const hasLegend = series.length > 1 || hasBreakout;
+  const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
@@ -328,110 +333,103 @@ const RowChartVisualization = ({
   );
 };
 
-RowChartVisualization.getUiName = () => t`Row`;
-RowChartVisualization.identifier = "row";
-RowChartVisualization.iconName = "horizontal_bar";
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-RowChartVisualization.noun = t`row chart`;
+const RowViz: VisualizationDefinition = {
+  getUiName: () => t`Row`,
+  identifier: "row",
+  iconName: "horizontal_bar",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  noun: t`row chart`,
+  noHeader: true,
+  hasEmptyState: true,
+  minSize: getMinSize("row"),
+  defaultSize: getDefaultSize("row"),
+  settings: {
+    ...ROW_CHART_SETTINGS,
+    ...GRAPH_DATA_SETTINGS,
+    ["graph.metrics"]: {
+      ...GRAPH_DATA_SETTINGS["graph.metrics"],
+      get title() {
+        return t`X-axis`;
+      },
+    },
+    ["graph.dimensions"]: {
+      ...GRAPH_DATA_SETTINGS["graph.dimensions"],
+      get title() {
+        return t`Y-axis`;
+      },
+    },
+  },
+  isSensible: ({ cols, rows }: DatasetData) => {
+    return (
+      rows.length > 1 &&
+      cols.length >= 2 &&
+      cols.filter(isDimension).length > 0 &&
+      cols.filter(isMetric).length > 0
+    );
+  },
+  isLiveResizable: (series: any[]) => {
+    const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
+    return totalRows < 10;
+  },
+  /**
+   * Required to make it compatible with series settings without rewriting them fully
+   * It expands a single card + dataset into multiple "series" and sets _seriesKey which is needed for settings to work
+   */
+  transformSeries: (originalMultipleSeries) => {
+    const [series] = originalMultipleSeries;
+    const settings: ComputedVisualizationSettings =
+      getComputedSettingsForSeries(originalMultipleSeries);
+    const { card, data } = series;
 
-RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = getMinSize("row");
-RowChartVisualization.defaultSize = getDefaultSize("row");
+    if (isTransformedCard(card) || !hasValidColumnsSelected(settings, data)) {
+      return originalMultipleSeries;
+    }
 
-RowChartVisualization.settings = {
-  ...ROW_CHART_SETTINGS,
-  ...GRAPH_DATA_SETTINGS,
-};
+    const cardinality = getBreakoutCardinality(data.cols, data.rows, settings);
+    if (cardinality != null && cardinality > MAX_SERIES) {
+      return originalMultipleSeries;
+    }
 
-RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
-  return (
-    rows.length > 1 &&
-    cols.length >= 2 &&
-    cols.filter(isDimension).length > 0 &&
-    cols.filter(isMetric).length > 0
-  );
-};
+    const chartColumns = getCartesianChartColumns(data.cols, settings);
+    const seriesDefinitions = getSeries(
+      data,
+      chartColumns,
+      getColumnValueFormatter(),
+      settings,
+    );
 
-RowChartVisualization.isLiveResizable = (series: any[]) => {
-  const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
-  return totalRows < 10;
-};
+    const transformedSeries = seriesDefinitions.map((seriesDef) => ({
+      card: {
+        ...card,
+        name: seriesDef.seriesName,
+        _seriesKey: seriesDef.seriesKey,
+        _transformed: true,
+      },
+      data: {
+        ...data,
+        cols: [
+          seriesDef.seriesInfo?.dimensionColumn,
+          seriesDef.seriesInfo?.metricColumn,
+        ].filter((column) => column != null),
+      },
+    }));
 
-RowChartVisualization.settings["graph.metrics"] = {
-  ...RowChartVisualization.settings["graph.metrics"],
-  get title() {
-    return t`X-axis`;
+    return transformedSeries.length > 0
+      ? transformedSeries
+      : originalMultipleSeries;
+  },
+  checkRenderable: (series: any[], settings: VisualizationSettings) => {
+    validateDatasetRows(series);
+    validateBreakoutSeriesCount(series, settings);
+    validateChartDataSettings(settings);
+    validateStacking(settings);
   },
 };
-RowChartVisualization.settings["graph.dimensions"] = {
-  ...RowChartVisualization.settings["graph.dimensions"],
-  get title() {
-    return t`Y-axis`;
-  },
-};
 
-/**
- * Required to make it compatible with series settings without rewriting them fully
- * It expands a single card + dataset into multiple "series" and sets _seriesKey which is needed for settings to work
- */
-RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
-  const [series] = originalMultipleSeries;
-  const settings: ComputedVisualizationSettings = getComputedSettingsForSeries(
-    originalMultipleSeries,
-  );
-  const { card, data } = series;
+function isTransformedCard(card: Card): card is TransformedCard {
+  return "_transformed" in card && card._transformed === true;
+}
 
-  if (card._transformed || !hasValidColumnsSelected(settings, data)) {
-    return originalMultipleSeries;
-  }
+Object.assign(RowChartVisualization, RowViz);
 
-  const cardinality = getBreakoutCardinality(data.cols, data.rows, settings);
-  if (cardinality != null && cardinality > MAX_SERIES) {
-    return originalMultipleSeries;
-  }
-
-  const chartColumns = getCartesianChartColumns(data.cols, settings);
-  const seriesDefinitions = getSeries(
-    data,
-    chartColumns,
-    getColumnValueFormatter(),
-    settings,
-  );
-
-  const transformedSeries = seriesDefinitions.map((seriesDef) => ({
-    card: {
-      ...card,
-      name: seriesDef.seriesName,
-      _seriesKey: seriesDef.seriesKey,
-      _transformed: true,
-    },
-    data: {
-      ...data,
-      cols: [
-        seriesDef.seriesInfo?.dimensionColumn,
-        seriesDef.seriesInfo?.metricColumn,
-      ],
-    },
-  }));
-
-  return transformedSeries.length > 0
-    ? transformedSeries
-    : originalMultipleSeries;
-};
-
-RowChartVisualization.checkRenderable = (
-  series: any[],
-  settings: VisualizationSettings,
-) => {
-  validateDatasetRows(series);
-  validateBreakoutSeriesCount(series, settings);
-  validateChartDataSettings(settings);
-  validateStacking(settings);
-};
-
-RowChartVisualization.hasEmptyState = true;
-
-RowChartVisualization.getUiName = () => t`Row`;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default RowChartVisualization;
+export { RowChartVisualization as RowChart };

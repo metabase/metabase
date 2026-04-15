@@ -1,0 +1,68 @@
+name: Release Custom Viz Package
+run-name: Release @metabase/custom-viz v${{ inputs.version }} from ${{ inputs.branch }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to release from"
+        type: string
+        required: true
+        default: "custom-viz"
+      version:
+        description: "Version to publish (e.g. 0.1.0)"
+        type: string
+        required: true
+      npm_tag:
+        description: "NPM dist-tag"
+        type: choice
+        required: true
+        default: "latest"
+        options:
+          - latest
+          - next
+          - canary
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend/src/custom-viz
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Setup npm registry auth
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Set package version
+        run: npm version ${{ inputs.version }} --no-git-tag-version
+
+      - name: Build package
+        run: bun run build
+
+      - name: Publish to NPM
+        run: npm publish --tag ${{ inputs.npm_tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
+
+      - name: Generate workflow summary
+        run: |
+          tee -a $GITHUB_STEP_SUMMARY << EOF
+          ## Published @metabase/custom-viz
+
+          - **Version**: ${{ inputs.version }}
+          - **Tag**: ${{ inputs.npm_tag }}
+          - **Branch**: ${{ inputs.branch }}
+          - **Triggered by**: @${{ github.event.sender.login }}
+          EOF

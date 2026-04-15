@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import {
   InteractiveQuestion,
   type MetabaseQuestion,
@@ -30,7 +29,6 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box, Button, Modal } from "metabase/ui";
 const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -68,6 +66,34 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should not show the expand button (metabase#68975)", () => {
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Max of Quantity").should("be.visible");
+
+      cy.findByTestId("viz-settings-button").click();
+
+      H.popover().within(() => {
+        cy.findByText("Display").click();
+        cy.findByText("Show row index").click();
+      });
+
+      // close the popover
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByText("#").should("be.visible");
+
+      cy.findByTestId("table-body")
+        .find("[data-column-id$='_INDEX']")
+        .eq(0)
+        .realHover({ scrollBehavior: false })
+        .findByTestId("detail-shortcut")
+        .should("not.exist");
+    });
+  });
+
   it("should show a watermark in development mode", () => {
     cy.intercept("/api/session/properties", (req) => {
       req.continue((res) => {
@@ -99,7 +125,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("cell-data").last().click();
 
     cy.on("uncaught:exception", (error) => {
@@ -224,14 +250,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
-      <Box p="lg">
+      <div style={{ padding: "16px" }}>
         <InteractiveQuestion questionId={questionId}>
-          <Box>
+          <div>
             <InteractiveQuestion.FilterDropdown />
             <InteractiveQuestion.QuestionVisualization />
-          </Box>
+          </div>
         </InteractiveQuestion>
-      </Box>
+      </div>
     );
 
     cy.get<string>("@questionId").then((questionId) => {
@@ -260,7 +286,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       onBeforeSave,
       onSave,
     }: InteractiveQuestionProps) => {
-      const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
+      const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+      const toggle = () => setIsSaveModalOpen((v) => !v);
+      const close = () => setIsSaveModalOpen(false);
 
       const handleSave = (
         question: MetabaseQuestion | undefined,
@@ -280,14 +308,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           onBeforeSave={onBeforeSave}
           onSave={handleSave}
         >
-          <Box p="lg">
-            <Button onClick={toggle}>Save</Button>
-          </Box>
+          <div style={{ padding: "16px" }}>
+            <button onClick={toggle}>Save</button>
+          </div>
 
           {isSaveModalOpen && (
-            <Modal opened={isSaveModalOpen} onClose={close}>
+            <div role="dialog" data-testid="modal">
               <InteractiveQuestion.SaveQuestionForm onCancel={close} />
-            </Modal>
+            </div>
           )}
 
           {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
@@ -521,10 +549,10 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       );
 
       return (
-        <Box>
+        <div>
           <InteractiveQuestion questionId={questionId} />
-          <Button onClick={() => setQuestionId("new")}>New Question</Button>
-        </Box>
+          <button onClick={() => setQuestionId("new")}>New Question</button>
+        </div>
       );
     };
 
@@ -582,7 +610,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       cy.findByTestId("sdk-question-save-button").should("not.exist");
 
-      cy.findByRole("menu").within(() => {
+      cy.findByRole("listbox").within(() => {
         cy.findByText("Trend").click();
       });
 

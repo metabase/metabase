@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
@@ -74,16 +74,6 @@ export type CartesianChartColumns =
   | BreakoutChartColumns
   | MultipleMetricsChartColumns
   | ScatterPlotColumns;
-
-export function assertMultiMetricColumns(
-  chartColumns: CartesianChartColumns,
-): MultipleMetricsChartColumns {
-  if ("breakout" in chartColumns) {
-    throw Error("Given `chartColumns` has breakout");
-  }
-
-  return chartColumns;
-}
 
 export const getCartesianChartColumns = (
   columns: RemappingHydratedDatasetColumn[],

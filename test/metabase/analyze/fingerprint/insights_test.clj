@@ -251,7 +251,18 @@
                                            :effective_type :type/DateTime
                                            :source :aggregation}])
                       [["2024-08-09" 10.0 "2024-08-01"]
-                       ["2024-08-10" 20.0 "2024-08-02"]]))))))
+                       ["2024-08-10" 20.0 "2024-08-02"]]))))
+    (testing "Aggregated datetime should be used as fallback when no breakout datetime exists"
+      (is (some?
+           (transduce identity
+                      (insights/insights [{:base_type :type/Boolean
+                                           :source :breakout}
+                                          {:base_type :type/DateTime
+                                           :source :aggregation}
+                                          {:base_type :type/Number
+                                           :source :aggregation}])
+                      [[false "2024-08-09" 10.0]
+                       [true "2024-08-10" 20.0]]))))))
 
 (deftest ^:parallel timeseries-with-relation-semantic-type-test
   (testing "A datetime column with Entity Key or Foreign Key semantic type should still work for timeseries (#35281)"

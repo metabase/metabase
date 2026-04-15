@@ -4,14 +4,14 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import {
   focusOutlineStyle,
   inputPadding,
   inputTypography,
 } from "metabase/common/style/input";
-import type { ColorName } from "metabase/lib/colors/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 import type { InputSize } from "../../style/types";

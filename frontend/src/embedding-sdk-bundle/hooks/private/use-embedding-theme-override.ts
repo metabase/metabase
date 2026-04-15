@@ -11,11 +11,11 @@ import {
   isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { deriveFullMetabaseTheme } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import type { MantineThemeOverride } from "metabase/ui";
+import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import { getColorShades } from "metabase/ui/utils/colors";
+import { useSelector } from "metabase/utils/redux";
 
 /**
  * Returns the Mantine theme override for modular embedding.
@@ -27,14 +27,18 @@ export function useEmbeddingThemeOverride(
   const appColors = useSetting("application-colors");
 
   return useMemo(() => {
-    if (isEmbeddingThemeV1(theme)) {
+    if (!theme || isEmbeddingThemeV1(theme)) {
       const themeWithPreset = applyThemePreset(theme);
 
       // !! Mutate the global colors object to apply the new colors.
       // This must be done before ThemeProvider calls getThemeOverrides.
       setGlobalEmbeddingColors(themeWithPreset?.colors, appColors ?? {});
 
-      return getEmbeddingThemeOverride(themeWithPreset || {}, font);
+      return getEmbeddingThemeOverride(
+        themeWithPreset || {},
+        font,
+        appColors ?? {},
+      );
     }
 
     // We must include Modular Embedding specific overrides for portals (e.g. popover and modal) to target the correct portal id

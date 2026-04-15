@@ -14,10 +14,10 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -301,6 +301,8 @@
                                 [:field %products.category {:source-field %product-id}]]}))]
     ;; actually, ok just to not return `:source-alias`, which is used for mysterious FE legacy historical purposes. We
     ;; can go ahead and return various Lib keys for Lib purposes.
+    ;;
+    ;; NOTE: As of 2025-02-09 `:source-alias` is removed completely so we ESPECIALLY should not be returning it now.
     (doseq [col (qp.preprocess/query->expected-cols query)]
       (testing (pr-str (:name col))
         (is (not (contains? col :source-alias)))))
@@ -385,8 +387,12 @@
                  {:name "count", :display-name "Count"}]
                 (lib/returned-columns query))))
       (testing `lib.metadata.result-metadata/returned-columns
-        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
-                 {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+        (is (=? [{:name                                            "CREATED_AT_2"
+                  :display-name                                    "Created At: Month"
+                  :metabase.lib.metadata.result-metadata/field-ref [:field "CREATED_AT_2" {}]}
+                 {:name                                            "count"
+                  :display-name                                    "Count"
+                  :metabase.lib.metadata.result-metadata/field-ref [:field "count" {}]}]
                 (lib.metadata.result-metadata/returned-columns query))))
       (testing `qp.preprocess/query->expected-cols
         ;; I think traditionally this field ref would have used a Field ID, and `:field_ref` should aim to preserve
@@ -441,7 +447,7 @@
                                                       [:field "ID" {:base-type :type/BigInteger}]
                                                       [:field (meta/id :checkins :id)
                                                        {:base-type :type/BigInteger, :join-alias "CH"}]]}
-                                      {:source-table        (meta/id :venues)
+                                      {:source-query        {:source-table (meta/id :venues)}
                                        :qp/is-implicit-join true
                                        :fk-join-alias       "CH"
                                        :alias               "VENUES__via__VENUE_ID__via__CH"
@@ -545,7 +551,7 @@
 
 ;;; adapted from [[metabase.query-processor.explicit-joins-test/test-31769]]
 (deftest ^:parallel test-31769
-  (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
+  (testing "Make sure queries built with Lib that have source Cards with joins work correctly (#31769) (#33083)"
     (let [mp    (lib.tu.mocks-31769/mock-metadata-provider meta/metadata-provider meta/id)
           query (lib.tu.mocks-31769/query mp)]
       (is (=? {:stages [{:source-card 1}
@@ -605,7 +611,7 @@
                   :lib/breakout?                true
                   :lib/source-column-alias      "CATEGORY"
                   :lib/desired-column-alias     "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/join-alias (symbol "nil #_\"key is not present.\"")
                   :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
                   :source_alias                 (symbol "nil #_\"key is not present.\"")
                   :fk_field_id                  (meta/id :orders :product-id)}

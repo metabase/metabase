@@ -11,20 +11,20 @@ You can style your embedded [Metabase components](./components.md) with a **them
 
 ![Embed share button](./images/embed-share-button.png)
 
-Guest embeds on OSS/Starter plans come with two theme presets - light and dark. On Metabase Pro/Enterprise plans, you can customize individual colors, fonts, etc.
+Guest embeds on OSS and Starter plans come with two theme presets - light and dark. On Metabase Pro and Enterprise plans, you can also customize individual colors, backgrounds, fonts and more. See [Advanced theming](#advanced-theming).
 
-## Basic theming
 
-You can choose light or dark theme for your embeds. On Pro/Enterprise plans, you can also configure granular appearance settings like background, fonts etc, see [Advanced theming](#advanced-theming).
+## Dark mode and light mode
 
-To add a light or dark theme, pass a `theme` parameter with `preset` to the `defineMetabaseConfig()` function in your [embedding code snippet](./modular-embedding.md#add-the-embedding-script-to-your-app). For example, to specify a dark theme:
+By default, components that you embed using the SDK will use a light mode theme.
+
+To use dark mode, set `theme.preset` to `"dark"` in the `defineMetabaseConfig()` function of your [embedding code snippet](./modular-embedding.md#add-the-embedding-script-to-your-app):
 
 ```js
 defineMetabaseConfig({
   theme: {
-    preset: "dark",
+    preset: "dark", // or "light"
   },
-  instanceUrl: "http://localhost:3000",
 });
 ```
 
@@ -38,7 +38,7 @@ On Pro/Enterprise plan, you can configure granular appearance options, like back
 
 ![Behavior and appearance](./images/behavior-and-appearance.png)
 
-Some appearance options like brand, text, and background color are configurable in in the [embed wizard](./modular-embedding.md#create-a-new-embed).
+Some appearance options like brand, text, and background color are configurable in the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
 For other appearance settings, use the `theme` parameter with `preset` in the `defineMetabaseConfig()` function in your [embedding code snippet](./modular-embedding.md#add-the-embedding-script-to-your-app). For example:
 

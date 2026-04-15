@@ -1,5 +1,5 @@
-import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";
 
@@ -31,9 +31,6 @@ const BaseLoadingSpinner = ({
 /**
  * @deprecated: use Loader from "metabase/ui"
  */
-const LoadingSpinner = Object.assign(BaseLoadingSpinner, {
+export const LoadingSpinner = Object.assign(BaseLoadingSpinner, {
   Root: SpinnerRoot,
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LoadingSpinner;

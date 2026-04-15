@@ -1,4 +1,4 @@
-export type Point = [number, number];
+import type { Point } from "metabase-types/api/dataset";
 
 /**
  * Calculates the length of a chord given the radius of a circle and the central angle.
@@ -160,10 +160,13 @@ export const calcAvailableDonutSliceLabelLength = (
   }
 
   const arcAngle = endAngle - startAngle;
-  const innerCordLength = calcChordLength(innerRadius, arcAngle);
+  const innerChordLength = calcChordLength(
+    innerRadius,
+    Math.min(arcAngle, Math.PI),
+  );
 
   if (labelPosition === "radial") {
-    return innerCordLength > fontSize ? donutThickness : 0;
+    return innerChordLength > fontSize ? donutThickness : 0;
   }
 
   const midRadius = (innerRadius + outerRadius) / 2;
@@ -179,12 +182,10 @@ export const calcAvailableDonutSliceLabelLength = (
     outerRadius,
   );
 
-  const cordLengthLimit =
-    arcAngle < Math.PI ? innerCordLength : 2 * innerRadius;
   const sliceConstraint =
-    isNearXAxis(midAngle) && innerCordLength > fontSize
+    isNearXAxis(midAngle) && innerChordLength > fontSize
       ? donutThickness
-      : cordLengthLimit;
+      : innerChordLength;
 
   return Math.min(maxRectLength, sliceConstraint);
 };

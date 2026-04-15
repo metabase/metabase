@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { Icon } from "metabase/ui";
 import { maybeColor } from "metabase/ui/utils/colors";

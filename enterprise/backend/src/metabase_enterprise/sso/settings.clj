@@ -7,6 +7,8 @@
    [metabase-enterprise.scim.core :as scim]
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
+   [metabase.sso.settings :as sso-settings]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -23,8 +25,7 @@
   (mr/validator GroupMappings))
 
 (defsetting saml-user-provisioning-enabled?
-  (deferred-tru "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
-don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via SAML and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-saml
@@ -33,21 +34,23 @@ don''t have one.")
                ;; Disable SAML provisioning automatically when SCIM is enabled
                false
                (setting/get-value-of-type :boolean :saml-user-provisioning-enabled?)))
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.")
 
 (defsetting jwt-user-provisioning-enabled?
-  (deferred-tru "When a user logs in via JWT, create a Metabase account for them automatically if they don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via JWT and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-jwt
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via JWT will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via JWT.")
 
 (defsetting ldap-user-provisioning-enabled?
-  (deferred-tru "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
-don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via LDAP and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via LDAP will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via LDAP.")
 
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
@@ -218,6 +221,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (deferred-tru (str "String used to seed the private key used to validate JWT messages."
                      " "
                      "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
+  :sensitive? true
   :encryption :when-encryption-key-set
   :type       :string
   :feature    :sso-jwt
@@ -249,6 +253,14 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :export?    false
   :encryption :when-encryption-key-set
   :default    "@tenant"
+  :feature    :sso-jwt
+  :audit      :getter)
+
+(defsetting jwt-attribute-tenant-attributes
+  (deferred-tru "Key to retrieve the JWT user''s tenant attributes")
+  :export?    false
+  :encryption :when-encryption-key-set
+  :default    "@tenant.attributes"
   :feature    :sso-jwt
   :audit      :getter)
 
@@ -290,17 +302,24 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                        (boolean (jwt-identity-provider-uri)))))
 
 (defsetting jwt-enabled
-  (deferred-tru "Is JWT authentication configured and enabled?")
+  (deferred-tru "Is JWT authentication enabled?")
   :type    :boolean
   :default false
   :feature :sso-jwt
   :audit   :getter
-  :getter  (fn []
-             (if (jwt-configured)
-               (setting/get-value-of-type :boolean :jwt-enabled)
-               false))
   :doc "When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.")
+
+(defsetting jwt-enabled-and-configured
+  (deferred-tru "Is JWT authentication configured and enabled?")
+  :type             :boolean
+  :default          false
+  :feature          :sso-jwt
+  :audit            :getter
+  :getter           (fn [] (and (jwt-configured) (jwt-enabled)))
+  :export?          false
+  :can-set-via-env? false
+  :doc              false)
 
 (defsetting sdk-encryption-validation-key
   (deferred-tru "Used for encrypting and checking whether SDK requests are signed")
@@ -338,92 +357,81 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :default    "(member={dn})"
   :audit      :getter)
 
-;;; ------------------------------------------------ Slack Connect ------------------------------------------------
+;;; ------------------------------------------------ OIDC (Custom) ------------------------------------------------
 
-(defsetting slack-connect-client-id
-  (deferred-tru "Client ID for your Slack app. Get this from https://api.slack.com/apps")
-  :encryption :when-encryption-key-set
-  :export?    false
-  :feature    :sso-slack
-  :audit      :getter)
+(defsetting oidc-providers
+  (deferred-tru "JSON containing OIDC provider configurations.")
+  :encryption  :when-encryption-key-set
+  :type        :json
+  :default     []
+  :feature     :sso-oidc
+  :visibility  :settings-manager
+  :export?     false
+  :audit       :no-value
+  :sensitive?  true)
 
-(defsetting slack-connect-client-secret
-  (deferred-tru "Client Secret for your Slack app")
-  :encryption :when-encryption-key-set
-  :export?    false
-  :sensitive? true
-  :feature    :sso-slack
-  :audit      :no-value)
+(defn get-oidc-provider
+  "Look up an OIDC provider by key from the `oidc-providers` setting."
+  [provider-key]
+  (some (fn [provider]
+          (when (= (:key provider) provider-key)
+            provider))
+        (oidc-providers)))
 
-(def slack-connect-auth-mode-sso
-  "Authentication mode for full SSO login."
-  "sso")
-
-(def slack-connect-auth-mode-link-only
-  "Authentication mode for account linking only (no session creation)."
-  "link-only")
-
-(defsetting slack-connect-authentication-mode
-  (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" (default) or \"link-only\"")
-  :type       :string
-  :export?    false
-  :default    slack-connect-auth-mode-sso
-  :feature    :sso-slack
-  :audit      :getter
-  :encryption :no
-  :setter     (fn [new-value]
-                (when (and new-value
-                           (not (contains? #{slack-connect-auth-mode-sso slack-connect-auth-mode-link-only} new-value)))
-                  (throw (ex-info (tru "Invalid authentication mode. Must be \"sso\" or \"link-only\"")
-                                  {:status-code 400})))
-                (setting/set-value-of-type! :string :slack-connect-authentication-mode new-value)))
-
-(defsetting slack-connect-user-provisioning-enabled
-  (deferred-tru "When a user logs in via Slack Connect, create a Metabase account for them automatically if they don''t have one.")
+(defsetting oidc-configured?
+  (deferred-tru "Are any OIDC providers configured with required fields?")
   :type    :boolean
-  :export? false
-  :default true
-  :feature :sso-slack
-  :getter  (fn []
-             (if (= (slack-connect-authentication-mode) slack-connect-auth-mode-link-only)
-               false
-               (setting/get-value-of-type :boolean :slack-connect-user-provisioning-enabled)))
-  :audit   :getter)
-
-(defsetting slack-connect-attribute-team-id
-  (deferred-tru "Slack OIDC claim for the team/workspace ID")
-  :default    "https://slack.com/team_id"
-  :export?    false
-  :feature    :sso-slack
-  :encryption :when-encryption-key-set
-  :audit      :getter)
-
-(defsetting slack-connect-configured
-  (deferred-tru "Are the mandatory Slack Connect settings configured?")
-  :type    :boolean
-  :export? false
   :default false
-  :feature :sso-slack
+  :feature :sso-oidc
   :setter  :none
   :getter  (fn [] (boolean
-                   (and (slack-connect-client-id)
-                        (slack-connect-client-secret)))))
+                   (some (fn [p]
+                           (and (:issuer-uri p)
+                                (:client-id p)
+                                (:client-secret p)))
+                         (oidc-providers))))
+  :export?     false)
 
-(defsetting slack-connect-enabled
-  (deferred-tru "Is Slack Connect authentication configured and enabled?")
+(defsetting oidc-enabled?
+  (deferred-tru "Is any OIDC provider enabled?")
   :type    :boolean
-  :export? false
   :default false
-  :feature :sso-slack
-  :audit   :getter
-  :getter  (fn []
-             (if (slack-connect-configured)
-               (setting/get-value-of-type :boolean :slack-connect-enabled)
-               false)))
+  :feature :sso-oidc
+  :setter  :none
+  :getter  (fn [] (boolean (seq (filter :enabled (oidc-providers)))))
+  :export?     false)
 
-(defsetting other-sso-enabled?
-  "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
-  authorization rather than the normal login form or Google Auth button."
+(defsetting oidc-login-providers
+  (deferred-tru "Public-facing list of enabled OIDC providers for the login page.")
+  :type       :json
+  :default    []
+  :feature    :sso-oidc
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled))))
+  :getter     (fn []
+                (let [base-url (str (system/site-url) "/auth/sso/")]
+                  (into []
+                        (comp (filter :enabled)
+                              (map (fn [p]
+                                     {:type           "oidc"
+                                      :key            (:key p)
+                                      :login-prompt   (:login-prompt p)
+                                      :sso-url        (str base-url (:key p))})))
+                        (oidc-providers))))
+  :export?    false)
+
+(defsetting oidc-user-provisioning-enabled?
+  (deferred-tru "Determines what happens when a user logs in via OIDC and doesn''t have a Metabase account.")
+  :type    :boolean
+  :default true
+  :feature :sso-oidc
+  :export? false
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via OIDC will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via OIDC.")
+
+(defsetting other-sso-enabled?
+  "Are we using an SSO integration other than LDAP or Google Auth or OIDC? These integrations use the `/auth/sso` endpoint
+  (SAML/JWT) or `/auth/sso/slack-connect` (Slack Connect) for authorization rather than the normal login form or Google Auth button."
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled-and-configured) (sso-settings/slack-connect-enabled))))

@@ -2,18 +2,18 @@ import { useState } from "react";
 import { useInterval } from "react-use";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
+import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+import { type FileUpload, UploadMode } from "metabase/redux/store/upload";
+import { Box, Stack } from "metabase/ui";
 import {
   isUploadAborted,
   isUploadCompleted,
   isUploadInProgress,
-} from "metabase/lib/uploads";
-import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
-import { Box, Stack } from "metabase/ui";
+} from "metabase/utils/uploads";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Collection } from "metabase-types/api";
-import { type FileUpload, UploadMode } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
 

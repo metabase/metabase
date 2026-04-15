@@ -8,13 +8,13 @@ import {
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { SiteUrlWidget } from "./SiteUrlWidget";
 
@@ -77,7 +77,7 @@ describe("siteUrlWidget", () => {
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
     const [{ url, body }] = await findRequests("PUT");
@@ -102,7 +102,7 @@ describe("siteUrlWidget", () => {
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
     expect(
@@ -118,7 +118,7 @@ describe("siteUrlWidget", () => {
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
     expect(

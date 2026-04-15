@@ -113,7 +113,7 @@
 ;;; make sure that given an existing query, the expected description was generated correctly.
 
 (defn- describe-legacy-query [query]
-  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))))
+  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->mbql5 query))))
 
 (deftest ^:parallel describe-multiple-aggregations-test
   (let [query {:database (meta/id)
@@ -569,7 +569,7 @@
                    {:display-name "Date"
                     :effective-type :type/Date
                     :lib/source :source/table-defaults
-                    :metabase.lib.field/temporal-unit :quarter
+                    :lib/temporal-unit :quarter
                     :selected? true}
                    {:display-name "User ID"
                     :effective-type :type/Integer
@@ -802,7 +802,7 @@
                           (lib/expression "Zero" (lib/+ 0 0))
                           (lib/expression "Total of Zero" (lib/coalesce (meta/field-metadata :orders :total) 0)))
           converted-query (lib/query meta/metadata-provider
-                                     (lib.convert/->pMBQL
+                                     (lib.convert/->mbql5
                                       (lib.tu.macros/mbql-query orders
                                         {:expressions {"Zero"          [:+ 0 0]
                                                        "Total of Zero" [:coalesce $total 0]}})))
@@ -952,4 +952,38 @@
                   :name         "max"}]
                 (lib/aggregations-metadata query 1)))))))
 
-;; trivial change to test CI; remove this next time you see it
+(deftest ^:parallel aggregation-display-name-patterns-test
+  (testing "aggregation-display-name-patterns returns patterns with prefix and suffix"
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)]
+      (testing "returns a non-empty vector"
+        (is (vector? patterns))
+        (is (pos? (count patterns))))
+      (testing "each pattern has :prefix and :suffix keys"
+        (doseq [pattern patterns]
+          (is (contains? pattern :prefix))
+          (is (contains? pattern :suffix))
+          (is (string? (:prefix pattern)))
+          (is (string? (:suffix pattern)))))
+      (testing "includes expected aggregation patterns"
+        (let [prefixes (set (map :prefix patterns))]
+          (is (contains? prefixes "Sum of "))
+          (is (contains? prefixes "Average of "))
+          (is (contains? prefixes "Distinct values of "))
+          (is (contains? prefixes "Max of "))
+          (is (contains? prefixes "Min of "))
+          (is (contains? prefixes "Count of "))))
+      (testing "includes pattern with suffix (sum-where)"
+        (is (some #(= " matching condition" (:suffix %)) patterns))))))
+
+(deftest ^:parallel aggregation-display-name-patterns-order-test
+  (testing "more specific patterns (with suffix) come before general patterns"
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)
+          sum-where-idx (some #(when (= " matching condition" (:suffix (second %))) (first %))
+                              (map-indexed vector patterns))
+          sum-idx (some #(when (and (= "Sum of " (:prefix (second %)))
+                                    (= "" (:suffix (second %))))
+                           (first %))
+                        (map-indexed vector patterns))]
+      (when (and sum-where-idx sum-idx)
+        (is (< sum-where-idx sum-idx)
+            "Sum-where pattern should come before plain Sum pattern")))))

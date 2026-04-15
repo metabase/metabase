@@ -1,9 +1,9 @@
 import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
 import App from "metabase/App.tsx";
-import getAccountRoutes from "metabase/account/routes";
+import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import getAdminRoutes from "metabase/admin/routes";
+import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
@@ -21,7 +21,7 @@ import { MoveCollectionModal } from "metabase/collections/components/MoveCollect
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
-import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
+import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
@@ -29,20 +29,22 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
-import { trackPageView } from "metabase/lib/analytics";
+import { MetabotQueryBuilder } from "metabase/metabot/components/MetabotQueryBuilder";
+import { getMetabotRoutes } from "metabase/metabot/routes";
+import { getMetricRoutes } from "metabase/metrics/routes";
+import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
-  PLUGIN_DATA_STUDIO,
   PLUGIN_LANDING_PAGE,
-  PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -66,6 +68,7 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
+import { trackPageView } from "./analytics";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -126,11 +129,18 @@ export const getRoutes = (store) => {
           <Route path="logout" component={Logout} />
           <Route path="forgot_password" component={ForgotPassword} />
           <Route path="reset_password/:token" component={ResetPassword} />
+          {/* FE routes can sometimes be prioritized over BE
+              reloading will correctly pick the SSO flow back up from the BE  */}
+          <Route path="sso" onEnter={() => window.location.reload()} />
+          <Route
+            path="sso/:provider"
+            onEnter={() => window.location.reload()}
+          />
         </Route>
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
-          {PLUGIN_METABOT.getMetabotRoutes()}
+          {getMetabotRoutes()}
 
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
@@ -185,7 +195,10 @@ export const getRoutes = (store) => {
             <IndexRoute component={UserCollectionList} />
           </Route>
 
-          <Route path="collection/tenant-specific" component={IsAdmin}>
+          <Route
+            path="collection/tenant-specific"
+            component={PLUGIN_TENANTS.CanAccessTenantSpecificRoute}
+          >
             <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
           </Route>
 
@@ -259,8 +272,8 @@ export const getRoutes = (store) => {
               })}
             />
             <IndexRoute component={QueryBuilder} />
-            {PLUGIN_METABOT.getMetabotQueryBuilderRoute()}
             <Route path="notebook" component={QueryBuilder} />
+            <Route path="ask" component={MetabotQueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
@@ -284,15 +297,7 @@ export const getRoutes = (store) => {
             <Route path="metabot" component={QueryBuilder} />
           </Route>
 
-          {/* METRICS V2 */}
-          <Route path="/metric">
-            <IndexRoute component={QueryBuilder} />
-            <Route path="notebook" component={QueryBuilder} />
-            <Route path="query" component={QueryBuilder} />
-            <Route path=":slug" component={QueryBuilder} />
-            <Route path=":slug/notebook" component={QueryBuilder} />
-            <Route path=":slug/query" component={QueryBuilder} />
-          </Route>
+          {getMetricRoutes()}
 
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
@@ -314,6 +319,8 @@ export const getRoutes = (store) => {
               to="databases/:dbId/schema/:schemaName"
             />
           </Route>
+
+          <Route path="explore" component={MetricsViewerPage} />
 
           <Route path="table">
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />
@@ -382,7 +389,7 @@ export const getRoutes = (store) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* DATA STUDIO */}
-          {PLUGIN_DATA_STUDIO.getDataStudioRoutes(
+          {getDataStudioRoutes(
             store,
             CanAccessDataStudio,
             CanAccessDataModel,

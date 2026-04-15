@@ -7,7 +7,6 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
@@ -15,11 +14,14 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getShallowFields as getFields,
+  getMetadata,
+} from "metabase/selectors/metadata";
+import { connect } from "metabase/utils/redux";
 
 import {
   getError,
-  getFields,
   getHasSingleSchema,
   getIsEditing,
   getIsFormulaExpanded,
@@ -241,4 +243,5 @@ const TableDetail = (props) => {
 
 TableDetail.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(TableDetail);

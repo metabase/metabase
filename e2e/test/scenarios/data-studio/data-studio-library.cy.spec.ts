@@ -19,17 +19,28 @@ describe("scenarios > data studio > library", () => {
     cy.intercept("GET", "/api/collection/tree*").as("getCollectionTree");
 
     cy.log("Navigate to Data Studio Library");
-    H.DataModel.visitDataStudio();
+    /**
+     * Let's use the profile menu to navigate to Data Studio in this test, just
+     * to make sure it works, and to test the analytics event
+     */
+    cy.visit("/");
+    H.getProfileLink().click();
+    H.popover()
+      .findByText(/Data studio/)
+      .click();
+
+    cy.log(
+      "Verify tracking event when opening Data Studio from the profile menu",
+    );
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_opened",
+      triggered_from: "nav_menu",
+    });
     H.DataStudio.nav().findByLabelText("Library").click();
 
-    cy.log("Closing the modal should send you back");
-    H.modal().button("Cancel").click();
-    H.DataModel.get().should("exist");
-
-    cy.log("Create library via modal");
-    H.DataStudio.nav().findByLabelText("Library").click();
-    H.modal().within(() => {
-      cy.findByText("Create your Library").should("be.visible");
+    cy.log("Create library via inline empty state");
+    H.DataStudio.Library.libraryPage().within(() => {
+      cy.findByText("A source of truth for analytics").should("be.visible");
       cy.findByText("Create my Library").click();
     });
 
@@ -83,10 +94,10 @@ describe("scenarios > data studio > library", () => {
   it("should let you move metrics into the library, even when empty", () => {
     H.createLibrary();
     H.createQuestion(TRUSTED_ORDERS_METRIC, { visitQuestion: true });
-    H.openQuestionActions("Duplicate");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Duplicate").click();
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, "Library").click();
     H.entityPickerModalItem(1, "Metrics").click();
     H.entityPickerModal().button("Select this collection").click();
@@ -114,8 +125,10 @@ describe("scenarios > data studio > library", () => {
       H.popover().findByText("Published table").click();
 
       cy.log("Select a table and click 'Publish'");
-      H.entityPickerModalItem(3, "Orders").click();
-      H.entityPickerModal().button("Publish").click();
+      H.pickEntity({
+        path: ["Databases", /Sample Database/, "Orders"],
+        select: true,
+      });
 
       cy.log("Verify the table is published");
       H.DataStudio.Tables.overviewPage().should("exist");
@@ -128,8 +141,9 @@ describe("scenarios > data studio > library", () => {
       );
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Published table").click();
-      H.entityPickerModalItem(3, "Orders").should("have.attr", "data-disabled");
-      H.entityPickerModalItem(3, "People").should(
+      H.entityPickerModalItem(1, /Sample Database/).click();
+      H.entityPickerModalItem(2, "Orders").should("have.attr", "data-disabled");
+      H.entityPickerModalItem(2, "People").should(
         "not.have.attr",
         "data-disabled",
       );
@@ -175,7 +189,8 @@ describe("scenarios > data studio > library", () => {
         .findByRole("button", { name: "Publish a table" })
         .click();
       H.entityPickerModal().should("be.visible");
-      H.entityPickerModalItem(3, "Orders").should("exist");
+      H.entityPickerModalItem(1, "Sample Database").click();
+      H.entityPickerModalItem(2, "Orders").should("exist");
       H.entityPickerModal().button("Close").click();
 
       cy.log("Search for text and verify empty states are excluded");
@@ -199,7 +214,8 @@ describe("scenarios > data studio > library", () => {
       cy.log("Publish a table via the +New menu");
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Published table").click();
-      H.entityPickerModalItem(3, "Orders").click();
+      H.entityPickerModalItem(1, "Sample Database").click();
+      H.entityPickerModalItem(2, "Orders").click();
       H.entityPickerModal().button("Publish").click();
 
       cy.log("Navigate back to Library via breadcrumbs");
@@ -208,7 +224,9 @@ describe("scenarios > data studio > library", () => {
       cy.log("Verify Data section shows the table (empty state hidden)");
       H.DataStudio.Library.tableItem("Orders").should("be.visible");
       H.DataStudio.Library.libraryPage()
-        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .findByText(
+          "Cleaned, pre-transformed data sources ready for exploring.",
+        )
         .should("not.exist");
 
       cy.log(
@@ -220,6 +238,47 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.libraryPage()
         .findByText("Reusable bits of code that save your time")
         .should("be.visible");
+    });
+
+    describe("read-only mode", () => {
+      beforeEach(() => {
+        H.setupGitSync();
+        H.configureGit("read-only");
+        H.createLibrary();
+      });
+
+      it("should hide +New button and empty state actions in read-only mode (UXW-3341)", () => {
+        H.DataStudio.Library.visit();
+
+        cy.log("Verify +New button is not visible");
+        H.DataStudio.Library.newButton().should("not.exist");
+
+        cy.log("Verify Data section empty state action is not visible");
+        H.DataStudio.Library.libraryPage()
+          .findByText(
+            "Cleaned, pre-transformed data sources ready for exploring",
+          )
+          .should("be.visible");
+        H.DataStudio.Library.libraryPage()
+          .findByRole("button", { name: "Publish a table" })
+          .should("not.exist");
+
+        cy.log("Verify Metrics section empty state action is not visible");
+        H.DataStudio.Library.libraryPage()
+          .findByText("Standardized calculations with known dimensions")
+          .should("be.visible");
+        H.DataStudio.Library.libraryPage()
+          .findByRole("link", { name: "New metric" })
+          .should("not.exist");
+
+        cy.log("Verify SQL snippets section empty state action is not visible");
+        H.DataStudio.Library.libraryPage()
+          .findByText("Reusable bits of code that save your time")
+          .should("be.visible");
+        H.DataStudio.Library.libraryPage()
+          .findByRole("link", { name: "New snippet" })
+          .should("not.exist");
+      });
     });
   });
 });

@@ -2,14 +2,17 @@
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [toucan2.core :as t2]))
 
 (defsetting enable-query-caching
   (deferred-tru "Allow caching results of queries that take a long time to run.")
   :type       :boolean
   :default    true
   :visibility :authenticated
-  :audit      :getter)
+  :audit      :getter
+  :getter     #(t2/exists? :model/CacheConfig)
+  :setter     :none)
 
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for

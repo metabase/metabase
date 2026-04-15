@@ -1,12 +1,13 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import type { CollectionPermissions } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 import {
   createMockAdminState,
+  createMockPermissionsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { CollectionPermissions } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import {
   getCurrentTenantCollectionId,
@@ -34,16 +35,10 @@ const createMockStateWithPermissions = ({
       "token-features": createMockTokenFeatures({ tenants: true }),
     }),
     admin: createMockAdminState({
-      permissions: {
-        dataPermissions: {},
-        originalDataPermissions: {},
-        collectionPermissions: {},
-        originalCollectionPermissions: {},
+      permissions: createMockPermissionsState({
         tenantCollectionPermissions,
         originalTenantCollectionPermissions,
-        isHelpReferenceOpen: false,
-        hasRevisionChanged: { revision: null, hasChanged: false },
-      },
+      }),
     }),
   });
 

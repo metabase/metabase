@@ -6,7 +6,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.field :as lib.field]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -328,15 +328,15 @@
 
   This does one important thing: if `:has_field_values` is already present and set to `:auto-list`, it is replaced by
   `:list` -- presumably because the frontend doesn't need to know `:auto-list` even exists?
-  See [[lib.field/infer-has-field-values]] for more info."
+  See [[lib/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib.field/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
+    (let [has-field-values (lib/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
       (assoc field k has-field-values))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
   "Always (re-)hydrate `:has_field_values`. This is used to convert an existing value of `:auto-list` to
-  `:list` (see [[infer-has-field-values]])."
+  `:list` (see [[lib/infer-has-field-values]])."
   [_model _k _field]
   true)
 
@@ -420,8 +420,8 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/generate-path "Field" [_ field]
-  (let [[db schema table & fields] (serdes/*export-field-fk* (:id field))]
+(defmethod serdes/generate-path "Field" [_ {:keys [id]}]
+  (let [[db schema table & fields] (serdes/*export-field-fk* id)]
     (->> (into (serdes/table->path [db schema table])
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
@@ -465,9 +465,17 @@
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id opts)}})
+               :dimensions         (serdes/nested :model/Dimension :field_id opts)}
+   :defaults {:active                     true
+              :database_is_auto_increment false
+              :database_required          false
+              :is_defective_duplicate     false
+              :json_unfolding             false
+              :preview_display            true}})
 
 (defmethod serdes/storage-path "Field" [field _]
-  (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))]
-    (concat (serdes/storage-path-prefixes path)
-            ["fields" (str/join "." (map :id fields))])))
+  (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))
+        field-name    (str/join "." (map :id fields))]
+    (conj (serdes/storage-path-prefixes path)
+          {:label "fields"}
+          {:label field-name :key field-name})))

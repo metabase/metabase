@@ -5,10 +5,8 @@ import { c, t } from "ttag";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Markdown from "metabase/common/components/Markdown";
-import { useDispatch } from "metabase/lib/redux";
-import { getUserName } from "metabase/lib/user";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Markdown } from "metabase/common/components/Markdown";
 import {
   Box,
   Button,
@@ -20,6 +18,8 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import { getUserName } from "metabase/utils/user";
 import {
   useGetGsheetsFolderQuery,
   useGetServiceAccountQuery,

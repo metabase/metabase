@@ -35,7 +35,7 @@
     (conj "Setting")
 
     (not (:no-transforms opts))
-    (conj "Transform" "TransformTag" "TransformJob")))
+    (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
@@ -168,14 +168,19 @@
   `opts` are passed down to [[serdes/extract-all]] for each model."
   [{:keys [targets user-id] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [nodes    (resolve-targets opts user-id)
-        ;; by model is a map of `{model-name [ids ...]}`
+  (let [models       (model-set opts)
+        has-content? (seq (set/intersection (set serdes.models/content) models))
+        nodes        (when has-content?
+                       (resolve-targets opts user-id))
+        ;; `by-model` is a map of `{model-name [ids ...]}`
         by-model (u/group-by first second (keys nodes))
-        {:keys [reportable-escaped analytics-card-ids]} (escape-analysis by-model nodes)]
+        ;; Escape analysis only matters when exporting collection content — it checks whether
+        ;; cards referenced by dashboards live outside the target collections.
+        {:keys [reportable-escaped analytics-card-ids]} (when has-content?
+                                                          (escape-analysis by-model nodes))]
     (if (seq reportable-escaped)
       (log-escape-report! reportable-escaped)
-      (let [models          (model-set opts)
-            coll-set        (get by-model "Collection")
+      (let [coll-set        (get by-model "Collection")
             ;; When targets are specified, also include Tables found via descendants
             ;; (published tables in target collections). These are extracted by ID, not all.
             targeted-data-model (when (seq targets)

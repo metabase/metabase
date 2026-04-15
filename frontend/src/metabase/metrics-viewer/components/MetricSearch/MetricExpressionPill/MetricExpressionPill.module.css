@@ -1,0 +1,15 @@
+.metricExpressionPill {
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  transition: background-color 150ms ease;
+  max-width: 100%;
+}
+
+.metricExpressionPill:hover {
+  background-color: var(--mb-color-background-secondary);
+}
+
+.expressionText {
+  white-space: pre-wrap;
+}

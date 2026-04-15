@@ -5,8 +5,8 @@
    [metabase-enterprise.cache.strategies :as strategies]
    [metabase-enterprise.cache.task.refresh-cache-configs :as task.cache]
    [metabase.queries.models.query :as query]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.test :as qp]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]))
 

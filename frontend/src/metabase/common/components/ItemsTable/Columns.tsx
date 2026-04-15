@@ -3,18 +3,18 @@ import { c, t } from "ttag";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
-import CheckBox from "metabase/common/components/CheckBox";
-import DateTime from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EntityItem from "metabase/common/components/EntityItem";
-import Markdown from "metabase/common/components/Markdown";
+import { CheckBox } from "metabase/common/components/CheckBox";
+import { DateTime } from "metabase/common/components/DateTime";
+import { EntityItem } from "metabase/common/components/EntityItem";
+import { Markdown } from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { modelToUrl } from "metabase/lib/urls";
-import { getUserName } from "metabase/lib/user";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import type { IconProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Ellipsified, type IconProps, Tooltip } from "metabase/ui";
+import { isTouchDevice } from "metabase/utils/browser";
+import { modelToUrl } from "metabase/utils/urls";
+import { getUserName } from "metabase/utils/user";
 import type {
   CollectionItem,
   ListCollectionItemsSortColumn,
@@ -165,10 +165,12 @@ export const Columns = {
       includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
     }) => {
+      const tc = useTranslateContent();
+
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItem.Name name={item.name} variant="list" />
+            <EntityItem.Name name={tc(item.name)} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
               status={item.moderated_status}
@@ -179,9 +181,16 @@ export const Columns = {
                 size={16}
                 tooltip={
                   <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                    {item.description}
+                    {tc(item.description)}
                   </Markdown>
                 }
+                onClick={(event) => {
+                  // On mobile devices we allow clicking on the icon to show the description
+                  if (isTouchDevice()) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                  }
+                }}
               />
             )}
           </ItemLinkComponent>
@@ -214,9 +223,11 @@ export const Columns = {
       testIdPrefix?: string;
       onClick?: (item: CollectionItem) => void;
     }) => {
+      const tc = useTranslateContent();
+
       return (
         <ItemCell data-testid={`${testIdPrefix}-description`}>
-          <Ellipsified>{item.description ?? ""}</Ellipsified>
+          <Ellipsified>{tc(item.description) ?? ""}</Ellipsified>
         </ItemCell>
       );
     },

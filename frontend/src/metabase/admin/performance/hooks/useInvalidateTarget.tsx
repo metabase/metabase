@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useInvalidateCacheConfigsMutation } from "metabase/api";
 import { addUndo } from "metabase/redux/undo";
-import { CacheConfigApi } from "metabase/services";
+import { useDispatch } from "metabase/utils/redux";
 import type { CacheableModel } from "metabase-types/api";
 
 import { isErrorWithMessage, resolveSmoothly } from "../utils";
@@ -13,15 +13,17 @@ export const useInvalidateTarget = (
   { smooth = true, shouldThrowErrors = true } = {},
 ) => {
   const dispatch = useDispatch();
+  const [invalidateCacheConfigs] = useInvalidateCacheConfigsMutation();
   const invalidateTarget = useCallback(async () => {
     if (targetId === null) {
       return;
     }
+    const apiModel = targetModel === "metric" ? "question" : targetModel;
     try {
-      const invalidate = CacheConfigApi.invalidate(
-        { include: "overrides", [targetModel]: targetId },
-        { hasBody: false },
-      );
+      const invalidate = invalidateCacheConfigs({
+        include: "overrides",
+        [apiModel]: targetId,
+      }).unwrap();
       if (smooth) {
         await resolveSmoothly([invalidate]);
       } else {
@@ -42,6 +44,13 @@ export const useInvalidateTarget = (
         throw e;
       }
     }
-  }, [dispatch, targetId, targetModel, smooth, shouldThrowErrors]);
+  }, [
+    dispatch,
+    targetId,
+    targetModel,
+    smooth,
+    shouldThrowErrors,
+    invalidateCacheConfigs,
+  ]);
   return invalidateTarget;
 };

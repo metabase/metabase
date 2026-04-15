@@ -1,8 +1,8 @@
 import type { MantineColorsTuple } from "@mantine/core";
 
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
-import { ALL_COLOR_NAMES, deriveFullMetabaseTheme } from "metabase/lib/colors";
-import type { ColorName, MetabaseColorKey } from "metabase/lib/colors/types";
+import { ALL_COLOR_NAMES, deriveFullMetabaseTheme } from "metabase/ui/colors";
+import type { ColorName, MetabaseColorKey } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 const ORIGINAL_COLORS = [
@@ -78,3 +78,23 @@ export const isColorName = (name?: string | null): name is ColorName => {
 export const maybeColor = (maybeColorName: ColorName | string): string => {
   return isColorName(maybeColorName) ? color(maybeColorName) : maybeColorName;
 };
+
+const CSS_VAR_REGEX = /^var\(--mb-color-(.+)\)$/;
+
+/**
+ * Resolves CSS variable color values (created by `color()`) to their actual values.
+ * This is the inverse of `color()` - use it when you need actual color values
+ * instead of CSS variable references (e.g., in static viz contexts like email/Slack
+ * exports where CSS variables cannot be resolved by the browser).
+ */
+export function resolveColorFromCssVariable(
+  colorValue: string,
+  getColor: (colorName: string) => string,
+): string {
+  const match = colorValue.match(CSS_VAR_REGEX);
+  if (match) {
+    const colorName = match[1];
+    return getColor(colorName);
+  }
+  return colorValue;
+}

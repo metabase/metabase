@@ -2,25 +2,25 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent, ChangeEventHandler } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import CopyWidget from "metabase/common/components/CopyWidget";
-import FormField from "metabase/common/components/FormField";
-import TextArea from "metabase/common/components/TextArea";
+import { CopyWidget } from "metabase/common/components/CopyWidget";
+import { FormField } from "metabase/common/components/FormField";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Actions } from "metabase/entities/actions/actions";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Switch, Tooltip } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type {
   ActionFormSettings,
   WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { isActionPublic, isSavedAction } from "../../utils";
 

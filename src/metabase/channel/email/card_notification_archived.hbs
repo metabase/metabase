@@ -1,4 +1,4 @@
 {{> metabase/channel/email/_header.hbs }}
   <p>Alerts about {{card.name}} (#{{card.id}}) have stopped because the question was archived by {{actor.first_name}} {{actor.last_name}}.</p>
-  <p>If you want to restore the alert, go to the <a href="{{{trash-url}}}">trash</a>, restore the question and re-create the alert.</p>
+  {{#unless disable_links}}<p>If you want to restore the alert, go to the <a href="{{{trash-url}}}">trash</a>, restore the question and re-create the alert.</p>{{/unless}}
 {{> metabase/channel/email/_footer.hbs }}

@@ -111,7 +111,7 @@
      (contains? (set (keys (methods get-value-of-type))) a-type))])
 
 (def ^:private Visibility
-  [:enum :public :authenticated :settings-manager :admin :internal])
+  [:enum :public :authenticated :settings-manager :admin-write-authed-read :admin :internal])
 
 (defmulti default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
@@ -197,10 +197,10 @@
    [:namespace   :symbol]
 
    ;; description is validated via the macro, not schema
-   ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
-   ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:description :any]
 
+   ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
+   ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:doc     :any]
    [:default :any]
 
@@ -276,7 +276,12 @@
    ;; display rules - for example, giving certain reasons higher precedence.
    ;;
    ;; This is only valid for database-local settings.
-   [:enabled-for-db? [:maybe ifn?]]])
+   [:enabled-for-db? [:maybe ifn?]]
+
+   ;; A previous name for this setting whose env var (e.g. MB_OLD_NAME) and database
+   ;; key are checked as a fallback when the primary source is not set. Logs a warning
+   ;; when the env var fallback is in use.
+   [:deprecated-name [:maybe :keyword]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -439,7 +444,7 @@
   [setting-nm]
   (str/replace (name setting-nm) #"[^a-zA-Z0-9_-]*" ""))
 
-(defn- env-var-name
+(defn env-var-name
   "Get the env var corresponding to `setting-definition-or-name`. (This is used primarily for documentation purposes)."
   ^String [setting-definition-or-name]
   (str "MB_" (-> (setting-name setting-definition-or-name)
@@ -463,14 +468,47 @@
    The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
   `default-domain` can be set with the env var `MB_DEFAULT_DOMAIN`. Note that this strips out characters that are not
   legal for shells. Setting `foo-bar?` will expect to find the key `:mb-foo-bar` which will be sourced from the
-  environment variable `MB_FOO_BAR`."
+  environment variable `MB_FOO_BAR`.
+
+  When the primary env var is truly absent (nil from environ) and the setting has a `:deprecated-name`, the env var
+  derived from that name is checked as a fallback. An empty string for the primary env var means \"explicitly unset\"
+  and blocks the fallback."
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     (when (and (allows-site-wide-values? setting)
                (allows-setting-via-env? setting))
-      (let [v (env/env (setting-env-map-name setting))]
-        (when (seq v)
-          v)))))
+      (if-let [v (env/env (setting-env-map-name setting))]
+        ;; primary env var is set — return it only if non-empty
+        (not-empty v)
+        ;; primary env var is absent — try deprecated name
+        (when-let [deprecated-name (:deprecated-name setting)]
+          (not-empty (env/env (setting-env-map-name deprecated-name))))))))
+
+(defn log-deprecated-env-var-usage!
+  "Log warnings for any settings currently using a deprecated env var name.
+  Should be called during startup after all settings are registered."
+  []
+  (doseq [[_ setting] @registered-settings
+          :when (:deprecated-name setting)
+          :when (and (allows-site-wide-values? setting)
+                     (allows-setting-via-env? setting))
+          :let [legacy-v (not-empty (env/env (setting-env-map-name (:deprecated-name setting))))]
+          :when legacy-v]
+    (let [primary-env (env-var-name setting)
+          legacy-env  (env-var-name (:deprecated-name setting))
+          primary-v   (not-empty (env/env (setting-env-map-name setting)))]
+      (cond
+        (and primary-v (not= primary-v legacy-v))
+        (log/warnf "%s and deprecated %s have conflicting values; using %s. Remove %s."
+                   primary-env legacy-env primary-env legacy-env)
+
+        primary-v
+        (log/warnf "%s and deprecated %s are both set. Remove %s."
+                   primary-env legacy-env legacy-env)
+
+        :else
+        (log/warnf "Deprecated %s is set; rename it to %s."
+                   legacy-env primary-env)))))
 
 (def ^:private ^:dynamic *disable-init* false)
 
@@ -487,9 +525,6 @@
   (binding [*disable-init* true]
     (get setting-definition-or-name)))
 
-(defn- db-value [setting-definition-or-name]
-  (t2/select-one-fn :value :model/Setting :key (setting-name setting-definition-or-name)))
-
 (def ^:private db-is-set-up-var (atom nil))
 
 (defn- db-is-set-up? []
@@ -498,23 +533,40 @@
               (reset! db-is-set-up-var (requiring-resolve 'metabase.app-db.core/db-is-set-up?)))]
     (if f (f) false)))
 
+(defn- db-or-cache-value*
+  "Look up a single setting key in the DB or cache. Returns the raw (possibly empty) string, or nil."
+  ^String [setting-name-str]
+  (if config/*disable-setting-cache*
+    (t2/select-one-fn :value :model/Setting :key setting-name-str)
+    (do
+      ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
+      (setting.cache/restore-cache-if-needed!)
+      (let [cache (setting.cache/cache)]
+        (if (nil? cache)
+          ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
+          (t2/select-one-fn :value :model/Setting :key setting-name-str)
+          (core/get cache setting-name-str))))))
+
+(def ^:dynamic *deprecated-db-key-warned*
+  "Set of deprecated DB keys that have already triggered a warning. Dynamic so tests can rebind it."
+  (atom #{}))
+
 (defn- db-or-cache-value
-  "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
+  "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed).
+  When the primary key is absent and the setting has a `:deprecated-name`, the deprecated key is checked as a fallback."
   ^String [setting-definition-or-name]
-  (let [setting  (resolve-setting setting-definition-or-name)]
+  (let [setting (resolve-setting setting-definition-or-name)]
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
-      (not-empty
-       (if config/*disable-setting-cache*
-         (db-value setting)
-         (do
-            ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
-           (setting.cache/restore-cache-if-needed!)
-           (let [cache (setting.cache/cache)]
-             (if (nil? cache)
-                ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
-               (db-value setting)
-               (core/get cache (setting-name setting-definition-or-name))))))))))
+      (or (not-empty (db-or-cache-value* (setting-name setting)))
+          (when-let [deprecated-name (:deprecated-name setting)]
+            (when-let [v (not-empty (db-or-cache-value* (setting-name deprecated-name)))]
+              (let [dep-key (setting-name deprecated-name)
+                    [old-warned _] (swap-vals! *deprecated-db-key-warned* conj dep-key)]
+                (when-not (contains? old-warned dep-key)
+                  (log/warnf "Deprecated setting key %s found in database; rename it to %s."
+                             dep-key (setting-name setting))))
+              v))))))
 
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
@@ -810,7 +862,13 @@
             ;; write to DB
             (cond
               (nil? new-value)
-              (t2/delete! (t2/table-name :model/Setting) :key setting-name)
+              (do
+                (t2/delete! (t2/table-name :model/Setting) :key setting-name)
+                ;; also clear the deprecated-name key so that fallback doesn't resurface an old value
+                (when-let [deprecated-name (:deprecated-name setting)]
+                  (let [deprecated-key (core/name deprecated-name)]
+                    (t2/delete! (t2/table-name :model/Setting) :key deprecated-key)
+                    (setting.cache/update-cache! deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
               (contains? (setting.cache/cache) setting-name)
@@ -1065,6 +1123,7 @@
                  :user-local         :never
                  :driver-feature     nil
                  :enabled-for-db?    nil
+                 :deprecated-name    nil
                  :deprecated         nil
                  :enabled?           nil
                  :can-read-from-env? true
@@ -1253,13 +1312,14 @@
 
   Controls where this setting is visible, and who can update it. Possible values are:
 
-    Visibility       | Who Can See It?              | Who Can Update It?
-    ---------------- | ---------------------------- | --------------------
-    :public          | The entire world             | Admins and Settings Managers
-    :authenticated   | Logged-in Users              | Admins and Settings Managers
-    :settings-manager| Admins and Settings Managers | Admins and Settings Managers
-    :admin           | Admins                       | Admins
-    :internal        | Nobody                       | No one (usually for env-var-only settings)
+    Visibility               | Who Can See It?              | Who Can Update It?
+    ------------------------ | ---------------------------- | --------------------
+    :public                  | The entire world             | Admins and Settings Managers
+    :authenticated           | Logged-in Users              | Admins and Settings Managers
+    :settings-manager        | Admins and Settings Managers | Admins and Settings Managers
+    :admin-write-authed-read | Logged-in Users              | Admins
+    :admin                   | Admins                       | Admins
+    :internal                | Nobody                       | No one (usually for env-var-only settings)
 
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
@@ -1318,6 +1378,14 @@
 
   Whether this Setting is /User-local/. Valid values are `:only`, `:allowed`, and `:never`. Default: `:never`. See
   docstring for [[metabase.settings.models.setting]] for more info.
+
+  ###### `:deprecated-name`
+
+  A keyword naming a previous version of this setting whose env var and database key are checked as a fallback when
+  the primary source is not set. For example, `:deprecated-name :my-old-setting` means `MB_MY_OLD_SETTING` will be
+  tried when `MB_MY_NEW_SETTING` is absent, and the `my-old-setting` database key will be tried when `my-new-setting`
+  has no value. A deprecation warning is logged when a fallback value is found. The env-var fallback only applies
+  when `:can-read-from-env?` is true (the default). (Default: `nil`).
 
   ###### `:deprecated`
 
@@ -1415,7 +1483,9 @@
   (try
     (t2/with-transaction [_conn]
       (doseq [[k v] settings]
-        (metabase.settings.models.setting/set! k v)))
+        (if (registered? k)
+          (metabase.settings.models.setting/set! k v)
+          (log/infof "Skipping unregistered setting: %s" (name k)))))
     settings
     (catch Throwable e
       (setting.cache/restore-cache!)
@@ -1483,7 +1553,8 @@
   []
   (set (concat [:public]
                (when @api/*current-user*
-                 [:authenticated])
+                 [:authenticated
+                  :admin-write-authed-read])
                (when (has-advanced-setting-access?)
                  [:settings-manager])
                (when api/*is-superuser?*
@@ -1496,7 +1567,7 @@
                (when (has-advanced-setting-access?)
                  [:settings-manager :authenticated :public])
                (when api/*is-superuser?*
-                 [:admin]))))
+                 [:admin :admin-write-authed-read]))))
 
 (defn- user-facing-settings-matching
   "Returns the user facing view of the registered settings satisfying the given predicate"

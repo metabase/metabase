@@ -3,11 +3,11 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Card from "metabase/common/components/Card";
-import Link from "metabase/common/components/Link";
-import { alpha } from "metabase/lib/colors";
+import { Card } from "metabase/common/components/Card";
+import { Link } from "metabase/common/components/Link";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
 
 const LIST_H_MARGINS = "var(--mantine-spacing-md)";
 

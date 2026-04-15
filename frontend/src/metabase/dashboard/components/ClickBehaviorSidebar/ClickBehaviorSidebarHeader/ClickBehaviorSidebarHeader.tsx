@@ -1,8 +1,7 @@
-import type * as React from "react";
 import { jt, t } from "ttag";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Box, Icon } from "metabase/ui";
+import { isTableDisplay } from "metabase/utils/click-behavior";
 import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 
 import S from "../ClickBehaviorSidebar.module.css";

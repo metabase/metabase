@@ -1,12 +1,11 @@
 import * as Tippy from "@tippyjs/react";
 import cx from "classnames";
-import * as React from "react";
 import { useMemo } from "react";
 import * as ReactIs from "react-is";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { isReactDOMTypeElement } from "metabase-types/guards";
 
 const TippyComponent = Tippy.default;
@@ -59,7 +58,7 @@ function appendTo() {
 /**
  * @deprecated: use Tooltip from "metabase/ui"
  */
-function Tooltip({
+export function Tooltip({
   tooltip,
   children,
   delay,
@@ -122,9 +121,6 @@ function Tooltip({
       />
     );
   } else {
-    return <React.Fragment>{children}</React.Fragment>;
+    return <>{children}</>;
   }
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Tooltip;

@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
-import Link from "metabase/common/components/Link";
-import Label from "metabase/common/components/type/Label";
+import { Link } from "metabase/common/components/Link";
+import { Label } from "metabase/common/components/type/Label";
 import { Icon, type IconProps } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
@@ -86,7 +86,7 @@ export const EntityNameLink = styled(Link)`
 `;
 
 export const HintIcon = styled(
-  forwardRef<SVGSVGElement, IconProps>(function HintIcon(props, ref) {
+  forwardRef<SVGSVGElement, Partial<IconProps>>(function HintIcon(props, ref) {
     return (
       <Icon
         {...props}

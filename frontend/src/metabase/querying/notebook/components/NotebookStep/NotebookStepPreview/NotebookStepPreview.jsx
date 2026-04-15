@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import Button from "metabase/common/components/Button";
-import QuestionResultLoader from "metabase/common/components/QuestionResultLoader";
+import { Button } from "metabase/common/components/Button";
+import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";

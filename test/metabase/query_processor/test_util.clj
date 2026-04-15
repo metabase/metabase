@@ -19,8 +19,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -498,7 +498,7 @@
                                     (mapv #(metadata-fn % card) metadata)))))
 
 (mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
-  "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
+  "Create an Lib metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
   ([queries]
    (metadata-provider-with-cards-for-queries

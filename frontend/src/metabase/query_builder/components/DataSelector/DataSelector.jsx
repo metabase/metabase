@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
@@ -13,23 +13,23 @@ import { Questions } from "metabase/entities/questions";
 import { Schemas } from "metabase/entities/schemas";
 import { Search } from "metabase/entities/search";
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { canUserCreateQueries } from "metabase/selectors/user";
 import { Box, Popover } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import DataBucketPicker from "./DataSelectorDataBucketPicker";
-import DatabasePicker from "./DataSelectorDatabasePicker";
-import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
-import FieldPicker from "./DataSelectorFieldPicker";
-import SchemaPicker from "./DataSelectorSchemaPicker";
-import TablePicker from "./DataSelectorTablePicker";
+import { DataSelectorDataBucketPicker } from "./DataSelectorDataBucketPicker";
+import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
+import { DataSelectorDatabaseSchemaPicker } from "./DataSelectorDatabaseSchemaPicker";
+import { DataSelectorFieldPicker } from "./DataSelectorFieldPicker";
+import { DataSelectorSchemaPicker } from "./DataSelectorSchemaPicker";
+import { DataSelectorTablePicker } from "./DataSelectorTablePicker";
 import {
   DatabaseTrigger,
   FieldTrigger,
@@ -37,7 +37,7 @@ import {
   Trigger,
 } from "./TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
-import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
+import { SavedEntityPicker } from "./saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "./utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
@@ -911,7 +911,7 @@ export class UnconnectedDataSelector extends Component {
       case DATA_BUCKET_STEP:
         return (
           <Box p="sm">
-            <DataBucketPicker
+            <DataSelectorDataBucketPicker
               dataTypes={getDataTypes({
                 hasModels: this.hasModels(),
                 hasTables: this.props.canSelectTable,
@@ -925,20 +925,26 @@ export class UnconnectedDataSelector extends Component {
         );
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
+          <DataSelectorDatabaseSchemaPicker
+            {...props}
+            hasBackButton={hasBackButton}
+          />
         ) : (
-          <DatabasePicker {...props} />
+          <DataSelectorDatabasePicker {...props} />
         );
       case SCHEMA_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
+          <DataSelectorDatabaseSchemaPicker
+            {...props}
+            hasBackButton={hasBackButton}
+          />
         ) : (
-          <SchemaPicker {...props} />
+          <DataSelectorSchemaPicker {...props} />
         );
       case TABLE_STEP:
-        return <TablePicker {...props} />;
+        return <DataSelectorTablePicker {...props} />;
       case FIELD_STEP:
-        return <FieldPicker {...props} />;
+        return <DataSelectorFieldPicker {...props} />;
     }
 
     return null;
@@ -1032,6 +1038,7 @@ export class UnconnectedDataSelector extends Component {
           onDismiss={this.handleDismiss}
           position="bottom-start"
           opened={this.isPopoverOpen()}
+          disabled={this.props.readOnly}
         >
           <Popover.Target>
             <Box

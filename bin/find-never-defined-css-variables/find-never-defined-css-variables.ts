@@ -4,7 +4,7 @@ import { readFileSync } from "fs";
 
 import { glob } from "glob";
 
-import { ALL_COLOR_NAMES } from "../../frontend/src/metabase/lib/colors";
+import { ALL_COLOR_NAMES } from "../../frontend/src/metabase/ui/colors";
 
 /**
  * This script finds css variables that are used but *never* defined in our codebase.

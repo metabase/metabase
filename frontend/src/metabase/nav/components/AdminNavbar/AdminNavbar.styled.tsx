@@ -1,8 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
-import { alpha, darken } from "metabase/lib/colors";
+import { Link } from "metabase/common/components/Link";
 import {
   breakpointMaxLarge,
   breakpointMaxMedium,
@@ -46,7 +45,9 @@ export const MobileHide = styled.div`
 
 export const AdminMobileNavbar = styled.div`
   ${breakpointMaxMedium} {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   display: none;
@@ -71,54 +72,6 @@ export const AdminButtons = styled.div`
   margin-inline-start: auto;
   display: flex;
   gap: 0.5rem;
-`;
-
-export const AdminActionButton = styled.button`
-  border: 1px solid ${() => alpha("background-primary", 0.2)};
-  height: 2.625rem;
-  width: 2.625rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 5px;
-  font-weight: 700;
-  font-size: 13px;
-  transition: all 200ms;
-  color: var(--mb-color-text-primary-inverse);
-  white-space: nowrap;
-  text-align: center;
-
-  &:disabled {
-    color: ${() => alpha("background-primary", 0.2)};
-  }
-
-  &:hover {
-    color: var(--mb-color-text-primary-inverse);
-    background-color: ${() => darken("admin-navbar")};
-    border-color: ${() => darken("admin-navbar")};
-
-    &:disabled {
-      color: ${() => alpha("background-primary", 0.2)};
-    }
-  }
-`;
-
-export const AdminExitLink = styled(Link)`
-  border: 1px solid ${() => alpha("background-primary", 0.2)};
-  padding: 12px 18px;
-  border-radius: 5px;
-  font-weight: 700;
-  font-size: 13px;
-  transition: all 200ms;
-  color: var(--mb-color-text-primary-inverse);
-  white-space: nowrap;
-  text-align: center;
-
-  &:hover {
-    color: var(--mb-color-text-primary-inverse);
-    background-color: ${() => darken("admin-navbar")};
-    border-color: ${() => darken("admin-navbar")};
-  }
 `;
 
 export const AdminLogoContainer = styled.div`

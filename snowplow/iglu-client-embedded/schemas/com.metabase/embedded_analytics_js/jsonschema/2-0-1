@@ -1,0 +1,357 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Modular embedding configuration",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "embedded_analytics_js",
+    "format": "jsonschema",
+    "version": "2-0-1"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "The type of event being recorded. For example, when the modular embedding is initialized, or when the Metabase configuration is updated.",
+      "type": "string",
+      "enum": [
+        "setup"
+      ],
+      "maxLength": 1024
+    },
+    "global": {
+      "description": "Global configuration for modular embedding.",
+      "type": "object",
+      "properties": {
+        "auth_method": {
+          "description": "Authentication method used for the modular embedding.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "session",
+            "api_key",
+            "sso",
+            "guest"
+          ],
+          "maxLength": 1024
+        }
+      }
+    },
+    "dashboard": {
+      "description": "Aggregated configuration counts for <metabase-dashboard>",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "drills": {
+          "description": "Counts of dashboards with drills enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of dashboards with drills enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of dashboards with drills disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        },
+        "with_downloads": {
+          "description": "Counts of dashboards with downloads enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of dashboards with downloads enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of dashboards with downloads disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        },
+        "with_title": {
+          "description": "Counts of dashboards with title visible or hidden.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of dashboards with title visible.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of dashboards with title hidden.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        },
+        "with_subscriptions": {
+          "description": "Counts of dashboards with subscriptions enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of dashboards with subscriptions enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of dashboards with subscriptions disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        }
+      }
+    },
+    "question": {
+      "description": "Aggregated configuration counts for <metabase-question>",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "drills": {
+          "description": "Counts of questions with drills enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of questions with drills enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of questions with drills disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        },
+        "with_downloads": {
+          "description": "Counts of questions with downloads enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of questions with downloads enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of questions with downloads disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        },
+        "with_title": {
+          "description": "Counts of questions with title visible or hidden.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of questions with title visible.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of questions with title hidden.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        },
+        "is_save_enabled": {
+          "description": "Counts of questions with save enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of questions with save enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of questions with save disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        },
+        "with_alerts": {
+          "description": "Counts of questions with alerts enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of questions with alerts enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of questions with alerts disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        }
+      }
+    },
+    "exploration": {
+      "description": "Aggregated configuration counts for <metabase-question> with question-id=\"new\"",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "is_save_enabled": {
+          "description": "Counts of explorations with save enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of explorations with save enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of explorations with save disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        }
+      }
+    },
+    "browser": {
+      "description": "Aggregated configuration counts for <metabase-browser>",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "read_only": {
+          "description": "Counts of browsers with read-only mode enabled or disabled.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "true": {
+              "description": "Number of browsers with read-only mode enabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "false": {
+              "description": "Number of browsers with read-only mode disabled.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "true",
+            "false"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "event",
+    "global"
+  ],
+  "additionalProperties": true
+}

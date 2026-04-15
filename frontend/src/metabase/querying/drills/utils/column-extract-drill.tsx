@@ -1,8 +1,7 @@
 import { c } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
-import { trackColumnExtractViaHeader } from "metabase/querying/analytics";
+import { setUIControls } from "metabase/redux/query-builder";
+import { useDispatch } from "metabase/utils/redux";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,
@@ -10,6 +9,8 @@ import type {
   RegularClickAction,
 } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
+
+import { trackColumnExtractViaHeader } from "../../analytics";
 
 export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   query,
@@ -71,7 +72,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
 export function getExample(info: Lib.ColumnExtractionInfo) {
   /**
    * @todo this should eventually be moved into Lib.displayInfo
-   * to avoid the keys going out of sync with the MLv2-defined extractions.
+   * to avoid the keys going out of sync with the Lib-defined extractions.
    */
   switch (info.tag) {
     case "hour-of-day":

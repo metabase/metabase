@@ -1,24 +1,27 @@
 {
   "teams": [
     {
-      "name": "Querying",
-      "label": ".Team/Querying",
+      "name": "Querying Platform",
+      "label": ".Team/QueryingPlatform",
       "members": [
-        "ranquild",
-        "romeovs",
         "bshepherdson",
         "metamben",
-        "wzimrin",
-        "ericnormand",
-        "galdre"
+        "rileythomp",
+        "camsaul",
+        "technomancy"
       ]
     },
     {
-      "name": "Drivers",
-      "label": ".Team/Drivers",
+      "name": "Graphy",
+      "label": ".Team/Graphy",
       "members": [
-        "snoe",
-        "rileythomp"
+        "ranquild",
+        "romeovs",
+        "ericnormand",
+        "galdre",
+        "dpsutton",
+        "escherize",
+        "bgrabow"
       ]
     },
     {
@@ -43,9 +46,6 @@
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul",
-        "dpsutton",
-        "escherize",
         "fraserdrops",
         "nemanjaglumac"
       ]
@@ -62,7 +62,8 @@
         "tsplude",
         "lbrdnk",
         "piranha",
-        "crisptrutski"
+        "crisptrutski",
+        "undrfined"
       ]
     },
     {
@@ -86,16 +87,12 @@
         "eliotmetabase",
         "npfitz",
         "johnswanson",
-        "iethree",
         "nvoxland",
         "edpaget",
         "deniskaber",
         "alxnddr",
-        "bpander",
         "andsalves",
-        "gantoreno",
-        "kevinkelleher12",
-        "undrfined"
+        "kevinkelleher12"
       ]
     },
     {
@@ -110,7 +107,18 @@
         "kamilmielnik",
         "stasgavrylov",
         "uladzimirdev",
-        "egorgrushin"
+        "egorgrushin",
+        "metatyb"
+      ]
+    },
+    {
+      "name": "Growth Eng",
+      "label": ".Team/GrowthEng",
+      "members": [
+        "iethree",
+        "bpander",
+        "gantoreno",
+        "losrebellos"
       ]
     }
   ]

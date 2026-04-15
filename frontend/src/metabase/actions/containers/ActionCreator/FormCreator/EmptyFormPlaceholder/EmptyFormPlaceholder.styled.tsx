@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { lighten } from "metabase/lib/colors";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Icon } from "metabase/ui";
+import { lighten } from "metabase/ui/colors";
 
 export const EmptyFormPlaceholderWrapper = styled.div`
   display: flex;

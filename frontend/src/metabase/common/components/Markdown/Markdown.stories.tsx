@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import Markdown, { type MarkdownProps } from "./Markdown";
+import { Markdown, type MarkdownProps } from "./Markdown";
 
 export default {
   title: "Components/Ask Before Using/Markdown",

@@ -7,8 +7,12 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
 import type { Card, TemplateTag, TemplateTagType } from "metabase-types/api";
 import {
@@ -19,13 +23,10 @@ import {
 import {
   ORDERS,
   PEOPLE,
+  PRODUCTS_ID,
   REVIEWS,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { TagEditorParam } from "./TagEditorParam";
 
@@ -145,6 +146,36 @@ describe("TagEditorParam", () => {
         "widget-type": undefined,
       });
     });
+
+    it("should reset type-specific properties when the type is changed", async () => {
+      const tag = createMockTemplateTag({
+        type: "table",
+        "table-id": 1,
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Number"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        type: "number",
+        "table-id": undefined,
+      });
+
+      expect(
+        screen.getByRole("switch", { name: /use variable name as alias/i }),
+      ).toBeChecked();
+
+      await userEvent.click(
+        screen.getByRole("switch", { name: /use variable name as alias/i }),
+      );
+      expect(setTemplateTag).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          "emit-alias": false,
+        }),
+      );
+    });
   });
 
   describe("tag dimension", () => {
@@ -252,6 +283,21 @@ describe("TagEditorParam", () => {
     }, 40000);
   });
 
+  describe("table id", () => {
+    it("should be able to set the table id", async () => {
+      const tag = createMockTemplateTag({
+        type: "table",
+        "table-id": undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
+      await userEvent.click(await screen.findByText("Products"));
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "table-id": PRODUCTS_ID,
+      });
+    });
+  });
+
   describe("field alias", () => {
     it.each<TemplateTagType>(["dimension", "temporal-unit"])(
       "should be possible to set a field alias for %s variables",
@@ -312,7 +358,7 @@ describe("TagEditorParam", () => {
     );
 
     it.each<TemplateTagType>(["text", "number", "date"])(
-      "should not show the field alias input for % variables",
+      "should not show the field alias input for %% variables",
       (type) => {
         const tag = createMockTemplateTag({ type });
         setup({ tag });

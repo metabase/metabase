@@ -10,4 +10,3 @@ export * from "./ui";
 export * from "./visualization-settings";
 export * from "./zoom";
 export * from "./state";
-export * from "./modal";

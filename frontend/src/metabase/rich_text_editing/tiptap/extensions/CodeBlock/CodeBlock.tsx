@@ -22,11 +22,12 @@ export const CustomCodeBlock = CodeBlock.extend({
       language: {
         default: this.options.defaultLanguage,
         parseHTML: (element: HTMLElement) => {
-          const { languageClassPrefix } = this.options;
+          const prefix =
+            this.options.languageClassPrefix ?? languageClassPrefix;
           const classNames = [...(element.firstElementChild?.classList || [])];
           const languages = classNames
-            .filter((className) => className.startsWith(languageClassPrefix))
-            .map((className) => className.replace(languageClassPrefix, ""));
+            .filter((className) => className.startsWith(prefix))
+            .map((className) => className.replace(prefix, ""));
           const language = languages[0];
 
           if (!language) {
@@ -116,7 +117,7 @@ export const CodeBlockNodeView = ({ node, editor, getPos }: NodeViewProps) => {
     isHovered,
     hovered,
     setHovered,
-    threads,
+    unresolvedCommentsCount,
     document,
     shouldShowMenus,
     setReferenceElement,
@@ -155,7 +156,7 @@ export const CodeBlockNodeView = ({ node, editor, getPos }: NodeViewProps) => {
           ref={commentsRefs.setFloating}
           show={isOpen || hovered}
           style={commentsFloatingStyles}
-          threads={threads}
+          unresolvedCommentsCount={unresolvedCommentsCount}
         />
       )}
     </>

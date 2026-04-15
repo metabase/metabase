@@ -1,10 +1,10 @@
 import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useState } from "react";
 
-import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
 import Animation from "metabase/css/core/animation.module.css";
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
+import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
 
 // Initially, the user will have to hover for this long to open the popover
 const POPOVER_SLOW_OPEN_DELAY = 250;

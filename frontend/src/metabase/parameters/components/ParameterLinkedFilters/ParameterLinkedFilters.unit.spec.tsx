@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
-import * as dashboardActions from "metabase/dashboard/actions/parameters";
-import { checkNotNull } from "metabase/lib/types";
+import * as dashboardActions from "metabase/redux/dashboard";
+import { checkNotNull } from "metabase/utils/types";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";

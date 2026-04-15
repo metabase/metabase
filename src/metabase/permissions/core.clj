@@ -43,6 +43,8 @@
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  is-superuser?
+  is-data-analyst?
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
@@ -50,9 +52,6 @@
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!
-  set-external-group-permissions!
-  set-new-database-permissions!
-  set-new-table-permissions!
   set-table-permission!
   set-table-permissions!
   table-permission-for-user
@@ -62,7 +61,14 @@
   user-has-permission-for-schema?
   user-has-permission-for-table?
   with-additional-table-permission
-  with-relevant-permissions-for-user]
+  with-relevant-permissions-for-user
+  has-any-transforms-permission?
+  has-db-transforms-permission?
+  set-default-group-permissions!
+  set-default-database-permissions!
+  set-default-table-permissions!
+  with-global-permissions-lock
+  with-db-scoped-permissions-lock]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
@@ -97,6 +103,8 @@
   fail-to-remove-last-admin-msg
   remove-user-from-group!
   remove-user-from-groups!
+  remove-all-users-from-group!
+  remove-user-from-all-groups!
   throw-if-last-admin!
   without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.path
@@ -105,6 +113,7 @@
   collection-readwrite-path
   collection-path?]
  [metabase.permissions.user
+  query-creation-capabilities
   user-permissions-set
   user->tenant-collection-and-descendant-ids]
  [metabase.permissions.util
@@ -129,7 +138,8 @@
   can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?])
+  user-has-published-table-permission-for-database?
+  published-table-visible-clause])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 

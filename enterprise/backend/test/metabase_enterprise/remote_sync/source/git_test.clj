@@ -5,12 +5,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import (java.io File)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib PersonIdent)))
+           (org.eclipse.jgit.lib PersonIdent)
+           (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
 (set! *warn-on-reflection* true)
 
@@ -88,34 +90,13 @@
                        (.toURL)
                        (.toExternalForm))
         local-repo (#'git/get-jgit (#'git/repo-path {:remote-url remote-url}) {:remote-url remote-url})]
-    (git/->GitSource local-repo remote-url branch nil)))
+    (git/->GitSource local-repo remote-url branch nil ingest/legal-top-level-paths)))
 
 (defn- init-source!
   [branch dir & config]
   (FileUtils/deleteDirectory (io/file dir))
   (let [remote-repo (apply init-remote! dir config)]
     [(->source! branch remote-repo) remote-repo]))
-
-(deftest path-prefix
-  (let [id (u/generate-nano-id "a")]
-    (testing "Not in a collection"
-      (doseq [path ["asdf"
-                    "asdf.txt"
-                    "dir/asdf.txt"
-                    "collections/asdf.txt"
-                    "collections/asdf/a.txt"
-                    "invalid/collections/asdf/a.txt"
-                    (str "collections/" id)
-                    (str "collections/" id "/but_no_name")]]
-        (testing path
-          (is (= path (#'git/path-prefix path)))
-          (is (true? (#'git/matches-prefix path #{(str "collections/" (u/generate-nano-id)) path}))))))
-    (testing "In a collection"
-      (doseq [path [(str "collections/" id "_my_name/asdf")
-                    (str "collections/" id "_other_name/subdir/asdf.txt")]]
-        (testing path
-          (is (= (str "collections/" id) (#'git/path-prefix path)))
-          (is (true? (#'git/matches-prefix path #{(str "collections/" id) (str "collections/" (u/generate-nano-id))}))))))))
 
 (deftest qualify-branch-test
   (is (= "refs/heads/main" (#'git/qualify-branch "main")))
@@ -179,7 +160,6 @@
 
 (deftest write-files
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
-        otherdir-path (str "collections/" "o" (subs (u/generate-nano-id "b") 1) "_otherdir/")
         thirddir-path (str "collections/" "s" (subs (u/generate-nano-id "c") 1) "_thirddir/")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[master remote] (init-source! "master" remote-dir
@@ -187,12 +167,10 @@
                                                   "master2.txt" "File 2 in master"
                                                   (str subdir-path "path.txt") "File in subdir"
                                                   (str subdir-path "path2.txt") "File 2 in subdir"
-                                                  (str otherdir-path "path.txt") "File in otherdir"
-                                                  (str otherdir-path "path2.txt") "File 2 in otherdir"
                                                   (str thirddir-path "path.txt") "File in third dir"
                                                   (str thirddir-path "path2.txt") "File 2 in third dir"}
                                           :branches ["branch-1" "branch-2"])]
-        (testing "Files in a subdir are replaced, other subdirs and root are unchanged"
+        (testing "All files in managed dirs not in write set are removed; root files outside managed dirs are preserved"
           (source.p/write-files! (source.p/snapshot master) "Update 1" [{:path "master.txt" :content "Updated master content"}
                                                                         {:path (str subdir-path "path.txt") :content "Updated subdir content"}
                                                                         {:path (str subdir-path "path3.txt") :content "Updated subdir content 3"}
@@ -200,9 +178,8 @@
                                                                         {:path (str thirddir-path "path3.txt") :content "Updated third dir content 3"}])
           (is (= ["Update 1" "Initial commit"] (map :message (git/log master))))
           (let [master-snap (source.p/snapshot master)]
-            (is (= [(str otherdir-path "path.txt")
-                    (str otherdir-path "path2.txt")
-                    (str subdir-path "path.txt")
+            ;; otherdir files are removed because collections/ is a managed dir and those files weren't in the write set
+            (is (= [(str subdir-path "path.txt")
                     (str subdir-path "path3.txt")
                     (str thirddir-path "path.txt")
                     (str thirddir-path "path3.txt")
@@ -212,15 +189,12 @@
 
             (is (= "Updated master content" (source.p/read-file master-snap "master.txt")))
             (is (= "File 2 in master" (source.p/read-file master-snap "master2.txt")))
-            (is (= "File 2 in otherdir" (source.p/read-file master-snap (str otherdir-path "path2.txt"))))
             (is (= "Updated subdir content" (source.p/read-file master-snap (str subdir-path "path.txt"))))
             (is (= "Updated subdir content 3" (source.p/read-file master-snap (str subdir-path "path3.txt")))))
 
           (testing "Check remote repo directly"
             (is (= "Updated master content" (git/read-file (assoc remote :version "master") "master.txt")))
-            (is (= [(str otherdir-path "path.txt")
-                    (str otherdir-path "path2.txt")
-                    (str subdir-path "path.txt")
+            (is (= [(str subdir-path "path.txt")
                     (str subdir-path "path3.txt")
                     (str thirddir-path "path.txt")
                     (str thirddir-path "path3.txt")
@@ -229,13 +203,9 @@
                    (git/list-files (assoc remote :version "master"))))
             (is (= ["Update 1" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))))
 
-        (testing "If no root files are touched, they all stay as-is"
+        (testing "Writing only to collections/ removes all other collection files"
           (source.p/write-files! (source.p/snapshot master) "Update 2" [{:path (str thirddir-path "path.txt") :content "Only third dir content"}])
-          (is (= [(str otherdir-path "path.txt")
-                  (str otherdir-path "path2.txt")
-                  (str subdir-path "path.txt")
-                  (str subdir-path "path3.txt")
-                  (str thirddir-path "path.txt")
+          (is (= [(str thirddir-path "path.txt")
                   "master.txt"
                   "master2.txt"]
                  (git/list-files (assoc remote :version "master")))))))))
@@ -248,58 +218,57 @@
                                                     (str subdir-path "path.txt") "File in subdir"})]))))
 
 (deftest concurrent-access
-  (let [subdir-path (str "collections/" (u/generate-nano-id "a") "_subdir")]
-    (mt/with-temp-dir [remote-dir nil]
-      (let [[master remote] (init-source! "master" remote-dir
-                                          :files {"master.txt" "File in master"
-                                                  (str subdir-path "path.txt") "File in subdir"}
-                                          :branches ["branch-1" "branch-2"])
-            new-branch (->source! "new-branch" remote)]
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[master remote] (init-source! "master" remote-dir
+                                        :files {"master.txt" "File in master"
+                                                "subdir/path.txt" "File in subdir"}
+                                        :branches ["branch-1" "branch-2"])
+          new-branch (->source! "new-branch" remote)]
 
-        (testing "Initial clone is the same"
+      (testing "Initial clone is the same"
+        (is (= ["Initial commit"] (map :message (git/log master))))
+        (is (= ["Initial commit"] (map :message (git/log (assoc remote :branch "master")))))
+
+        ;; Add an extra commit to remote
+        (git-working-add! remote "additional-file.txt" "Additional file content")
+        (git-working-commit! remote "Added additional file")
+
+        (testing "Source is behind remote"
           (is (= ["Initial commit"] (map :message (git/log master))))
-          (is (= ["Initial commit"] (map :message (git/log (assoc remote :branch "master")))))
+          (is (= ["Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "master"))))))
 
-          ;; Add an extra commit to remote
-          (git-working-add! remote "additional-file.txt" "Additional file content")
-          (git-working-commit! remote "Added additional file")
+        (testing "After fetch, source is up to date"
+          (git/fetch! master)
+          (is (= ["Added additional file" "Initial commit"] (map :message (git/log master)))))
 
-          (testing "Source is behind remote"
-            (is (= ["Initial commit"] (map :message (git/log master))))
-            (is (= ["Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "master"))))))
+        (testing "Writing a file to source and pushing back to remote when there is new content on remote"
+          ;; Make source be behind again
+          (git-working-add! remote "only-on-remote.txt" "Initially on remote")
+          (git-working-commit! remote "Only on remote")
 
-          (testing "After fetch, source is up to date"
-            (git/fetch! master)
-            (is (= ["Added additional file" "Initial commit"] (map :message (git/log master)))))
+          (source.p/write-files! (source.p/snapshot master) "Added to source" [{:path "initially-source.txt" :content "Initially on source"}])
 
-          (testing "Writing a file to source and pushing back to remote when there is new content on remote"
-            ;; Make source be behind again
-            (git-working-add! remote "only-on-remote.txt" "Initially on remote")
-            (git-working-commit! remote "Only on remote")
+          (testing "Remote has the new commit with just the files committed, but only version is in history"
+            (is (= ["Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))
+            (is (= ["additional-file.txt" "initially-source.txt" "master.txt" "only-on-remote.txt" "subdir/path.txt"] (git/list-files (assoc remote :version "master"))))
+            (is (= "Initially on source" (git/read-file (assoc remote :version "master") "initially-source.txt"))))
 
-            (source.p/write-files! (source.p/snapshot master) "Added to source" [{:path "initially-source.txt" :content "Initially on source"}])
+          (testing "Source has the same history"
+            (is (= (map :message (git/log (assoc remote :branch "master"))) (map :message (git/log master))))))
 
-            (testing "Remote has the new commit with just the files committed, but only version is in history"
-              (is (= ["Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))
-              (is (= ["additional-file.txt" (str subdir-path "path.txt") "initially-source.txt" "master.txt" "only-on-remote.txt"] (git/list-files (assoc remote :version "master"))))
-              (is (= "Initially on source" (git/read-file (assoc remote :version "master") "initially-source.txt"))))
+        (testing "Writing to a branch local has not seen (but remote has) adds it to the history on remote"
+          (git-working-checkout! remote "new-branch" true)
+          (git-working-add! remote "new-branch-file.txt" "Initially on remote")
+          (git-working-add! remote "new-branch-remote.txt" "Initially on remote")
+          (git-working-commit! remote "New-branch on remote")
 
-            (testing "Source has the same history"
-              (is (= (map :message (git/log (assoc remote :branch "master"))) (map :message (git/log master))))))
+          (is (= ["New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "new-branch")))))
+          (is (nil? (git/log new-branch)))
 
-          (testing "Writing to a branch local has not seen (but remote has) adds it to the history on remote"
-            (git-working-checkout! remote "new-branch" true)
-            (git-working-add! remote "new-branch-file.txt" "Initially on remote")
-            (git-working-add! remote "new-branch-remote.txt" "Initially on remote")
-            (git-working-commit! remote "New-branch on remote")
+          (source.p/write-files! (source.p/snapshot new-branch) "New-branch on source" [{:path "new-branch-source.txt" :content "Initially on source"}
+                                                                                        {:path "new-branch-file.txt" :content "Updated on source"}])
 
-            (is (= ["New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "new-branch")))))
-            (is (nil? (git/log new-branch)))
-
-            (source.p/write-files! (source.p/snapshot new-branch) "New-branch on source" [{:path "new-branch-source.txt" :content "Initially on source"}
-                                                                                          {:path "new-branch-file.txt" :content "Updated on source"}])
-
-            (is (= ["New-branch on source" "New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "new-branch")))))))))))
+          (is (= ["New-branch on source" "New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "new-branch"))))))))))
 
 (deftest git-source-using-commit-ref
   (mt/with-temp-dir [remote-dir nil]
@@ -357,67 +326,64 @@
     (let [[master _remote] (init-source! "master" remote-dir)]
       (is (= "master" (git/default-branch master))))))
 
-(deftest write-files-removal-test
-  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
-        otherdir-path (str "collections/" "o" (subs (u/generate-nano-id "b") 1) "_otherdir/")]
+(deftest write-files-top-level-exports-replaced-test
+  (let [old-col-path  (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_mycol/")
+        new-col-path  (str "collections/" "s" (subs (u/generate-nano-id "b") 1) "_othercol/")
+        kept-col-path (str "collections/" "t" (subs (u/generate-nano-id "c") 1) "_keptcol/")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[master _remote] (init-source! "master" remote-dir
-                                           :files {"master.txt" "File in master"
-                                                   (str subdir-path "file1.yaml") "File 1 in subdir"
-                                                   (str subdir-path "file2.yaml") "File 2 in subdir"
-                                                   (str otherdir-path "file1.yaml") "File 1 in otherdir"
-                                                   (str otherdir-path "file2.yaml") "File 2 in otherdir"})]
-        (testing "Removal entry deletes all files under that path recursively"
-          (source.p/write-files! (source.p/snapshot master) "Remove subdir"
-                                 [{:path (subs subdir-path 0 (dec (count subdir-path))) :remove? true}])
+                                           :files {"databases/old_db/old_db.yaml" "Old database"
+                                                   "databases/old_db/schemas/public.yaml" "Old schema"
+                                                   "snippets/old_snippet.yaml" "Old snippet"
+                                                   "unmanaged/keep_me.txt" "Unmanaged file"
+                                                   (str old-col-path "cards/card1.yaml") "Card in old col"
+                                                   (str old-col-path "cards/card2.yaml") "Card 2 in old col"
+                                                   (str kept-col-path "dashboards/dash1.yaml") "Dashboard in kept col"})]
+        (testing "Writing to a managed dir removes all stale files in ALL managed dirs"
+          (source.p/write-files! (source.p/snapshot master) "Rename database"
+                                 [{:path "databases/new_db/new_db.yaml" :content "Renamed database"}
+                                  {:path "databases/new_db/schemas/public.yaml" :content "Same schema"}
+                                  {:path (str old-col-path "cards/card1.yaml") :content "Card in old col"}
+                                  {:path (str old-col-path "cards/card2.yaml") :content "Card 2 in old col"}
+                                  {:path (str kept-col-path "dashboards/dash1.yaml") :content "Dashboard in kept col"}
+                                  {:path "snippets/old_snippet.yaml" :content "Old snippet"}])
           (let [files (set (source.p/list-files (source.p/snapshot master)))]
-            (is (contains? files "master.txt") "Root files should remain")
-            (is (contains? files (str otherdir-path "file1.yaml")) "Other collection files should remain")
-            (is (contains? files (str otherdir-path "file2.yaml")) "Other collection files should remain")
-            (is (not (contains? files (str subdir-path "file1.yaml"))) "Subdir files should be removed")
-            (is (not (contains? files (str subdir-path "file2.yaml"))) "Subdir files should be removed")))))))
+            (is (contains? files "databases/new_db/new_db.yaml") "New database file should exist")
+            (is (contains? files "databases/new_db/schemas/public.yaml") "New schema file should exist")
+            (is (not (contains? files "databases/old_db/old_db.yaml")) "Old database file should be removed")
+            (is (not (contains? files "databases/old_db/schemas/public.yaml")) "Old schema file should be removed")
+            (is (contains? files (str old-col-path "cards/card1.yaml")) "Written collection files should remain")
+            (is (contains? files "snippets/old_snippet.yaml") "Written snippet file should remain")
+            (is (contains? files "unmanaged/keep_me.txt") "Unmanaged files should be untouched")))
 
-(deftest write-files-mixed-write-and-removal-test
-  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
-        newdir-path (str "collections/" "n" (subs (u/generate-nano-id "b") 1) "_newdir/")]
+        (testing "Entity moved between collections removes files from old collection"
+          (source.p/write-files! (source.p/snapshot master) "Move card to new collection"
+                                 [{:path (str new-col-path "cards/card1.yaml") :content "Card moved to new col"}
+                                  {:path (str kept-col-path "dashboards/dash1.yaml") :content "Dashboard still here"}
+                                  {:path "databases/new_db/new_db.yaml" :content "Renamed database"}
+                                  {:path "databases/new_db/schemas/public.yaml" :content "Same schema"}])
+          (let [files (set (source.p/list-files (source.p/snapshot master)))]
+            (is (contains? files (str new-col-path "cards/card1.yaml")) "Moved card should exist in new collection")
+            (is (contains? files (str kept-col-path "dashboards/dash1.yaml")) "Kept collection files should remain")
+            (is (not (contains? files (str old-col-path "cards/card1.yaml"))) "Old collection card should be removed")
+            (is (not (contains? files (str old-col-path "cards/card2.yaml"))) "Other files in old collection should also be removed")
+            (is (not (contains? files "snippets/old_snippet.yaml")) "Snippets cleaned up when not in write set")
+            (is (contains? files "unmanaged/keep_me.txt") "Unmanaged files still untouched")))))))
+
+(deftest write-files-entity-rename-within-collection-test
+  (let [col-path (str "collections/" "u" (subs (u/generate-nano-id "d") 1) "_col/")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[master _remote] (init-source! "master" remote-dir
-                                           :files {"master.txt" "File in master"
-                                                   (str subdir-path "old-file.yaml") "Old file in subdir"})]
-        (testing "Can combine write and removal entries in same call"
-          (source.p/write-files! (source.p/snapshot master) "Mixed operations"
-                                 [{:path (subs subdir-path 0 (dec (count subdir-path))) :remove? true}
-                                  {:path (str newdir-path "new-file.yaml") :content "New file content"}])
-          (let [snap (source.p/snapshot master)
-                files (set (source.p/list-files snap))]
-            (is (contains? files "master.txt") "Root files should remain")
-            (is (contains? files (str newdir-path "new-file.yaml")) "New files should be added")
-            (is (not (contains? files (str subdir-path "old-file.yaml"))) "Old files should be removed")
-            (is (= "New file content" (source.p/read-file snap (str newdir-path "new-file.yaml"))))))))))
-
-(deftest write-files-empty-removal-path-test
-  (mt/with-temp-dir [remote-dir nil]
-    (let [[master _remote] (init-source! "master" remote-dir
-                                         :files {"master.txt" "File in master"
-                                                 "subdir/file.yaml" "File in subdir"})]
-      (testing "Empty removal paths are ignored (no-op)"
-        (source.p/write-files! (source.p/snapshot master) "Empty removal"
-                               [{:path "" :remove? true}
-                                {:path "   " :remove? true}])
-        (let [files (set (source.p/list-files (source.p/snapshot master)))]
-          (is (= #{"master.txt" "subdir/file.yaml"} files)
-              "All files should remain when removal path is empty"))))))
-
-(deftest write-files-nonexistent-removal-path-test
-  (mt/with-temp-dir [remote-dir nil]
-    (let [[master _remote] (init-source! "master" remote-dir
-                                         :files {"master.txt" "File in master"})]
-      (testing "Removing non-existent path is a no-op"
-        (source.p/write-files! (source.p/snapshot master) "Remove nonexistent"
-                               [{:path "collections/nonexistent" :remove? true}])
-        (let [files (set (source.p/list-files (source.p/snapshot master)))]
-          (is (= #{"master.txt"} files)
-              "Files should remain unchanged"))))))
+                                           :files {(str col-path "cards/eid123_OldCardName.yaml") "Card with old name"
+                                                   (str col-path "cards/eid456_OtherCard.yaml") "Other card"})]
+        (testing "Entity renamed within a collection removes the old-named file"
+          (source.p/write-files! (source.p/snapshot master) "Rename card"
+                                 [{:path (str col-path "cards/eid123_NewCardName.yaml") :content "Card with new name"}
+                                  {:path (str col-path "cards/eid456_OtherCard.yaml") :content "Other card"}])
+          (let [files (set (source.p/list-files (source.p/snapshot master)))]
+            (is (contains? files (str col-path "cards/eid123_NewCardName.yaml")) "Renamed card should exist")
+            (is (contains? files (str col-path "cards/eid456_OtherCard.yaml")) "Other card should still exist")
+            (is (not (contains? files (str col-path "cards/eid123_OldCardName.yaml"))) "Old card name file should be removed")))))))
 
 (deftest ensure-origin-configured-sets-origin-after-clone-test
   (mt/with-temp-dir [remote-dir nil]
@@ -482,3 +448,11 @@
         (is (= ["Add new file" "Initial commit"]
                (map :message (git/log repaired-source)))
             "Should be able to fetch after origin repair")))))
+
+(deftest ^:parallel credentials-provider-test
+  (testing "GitHub URL uses x-access-token"
+    (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
+      (is (instance? UsernamePasswordCredentialsProvider provider))))
+  (testing "Bitbucket URL uses x-token-auth"
+    (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
+      (is (instance? UsernamePasswordCredentialsProvider provider)))))

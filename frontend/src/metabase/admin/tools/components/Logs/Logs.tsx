@@ -10,10 +10,10 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
-import Select, { Option } from "metabase/common/components/Select";
+import { Option, Select } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { openSaveDialog } from "metabase/lib/dom";
 import { Button, Flex, Icon, TextInput } from "metabase/ui";
+import { openSaveDialog } from "metabase/utils/dom";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";

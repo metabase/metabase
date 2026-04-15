@@ -1,35 +1,25 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
-import DatabaseStatus from "./DatabaseStatus";
-
+import { DatabaseStatus } from "./DatabaseStatus";
 interface SetupOpts {
-  user?: User;
   databases?: Database[];
+  user?: User;
 }
 
-const setup = ({ user, databases }: SetupOpts = {}) => {
-  const state = createMockState({
-    entities: createMockEntitiesState({ databases }),
-  });
-  const metadata = getMetadata(state);
+const setup = ({ databases = [], user }: SetupOpts = {}) => {
+  setupDatabasesEndpoints(databases);
 
-  renderWithProviders(
-    <DatabaseStatus
-      user={user}
-      databases={databases?.map(({ id }) =>
-        checkNotNull(metadata.database(id)),
-      )}
-    />,
-    { storeInitialState: state },
-  );
+  renderWithProviders(<DatabaseStatus />, {
+    storeInitialState: createMockState({
+      currentUser: user,
+    }),
+  });
 };
 
 describe("DatabaseStatus", () => {
@@ -44,7 +34,7 @@ describe("DatabaseStatus", () => {
       ],
     });
 
-    expect(screen.getByText("Syncing…")).toBeInTheDocument();
+    expect(await screen.findByText("Syncing…")).toBeInTheDocument();
 
     await userEvent.click(screen.getByLabelText("chevrondown icon"));
     expect(screen.getByLabelText("Syncing database…")).toBeInTheDocument();
@@ -73,7 +63,7 @@ describe("DatabaseStatus", () => {
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
 
-  it("assigns 'sync-status-visible' class to body element when database is in sync", () => {
+  it("assigns 'sync-status-visible' class to body element when database is in sync", async () => {
     setup({
       user: createMockUser({ id: 1 }),
       databases: [
@@ -84,6 +74,8 @@ describe("DatabaseStatus", () => {
       ],
     });
 
-    expect(document.body).toHaveClass("sync-status-visible");
+    await waitFor(() => {
+      expect(document.body).toHaveClass("sync-status-visible");
+    });
   });
 });

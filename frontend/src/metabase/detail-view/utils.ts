@@ -1,5 +1,5 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { type OptionsType, formatValue } from "metabase/lib/formatting";
+import { type OptionsType, formatValue } from "metabase/utils/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,
@@ -16,8 +16,17 @@ import {
   isPK,
   isTitle,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, Field, RowValue, Table } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import type {
+  DatasetColumn,
+  Field,
+  RowValue,
+  Series,
+  Table,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 export function renderValue(
   tc: ContentTranslationFunction,
@@ -25,7 +34,12 @@ export function renderValue(
   column: DatasetColumn,
   optionsOverride?: OptionsType,
 ) {
-  const mockSeries = [{ data: { cols: [column] }, card: createMockCard() }];
+  const mockSeries: Series = [
+    {
+      data: createMockDatasetData({ cols: [column] }),
+      card: createMockCard(),
+    },
+  ];
   const settingDefs = getSettingDefinitionsForColumn(mockSeries, column);
   const inheritedSettings = {
     ...getGlobalSettingsForColumn(),
@@ -148,7 +162,12 @@ export const getColumnTitle = (
   column: DatasetColumn,
   settings: OptionsType,
 ) => {
-  const series = [{ data: { cols: [column] }, card: createMockCard() }];
+  const series: Series = [
+    {
+      data: createMockDatasetData({ cols: [column] }),
+      card: createMockCard(),
+    },
+  ];
 
   return getTitleForColumn(column, series, {
     ...getComputedSettingsForSeries(series),

@@ -1,5 +1,8 @@
-import type { DndContextProps, DragEndEvent } from "@dnd-kit/core";
-import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
+import {
+  DndContext,
+  type DndContextProps,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -7,8 +10,9 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import { useDndSensors } from "metabase/common/hooks";
 import { Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import {
   NotebookCell,
@@ -136,9 +140,7 @@ function ClauseStepDndContext<T>({
   children,
   onReorder,
 }: ClauseStepDndContextProps<T>) {
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 15 },
-  });
+  const sensors = useDndSensors({ distance: 15 });
 
   const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
     (input: DragEndEvent) => {
@@ -153,7 +155,7 @@ function ClauseStepDndContext<T>({
 
   return (
     <DndContext
-      sensors={[pointerSensor]}
+      sensors={sensors}
       modifiers={[restrictToParentElement]}
       onDragEnd={handleSortEnd}
     >

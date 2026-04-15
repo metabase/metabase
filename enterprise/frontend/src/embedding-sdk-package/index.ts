@@ -1,8 +1,8 @@
-// eslint-disable-next-line no-external-references-for-sdk-package-code
+// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-// eslint-disable-next-line no-external-references-for-sdk-package-code
+// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
-// eslint-disable-next-line no-external-references-for-sdk-package-code
+// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
 
 // Enable SDK mode as we are in the SDK package
@@ -134,7 +134,10 @@ export type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 
-export type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+export type {
+  EmbeddingEntityType,
+  EmbeddingDataPicker,
+} from "metabase/redux/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 export type { IconName } from "metabase/embedding-sdk/types/icon";

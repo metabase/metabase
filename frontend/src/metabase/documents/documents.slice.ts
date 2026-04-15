@@ -7,16 +7,16 @@ import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
+  CardEmbedRef,
+  DocumentsState,
+  MentionCacheItem,
+} from "metabase/redux/store/documents";
+import type {
   Card,
   CardDisplayType,
   Document,
   VisualizationSettings,
 } from "metabase-types/api";
-import type {
-  CardEmbedRef,
-  DocumentsState,
-  MentionCacheItem,
-} from "metabase-types/store/documents";
 
 import { getMentionsCacheKey } from "./utils/mentionsUtils";
 
@@ -84,7 +84,8 @@ const documentsSlice = createSlice({
       state.cardEmbeds = action.payload;
     },
     setCurrentDocument: (state, action: PayloadAction<Document | null>) => {
-      // @ts-expect-error - possibly infinite type error
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - possibly infinite type error
       state.currentDocument = action.payload;
     },
     resetDocuments: () => {

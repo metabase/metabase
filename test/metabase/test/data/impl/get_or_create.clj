@@ -132,7 +132,8 @@
 ;; ---------------------- Pure Transformation Functions ----------------------
 
 (defn- field-def->row
-  "Convert a FieldDefinition to a Field row map (without table_id, added during insertion).
+  "Convert a FieldDefinition to a Field row map for fake-sync insertion.
+   Creates the metadata row that would normally come from syncing the database.
    Handles three forms of base-type:
    1. {:native \"BINARY(8)\"} - driver-specific native type string
    2. {:natives {:postgres \"BYTEA\" :redshift \"VARBYTE\"}} - per-driver native types
@@ -147,13 +148,18 @@
                            (get-in base-type [:natives driver])
 
                            :else
-                           ;; Use the SQL type from sql.tx/field-base-type->sql-type to get
-                           ;; the actual database type (e.g., "TIMESTAMPTZ" instead of "DateTimeWithTZ").
-                           ;; Use requiring-resolve to avoid cyclic dependency.
-                           ((requiring-resolve 'metabase.test.data.sql/field-base-type->sql-type) driver base-type))
+                           ;; Use fake-sync-database-type to get the type the database reports
+                           ;; (which may differ from the DDL type used to create columns).
+                           ;; E.g., Snowflake: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
+                           (tx/fake-sync-database-type driver base-type))
         actual-base-type (if (map? base-type)
-                           (or effective-type :type/*)
-                           base-type)
+                           ;; For native types, use effective-type if provided,
+                           ;; otherwise ask the driver what base_type sync would produce
+                           (or effective-type
+                               (tx/fake-sync-native-base-type driver database-type))
+                           ;; Use fake-sync-base-type to get what the database actually reports
+                           ;; E.g., Snowflake: :type/Integer -> :type/Number (since INTEGER->NUMBER)
+                           (tx/fake-sync-base-type driver base-type))
         semantic-type    (cond
                            pk?        :type/PK
                            (some? fk) :type/FK
@@ -175,11 +181,11 @@
   "Convert a TableDefinition to a map of {:table-name, :table-row, :field-rows}.
    This is a pure function - no database insertion."
   [driver db-id database-name {:keys [table-name table-comment field-definitions] :as _table-def}]
-  (let [schema         (tx/fake-sync-schema driver)
-        qualified-name (tx/db-qualified-table-name database-name table-name)
+  (let [schema          (tx/fake-sync-schema driver)
+        sync-table-name (tx/fake-sync-table-name driver database-name table-name)
         has-custom-pk? (some :pk? field-definitions)
         table-row      {:db_id               db-id
-                        :name                qualified-name
+                        :name                sync-table-name
                         :schema              schema
                         :display_name        (humanization/name->human-readable-name :simple table-name)
                         :description         table-comment

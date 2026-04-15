@@ -28,7 +28,7 @@ const DEV_PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const resolveEnterprisePathOrNoop = (path) =>
   process.env.MB_EDITION === "ee"
     ? ENTERPRISE_SRC_PATH + path
-    : SRC_PATH + "/lib/noop";
+    : SRC_PATH + "/utils/noop";
 
 module.exports = {
   name: "iframe_sdk_embed_v1",

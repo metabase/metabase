@@ -627,7 +627,6 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.findByText("Saved question").click();
       });
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Questions").click();
         cy.findByText("Q1").click();
       });
       H.sidebar()
@@ -660,7 +659,6 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.findByText("Dashboard").click();
       });
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
         cy.findByText("D1").click();
       });
       H.sidebar()
@@ -698,7 +696,6 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.findByText("Dashboard").click();
       });
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
         cy.findByText("D2").click();
       });
       H.sidebar()

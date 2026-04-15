@@ -1,8 +1,8 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { AIDashboardAnalysisSidebar } from "metabase/metabot/components/AIDashboardAnalysisSidebar/AIDashboardAnalysisSidebar";
 import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 
 import { ActionSidebar } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
@@ -34,7 +34,7 @@ export function DashboardSidebars() {
     case SIDEBAR_NAME.info:
       return <DashboardInfoSidebar />;
     case SIDEBAR_NAME.analyze:
-      return <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar />;
+      return <AIDashboardAnalysisSidebar />;
     default:
       return null;
   }

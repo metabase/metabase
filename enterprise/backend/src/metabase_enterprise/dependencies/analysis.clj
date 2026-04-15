@@ -24,21 +24,20 @@
    query  :- ::lib.schema/query]
   (if (lib/any-native-stage? query)
     (deps.native/validate-native-query driver query)
-    (lib/find-bad-refs-with-source query)))
+    (into #{} (remove :soft?) (lib/find-bad-refs-with-source query))))
 
-(defmulti check-entity
-  "Given a metadata provider, an entity type and an entity id, find any bad refs in that entity."
+(defmulti ^:private -check-entity
+  "Implementation multimethod for [[check-entity]]. Extend this to add support
+   for new entity types."
   {:arglists '([metadata-provider entity-type entity-id])}
   (fn [_metadata-provider entity-type _entity-id]
     entity-type))
 
-(defmethod check-entity :default
+(defmethod -check-entity :default
   [_metadata-provider _entity-type _entity-id]
   nil)
 
-(mu/defmethod check-entity :card :- [:set [:ref ::lib.schema.validate/error-with-source]]
-  "Given a `MetadataProvider` and a card ID, analyses the card's query to find any bad refs or other issues.
-  Returns any findings with source information, and `nil` for a clean query."
+(mu/defmethod -check-entity :card :- [:set [:ref ::lib.schema.validate/error-with-source]]
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    card-id           :- ::lib.schema.id/card]
@@ -46,10 +45,7 @@
         driver (:engine (lib.metadata/database query))]
     (check-query driver query)))
 
-(mu/defmethod check-entity :transform :- [:set [:ref ::lib.schema.validate/error-with-source]]
-  "Given a `MetadataProvider` and a transform ID, analyses the transform's query to find any bad refs or other issues.
-
-  Returns any findings with source information, and `nil` for a clean transform."
+(mu/defmethod -check-entity :transform :- [:set [:ref ::lib.schema.validate/error-with-source]]
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    transform-id      :- ::lib.schema.id/transform]
@@ -67,7 +63,7 @@
     (cond-> (check-query driver query)
       duplicated-fields (into duplicated-fields))))
 
-(mu/defmethod check-entity :segment :- [:set [:ref ::lib.schema.validate/error-with-source]]
+(mu/defmethod -check-entity :segment :- [:set [:ref ::lib.schema.validate/error-with-source]]
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    segment-id        :- ::lib.schema.id/segment]
@@ -76,3 +72,14 @@
                    (lib/query metadata-provider))
         driver (:engine (lib.metadata/database query))]
     (check-query driver query)))
+
+(defn check-entity
+  "Check a single entity for bad refs against a MetadataProvider.
+
+   Returns a set of errors with source information, or nil if the entity is clean.
+   Dispatches to entity-type-specific analysis (MBQL bad refs, native SQL validation,
+   transform duplicate columns, etc.).
+
+   Supported entity types: :card, :transform, :segment. Other types return nil."
+  [metadata-provider entity-type entity-id]
+  (-check-entity metadata-provider entity-type entity-id))

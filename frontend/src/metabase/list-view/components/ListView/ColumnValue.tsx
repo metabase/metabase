@@ -1,12 +1,20 @@
 import { useMemo } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import {
+  Badge,
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Image,
+  Stack,
+  Text,
+} from "metabase/ui";
 import {
   formatNumber,
   formatValue,
   getCurrencySymbol,
-} from "metabase/lib/formatting";
-import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
+} from "metabase/utils/formatting";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -34,6 +42,7 @@ import {
 import type {
   ColumnSettings,
   DatasetColumn,
+  RowValue,
   RowValues,
 } from "metabase-types/api";
 
@@ -43,9 +52,9 @@ import { getCategoryColor } from "./styling";
 interface ColumnValueProps {
   column: DatasetColumn;
   settings: ComputedVisualizationSettings;
-  rawValue: any;
+  rawValue: RowValue;
   style?: React.CSSProperties;
-  rows: RowValues;
+  rows: RowValues[];
   cols: DatasetColumn[];
 }
 
@@ -184,7 +193,12 @@ export function ColumnValue({
     case isEmail(column):
     case isURL(column) && !isImageURL(column) && !isAvatarURL(column):
       return (
-        <Ellipsified size="sm" fw="bold" style={style} tooltip={rawValue}>
+        <Ellipsified
+          size="sm"
+          fw="bold"
+          style={style}
+          tooltip={typeof rawValue === "object" ? undefined : rawValue}
+        >
           {value}
         </Ellipsified>
       );

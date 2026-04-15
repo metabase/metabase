@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
-import { getAccentColors } from "metabase/lib/colors/groups";
-import MetabaseSettings from "metabase/lib/settings";
+import { getAccentColors, getPreferredColor } from "metabase/ui/colors/groups";
+import MetabaseSettings from "metabase/utils/settings";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -21,6 +21,7 @@ import {
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
+  isDimension,
   isLatitude,
   isLongitude,
   isMetric,
@@ -28,11 +29,12 @@ import {
   isState,
 } from "metabase-lib/v1/types/utils/isa";
 
-import ChoroplethMap, {
+import {
+  ChoroplethMap,
   getColorplethColorScale,
 } from "../../components/ChoroplethMap";
-import LeafletGridHeatMap from "../../components/LeafletGridHeatMap";
-import PinMap from "../../components/PinMap";
+import { LeafletGridHeatMap } from "../../components/LeafletGridHeatMap";
+import { PinMap } from "../../components/PinMap";
 
 import { CustomMapFooter } from "./CustomMapFooter";
 
@@ -65,7 +67,7 @@ export class Map extends Component {
         return t`Map type`;
       },
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -79,11 +81,9 @@ export class Map extends Component {
             },
             value: "pin",
           },
-          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-          // { name: "Heat map", value: "heat" },
           { name: "Grid map", value: "grid" },
         ],
-      },
+      }),
       getDefault: ([{ card, data }], settings) => {
         switch (card.display) {
           case "state":
@@ -106,9 +106,6 @@ export class Map extends Component {
                 longitudeColumn.binning_info
               ) {
                 return "grid";
-                // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-                // } else if (settings["map.metric_column"]) {
-                //   return "heat";
               } else {
                 return "pin";
               }
@@ -128,7 +125,7 @@ export class Map extends Component {
         return t`Pin type`;
       },
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -142,11 +139,9 @@ export class Map extends Component {
             },
             value: "markers",
           },
-          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-          // { name: "Heat", value: "heat" },
           { name: "Grid", value: "grid" },
         ],
-      },
+      }),
       getDefault: ([{ data }], vizSettings) =>
         vizSettings["map.type"] === "heat"
           ? "heat"
@@ -215,11 +210,27 @@ export class Map extends Component {
       get title() {
         return t`Metric field`;
       },
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.find(isMetric)?.name,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     ...dimensionSetting("map.dimension", {
       get title() {
         return t`Region field`;
+      },
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => {
+        const geoDimension = cols.find((col) => isCountry(col) || isState(col));
+        if (geoDimension) {
+          return geoDimension.name;
+        }
+        return cols.find(isDimension)?.name;
       },
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
@@ -228,7 +239,7 @@ export class Map extends Component {
         return t`Color`;
       },
       widget: ColorRangeSelector,
-      props: {
+      getProps: () => ({
         colors: getAccentColors(),
         colorMapping: Object.fromEntries(
           getAccentColors().map((color) => [
@@ -237,9 +248,13 @@ export class Map extends Component {
           ]),
         ),
         isQuantile: true,
-      },
-      default: getColorplethColorScale(getAccentColors()[0]),
+      }),
+      getDefault: (series, vizSettings) =>
+        getColorplethColorScale(
+          getPreferredColor(vizSettings["map.metric"]) ?? getAccentColors()[0],
+        ),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
+      readDependencies: ["map.metric"],
     },
     "map.zoom": {},
     "map.center_latitude": {},
@@ -249,7 +264,7 @@ export class Map extends Component {
         return t`Radius`;
       },
       widget: "number",
-      default: 30,
+      getDefault: () => 30,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.blur": {
@@ -257,7 +272,7 @@ export class Map extends Component {
         return t`Blur`;
       },
       widget: "number",
-      default: 60,
+      getDefault: () => 60,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.min-opacity": {
@@ -265,7 +280,7 @@ export class Map extends Component {
         return t`Min Opacity`;
       },
       widget: "number",
-      default: 0,
+      getDefault: () => 0,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.max-zoom": {
@@ -273,7 +288,7 @@ export class Map extends Component {
         return t`Max Zoom`;
       },
       widget: "number",
-      default: 1,
+      getDefault: () => 1,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
   };

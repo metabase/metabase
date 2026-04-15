@@ -3,29 +3,27 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
-import { UpsellBanner } from "metabase/admin/upsells/components";
+import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import {
+  PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
 } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { SettingTitle } from "../../SettingHeader";
 import { EmbeddedResources } from "../../widgets/PublicLinksListing/EmbeddedResources";
 import { EmbeddingSecretKeyWidget } from "../EmbeddingSecretKeyWidget";
-import { CorsInputWidget } from "../EmbeddingSecuritySettings/CorsInputWidget";
 
 type Props = {
   showEmbeddingSdkSettings?: boolean;
-  showCorsSettings?: boolean;
   showContentTranslationSettings?: boolean;
 };
 
 export function SharedCombinedEmbeddingSettings({
-  showCorsSettings,
   showContentTranslationSettings,
 }: Props) {
   const isSimpleEmbedFeatureAvailable =
@@ -35,6 +33,11 @@ export function SharedCombinedEmbeddingSettings({
   const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "embedding-settings" }),
   );
+
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign: "enterprise",
+    location: "embedding-settings",
+  });
 
   return (
     <>
@@ -50,10 +53,11 @@ export function SharedCombinedEmbeddingSettings({
       {!isSimpleEmbedFeatureAvailable && (
         <UpsellBanner
           title={t`Upgrade to Metabase Pro for more powerful embedding methods`}
-          campaign="embedded-analytics-js"
+          campaign="embedding-methods"
           location="embedding-page"
           buttonText={t`Upgrade`}
           buttonLink={upgradeUrl}
+          onClick={triggerUpsellFlow}
           dismissible
         >
           <Text c="text-secondary" lh="md">
@@ -77,12 +81,6 @@ export function SharedCombinedEmbeddingSettings({
 
             <EmbeddedResources />
           </Box>
-        </SettingsSection>
-      )}
-
-      {showCorsSettings && (
-        <SettingsSection>
-          <CorsInputWidget />
         </SettingsSection>
       )}
 

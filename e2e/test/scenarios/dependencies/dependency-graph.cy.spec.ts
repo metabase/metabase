@@ -18,7 +18,6 @@ import type {
   NativeQuerySnippetId,
   SegmentId,
   TableId,
-  TransformId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -71,6 +70,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     H.getTableId({ name: TABLE_NAME }).as(TABLE_ID_ALIAS);
+    H.resetSnowplow();
   });
 
   describe("entity search", () => {
@@ -86,6 +86,12 @@ describe("scenarios > dependencies > dependency graph", () => {
       cy.log(`verify that "${itemName}" can be found via search`);
       H.DependencyGraph.entrySearchInput().clear().type(itemName);
       H.popover().findByText(itemName).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "dependency-graph",
+        event_detail: "table",
+      });
+
       H.DependencyGraph.entryButton().should("have.text", itemName);
       H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
       H.DependencyGraph.entryButton().icon("close").click();
@@ -97,23 +103,18 @@ describe("scenarios > dependencies > dependency graph", () => {
     }
 
     function testEntityPicker({
-      tabName,
-      itemName,
-      itemLevel,
+      path,
       itemIcon,
     }: {
-      tabName: string;
-      itemName: string;
-      itemLevel: number;
+      path: (string | RegExp)[];
       itemIcon: IconName;
     }) {
+      const itemName = path[path.length - 1];
+      const itemLevel = path.length - 1;
       cy.log(`verify that "${itemName}" can be selected in the picker`);
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab(tabName).click();
-        H.entityPickerModalItem(itemLevel, itemName).click();
-      });
+      H.pickEntity({ path });
       H.DependencyGraph.entryButton().should("have.text", itemName);
       H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
 
@@ -133,9 +134,11 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab(tabName).click();
-        cy.findByPlaceholderText(/Search/).type(itemName);
-        cy.findByText(/result for/).should("exist");
+        cy.findByPlaceholderText(/Search/).type(itemName as string);
+        cy.findByText(/results for/).should("be.visible");
+        cy.findByTestId("search-scope-selector")
+          .findByText("Everywhere")
+          .click();
         cy.findByText(itemName).click();
       });
       H.DependencyGraph.entryButton().should("have.text", itemName);
@@ -185,33 +188,23 @@ describe("scenarios > dependencies > dependency graph", () => {
 
       visitGraph();
       testEntityPicker({
-        tabName: "Tables",
-        itemName: "Products",
-        itemLevel: 3,
+        path: ["Databases", /Sample Database/, "Products"],
         itemIcon: "table",
       });
       testEntityPicker({
-        tabName: "Questions",
-        itemName: "Orders, Count, Grouped by Created At (year)",
-        itemLevel: 1,
+        path: ["Our analytics", "Orders, Count, Grouped by Created At (year)"],
         itemIcon: "line",
       });
       testEntityPicker({
-        tabName: "Models",
-        itemName: "Orders Model",
-        itemLevel: 1,
+        path: ["Our analytics", "Orders Model"],
         itemIcon: "model",
       });
       testEntityPicker({
-        tabName: "Metrics",
-        itemName: TABLE_BASED_METRIC_NAME,
-        itemLevel: 1,
+        path: ["Our analytics", TABLE_BASED_METRIC_NAME],
         itemIcon: "metric",
       });
       testEntityPicker({
-        tabName: "Transforms",
-        itemName: TABLE_BASED_TRANSFORM_NAME,
-        itemLevel: 0,
+        path: [/Transforms/, TABLE_BASED_TRANSFORM_NAME],
         itemIcon: "transform",
       });
     });
@@ -499,7 +492,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     it("should display dependencies for a transform and navigate to them", () => {
       createTableBasedTransform({ tableName: TABLE_NAME }).then(
         ({ body: transform }) => {
-          runTransformAndWaitForSuccess(transform.id);
+          H.runTransformAndWaitForSuccess(transform.id);
           visitGraphForEntity(transform.id, "transform");
         },
       );
@@ -697,6 +690,8 @@ function visitGraph() {
 }
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
+  // Wait for async dependency computation to complete before navigating
+  H.waitForBackfillComplete();
   return cy.visit(BASE_URL, { qs: { id, type } });
 }
 
@@ -1076,11 +1071,6 @@ function createSnippetBasedTransform({
       name: TRANSFORM_TABLE_NAME,
     },
   });
-}
-
-function runTransformAndWaitForSuccess(transformId: TransformId) {
-  cy.request("POST", `/api/ee/transform/${transformId}/run`);
-  H.waitForSucceededTransformRuns();
 }
 
 function createEmptySnippet() {

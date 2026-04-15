@@ -6,10 +6,8 @@ import _ from "underscore";
 import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { openSaveDialog } from "metabase/lib/dom";
-import * as Urls from "metabase/lib/urls";
 import {
   Anchor,
   Box,
@@ -22,6 +20,8 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { openSaveDialog } from "metabase/utils/dom";
+import * as Urls from "metabase/utils/urls";
 import type { Database } from "metabase-types/api";
 
 import { SettingsSection } from "../../../components/SettingsSection";

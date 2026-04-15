@@ -4,7 +4,8 @@ import type ReactMarkdown from "react-markdown";
 import { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
+import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
 
 import { MarkdownRoot } from "./Markdown.styled";
 
@@ -16,6 +17,9 @@ const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
 
 function urlTransform(url: string): string {
   if (url.startsWith("metabase://")) {
+    return url;
+  }
+  if (DATA_IMAGE_URI_PATTERN.test(url)) {
     return url;
   }
   return defaultUrlTransform(url);
@@ -33,7 +37,7 @@ export interface MarkdownProps
   components?: Record<string, any>;
 }
 
-const Markdown = ({
+export const Markdown = ({
   className,
   children = "",
   dark,
@@ -71,6 +75,3 @@ const Markdown = ({
     </MarkdownRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Markdown;

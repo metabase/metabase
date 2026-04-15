@@ -7,8 +7,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -145,7 +147,7 @@
 ;;; make sure that given an existing query the expected description was generated correctly.
 
 (defn- describe-legacy-query-order-by [query]
-  (-> (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))
+  (-> (lib.query/query meta/metadata-provider (lib.convert/->mbql5 query))
       (lib.metadata.calculation/describe-top-level-key -1 :order-by)))
 
 (deftest ^:parallel describe-order-by-test
@@ -344,20 +346,20 @@
                  {:id (meta/id :venues :latitude) :name "LATITUDE"}
                  {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                  {:id (meta/id :venues :price) :name "PRICE"}
-                 {:lib/type     :metadata/column
-                  :name         "ID"
-                  :display-name "ID"
-                  :source-alias "Cat"
-                  :id           (meta/id :categories :id)
-                  :table-id     (meta/id :categories)
-                  :base-type    :type/BigInteger}
-                 {:lib/type     :metadata/column
-                  :name         "NAME"
-                  :display-name "Name"
-                  :source-alias "Cat"
-                  :id           (meta/id :categories :name)
-                  :table-id     (meta/id :categories)
-                  :base-type    :type/Text}]
+                 {:lib/type                     :metadata/column
+                  :name                         "ID"
+                  :display-name                 "ID"
+                  :lib/join-alias "Cat"
+                  :id                           (meta/id :categories :id)
+                  :table-id                     (meta/id :categories)
+                  :base-type                    :type/BigInteger}
+                 {:lib/type                     :metadata/column
+                  :name                         "NAME"
+                  :display-name                 "Name"
+                  :lib/join-alias "Cat"
+                  :id                           (meta/id :categories :name)
+                  :table-id                     (meta/id :categories)
+                  :base-type                    :type/Text}]
                 (lib/orderable-columns query)))))))
 
 (deftest ^:parallel orderable-columns-source-card-test
@@ -497,11 +499,11 @@
             :lib/source              :source/table-defaults}
            {:name                         "ID"
             :lib/source-column-alias      "ID"
-            :metabase.lib.join/join-alias "Cat"
+            :lib/join-alias "Cat"
             :lib/source                   :source/joins}
            {:name                         "NAME"
             :lib/source-column-alias      "NAME"
-            :metabase.lib.join/join-alias "Cat"
+            :lib/join-alias "Cat"
             :lib/source                   :source/joins}]
           (-> (lib.tu/venues-query)
               (lib/join (-> (lib/join-clause
@@ -645,7 +647,7 @@
                {:display-name "ID",   :lib/source :source/joins}
                {:display-name "Name", :lib/source :source/joins}]
               (lib/orderable-columns query)))
-      (let [query' (lib/order-by query (m/find-first #(and (= (:source-alias %) "Cat")
+      (let [query' (lib/order-by query (m/find-first #(and (= (:lib/join-alias %) "Cat")
                                                            (= (:display-name %) "Name"))
                                                      (lib/orderable-columns query)))]
         (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}
@@ -717,7 +719,7 @@
             [nil          "PRICE"]
             ["Categories" "ID"] ; this column is not projected, but should still be returned.
             ["Categories" "NAME"]]
-           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
+           (map (juxt :lib/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
@@ -884,3 +886,14 @@
     (let [query' (lib.order-by/remove-all-order-bys query)]
       (is (=? {:stages [{:order-by (symbol "nil #_\"key is not present.\"")}]}
               query')))))
+
+(deftest ^:parallel order-by-duplicate-without-base-type-test
+  (testing "order-by ref without :base-type/:effective-type should be detected as duplicate"
+    (let [query    (lib/query meta/metadata-provider (meta/table-metadata :products))
+          category (m/find-first #(= (:name %) "CATEGORY")
+                                 (lib/orderable-columns query))
+          a-ref    (lib.ref/ref category)
+          query'   (lib/order-by query a-ref)
+          ref-no-types (lib.options/update-options a-ref dissoc :base-type :effective-type)
+          query''  (lib/order-by query' ref-no-types)]
+      (is (= 1 (count (lib/order-bys query'')))))))

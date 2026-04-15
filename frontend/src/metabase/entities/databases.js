@@ -8,14 +8,14 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { color } from "metabase/lib/colors";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { DatabaseSchema } from "metabase/schema";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+import { color } from "metabase/ui/colors";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
+import { createThunkAction, fetchData } from "metabase/utils/redux";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS

@@ -12,21 +12,21 @@ import { formatRowCount } from "metabase/common/utils/format-row-count";
 import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
-import LimitPopover from "metabase/query_builder/components/LimitPopover";
+import { LimitPopover } from "metabase/query_builder/components/LimitPopover";
 import {
   getFirstQueryResult,
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import type { State } from "metabase/redux/store";
 import { Box, Popover, UnstyledButton } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Dataset } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import QuestionRowCountS from "./QuestionRowCount.module.css";
 
@@ -70,7 +70,7 @@ const mapDispatchToProps = {
   onChangeLimit: setLimit,
 };
 
-function QuestionRowCount({
+function QuestionRowCountInner({
   question,
   result,
   isResultDirty,
@@ -90,8 +90,8 @@ function QuestionRowCount({
       : getRowCountMessage(result, formatNumber);
   }, [question, result, isResultDirty, isNative, formatNumber]);
 
-  const handleLimitChange = (limit: number) => {
-    onChangeLimit(limit > 0 ? limit : null);
+  const handleLimitChange = (limit: number | null) => {
+    onChangeLimit(limit !== null && limit > 0 ? limit : null);
   };
 
   const canChangeLimit = !isNative && isEditable;
@@ -207,7 +207,7 @@ const ConnectedQuestionRowCount = _.compose(
     id: getDatabaseId,
     loadingAndErrorWrapper: false,
   }),
-)(QuestionRowCount);
+)(QuestionRowCountInner);
 
 export type QuestionRowCountOpts = {
   result?: Dataset;
@@ -218,5 +218,6 @@ function shouldRender({ result, isObjectDetail }: QuestionRowCountOpts) {
   return result?.data && !isObjectDetail;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(ConnectedQuestionRowCount, { shouldRender });
+export const QuestionRowCount = Object.assign(ConnectedQuestionRowCount, {
+  shouldRender,
+});

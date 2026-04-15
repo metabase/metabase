@@ -1,11 +1,12 @@
 (ns metabase.query-processor.middleware.parameters
   "Middleware for substituting parameters in queries."
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.lib.core :as lib]
+   [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -14,7 +15,8 @@
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (mu/defn- expand-stage :- ::lib.schema/stage
   "Expand `:parameters` in one stage map that contains them."
@@ -38,7 +40,7 @@
 ;;; if parameters specify `:stage-number`, it means the original stage number before we started preprocessing the
 ;;; query (i.e., before we expanded source cards and what not)
 
-(mu/defn- num-stages-prepended-by-preprocessing :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+(mu/defn- num-stages-prepended-by-preprocessing :- nat-int?
   "Parameters can specify the `:stage-number` they should be applied to, but this is relative to the stage number of the
   query as it was originally passed in. The preprocessing middleware that expands source cards can introduce additional
   stages at the beginning of the query, so to get the actual stage number a parameter should affect we have to offset it
@@ -55,12 +57,8 @@
   the [[num-stages-prepended-by-preprocessing]])."
   [query     :- ::lib.schema/query
    parameter :- ::lib.schema.parameter/parameter]
-  (let [stage-number (or (-> parameter
-                             :target
-                             lib/->pMBQL
-                             lib/options
-                             :stage-number)
-                         0)]
+  (let [stage-number (lib.parameters/parameter-target-stage-number
+                      (:target parameter))]
     (if (not (neg? stage-number))
       ;; for a non-negative stage number add the offset to it as mentioned above
       (+ stage-number (num-stages-prepended-by-preprocessing query))
@@ -86,6 +84,44 @@
    query
    parameters))
 
+(defn- tag-for-param
+  "Find the template tag in `template-tags` that matches `param`'s target."
+  [template-tags param]
+  (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
+    (or (get template-tags name-or-id) ; handle name
+        (some (fn [[_ tag]] ; handle id (defensive, may be unnecessary)
+                (when (= (:id tag) name-or-id)
+                  tag))
+              template-tags))))
+
+(defn- stage-has-non-default-params?
+  "True if a stage has parameters with non-default values.
+   For MBQL stages, any parameters count as non-default.
+   For native stages, only parameters whose value differs from the template tag default."
+  [stage]
+  (when-let [params (seq (:parameters stage))]
+    (if-not (lib/native-stage? stage)
+      true
+      ;; Native: check if any parameter value differs from its template tag default
+      (let [template-tags      (:template-tags stage)
+            non-default-param? (fn [param]
+                                 (when-let [value (:value param)]
+                                   (let [tag     (tag-for-param template-tags param)
+                                         default (:default tag)]
+                                     (or (nil? default)
+                                         (not= value default)))))]
+        (some non-default-param? params)))))
+
+(defn- maybe-skip-result-metadata-persistence
+  "Sets :qp/skip-result-metadata-persistence to true/false."
+  [query]
+  (->> (:stages query)
+       (some stage-has-non-default-params?)
+       boolean
+       ;; `qp/skip-result-metadata-persistence` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]]
+       ;; to decide whether to record metadata.
+       (assoc query :qp/skip-result-metadata-persistence)))
+
 (mu/defn- move-top-level-params-to-stage :- ::lib.schema/query
   "Move any top-level parameters to the stage they affect."
   [{:keys [info parameters], :as query} :- ::lib.schema/query]
@@ -96,14 +132,15 @@
     ;; TODO: Native models should be within scope of dashboard filters, by applying the filter on an outer stage.
     ;; That doesn't work, so the logic below requires MBQL queries only to fix the regression.
     ;; Native models don't actual get filtered even when linked to dashboard filters, but that's not a regression.
-    ;; This can be fixed properly once this middleware is powered by MLv2. See #40011.
+    ;; This can be fixed properly once this middleware is powered by Lib. See #40011.
     (and (seq parameters)
          (:metadata/model-metadata info)
          (not (lib/native-stage? (lib/query-stage query -1))))
     lib/append-stage
 
     (seq parameters)
-    (move-top-level-params-to-stage* parameters)))
+    (-> (move-top-level-params-to-stage* parameters)
+        maybe-skip-result-metadata-persistence)))
 
 (mu/defn- expand-parameters :- ::lib.schema/query
   "If any parameters were supplied then substitute them into the query."

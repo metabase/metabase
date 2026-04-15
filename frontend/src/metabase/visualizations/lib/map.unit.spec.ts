@@ -1,5 +1,5 @@
-import type { JsonQuery } from "metabase-types/api";
-import { createMockDataset } from "metabase-types/api/mocks/dataset";
+import type { JsonQuery, Parameter } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import { getTileUrl } from "./map";
 
@@ -9,7 +9,9 @@ describe("map", () => {
     const zoom = "{z}";
     const latField = "latitude";
     const lonField = "longitude";
-    const parameters = [{ id: "param1", value: "value1" }];
+    const parameters: Parameter[] = [
+      createMockParameter({ id: "param1", value: "value1" }),
+    ];
     const encodedParameters = JSON.stringify(parameters);
 
     describe("adhoc query", () => {
@@ -51,19 +53,13 @@ describe("map", () => {
       });
 
       it("should generate url for saved question with parameters", () => {
-        const datasetResult = createMockDataset({
-          json_query: {
-            parameters,
-          } as JsonQuery,
-        });
-
         const url = getTileUrl({
           cardId: 123,
           zoom,
           coord,
           latField,
           lonField,
-          datasetResult,
+          parameters,
         });
 
         expect(url).toBe(
@@ -114,12 +110,6 @@ describe("map", () => {
       });
 
       it("should generate url for dashboard with parameters", () => {
-        const datasetResult = createMockDataset({
-          json_query: {
-            parameters,
-          } as JsonQuery,
-        });
-
         const url = getTileUrl({
           dashboardId: 10,
           dashcardId: 20,
@@ -128,7 +118,7 @@ describe("map", () => {
           coord,
           latField,
           lonField,
-          datasetResult,
+          parameters,
         });
 
         expect(url).toBe(
@@ -154,12 +144,6 @@ describe("map", () => {
       });
 
       it("should generate url for public question with parameters", () => {
-        const datasetResult = createMockDataset({
-          json_query: {
-            parameters,
-          } as JsonQuery,
-        });
-
         const url = getTileUrl({
           cardId: 123,
           zoom,
@@ -167,7 +151,7 @@ describe("map", () => {
           latField,
           lonField,
           uuid: "abc-123",
-          datasetResult,
+          parameters,
         });
 
         expect(url).toBe(
@@ -196,12 +180,6 @@ describe("map", () => {
       });
 
       it("should generate url for public dashboard with parameters", () => {
-        const datasetResult = createMockDataset({
-          json_query: {
-            parameters,
-          } as JsonQuery,
-        });
-
         const url = getTileUrl({
           // public dashboards have a uuid instead of an id
           dashboardId: "621efc8c-9fd9-42db-a39a-1abdbfe23937",
@@ -212,7 +190,7 @@ describe("map", () => {
           latField,
           lonField,
           uuid: "abc-123",
-          datasetResult,
+          parameters,
         });
 
         expect(url).toBe(
@@ -238,11 +216,9 @@ describe("map", () => {
       });
 
       it("should generate url for embed question with parameters", () => {
-        const datasetResult = createMockDataset({
-          json_query: {
-            parameters: [{ id: "original", value: "original" }],
-          } as JsonQuery,
-        });
+        const parametersOriginal = [
+          createMockParameter({ id: "original", value: "original" }),
+        ];
 
         const url = getTileUrl({
           cardId: 123,
@@ -251,12 +227,10 @@ describe("map", () => {
           latField,
           lonField,
           token: "embed-token",
-          datasetResult,
+          parameters: parametersOriginal,
         });
 
-        const expectedParameters = JSON.stringify([
-          { id: "original", value: "original" },
-        ]);
+        const expectedParameters = JSON.stringify(parametersOriginal);
 
         expect(url).toBe(
           `/api/embed/tiles/card/embed-token/${zoom}/${coord.x}/${coord.y}?latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}&parameters=${encodeURIComponent(expectedParameters)}`,
@@ -318,11 +292,9 @@ describe("map", () => {
       });
 
       it("should generate url for embed dashboard with parameters", () => {
-        const datasetResult = createMockDataset({
-          json_query: {
-            parameters: [{ id: "original", value: "original" }],
-          } as JsonQuery,
-        });
+        const parametersOriginal = [
+          createMockParameter({ id: "original", value: "original" }),
+        ];
 
         const url = getTileUrl({
           dashboardId: jwt,
@@ -333,13 +305,10 @@ describe("map", () => {
           latField,
           lonField,
           token: "embed-token",
-          datasetResult,
+          parameters: parametersOriginal,
         });
 
-        const expectedParameters = JSON.stringify([
-          { id: "original", value: "original" },
-        ]);
-
+        const expectedParameters = JSON.stringify(parametersOriginal);
         expect(url).toBe(
           `/api/embed/tiles/dashboard/embed-token/dashcard/20/card/30/${zoom}/${coord.x}/${coord.y}?latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}&parameters=${encodeURIComponent(expectedParameters)}`,
         );

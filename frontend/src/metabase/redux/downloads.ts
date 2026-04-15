@@ -12,14 +12,16 @@ import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import api, { GET, POST } from "metabase/lib/api";
-import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
-import { createAsyncThunk } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
-import { isJWT } from "metabase/lib/utils";
-import { isUuid } from "metabase/lib/uuid";
+import type { DownloadsState, State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup/selectors";
+import api, { GET, POST } from "metabase/utils/api";
+import { openSaveDialog } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { isJWT } from "metabase/utils/jwt";
+import { createAsyncThunk } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
+import { isUuid } from "metabase/utils/uuid";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getCardKey } from "metabase/visualizations/lib/utils";
@@ -32,9 +34,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
-import type { DownloadsState, State } from "metabase-types/store";
 
-import { trackDownloadResults } from "./downloads-analytics";
+import { trackDownloadResults } from "./analytics";
 
 export interface DownloadQueryResultsOpts {
   type: string;
@@ -323,7 +324,11 @@ const getEmbedQuestionParams = (
   type: string,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
-  const params = new URLSearchParams(window.location.search);
+  const params = isEmbeddingSdk()
+    ? // For SDK/EmbedJS we must not read params from location search as in both cases
+      // additional params are not supported by a public endpoint
+      null
+    : new URLSearchParams(window.location.search);
 
   const convertSearchParamsToObject = (params: URLSearchParams) => {
     const object: Record<string, string | string[]> = {};
@@ -345,7 +350,9 @@ const getEmbedQuestionParams = (
     method: "GET",
     url: Urls.embedCard(token, type),
     params: new URLSearchParams({
-      parameters: JSON.stringify(convertSearchParamsToObject(params)),
+      ...(params && {
+        parameters: JSON.stringify(convertSearchParamsToObject(params)),
+      }),
       ..._.mapObject(exportParams, (value) => String(value)),
     }),
   };
@@ -590,7 +597,7 @@ export const getChartFileName = (question: Question, branded: boolean) => {
   const name = question.displayName() ?? t`New question`;
   const date = new Date().toLocaleString();
   const fileName = `${name}-${date}.png`;
-  // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
   return branded ? `Metabase-${fileName}` : fileName;
 };
 
@@ -600,7 +607,7 @@ export const getDashboardPdfFileName = (
 ) => {
   const originalFileName = `${dashboard.name}.pdf`;
   const fileName = branded
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
       `Metabase - ${originalFileName}`
     : originalFileName;
   return fileName;

@@ -18,6 +18,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.filter :as search.filter]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
@@ -110,7 +111,7 @@
     [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
     [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document" "measure"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
@@ -183,7 +184,7 @@
       [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
-               "transform"]]
+               "transform" "measure"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause
@@ -286,8 +287,8 @@
 
 (defmethod build-optional-filter-query [:collection "table"]
   [_filter model query collection-id]
-  ;; Tables in collections are an EE feature (data-studio)
-  (if (premium-features/has-feature? :data-studio)
+  ;; Tables in collections are an EE feature (library)
+  (if (premium-features/has-feature? :library)
     (let [collection-col (search.config/column-with-model-alias model :collection_id)
           published-col  (search.config/column-with-model-alias model :is_published)]
       (sql.helpers/where query [:and
@@ -299,7 +300,7 @@
     (sql.helpers/where query false-clause)))
 
 ;; Things that don't belong to collections
-(doseq [model ["database" "action" "indexed-entity"]]
+(doseq [model ["database" "action" "indexed-entity" "measure" "segment"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter _model query _collection-id]
     ;; These models don't have collection_id, so they never match
@@ -325,7 +326,7 @@
             (reduce (fn [acc [filter model]]
                       (update acc filter set/union #{model}))
                     {})))
-      (update :collection disj "database")
+      (update :collection disj "database" "measure" "segment")
       (update :collection conj "indexed-entity")))
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -349,9 +350,11 @@
                 has-temporal-dim
                 display-type
                 is-superuser?]} search-context
+        enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)]
     (cond-> models
       (not   is-superuser?)        (disj "transform")
+      (empty? enabled-types)       (disj "transform")
       (some? collection)           (set/intersection (:collection feature->supported-models))
       (some? created-at)           (set/intersection (:created-at feature->supported-models))
       (some? created-by)           (set/intersection (:created-by feature->supported-models))
@@ -383,6 +386,11 @@
                 has-temporal-dim
                 display-type]} search-context]
     (cond-> honeysql-query
+      (= model "transform")
+      (sql.helpers/where (search.filter/transform-source-type-where-clause
+                          search-context
+                          (search.config/column-with-model-alias "transform" :source_type)))
+
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
 

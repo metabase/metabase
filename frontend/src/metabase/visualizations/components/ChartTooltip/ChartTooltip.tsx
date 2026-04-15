@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import Tooltip from "metabase/common/components/Tooltip";
-import { getEventTarget } from "metabase/lib/dom";
+import { Tooltip } from "metabase/common/components/Tooltip";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { getEventTarget } from "metabase/utils/dom";
 import type {
   HoveredObject,
   HoveredTimelineEvent,
@@ -69,7 +69,7 @@ const ChartTooltip = ({
 
   const target = hasTargetElement
     ? hovered?.element
-    : hasTargetEvent
+    : hovered?.event != null
       ? getEventTarget(hovered.event)
       : null;
 

@@ -2,7 +2,7 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
-   [clojure.set :as set]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -76,33 +76,46 @@
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (perms/user-has-permission-for-table?
-      api/*current-user-id*
-      :perms/manage-table-metadata
-      :yes
-      (:db_id table)
-      (u/the-id table))))
+     (mi/can-read? table)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-;; Segments can be written by superusers, but only if the parent table is editable
-;; (not in a remote-synced collection in read-only mode).
+;; Segments can be created by
+;; a) superusers
+;; b) OR data analysts with unrestricted view-data permissions
+;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (and (mi/superuser?)
+     (and (or (mi/superuser?)
+              (and api/*is-data-analyst?*
+                   (perms/user-has-permission-for-table?
+                    api/*current-user-id*
+                    :perms/view-data
+                    :unrestricted
+                    (:db_id table)
+                    (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
 
-;; Segments can be created by superusers, but only if the parent table is editable
-;; (not in a remote-synced collection in read-only mode).
+;; Segments can be created by
+;; a) superusers
+;; b) OR data analysts with unrestricted view-data permissions
+;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
                   (t2/select-one :model/Table :id (:table_id instance)))]
-    (and (mi/superuser?)
+    (and (or (mi/superuser?)
+             (and api/*is-data-analyst?*
+                  (perms/user-has-permission-for-table?
+                   api/*current-user-id*
+                   :perms/view-data
+                   :unrestricted
+                   (:db_id table)
+                   (u/the-id table))))
          (remote-sync/table-editable? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
@@ -138,16 +151,18 @@
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
-  (let [database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-    (normalize-segment-definition definition table-id database-id)))
+  (when (some? definition)
+    (let [database-id (when table-id
+                        (t2/select-one-fn :db_id :model/Table :id table-id))]
+      (normalize-segment-definition definition table-id database-id))))
 
 (t2/define-before-insert :model/Segment
-  [{:keys [definition] :as segment}]
-  (let [segment (cond-> segment
-                  (some? definition) (assoc :definition (migrated-segment-definition segment)))]
-    (when (seq (:definition segment))
-      (lib/check-segment-overwrite nil (:definition segment)))
-    segment))
+  [segment]
+  (let [definition (migrated-segment-definition segment)]
+    (when (seq definition)
+      (lib/check-segment-overwrite nil definition))
+    (cond-> (assoc segment :definition definition)
+      (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition)))))
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
   ;; throw an Exception if someone tries to update creator_id
@@ -155,10 +170,11 @@
     (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
   ;; normalize and check for cycles if definition is being updated
   (if-let [def-change (:definition (t2/changes segment))]
-    (let [normalized-def (migrated-segment-definition (assoc segment :definition def-change))]
-      (when (seq normalized-def)
-        (lib/check-segment-overwrite id normalized-def))
-      (assoc segment :definition normalized-def))
+    (let [definition (migrated-segment-definition (assoc segment :definition def-change))]
+      (when (seq definition)
+        (lib/check-segment-overwrite id definition))
+      (cond-> (assoc segment :definition definition)
+        (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
     segment))
 
 (defmethod mi/perms-objects-set :model/Segment
@@ -202,24 +218,21 @@
   [:name (serdes/hydrated-hash :table) :created_at])
 
 (defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]
-  (set/union #{(serdes/table->path table_id)}
-             (serdes/mbql-deps definition)))
+  (cond-> (serdes/mbql-deps definition)
+    table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
-  (let [{:keys [id label]} (-> segment serdes/path last)]
-    (-> segment
-        :table_id
-        serdes/table->path
-        serdes/storage-path-prefixes
-        (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
+  (into (-> segment :table_id serdes/table->path serdes/storage-path-prefixes)
+        [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}]))
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
-  {:copy [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip [:dependency_analysis_version]
+  {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+   :skip      []
    :transform {:created_at (serdes/date)
-               :table_id (serdes/fk :model/Table)
+               :table_id   (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import serdes/import-mbql}}})
+               :definition {:export serdes/export-mbql :import serdes/import-mbql}}
+   :defaults {:archived false :show_in_getting_started false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import FormField from "metabase/common/components/FormField";
-import Radio from "metabase/common/components/Radio";
-import { darken } from "metabase/lib/colors";
+import { FormField } from "metabase/common/components/FormField";
+import { Radio } from "metabase/common/components/Radio";
+import { darken } from "metabase/ui/colors";
 
 export const FormFieldContainer = styled.div`
   background-color: var(--mb-color-background-primary);

@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Ellipsified } from "metabase/ui";
 import {
   Box,
   type BoxProps,

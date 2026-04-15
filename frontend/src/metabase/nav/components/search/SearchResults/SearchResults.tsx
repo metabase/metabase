@@ -3,16 +3,10 @@ import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { Search } from "metabase/entities/search";
-import {
-  DEFAULT_SEARCH_LIMIT,
-  SEARCH_DEBOUNCE_DURATION,
-} from "metabase/lib/constants";
-import { useDispatch } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls";
 import {
   EmptyStateContainer,
   ResultsContainer,
@@ -23,6 +17,12 @@ import { SearchResult } from "metabase/search/components/SearchResult/SearchResu
 import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
 import { Loader } from "metabase/ui";
+import {
+  DEFAULT_SEARCH_LIMIT,
+  SEARCH_DEBOUNCE_DURATION,
+} from "metabase/utils/constants";
+import { useDispatch } from "metabase/utils/redux";
+import { modelToUrl } from "metabase/utils/urls";
 import type {
   CollectionItem,
   SearchModel,

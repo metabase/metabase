@@ -3,10 +3,10 @@ import {
   useGetMeasureQuery,
   useListMeasuresQuery,
 } from "metabase/api";
-import { color } from "metabase/lib/colors";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { MeasureSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
+import { color } from "metabase/ui/colors";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -49,16 +49,6 @@ export const Measures = createEntity({
         dispatch,
         measureApi.endpoints.updateMeasure,
       ),
-  },
-
-  objectActions: {
-    setArchived: (
-      { id },
-      archived,
-      { revision_message = archived ? "(Archive)" : "(Unarchive)" } = {},
-    ) => Measures.actions.update({ id }, { archived, revision_message }),
-
-    delete: null,
   },
 
   selectors: {

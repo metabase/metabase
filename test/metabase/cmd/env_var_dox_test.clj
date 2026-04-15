@@ -8,9 +8,9 @@
 
 (deftest ^:parallel test-format-prefix
   (testing "format-prefix handles deprecated variables."
-    (let [normal-var {:munged-name "test-setting"}
-          deprecated-var {:munged-name "old-setting" :deprecated true}
-          deprecated-with-msg-var {:munged-name "very-old-setting" :deprecated "Since v0.53"}]
+    (let [normal-var {:name :test-setting}
+          deprecated-var {:name :old-setting :deprecated true}
+          deprecated-with-msg-var {:name :very-old-setting :deprecated "Since v0.53"}]
       (is (= "MB_TEST_SETTING" (#'sut/format-prefix normal-var)))
       (is (= "MB_OLD_SETTING [DEPRECATED]" (#'sut/format-prefix deprecated-var)))
       (is (= "MB_VERY_OLD_SETTING [DEPRECATED]" (#'sut/format-prefix deprecated-with-msg-var))))))

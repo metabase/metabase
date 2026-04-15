@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   synchronize-translations:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Synchronize Translations
     env:
       BRANCH_NAME: update-translations-${{ github.run_id }}
@@ -17,7 +18,7 @@ jobs:
       CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Checkout code
@@ -33,7 +34,7 @@ jobs:
         run: sudo apt-get install gettext
 
       - name: Crowdin download
-        uses: crowdin/github-action@v2
+        uses: crowdin/github-action@ce33ce793a5cbc401d9cd748716e03fc90c001f1 # v2
         id: crowdin-download
         with:
           config: locales/crowdin.yml
@@ -74,7 +75,7 @@ jobs:
           git push -u origin $BRANCH_NAME
 
       - name: Crowdin upload
-        uses: crowdin/github-action@v2
+        uses: crowdin/github-action@ce33ce793a5cbc401d9cd748716e03fc90c001f1 # v2
         id: crowdin-upload
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -105,13 +106,13 @@ jobs:
           echo "::set-output name=pr_number::$PR_NUMBER"
 
       - name: Auto approve PR
-        uses: juliangruber/approve-pull-request-action@v1
+        uses: juliangruber/approve-pull-request-action@f83b836abaed1b3ab639ae61f9117c52ae405f65 # v1
         with:
           github-token: ${{ github.token }}
           number: ${{ steps.create_pr.outputs.pr_number }}
 
       - name: Enable Pull Request Automerge
-        uses: peter-evans/enable-pull-request-automerge@v2
+        uses: peter-evans/enable-pull-request-automerge@684fed02ccc9b5eefcf7d40b65b3cd44255bd5bc # v2
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           pull-request-number: ${{ steps.create_pr.outputs.pr_number }}

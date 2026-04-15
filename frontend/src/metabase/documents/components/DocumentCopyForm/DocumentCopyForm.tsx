@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
@@ -11,8 +11,9 @@ import {
 } from "metabase/forms";
 import { Button, Stack } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
+import type { Document } from "metabase-types/api/document";
 
-type CopyDocumentProperties = {
+export type CopyDocumentProperties = {
   collection_id: CollectionId | null;
   name: string;
 };
@@ -56,13 +57,13 @@ export const DocumentCopyForm = ({
             <FormTextInput
               name="name"
               label={t`Name`}
-              placeholder={t`What is the name of your dashboard?`}
+              placeholder={t`What is the name of your document?`}
               autoFocus
             />
             <div>
               <FormCollectionPicker
                 name="collection_id"
-                title={t`Folder this document should be copied to`}
+                title={t`Where do you want to save this?`}
                 entityType="document"
               />
             </div>
@@ -71,7 +72,10 @@ export const DocumentCopyForm = ({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton label={t`Copy`} variant="primary" />
+            <FormSubmitButton
+              label={c(`A verb, not a noun`).t`Duplicate`}
+              variant="primary"
+            />
           </FormFooter>
         </Form>
       )}

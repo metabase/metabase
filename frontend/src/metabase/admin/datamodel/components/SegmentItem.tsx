@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentActionSelect } from "./SegmentActionSelect";
@@ -11,9 +11,10 @@ import S from "./SegmentItem.module.css";
 interface Props {
   segment: Segment;
   onRetire?: () => void;
+  readOnly?: boolean;
 }
 
-export const SegmentItem = ({ segment, onRetire }: Props) => {
+export const SegmentItem = ({ segment, onRetire, readOnly }: Props) => {
   const canEdit = !!onRetire;
 
   return (
@@ -54,7 +55,11 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
       {onRetire && (
         <Box component="td" className={S.cell} p="sm">
           <Flex justify="center">
-            <SegmentActionSelect object={segment} onRetire={onRetire} />
+            <SegmentActionSelect
+              object={segment}
+              onRetire={onRetire}
+              readOnly={readOnly}
+            />
           </Flex>
         </Box>
       )}

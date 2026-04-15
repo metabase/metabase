@@ -223,18 +223,37 @@
   [_]
   nil)
 
+(defmulti llm-sql-dialect-resource
+  "Returns the resource path for dialect-specific LLM prompt instructions,
+   or nil if no dialect-specific instructions exist for this driver."
+  {:added "0.59.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod llm-sql-dialect-resource :default [_] nil)
+
+(def disallowed-db-detail-keys
+  "Low-level JDBC keys that should not appear in database connection details."
+  #{"classname" "subprotocol" "connection-uri" "subname" "init"})
+
+(defn sanitize-db-details
+  "Remove [[disallowed-db-detail-keys]] from a database details map."
+  [details]
+  (when (map? details)
+    (into {} (remove (fn [[k _]] (disallowed-db-detail-keys (u/lower-case-en (name k))))) details)))
+
 (defn dispatch-on-initialized-driver-safe-keys
   "Dispatch on initialized driver, except checks for `classname`,
   `subprotocol`, `connection-uri` in the details map in order to
   prevent a mismatch in spec type vs driver."
   [driver details-map]
-  (let [invalid-keys #{"classname" "subprotocol" "connection-uri"}
-        ks           (->> details-map keys
-                          (map name)
-                          (map u/lower-case-en) set)]
-    (when (seq (set/intersection ks invalid-keys))
-      (throw (ex-info "Cannot specify subname, protocol, or connection-uri in details map"
-                      {:invalid-keys (set/intersection ks invalid-keys)})))
+  (let [ks (->> details-map keys
+                (map name)
+                (map u/lower-case-en) set)]
+    (let [invalid (set/intersection ks disallowed-db-detail-keys)]
+      (when (seq invalid)
+        (throw (ex-info (str "Cannot specify " (str/join ", " (sort invalid)) " in details map")
+                        {:invalid-keys invalid}))))
     (dispatch-on-initialized-driver driver)))
 
 (defmulti can-connect?
@@ -364,6 +383,8 @@
   "Returns a reducible collection of maps, each containing information about foreign keys.
   Takes optional keyword arguments to narrow down the results to a set of `schema-names`
   and `table-names`.
+
+  `database` should be a Lib-style `:metadata/database` (i.e., should use kebab-case keys).
 
   Results match [[metabase.sync.interface/FKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
@@ -644,6 +665,9 @@
     ;; Does the driver support atomic multi-table renaming
     :atomic-renames
 
+    ;; Does the driver support CREATE OR REPLACE TABLE syntax
+    :create-or-replace-table
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
@@ -803,7 +827,14 @@
     :describe-is-nullable
 
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
-    :describe-is-generated})
+    :describe-is-generated
+
+    ;; Does this driver support the workspace feature
+    :workspace
+
+    ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
+    ;; `{{table}}` gets replaced by a reference to a table.
+    :parameters/table-reference})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -850,7 +881,8 @@
                               :test/uuids-in-create-table-statements  true
                               :test/use-fake-sync                     false
                               :metadata/table-existence-check         false
-                              :metadata/table-writable-check          false}]
+                              :metadata/table-writable-check          false
+                              :workspace                              false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1129,7 +1161,12 @@
   regular Liquibase queries. This multimethod will be called from a `:post-select` handler within the database model.
   The full `database` model object is passed as the 2nd parameter, and the multimethod implementation is expected to
   update the value for `:details`. The default implementation is essentially `identity` (i.e returns `database`
-  unchanged). This multimethod will only be called if `:details` is actually present in the `database` map."
+  unchanged). This multimethod will only be called if `:details` is actually present in the `database` map.
+
+  Implementations should normalize both `:details` and `:write-data-details` (if present), since
+  `:write-data-details` is merged on top of `:details` by [[metabase.driver.connection/effective-details]].
+  Un-normalized fields in `:write-data-details` can leak through to the merged result. See
+  [[metabase.driver.connection]] for more information."
   {:added "0.41.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1277,6 +1314,31 @@
                     {:driver driver
                      :args args}))
     #{}))
+
+(mr/def ::native-query-table-refs.table-ref
+  [:map
+   {:closed true}
+   [:schema {:optional true} [:maybe :string]]
+   [:table :string]])
+
+(mr/def ::native-query-table-refs
+  [:set ::native-query-table-refs.table-ref])
+
+(defmulti native-query-table-refs
+  "Gets the raw table references from a native query without resolving them to IDs.
+
+  Unlike [[native-query-deps]] which looks up tables in the database to return IDs,
+  this method returns just the schema and table names as they appear in the query.
+  This is useful for workspace dependency tracking where referenced tables may not
+  exist yet.
+
+  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use
+  [[metabase.driver-api.core/raw-native-query]] to get the raw native query as needed.
+
+  The return value should match the `:metabase.driver/native-query-table-refs` schema."
+  {:changelog-test/ignore true :added "0.58.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
 
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
@@ -1703,3 +1765,83 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti init-workspace-isolation!
+  "Initialize database isolation for a workspace. Creates an isolated schema/database,
+   user credentials, and grants appropriate permissions for the workspace to operate
+   within its own namespace.
+
+   Returns a map with:
+   - :schema           - The name of the isolated schema/database created
+   - :database_details - Connection details (user, password, etc.) for the isolated user
+
+   Implementations should:
+   - Create an isolated schema or database for the workspace
+   - Create a user with credentials that can only access that schema
+   - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
+
+   This is an enterprise feature. Drivers must also return true for
+   (database-supports? driver :workspace database) to indicate support."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti destroy-workspace-isolation!
+  "Destroy all database resources created for workspace isolation.
+   This includes dropping schemas/databases, users, roles, and any other
+   resources created by init-workspace-isolation!.
+
+   Should be called when deleting a workspace. Implementations should be
+   idempotent - calling on an already-destroyed workspace should not error."
+  {:added "0.59.0" :arglists '([driver database workspace])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti grant-workspace-read-access!
+  "Grant read access on specified tables to a workspace's isolated user.
+   This allows the workspace to read from source tables that it needs as inputs.
+
+   `tables` is a sequence of maps with :schema and :name keys identifying
+   the tables to grant access to."
+  {:added "0.59.0" :arglists '([driver database workspace tables])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti check-isolation-permissions
+  "Check if database connection has sufficient permissions for workspace isolation.
+
+   Rather than directly checking permissions, this method performs the actual isolation
+   operations (init workspace, grant access, destroy resources) in a test workspace
+   because:
+
+   1. Some databases don't provide reliable APIs to check permissions a priori.
+   2. Keeping static permission checks in sync with the actual operations is error-prone.
+   3. A database user might have the necessary workspace permissions even if they
+      lack the introspection permissions to query permission tables.
+
+   Isolation operations run in a transaction that is always rolled back (for databases
+   that support transactional DDL), or are manually cleaned up immediately after testing
+   (for databases where transactions don't work, like BigQuery).
+
+   `test-table` is an optional {:schema ... :name ...} map used to test GRANT SELECT.
+   If nil, the grant test is skipped.
+
+   Returns nil on success, or an error message string on failure.
+
+   Default :sql-jdbc implementation tests CREATE SCHEMA, CREATE USER, GRANT, and DROP.
+   Drivers can override for database-specific syntax."
+  {:added "0.59.0" :arglists '([driver database test-table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti validate-impersonated-query
+  "Validates a query for impersonation. Returns the query if it is valid and throws otherwise."
+  {:added "0.60.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod validate-impersonated-query :default [_driver query] query)

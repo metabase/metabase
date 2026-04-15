@@ -58,6 +58,32 @@
   [x]
   (instance? ReferencedCardQuery x))
 
+;; A "ReferencedTableQuery" parameter expands to a query selecting from a specific table, potentially with a filter on a
+;; specific column.
+;;
+;; `table-id` is the id of the table being referenced
+;;
+;; `source-filters` is an optional sequence of filter maps applied to the table reference. Each filter map has:
+;;   :field-id  - the ID of the field to filter on
+;;   :op        - the comparison operator, one of :>, :>=, :<, :<=, :=, :!=
+;;   :value     - the value to compare against
+;; When present, the table reference is rendered as a filtered subquery:
+;;   (SELECT * FROM "table" WHERE "col" > ? AND "col" <= ?)
+;; source-filters was introduced to support incremental transforms, unused by the frontend.
+;;
+;; `alias` is an optional string alias for the table reference. When present, the expansion includes
+;; an AS clause: "table" AS "alias" or (SELECT ...) AS "alias".
+;; Resolved from the template tag's `:emit-alias` boolean and `:name` during parsing.
+(p.types/defrecord+ ReferencedTableQuery [table-id source-filters alias]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->ReferencedTableQuery) (into {} this))))
+
+(defn ReferencedTableQuery?
+  "Is `x` an instance of the `ReferencedTableQuery` record type?"
+  [x]
+  (instance? ReferencedTableQuery x))
+
 ;; A `ReferencedQuerySnippet` expands to the partial query snippet stored in the `NativeQuerySnippet` table in the
 ;; application DB.
 ;;

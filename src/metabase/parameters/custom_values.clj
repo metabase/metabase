@@ -124,7 +124,7 @@
    (let [mbql-query   (values-from-card-query card field-ref opts)
          result       (some-> mbql-query qp/process-query)
          values       (get-in result [:data :rows])]
-     {:values         values
+     {:values         (or values [])
       ;; If the row_count returned = the limit we specified, then it's probably has more than that.
       ;; If the query has its own limit smaller than *max-rows*, then there's no more values.
       :has_more_values (= (:row_count result) *max-rows*)})))
@@ -135,7 +135,7 @@
    query-string                              :- [:maybe ms/NonBlankString]]
   (let [card-id (:card_id config)
         card    (t2/select-one :model/Card :id card-id)]
-    (values-from-card card (lib/->pMBQL (:value_field config)) {:query-string query-string})))
+    (values-from-card card (lib/->mbql5 (:value_field config)) {:query-string query-string})))
 
 (defn- can-get-card-values?
   [card value-field]

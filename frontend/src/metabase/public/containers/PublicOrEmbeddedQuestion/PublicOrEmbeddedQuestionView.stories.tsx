@@ -15,15 +15,19 @@ import {
   StringColumn,
 } from "__support__/visualizations";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import PivotTable from "metabase/visualizations/visualizations/PivotTable";
+import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
 import {
   createMockCard,
@@ -31,10 +35,6 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import {
   PublicOrEmbeddedQuestionView,

@@ -10,16 +10,16 @@ import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { BillingInfo } from "../BillingInfo";
 

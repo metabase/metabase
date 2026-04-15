@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
-import { useSelector } from "metabase/lib/redux";
+import { Link } from "metabase/common/components/Link";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { ChannelCard } from "metabase/notifications/pulse/components/ChannelCard";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Stack, Text, Title } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 interface NewPulseSidebarProps {
   emailConfigured: boolean;
@@ -50,7 +50,7 @@ export function NewPulseSidebar({
             onClick={onNewSlackPulse}
           />
         ) : (
-          <Link to="/admin/settings/notifications">
+          <Link to="/admin/settings/slack">
             <ChannelCard title={t`Configure Slack`} channel="slack" />
           </Link>
         )}

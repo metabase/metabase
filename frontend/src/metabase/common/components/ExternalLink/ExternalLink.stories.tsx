@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import ExternalLink from "./ExternalLink";
+import { ExternalLink } from "./ExternalLink";
 
 export default {
   title: "Components/Ask Before Using/ExternalLink",

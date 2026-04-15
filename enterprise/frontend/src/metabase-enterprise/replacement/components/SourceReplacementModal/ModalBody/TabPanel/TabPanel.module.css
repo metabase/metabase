@@ -1,0 +1,9 @@
+.panel {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.tabs {
+  &:before {
+    display: none;
+  }
+}

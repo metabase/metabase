@@ -98,7 +98,7 @@ const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
 
 const CommunityEngineWarning = () => (
   <Warning icon="info">
-    {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+    {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
     {t`This is a community-developed driver and not supported by Metabase. `}
   </Warning>
 );

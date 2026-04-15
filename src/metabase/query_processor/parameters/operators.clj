@@ -80,9 +80,9 @@
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [param]
   (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
-        field-ref (or (lib.util.match/match-one target
-                        #{:field :expression}
-                        (lib/->pMBQL &match))
+        field-ref (or (lib.util.match/match-lite target
+                        [#{:field :expression} & _]
+                        (lib/->mbql5 &match))
                       (throw (ex-info (format "Invalid target: expected :field ref, got: %s" (pr-str target))
                                       {:target target, :type qp.error-type/invalid-parameter})))
         options   (or options {})]

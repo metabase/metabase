@@ -8,7 +8,7 @@
    [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -3156,6 +3156,30 @@
       (mt/user-http-request :crowberto :put 403 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
 
+(deftest trashed-items-respect-collection-permissions-test
+  (testing "GET /api/collection/<trash-id>/items does not show trashed items from collections the user can't access"
+    (doseq [[model model-name attrs] [[:model/Card      "card"      {:name "Secret Card" :dataset_query (mt/native-query {:query "select 1"})}]
+                                      [:model/Dashboard "dashboard" {:name "Secret Dashboard"}]
+                                      [:model/Document  "document"  {:name "Secret Document"}]]]
+      (testing (str model-name)
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Restricted Collection"}
+                       model {item-id :id} (merge {:collection_id     coll-id
+                                                   :archived          true
+                                                   :archived_directly true}
+                                                  attrs)]
+          (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
+          (testing "User without collection access does NOT see the trashed item"
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items" (collection/trash-collection-id)))
+                  ids   (set (map :id (filter #(= model-name (:model %)) (:data items))))]
+              (is (not (contains? ids item-id)))))
+          (testing "User WITH collection access DOES see the trashed item"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items" (collection/trash-collection-id)))
+                  ids   (set (map :id (filter #(= model-name (:model %)) (:data items))))]
+              (is (contains? ids item-id)))))))))
+
 (deftest skip-graph-skips-graph-on-graph-PUT
   (is (malli= [:map [:revision :int] [:groups :map]]
               (mt/user-http-request :crowberto
@@ -3385,7 +3409,7 @@
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
 
 (deftest published-tables-not-in-collection-items-oss-test
-  (testing "In OSS (without :data-studio feature), published tables should NOT appear in collection items"
+  (testing "In OSS (without :library feature), published tables should NOT appear in collection items"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                      :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
@@ -3398,15 +3422,15 @@
             (is (some #(= card-id (:id %)) items)
                 "Card should be in collection items"))
           (testing "Published table should NOT appear"
-            (is (not (some #(= table-id (:id %)) items))
+            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
                 "Published table should NOT be in collection items in OSS"))))))
-  (testing "In OSS (without :data-studio feature), published tables should NOT appear in root collection items"
+  (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Table {table-id :id} {:collection_id nil
                                                   :is_published  true
                                                   :name          "Root Published Table"}]
         (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
-          (is (not (some #(= table-id (:id %)) items))
+          (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
               "Published table should NOT be in root collection items in OSS"))))))
 
 (deftest unarchive-collection-requires-curate-perms-on-destination-test

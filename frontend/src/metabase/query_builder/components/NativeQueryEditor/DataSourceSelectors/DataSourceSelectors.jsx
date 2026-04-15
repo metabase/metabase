@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { getNativeQueryLanguage } from "metabase/lib/engine";
+import { getNativeQueryLanguage } from "metabase/databases/utils/engine";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
@@ -58,7 +58,7 @@ const PlaceholderPropTypes = {
   editorContext: PropTypes.oneOf(["action", "question"]),
 };
 
-const DataSourceSelectors = ({
+export const DataSourceSelectors = ({
   isNativeEditorOpen,
   query,
   question,
@@ -248,5 +248,3 @@ const Placeholder = ({ query, editorContext }) => {
 };
 
 Placeholder.propTypes = PlaceholderPropTypes;
-
-export default DataSourceSelectors;

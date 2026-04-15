@@ -1,4 +1,4 @@
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
@@ -27,6 +27,8 @@ export const FormTextInput = forwardRef(function FormTextInput(
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);
+
+  const { validateOnMount } = useFormikContext();
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -62,7 +64,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
       ref={ref}
       name={name}
       value={value ?? ""}
-      error={touched && error ? error : null}
+      error={(validateOnMount || touched) && error ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
       rightSection={rightSection}

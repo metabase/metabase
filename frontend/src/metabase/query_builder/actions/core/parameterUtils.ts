@@ -1,5 +1,6 @@
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { setErrorPage } from "metabase/redux/app";
+import type { Dispatch } from "metabase/redux/store";
 import { DashboardApi } from "metabase/services";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
@@ -9,7 +10,6 @@ import {
   cardParametersAreEquivalent,
 } from "metabase-lib/v1/queries/utils/card";
 import type { Card, Parameter } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 type BlankQueryOptions = {
   db?: string;
@@ -30,7 +30,7 @@ function shouldPropagateDashboardParameters({
 }: {
   cardId?: number;
   deserializedCard: Card;
-  originalCard?: Card;
+  originalCard?: Card | null;
 }): boolean {
   if (cardId && deserializedCard.parameters) {
     return true;
@@ -105,7 +105,7 @@ export async function propagateDashboardParameters({
 }: {
   card: Card;
   deserializedCard: Card; // DashCard (has dashboardId and dashcardId)
-  originalCard?: Card;
+  originalCard?: Card | null;
   dispatch: Dispatch;
 }) {
   const cardId = card.id;

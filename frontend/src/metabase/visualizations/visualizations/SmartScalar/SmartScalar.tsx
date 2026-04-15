@@ -20,7 +20,10 @@ import type {
   VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetData, Series } from "metabase-types/api";
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
@@ -160,7 +163,78 @@ export function SmartScalar({
   );
 }
 
-Object.assign(SmartScalar, {
+export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
+  ...fieldSetting("scalar.field", {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Data`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    title: t`Primary number`,
+    fieldFilter: isSuitableScalarColumn,
+  }),
+  "scalar.comparisons": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Data`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    title: t`Comparisons`,
+    widget: SmartScalarComparisonWidget,
+    getValue: (series, vizSettings) => getComparisons(series, vizSettings),
+    isValid: (series, vizSettings) => validateComparisons(series, vizSettings),
+    getDefault: (series, vizSettings) =>
+      getDefaultComparison(series, vizSettings),
+    getProps: (series, vizSettings) => {
+      const cols = series[0].data.cols;
+      return {
+        maxComparisons: MAX_COMPARISONS,
+        comparableColumns: getColumnsForComparison(cols, vizSettings),
+        options: getComparisonOptions(series, vizSettings),
+        series,
+        settings: vizSettings,
+      };
+    },
+    readDependencies: ["scalar.field"],
+  },
+  "scalar.switch_positive_negative": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Display`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    title: t`Switch positive / negative colors?`,
+    widget: "toggle",
+    inline: true,
+    getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
+  },
+  "scalar.compact_primary_number": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Display`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    title: t`Compact number`,
+    widget: "toggle",
+    inline: true,
+    getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
+  },
+  ...columnSettings({
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Display`,
+    getColumns: (
+      [
+        {
+          data: { cols },
+        },
+      ],
+      settings,
+    ) => [
+      // try and find a selected field setting
+      cols.find((col) => col.name === settings["scalar.field"]) ||
+        // fall back to the second column
+        cols[1] ||
+        // but if there's only one column use that
+        cols[0],
+    ],
+    readDependencies: ["scalar.field"],
+  }),
+  click_behavior: {},
+};
+
+const SmartScalarViz: VisualizationDefinition = {
   getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
@@ -169,80 +243,13 @@ Object.assign(SmartScalar, {
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),
 
-  settings: {
-    ...fieldSetting("scalar.field", {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Data`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Primary number`,
-      fieldFilter: isSuitableScalarColumn,
-    }),
-    "scalar.comparisons": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Data`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Comparisons`,
-      widget: SmartScalarComparisonWidget,
-      getValue: (series, vizSettings) => getComparisons(series, vizSettings),
-      isValid: (series, vizSettings) =>
-        validateComparisons(series, vizSettings),
-      getDefault: (series, vizSettings) =>
-        getDefaultComparison(series, vizSettings),
-      getProps: (series, vizSettings) => {
-        const cols = series[0].data.cols;
-        return {
-          maxComparisons: MAX_COMPARISONS,
-          comparableColumns: getColumnsForComparison(cols, vizSettings),
-          options: getComparisonOptions(series, vizSettings),
-          series,
-          settings: vizSettings,
-        };
-      },
-      readDependencies: ["scalar.field"],
-    },
-    "scalar.switch_positive_negative": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Switch positive / negative colors?`,
-      widget: "toggle",
-      inline: true,
-      default: VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
-    },
-    "scalar.compact_primary_number": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Compact number`,
-      widget: "toggle",
-      inline: true,
-      default: VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
-    },
-    ...columnSettings({
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
-      getColumns: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => [
-        // try and find a selected field setting
-        cols.find((col) => col.name === settings["scalar.field"]) ||
-          // fall back to the second column
-          cols[1] ||
-          // but if there's only one column use that
-          cols[0],
-      ],
-      readDependencies: ["scalar.field"],
-    }),
-    click_behavior: {},
-  },
+  settings: SETTINGS_DEFINITIONS,
 
-  isSensible({ insights }) {
-    return !!insights && insights?.length > 0;
+  isSensible({ cols, insights }: DatasetData) {
+    const dimensionCount = cols.filter(
+      (col) => isDimension(col) && !isMetric(col),
+    ).length;
+    return !!insights && insights?.length > 0 && dimensionCount === 1;
   },
 
   // Smart scalars need to have a breakout
@@ -250,7 +257,7 @@ Object.assign(SmartScalar, {
     {
       data: { insights },
     },
-  ]) {
+  ]: Series) {
     if (!insights || insights.length === 0) {
       throw new ChartSettingsError(
         t`Group only by a time field to see how this has changed over time`,
@@ -259,4 +266,6 @@ Object.assign(SmartScalar, {
   },
 
   hasEmptyState: true,
-} as VisualizationDefinition);
+};
+
+Object.assign(SmartScalar, SmartScalarViz);

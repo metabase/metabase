@@ -12,10 +12,22 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
-import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
+import {
+  CodeMirrorEditor,
+  type CodeMirrorEditorProps,
+  type CodeMirrorEditorRef,
+} from "metabase/querying/components/CodeMirrorEditor";
+import type { QueryModalType } from "metabase/querying/constants";
+import type {
+  SelectionRange,
+  SidebarFeatures,
+} from "metabase/querying/editor/types";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -28,11 +40,6 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
-import {
-  CodeMirrorEditor,
-  type CodeMirrorEditorProps,
-  type CodeMirrorEditorRef,
-} from "./CodeMirrorEditor";
 import S from "./NativeQueryEditor.module.css";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
@@ -43,7 +50,6 @@ import {
   RESIZE_CONSTRAINT_OFFSET,
   THRESHOLD_FOR_AUTO_CLOSE,
 } from "./constants";
-import type { SelectionRange, SidebarFeatures } from "./types";
 import {
   canFormatForEngine,
   formatQuery,
@@ -64,7 +70,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   hasParametersList?: boolean;
   hasRunButton?: boolean;
   hasTopBar?: boolean;
-  highlightedLineNumbers?: number;
+  highlightedLineNumbers?: number[];
   insertSnippet?: (snippet: NativeQuerySnippet) => void;
   isInitiallyOpen?: boolean;
   isNativeEditorOpen: boolean;
@@ -165,9 +171,12 @@ export const NativeQueryEditor = forwardRef<
     },
     toggleDataReference,
     toggleSnippetSidebar,
+    toggleTemplateTagsEditor,
     topBarInnerContent,
   } = props;
-
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
   const { data: snippets = [] } = useListSnippetsQuery();
   const { data: snippetCollections = [] } = useListCollectionsQuery({
     namespace: "snippets",
@@ -176,9 +185,9 @@ export const NativeQueryEditor = forwardRef<
   const editorRef = useRef<CodeMirrorEditorRef>(null);
   const { ref: topBarRef, height: topBarHeight } = useElementSize();
 
-  const canSaveSnippets = snippetCollections.some(
-    (collection) => collection.can_write,
-  );
+  const canSaveSnippets =
+    !isRemoteSyncReadOnly &&
+    snippetCollections.some((collection) => collection.can_write);
 
   const canToggleEditor = typeof setIsNativeEditorOpen === "function";
   const shouldShowEditor = isNativeEditorOpen || !canToggleEditor;
@@ -188,7 +197,11 @@ export const NativeQueryEditor = forwardRef<
 
   // do not show reference sidebar on small screens automatically
   const screenSize = useNotebookScreenSize();
-  const shouldOpenDataReference = screenSize !== "small";
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
+  const shouldOpenDataReference =
+    screenSize !== "small" && !isMetabotSidebarOpen;
 
   useMount(() => {
     setIsNativeEditorOpen?.(
@@ -275,7 +288,7 @@ export const NativeQueryEditor = forwardRef<
 
   return (
     <div
-      className={cx(S.queryEditor, className)}
+      className={cx(S.queryEditor, className, { [S.readOnlyEditor]: readOnly })}
       data-testid="native-query-editor-container"
       ref={ref}
     >
@@ -304,6 +317,7 @@ export const NativeQueryEditor = forwardRef<
           toggleEditor={toggleEditor}
           toggleDataReference={toggleDataReference}
           toggleSnippetSidebar={toggleSnippetSidebar}
+          toggleTemplateTagsEditor={toggleTemplateTagsEditor}
           setParameterValue={setParameterValue}
           setDatasetQuery={setDatasetQuery}
           onFormatQuery={handleFormatQuery}
@@ -325,74 +339,83 @@ export const NativeQueryEditor = forwardRef<
             initialHeight={getInitialEditorHeight({ query, availableHeight })}
             className={S.resizableArea}
           >
-            <CodeMirrorEditor
-              ref={editorRef}
-              query={question.query()}
-              proposedQuery={proposedQuestion?.query()}
-              readOnly={readOnly}
-              placeholder={placeholder}
-              highlightedLineNumbers={highlightedLineNumbers}
-              extensions={extensions}
-              onBlur={onBlur}
-              onChange={handleChange}
-              onRunQuery={runQuery}
-              onSelectionChange={setNativeEditorSelectedRange}
-              onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-              onRightClickSelection={handleRightClickSelection}
-              onFormatQuery={handleFormatQuery}
-            />
+            <Flex w="100%" flex="1" className={S.resizableBoxContent}>
+              <CodeMirrorEditor
+                ref={editorRef}
+                query={question.query()}
+                proposedQuery={proposedQuestion?.query()}
+                readOnly={readOnly}
+                placeholder={placeholder}
+                highlightedLineNumbers={highlightedLineNumbers}
+                extensions={extensions}
+                onBlur={onBlur}
+                onChange={handleChange}
+                onRunQuery={runQuery}
+                onSelectionChange={setNativeEditorSelectedRange}
+                onCursorMoveOverCardTag={openDataReferenceAtQuestion}
+                onRightClickSelection={handleRightClickSelection}
+                onFormatQuery={handleFormatQuery}
+              />
 
-            <Stack m="1rem" gap="md" mt="auto">
-              {proposedQuestion && onRejectProposed && onAcceptProposed && (
-                <>
-                  <Tooltip label={t`Accept proposed changes`} position="top">
-                    <Button
-                      data-testid="accept-proposed-changes-button"
-                      variant="filled"
-                      bg="success"
-                      px="0"
-                      w="2.5rem"
-                      onClick={() => {
-                        const proposedQuery =
-                          proposedQuestion.legacyNativeQuery();
-                        if (proposedQuery) {
-                          handleChange(proposedQuery.queryText());
-                          onAcceptProposed(proposedQuery.datasetQuery());
-                        }
-                      }}
-                    >
-                      <Icon name="check" />
-                    </Button>
-                  </Tooltip>
-                  <Tooltip label={t`Reject proposed changes`} position="top">
-                    <Button
-                      data-testid="reject-proposed-changes-button"
-                      w="2.5rem"
-                      px="0"
-                      variant="filled"
-                      bg="danger"
-                      onClick={onRejectProposed}
-                    >
-                      <Icon name="close" />
-                    </Button>
-                  </Tooltip>
-                </>
-              )}
-              <Flex gap="sm">
-                {extraButton}
-                {hasRunButton && !readOnly && (
-                  <NativeQueryEditorRunButton
-                    cancelQuery={cancelQuery}
-                    isResultDirty={isResultDirty}
-                    isRunnable={isRunnable}
-                    isRunning={isRunning}
-                    nativeEditorSelectedText={nativeEditorSelectedText}
-                    runQuery={runQuery}
-                    questionErrors={Lib.validateTemplateTags(question.query())}
-                  />
+              <Stack
+                display={readOnly ? "none" : undefined}
+                gap="md"
+                justify="flex-end"
+                p="md"
+              >
+                {proposedQuestion && onRejectProposed && onAcceptProposed && (
+                  <>
+                    <Tooltip label={t`Accept proposed changes`} position="top">
+                      <Button
+                        data-testid="accept-proposed-changes-button"
+                        variant="filled"
+                        bg="success"
+                        px="0"
+                        w="2.5rem"
+                        onClick={() => {
+                          const proposedQuery =
+                            proposedQuestion.legacyNativeQuery();
+                          if (proposedQuery) {
+                            handleChange(proposedQuery.queryText());
+                            onAcceptProposed(proposedQuery.datasetQuery());
+                          }
+                        }}
+                      >
+                        <Icon name="check" />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip label={t`Reject proposed changes`} position="top">
+                      <Button
+                        data-testid="reject-proposed-changes-button"
+                        w="2.5rem"
+                        px="0"
+                        variant="filled"
+                        bg="danger"
+                        onClick={onRejectProposed}
+                      >
+                        <Icon name="close" />
+                      </Button>
+                    </Tooltip>
+                  </>
                 )}
-              </Flex>
-            </Stack>
+                <Flex gap="sm">
+                  {extraButton}
+                  {hasRunButton && !readOnly && (
+                    <NativeQueryEditorRunButton
+                      cancelQuery={cancelQuery}
+                      isResultDirty={isResultDirty}
+                      isRunnable={isRunnable}
+                      isRunning={isRunning}
+                      nativeEditorSelectedText={nativeEditorSelectedText}
+                      runQuery={runQuery}
+                      questionErrors={Lib.validateTemplateTags(
+                        question.query(),
+                      )}
+                    />
+                  )}
+                </Flex>
+              </Stack>
+            </Flex>
           </ResizableArea>
         )}
       </div>
