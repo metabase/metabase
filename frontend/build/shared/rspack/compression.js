@@ -28,7 +28,7 @@ function getCompressionConfig() {
         test: COMPRESSION_ASSET_TEST,
         filename: "[path][base].gz",
         compressionOptions: {
-          level: 9,
+          level: zlib.constants.Z_MAX_LEVEL,
         },
       }),
       new CompressionRspackPlugin({
@@ -37,7 +37,8 @@ function getCompressionConfig() {
         filename: "[path][base].br",
         compressionOptions: {
           params: {
-            [zlib.constants.BROTLI_PARAM_QUALITY]: 11,
+            [zlib.constants.BROTLI_PARAM_QUALITY]:
+              zlib.constants.BROTLI_MAX_QUALITY,
           },
         },
       }),
