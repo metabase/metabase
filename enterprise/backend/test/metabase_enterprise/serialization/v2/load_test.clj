@@ -2267,52 +2267,45 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest card-kept-fields-round-trip-test
-  (testing "Card round-trip: table_id and database_id are exported and resolved when dataset_query is empty"
+  (testing "Card round-trip: database_id is exported and resolved when dataset_query is empty"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-          (let [db    (ts/create! :model/Database :name "my-db")
-                table (ts/create! :model/Table :name "orders" :db_id (:id db))
-                user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (let [db   (ts/create! :model/Database :name "my-db")
+                user (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
                 ;; Empty dataset_query — populate-query-fields does not run, so database_id
-                ;; and table_id come only from the explicit fields we pass.
+                ;; comes only from the explicit field we pass.
                 _card (ts/create! :model/Card
                                   :collection_id nil
                                   :creator_id    (:id user)
                                   :name          "Empty Query Card"
                                   :database_id   (:id db)
-                                  :table_id      (:id table)
                                   :dataset_query {}
                                   :display       :table)]
             (reset! serialized (into [] (serdes.extract/extract {})))
             (let [card-ser (first (filter #(= "Card" (-> % :serdes/meta last :model)) @serialized))]
-              (is (contains? card-ser :table_id)    "table_id exported — not derivable from empty query")
               (is (contains? card-ser :database_id) "database_id exported — not derivable from empty query"))))
 
         (ts/with-db dest-db
           (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-          (let [card  (t2/select-one :model/Card :name "Empty Query Card")
-                db    (t2/select-one :model/Database :name "my-db")
-                table (t2/select-one :model/Table :name "orders")]
+          (let [card (t2/select-one :model/Card :name "Empty Query Card")
+                db   (t2/select-one :model/Database :name "my-db")]
             (is (some? card))
-            (is (= (:id db)    (:database_id card)) "database_id resolved from exported portable ref")
-            (is (= (:id table) (:table_id card))    "table_id resolved from exported portable ref")))))))
+            (is (= (:id db) (:database_id card)) "database_id resolved from exported portable ref")))))))
 
 (deftest card-broken-query-exports-kept-fields-test
-  (testing "Card with a non-empty but broken dataset_query still exports table_id and database_id"
+  (testing "Card with a non-empty but broken dataset_query still exports database_id"
     (ts/with-dbs [source-db _dest-db]
       (ts/with-db source-db
-        (let [db    (ts/create! :model/Database :name "my-db")
-              table (ts/create! :model/Table :name "orders" :db_id (:id db))
-              user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-              card  (ts/create! :model/Card
-                                :creator_id    (:id user)
-                                :name          "Broken Query Card"
-                                :database_id   (:id db)
-                                :table_id      (:id table)
-                                :dataset_query {}
-                                :display       :table)]
+        (let [db   (ts/create! :model/Database :name "my-db")
+              user (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+              card (ts/create! :model/Card
+                               :creator_id    (:id user)
+                               :name          "Broken Query Card"
+                               :database_id   (:id db)
+                               :dataset_query {}
+                               :display       :table)]
           ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
           ;; model hooks. This simulates a card whose query became malformed after migrations.
           (t2/query {:update :report_card
@@ -2320,7 +2313,7 @@
                      :where  [:= :id (:id card)]})
           (let [serialized (into [] (serdes.extract/extract {}))
                 card-ser   (first (filter #(= "Card" (-> % :serdes/meta last :model)) serialized))]
-            (is (contains? card-ser :table_id)    "table_id exported — not derivable from broken query")
+            (is (not (contains? card-ser :table_id))    "table_id always skipped for cards — re-derived on import")
             (is (contains? card-ser :database_id) "database_id exported — not derivable from broken query")))))))
 
 (deftest segment-kept-table-id-round-trip-test
