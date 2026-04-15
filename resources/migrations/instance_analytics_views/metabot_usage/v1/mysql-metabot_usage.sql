@@ -3,7 +3,7 @@ DROP VIEW IF EXISTS v_metabot_usage;
 CREATE OR REPLACE VIEW v_metabot_usage AS
 SELECT
     DATE(m.created_at)                                            AS usage_date,
-    m.profile_id                                                  AS model,
+    m.profile_id                                                  AS profile,
     COUNT(DISTINCT c.id)                                          AS conversation_count,
     COUNT(DISTINCT c.user_id)                                     AS unique_users,
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                   AS user_messages,
