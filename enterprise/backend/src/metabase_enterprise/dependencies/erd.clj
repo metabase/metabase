@@ -174,10 +174,44 @@
 
 ;;; ---------------------------------------- Phase 3: Build response ----------------------------------------
 
+(defn- resolve-external-fk-targets
+  "For FK target field IDs referenced by the loaded fields but not present in
+   `field-by-id` (because they live in tables beyond the current hop limit),
+   resolve each target field's `:table_id` from the DB and filter by the user's
+   read permission on that table. Returns `{field-id {:table_id N}}` — enough
+   for `build-erd-field` to populate `fk_target_table_id` without leaking
+   references to tables the user can't read.
+
+   Preserves the original security posture (unreadable targets still get nulled
+   downstream) while freeing FK pointers from the accident of the hop budget."
+  [all-fields field-by-id]
+  (let [target-ids (into #{}
+                         (comp (keep :fk_target_field_id)
+                               (remove field-by-id))
+                         all-fields)]
+    (if (empty? target-ids)
+      {}
+      (let [fields          (t2/select [:model/Field :id :table_id]
+                                       :id [:in target-ids]
+                                       :active true
+                                       :visibility_type [:not= "retired"])
+            table-ids       (into #{} (map :table_id) fields)
+            readable-tables (when (seq table-ids)
+                              (into #{}
+                                    (comp (filter mi/can-read?) (map :id))
+                                    (t2/select [:model/Table :id :db_id :schema]
+                                               :id [:in table-ids])))]
+        (into {}
+              (comp (filter #(contains? readable-tables (:table_id %)))
+                    (map (juxt :id #(select-keys % [:table_id]))))
+              fields)))))
+
 (defn build-erd-field
   "Convert a field to the ERD field shape.
-   Nils out FK target references when the target table isn't in the visible graph,
-   so we don't leak field/table IDs the user can't access."
+   Nils out FK target references only when the target table is unreadable
+   (either missing or the user lacks permission); readable targets beyond the
+   loaded hop budget still carry `fk_target_field_id`/`fk_target_table_id` so
+   the frontend can offer to expand them."
   [field field-by-id]
   (let [target-table-id (some-> (:fk_target_field_id field) field-by-id :table_id)]
     {:id                 (:id field)
@@ -223,13 +257,19 @@
 (defn build-erd-response
   "Build the ERD response from fetched subgraph data."
   [{:keys [tables-by-id fields-by-table field-by-id all-table-ids]} focal-table-ids]
-  (let [nodes (->> all-table-ids
+  (let [all-fields        (mapcat val fields-by-table)
+        ;; Extend field-by-id with :table_id for FK targets that weren't loaded
+        ;; into the subgraph so their pointers survive into node fields. Edges
+        ;; still use the original field-by-id — they only connect visible nodes.
+        field-by-id+ext   (merge (resolve-external-fk-targets all-fields field-by-id)
+                                 field-by-id)
+        nodes (->> all-table-ids
                    (keep (fn [tid]
                            (when-let [table (tables-by-id tid)]
                              (build-erd-node table
                                              (get fields-by-table tid [])
                                              (contains? focal-table-ids tid)
-                                             field-by-id))))
+                                             field-by-id+ext))))
                    vec)
         edges (build-erd-edges fields-by-table field-by-id all-table-ids)]
     {:nodes nodes
