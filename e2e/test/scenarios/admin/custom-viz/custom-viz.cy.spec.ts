@@ -692,4 +692,99 @@ describe("admin > custom visualizations", () => {
       });
     });
   });
+
+  describe("icon rendering across app surfaces", () => {
+    const ICON_QUESTION_NAME = "Custom Viz Icon Test";
+    // EntityIcon renders as a CSS-masked span whose `mask-image: url(...)`
+    // points at /api/ee/custom-viz-plugin/:id/asset?path=icon.svg. Matching on
+    // that URL fragment is the most stable signal that the plugin icon is
+    // actually rendered — some consumers pass `alt` (accessible name) while
+    // others render the icon as decorative/aria-hidden.
+    const PLUGIN_ICON_SELECTOR = 'span[style*="custom-viz-plugin"]';
+
+    before(() => {
+      H.setupCustomVizRepo();
+    });
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
+
+      H.createQuestion(
+        {
+          name: ICON_QUESTION_NAME,
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "questionId" },
+      );
+
+      // Populate the recents pool so the card surfaces in recents-based UIs
+      // (command palette, document mention dialog, home).
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("POST", `/api/card/${cardId}/query`);
+      });
+    });
+
+    it("renders in the chart type sidebar on the question editor", () => {
+      H.interceptPluginBundle();
+      H.visitQuestion("@questionId");
+      cy.wait("@pluginBundle");
+
+      cy.findByTestId("viz-type-button").click();
+      cy.findByTestId("chart-type-sidebar")
+        .findByRole("img", { name: "demo-viz" })
+        .should("be.visible");
+    });
+
+    it("renders in the command palette search results", () => {
+      cy.visit("/");
+
+      H.commandPaletteSearch(ICON_QUESTION_NAME, false);
+      H.commandPalette()
+        .findAllByRole("option", { name: new RegExp(ICON_QUESTION_NAME) })
+        .first()
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("be.visible");
+    });
+
+    it("renders in the navigation sidebar bookmarks section", () => {
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("POST", `/api/bookmark/card/${cardId}`);
+      });
+
+      // Collection page keeps the navigation sidebar open by default.
+      cy.visit("/collection/root");
+
+      H.navigationSidebar()
+        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+
+    it("renders in the document mention dialog", () => {
+      H.createDocument({
+        name: "Icon Doc Mention",
+        document: {
+          type: "doc",
+          content: [{ type: "paragraph", attrs: { _id: "1" } }],
+        },
+        collection_id: null,
+        idAlias: "documentId",
+      });
+      H.visitDocument("@documentId");
+
+      H.documentContent().click();
+      cy.realType("@");
+      H.documentMentionDialog().should("be.visible");
+      cy.realType("Custom Viz Icon");
+
+      H.documentMentionItem(new RegExp(ICON_QUESTION_NAME))
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+  });
 });
