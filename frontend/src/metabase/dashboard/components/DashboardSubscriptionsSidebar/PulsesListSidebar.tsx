@@ -25,7 +25,7 @@ import type {
   DashboardSubscription,
 } from "metabase-types/api";
 
-import { getParameters } from "../../../selectors";
+import { getParameters } from "../../selectors";
 
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
 
