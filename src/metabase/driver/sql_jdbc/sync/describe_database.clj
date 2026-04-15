@@ -190,8 +190,8 @@
           tables       ...]
       (filter #(privilege-fn % :select) tables))"
   [driver conn]
-  ;; `sql-jdbc.sync.interface/have-select-privilege?` is slow because we're doing a SELECT query on each table
-  ;; It's basically a N+1 operation where N is the number of tables in the database
+  ;; `sql-jdbc.sync.interface/have-select-privilege?` is slow for some drivers because we're doing a SELECT query on
+  ;; each table; It's basically a N+1 operation where N is the number of tables in the database
   (if (driver/database-supports? driver :table-privileges nil)
     (let [privilege-map (build-privilege-map driver conn)]
       (fn [{schema :schema table :name ttype :type} privilege]
