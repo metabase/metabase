@@ -56,244 +56,166 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     H.activateToken("pro-self-hosted");
   });
 
-  describe("feature gating", () => {
-    it("should not show security center without a valid token", () => {
-      H.deleteToken();
-      cy.visit("/admin/security-center");
-      cy.findByTestId("security-center-page").should("not.exist");
-    });
+  it("should gate the security center behind a valid token and show empty state without advisories", () => {
+    // Without a token the page should not render
+    H.deleteToken();
+    cy.visit("/admin/security-center");
+    cy.findByTestId("security-center-page").should("not.exist");
 
-    it("should render the security center page with a valid token", () => {
-      seedAllAdvisories();
-      cy.visit("/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText("Security Center").should("be.visible");
-        cy.findByTestId("current-version").should("be.visible");
-      });
+    // Re-activate the token (no advisories seeded) → empty state
+    H.activateToken("pro-self-hosted");
+    cy.visit("/admin/security-center");
+    securityCenterContent().within(() => {
+      cy.findByText(/No known security issues/).should("be.visible");
     });
   });
 
-  describe("advisory list", () => {
-    beforeEach(() => {
-      seedAllAdvisories();
-      cy.visit("/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText("Security Center").should("be.visible");
-      });
+  it("should display advisory cards sorted by affected status and severity, and support filtering", () => {
+    seedAllAdvisories();
+    cy.visit("/admin/security-center");
+    securityCenterContent().within(() => {
+      cy.findByText("Security Center").should("be.visible");
+      cy.findByTestId("current-version").should("be.visible");
     });
 
-    it("should display advisory cards with severity and affected status", () => {
-      cy.findAllByTestId("advisory-card").should("have.length", 3);
-      securityCenterContent().within(() => {
-        cy.findByText("Critical RCE vulnerability").should("be.visible");
-        cy.findByText("SQL injection in query builder")
-          .scrollIntoView()
-          .should("be.visible");
-        cy.findByText("SSRF in GeoJSON endpoint")
-          .scrollIntoView()
-          .should("be.visible");
-      });
+    // All three advisory cards are visible
+    cy.findAllByTestId("advisory-card").should("have.length", 3);
+    securityCenterContent().within(() => {
+      cy.findByText("Critical RCE vulnerability").should("be.visible");
+      cy.findByText("SQL injection in query builder")
+        .scrollIntoView()
+        .should("be.visible");
+      cy.findByText("SSRF in GeoJSON endpoint")
+        .scrollIntoView()
+        .should("be.visible");
     });
 
-    it("should sort advisories with affected first, then by severity", () => {
-      cy.findAllByTestId("advisory-card")
-        .first()
-        .within(() => {
-          cy.findByText("Critical RCE vulnerability").should("exist");
-        });
+    // Affected/critical advisory is sorted first
+    cy.findAllByTestId("advisory-card")
+      .first()
+      .within(() => {
+        cy.findByText("Critical RCE vulnerability").should("exist");
+      });
+
+    // Filter by severity
+    cy.findByTestId("severity-filter").click();
+    cy.findByRole("option", { name: "Critical" }).click();
+    cy.findAllByTestId("advisory-card").should("have.length", 1);
+    securityCenterContent().within(() => {
+      cy.findByText("Critical RCE vulnerability").should("be.visible");
     });
 
-    it("should show empty state when no advisories exist", () => {
-      // Don't seed any — restore already cleared them
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      cy.visit("/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText(/No known security issues/).should("be.visible");
-      });
+    // Clear severity filter (re-select to deselect)
+    cy.findByTestId("severity-filter").click();
+    cy.findByRole("option", { name: "All severities" }).click();
+    cy.findAllByTestId("advisory-card").should("have.length", 3);
+  });
+
+  it("should dismiss individual advisories, dismiss all, and toggle dismissed visibility", () => {
+    seedAllAdvisories();
+    cy.visit("/admin/security-center");
+    securityCenterContent().within(() => {
+      cy.findByText("Security Center").should("be.visible");
+    });
+
+    cy.intercept("POST", "/api/ee/security-center/*/acknowledge").as(
+      "acknowledge",
+    );
+
+    // Dismiss the first advisory
+    cy.findAllByTestId("advisory-card")
+      .first()
+      .findByTestId("acknowledge-button")
+      .click();
+    cy.wait("@acknowledge");
+
+    // Dismissed card is hidden by default
+    cy.findAllByTestId("advisory-card").should("have.length", 2);
+
+    // Toggle to show dismissed — card reappears with "Dismissed" badge
+    cy.findByTestId("show-acknowledged-filter").click();
+    cy.findAllByTestId("advisory-card").should("have.length", 3);
+    cy.findAllByTestId("advisory-card")
+      .first()
+      .findByTestId("acknowledge-button")
+      .should("have.text", "Dismissed");
+
+    // Hide dismissed again before testing "Dismiss all"
+    cy.findByTestId("show-acknowledged-filter").click();
+    cy.findAllByTestId("advisory-card").should("have.length", 2);
+
+    // Dismiss all non-affecting advisories
+    cy.intercept("POST", "/api/ee/security-center/acknowledge").as(
+      "acknowledgeAll",
+    );
+    securityCenterContent().findByText("Dismiss all").click();
+    cy.wait("@acknowledgeAll").then(({ request }) => {
+      expect(request.body.advisory_ids).to.include("TEST-002");
+      expect(request.body.advisory_ids).to.include("TEST-003");
+      expect(request.body.advisory_ids).to.not.include("TEST-001");
+    });
+
+    // "Dismiss all" button disappears when no non-affecting advisories remain
+    securityCenterContent().findByText("Dismiss all").should("not.exist");
+  });
+
+  it("should show nav item with badge and navigate to the security center", () => {
+    seedAllAdvisories();
+    cy.visit("/admin");
+
+    // Nav item and badge are visible
+    cy.findByTestId("admin-navbar").within(() => {
+      cy.findByText("Security").should("be.visible");
+    });
+    cy.findByTestId("security-center-badge").should("be.visible");
+
+    // Clicking navigates to security center
+    cy.findByTestId("admin-navbar").within(() => {
+      cy.findByText("Security").click();
+    });
+    cy.url().should("include", "/admin/security-center");
+    securityCenterContent().within(() => {
+      cy.findByText("Security Center").should("be.visible");
     });
   });
 
-  describe("filtering", () => {
-    beforeEach(() => {
-      seedAllAdvisories();
-      cy.visit("/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText("Security Center").should("be.visible");
-      });
+  it("should open notification settings modal, show Slack state, save settings, and default admin toggle with SMTP", () => {
+    seedAllAdvisories();
+    H.setupSMTP();
+    cy.visit("/admin/security-center");
+    securityCenterContent().within(() => {
+      cy.findByText("Security Center").should("be.visible");
     });
 
-    it("should filter by severity", () => {
-      cy.findByTestId("severity-filter").click();
-      cy.findByRole("option", { name: "Critical" }).click();
-      cy.findAllByTestId("advisory-card").should("have.length", 1);
-      securityCenterContent().within(() => {
-        cy.findByText("Critical RCE vulnerability").should("be.visible");
-      });
+    // Open modal and verify contents
+    cy.findByTestId("notification-config-toggle").click();
+    H.modal().within(() => {
+      cy.findByText("Notification settings").should("be.visible");
+      cy.findByText("Email").should("be.visible");
+      cy.findByText("Slack").should("be.visible");
+      cy.findByText("Slack is not configured.").should("be.visible");
+      cy.findByText("Set up Slack").should("be.visible");
     });
 
-    it("should toggle show dismissed", () => {
-      // Dismiss the critical advisory first
-      cy.findAllByTestId("advisory-card")
-        .first()
-        .findByTestId("acknowledge-button")
-        .click();
+    // Send-to-all-admins toggle is checked by default when SMTP is configured
+    cy.findByTestId("send-to-admins-toggle").should("be.checked");
 
-      // It should be hidden by default (dismissed are hidden)
-      cy.findAllByTestId("advisory-card").should("have.length", 2);
-
-      // Show dismissed
-      cy.findByTestId("show-acknowledged-filter").click();
-      cy.findAllByTestId("advisory-card").should("have.length", 3);
+    // Save settings
+    cy.intercept("PUT", "/api/setting").as("saveSettings");
+    cy.findByRole("button", { name: "Save" }).click();
+    cy.wait("@saveSettings").then(({ request }) => {
+      expect(request.body).to.have.property("security-center-email-recipients");
     });
   });
 
-  describe("dismiss advisory", () => {
-    beforeEach(() => {
-      seedAllAdvisories();
-      cy.visit("/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText("Security Center").should("be.visible");
-      });
+  it("should trigger sync when clicking Check now", () => {
+    cy.intercept("POST", "/api/ee/security-center/sync").as("sync");
+    cy.visit("/admin/security-center");
+    securityCenterContent().within(() => {
+      cy.findByText("Security Center").should("be.visible");
     });
 
-    it("should dismiss an advisory and show the badge", () => {
-      cy.intercept("POST", "/api/ee/security-center/*/acknowledge").as(
-        "acknowledge",
-      );
-
-      cy.findAllByTestId("advisory-card")
-        .first()
-        .findByTestId("acknowledge-button")
-        .click();
-
-      cy.wait("@acknowledge");
-
-      cy.findByTestId("show-acknowledged-filter").click();
-      cy.findAllByTestId("advisory-card")
-        .first()
-        .findByTestId("acknowledge-button")
-        .should("have.text", "Dismissed");
-    });
-
-    it("should hide dismissed advisories by default", () => {
-      cy.findAllByTestId("advisory-card")
-        .first()
-        .findByTestId("acknowledge-button")
-        .click();
-
-      // After dismissing, the card should disappear
-      cy.findAllByTestId("advisory-card").should("have.length", 2);
-    });
-
-    it("should dismiss all non-affecting advisories with 'Dismiss all'", () => {
-      cy.intercept("POST", "/api/ee/security-center/acknowledge").as(
-        "acknowledgeAll",
-      );
-
-      securityCenterContent().findByText("Dismiss all").click();
-      cy.wait("@acknowledgeAll").then(({ request }) => {
-        expect(request.body.advisory_ids).to.include("TEST-002");
-        expect(request.body.advisory_ids).to.include("TEST-003");
-        expect(request.body.advisory_ids).to.not.include("TEST-001");
-      });
-
-      // The non-affecting cards should disappear (dismissed are hidden by default)
-      cy.findAllByTestId("advisory-card").should("have.length", 1);
-    });
-
-    it("should not show 'Dismiss all' when all non-affecting advisories are dismissed", () => {
-      securityCenterContent().findByText("Dismiss all").click();
-
-      // After dismissing all, the button should disappear
-      securityCenterContent().findByText("Dismiss all").should("not.exist");
-    });
-  });
-
-  describe("navigation and badge", () => {
-    it("should show Security nav item with badge when active advisories exist", () => {
-      seedAllAdvisories();
-      cy.visit("/admin/security-center");
-      cy.findByTestId("admin-navbar").within(() => {
-        cy.findByText("Security").should("be.visible");
-      });
-      cy.findByTestId("security-center-badge").should("be.visible");
-    });
-
-    it("should navigate to security center when clicking nav item", () => {
-      seedAllAdvisories();
-      cy.visit("/admin");
-      cy.findByTestId("admin-navbar").within(() => {
-        cy.findByText("Security").click();
-      });
-      cy.url().should("include", "/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText("Security Center").should("be.visible");
-      });
-    });
-  });
-
-  describe("notification settings modal", () => {
-    beforeEach(() => {
-      seedAllAdvisories();
-      cy.visit("/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText("Security Center").should("be.visible");
-      });
-    });
-
-    it("should open the notification settings modal", () => {
-      cy.findByTestId("notification-config-toggle").click();
-      H.modal().within(() => {
-        cy.findByText("Notification settings").should("be.visible");
-        cy.findByText("Email").should("be.visible");
-        cy.findByText("Slack").should("be.visible");
-      });
-    });
-
-    it("should show send-to-all-admins toggle checked by default", () => {
-      H.setupSMTP();
-      cy.visit("/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText("Security Center").should("be.visible");
-      });
-      cy.findByTestId("notification-config-toggle").click();
-      cy.findByTestId("send-to-admins-toggle").should("be.checked");
-    });
-
-    it("should show Slack not configured state", () => {
-      cy.findByTestId("notification-config-toggle").click();
-      H.modal().within(() => {
-        cy.findByText("Slack is not configured.").should("be.visible");
-        cy.findByText("Set up Slack").should("be.visible");
-      });
-    });
-
-    it("should save notification settings", () => {
-      cy.intercept("PUT", "/api/setting").as("saveSettings");
-
-      cy.findByTestId("notification-config-toggle").click();
-      cy.findByRole("button", { name: "Save" }).click();
-
-      cy.wait("@saveSettings").then(({ request }) => {
-        expect(request.body).to.have.property(
-          "security-center-email-recipients",
-        );
-      });
-    });
-  });
-
-  describe("sync", () => {
-    it("should trigger sync when clicking Check now", () => {
-      cy.intercept("POST", "/api/ee/security-center/sync").as("sync");
-      cy.visit("/admin/security-center");
-      securityCenterContent().within(() => {
-        cy.findByText("Security Center").should("be.visible");
-      });
-
-      cy.findByTestId("sync-advisories").click();
-      cy.wait("@sync");
-    });
+    cy.findByTestId("sync-advisories").click();
+    cy.wait("@sync");
   });
 });
