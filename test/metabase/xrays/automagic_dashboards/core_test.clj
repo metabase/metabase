@@ -227,15 +227,17 @@
       (automagic-dashboards.test/with-rollback-only-transaction
         (doseq [table-kw [:orders :products :people]]
           (testing (str "Table: " (name table-kw))
-            (let [table     (t2/select-one :model/Table :id (mt/id table-kw))
-                  dashboard (magic/automagic-analysis table {:show :all})]
-              (testing "Dashboard should have at least one filter parameter"
-                (is (seq (:parameters dashboard))))
-              (testing "Filter parameters should have required keys"
-                (doseq [param (:parameters dashboard)]
-                  (is (string? (:name param)))
-                  (is (string? (:slug param)))
-                  (is (string? (:type param))))))))))))
+            (doseq [show-opt [{:show :all} nil]]
+              (testing (str " with opts " (pr-str show-opt))
+                (let [table     (t2/select-one :model/Table :id (mt/id table-kw))
+                      dashboard (magic/automagic-analysis table show-opt)]
+                  (testing "Dashboard should have at least one filter parameter"
+                    (is (seq (:parameters dashboard))))
+                  (testing "Filter parameters should have required keys"
+                    (doseq [param (:parameters dashboard)]
+                      (is (string? (:name param)))
+                      (is (string? (:slug param)))
+                      (is (string? (:type param))))))))))))))
 
 (deftest ^:parallel automagic-analysis-test-2
   (mt/with-test-user :rasta
@@ -1381,7 +1383,10 @@
       (mt/dataset test-data
         (let [{table-id :id :as table} (t2/select-one :model/Table :id (mt/id :orders))
               {:keys [related]} (magic/automagic-analysis table {:show :all})]
-          (is (=? {:zoom-in [{:title       "Orders over time"
+          (is (=? {:zoom-in [{:url         (format "/auto/dashboard/field/%s" (mt/id :people :created_at))
+                              :title       "Created At fields"
+                              :description "How People are distributed across this time field, and if it has any seasonal patterns."}
+                             {:title       "Orders over time"
                               :description "Whether or not there are any patterns to when they happen."
                               :url         (format "/auto/dashboard/table/%s/rule/TransactionTable/Seasonality" table-id)}
                              {:title       "Orders per product"
@@ -1395,10 +1400,7 @@
                               :url         (format "/auto/dashboard/table/%s/rule/TransactionTable/ByState" table-id)}
                              {:url         (format "/auto/dashboard/field/%s" (mt/id :people :source))
                               :title       "Source fields"
-                              :description "A look at People across Source fields, and how it changes over time."}
-                             {:url         (format "/auto/dashboard/field/%s" (mt/id :people :state))
-                              :title       "State fields"
-                              :description "How many People there are per state, and how each state is represented across other categories."}]
+                              :description "A look at People across Source fields, and how it changes over time."}]
                    :related [{:url         (format "/auto/dashboard/table/%s" (mt/id :people)),
                               :title       "People"
                               :description "An exploration of your users to get you started."}

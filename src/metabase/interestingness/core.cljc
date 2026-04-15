@@ -136,12 +136,13 @@
    scorers.dimension/text-structure    0.05})
 
 (def xray-filter-weights
-  "Weight profile for x-ray filter/parameter selection. Emphasizes type-bonus since
-   temporal and category fields make the best dashboard filters."
-  {scorers.dimension/type-penalty      0.25
-   scorers.dimension/cardinality       0.20
-   scorers.dimension/nullness          0.10
-   scorers.dimension/type-bonus        0.35
+  "Weight profile for x-ray filter/parameter selection. Heavily emphasizes type-bonus
+   to preserve the original behavior where temporal fields are the top filter candidates,
+   followed by category and geographic fields."
+  {scorers.dimension/type-penalty      0.15
+   scorers.dimension/cardinality       0.10
+   scorers.dimension/nullness          0.05
+   scorers.dimension/type-bonus        0.60
    scorers.dimension/numeric-variance  0.00
    scorers.dimension/temporal-range    0.05
    scorers.dimension/text-structure    0.05})

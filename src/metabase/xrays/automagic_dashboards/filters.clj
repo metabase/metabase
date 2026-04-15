@@ -74,28 +74,30 @@
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
 (defn- filter-type-info
-  "Return parameter type and section id for a given field."
-  [{:keys [effective_type semantic_type] :as _field}]
-  (cond
-    (or (isa? effective_type :type/Date) (isa? effective_type :type/DateTime))
-    {:type "date/all-options"
-     :sectionId "date"}
+  "Return parameter type and section id for a given field.
+   Falls back to base_type when effective_type is nil (no coercion strategy)."
+  [{:keys [effective_type base_type semantic_type] :as _field}]
+  (let [etype (or effective_type base_type)]
+    (cond
+      (or (isa? etype :type/Date) (isa? etype :type/DateTime))
+      {:type "date/all-options"
+       :sectionId "date"}
 
-    (or (isa? effective_type :type/Text) (isa? effective_type :type/TextLike))
-    {:type "string/="
-     :sectionId (if (isa? semantic_type :type/Address) "location" "string")}
+      (or (isa? etype :type/Text) (isa? etype :type/TextLike))
+      {:type "string/="
+       :sectionId (if (isa? semantic_type :type/Address) "location" "string")}
 
-    (isa? effective_type :type/Number)
-    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK))
-      {:type "id"
-       :sectionId "id"}
-      {:type "number/="
-       :sectionId "number"})
+      (isa? etype :type/Number)
+      (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK))
+        {:type "id"
+         :sectionId "id"}
+        {:type "number/="
+         :sectionId "number"})
 
-    ;; TODO this needs to be `boolean/=` once we introduce boolean parameters in #57435
-    (isa? effective_type :type/Boolean)
-    {:type "string/="
-     :sectionId "string"}))
+      ;; TODO this needs to be `boolean/=` once we introduce boolean parameters in #57435
+      (isa? etype :type/Boolean)
+      {:type "string/="
+       :sectionId "string"})))
 
 (mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
