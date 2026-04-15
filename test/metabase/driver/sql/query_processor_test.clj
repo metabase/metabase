@@ -227,7 +227,7 @@
                      :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
                      :filter          [:!= *name/Integer "Lucky Pigeon"]}
                     (lib.tu.macros/mbql-query venues)
-                    (lib.convert/->pMBQL)
+                    (lib.convert/->mbql5)
                     (lib/query meta/metadata-provider)
                     (sql.qp/mbql->native :h2))))))))
 
@@ -252,7 +252,7 @@
                                                   ::add/source-alias "id"}]]}
                     (lib.tu.macros/$ids checkins)
                     (#'lib.util/join->pipeline)
-                    (lib.convert/->pMBQL)
+                    (lib.convert/->mbql5)
                     (sql.qp/join->honeysql :h2))))))))
 
 (defn- compile-join [driver]
@@ -268,7 +268,7 @@
                                                         ::add/source-table "card"
                                                         ::add/source-alias "id"}]]}
                    (isa? driver/hierarchy driver :sql-mbql5)
-                   ((comp lib.convert/->pMBQL #'lib.util/join->pipeline))
+                   ((comp lib.convert/->mbql5 #'lib.util/join->pipeline))
 
                    true  (sql.qp/join->honeysql driver))]
         (sql.qp/format-honeysql driver {:join join})))))
