@@ -20,7 +20,9 @@
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "construct_notebook_query"))
-        (is (contains? (tool-names profile) "list_available_data_sources"))))
+        (is (contains? (tool-names profile) "search"))
+        (is (contains? (tool-names profile) "create_chart"))
+        (is (contains? (tool-names profile) "edit_chart"))))
 
     (testing "retrieves internal profile with default provider"
       (let [profile (profiles/get-profile :internal)]
@@ -160,6 +162,22 @@
           (is (not (contains? tools "navigate_user")))
           (is (not (contains? tools "create_sql_query"))
               "SQL tools should be gated by permission:write_sql_queries"))))))
+
+(deftest embedding-next-matches-nlq-tools-test
+  (testing "embedding_next and nlq profiles have identical tool sets"
+    (let [tool-names  (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
+          embedding   (profiles/get-profile :embedding_next)
+          nlq         (profiles/get-profile :nlq)]
+      (is (= (tool-names nlq) (tool-names embedding)))))
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (testing "navigate_user is excluded without the capability"
+      (let [tools (profiles/get-tools-for-profile :embedding_next [])]
+        (is (contains? tools "search"))
+        (is (contains? tools "construct_notebook_query"))
+        (is (not (contains? tools "navigate_user")))))
+    (testing "navigate_user is included with the capability"
+      (let [tools (profiles/get-tools-for-profile :embedding_next ["frontend:navigate_user_v1"])]
+        (is (contains? tools "navigate_user"))))))
 
 (deftest transform-feature-capabilities-test
   (let [orig-has-feature premium-features/has-feature?
