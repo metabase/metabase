@@ -185,7 +185,7 @@
     (cond
       (or (not table-exists?)
           (driver/database-supports? driver :create-or-replace-table database))
-      (create-table-and-insert-data! driver transform-details conn-spec)
+      {:rows-affected (create-table-and-insert-data! driver transform-details conn-spec)}
 
       ;; Atomic renames fully supported
       (driver/database-supports? driver :atomic-renames database)
