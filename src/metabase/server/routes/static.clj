@@ -71,7 +71,9 @@
 (defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
    response map if a compressed variant exists and the client accepts it,
-   otherwise nil."
+   otherwise nil.
+
+   If encoding is :identity, we don't compress at all and serve the raw resource."
   [request resource-path encoding]
   (when (accepts-encoding? request encoding)
     (some-> (response/resource-response (compressed-path resource-path encoding))
