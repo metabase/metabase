@@ -1,12 +1,12 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import type { ExportFormat } from "metabase/common/types/export";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Popover, Text, Title } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
-import type { ExportFormatType } from "./types";
 
 export type PublicLinkPopoverProps = {
   target: JSX.Element;
@@ -15,9 +15,9 @@ export type PublicLinkPopoverProps = {
   createPublicLink: () => Promise<void>;
   deletePublicLink: () => void;
   url: string | null;
-  extensions?: ExportFormatType[];
-  selectedExtension?: ExportFormatType | null;
-  setSelectedExtension?: (extension: ExportFormatType) => void;
+  extensions?: ExportFormat[];
+  selectedExtension?: ExportFormat | null;
+  setSelectedExtension?: (extension: ExportFormat) => void;
   onCopyLink?: () => void;
 };
 

@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
+import type { ExportFormat } from "metabase/common/types/export";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -23,7 +23,7 @@ const TestComponent = ({
     </button>
   );
   const [isOpen, setIsOpen] = useState(mockIsOpen);
-  const [extension, setExtension] = useState<ExportFormatType | null>(null);
+  const [extension, setExtension] = useState<ExportFormat | null>(null);
 
   const linkExtension = extension ? `.${extension}` : "";
   const publicUrl = url ? `sample-public-link${linkExtension}` : null;
@@ -56,7 +56,7 @@ const setup = ({
 }: {
   hasUUID?: boolean;
   isOpen?: boolean;
-  extensions?: ExportFormatType[];
+  extensions?: ExportFormat[];
   isAdmin?: boolean;
 } = {}) => {
   const createPublicLink = jest.fn();
