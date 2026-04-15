@@ -6,12 +6,12 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { useSelector } from "metabase/lib/redux";
-import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
+import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
+import { useSelector } from "metabase/utils/redux";
+import { getFullName } from "metabase/utils/user";
 import type { Group, Member, Membership } from "metabase-types/api";
 
 import { AddMemberRow } from "../AddMemberRow";

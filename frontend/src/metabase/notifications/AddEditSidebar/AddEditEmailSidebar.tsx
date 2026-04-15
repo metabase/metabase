@@ -13,13 +13,14 @@ import { Sidebar } from "metabase/common/components/Sidebar";
 import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { dashboardPulseIsValid } from "metabase/lib/pulse";
-import { useSelector } from "metabase/lib/redux";
 import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Icon, Title } from "metabase/ui";
+import { dashboardPulseIsValid } from "metabase/utils/pulse";
+import { useSelector } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -29,7 +30,6 @@ import type {
   ScheduleSettings,
   User,
 } from "metabase-types/api";
-import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";

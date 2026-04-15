@@ -15,7 +15,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest properties-token-features-test
-  (mt/with-premium-features #{:advanced-permissions
+  (mt/with-premium-features #{:admin-security-center
+                              :advanced-permissions
                               :ai-controls
                               :attached-dwh
                               :audit-app
@@ -64,7 +65,8 @@
                               :cloud-custom-smtp
                               :workspaces
                               :writable-connection}
-    (is (= {:advanced_permissions           true
+    (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud)
+            :advanced_permissions           true
             :ai_controls                    true
             :attached_dwh                   true
             :audit_app                      true
@@ -117,6 +119,11 @@
             :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
 
+(deftest security-center-token-feature-test
+  (testing "admin_security_center is true for self-hosted with the feature flag"
+    (mt/with-premium-features #{:admin-security-center}
+      (is (true? (:admin_security_center
+                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 ;;; ---------------------------------------- server-side session timeout tests -----------------------------------------
 
 (deftest session-timeout-enforces-last-active-at-test

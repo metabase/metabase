@@ -23,19 +23,19 @@ import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
-import { PUT } from "metabase/lib/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { RouterProvider } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import { PUT } from "metabase/utils/api";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 
 import { getStore } from "./entities-store";
 

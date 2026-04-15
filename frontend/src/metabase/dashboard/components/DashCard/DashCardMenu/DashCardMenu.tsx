@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
+import { canDownloadResults } from "metabase/common/utils/dataset";
 import { canEditQuestion } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import {
   type DashboardContextReturned,
@@ -12,10 +13,9 @@ import {
 } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
-import { canDownloadResults } from "metabase/lib/downloads";
-import { useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { ActionIcon, Icon, Menu, type MenuProps } from "metabase/ui";
+import { useStore } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";

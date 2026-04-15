@@ -7,7 +7,7 @@ import { t } from "ttag";
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { useDndSensors } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { moveElement } from "metabase/lib/arrays";
+import { moveElement } from "metabase/utils/arrays";
 
 import { ChartSettingFieldPicker } from "./ChartSettingFieldPicker";
 import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";

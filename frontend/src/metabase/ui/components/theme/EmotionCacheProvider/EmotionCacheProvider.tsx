@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 import { isCypressActive } from "metabase/env";
+import { getCspNonce } from "metabase/utils/csp";
 
 interface EmotionCacheProviderProps {
   children?: ReactNode;
@@ -16,7 +17,7 @@ export const EmotionCacheProvider = ({
   const emotionCache = useMemo(() => {
     const cache = createCache({
       key: "emotion",
-      nonce: window.MetabaseNonce,
+      nonce: getCspNonce(),
       ...(isCypressActive && { speedy: true }),
     });
     // This disables :first-child not working in SSR warnings

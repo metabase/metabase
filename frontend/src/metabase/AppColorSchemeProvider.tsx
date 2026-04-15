@@ -8,13 +8,14 @@ import {
 import { useMedia } from "react-use";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { ColorScheme } from "metabase/lib/color-scheme";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   ColorSchemeContext,
   type ColorSchemeContextType,
   colorSchemeContextDefaultValue,
 } from "metabase/ui/components/theme/ColorSchemeProvider";
+
+import type { ColorScheme } from "./utils/color-scheme";
 
 interface AppColorSchemeProviderProps {
   children: ReactNode;

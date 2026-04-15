@@ -3,7 +3,7 @@ import {
   useGetSnippetQuery,
   useListSnippetsQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 
 /**
  * @deprecated use "metabase/api" instead

@@ -9,8 +9,8 @@ import {
   getDefaultGroup,
   getOrderedGroups,
 } from "metabase/admin/permissions/selectors/data-permissions/groups";
-import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { getGroupNameLocalized, isAdminGroup } from "metabase/utils/groups";
 import type { Group } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";

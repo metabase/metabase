@@ -3,7 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import metabot from "assets/img/metabot-96x96.svg";
-import { useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -17,6 +16,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import {

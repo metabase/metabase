@@ -101,7 +101,8 @@
   (testing "chart navigation resolves from memory"
     (let [query       {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
           memory-atom (atom {:state {:queries {"q1" query}
-                                     :charts  {"chart1" {:query-id "q1" :chart-type :bar}}}})]
+                                     :charts  {"chart1" {:chart_id "chart1" :queries [query]
+                                                         :visualization_settings {:chart-type :bar}}}}})]
       (is (=? {:structured-output {:path #(str/starts-with? % "/question#")}}
               (navigate/navigate {:destination {:chart_id "chart1"}
                                   :memory-atom memory-atom})))))

@@ -10,8 +10,8 @@ import { DatabaseInfoSection } from "metabase/admin/databases/components/Databas
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { Toggle } from "metabase/common/components/Toggle";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
-import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Alert, Box, Flex, Icon } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   Database,
   DatabaseData,

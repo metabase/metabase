@@ -16,7 +16,6 @@ import CS from "metabase/css/core/index.css";
 import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideModal";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { connect, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
@@ -26,6 +25,7 @@ import {
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
+import { connect, useSelector } from "metabase/utils/redux";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";

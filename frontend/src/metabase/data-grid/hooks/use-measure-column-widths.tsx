@@ -8,10 +8,10 @@ import type { Root } from "react-dom/client";
 
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
-import { createMeasurementContainer } from "metabase/lib/measure-container";
-import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
-import { isNotNull } from "metabase/lib/types";
 import { MeasurementProviders } from "metabase/ui/components/theme/MeasurementProviders";
+import { createMeasurementContainer } from "metabase/utils/measure-container";
+import { renderRoot, unmountRoot } from "metabase/utils/react-compat";
+import { isNotNull } from "metabase/utils/types";
 
 import { DataGridThemeProvider } from "./use-table-theme";
 

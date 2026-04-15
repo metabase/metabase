@@ -1,1 +1,1 @@
-export { createTracker, trackPageView } from "metabase/lib/analytics";
+export { createTracker, trackPageView } from "metabase/utils/analytics";

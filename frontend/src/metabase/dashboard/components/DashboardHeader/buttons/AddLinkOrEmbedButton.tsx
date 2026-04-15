@@ -6,8 +6,8 @@ import {
   addLinkDashCardToDashboard,
 } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Group, Icon, Menu } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 export const AddLinkOrEmbedButton = () => {
   const dispatch = useDispatch();

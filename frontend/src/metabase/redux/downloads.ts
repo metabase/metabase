@@ -12,14 +12,16 @@ import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import api, { GET, POST } from "metabase/lib/api";
-import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
-import { isJWT } from "metabase/lib/jwt";
-import { createAsyncThunk } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
-import { isUuid } from "metabase/lib/uuid";
+import type { DownloadsState, State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup/selectors";
+import api, { GET, POST } from "metabase/utils/api";
+import { openSaveDialog } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { isJWT } from "metabase/utils/jwt";
+import { createAsyncThunk } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
+import { isUuid } from "metabase/utils/uuid";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getCardKey } from "metabase/visualizations/lib/utils";
@@ -32,7 +34,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
-import type { DownloadsState, State } from "metabase-types/store";
 
 import { trackDownloadResults } from "./analytics";
 

@@ -1,4 +1,4 @@
-import { getIcon } from "metabase/lib/icon";
+import { getIcon } from "metabase/utils/icon";
 import type { CollectionItemModel } from "metabase-types/api";
 
 import {
@@ -16,7 +16,7 @@ import {
   isSelectedItem,
 } from "./utils";
 
-jest.mock("metabase/lib/icon", () => ({
+jest.mock("metabase/utils/icon", () => ({
   getIcon: jest.fn(),
 }));
 

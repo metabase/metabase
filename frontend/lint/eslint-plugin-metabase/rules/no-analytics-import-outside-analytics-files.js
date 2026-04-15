@@ -1,5 +1,5 @@
 /**
- * @fileoverview Rule to ensure imports from metabase/lib/analytics only occur in files named "analytics.ts/tsx/js/jsx"
+ * @fileoverview Rule to ensure imports from metabase/utils/analytics only occur in files named "analytics.ts/tsx/js/jsx"
  */
 
 //------------------------------------------------------------------------------
@@ -7,14 +7,14 @@
 //------------------------------------------------------------------------------
 
 const ERROR_MESSAGE =
-  'Imports from "metabase/lib/analytics" are only allowed in files named "analytics", Please create a type-safe wrapper for the analytics functions in an analytics.ts file, and call that function from your component or module.';
+  'Imports from "metabase/utils/analytics" are only allowed in files named "analytics", Please create a type-safe wrapper for the analytics functions in an analytics.ts file, and call that function from your component or module.';
 
 module.exports = {
   meta: {
     type: "problem",
     docs: {
       description:
-        "Ensure imports from metabase/lib/analytics only occur in analytics files",
+        "Ensure imports from metabase/utils/analytics only occur in analytics files",
       category: "Best Practices",
       recommended: true,
     },
@@ -36,10 +36,10 @@ module.exports = {
       ImportDeclaration(node) {
         const sourceValue = node.source.value;
 
-        // Check if importing from metabase/lib/analytics
+        // Check if importing from metabase/utils/analytics
         if (
           typeof sourceValue === "string" &&
-          sourceValue === "metabase/lib/analytics"
+          sourceValue === "metabase/utils/analytics"
         ) {
           // If not in an analytics file, report an error
           if (!isAnalyticsFile) {

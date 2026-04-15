@@ -1,4 +1,4 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/utils/analytics";
 import type { ConcreteTableId } from "metabase-types/api";
 
 export const trackTableClick = (tableId: ConcreteTableId) =>

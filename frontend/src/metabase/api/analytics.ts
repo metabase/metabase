@@ -1,6 +1,6 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
-import { openSaveDialog } from "metabase/lib/dom";
-import { hashSearchTerm, shouldReportSearchTerm } from "metabase/lib/search";
+import { trackSchemaEvent } from "metabase/utils/analytics";
+import { openSaveDialog } from "metabase/utils/dom";
+import { hashSearchTerm, shouldReportSearchTerm } from "metabase/utils/search";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { Api } from "./api";
