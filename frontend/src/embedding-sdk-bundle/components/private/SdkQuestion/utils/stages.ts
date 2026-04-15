@@ -1,20 +1,26 @@
 import * as Lib from "metabase-lib";
 
 /**
- * Matches the notebook editor's logic: a stage is hidden when
- * the previous stage has aggregations but no breakouts.
- * See `getQuestionSteps` in notebook/utils/steps.ts.
+ * Returns the last stage index that has aggregations or breakouts.
+ * Walks backwards from the last stage — if a stage has nothing to show,
+ * falls back to the previous one.
  */
-export function hasAggregationWithoutBreakoutOnPrevStage(
-  query: Lib.Query,
-  stageIndex: number,
-) {
-  if (stageIndex < 1) {
-    return false;
+export function getLastVisibleStageIndex(query: Lib.Query | undefined): number {
+  if (!query) {
+    return -1;
   }
 
-  const hasAggregations = Lib.aggregations(query, stageIndex - 1).length > 0;
-  const hasBreakouts = Lib.breakouts(query, stageIndex - 1).length > 0;
+  const indexes = Lib.stageIndexes(query);
 
-  return hasAggregations && !hasBreakouts;
+  for (let i = indexes.length - 1; i >= 0; i--) {
+    const stageIndex = indexes[i];
+    const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+    const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
+
+    if (hasAggregations || hasBreakouts) {
+      return stageIndex;
+    }
+  }
+
+  return 0;
 }

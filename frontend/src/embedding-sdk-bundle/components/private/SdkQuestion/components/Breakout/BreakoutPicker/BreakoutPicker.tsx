@@ -73,7 +73,7 @@ export const BreakoutPicker = ({
   }
 
   const query = question.query();
-  const stageIndex = breakoutItem?.stageIndex ?? -1;
+  const stageIndex = -1;
 
   const onQueryChange = (nextQuery: Lib.Query) => {
     if (question) {

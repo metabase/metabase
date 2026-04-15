@@ -7,10 +7,9 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { useSdkQuestionContext } from "../../context";
-import { hasAggregationWithoutBreakoutOnPrevStage } from "../../utils/stages";
+import { getLastVisibleStageIndex } from "../../utils/stages";
 
 export interface SDKBreakoutItem extends BreakoutListItem {
-  stageIndex: number;
   breakoutIndex: number;
   removeBreakout: () => void;
   updateBreakout: (column: Lib.ColumnMetadata) => void;
@@ -35,54 +34,43 @@ export const useBreakoutData = (): SDKBreakoutItem[] => {
     return [];
   }
 
-  return Lib.stageIndexes(query)
-    .filter(
-      (stageIndex) =>
-        !hasAggregationWithoutBreakoutOnPrevStage(query, stageIndex),
-    )
-    .flatMap((stageIndex) => {
-      const breakouts = Lib.breakouts(query, stageIndex);
+  const stageIndex = getLastVisibleStageIndex(query);
+  const breakouts = Lib.breakouts(query, stageIndex);
 
-      return breakouts
-        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
-        .filter(isNotNull)
-        .map((item, index) => {
-          const removeBreakout = () => {
-            if (item.breakout) {
-              const nextQuery = Lib.removeClause(
-                query,
-                stageIndex,
-                item.breakout,
-              );
-              onQueryChange(nextQuery);
-            }
-          };
+  return breakouts
+    .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
+    .filter(isNotNull)
+    .map((item, index) => {
+      const removeBreakout = () => {
+        if (item.breakout) {
+          const nextQuery = Lib.removeClause(query, stageIndex, item.breakout);
+          onQueryChange(nextQuery);
+        }
+      };
 
-          const updateBreakout = (column: Lib.ColumnMetadata) => {
-            if (item.breakout) {
-              const nextQuery = Lib.replaceClause(
-                query,
-                stageIndex,
-                item.breakout,
-                column,
-              );
-              onQueryChange(nextQuery);
-            }
-          };
-
-          const replaceBreakoutColumn = (column: Lib.ColumnMetadata) => {
-            const nextQuery = Lib.replaceBreakouts(query, stageIndex, column);
-            onQueryChange(nextQuery);
-          };
-
-          return {
-            ...item,
+      const updateBreakout = (column: Lib.ColumnMetadata) => {
+        if (item.breakout) {
+          const nextQuery = Lib.replaceClause(
+            query,
             stageIndex,
-            breakoutIndex: index,
-            removeBreakout,
-            updateBreakout,
-            replaceBreakoutColumn,
-          };
-        });
+            item.breakout,
+            column,
+          );
+          onQueryChange(nextQuery);
+        }
+      };
+
+      const replaceBreakoutColumn = (column: Lib.ColumnMetadata) => {
+        const nextQuery = Lib.replaceBreakouts(query, stageIndex, column);
+        onQueryChange(nextQuery);
+      };
+
+      return {
+        ...item,
+        breakoutIndex: index,
+        removeBreakout,
+        updateBreakout,
+        replaceBreakoutColumn,
+      };
     });
 };

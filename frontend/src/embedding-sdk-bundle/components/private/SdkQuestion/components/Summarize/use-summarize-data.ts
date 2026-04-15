@@ -10,10 +10,9 @@ import {
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../context";
-import { hasAggregationWithoutBreakoutOnPrevStage } from "../../utils/stages";
+import { getLastVisibleStageIndex } from "../../utils/stages";
 
 export interface SDKAggregationItem extends AggregationItem {
-  stageIndex: number;
   onRemoveAggregation: () => void;
   onUpdateAggregation: (nextClause: Lib.Aggregable) => void;
 }
@@ -24,6 +23,7 @@ export const useSummarizeData = () => {
   const { locale } = useLocale();
 
   const query = question?.query();
+  const stageIndex = getLastVisibleStageIndex(query);
 
   const onQueryChange = useCallback(
     (newQuery: Lib.Query) => {
@@ -39,52 +39,42 @@ export const useSummarizeData = () => {
   const aggregationItems: SDKAggregationItem[] = useMemo(
     () =>
       query
-        ? Lib.stageIndexes(query)
-            .filter(
-              (stageIndex) =>
-                !hasAggregationWithoutBreakoutOnPrevStage(query, stageIndex),
-            )
-            .flatMap((stageIndex) =>
-              getAggregationItems({ query, stageIndex }).map(
-                (aggregationItem) => {
-                  const onRemoveAggregation = () => {
-                    if (query) {
-                      const nextQuery = Lib.removeClause(
-                        query,
-                        stageIndex,
-                        aggregationItem.aggregation,
-                      );
-                      onQueryChange(nextQuery);
-                    }
-                  };
+        ? getAggregationItems({ query, stageIndex }).map((aggregationItem) => {
+            const onRemoveAggregation = () => {
+              if (query) {
+                const nextQuery = Lib.removeClause(
+                  query,
+                  stageIndex,
+                  aggregationItem.aggregation,
+                );
+                onQueryChange(nextQuery);
+              }
+            };
 
-                  const onUpdateAggregation = (nextClause: Lib.Aggregable) => {
-                    const nextQuery = Lib.replaceClause(
-                      query,
-                      stageIndex,
-                      aggregationItem.aggregation,
-                      nextClause,
-                    );
-                    onQueryChange(nextQuery);
-                  };
+            const onUpdateAggregation = (nextClause: Lib.Aggregable) => {
+              const nextQuery = Lib.replaceClause(
+                query,
+                stageIndex,
+                aggregationItem.aggregation,
+                nextClause,
+              );
+              onQueryChange(nextQuery);
+            };
 
-                  return {
-                    ...aggregationItem,
-                    stageIndex,
-                    displayName:
-                      PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
-                        displayName: aggregationItem.displayName,
-                        tc,
-                        locale,
-                      }),
-                    onRemoveAggregation,
-                    onUpdateAggregation,
-                  };
-                },
-              ),
-            )
+            return {
+              ...aggregationItem,
+              displayName:
+                PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+                  displayName: aggregationItem.displayName,
+                  tc,
+                  locale,
+                }),
+              onRemoveAggregation,
+              onUpdateAggregation,
+            };
+          })
         : [],
-    [onQueryChange, query, tc, locale],
+    [onQueryChange, query, stageIndex, tc, locale],
   );
 
   return aggregationItems;

@@ -27,7 +27,7 @@ export const SummarizePicker = ({
   }
 
   const query = question.query();
-  const stageIndex = aggregation?.stageIndex ?? -1;
+  const stageIndex = -1;
   const onQueryChange = (newQuery: Lib.Query) => {
     updateQuestion(question.setQuery(Lib.dropEmptyStages(newQuery)), {
       run: true,
