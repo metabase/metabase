@@ -13,6 +13,8 @@
                                                             (lib/returned-columns query)
                                                             {:display-name "Categories"}
                                                             {:display-name "Name"})]
+    (is (= "column-unique-key-v1$Categories__NAME"
+           (lib.metadata.column/column-unique-key categories-name)))
     (is (= categories-name
            (lib.metadata.column/column-with-unique-key query "column-unique-key-v1$Categories__NAME")))))
 

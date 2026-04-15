@@ -9,10 +9,20 @@
 (mr/def ::column-unique-key-version
   nat-int?)
 
+(mu/defn- pack-unique-key :- ::lib.schema/column-unique-key
+  [version    :- ::column-unique-key-version
+   column-key :- :string]
+  (str "column-unique-key-v" version "$" column-key))
+
 (mu/defn- unpack-unique-key :- [:tuple #_version ::column-unique-key-version #_rest :string]
   [unique-key :- ::lib.schema/column-unique-key]
   (let [[_match version-string column-key] (re-find #"^column-unique-key-v(\d+)\$(.+$)" unique-key)]
     [(parse-long version-string) column-key]))
+
+(mu/defn column-unique-key :- ::lib.schema/column-unique-key
+  "Create a unique key for returned column metadata. Treat this key as opaque!"
+  [col :- ::lib.metadata.calculation/returned-column]
+  (pack-unique-key 1 (:lib/desired-column-alias col)))
 
 (mu/defn column-with-unique-key :- [:maybe ::lib.metadata.calculation/returned-column]
   "Get metadata for the returned column with `unique-key`."
