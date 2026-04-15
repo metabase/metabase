@@ -7,7 +7,6 @@ import type {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useListCustomVizPluginsQuery } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
@@ -22,6 +21,7 @@ import type {
   Visualization,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
+import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import type {
   CustomVizPlugin,
   CustomVizPluginId,

@@ -1,9 +1,15 @@
 import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
-import type { CustomVizPlugin } from "metabase-types/api";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
+import type { CustomVizPlugin, Parameter } from "metabase-types/api";
 
 const { H } = cy;
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
+const AGGREGATED_VALUE = "18760";
+const AGGREGATED_VALUE_FORMATTED = "18,760";
 
 describe("admin > custom visualizations", () => {
   beforeEach(() => {
@@ -448,7 +454,7 @@ describe("admin > custom visualizations", () => {
         cy.wait("@failedBundle");
 
         H.undoToastList()
-          .findByText(/The .*demo-viz.* visualization is currently unavailable/)
+          .findByText(/"demo-viz" visualization is currently unavailable/)
           .should("be.visible");
       });
     });
@@ -473,7 +479,7 @@ describe("admin > custom visualizations", () => {
 
       cy.findByTestId("demo-viz-hover-target").realHover();
 
-      H.tooltip().should("contain.text", "18,760");
+      H.tooltip().should("contain.text", AGGREGATED_VALUE_FORMATTED);
     });
 
     it("renders a pinned custom-viz question in the collection view", () => {
@@ -513,6 +519,268 @@ describe("admin > custom visualizations", () => {
       cy.wait("@pluginBundle");
 
       cy.findByTestId("demo-viz-locale").should("have.text", "Locale: de");
+    });
+  });
+
+  describe("using a plugin — dashboard", () => {
+    before(() => {
+      H.setupCustomVizRepo();
+    });
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
+    });
+
+    const customVizQuestionDetails: StructuredQuestionDetails = {
+      name: "Custom Viz Dashboard Question",
+      query: {
+        "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      display: H.CUSTOM_VIZ_DISPLAY,
+      visualization_settings: { threshold: 0 },
+    };
+
+    function createCustomVizDashboard(dashboardDetails: DashboardDetails = {}) {
+      return H.createQuestionAndDashboard({
+        questionDetails: customVizQuestionDetails,
+        dashboardDetails: { name: "Custom Viz Dashboard", ...dashboardDetails },
+      });
+    }
+
+    it("renders a custom viz question on a dashboard", () => {
+      createCustomVizDashboard().then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.getDashboardCard()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+      H.getDashboardCard()
+        .findByText(`Value: ${AGGREGATED_VALUE}`)
+        .should("be.visible");
+    });
+
+    // TODO: public dashboard support for custom viz. Tracked by GDGT-2234 subtask.
+    it.skip("renders a custom viz question on a public dashboard", () => {
+      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+
+      createCustomVizDashboard().then(({ body: dashcard }) => {
+        H.visitPublicDashboard(dashcard.dashboard_id);
+      });
+
+      H.getDashboardCard()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+    });
+
+    it("exports the dashboard as a PDF", () => {
+      cy.deleteDownloadsFolder();
+
+      createCustomVizDashboard({ name: "custom viz pdf dash" }).then(
+        ({ body: dashcard }) => {
+          H.visitDashboard(dashcard.dashboard_id);
+        },
+      );
+      H.getDashboardCard()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      H.openSharingMenu("Export as PDF");
+      cy.findByTestId("status-root-container")
+        .should("contain", "Downloading")
+        .and("contain", "Dashboard for custom viz pdf dash");
+      cy.verifyDownload("custom viz pdf dash.pdf", { contains: true });
+    });
+
+    it("shows a tooltip on hover over the custom viz in a dashcard", () => {
+      createCustomVizDashboard().then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.getDashboardCard().findByTestId("demo-viz-hover-target").realHover();
+
+      H.tooltip().should("contain.text", AGGREGATED_VALUE_FORMATTED);
+    });
+
+    it("drills through on click from a dashcard", () => {
+      createCustomVizDashboard().then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+      H.getDashboardCard()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      H.getDashboardCard().findByTestId("demo-viz-click-target").click();
+      cy.findByTestId("click-actions-view")
+        .findByText(/See these Orders/)
+        .should("be.visible")
+        .click();
+      cy.wait("@dataset");
+
+      H.queryBuilderHeader().findByText("Orders").should("be.visible");
+      // The demo plugin's query is `count(Orders)` with no breakout, so the
+      // underlying-records drill produces an unfiltered Orders query.
+      H.queryBuilderFiltersPanel().should("not.exist");
+      H.tableInteractive().findByText("37.65").should("be.visible");
+    });
+
+    describe("click behavior: custom destinations", () => {
+      it("navigates to another dashboard", () => {
+        H.createDashboard(
+          { name: "Custom Viz Target Dashboard" },
+          { wrapId: true, idAlias: "targetDashboardId" },
+        );
+
+        cy.get<number>("@targetDashboardId").then((targetDashboardId) => {
+          createCustomVizDashboard().then(({ body: dashcard }) => {
+            H.addOrUpdateDashboardCard({
+              dashboard_id: dashcard.dashboard_id,
+              card_id: dashcard.card_id,
+              card: {
+                id: dashcard.id,
+                visualization_settings: {
+                  click_behavior: {
+                    parameterMapping: {},
+                    targetId: targetDashboardId,
+                    linkType: "dashboard",
+                    type: "link",
+                  },
+                },
+              },
+            });
+            H.visitDashboard(dashcard.dashboard_id);
+          });
+
+          H.getDashboardCard().findByTestId("demo-viz-click-target").click();
+
+          cy.location("pathname").should(
+            "match",
+            new RegExp(`^/dashboard/${targetDashboardId}(?:-|$)`),
+          );
+        });
+      });
+
+      it("navigates to a saved question", () => {
+        H.createQuestion(
+          {
+            name: "Custom Viz Target Question",
+            query: {
+              "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+              limit: 5,
+            },
+          },
+          { wrapId: true, idAlias: "targetQuestionId" },
+        );
+
+        cy.get<number>("@targetQuestionId").then((targetQuestionId) => {
+          createCustomVizDashboard().then(({ body: dashcard }) => {
+            H.addOrUpdateDashboardCard({
+              dashboard_id: dashcard.dashboard_id,
+              card_id: dashcard.card_id,
+              card: {
+                id: dashcard.id,
+                visualization_settings: {
+                  click_behavior: {
+                    parameterMapping: {},
+                    targetId: targetQuestionId,
+                    linkType: "question",
+                    type: "link",
+                  },
+                },
+              },
+            });
+            H.visitDashboard(dashcard.dashboard_id);
+          });
+
+          H.getDashboardCard().findByTestId("demo-viz-click-target").click();
+
+          cy.location("pathname").should(
+            "match",
+            new RegExp(`^/question/${targetQuestionId}(?:-|$)`),
+          );
+        });
+      });
+
+      it("opens a URL", () => {
+        createCustomVizDashboard().then(({ body: dashcard }) => {
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              id: dashcard.id,
+              visualization_settings: {
+                click_behavior: {
+                  linkType: "url",
+                  linkTemplate: "https://metabase.test/custom-viz",
+                  type: "link",
+                },
+              },
+            },
+          });
+          H.visitDashboard(dashcard.dashboard_id);
+        });
+
+        H.onNextAnchorClick((anchor) => {
+          expect(anchor).to.have.attr(
+            "href",
+            "https://metabase.test/custom-viz",
+          );
+        });
+        H.getDashboardCard().findByTestId("demo-viz-click-target").click();
+      });
+
+      it("updates a dashboard filter", () => {
+        const parameter: Parameter = {
+          id: "12345678",
+          name: "Count",
+          slug: "count",
+          type: "number/=",
+        };
+
+        H.createQuestionAndDashboard({
+          questionDetails: customVizQuestionDetails,
+          dashboardDetails: {
+            name: "Custom Viz Crossfilter Dashboard",
+            parameters: [parameter],
+          },
+        }).then(({ body: dashcard }) => {
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashcard.dashboard_id,
+            card_id: dashcard.card_id,
+            card: {
+              id: dashcard.id,
+              visualization_settings: {
+                click_behavior: {
+                  type: "crossfilter",
+                  parameterMapping: {
+                    [parameter.id]: {
+                      id: parameter.id,
+                      source: { id: "count", name: "Count", type: "column" },
+                      target: { id: parameter.id, type: "parameter" },
+                    },
+                  },
+                },
+              },
+            },
+          });
+          H.visitDashboard(dashcard.dashboard_id);
+        });
+
+        H.getDashboardCard()
+          .findByText(/Value: \d+/)
+          .should("be.visible");
+        H.getDashboardCard().findByTestId("demo-viz-click-target").click();
+
+        // The crossfilter behavior sets the dashboard parameter to the value of
+        // the clicked column.
+        cy.location("search").should(
+          "include",
+          `${parameter.slug}=${AGGREGATED_VALUE}`,
+        );
+      });
     });
   });
 });
