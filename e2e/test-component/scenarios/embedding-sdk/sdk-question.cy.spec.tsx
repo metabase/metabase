@@ -444,8 +444,11 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       "contain.text",
       "Switched to the previous stag",
     );
-    cy.findByText("1 summary").should("be.visible");
-    cy.findByText("1 grouping").should("be.visible");
+    getSdkRoot().within(() => {
+      cy.log("Stage 0 (Count + Created At)");
+      cy.findByText("1 summary").should("be.visible");
+      cy.findByText("1 grouping").should("be.visible");
+    });
   });
 
   it("does not contain known console errors (metabase#48497)", () => {
