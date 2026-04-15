@@ -1,13 +1,16 @@
 (ns metabase-enterprise.audit-app.analytics-dev-test
   (:require
    [clojure.set :as set]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [metabase-enterprise.audit-app.analytics-dev :as analytics-dev]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest postgres-only-requirement-test
   (testing "Analytics dev mode requires PostgreSQL"
@@ -143,10 +146,11 @@
                    "action_id" "action_qualified_id"
                    "transform_id" "transform_qualified_id"
                    "lens_id" "lens_params" "query"
-                   "embedding_client" "embedding_route" "embedding_version" "is_preview"
+                   "embedding_client" "embedding_route" "embedding_sdk_version" "is_preview"
                    "auth_method" "is_sandboxed" "is_impersonated" "is_db_routed" "parameters"
                    "tenant_id" "embedding_hostname" "embedding_path"
-                   "user_agent" "sanitized_user_agent" "ip_address"}
+                   "user_agent" "sanitized_user_agent" "ip_address"
+                   "metabase_version"}
 
    "v_subscriptions" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
                        "creator_id" "archived" "dashboard_qualified_id" "schedule_type"
@@ -177,9 +181,10 @@
    "v_view_log" #{"id" "timestamp" "user_id" "entity_type" "entity_id"
                   "entity_qualified_id"
                   "has_access" "context"
-                  "embedding_client" "embedding_route" "embedding_version" "is_preview"
+                  "embedding_client" "embedding_route" "embedding_sdk_version" "is_preview"
                   "auth_method" "tenant_id"
-                  "embedding_hostname" "embedding_path" "user_agent" "sanitized_user_agent" "ip_address"}})
+                  "embedding_hostname" "embedding_path" "user_agent" "sanitized_user_agent" "ip_address"
+                  "metabase_version"}})
 
 (defn- get-synced-field-names
   "Get the set of field names that Metabase has synced for a given table."

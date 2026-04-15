@@ -4,7 +4,7 @@
   Here is how we collect analytics information about the embedding client:
   The X-Metabase-Client and X-Metabase-Client-Version headers are sent, and if present bound to *metabase-client* and *metabase-client-version* respectively.
 
-  When we execute a query, or record a view log, we include the *client* and *version* as embedding_client and embedding_version in the view_log or query_execution record.
+  When we execute a query, or record a view log, we include the *client* and *version* as embedding_client and embedding_sdk_version in the view_log or query_execution record.
 
   then we can use the information on the tables to track information about the embedding client,
   and TODO: send it out in `summarize-execution`."
@@ -12,6 +12,7 @@
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.settings :as analytics.settings]
+   [metabase.config.core :as config]
    [metabase.request.current :as request.current]
    [metabase.request.user-agent :as request.user-agent]
    [metabase.util.log :as log]
@@ -102,8 +103,9 @@
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
       (update :embedding_route (fn [route] (or *route* route)))
-      (update :embedding_version (fn [version] (or *version* version)))
+      (update :embedding_sdk_version (fn [version] (or *version* version)))
       (update :auth_method (fn [method] (or *auth-method* method)))
+      (assoc :metabase_version (:tag config/mb-version-info))
       (merge (hostname-fields) (pii-fields))))
 
 (def ^:private embedding-sdk-client "embedding-sdk-react")

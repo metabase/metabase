@@ -53,7 +53,7 @@
                    (m/dissoc-in [:data :results_metadata])
                    (m/dissoc-in [:data :insights]))]
      (cond
-       (contains? #{:id :started_at :running_time :hash :cache_hash :auth_method} k)
+       (contains? #{:id :started_at :running_time :hash :cache_hash :auth_method :metabase_version} k)
        [k (boolean v)]
 
        (and (= :data k) (contains? v :native_form))
@@ -131,7 +131,8 @@
                   :embedding_hostname nil
                   :embedding_path nil
                   :embedding_route nil
-                  :embedding_version nil
+                  :embedding_sdk_version nil
+                  :metabase_version true
                   :auth_method      true
                   :ip_address       nil
                   :is_db_routed     false

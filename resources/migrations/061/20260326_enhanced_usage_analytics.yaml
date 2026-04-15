@@ -325,6 +325,62 @@ databaseChangeLog:
                     nullable: true
 
   # ============================================================
+  # metabase_version column + rename embedding_version -> embedding_sdk_version
+  # ============================================================
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:25
+      author: bcm
+      comment: Add metabase_version column to view_log for tracking server version at insert time (EMB-1577)
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(32)
+                  remarks: Metabase server version tag at time of insert
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:26
+      author: bcm
+      comment: Add metabase_version column to query_execution for tracking server version at insert time (EMB-1577)
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(32)
+                  remarks: Metabase server version tag at time of insert
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:27
+      author: bcm
+      comment: Rename embedding_version to embedding_sdk_version on view_log (EMB-1578)
+      changes:
+        - renameColumn:
+            tableName: view_log
+            oldColumnName: embedding_version
+            newColumnName: embedding_sdk_version
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:28
+      author: bcm
+      comment: Rename embedding_version to embedding_sdk_version on query_execution (EMB-1578)
+      changes:
+        - renameColumn:
+            tableName: query_execution
+            oldColumnName: embedding_version
+            newColumnName: embedding_sdk_version
+            columnDataType: varchar(254)
+
+  # ============================================================
   # Analytics view updates - add embedding_client, surface, is_preview
   # ============================================================
 

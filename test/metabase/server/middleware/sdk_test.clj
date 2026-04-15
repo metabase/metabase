@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.sdk :as sdk]
+   [metabase.config.core :as config]
    [metabase.request.current :as request.current]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -219,29 +220,25 @@
       (is (= "embedding-sdk-react" (client-from-mw request))))))
 
 (deftest include-analytics-is-idempotent
-  (let [m (atom {})]
+  (let [m        (atom {})
+        expected {:embedding_client      "client-C"
+                  :embedding_route       "public"
+                  :embedding_sdk_version "1.33.7"
+                  :auth_method           nil
+                  :metabase_version      (:tag config/mb-version-info)}]
     (binding [sdk/*client* "client-C"
               sdk/*route*  "public"
               sdk/*version* "1.33.7"]
-      (is (= {:embedding_client "client-C"
-              :embedding_route  "public"
-              :embedding_version "1.33.7"
-              :auth_method       nil}
+      (is (= expected
              (analytics/include-sdk-info @m)))
       (swap! m analytics/include-sdk-info))
     ;; unset the vars:
     (binding [sdk/*client* nil
               sdk/*route*  nil
               sdk/*version* nil]
-      (is (= {:embedding_client "client-C"
-              :embedding_route  "public"
-              :embedding_version "1.33.7"
-              :auth_method       nil} @m))
+      (is (= expected @m))
       (testing "the values in m are used when the vars are not set"
-        (is (= {:embedding_client "client-C"
-                :embedding_route  "public"
-                :embedding_version "1.33.7"
-                :auth_method       nil}
+        (is (= expected
                (analytics/include-sdk-info @m)))))))
 
 (deftest include-sdk-info-pii-fields-test

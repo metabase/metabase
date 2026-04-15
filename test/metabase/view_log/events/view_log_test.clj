@@ -556,7 +556,7 @@
                 (is (= "public"                (:embedding_route row)))
 
                 (is (false?                    (->bool (:is_preview row))))
-                (is (= "1.42.0"                (:embedding_version row)))
+                (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
                 (is (= "/dashboard/1"          (:embedding_path row)))
@@ -569,7 +569,7 @@
                 (is (= "public"                (:embedding_route row)))
 
                 (is (false?                    (->bool (:is_preview row))))
-                (is (= "1.42.0"                (:embedding_version row)))
+                (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
                 (is (= "/dashboard/1"          (:embedding_path row)))
@@ -597,7 +597,7 @@
                 (is (= "public"                (:embedding_route row)))
 
                 (is (false?                    (->bool (:is_preview row))))
-                (is (= "1.42.0"                (:embedding_version row)))
+                (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
                 (is (= nil                     (:embedding_path row)))
@@ -610,7 +610,7 @@
                 (is (= "public"                (:embedding_route row)))
 
                 (is (false?                    (->bool (:is_preview row))))
-                (is (= "1.42.0"                (:embedding_version row)))
+                (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
                 (is (= nil                     (:embedding_path row)))
