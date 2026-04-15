@@ -1,4 +1,3 @@
-import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 
 import { Dashboards } from "metabase/entities/dashboards";
@@ -22,12 +21,11 @@ export function getClickBehaviorDescription(dashcard: DashboardCard): string {
     ? t`Open the drill-through menu`
     : t`Do nothing`;
   if (isTableDisplay(dashcard)) {
-    const count = Object.values(
-      (getIn(dashcard, ["visualization_settings", "column_settings"]) as Record<
-        string,
-        ColumnSettings
-      > | null) ?? {},
-    ).filter((settings) => settings.click_behavior != null).length;
+    const columnSettings =
+      dashcard.visualization_settings?.column_settings ?? {};
+    const count = Object.values(columnSettings).filter(
+      (settings) => settings.click_behavior != null,
+    ).length;
     if (count === 0) {
       return noBehaviorMessage;
     }
@@ -37,9 +35,9 @@ export function getClickBehaviorDescription(dashcard: DashboardCard): string {
       count,
     );
   }
-  const clickBehavior = (
-    dashcard.visualization_settings as Record<string, unknown>
-  )?.click_behavior as ClickBehavior | null | undefined;
+  const clickBehavior = dashcard.visualization_settings?.click_behavior as
+    | ClickBehavior
+    | undefined;
   if (clickBehavior == null) {
     return noBehaviorMessage;
   }
@@ -65,7 +63,6 @@ export function hasActionsMenu(dashcard: DashboardCard): boolean {
   // This seems to work, but it isn't the right logic.
   // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
   const question = Question.create({
-    // dataset_query can be Record<string, never> for virtual cards; treat as DatasetQuery
     dataset_query: datasetQuery as DatasetQuery,
   });
   return !question.isNative();
@@ -76,12 +73,15 @@ export function isTableDisplay(dashcard: DashboardCard): boolean {
 }
 
 export function getLinkTargets(
-  settings: Record<string, unknown> | null | undefined,
+  settings:
+    | {
+        click_behavior?: ClickBehavior;
+        column_settings?: Record<string, ColumnSettings>;
+      }
+    | null
+    | undefined,
 ) {
-  const { click_behavior, column_settings = {} } = (settings ?? {}) as {
-    click_behavior?: ClickBehavior;
-    column_settings?: Record<string, ColumnSettings>;
-  };
+  const { click_behavior, column_settings = {} } = settings ?? {};
   return [
     click_behavior,
     ...Object.values(column_settings).map(
@@ -96,8 +96,9 @@ function hasLinkedQuestionOrDashboard(
   behavior: ClickBehavior | null | undefined,
 ): behavior is LinkTargetClickBehavior {
   if (behavior?.type === "link") {
-    const { linkType } = behavior as { type: "link"; linkType?: string };
-    return linkType === "question" || linkType === "dashboard";
+    return (
+      behavior.linkType === "question" || behavior.linkType === "dashboard"
+    );
   }
   return false;
 }

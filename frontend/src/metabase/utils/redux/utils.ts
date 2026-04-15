@@ -1,4 +1,3 @@
-import type { Reducer, UnknownAction } from "@reduxjs/toolkit";
 import { compose } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { type Schema, normalize } from "normalizr";
@@ -56,10 +55,7 @@ export const fetchData = async ({
     !reload &&
     existingData &&
     properties &&
-    _.all(
-      properties,
-      (p: string) => (existingData as Record<string, unknown>)[p] !== undefined,
-    )
+    _.all(properties, (p: string) => existingData[p] !== undefined)
   ) {
     return existingData;
   }
@@ -67,11 +63,7 @@ export const fetchData = async ({
   const statePath = requestStatePath.concat(["fetch"]);
   try {
     const requestState = getIn(getState(), ["requests", ...statePath]);
-    if (
-      !requestState ||
-      (requestState as { error?: unknown }).error ||
-      reload
-    ) {
+    if (!requestState || requestState?.error || reload) {
       dispatch(setRequestLoading(statePath, queryKey));
 
       const queryPromise = getData();
@@ -139,47 +131,6 @@ export const updateData = async ({
     return existingData;
   }
 };
-
-// helper for working with normalizr
-// merge each entity from newEntities with existing entity, if any
-// this ensures partial entities don't overwrite existing entities with more properties
-export function mergeEntities(
-  entities: Record<string, unknown>,
-  newEntities: Record<string, Record<string, unknown> | null | undefined>,
-): Record<string, Record<string, unknown>> {
-  const result = { ...entities } as Record<string, Record<string, unknown>>;
-  for (const id in newEntities) {
-    if (newEntities[id] == null) {
-      delete result[id];
-    } else {
-      result[id] = {
-        ...(result[id] ?? {}),
-        ...(newEntities[id] as Record<string, unknown>),
-      };
-    }
-  }
-  return result;
-}
-
-// helper for working with normalizr
-// reducer that merges payload.entities
-export function handleEntities(
-  actionPattern: RegExp,
-  entityType: string,
-  reducer: Reducer<Record<string, unknown>> = (state = {}) => state,
-): Reducer<Record<string, unknown>> {
-  return (state = {}, action: UnknownAction) => {
-    const entities = getIn(action as object, [
-      "payload",
-      "entities",
-      entityType,
-    ]) as Record<string, Record<string, unknown>> | undefined;
-    if (actionPattern.test(action.type) && entities) {
-      state = mergeEntities(state, entities);
-    }
-    return reducer(state, action);
-  };
-}
 
 // THUNK DECORATORS
 
@@ -332,11 +283,7 @@ function withCachedData<TArgs extends unknown[]>(
         const hasRequestedProperties =
           properties &&
           existingData &&
-          _.all(
-            properties,
-            (p: string) =>
-              (existingData as Record<string, unknown>)[p] !== undefined,
-          );
+          _.all(properties, (p: string) => existingData[p] !== undefined);
 
         // return existing data if
         if (

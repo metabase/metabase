@@ -3,7 +3,7 @@ import type { Dispatch, RequestState, State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockRequestsState } from "metabase/redux/store/mocks/requests";
 
-import { fetchData, mergeEntities, updateData } from "./utils";
+import { fetchData, updateData } from "./utils";
 
 describe("Metadata", () => {
   const getDefaultArgs = (
@@ -228,32 +228,6 @@ describe("Metadata", () => {
       await delay(10);
       expect(argsFail.dispatch).toHaveBeenCalledTimes(2);
       expect(data).toEqual(args.existingData);
-    });
-  });
-
-  describe("mergeEntities", () => {
-    it("add an entity", () => {
-      expect(
-        mergeEntities(
-          { 1: { id: 1, name: "foo" } },
-          { 2: { id: 2, name: "bar" } },
-        ),
-      ).toEqual({ 1: { id: 1, name: "foo" }, 2: { id: 2, name: "bar" } });
-    });
-
-    it("merge entity keys", () => {
-      expect(
-        mergeEntities(
-          { 1: { id: 1, name: "foo", prop1: 123 } },
-          { 1: { id: 1, name: "bar", prop2: 456 } },
-        ),
-      ).toEqual({ 1: { id: 1, name: "bar", prop1: 123, prop2: 456 } });
-    });
-
-    it("delete an entity", () => {
-      expect(
-        mergeEntities({ 1: { id: 1 }, 2: { id: 2 } }, { 2: null }),
-      ).toEqual({ 1: { id: 1 } });
     });
   });
 });

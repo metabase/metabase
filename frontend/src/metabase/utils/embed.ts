@@ -1,17 +1,16 @@
-import type { EnhancedStore, UnknownAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { setInitialUrlOptions } from "metabase/redux/embed";
-import type { State } from "metabase/redux/store";
+import type { Dispatch } from "metabase/redux/store";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason
 export const IS_EMBED_PREVIEW = IFRAMED_IN_SELF;
 
-export function initializeEmbedding(store: EnhancedStore<State>): void {
+export function initializeEmbedding(store: { dispatch: Dispatch }): void {
   if (isWithinIframe()) {
     let currentHref: string | undefined;
     let currentFrame: ReturnType<typeof getFrameSpec> | undefined;
@@ -42,13 +41,11 @@ export function initializeEmbedding(store: EnhancedStore<State>): void {
     window.addEventListener("message", (e: MessageEvent) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
-          store.dispatch(push(e.data.metabase.location) as UnknownAction);
+          store.dispatch(push(e.data.metabase.location));
         }
       }
     });
-    store.dispatch(
-      setInitialUrlOptions(window.location) as unknown as UnknownAction,
-    );
+    store.dispatch(setInitialUrlOptions(window.location));
   }
 }
 
@@ -99,10 +96,8 @@ function getScrollHeight(): number {
   const appBarHeight =
     document.getElementById("[data-element-id=app-bar]")?.offsetHeight ?? 0;
   const dashboardHeaderHeight =
-    (
-      document.querySelector(
-        "[data-element-id=dashboard-header-container]",
-      ) as HTMLElement | null
+    document.querySelector<HTMLElement>(
+      "[data-element-id=dashboard-header-container]",
     )?.offsetHeight ?? 0;
   const dashboardContentHeight =
     document.querySelector("[data-element-id=dashboard-parameters-and-cards]")

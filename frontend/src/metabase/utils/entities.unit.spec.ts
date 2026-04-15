@@ -1,7 +1,8 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
 import { requestsReducer } from "metabase/redux/requests";
-import { combineEntities, createEntity } from "metabase/utils/entities";
+
+import { combineEntities, createEntity, mergeEntities } from "./entities";
 
 function getObject(id: number) {
   return { id: id, name: `object${id}` };
@@ -112,6 +113,35 @@ describe("entities", () => {
 
       await store.dispatch(widgets.actions.fetchList());
       expect(widgets.api.list).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("mergeEntities", () => {
+    it("add an entity", () => {
+      expect(
+        mergeEntities(
+          { actions: { id: 1, name: "foo" } },
+          { questions: { id: 2, name: "bar" } },
+        ),
+      ).toEqual({ 1: { id: 1, name: "foo" }, 2: { id: 2, name: "bar" } });
+    });
+
+    it("merge entity keys", () => {
+      expect(
+        mergeEntities(
+          { actions: { id: 1, name: "foo", prop1: 123 } },
+          { actions: { id: 1, name: "bar", prop2: 456 } },
+        ),
+      ).toEqual({ actions: { id: 1, name: "bar", prop1: 123, prop2: 456 } });
+    });
+
+    it("delete an entity", () => {
+      expect(
+        mergeEntities(
+          { databases: { id: 1 }, questions: { id: 2 } },
+          { dashboards: undefined },
+        ),
+      ).toEqual({ databases: { id: 1 } });
     });
   });
 });

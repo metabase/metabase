@@ -78,13 +78,13 @@ import type React from "react";
 import _ from "underscore";
 
 import { requestsReducer, setRequestUnloaded } from "metabase/redux/requests";
+import type { EntitiesState } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 
 import { DELETE, GET, POST, PUT } from "./api";
 import {
   combineReducers,
   compose,
-  handleEntities,
   withAction,
   withCachedDataAndRequestState,
   withRequestState,
@@ -233,7 +233,7 @@ export type Entity = {
   objectSelectors: Record<string, (object: any, ...args: any[]) => any>;
 
   // Reducers
-  reducers: Record<string, Reducer<Record<string, unknown>>>;
+  reducers: Record<string, EntitiesReducer>;
   requestsReducer: (
     state: Record<string, unknown> | undefined,
     action: { type: string },
@@ -272,6 +272,13 @@ export type Entity = {
  */
 
 type EntityRtkBridge = Record<string, any>;
+type EntitiesStateType = Partial<
+  Record<keyof EntitiesState, Record<string, unknown>>
+>;
+type EntitiesReducer = Reducer<
+  EntitiesStateType,
+  { type: string; payload: EntitiesStateType }
+>;
 
 type EntityDef = {
   name: string;
@@ -298,7 +305,7 @@ type EntityDef = {
   // Reducers in entity defs typically destructure `{ type, payload }` from the action
   // and accept any payload shape, so we type the action loosely here.
 
-  reducer?: Reducer<Record<string, unknown>, { type: string; payload: any }>;
+  reducer: EntitiesReducer;
   wrapEntity?: Entity["wrapEntity"];
   requestsReducer?: Entity["requestsReducer"];
   actionShouldInvalidateLists?: Entity["actionShouldInvalidateLists"];
@@ -309,10 +316,48 @@ type EntityDef = {
   [key: string]: any;
 };
 
+// helper for working with normalizr
+// merge each entity from newEntities with existing entity, if any
+// this ensures partial entities don't overwrite existing entities with more properties
+export function mergeEntities(
+  entities: EntitiesStateType,
+  newEntities: EntitiesStateType,
+): EntitiesStateType {
+  const result = { ...entities };
+  // Casting is necessary here because Object.keys always returns string[]
+  const ids = Object.keys(newEntities) as Array<keyof EntitiesState>;
+
+  for (const id of ids) {
+    const entry = newEntities[id];
+    if (entry == null) {
+      delete result[id];
+    } else {
+      result[id] = { ...(result[id] ?? {}), ...entry };
+    }
+  }
+  return result;
+}
+
+// helper for working with normalizr
+// reducer that merges payload.entities
+export function handleEntities(
+  actionPattern: RegExp,
+  entityType: string,
+  reducer: EntitiesReducer,
+): EntitiesReducer {
+  return (state = {}, action) => {
+    const entities = getIn(action, ["payload", "entities", entityType]);
+    if (actionPattern.test(action.type) && entities) {
+      state = mergeEntities(state, entities);
+    }
+    return reducer(state, action);
+  };
+}
+
 /**
  * @deprecated use "metabase/api" instead
  */
-export function createEntity(def: EntityDef): Entity {
+export function createEntity(def: Omit<EntityDef, "reducer">): Entity {
   // We use a mutable object internally during construction
   // then return it typed as Entity at the end.
   const entity = { ...def } as Entity;
@@ -847,7 +892,7 @@ export function createEntity(def: EntityDef): Entity {
   entity.reducers[entity.name] = handleEntities(
     /^metabase\/entities\//,
     entity.name,
-    def.reducer as Reducer<Record<string, unknown>> | undefined,
+    def.reducer,
   );
 
   const listReducer: Reducer<Record<string, unknown>> = (
