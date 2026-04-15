@@ -11,6 +11,7 @@
   metabase-provider?
   provider-and-model->provider]
  [metabase.metabot.scope
+  agent-database-read
   agent-metric-read
   agent-query-construct
   agent-query-execute

@@ -8,6 +8,12 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
+import type { DashboardState, State } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockStoreDashboard,
+} from "metabase/redux/store/mocks";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -17,12 +23,6 @@ import {
   createMockDashboardQueryMetadata,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import type { DashboardState, State } from "metabase-types/store";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockStoreDashboard,
-} from "metabase-types/store/mocks";
 
 import { dashboardReducers } from "../reducers";
 
