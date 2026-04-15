@@ -459,6 +459,26 @@ describe("admin > custom visualizations", () => {
       });
     });
 
+    it("falls back to the default viz on a public question (metabase#GDGT-2234)", () => {
+      H.updateSetting("enable-public-sharing", true);
+
+      H.createQuestion(
+        {
+          name: "Public Custom Viz Fallback",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "publicQuestionId" },
+      );
+
+      cy.get<number>("@publicQuestionId").then(H.visitPublicQuestion);
+
+      cy.findByTestId("table-root").should("be.visible");
+    });
+
     it("calls onClick when the viz fires a click", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
@@ -562,17 +582,14 @@ describe("admin > custom visualizations", () => {
         .should("be.visible");
     });
 
-    // TODO: public dashboard support for custom viz. Tracked by GDGT-2234 subtask.
-    it.skip("renders a custom viz question on a public dashboard", () => {
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    it("falls back to the default viz on a public dashboard (metabase#GDGT-2234)", () => {
+      H.updateSetting("enable-public-sharing", true);
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitPublicDashboard(dashcard.dashboard_id);
+        H.visitPublicDashboard(Number(dashcard.dashboard_id));
       });
 
-      H.getDashboardCard()
-        .findByText("Custom viz rendered successfully")
-        .should("be.visible");
+      H.getDashboardCard().findByTestId("table-root").should("be.visible");
     });
 
     it("exports the dashboard as a PDF", () => {
