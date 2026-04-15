@@ -212,14 +212,14 @@
 
 (api.macros/defendpoint :get "/v1/database" :- [:sequential ::database]
   "List all databases the current user has access to."
-  {:scope metabot/agent-database-read
+  {:scope "agent:database:read"
    :tool  {:name "list_databases"}}
   []
   (check-tool-result (entity-details/list-databases)))
 
 (api.macros/defendpoint :get "/v1/database/:id" :- ::database
   "Get details for a database by ID."
-  {:scope metabot/agent-database-read
+  {:scope "agent:database:read"
    :tool  {:name "get_database"}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-tables with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
