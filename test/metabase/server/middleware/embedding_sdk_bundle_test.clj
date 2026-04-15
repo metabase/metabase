@@ -5,7 +5,8 @@
    [metabase.config.core :as config]
    [metabase.server.lib.etag-cache :as lib.etag-cache]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
-   [metabase.server.routes.static :as static]))
+   [metabase.server.routes.static :as static]
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -147,7 +148,7 @@
       (try
         (spit tmp-file "should-not-be-served")
         ;; Sanity: the file IS reachable via resource-response directly
-        (is (some? (ring.util.response/resource-response "traversal-test-secret.js"))
+        (is (some? (response/resource-response "traversal-test-secret.js"))
             "Sanity check: temp file is on the classpath")
         ;; None of these traversal filenames should be able to reach it
         (doseq [filename ["../../../../traversal-test-secret.js"
