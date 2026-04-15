@@ -19,8 +19,10 @@ import {
 import {
   type MetricNameMap,
   applyTrackedDefinitions,
+  buildExpressionText,
   buildFullText,
   cleanupParens,
+  expressionTokensEqual,
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
@@ -230,9 +232,32 @@ export function useFormulaEditor({
         metricNamesRef.current,
       );
 
+    // Preserve custom expression names from the previous formula when the
+    // token structure hasn't changed (e.g. user edited unrelated parts of
+    // the formula or just re-ran the same expression).
+    const prevEntities = formulaEntitiesRef.current;
+    const metricNames = metricNamesRef.current;
+    const entitiesWithNames = reconciledEntities.map((entity) => {
+      if (!isExpressionEntry(entity)) {
+        return entity;
+      }
+      const prev = prevEntities.find(
+        (old) =>
+          isExpressionEntry(old) &&
+          expressionTokensEqual(old.tokens, entity.tokens),
+      );
+      if (prev && isExpressionEntry(prev)) {
+        const prevFormulaText = buildExpressionText(prev.tokens, metricNames);
+        if (prev.name !== prevFormulaText) {
+          return { ...entity, name: prev.name };
+        }
+      }
+      return entity;
+    });
+
     // Find which metric sourceIds are referenced in the parsed entities
     const referencedSourceIds = new Set<MetricSourceId>();
-    for (const entry of reconciledEntities) {
+    for (const entry of entitiesWithNames) {
       if (isMetricEntry(entry)) {
         referencedSourceIds.add(entry.id);
       } else if (isExpressionEntry(entry)) {
@@ -260,7 +285,7 @@ export function useFormulaEditor({
       }
     }
 
-    onFormulaEntitiesChange(reconciledEntities, slotMapping);
+    onFormulaEntitiesChange(entitiesWithNames, slotMapping);
     isEditingSessionActiveRef.current = false;
     setIsFocused(false);
     setIsOpen(false);

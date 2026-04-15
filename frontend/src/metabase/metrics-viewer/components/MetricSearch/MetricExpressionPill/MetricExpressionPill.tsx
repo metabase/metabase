@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
@@ -37,12 +37,24 @@ export function MetricExpressionPill({
     [expressionEntry.tokens, metricNames],
   );
 
-  const hasCustomName = expressionEntry.name !== expressionText;
+  const hasCustomName =
+    expressionEntry.name && expressionEntry.name !== expressionText;
 
   const expressionForPill = useMemo(
     () => buildExpressionForPill(expressionEntry.tokens, metricNames),
     [expressionEntry.tokens, metricNames],
   );
+
+  useEffect(() => {
+    if (isEditing) {
+      const textarea = editableRef.current?.querySelector("textarea");
+      if (textarea) {
+        textarea.focus();
+        const len = textarea.value.length;
+        textarea.setSelectionRange(0, len);
+      }
+    }
+  }, [isEditing]);
 
   const handleClick = useCallback(() => {
     if (!isEditing) {
@@ -56,10 +68,12 @@ export function MetricExpressionPill({
 
   const handleNameChange = useCallback(
     (value: string) => {
-      onNameChange(value);
+      // Empty name → revert to the formula-derived default so chart series
+      // and legend labels always have a non-empty display name.
+      onNameChange(value || expressionText);
       setIsEditing(false);
     },
-    [onNameChange],
+    [onNameChange, expressionText],
   );
 
   return (
@@ -74,6 +88,7 @@ export function MetricExpressionPill({
       onRemove={onRemove}
       removeButtonProps={{
         mr: 0,
+        ml: 0,
         "aria-label": t`Remove expression`,
       }}
       onClick={handleClick}
@@ -81,19 +96,18 @@ export function MetricExpressionPill({
     >
       <Flex align="center" gap="xs">
         <SourceColorIndicator colors={colors} />
-        {isEditing ? (
+        {isEditing || hasCustomName ? (
           <EditableText
             ref={editableRef}
             className={S.editableName}
             initialValue={expressionEntry.name}
-            placeholder={t`Expression name`}
-            isEditing
+            placeholder={expressionText}
+            isEditing={isEditing}
+            isOptional
             onChange={handleNameChange}
             onBlur={handleBlur}
             data-testid="expression-name-input"
           />
-        ) : hasCustomName ? (
-          <span className={S.expressionText}>{expressionEntry.name}</span>
         ) : (
           <Flex align="center" gap={0}>
             {expressionForPill.map((segment, i) => {
@@ -115,6 +129,7 @@ export function MetricExpressionPill({
                 </span>
               );
             })}
+            <span className={S.expressionText}>{"\u00a0"}</span>
           </Flex>
         )}
       </Flex>

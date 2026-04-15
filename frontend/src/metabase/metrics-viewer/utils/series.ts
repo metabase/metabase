@@ -343,7 +343,13 @@ export function computeSourceBreakoutColors(
     }
 
     if (isExpressionEntry(entity)) {
-      entries.push({ entityIndex, keys: [uniqueName], keyToBreakoutValue: {} });
+      // Use entity.id (which encodes the formula text) as the color key so
+      // that renaming the expression doesn't change its assigned color.
+      entries.push({
+        entityIndex,
+        keys: [entity.id],
+        keyToBreakoutValue: {},
+      });
     }
   }
 
