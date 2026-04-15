@@ -24,7 +24,7 @@
 ;;; Query URL Encoding
 
 (defn query->url-hash
-  "Convert an MLv2/MBQL query to a base64-encoded URL hash.
+  "Convert an MBQL 4 (legacy) or MBQL 5 query to a base64-encoded URL hash.
   Used for /question# URLs."
   [query]
   (-> {:dataset_query query}

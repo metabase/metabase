@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -233,17 +234,13 @@ width: fixed
   (snapshot [_this]
     (->MockSourceSnapshot source-id base-url branch fail-mode files-atom managed-dirs)))
 
-(def ^:private default-managed-dirs
-  "Default managed dirs for mock sources, matching v2.ingest/legal-top-level-paths."
-  #{"actions" "collections" "databases" "glossary" "python_libraries" "python-libraries" "snippets" "transforms"})
-
 (defn create-mock-source
   "Create a mock Source for testing. Optionally accepts `:branch`, `:fail-mode`, `:initial-files`, and `:managed-dirs`."
   [& {:keys [branch fail-mode initial-files managed-dirs]
       :or {branch "main"
            fail-mode nil
            initial-files nil
-           managed-dirs default-managed-dirs}}]
+           managed-dirs ingest/legal-top-level-paths}}]
   (let [default-files {"main" {"collections/M-Q4pcV0qkiyJ0kiSWECl_some_collection/M-Q4pcV0qkiyJ0kiSWECl_some_collection.yaml"
                                (generate-collection-yaml "M-Q4pcV0qkiyJ0kiSWECl" "Some Collection")
 
@@ -679,3 +676,16 @@ serdes/meta:
 "
           name entity-id content (or collection-id "null")
           entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn generate-transform-tag-yaml
+  "Generates YAML content for a TransformTag with the given `entity-id` and `name`."
+  [entity-id name]
+  (format "created_at: '2024-08-28T09:46:18.671622Z'
+entity_id: %s
+name: %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: TransformTag
+"
+          entity-id name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))

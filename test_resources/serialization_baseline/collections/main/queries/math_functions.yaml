@@ -1,0 +1,485 @@
+name: Math Functions
+entity_id: jPrM-oh3r1BR42xSs4Ipj
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - expressions:
+    - - abs
+      - lib/expression-name: Absolute Discount
+      - - '-'
+        - {}
+        - - field
+          - {}
+          - - Sample Database
+            - PUBLIC
+            - PRODUCTS
+            - PRICE
+        - 50
+    - - ceil
+      - lib/expression-name: Price Ceiling
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+    - - floor
+      - lib/expression-name: Price Floor
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+    - - round
+      - lib/expression-name: Rounded Price
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+    - - power
+      - lib/expression-name: Rating Squared
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - RATING
+      - 2
+    - - sqrt
+      - lib/expression-name: Price Sqrt
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+    - - exp
+      - lib/expression-name: Price Exp
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - RATING
+    - - log
+      - lib/expression-name: Price Log
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+    limit: 10
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/BigInteger
+  database_type: BIGINT
+  display_name: ID
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - ID
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - ID
+  name: ID
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: ID
+  lib/desired-column-alias: ID
+  lib/original-display-name: ID
+  lib/original-name: ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Ean
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - EAN
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - EAN
+  name: EAN
+  position: 1
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: EAN
+  lib/desired-column-alias: EAN
+  lib/original-display-name: Ean
+  lib/original-name: EAN
+  lib/source: source/table-defaults
+  lib/source-column-alias: EAN
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Title
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - TITLE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - TITLE
+  name: TITLE
+  position: 2
+  semantic_type: type/Title
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: TITLE
+  lib/desired-column-alias: TITLE
+  lib/original-display-name: Title
+  lib/original-name: TITLE
+  lib/source: source/table-defaults
+  lib/source-column-alias: TITLE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Category
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - CATEGORY
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CATEGORY
+  name: CATEGORY
+  position: 3
+  semantic_type: type/Category
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: CATEGORY
+  lib/desired-column-alias: CATEGORY
+  lib/original-display-name: Category
+  lib/original-name: CATEGORY
+  lib/source: source/table-defaults
+  lib/source-column-alias: CATEGORY
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Vendor
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - VENDOR
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - VENDOR
+  name: VENDOR
+  position: 4
+  semantic_type: type/Company
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: VENDOR
+  lib/desired-column-alias: VENDOR
+  lib/original-display-name: Vendor
+  lib/original-name: VENDOR
+  lib/source: source/table-defaults
+  lib/source-column-alias: VENDOR
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Price
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - PRICE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - PRICE
+  name: PRICE
+  position: 5
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: PRICE
+  lib/desired-column-alias: PRICE
+  lib/original-display-name: Price
+  lib/original-name: PRICE
+  lib/source: source/table-defaults
+  lib/source-column-alias: PRICE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Rating
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - RATING
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - RATING
+  name: RATING
+  position: 6
+  semantic_type: type/Score
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: RATING
+  lib/desired-column-alias: RATING
+  lib/original-display-name: Rating
+  lib/original-name: RATING
+  lib/source: source/table-defaults
+  lib/source-column-alias: RATING
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - CREATED_AT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CREATED_AT
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Absolute Discount
+  effective_type: type/Float
+  field_ref:
+  - expression
+  - Absolute Discount
+  name: Absolute Discount
+  source: fields
+  lib/deduplicated-name: Absolute Discount
+  lib/desired-column-alias: Absolute Discount
+  lib/expression-name: Absolute Discount
+  lib/original-name: Absolute Discount
+  lib/source: source/expressions
+  lib/source-column-alias: Absolute Discount
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Price Ceiling
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Price Ceiling
+  name: Price Ceiling
+  source: fields
+  lib/deduplicated-name: Price Ceiling
+  lib/desired-column-alias: Price Ceiling
+  lib/expression-name: Price Ceiling
+  lib/original-name: Price Ceiling
+  lib/source: source/expressions
+  lib/source-column-alias: Price Ceiling
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Price Floor
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Price Floor
+  name: Price Floor
+  source: fields
+  lib/deduplicated-name: Price Floor
+  lib/desired-column-alias: Price Floor
+  lib/expression-name: Price Floor
+  lib/original-name: Price Floor
+  lib/source: source/expressions
+  lib/source-column-alias: Price Floor
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Rounded Price
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Rounded Price
+  name: Rounded Price
+  source: fields
+  lib/deduplicated-name: Rounded Price
+  lib/desired-column-alias: Rounded Price
+  lib/expression-name: Rounded Price
+  lib/original-name: Rounded Price
+  lib/source: source/expressions
+  lib/source-column-alias: Rounded Price
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Rating Squared
+  effective_type: type/Float
+  field_ref:
+  - expression
+  - Rating Squared
+  name: Rating Squared
+  source: fields
+  lib/deduplicated-name: Rating Squared
+  lib/desired-column-alias: Rating Squared
+  lib/expression-name: Rating Squared
+  lib/original-name: Rating Squared
+  lib/source: source/expressions
+  lib/source-column-alias: Rating Squared
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Price Sqrt
+  effective_type: type/Float
+  field_ref:
+  - expression
+  - Price Sqrt
+  name: Price Sqrt
+  source: fields
+  lib/deduplicated-name: Price Sqrt
+  lib/desired-column-alias: Price Sqrt
+  lib/expression-name: Price Sqrt
+  lib/original-name: Price Sqrt
+  lib/source: source/expressions
+  lib/source-column-alias: Price Sqrt
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Price Exp
+  effective_type: type/Float
+  field_ref:
+  - expression
+  - Price Exp
+  name: Price Exp
+  source: fields
+  lib/deduplicated-name: Price Exp
+  lib/desired-column-alias: Price Exp
+  lib/expression-name: Price Exp
+  lib/original-name: Price Exp
+  lib/source: source/expressions
+  lib/source-column-alias: Price Exp
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Price Log
+  effective_type: type/Float
+  field_ref:
+  - expression
+  - Price Log
+  name: Price Log
+  source: fields
+  lib/deduplicated-name: Price Log
+  lib/desired-column-alias: Price Log
+  lib/expression-name: Price Log
+  lib/original-name: Price Log
+  lib/source: source/expressions
+  lib/source-column-alias: Price Log
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: jPrM-oh3r1BR42xSs4Ipj
+  label: math_functions
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

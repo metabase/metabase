@@ -8,7 +8,7 @@ import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { PersistedModels } from "metabase/entities/persisted-models";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import { ErrorBox } from "./ModelCacheRefreshJobs.styled";

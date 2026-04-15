@@ -1,4 +1,4 @@
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 
 type Props = {

@@ -147,7 +147,7 @@
 ;;; make sure that given an existing query the expected description was generated correctly.
 
 (defn- describe-legacy-query-order-by [query]
-  (-> (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))
+  (-> (lib.query/query meta/metadata-provider (lib.convert/->mbql5 query))
       (lib.metadata.calculation/describe-top-level-key -1 :order-by)))
 
 (deftest ^:parallel describe-order-by-test

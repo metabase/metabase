@@ -1,5 +1,4 @@
 import { useField } from "formik";
-import type { HTMLAttributes } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -21,12 +20,12 @@ import { SnippetCollectionName } from "metabase/common/components/SnippetCollect
 import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Collections } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { Button, Icon, Input } from "metabase/ui";
+import { Button, Icon, Input, type InputWrapperProps } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
-interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
+interface FormCollectionPickerProps extends InputWrapperProps {
   name: string;
   title?: string;
   placeholder?: string;
@@ -75,6 +74,7 @@ function FormCollectionPicker({
   entityType,
   collectionPickerModalProps,
   onCollectionSelect,
+  ...rest
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -161,6 +161,7 @@ function FormCollectionPicker({
         label={title}
         labelProps={{ htmlFor: id }}
         error={touched ? error : undefined}
+        {...rest}
       >
         <Button
           data-testid="collection-picker-button"

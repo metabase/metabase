@@ -9,7 +9,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { uuid } from "metabase/lib/uuid";
+import { uuid } from "metabase/utils/uuid";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
@@ -336,7 +336,7 @@ describe("scenarios > embedding > full app", () => {
 
     /**
      * @param {object} option
-     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     * @param {import("metabase/redux/store").InteractiveEmbeddingOptions} [option.searchParameters]
      */
     function startNewEmbeddingQuestion({ searchParameters } = {}) {
       H.visitFullAppEmbeddingUrl({
@@ -820,7 +820,7 @@ describe("scenarios > embedding > full app", () => {
      *
      * @param {object} option
      * @param {boolean} [option.isMultiStageDataPicker]
-     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     * @param {import("metabase/redux/store").InteractiveEmbeddingOptions} [option.searchParameters]
      */
     function startNewEmbeddingQuestion({
       isMultiStageDataPicker = false,

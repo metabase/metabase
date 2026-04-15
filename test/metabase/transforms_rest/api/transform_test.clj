@@ -3,9 +3,10 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.transforms.transform :as transform.model]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.test :as qp]
@@ -13,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
@@ -91,6 +93,59 @@
                 (testing "Response hydrates owner"
                   (is (map? (:owner response)))
                   (is (= lucky-id (get-in response [:owner :id]))))))))))))
+
+(deftest update-transform-without-schema-test
+  (testing "Updating a transform to clear its schema is rejected on schemas-supporting databases"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (when (driver.u/supports? driver/*driver* :schemas (mt/db))
+            (with-transform-cleanup! [table-name "update_schema_products"]
+              (let [query     (make-query "Gadget")
+                    schema    (get-test-schema)
+                    created   (mt/user-http-request :crowberto :post 200 "transform"
+                                                    {:name   "Update Schema Products"
+                                                     :source {:type  "query"
+                                                              :query query}
+                                                     :target {:type   "table"
+                                                              :schema schema
+                                                              :name   table-name}})
+                    transform-id (:id created)]
+                (testing "PUT with a nil schema in target is rejected"
+                  (mt/user-http-request :crowberto :put 400
+                                        (format "transform/%s" transform-id)
+                                        {:target {:type   "table"
+                                                  :schema nil
+                                                  :name   table-name}}))
+                (testing "PUT with a non-blank schema still succeeds"
+                  (let [updated (mt/user-http-request :crowberto :put 200
+                                                      (format "transform/%s" transform-id)
+                                                      {:name "Renamed"})]
+                    (is (= "Renamed" (:name updated)))))))))))))
+
+(deftest create-transform-without-schema-test
+  (testing "Creating a transform without a schema is rejected on databases that support schemas, and allowed on those that don't"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (with-transform-cleanup! [table-name "no_schema_products"]
+                (let [query   (make-query "Gadget")
+                      request (fn [schema]
+                                {:name   "No Schema Products"
+                                 :source {:type  "query"
+                                          :query query}
+                                 :target {:type   "table"
+                                          :schema schema
+                                          :name   table-name}})]
+                  (if (driver.u/supports? driver/*driver* :schemas (mt/db))
+                    (testing "nil schema is rejected with 400 on schemas-supporting driver"
+                      (let [response (mt/user-http-request :lucky :post 400 "transform" (request nil))]
+                        (is (nil? (:id response)))))
+                    (testing "nil schema is allowed on non-schemas drivers"
+                      (let [response (mt/user-http-request :lucky :post 200 "transform" (request nil))]
+                        (is (some? (:id response)))))))))))))))
 
 (deftest create-transform-with-param-test
   (mt/with-premium-features #{}

@@ -62,6 +62,7 @@ const InvalidateNowFormBody = ({
         .with("dashboard", () => t`Clear cache for this dashboard`)
         .with("question", () => t`Clear cache for this question`)
         .with("database", () => t`Clear cache for this database`)
+        .with("metric", () => t`Clear cache for this metric`)
         .exhaustive(),
     [targetModel],
   );

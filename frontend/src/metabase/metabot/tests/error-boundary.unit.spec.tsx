@@ -5,8 +5,11 @@ import { assocIn } from "icepick";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import {
+  createMockUser,
+  createMockUserMetabotPermissions,
+} from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
 import { FIXED_METABOT_IDS } from "../constants";
@@ -44,6 +47,10 @@ function setup() {
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: [], offset: 0, limit: 3, total: 0 },
+  );
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    createMockUserMetabotPermissions(),
   );
 
   renderWithProviders(

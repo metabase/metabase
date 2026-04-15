@@ -1,8 +1,0 @@
-name: Some Collection
-entity_id: M-Q4pcV0qkiyJ0kiSWECl
-slug: some_collection
-created_at: '2024-08-28T09:46:18.671622Z'
-serdes/meta:
-- id: M-Q4pcV0qkiyJ0kiSWECl
-  label: some_collection
-  model: Collection

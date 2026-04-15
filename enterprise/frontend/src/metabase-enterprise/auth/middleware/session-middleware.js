@@ -2,7 +2,7 @@ import Cookies from "js-cookie";
 import { replace } from "react-router-redux";
 
 import { logout, refreshSession } from "metabase/auth/actions";
-import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
 export const SESSION_KEY = "metabase.TIMEOUT";
 export const COOKIE_POOLING_TIMEOUT = 3000;

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
 import { useGetTransformQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/utils/redux";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
 import type {
   PythonTransformSource,

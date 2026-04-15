@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
 
     steps:
-      - uses: tibdex/github-app-token@v2.1.0
+      - uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
         id: generate-token
         with:
           app_id: ${{ secrets.METABASE_BOT_APP_ID }}

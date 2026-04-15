@@ -145,8 +145,6 @@ modules/drivers/*/.lsp/*
 
 .github/static-viz-sources.yaml
 
-# airgap
-/resources/airgap/
 
 # swc
 .swc/
@@ -177,3 +175,4 @@ CLAUDE.local.md
 /resources/python-sources/.lock
 __pycache__/
 .mcp.json
+.claude/worktrees

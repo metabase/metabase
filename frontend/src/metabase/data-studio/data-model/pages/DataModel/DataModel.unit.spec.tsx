@@ -24,9 +24,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   Database,
@@ -67,7 +67,7 @@ const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,
   schemaName: undefined,
   tableId: undefined,
-  tab: "field",
+  tab: "details",
   fieldId: undefined,
 };
 
@@ -265,7 +265,7 @@ async function setup({
         />
         <Redirect
           from="database/:databaseId/schema/:schemaId/table/:tableId"
-          to="database/:databaseId/schema/:schemaId/table/:tableId/field"
+          to="database/:databaseId/schema/:schemaId/table/:tableId/details"
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
@@ -385,6 +385,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
       await userEvent.clear(
         getTableSectionFieldNameInput(ORDERS_DISCOUNT_FIELD.display_name),
@@ -403,6 +404,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
       await userEvent.clear(getFieldNameInput());
       await userEvent.tab();
@@ -454,6 +456,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await userEvent.click(screen.getByRole("button", { name: /Sorting/ }));
 
       expect(screen.getByLabelText("Database order")).toBeInTheDocument();
@@ -469,6 +472,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
       await userEvent.click(getFieldVisibilityInput());
@@ -486,6 +490,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
       const input = getFieldSemanticTypeInput();
@@ -508,6 +513,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_PRODUCT_ID_FIELD.display_name);
 
       const input = getFieldSemanticTypeFkTargetInput();
@@ -532,6 +538,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_USER_ID_FIELD.display_name);
 
       const input = getFieldSemanticTypeFkTargetInput();
@@ -547,6 +554,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_ID_FIELD.display_name);
 
       expect(
@@ -561,6 +569,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
       const currencyInput = within(getFieldSection()).getByPlaceholderText(
@@ -587,6 +596,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_ID_FIELD.display_name);
 
       expect(
@@ -675,6 +685,8 @@ describe("DataModel", () => {
 
       expect(getTableNameInput()).toBeInTheDocument();
       expect(getTableNameInput()).toHaveValue(JSON_TABLE.display_name);
+
+      await clickFieldsTab();
 
       expect(
         getTableSectionFieldNameInput(JSON_FIELD_ROOT.display_name),
@@ -1096,6 +1108,10 @@ async function findTablePickerItem(
 }
 
 /** table section helpers */
+
+async function clickFieldsTab() {
+  await userEvent.click(screen.getByRole("tab", { name: /Fields/ }));
+}
 
 function getTableSection() {
   return screen.getByTestId("table-section");

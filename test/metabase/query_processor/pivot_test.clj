@@ -632,7 +632,7 @@
 
 (deftest ^:parallel mbql-5-query-test
   (testing "Should be able to run a pivot query for an MBQL 5 query (#39024)"
-    ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in MLv2, so it should return
+    ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in Lib, so it should return
     ;; the same exact results.
     (let [metadata-provider  (mt/metadata-provider)
           reviews            (lib.metadata/table metadata-provider (mt/id :reviews))

@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
+import type { DataSegregationStrategy } from "metabase-types/api";
 
 export type IsolationFieldConfig = {
   /** The attribute key sent to the API, e.g. organization_id */

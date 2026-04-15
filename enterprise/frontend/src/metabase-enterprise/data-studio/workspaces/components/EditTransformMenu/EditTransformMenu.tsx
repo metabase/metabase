@@ -3,9 +3,6 @@ import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { transformEdit } from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { EditTransformMenuProps } from "metabase/plugins/oss/database";
 import {
@@ -20,6 +17,9 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+import { transformEdit } from "metabase/utils/urls";
 import {
   useCreateWorkspaceMutation,
   useGetWorkspaceCheckoutQuery,

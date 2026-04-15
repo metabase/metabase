@@ -7,10 +7,12 @@
    Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
    metabase.sql-tools.init to avoid circular dependencies."
   (:require
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as common]
    [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.metrics :as metrics]
    [metabase.sql-tools.settings :as sql-tools.settings]
+   [metabase.sql-tools.sqlglot.core :as sqlglot]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p]))
@@ -210,3 +212,8 @@
    to-dialect :- [:maybe :string]]
   (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
                                 sql from-dialect to-dialect))
+
+(defn is-single-select-stmt?
+  "Wrapper around `sql-parsing/is-single-select-stmt`."
+  [driver sql]
+  (sql-parsing/is-single-select-stmt? (sqlglot/driver->dialect driver) sql))

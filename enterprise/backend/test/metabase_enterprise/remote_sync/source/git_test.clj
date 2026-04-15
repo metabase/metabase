@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import (java.io File)
@@ -80,10 +81,6 @@
 
     remote))
 
-(def ^:private test-managed-dirs
-  "Managed dirs for test sources — matches v2.ingest/legal-top-level-paths."
-  #{"actions" "collections" "databases" "glossary" "python_libraries" "python-libraries" "snippets" "transforms"})
-
 (defn- ->source!
   "Creates a (local) 'remote' repo and initializes a git source that uses it"
   [branch {:keys [^Git git] :as _remote-repo}]
@@ -93,7 +90,7 @@
                        (.toURL)
                        (.toExternalForm))
         local-repo (#'git/get-jgit (#'git/repo-path {:remote-url remote-url}) {:remote-url remote-url})]
-    (git/->GitSource local-repo remote-url branch nil test-managed-dirs)))
+    (git/->GitSource local-repo remote-url branch nil ingest/legal-top-level-paths)))
 
 (defn- init-source!
   [branch dir & config]

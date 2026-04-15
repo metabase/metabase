@@ -4,12 +4,14 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.deftool :as deftool]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
@@ -60,19 +62,18 @@
 ;; - Use :encode/api transformers to convert kebab-case data from internal functions
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
-(mr/def ::field-type
-  "A data type for a field derived from Metabase's type hierarchy."
-  [:enum :boolean :date :datetime :time :number :string])
-
 (mr/def ::field
   "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:field_id :string]
    [:name :string]
-   [:type {:optional true} [:maybe ::field-type]]
+   [:display_name :string]
    [:description {:optional true} [:maybe :string]]
-   [:database_type {:optional true} [:maybe :string]]
+   [:base_type :string]
+   [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type {:optional true} [:maybe :string]]
+   [:database_type {:optional true} [:maybe :string]]
+   [:coercion_strategy {:optional true} [:maybe :string]]
    [:field_values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::entity-type
@@ -250,7 +251,7 @@
 
 (api.macros/defendpoint :get "/v1/table/:id" :- ::table
   "Get details for a table by ID."
-  {:scope "agent:table:read"
+  {:scope metabot/agent-table-read
    :tool  {:name "get_table"
            :description "Get details about a table including its fields, related tables, and metrics."}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -276,7 +277,7 @@
 
 (api.macros/defendpoint :get "/v1/table/:id/field/:field-id/values" :- ::field-values
   "Get statistics and sample values for a table field."
-  {:scope "agent:table:read"
+  {:scope metabot/agent-table-read
    :tool  {:name "get_table_field_values"
            :description "Get sample values and statistics for a field in a table."}}
   [{:keys [id field-id]} :- [:map
@@ -292,7 +293,7 @@
 
 (api.macros/defendpoint :get "/v1/metric/:id" :- ::metric
   "Get details for a metric by ID."
-  {:scope "agent:metric:read"
+  {:scope metabot/agent-metric-read
    :tool  {:name "get_metric"
            :description "Get details about a metric including its queryable dimensions."}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -314,7 +315,7 @@
 
 (api.macros/defendpoint :get "/v1/metric/:id/field/:field-id/values" :- ::field-values
   "Get statistics and sample values for a metric field."
-  {:scope "agent:metric:read"
+  {:scope metabot/agent-metric-read
    :tool  {:name "get_metric_field_values"
            :description "Get sample values and statistics for a field in a metric."}}
   [{:keys [id field-id]} :- [:map
@@ -333,7 +334,7 @@
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
-  {:scope "agent:search"
+  {:scope metabot/agent-search
    :tool  {:name "search"
            :description "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search."
            :annotations {:read-only? true}}}
@@ -623,7 +624,7 @@
 
   For tables, supports: filters, fields, aggregations, group_by, order_by, limit.
   For metrics, supports: filters, group_by (aggregation is defined by the metric)."
-  {:scope "agent:query:construct"
+  {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
            :description (str "Construct a query against a Metabase table or metric. "
                              "Returns an opaque query string that can be executed with execute_query.\n\n"
@@ -656,15 +657,15 @@
   (-> token u/decode-base64 json/decode+kw))
 
 (defn- build-query-for-execution
-  "Construct a pMBQL query map from table_id or metric_id params. Returns {:query <map> :limit <int>}.
-   The JSON round-trip strips lib metadata so the query is a plain pMBQL map suitable for token serialization."
+  "Construct a MBQL 5 query map from table_id or metric_id params. Returns {:query <map> :limit <int>}.
+   The JSON round-trip strips lib metadata so the query is a plain MBQL 5 map suitable for token serialization."
   [body]
   (let [limit (min (or (:limit body) default-query-row-limit) max-query-row-limit)
         query (construct-query* (assoc body :limit limit))]
     {:query (json/decode+kw (json/encode query)) :limit limit}))
 
 (defn- apply-page-to-query
-  "Apply :page clause to the last stage of a pMBQL query map."
+  "Apply :page clause to the last stage of a MBQL 5 query map."
   [query-map page items]
   (let [stages   (:stages query-map)
         last-idx (dec (count stages))]
@@ -713,11 +714,11 @@
             {:query query :limit (:limit pagination) :page (:page pagination)})
           (let [{:keys [query limit]} (build-query-for-execution body)]
             {:query query :limit limit :page 1}))
-        pmbql-with-page (apply-page-to-query query page limit)]
+        mbql5-with-page (apply-page-to-query query page limit)]
     (qp.streaming/streaming-response
      [rff :api]
       (qp/process-query
-       (prepare-combined-query pmbql-with-page)
+       (prepare-combined-query mbql5-with-page)
        (qp.streaming/transforming-query-response
         rff
         (fn [result]
@@ -770,8 +771,8 @@
   - On success: {:data {:cols [...] :rows [...]} :row_count N :status :completed :running_time M}
   - On failure: {:status :failed :error \"message\" ...}
 
-  Agent query row limits are enforced (200 rows per request)."
-  {:scope "agent:query:execute"
+  Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
+  {:scope metabot/agent-query-execute
    :tool  {:name "execute_query"
            :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."}}
   [_route-params
@@ -861,9 +862,8 @@
   [handler]
   (fn [{:keys [headers metabase-user-id token-scopes] :as request} respond raise]
     (cond
-      ;; Already authenticated via X-Metabase-Session (standard middleware handled it).
-      ;; Preserve any pre-existing :token-scopes (e.g., forwarded from internal MCP calls);
-      ;; default to unrestricted for normal session-authenticated browser requests.
+      ;; Already authenticated via X-Metabase-Session or synthetic request (e.g. MCP dispatch).
+      ;; Preserve existing :token-scopes when present (MCP sets them on the synthetic request).
       metabase-user-id
       (handler (cond-> request
                  (not token-scopes) (assoc :token-scopes #{::scope/unrestricted}))
@@ -902,6 +902,10 @@
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
+
+(def +agent-api-enabled
+  "Wrap routes so they may only be accessed when the Agent API is enabled."
+  agent-api.validation/+agent-api-enabled)
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 

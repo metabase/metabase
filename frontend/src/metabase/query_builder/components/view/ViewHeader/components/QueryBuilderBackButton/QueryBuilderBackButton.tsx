@@ -3,11 +3,11 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { getParentEntity } from "metabase/query_builder/selectors";
 import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { CollectionItemModel, DashboardId } from "metabase-types/api";
 
 import S from "./QueryBuilderBackButton.module.css";

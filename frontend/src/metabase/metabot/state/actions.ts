@@ -9,10 +9,13 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
+import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import { createAsyncThunk } from "metabase/utils/redux";
 import type {
   JSONValue,
   MetabotAgentRequest,
@@ -20,7 +23,6 @@ import type {
   MetabotChatContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
 import { METABOT_ERR_MSG } from "../constants";
 
@@ -74,7 +76,10 @@ type PromptErrorOutcome = {
   shouldRetry: boolean;
 };
 
-const handleResponseError = (error: unknown): PromptErrorOutcome => {
+const handleResponseError = (
+  error: unknown,
+  metabotName: string,
+): PromptErrorOutcome => {
   return match(error)
     .with({ name: "AbortError" }, () => ({
       errorMessage: false as const,
@@ -86,7 +91,7 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       () => ({
         errorMessage: {
           type: "alert" as const,
-          message: METABOT_ERR_MSG.unauthenticated,
+          message: METABOT_ERR_MSG.unauthenticated(metabotName),
         },
         shouldRetry: true,
       }),
@@ -333,6 +338,10 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+
+                if (part.value.buffer_id === "qb") {
+                  dispatch(setIsNativeEditorOpen(true));
+                }
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
@@ -411,7 +420,13 @@ export const sendAgentRequest = createAsyncThunk<
       });
     } catch (error) {
       console.error(error);
-      return rejectWithValue({ type: "error", ...handleResponseError(error) });
+      return rejectWithValue({
+        type: "error",
+        ...handleResponseError(
+          error,
+          getSetting(getState(), "metabot-name") || "Metabot",
+        ),
+      });
     }
   },
 );

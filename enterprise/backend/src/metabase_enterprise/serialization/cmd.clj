@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase-enterprise.serialization.v2.storage.files :as v2.storage.files]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
@@ -113,7 +114,7 @@
         report (try
                  (serdes/with-cache
                    (-> (v2.extract/extract opts)
-                       (v2.storage/store! path)))
+                       (v2.storage/store! (v2.storage.files/file-writer path))))
                  ;; we could publish :event/serdes-dump to go with :event/serdes-load above, but
                  ;; nothing would listen to it currently
                  (catch Exception e
@@ -142,6 +143,9 @@
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))
+
+(comment
+  (v2-dump! "/tmp/serdes" {}))
 
 (defn seed-entity-ids!
   "Add entity IDs for instances of serializable models that don't already have them.

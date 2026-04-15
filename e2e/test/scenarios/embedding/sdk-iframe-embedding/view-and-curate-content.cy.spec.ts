@@ -43,11 +43,11 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible");
     });
 
-    it("should show New Exploration button and open data picker when clicked", () => {
+    it("should show New Question button and open data picker when clicked", () => {
       setupEmbed('<metabase-browser initial-collection="root" />');
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New exploration")
+        .findByText("New question")
         .should("be.visible")
         .click();
 
@@ -84,7 +84,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("have.length", 5);
     });
 
-    it("should hide New Exploration button when with-new-question is false", () => {
+    it("should hide New Question button when with-new-question is false", () => {
       setupEmbed(`
         <metabase-browser
           initial-collection="root"
@@ -93,7 +93,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New exploration")
+        .findByText("New question")
         .should("not.exist");
     });
   });
@@ -158,13 +158,13 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible");
     });
 
-    it("should show New Exploration button and open data picker when clicked", () => {
+    it("should show New Question button and open data picker when clicked", () => {
       setupEmbed(
         '<metabase-browser initial-collection="root" read-only="false" />',
       );
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New exploration")
+        .findByText("New question")
         .should("be.visible")
         .click();
 
@@ -179,7 +179,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         '<metabase-browser initial-collection="root" read-only="false" />',
       );
 
-      H.getSimpleEmbedIframeContent().findByText("New exploration").click();
+      H.getSimpleEmbedIframeContent().findByText("New question").click();
 
       cy.log("select data model");
       H.getSimpleEmbedIframeContent().findByText("Orders").click();
@@ -280,7 +280,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible");
     });
 
-    it("should hide New Exploration button when with-new-question is false", () => {
+    it("should hide New Question button when with-new-question is false", () => {
       setupEmbed(`
         <metabase-browser
           initial-collection="root"
@@ -290,7 +290,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New exploration")
+        .findByText("New question")
         .should("not.exist");
     });
 
@@ -303,7 +303,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         />
       `);
 
-      H.getSimpleEmbedIframeContent().findByText("New exploration").click();
+      H.getSimpleEmbedIframeContent().findByText("New question").click();
 
       cy.log("should show data picker with limited entity types");
       H.getSimpleEmbedIframeContent()

@@ -99,6 +99,15 @@ export const GEO_METRIC = createMockNormalizedMetric({
   ],
 });
 
+export const GEO_DIM_IDX = {
+  STATE: 0,
+  COUNTRY: 1,
+  CITY: 2,
+  LATITUDE: 3,
+  LONGITUDE: 4,
+  DATE_TIME: 5,
+};
+
 export function createMetricMetadata(metrics: NormalizedMetric[]): Metadata {
   const metadata = new Metadata();
   metadata.metrics = {};

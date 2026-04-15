@@ -37,7 +37,7 @@ describe("metabot > errors", () => {
 
     await assertConversation([
       ["user", "Who is your favorite?"],
-      ["agent", METABOT_ERR_MSG.unauthenticated],
+      ["agent", METABOT_ERR_MSG.unauthenticated("Metabot")],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });

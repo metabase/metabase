@@ -4,8 +4,8 @@ import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type {
   GetEmbeddableCard,
   GetEmbeddableDashboard,

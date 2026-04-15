@@ -890,6 +890,18 @@
   [_driver [_ _nfc-path]]
   nil)
 
+(defn- parent-id->ancestor-names
+  "Walk the parent chain for a field with `:parent-id` set and return the ancestor field names, \"oldest\" first.
+  For example, if field `c` has parent `b`, returns `[\"b\"]`.
+  If `c` has parent `b` which has parent `a`, returns `[\"a\" \"b\"]`."
+  [parent-id]
+  (loop [id   parent-id
+         path ()]
+    (if-not id
+      (vec path)
+      (let [parent (driver-api/field (driver-api/metadata-provider) id)]
+        (recur (:parent-id parent) (cons (:name parent) path))))))
+
 (defmethod ->honeysql [:sql :field]
   [driver [_ id-or-name options :as field-clause]]
   (try
@@ -902,6 +914,10 @@
           ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
           field-metadata       (when (integer? id-or-name)
                                  (driver-api/field (driver-api/metadata-provider) id-or-name))
+          ;; For fields with parent-id (struct-type nested fields), include parent field names
+          ;; in the identifier so e.g. `result.tag_name` is rendered instead of just `tag_name`.
+          parent-names         (when-let [parent-id (:parent-id field-metadata)]
+                                 (parent-id->ancestor-names parent-id))
           allow-casting?       (and (or (:qp/native-sandbox-column.force-coercion-strategy options)
                                         (and field-metadata
                                              (or (pos-int? (driver-api/qp.add.source-table options))
@@ -909,7 +925,10 @@
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
-                                          (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
+                                          (concat source-table-aliases
+                                                  (->honeysql driver [::nfc-path source-nfc-path])
+                                                  parent-names
+                                                  [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
           ;; If no field-metadata is available, but a coercion strategy must be applied, synthesize enough
@@ -923,14 +942,20 @@
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata))
-          maybe-add-db-type    (fn [expr]
+          effective-type       (when-not database-type
+                                 (let [et (or (:effective-type options) (:base-type options))]
+                                   (when (isa? et :type/Temporal)
+                                     et)))
+          maybe-add-type-info  (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
-                                   (h2x/with-database-type-info expr database-type)))]
+                                   (if database-type
+                                     (h2x/with-database-type-info expr database-type)
+                                     (h2x/with-type-info expr {:effective-type effective-type}))))]
       (u/prog1
         (cond->> (if allow-casting? casted-field identifier)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
-          database-type            maybe-add-db-type
+          (or database-type effective-type) maybe-add-type-info
           (:temporal-unit options) (apply-temporal-bucketing driver options)
           (:binning options)       (apply-binning options))
         (log/trace (binding [*print-meta* true]

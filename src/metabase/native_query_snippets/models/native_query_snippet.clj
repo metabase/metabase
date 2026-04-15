@@ -69,7 +69,12 @@
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
     (->> (update-vals new-tags (fn [tag]
-                                 (cond-> tag (snippet-tag? tag) (set-snippet-id))))
+                                 (cond-> tag
+                                   ;; Preserve :id from old tags if available
+                                   (get-in old-tags [(:name tag) :id])
+                                   (assoc :id (get-in old-tags [(:name tag) :id]))
+                                   (snippet-tag? tag)
+                                   (set-snippet-id))))
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
@@ -168,7 +173,7 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name :template_tags]
-   :skip      [:dependency_analysis_version]
+   :skip      []
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)}

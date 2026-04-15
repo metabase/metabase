@@ -2,7 +2,8 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
+import { Box, Checkbox, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -140,7 +141,7 @@ function StringValueInput({
   if (type === "partial") {
     return (
       <Box p="md" pb={0} mah="40vh" style={{ overflow: "auto" }}>
-        <MultiAutocomplete
+        <MultiAutocompleteWithTranslation
           value={values}
           placeholder={t`Enter some text`}
           comboboxProps={COMBOBOX_PROPS}

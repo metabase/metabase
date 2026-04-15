@@ -1,8 +1,0 @@
-name: Shared Collection
-entity_id: p8Zq2ud7JlSoSBXdJWIaW
-slug: shared_collection
-created_at: '2024-08-28T14:31:56.872211Z'
-serdes/meta:
-- id: p8Zq2ud7JlSoSBXdJWIaW
-  label: shared_collection
-  model: Collection

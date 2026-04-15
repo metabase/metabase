@@ -24,6 +24,12 @@ on:
           - snowflake
           - sqlserver
 
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  actions: read
+
 jobs:
 
   be-tests-bigquery-transforms:
@@ -64,8 +70,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -99,7 +104,7 @@ jobs:
       run: |
         sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
     - name: Start ClickHouse in Docker
-      uses: hoverkraft-tech/compose-action@v2.0.0
+      uses: hoverkraft-tech/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
       with:
         compose-file: "modules/drivers/clickhouse/docker-compose.yml"
         down-flags: "--volumes"
@@ -124,8 +129,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -175,8 +179,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -230,8 +233,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -286,8 +288,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -332,8 +333,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -387,8 +387,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner
@@ -440,8 +439,7 @@ jobs:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
     - name: Cleanup python-runner

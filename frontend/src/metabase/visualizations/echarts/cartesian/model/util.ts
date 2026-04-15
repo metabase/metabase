@@ -1,4 +1,4 @@
-import type { OptionsType } from "metabase/lib/formatting/types";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,

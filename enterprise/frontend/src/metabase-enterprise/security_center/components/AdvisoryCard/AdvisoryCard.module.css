@@ -1,0 +1,35 @@
+.affectedCard {
+  background-color: var(--mb-color-background-error);
+}
+
+.severityCritical {
+  background-color: var(--mb-color-error);
+  color: var(--mb-color-white);
+}
+
+.severityHigh {
+  background-color: var(--mb-color-warning);
+  color: var(--mb-color-white);
+}
+
+.severityMedium {
+  background-color: var(--mb-color-gold);
+  color: var(--mb-color-text-primary);
+}
+
+.severityLow {
+  background-color: var(--mb-color-success);
+  color: var(--mb-color-white);
+}
+
+.statusAffected {
+  background-color: var(--mb-color-background-error);
+  border-color: var(--mb-color-error);
+  color: var(--mb-color-error);
+}
+
+.statusNotAffected {
+  background-color: var(--mb-color-background-success);
+  border-color: var(--mb-color-success);
+  color: var(--mb-color-success);
+}

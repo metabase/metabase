@@ -21,7 +21,7 @@
                          :aggregation  [["cum-count"]]
                          :breakout     [[:field created-id {"temporal-unit" "week"}]]
                          :filter       ["<" [:field nps-id nil] 9]}}
-             (#'serdes/mbql-fully-qualified-names->ids
+             (#'serdes/import-mbql
               {:database "Metabase Store",
                :type     "query",
                :query    {:source-table ["Metabase Store" "public" "crm_survey_response"],

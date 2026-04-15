@@ -1,9 +1,7 @@
 path: common.py
-source: |-
-  def helper():
-      return 42
+source: ''
 entity_id: cWWH9qJPvHNB3rP2vLZrK
-created_at: '2026-01-21T21:50:59.518133Z'
+created_at: '2026-04-02T01:50:04.994996Z'
 serdes/meta:
 - id: cWWH9qJPvHNB3rP2vLZrK
   model: PythonLibrary

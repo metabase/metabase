@@ -29,8 +29,8 @@ export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;
   },
-  get unauthenticated() {
-    return t`Metabot could not authenticate your request. Please contact your administrator.`;
+  unauthenticated(metabotName: string) {
+    return t`${metabotName} could not authenticate your request. Please contact your administrator.`;
   },
   format(msg: string) {
     return t`Sorry, an error occurred: ${msg}. If this persists, please contact your administrator.`;

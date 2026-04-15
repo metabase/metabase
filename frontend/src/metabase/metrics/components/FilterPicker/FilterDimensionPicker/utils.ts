@@ -1,13 +1,19 @@
-import { t } from "ttag";
-
+import type { SourceColorMap } from "metabase/metrics-viewer/types/viewer-state";
+import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
+import {
+  getDefinitionSourceIcon,
+  getDefinitionSourceName,
+} from "metabase/metrics-viewer/utils/definition-sources";
 import * as LibMetric from "metabase-lib/metric";
 
 import type { DimensionListItem, DimensionSection, MetricGroup } from "./types";
 
 export function getMetricGroups(
-  definitions: LibMetric.MetricDefinition[],
+  definitionSources: DefinitionSource[],
+  metricColors: SourceColorMap,
 ): MetricGroup[] {
-  return definitions.map((definition, definitionIndex) => {
+  return definitionSources.map((definitionSource, definitionIndex) => {
+    const definition = definitionSource.definition;
     const dimensions = LibMetric.filterableDimensions(definition);
 
     const byGroupId = new Map<
@@ -45,25 +51,12 @@ export function getMetricGroups(
     }
 
     return {
-      metricName: getSectionName(definition),
-      icon: getSectionIcon(definition),
+      id: definitionSource.index,
+      metricName: getDefinitionSourceName(definitionSource),
+      metricCount: definitionSource.token?.count,
+      icon: getDefinitionSourceIcon(definitionSource),
+      colors: metricColors[definitionSource.entityIndex],
       sections,
     };
   });
-}
-
-export function getSectionName(definition: LibMetric.MetricDefinition): string {
-  const metric = LibMetric.sourceMetricOrMeasureMetadata(definition);
-  if (metric) {
-    const metricInfo = LibMetric.displayInfo(definition, metric);
-    return metricInfo.displayName;
-  }
-  return t`Unknown`;
-}
-
-export function getSectionIcon(
-  definition: LibMetric.MetricDefinition,
-): "metric" | "ruler" {
-  const metricId = LibMetric.sourceMetricId(definition);
-  return metricId != null ? "metric" : "ruler";
 }

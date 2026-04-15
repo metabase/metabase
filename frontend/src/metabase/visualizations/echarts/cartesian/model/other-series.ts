@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { checkNumber } from "metabase/lib/types";
-import { isEmpty } from "metabase/lib/validate";
+import { checkNumber } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { AggregationType, DatasetColumn } from "metabase-types/api";

@@ -16,11 +16,11 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { sourceDatabaseId } from "metabase/transforms/utils";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import { useUpdateWorkspaceTransformMutation } from "metabase-enterprise/api";
 import type {
   UpdateWorkspaceTransformRequest,

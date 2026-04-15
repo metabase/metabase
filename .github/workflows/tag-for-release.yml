@@ -16,6 +16,13 @@ on:
         type: boolean
         default: false
 
+permissions:
+  id-token: write
+  contents: write
+  checks: write
+  issues: write
+  actions: read
+
 jobs:
   start-message:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -198,10 +205,9 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
@@ -226,8 +232,10 @@ jobs:
           return version_path;
     - name: Upload to S3
       run: |
-        aws s3 cp ./metabase.jar s3://${{ secrets.AWS_S3_CLOUD_DEPLOY_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
+        aws s3 cp ./metabase.jar s3://"${AWS_S3_CLOUD_DEPLOY_BUCKET}"/${{ steps.version_path.outputs.result }}/metabase.jar
 
+      env:
+        AWS_S3_CLOUD_DEPLOY_BUCKET: ${{ secrets.AWS_S3_CLOUD_DEPLOY_BUCKET }}
   run-pre-release-tests:
     name: Run pre-release tests for ${{ inputs.version }}
     needs: tag-uberjar-for-release

@@ -4,36 +4,42 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotNavPane } from "./MetabotNavPane";
 
 const setup = ({
+  aiFeaturesEnabled = true,
+  aiControlsEnabled = false,
   isConfigured = true,
 }: {
+  aiFeaturesEnabled?: boolean;
+  aiControlsEnabled?: boolean;
   isConfigured?: boolean;
-} = {}) =>
-  renderWithProviders(
+} = {}) => {
+  mockSettings({
+    "ai-features-enabled?": aiFeaturesEnabled,
+    "token-features": createMockTokenFeatures({
+      ai_controls: aiControlsEnabled,
+    }),
+  });
+
+  setupEnterprisePlugins();
+
+  return renderWithProviders(
     <Route path="/admin/metabot*" component={MetabotNavPane} />,
     {
       withRouter: true,
-      initialRoute: "/admin/metabot/setup",
+      initialRoute: "/admin/metabot",
       storeInitialState: {
         settings: createMockSettingsState({
+          "ai-features-enabled?": aiFeaturesEnabled,
           "llm-metabot-configured?": isConfigured,
         }),
       },
     },
   );
-
-const setupEmbeddingPlugin = () => {
-  mockSettings({
-    "token-features": createMockTokenFeatures({
-      embedding_sdk: true,
-    }),
-  });
-  setupEnterprisePlugins();
 };
 
 describe("MetabotNavPane", () => {
@@ -41,38 +47,32 @@ describe("MetabotNavPane", () => {
     reinitialize();
   });
 
-  it("should not show metabots if it isn't configured", async () => {
-    setup({ isConfigured: false });
-
-    expect(screen.queryByText("Metabot")).not.toBeInTheDocument();
-    expect(screen.queryByText("Embedded Metabot")).not.toBeInTheDocument();
-  });
-
-  it("should show metabots if it is configured", async () => {
-    setup({ isConfigured: true });
-
-    expect(await screen.findByText("Metabot")).toBeInTheDocument();
-    expect(screen.queryByText("Embedded Metabot")).not.toBeInTheDocument();
-  });
-
-  it("should show Embedded Metabot with embedding_sdk feature", async () => {
-    setupEmbeddingPlugin();
-    setup({ isConfigured: true });
-
-    expect(await screen.findByText("Metabot")).toBeInTheDocument();
-    expect(await screen.findByText("Embedded Metabot")).toBeInTheDocument();
-  });
-
-  it("should show Embedded Metabot with embedding_simple feature", async () => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({
-        embedding_simple: true,
-      }),
+  it("hides the ai controls items when all AI features are disabled", () => {
+    setup({
+      aiControlsEnabled: true,
+      aiFeaturesEnabled: false,
+      isConfigured: true,
     });
-    setupEnterprisePlugins();
-    setup({ isConfigured: true });
 
-    expect(await screen.findByText("Metabot")).toBeInTheDocument();
-    expect(await screen.findByText("Embedded Metabot")).toBeInTheDocument();
+    expect(screen.getByText("AI Settings")).toBeInTheDocument();
+    expect(screen.queryByText("Usage controls")).not.toBeInTheDocument();
+    expect(screen.queryByText("Customization")).not.toBeInTheDocument();
+    expect(screen.queryByText("System prompts")).not.toBeInTheDocument();
+  });
+
+  it("displays the ai controls in a disabled state when not configured", async () => {
+    setup({ aiControlsEnabled: true, isConfigured: false });
+
+    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Usage controls").closest('[data-disabled="true"]'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Customization").closest('[data-disabled="true"]'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("System prompts").closest('[data-disabled="true"]'),
+    ).toBeInTheDocument();
   });
 });

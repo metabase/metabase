@@ -2,14 +2,15 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupStoreEEBillingEndpoint,
   setupStoreEECloudAddOnsEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { TransformsSectionLayout } from "./TransformsSectionLayout";
 
@@ -28,6 +29,8 @@ const setup = ({
   transformsEnabled?: boolean;
   isAdmin?: boolean;
 } = {}) => {
+  setupUserMetabotPermissionsEndpoint();
+
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
       "transforms-basic": hasTransformFeature,

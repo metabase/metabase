@@ -1,38 +1,34 @@
 import type { Location } from "history";
 import { useEffect, useRef } from "react";
 import { push, replace } from "react-router-redux";
+import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import type { MeasureId, TemporalUnit } from "metabase-types/api";
+import { useToast } from "metabase/common/hooks";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
-import type {
-  MetricSourceId,
-  MetricsViewerPageState,
-  MetricsViewerTabState,
+import {
+  type MetricsViewerFormulaEntity,
+  type MetricsViewerPageState,
+  type MetricsViewerTabState,
+  isExpressionEntry,
+  isMetricEntry,
 } from "../types/viewer-state";
-import type { SourceFilter } from "../utils/dimension-filters";
-import { createSourceId } from "../utils/source-ids";
+import { parseSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
+  deserializeFormulaEntities,
   deserializeTab,
   encodeState,
   stateToSerializedState,
 } from "../utils/url-serialization";
 
-export interface BreakoutInfo {
-  dimensionId: string;
-  temporalUnit?: TemporalUnit;
-  binning?: string;
-}
-
 export interface LoadSourcesRequest {
   metricIds: MetricId[];
   measureIds: MeasureId[];
-  breakoutBySourceId?: Record<MetricSourceId, BreakoutInfo>;
-  filtersBySourceId?: Record<MetricSourceId, SourceFilter[]>;
 }
 
 export function useViewerUrl(
@@ -40,96 +36,142 @@ export function useViewerUrl(
   initialize: (state: MetricsViewerPageState) => void,
   onLoadSources: (request: LoadSourcesRequest) => void,
   location: Location,
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void,
+  setInitialLoadComplete: (initialLoadComplete: boolean) => void,
 ): void {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
   const lastHashRef = useRef<string | null>(null);
 
   // sync URL to state
   useEffect(() => {
-    let hash = location.hash.slice(1);
-    let serializedState: SerializedMetricsViewerPageState;
+    try {
+      let hash = location.hash.slice(1);
+      let serializedState: SerializedMetricsViewerPageState;
 
-    if (!hash) {
-      const params = new URLSearchParams(location.search);
-      const metricId = params.get("metricId");
-      if (metricId) {
-        serializedState = {
-          sources: [{ type: "metric", id: parseInt(metricId, 10) }],
-          tabs: [],
-          selectedTabId: null,
-        };
-        const encodedHash = encodeState(serializedState);
-        if (encodedHash === undefined) {
-          return;
+      if (!hash) {
+        const params = new URLSearchParams(location.search);
+        const metricId = params.get("metricId");
+        if (metricId) {
+          serializedState = {
+            formulaEntities: [{ type: "metric", id: parseInt(metricId, 10) }],
+            tabs: [],
+            selectedTabId: null,
+          };
+          const encodedHash = encodeState(serializedState);
+          if (encodedHash === undefined) {
+            setInitialLoadComplete(true);
+            return;
+          }
+          hash = encodedHash;
+        } else {
+          serializedState = decodeState(hash);
         }
-        hash = encodedHash;
       } else {
         serializedState = decodeState(hash);
       }
-    } else {
-      serializedState = decodeState(hash);
-    }
 
-    if (hash === lastHashRef.current) {
-      return;
-    }
-    lastHashRef.current = hash;
+      if (hash === lastHashRef.current) {
+        setInitialLoadComplete(true);
+        return;
+      }
+      lastHashRef.current = hash;
 
-    const metricIds: MetricId[] = [];
-    const measureIds: MeasureId[] = [];
-    const breakoutBySourceId: Record<MetricSourceId, BreakoutInfo> = {};
-    const filtersBySourceId: Record<MetricSourceId, SourceFilter[]> = {};
+      if (serializedState.tabs.length > 0) {
+        const tabs: MetricsViewerTabState[] =
+          serializedState.tabs.map(deserializeTab);
 
-    for (const source of serializedState.sources) {
-      const sourceId = createSourceId(source.id, source.type);
-
-      if (source.type === "metric") {
-        metricIds.push(source.id);
-      } else if (source.type === "measure") {
-        measureIds.push(source.id);
+        initialize({
+          definitions: {},
+          formulaEntities: [],
+          tabs,
+          selectedTabId: serializedState.selectedTabId,
+        });
       }
 
-      if (source.breakout) {
-        breakoutBySourceId[sourceId] = {
-          dimensionId: source.breakout,
-          temporalUnit: source.breakoutTemporalUnit,
-          binning: source.breakoutBinning,
-        };
+      const metricIds: MetricId[] = [];
+      const measureIds: MeasureId[] = [];
+
+      const restoredFormulaEntities =
+        deserializeFormulaEntities(serializedState);
+
+      restoredFormulaEntities.forEach((entity) => {
+        if (isMetricEntry(entity)) {
+          const { type, id } = parseSourceId(entity.id);
+          if (type === "metric") {
+            metricIds.push(id);
+          } else if (type === "measure") {
+            measureIds.push(id);
+          }
+        }
+        if (isExpressionEntry(entity)) {
+          entity.tokens.forEach((token) => {
+            if (token.type === "metric") {
+              const { type, id } = parseSourceId(token.sourceId);
+              if (type === "metric") {
+                metricIds.push(id);
+              } else if (type === "measure") {
+                measureIds.push(id);
+              }
+            }
+          });
+        }
+      });
+
+      if (metricIds.length > 0 || measureIds.length > 0) {
+        onLoadSources({
+          metricIds,
+          measureIds,
+        });
+      } else {
+        setInitialLoadComplete(true);
       }
 
-      if (source.filters && source.filters.length > 0) {
-        filtersBySourceId[sourceId] = source.filters;
+      if (restoredFormulaEntities.length > 0) {
+        setFormulaEntities(restoredFormulaEntities);
       }
-    }
-
-    if (serializedState.tabs.length > 0) {
-      const tabs: MetricsViewerTabState[] =
-        serializedState.tabs.map(deserializeTab);
-
-      initialize({
-        definitions: [],
-        tabs,
-        selectedTabId: serializedState.selectedTabId,
+    } catch (error) {
+      console.error(error);
+      setInitialLoadComplete(true);
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`There was a problem restoring the page state`,
       });
     }
-
-    if (metricIds.length > 0 || measureIds.length > 0) {
-      const hasBreakouts = Object.keys(breakoutBySourceId).length > 0;
-      const hasFilters = Object.keys(filtersBySourceId).length > 0;
-      onLoadSources({
-        metricIds,
-        measureIds,
-        breakoutBySourceId: hasBreakouts ? breakoutBySourceId : undefined,
-        filtersBySourceId: hasFilters ? filtersBySourceId : undefined,
-      });
-    }
-  }, [location, dispatch, initialize, onLoadSources]);
+  }, [
+    location,
+    dispatch,
+    initialize,
+    onLoadSources,
+    setFormulaEntities,
+    setInitialLoadComplete,
+    sendToast,
+  ]);
 
   // sync state to URL
   useEffect(() => {
+    // don't update URL until state is fully resolved
+    // definitions are loaded and there are no outstanding SerializedDefinitionInfos
+    const definitionValues = Object.values(state.definitions);
+    const hasPendingSerializedInfo = state.formulaEntities.some((entity) => {
+      if (isMetricEntry(entity) && entity.serializedDefinitionInfo) {
+        return true;
+      }
+      if (isExpressionEntry(entity)) {
+        return entity.tokens.some(
+          (token) => token.type === "metric" && token.serializedDefinitionInfo,
+        );
+      }
+      return false;
+    });
     if (
-      state.definitions.length === 0 ||
-      state.definitions.some((entry) => entry.definition === null)
+      definitionValues.length === 0 ||
+      definitionValues.some((entry) => entry.definition === null) ||
+      hasPendingSerializedInfo
     ) {
       return;
     }

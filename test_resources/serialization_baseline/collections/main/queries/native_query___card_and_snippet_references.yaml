@@ -1,0 +1,44 @@
+name: Native Query - Card and Snippet References
+entity_id: HiBFSt0BNx5s5MxVDLLKB
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: native
+database_id: Sample Database
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - native: |-
+      SELECT *
+      FROM {{#1-basic_aggregations}}
+      WHERE {{snippet: Active Product Filter}}
+      ORDER BY "count" DESC
+      LIMIT 10
+    template-tags:
+      '#1-basic_aggregations':
+        card-id: h5F2EjHsRd73Dqqh8sAtd
+        display-name: Basic Aggregations
+        id: cc000001-0000-0000-0000-000000000001
+        name: '#1-basic_aggregations'
+        type: card
+      'snippet: Active Product Filter':
+        display-name: 'Snippet: Active Product Filter'
+        id: cc000002-0000-0000-0000-000000000002
+        name: 'snippet: Active Product Filter'
+        snippet-id: WyQWnT23PF-SfbYLROllJ
+        snippet-name: Active Product Filter
+        type: snippet
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: HiBFSt0BNx5s5MxVDLLKB
+  label: native_query___card_and_snippet_references
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

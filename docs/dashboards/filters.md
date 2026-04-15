@@ -235,7 +235,7 @@ Renaming the filter only affects the filter's display; the label has no effect o
 
 ### Change filter or parameter type
 
-You can change the [type](#filter-types) or an existing filter (for example, from a Date filter to a Text filter). Any incompatible columns connected to the widget will be disconnected.
+You can change the [type](#filter-types) of an existing filter (for example, from a Date filter to a Text filter). Any incompatible columns connected to the widget will be disconnected.
 
 To change the widget type:
 

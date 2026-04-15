@@ -224,7 +224,7 @@ You can check your transforms into git with [Remote Sync](../../installation-and
 
 To enable git sync of transforms:
 
-1. Go to Admin settings by click the **grid** icon in top right and select **Admin**.
+1. Go to Admin settings by clicking the **grid** icon in top right and select **Admin**.
 2. On the **General** tab, pick **Remote sync** in the left sidebar.
 3. Follow the steps to [Set up Remote Sync](../../installation-and-operation/remote-sync.md), and toggle "Transforms" sync on.
 

@@ -253,6 +253,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
           // edit "Product ID" column in "Orders" table
           TablePicker.getTable("Orders").click();
+          if (area === "data studio") {
+            TableSection.clickFieldsTab();
+          }
           TableSection.clickField("Product ID");
 
           // remap its original value to use foreign key
@@ -309,6 +312,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           visit({ databaseId: SAMPLE_DB_ID });
           // edit "Rating" values in "Reviews" table
           TablePicker.getTable("Reviews").click();
+          if (area === "data studio") {
+            TableSection.clickFieldsTab();
+          }
           TableSection.clickField("Rating");
 
           // apply custom remapping for "Rating" values 1-5
@@ -480,6 +486,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         it("should let you enable/disable 'Unfold JSON' for JSON columns", () => {
           visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
+          if (area === "data studio") {
+            TableSection.clickFieldsTab();
+          }
 
           cy.log("json is unfolded initially and shows prefix");
           TableSection.getField("Json → A")
@@ -549,12 +558,18 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           // Check json field is not unfolded
           visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
+          if (area === "data studio") {
+            TableSection.clickFieldsTab();
+          }
           TableSection.getField("Json → A").should("not.exist");
         });
 
         it("should let you change the name of JSON-unfolded columns (metabase#55563)", () => {
           visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
+          if (area === "data studio") {
+            TableSection.clickFieldsTab();
+          }
           TableSection.clickField("Json → A");
 
           TableSection.getFieldNameInput("Json → A").clear().type("A").blur();
@@ -577,6 +592,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           const longPrefix = "Legendarily long column prefix";
           visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
+          if (area === "data studio") {
+            TableSection.clickFieldsTab();
+          }
           TableSection.clickField("Json → A");
 
           cy.log("should not truncante short prefixes");

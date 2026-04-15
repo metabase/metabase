@@ -10,10 +10,11 @@ import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Icon, Title } from "metabase/ui";
+import { dashboardPulseIsValid } from "metabase/utils/pulse";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -23,7 +24,6 @@ import type {
   Dashboard,
   ScheduleSettings,
 } from "metabase-types/api";
-import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
