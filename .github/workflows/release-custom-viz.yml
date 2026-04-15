@@ -52,6 +52,9 @@ jobs:
       - name: Install custom-viz dependencies
         run: bun install --frozen-lockfile
 
+      - name: Check package version consistency
+        run: bun run check:package-versions
+
       - name: Build package
         run: bun run build
 
