@@ -1,6 +1,6 @@
 (ns metabase-enterprise.metabot-analytics.queries-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]))
 
 (set! *warn-on-reflection* true)
@@ -267,70 +267,25 @@
 
 ;;; ------------------------- count-tool-invocations -------------------------
 
-(deftest count-tool-invocations-zero-test
-  (testing "no matching blocks → 0"
-    (is (= 0 (analytics.queries/count-tool-invocations [] "search")))
-    (is (= 0 (analytics.queries/count-tool-invocations
-              [{:id 1 :data [{:type "text" :text "hi"}]}]
-              "search")))
-    (is (= 0 (analytics.queries/count-tool-invocations
-              [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "x"}]}]
-              "search")))))
-
-(deftest count-tool-invocations-within-single-message-test
-  (testing "multiple matching tool-input blocks in one message are all counted"
-    (is (= 3 (analytics.queries/count-tool-invocations
-              [{:id 1
-                :data [{:type "tool-input" :function "search" :id "a"}
-                       {:type "tool-output" :id "a" :result {:output "..."}}
-                       {:type "tool-input" :function "search" :id "b"}
-                       {:type "tool-output" :id "b" :result {:output "..."}}
-                       {:type "tool-input" :function "search" :id "c"}
-                       {:type "tool-output" :id "c" :result {:output "..."}}]}]
-              "search")))))
-
-(deftest count-tool-invocations-across-messages-test
-  (testing "matches spread across multiple messages are summed"
+(deftest count-tool-invocations-test
+  (testing "sums matching tool-input blocks across messages, including errored calls"
+    ;; Mix within-message and across-messages, plus an errored and an unrelated tool.
     (is (= 4 (analytics.queries/count-tool-invocations
-              [{:id 1 :data [{:type "tool-input" :function "search" :id "a"}]}
-               {:id 2 :data [{:type "tool-input" :function "search" :id "b"}
-                             {:type "tool-input" :function "search" :id "c"}]}
-               {:id 3 :data [{:type "tool-input" :function "search" :id "d"}]}]
-              "search")))))
-
-(deftest count-tool-invocations-counts-errored-calls-test
-  (testing "errored and structured-less tool calls still count — the invocation happened"
-    (is (= 3 (analytics.queries/count-tool-invocations
-              [{:id 1
-                :data [;; errored
-                       {:type "tool-input" :function "search" :id "err"}
-                       {:type "tool-output" :id "err" :error "boom"}
-                       ;; no structured output
-                       {:type "tool-input" :function "search" :id "nostruct"}
-                       {:type "tool-output" :id "nostruct" :result {:output "<result>failed</result>"}}
-                       ;; successful
-                       {:type "tool-input" :function "search" :id "ok"}
-                       {:type "tool-output" :id "ok" :result {:output "..." :structured-output {:hits 5}}}]}]
-              "search")))))
-
-(deftest count-tool-invocations-ignores-other-tools-test
-  (testing "non-matching tool names are ignored"
-    (is (= 1 (analytics.queries/count-tool-invocations
-              [{:id 1
-                :data [{:type "tool-input" :function "create_sql_query" :id "a"}
-                       {:type "tool-input" :function "analyze_chart" :id "b"}
-                       {:type "tool-input" :function "search" :id "c"}]}]
-              "search")))))
-
-(deftest count-tool-invocations-ignores-slackbot-shape-test
-  (testing "slackbot-shaped blocks (missing :type) are ignored"
-    (is (= 0 (analytics.queries/count-tool-invocations
-              [{:id 1
-                :data [{:role "assistant"
-                        :_type "TOOL_CALL"
-                        :tool_calls [{:id "slack-1" :name "search" :arguments {:q "foo"}}]}]}]
-              "search")))))
-
-(deftest count-tool-invocations-handles-nil-and-empty-data-test
-  (is (= 0 (analytics.queries/count-tool-invocations [{:id 1 :data nil}] "search")))
-  (is (= 0 (analytics.queries/count-tool-invocations [{:id 1 :data []}] "search"))))
+              [{:id 1 :data [{:type "tool-input" :function "search" :id "a"}
+                             {:type "tool-output" :id "a" :error "boom"}        ; errored still counts
+                             {:type "tool-input" :function "search" :id "b"}]}
+               {:id 2 :data [{:type "tool-input" :function "create_sql_query" :id "c"} ; ignored tool
+                             {:type "tool-input" :function "search" :id "d"}
+                             {:type "tool-input" :function "search" :id "e"}]}]
+              "search"))))
+  (testing "returns 0 for inputs that contain no matching tool-input blocks"
+    (are [messages] (zero? (analytics.queries/count-tool-invocations messages "search"))
+      []
+      [{:id 1 :data nil}]
+      [{:id 1 :data []}]
+      [{:id 1 :data [{:type "text" :text "hi"}]}]
+      [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "x"}]}]
+      ;; Slackbot-shaped blocks lack `:type` and are intentionally skipped.
+      [{:id 1 :data [{:role "assistant"
+                      :_type "TOOL_CALL"
+                      :tool_calls [{:id "slack-1" :name "search"}]}]}])))

@@ -131,9 +131,7 @@
 
 (defn count-tool-invocations
   "Count `tool-input` blocks across a seq of `MetabotMessage` instances
-   whose `:function` equals `tool-name`. Counts all invocations, including
-   those whose paired `tool-output` errored — every invocation consumed
-   tokens and represents AI work worth surfacing."
+   whose `:function` equals `tool-name`."
   [messages tool-name]
   (transduce
    (comp (mapcat :data)

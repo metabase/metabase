@@ -732,51 +732,31 @@
           (is (= test-metabot-id (:metabot-id @captured-args))
               "metabot-id should match the input metabot_id"))))))
 
-(deftest streaming-request-captures-ip-address-test
-  (testing "streaming-request captures ip-address on initial insert and does not overwrite on later calls"
-    (mt/with-model-cleanup [:model/MetabotMessage
-                            [:model/MetabotConversation :created_at]]
-      (let [conversation-id (str (random-uuid))
-            request-body    {:metabot_id      metabot.config/embedded-metabot-id
-                             :profile_id      nil
-                             :message         "hi"
-                             :context         {}
-                             :history         []
-                             :conversation_id conversation-id
-                             :state           {}
-                             :debug           false}]
-        (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                      api/native-agent-streaming-request    (constantly nil)]
-          (mt/with-test-user :rasta
-            (api/streaming-request request-body "1.2.3.4")
-            (testing "initial call stores the IP"
-              (is (= "1.2.3.4"
-                     (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))))
-
-            (api/streaming-request request-body "5.6.7.8")
-            (testing "subsequent calls do not overwrite the captured IP"
-              (is (= "1.2.3.4"
-                     (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))))))))))
-
-(deftest streaming-request-backfills-null-ip-address-test
-  (testing "streaming-request backfills ip_address on conversation rows that predate this feature"
-    (mt/with-model-cleanup [:model/MetabotMessage
-                            [:model/MetabotConversation :created_at]]
-      (let [conversation-id (str (random-uuid))]
-        (t2/insert! :model/MetabotConversation
-                    {:id      conversation-id
-                     :user_id (mt/user->id :rasta)})
-        (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                      api/native-agent-streaming-request    (constantly nil)]
-          (mt/with-test-user :rasta
-            (api/streaming-request {:metabot_id      metabot.config/embedded-metabot-id
-                                    :profile_id      nil
-                                    :message         "hi"
-                                    :context         {}
-                                    :history         []
-                                    :conversation_id conversation-id
-                                    :state           {}
-                                    :debug           false}
-                                   "9.9.9.9")
-            (is (= "9.9.9.9"
-                   (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id))))))))))
+(deftest streaming-request-ip-address-test
+  (mt/with-model-cleanup [:model/MetabotMessage
+                          [:model/MetabotConversation :created_at]]
+    (let [request-body (fn [conversation-id]
+                         {:metabot_id      metabot.config/embedded-metabot-id
+                          :profile_id      nil
+                          :message         "hi"
+                          :context         {}
+                          :history         []
+                          :conversation_id conversation-id
+                          :state           {}
+                          :debug           false})
+          ip-for       (fn [conversation-id]
+                         (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))]
+      (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                    api/native-agent-streaming-request    (constantly nil)]
+        (mt/with-test-user :rasta
+          (testing "first writer wins: initial call captures the IP, later calls do not overwrite it"
+            (let [conversation-id (str (random-uuid))]
+              (api/streaming-request (request-body conversation-id) "1.2.3.4")
+              (is (= "1.2.3.4" (ip-for conversation-id)))
+              (api/streaming-request (request-body conversation-id) "5.6.7.8")
+              (is (= "1.2.3.4" (ip-for conversation-id)))))
+          (testing "null IP on pre-feature rows is backfilled on next call"
+            (let [conversation-id (str (random-uuid))]
+              (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :rasta)})
+              (api/streaming-request (request-body conversation-id) "9.9.9.9")
+              (is (= "9.9.9.9" (ip-for conversation-id))))))))))

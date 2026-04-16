@@ -380,37 +380,28 @@
           (finally
             (delete-conversations! [convo-none convo-two convo-errored])))))))
 
-(deftest list-conversations-search-count-test
+(deftest search-count-test
   (with-search-count-fixture!
     (fn [{:keys [test-user-id convo-none convo-two convo-errored]}]
-      (let [response (mt/user-http-request :crowberto :get 200
-                                           (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
-            by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
-        (is (= 0 (:search_count (get by-id convo-none))))
-        (is (= 2 (:search_count (get by-id convo-two))))
-        (is (= 1 (:search_count (get by-id convo-errored)))
-            "errored search calls should still contribute to the count")))))
-
-(deftest list-conversations-search-count-pagination-test
-  (testing "search_count is correctly hydrated for rows on page 2 (verifies batch scopes to the page)"
-    (with-search-count-fixture!
-      (fn [{:keys [test-user-id convo-two]}]
+      (testing "list endpoint surfaces per-conversation search counts (errored calls still count)"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+              by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
+          (is (= {convo-none 0, convo-two 2, convo-errored 1}
+                 (update-vals by-id :search_count)))))
+      (testing "pagination scopes the hydration batch to the page"
         ;; Default sort is created_at desc: [convo-errored convo-two convo-none].
-        ;; Page with limit=1, offset=1 returns just convo-two.
         (let [response (mt/user-http-request :crowberto :get 200
                                              (format "ee/metabot-analytics/conversations?user-id=%s&limit=1&offset=1"
                                                      test-user-id))]
           (is (= [convo-two] (map :conversation_id (:data response))))
-          (is (= 2 (:search_count (first (:data response))))))))))
-
-(deftest get-conversation-detail-search-count-test
-  (with-search-count-fixture!
-    (fn [{:keys [convo-none convo-two convo-errored]}]
-      (doseq [[convo expected] [[convo-none 0] [convo-two 2] [convo-errored 1]]]
-        (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "ee/metabot-analytics/conversations/%s" convo))]
-          (is (= expected (:search_count response))
-              (format "expected search_count=%d for %s" expected convo)))))))
+          (is (= 2 (:search_count (first (:data response)))))))
+      (testing "detail endpoint surfaces the same counts"
+        (doseq [[convo expected] [[convo-none 0] [convo-two 2] [convo-errored 1]]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" convo))]
+            (is (= expected (:search_count response))
+                (format "expected search_count=%d for %s" expected convo))))))))
 
 (deftest get-conversation-detail-slack-permalink-test
   (mt/with-premium-features #{:audit-app}
@@ -473,37 +464,25 @@
           (finally
             (delete-conversations! [convo-web convo-slack convo-null])))))))
 
-(deftest list-conversations-ip-address-test
+(deftest ip-address-test
   (with-ip-address-fixture!
     (fn [{:keys [test-user-id convo-web convo-slack convo-null]}]
-      (let [response (mt/user-http-request :crowberto :get 200
-                                           (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
-            by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
-        (is (= "1.2.3.4" (:ip_address (get by-id convo-web))))
-        (is (nil? (:ip_address (get by-id convo-slack)))
-            "Slack-originated conversations have no IP")
-        (is (nil? (:ip_address (get by-id convo-null)))
-            "legacy conversations without a captured IP surface as nil")))))
-
-(deftest list-conversations-ip-address-pagination-test
-  (testing "ip_address is correctly returned for rows on page 2"
-    (with-ip-address-fixture!
-      (fn [{:keys [test-user-id convo-slack]}]
+      (testing "list endpoint surfaces IP for web conversations, nil for Slack/legacy"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+              by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
+          (is (= {convo-web "1.2.3.4", convo-slack nil, convo-null nil}
+                 (update-vals by-id :ip_address)))))
+      (testing "pagination preserves ip_address for rows on page 2"
         ;; Default sort is created_at desc: [convo-null convo-slack convo-web].
-        ;; limit=1, offset=1 returns just convo-slack.
         (let [response (mt/user-http-request :crowberto :get 200
                                              (format "ee/metabot-analytics/conversations?user-id=%s&limit=1&offset=1"
                                                      test-user-id))]
           (is (= [convo-slack] (map :conversation_id (:data response))))
-          (is (nil? (:ip_address (first (:data response))))))))))
-
-(deftest get-conversation-detail-ip-address-test
-  (with-ip-address-fixture!
-    (fn [{:keys [convo-web convo-slack convo-null]}]
-      (doseq [[convo expected] [[convo-web "1.2.3.4"]
-                                [convo-slack nil]
-                                [convo-null nil]]]
-        (let [response (mt/user-http-request :crowberto :get 200
-                                             (format "ee/metabot-analytics/conversations/%s" convo))]
-          (is (= expected (:ip_address response))
-              (format "expected ip_address=%s for %s" (pr-str expected) convo)))))))
+          (is (nil? (:ip_address (first (:data response)))))))
+      (testing "detail endpoint surfaces the same values"
+        (doseq [[convo expected] [[convo-web "1.2.3.4"] [convo-slack nil] [convo-null nil]]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" convo))]
+            (is (= expected (:ip_address response))
+                (format "expected ip_address=%s for %s" (pr-str expected) convo))))))))
