@@ -65,7 +65,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     cy.findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "Oct",
-      year: "2022",
+      year: "2028",
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

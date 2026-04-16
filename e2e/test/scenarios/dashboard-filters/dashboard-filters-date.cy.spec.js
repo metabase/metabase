@@ -63,7 +63,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     DateFilter.setMonthAndYear({
       month: "Nov",
-      year: "2022",
+      year: "2028",
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -108,21 +108,21 @@ describe("scenarios > dashboard > filters > date", () => {
     H.sidebar().findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "Nov",
-      year: "2023",
+      year: "2029",
     });
 
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
     H.saveDashboard();
 
     // Updates the filter value
-    H.filterWidget().should("contain.text", "November 2023").click();
+    H.filterWidget().should("contain.text", "November 2029").click();
     H.popover().findByText("Dec").click();
-    H.filterWidget().findByText("December 2023");
+    H.filterWidget().findByText("December 2029");
     H.ensureDashboardCardHasText("76.83");
 
     // Resets the value back by clicking widget icon
     H.resetFilterWidgetToDefault();
-    H.filterWidget().findByText("November 2023");
+    H.filterWidget().findByText("November 2029");
     H.ensureDashboardCardHasText("27.74");
   });
 

@@ -74,7 +74,7 @@ describe("binning related reproductions", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Year");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2024");
+    cy.findByText("2030");
   });
 
   it("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {

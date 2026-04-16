@@ -428,8 +428,8 @@ describe("scenarios > visualizations > bar chart", () => {
           "base-type": "type/DateTime",
         },
       ],
-      "2023-09-01",
-      "2023-09-30",
+      "2029-09-01",
+      "2029-09-30",
     ];
 
     const avgTotalByMonth = {
@@ -612,7 +612,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     H.chartPathWithFillColor("#88BF4D").first().realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2028",
       rows: [
         {
           color: "#88BF4D",
@@ -877,8 +877,8 @@ describe("scenarios > visualizations > bar chart", () => {
               [
                 "between",
                 ORDER_CREATED_AT_FIELD_REF,
-                "2022-09-01T00:00Z",
-                "2023-02-01T00:00Z",
+                "2028-09-01T00:00Z",
+                "2029-02-01T00:00Z",
               ],
               [
                 "=",

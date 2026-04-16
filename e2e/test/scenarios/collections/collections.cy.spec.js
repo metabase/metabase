@@ -347,7 +347,7 @@ describe("scenarios > collection defaults", () => {
                 last_name: null,
                 first_name: null,
                 email: "me@email.com",
-                timestamp: "2022-07-05T07:31:09.054-07:00",
+                timestamp: "2028-07-05T07:31:09.054-07:00",
               }),
             );
           });
@@ -371,7 +371,7 @@ describe("scenarios > collection defaults", () => {
                 last_name: null,
                 first_name: null,
                 email: "averyverylongemail@veryverylongdomain.com",
-                timestamp: "2022-07-05T07:31:09.054-07:00",
+                timestamp: "2028-07-05T07:31:09.054-07:00",
               }),
             );
           });

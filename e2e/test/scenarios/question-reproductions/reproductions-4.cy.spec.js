@@ -1177,7 +1177,7 @@ describe("issue 23449", () => {
   const checkTable = () => {
     H.assertTableData({
       columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
-      firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
+      firstRows: [[1, 1, "christ", "E", "May 15, 2030, 8:25 PM"]],
     });
   };
 
@@ -1757,8 +1757,8 @@ describe("Issue 42817", () => {
                   "join-alias": "NativeOrders",
                 },
               ],
-              "2023-06-23T00:00Z",
-              "2023-07-03T00:00Z",
+              "2029-06-23T00:00Z",
+              "2029-07-03T00:00Z",
             ],
           },
         },

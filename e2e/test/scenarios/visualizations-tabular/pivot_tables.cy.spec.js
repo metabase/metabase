@@ -247,7 +247,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         type: "query",
         query: {
           "source-table": ORDERS_ID,
-          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2028-06-01"],
           aggregation: [["count"]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
@@ -829,7 +829,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.wait("@datasetPivot");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.contains("Row totals");
-      cy.findByText("333"); // Row totals for 2024
+      cy.findByText("333"); // Row totals for 2030
       cy.findByText("Grand totals");
     });
   });
@@ -850,8 +850,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             [
               "between",
               ["field", ORDERS.CREATED_AT, null],
-              "2022-11-09",
-              "2022-11-11",
+              "2028-11-09",
+              "2028-11-11",
             ],
             ["!=", ["field", ORDERS.PRODUCT_ID, null], 146],
           ],

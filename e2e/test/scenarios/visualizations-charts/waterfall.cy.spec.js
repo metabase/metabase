@@ -379,7 +379,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     getFirstWaterfallSegment().realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2028",
       rows: [{ name: "Count", value: "744", color: INCREASE_COLOR }],
     });
     H.assertEChartsTooltipNotContain(["Sum of Total"]);
@@ -394,7 +394,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     getFirstWaterfallSegment().realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2028",
       rows: [
         { name: "Count", value: "744", color: INCREASE_COLOR },
         { name: "Sum of Total", value: "42,156.87" },

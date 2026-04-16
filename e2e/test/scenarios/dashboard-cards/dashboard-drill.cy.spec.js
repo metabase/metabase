@@ -628,11 +628,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ).as("cardQuery");
 
         H.chartPathWithFillColor("#509EE3")
-          .eq(14) // August 2023 (Total of 12 reviews, 9 unique days)
+          .eq(14) // August 2029 (Total of 12 reviews, 9 unique days)
           .click();
 
         cy.wait("@cardQuery");
-        cy.url().should("include", "2023-08");
+        cy.url().should("include", "2029-08");
         H.chartPathWithFillColor("#509EE3").should("have.length", 1);
         // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
         // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)

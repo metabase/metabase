@@ -113,7 +113,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Hover over a box element from the left side to avoid mean marker overlap
     H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2028",
       rows: [
         { name: "Upper whisker", value: "84" },
         { name: "Q3 (75th percentile)", value: "59" },
@@ -304,7 +304,7 @@ describe("scenarios > visualizations > boxplot", () => {
       // Hover over a box and verify tooltip shows breakout value
       H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2028",
         rows: [
           { name: "Product → Category", value: "Gadget" },
           { name: "Upper whisker", value: "25" },
@@ -372,7 +372,7 @@ describe("scenarios > visualizations > boxplot", () => {
       // Hover over a box from the first metric and verify tooltip
       H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2028",
         rows: [
           { name: "Upper whisker", value: "84" },
           { name: "Q3 (75th percentile)", value: "59" },
@@ -455,7 +455,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Verify formatted tooltip with all currency values
     H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2028",
       rows: [
         { name: "Upper whisker", value: "$53.93" },
         { name: "Q3 (75th percentile)", value: "$53.93" },

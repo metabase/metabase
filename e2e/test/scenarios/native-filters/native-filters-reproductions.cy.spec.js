@@ -687,8 +687,8 @@ describe("issue 16756", () => {
     // The previous filter value should reset
     cy.location("search").should("eq", "?filter=");
 
-    cy.log("Set the date to the 15th of October 2023");
-    cy.clock(new Date("2023-10-31"), ["Date"]);
+    cy.log("Set the date to the 15th of October 2029");
+    cy.clock(new Date("2029-10-31"), ["Date"]);
     H.filterWidget().click();
 
     H.popover().contains("15").click();

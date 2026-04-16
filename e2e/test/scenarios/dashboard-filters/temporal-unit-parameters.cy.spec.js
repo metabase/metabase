@@ -434,7 +434,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
         // metabase#44684
-        // should be "Created At: Year" and "2022" because the last parameter is "Year"
+        // should be "Created At: Year" and "2028" because the last parameter is "Year"
         cy.findByText("Created At: Quarter").should("be.visible");
         cy.findByText("Q2 2028").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
@@ -444,7 +444,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", singleBreakoutQuestionDetails.name);
       H.tableInteractive().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("2022").should("be.visible");
+        cy.findByText("2028").should("be.visible");
       });
     });
 

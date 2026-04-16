@@ -949,7 +949,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar"],
-        firstRows: [["April 2023", "15.69", "18.21"]],
+        firstRows: [["April 2029", "15.69", "18.21"]],
       });
     });
 

@@ -559,7 +559,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "Created At is May 1–31, 2024",
+      "Created At is May 1–31, 2030",
     );
 
     H.assertQueryBuilderRowCount(520);
@@ -662,7 +662,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "Created At is May 1–31, 2024",
+      "Created At is May 1–31, 2030",
     );
 
     cy.findByTestId("qb-filters-panel").findByText(
@@ -708,7 +708,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "Created At is May 1–31, 2024",
+      "Created At is May 1–31, 2030",
     );
 
     H.assertQueryBuilderRowCount(36);
@@ -731,8 +731,8 @@ describe("issue 53556 - nested question based on native model with remapped valu
     H.assertTableData({
       columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["January 2024", "140  –  160", "18"],
-        ["February 2024", "140  –  160", "17"],
+        ["January 2030", "140  –  160", "18"],
+        ["February 2030", "140  –  160", "17"],
       ],
     });
 
@@ -746,7 +746,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
     H.assertTableData({
       columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["December 2023", "-60  –  -40", "1"],
+        ["December 2029", "-60  –  -40", "1"],
         ["September 2022", "0  –  20", "2"],
       ],
     });

@@ -57,7 +57,7 @@ describe("issue 6010", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Created At: Month is Jan 1–31, 2024").should("be.visible");
+      cy.findByText("Created At: Month is Jan 1–31, 2030").should("be.visible");
     });
     // FIXME metrics v2 -- check that the values in column Total are above 150
   });
@@ -417,7 +417,7 @@ describe("issue 23076", () => {
       .should("be.visible")
       .eq(1)
       .invoke("text")
-      .should("eq", "Summen für Mai 2023");
+      .should("eq", "Summen für Mai 2029");
   });
 });
 

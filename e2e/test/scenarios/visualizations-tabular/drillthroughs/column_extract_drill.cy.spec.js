@@ -36,7 +36,7 @@ const DATE_CASES = [
   {
     option: "Year",
     value: "2,025",
-    example: "2023, 2024",
+    example: "2029, 2030",
   },
 ];
 

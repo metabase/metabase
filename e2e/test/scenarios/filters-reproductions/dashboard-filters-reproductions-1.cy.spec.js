@@ -585,7 +585,7 @@ describe("issue 16663", () => {
     id: "f8ae0c97",
     type: "date/quarter-year",
     sectionId: "date",
-    default: "Q1-2023",
+    default: "Q1-2029",
   };
 
   const dashboardDetails = { parameters: [FILTER] };
@@ -853,10 +853,10 @@ describe("issue 17775", () => {
   it("should be able to apply dashboard filter to a custom column (metabase#17775)", () => {
     H.filterWidget().click();
 
-    setQuarterAndYear({ quarter: "Q1", year: "2023" });
+    setQuarterAndYear({ quarter: "Q1", year: "2029" });
 
     cy.findAllByText("44.43").should("have.length", 2);
-    cy.findAllByText("March 26, 2023, 8:45 AM").should("have.length", 2);
+    cy.findAllByText("March 26, 2029, 8:45 AM").should("have.length", 2);
   });
 });
 

@@ -1587,7 +1587,7 @@ describe("issue 63416", () => {
           },
         ],
       ],
-      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2024-01-01"],
+      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2030-01-01"],
     },
   };
 

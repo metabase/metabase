@@ -392,7 +392,7 @@ describe("scenarios > question > native", () => {
 
         cy.findByTestId("visualization-root")
           .should("contain", "January 1, 2022")
-          .should("contain", "January 1, 2023");
+          .should("contain", "January 1, 2029");
       });
 
       it("should handle time grouping in optional clause without default value", () => {
@@ -428,7 +428,7 @@ describe("scenarios > question > native", () => {
         });
 
         cy.findByTestId("query-visualization-root")
-          .should("not.contain", "October 7, 2023, 1:34 AM")
+          .should("not.contain", "October 7, 2029, 1:34 AM")
           .should("not.contain", "UNIT");
       });
 

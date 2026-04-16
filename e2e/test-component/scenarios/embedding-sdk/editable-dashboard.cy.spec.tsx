@@ -203,7 +203,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
         name: "Date filter",
         slug: "filter-date",
         type: "date/all-options",
-        default: "2024-01-01~2024-12-31",
+        default: "2030-01-01~2030-12-31",
       };
       const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
         "field",

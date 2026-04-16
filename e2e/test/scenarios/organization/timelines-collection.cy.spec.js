@@ -560,7 +560,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
     it("should use custom date formatting settings", () => {
       H.createTimelineWithEvents({
-        events: [{ name: "RC1", timestamp: "2022-10-12T18:15:30Z" }],
+        events: [{ name: "RC1", timestamp: "2028-10-12T18:15:30Z" }],
       });
       setFormattingSettings({
         "type/Temporal": { date_style: "YYYY/M/D" },
@@ -570,13 +570,13 @@ describe("scenarios > organization > timelines > collection", () => {
       openMenu("RC1");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
-      cy.findByDisplayValue("2022/10/12").should("be.visible");
+      cy.findByDisplayValue("2028/10/12").should("be.visible");
 
-      cy.findByLabelText("Date").clear().type("2022/10/15");
+      cy.findByLabelText("Date").clear().type("2028/10/15");
       cy.button("Update").click();
       cy.wait("@updateEvent");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("2022/10/15").should("be.visible");
+      cy.findByText("2028/10/15").should("be.visible");
     });
 
     it("should use custom time formatting settings", () => {
@@ -584,7 +584,7 @@ describe("scenarios > organization > timelines > collection", () => {
         events: [
           {
             name: "RC1",
-            timestamp: "2022-10-12T18:15:30Z",
+            timestamp: "2028-10-12T18:15:30Z",
             time_matters: true,
           },
         ],

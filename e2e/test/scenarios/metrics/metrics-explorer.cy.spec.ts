@@ -1416,10 +1416,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 7, 2024");
+          .type("February 7, 2030");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("July 7, 2024");
+          .type("July 7, 2030");
         cy.button("Add filter").click();
       });
 
@@ -1435,7 +1435,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("January 1, 2024");
+          .type("January 1, 2030");
         cy.button("Update filter").click();
       });
 
@@ -1485,10 +1485,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 1, 2024");
+          .type("February 1, 2030");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("February 7, 2024");
+          .type("February 7, 2030");
         cy.button("Add filter").click();
       });
 
