@@ -119,7 +119,7 @@
               decimals        (or decimals 2)
               base-strings    (if (unformatted-number? format-settings)
                                 ;; [int-format, float-format]
-                                [base-string (str base-string ".##")]
+                                [base-string (str base-string ".##########")]
                                 (repeat 2 (apply str base-string (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
           (condp = number-style
             "percent"
@@ -299,15 +299,17 @@
    ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
    :time     "h:mm am/pm"
    :integer  "#,##0"
-   :float    "#,##0.##"})
+   :float    "#,##0.##########"})
 
 (defn- compute-typed-cell-styles
-  "Compute default cell styles based on column types"
-  ;; These are tested, but does this happen IRL?
-  [^Workbook workbook ^DataFormat data-format]
-  (update-vals
-   (default-format-strings)
-   (partial cell-string-format-style workbook data-format)))
+  "Compute default cell styles based on column types. When `format-rows?` is false, omit numeric
+  formats so that Excel's General format is used, preserving full decimal precision."
+  [^Workbook workbook ^DataFormat data-format format-rows?]
+  (let [format-strings (cond-> (default-format-strings)
+                         (not format-rows?) (dissoc :integer :float))]
+    (update-vals
+     format-strings
+     (partial cell-string-format-style workbook data-format))))
 
 (defn- rounds-to-int?
   "Returns whether a number should be formatted as an integer after being rounded to 2 decimal places."
@@ -379,10 +381,12 @@
     (.setCellValue cell v)
     ;; Do not set formatting for ##NaN, ##Inf, or ##-Inf
     (when (u/real-number? v)
-      (let [[int-style float-style] styles]
-        (if (rounds-to-int? v)
-          (.setCellStyle cell (or int-style (typed-styles :integer)))
-          (.setCellStyle cell (or float-style (typed-styles :float))))))))
+      (let [[int-style float-style] styles
+            style (if (rounds-to-int? v)
+                    (or int-style (typed-styles :integer))
+                    (or float-style (typed-styles :float)))]
+        (when style
+          (.setCellStyle cell style))))))
 
 (defmethod set-cell! Boolean
   [^Cell cell value _styles _typed-styles]
@@ -662,7 +666,7 @@
   [workbook viz-settings non-pivot-cols format-rows?]
   (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
     {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?)
-     :typed-cell-styles (compute-typed-cell-styles workbook data-format)}))
+     :typed-cell-styles (compute-typed-cell-styles workbook data-format format-rows?)}))
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
