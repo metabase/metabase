@@ -1,48 +1,37 @@
 import { spawn } from "node:child_process";
-import http from "node:http";
-import { URL } from "node:url";
+
+const TIMEOUT = 10_000;
+const POLL_INTERVAL = 250;
+
+async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        return;
+      }
+    } catch {
+      // server not up yet
+    }
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
+  }
+
+  throw new Error(`Dev server did not become ready: ${url}`);
+}
 
 type StartCustomVizDevServerArgs = {
   cwd: string;
   port?: number;
 };
 
+let running: DevServerHandle | null = null;
+
 type DevServerHandle = {
   pid: number;
   url: string;
 };
-
-let running: DevServerHandle | null = null;
-
-function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
-  const start = Date.now();
-
-  return new Promise((resolve, reject) => {
-    const attempt = () => {
-      const elapsed = Date.now() - start;
-      if (elapsed > timeoutMs) {
-        reject(new Error(`Dev server did not become ready: ${url}`));
-        return;
-      }
-
-      const req = http.get(url, (res) => {
-        const ok = (res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 300;
-        res.resume(); // drain
-        if (ok) {
-          resolve();
-        } else {
-          setTimeout(attempt, 250);
-        }
-      });
-
-      req.on("error", () => {
-        setTimeout(attempt, 250);
-      });
-    };
-
-    attempt();
-  });
-}
 
 export async function startCustomVizDevServer(
   args: StartCustomVizDevServerArgs,
@@ -50,7 +39,7 @@ export async function startCustomVizDevServer(
   const port = args.port ?? 5174;
 
   if (running) {
-    await stopCustomVizDevServer({ pid: running.pid });
+    stopCustomVizDevServer(running.pid);
   }
 
   const child = spawn("npm", ["run", "dev"], {
@@ -58,38 +47,29 @@ export async function startCustomVizDevServer(
     shell: true,
     detached: true,
     stdio: "ignore",
-    env: process.env,
   });
   child.unref();
 
-  const url = new URL(`http://localhost:${port}/`)
-    .toString()
-    .replace(/\/$/, "");
-
-  // Ensure the dev server is ready and serving the manifest.
-  await waitForHttpOk(`${url}/metabase-plugin.json`, 60_000);
-
-  running = { pid: child.pid ?? 0, url };
-  if (!running.pid) {
+  if (!child.pid) {
     throw new Error("Failed to start custom-viz dev server (no pid)");
   }
 
-  console.log(`Custom viz dev server started at ${running.url}`);
+  const url = `http://localhost:${port}`;
+
+  // Ensure the dev server is ready and serving the manifest.
+  await waitForHttpOk(`${url}/metabase-plugin.json`, TIMEOUT);
+  running = { pid: child.pid, url };
+  console.log(`Custom viz dev server started at ${url}`);
 
   return running;
 }
 
-export async function stopCustomVizDevServer({
-  pid,
-}: {
-  pid: number;
-}): Promise<null> {
+export function stopCustomVizDevServer(pid: number): null {
   if (!pid) {
     return null;
   }
 
   try {
-    // Prefer killing the process group (detached) to avoid orphan children.
     process.kill(-pid, "SIGTERM");
   } catch {
     try {

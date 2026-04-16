@@ -74,11 +74,10 @@ describe("development mode", () => {
       return;
     }
 
-    cy.task("stopCustomVizDevServer", { pid: devServerPid });
+    cy.task("stopCustomVizDevServer", devServerPid);
   });
 
   it("should load a dev-only plugin from a local dev server URL and use it in a question", () => {
-    H.setupCustomVizPlugin();
     H.visitCustomVizDevelopment();
 
     cy.findByLabelText(/Dev server URL/).type(devUrl);
