@@ -30,7 +30,7 @@
    (fn [names]
      (mapv #(when-let [v (get name->vec-literal %)] (float-array v)) names))))
 
-(deftest score-catalog-pure-test
+(deftest ^:parallel score-catalog-pure-test
   (testing "empty catalog scores zero"
     (is (=? {:total 0
              :components {:entity-count      {:count 0 :score 0}
@@ -81,7 +81,7 @@
       (is (=? {:components {:synonym-pairs {:pairs 0 :score 0}}}
               (#'complexity/score-catalog es nil))))))
 
-(deftest synonym-scoring-test
+(deftest ^:parallel synonym-scoring-test
   (testing "cosine similarity above threshold flags a synonym pair"
     (let [es       [(entity :name "customers") (entity :name "clients")]
           embedder (mock-embedder {"customers" [1.0 0.0 0.0]
@@ -118,7 +118,7 @@
       (is (=? {:components {:synonym-pairs {:pairs 0 :score 0 :error "boom"}}}
               (#'complexity/score-catalog es embedder))))))
 
-(deftest fn-embedder-test
+(deftest ^:parallel fn-embedder-test
   (testing "normalizes names, dedupes, zips vectors by position, and skips entries with no vector"
     (let [known-vectors {"foo" (float-array [1.0 0.0])
                          "bar" (float-array [0.0 1.0])}
@@ -154,7 +154,7 @@
     (is (contains? (methods startup/def-startup-logic!)
                    :metabase-enterprise.semantic-layer.init/PrintSemanticComplexityScore))))
 
-(deftest search-index-embedder-degrades-gracefully-test
+(deftest ^:parallel search-index-embedder-degrades-gracefully-test
   (testing "returns {} when semantic-search index isn't available (no throw)"
     (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))

@@ -23,6 +23,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private fetch-batch-size
+  "Maximum number of `(model, model_id)` pairs per SQL query when reading from the pgvector index.
+  Keeps the generated OR predicate bounded so we don't hit JDBC bind-parameter limits or produce
+  query plans that choke on large installs."
+  500)
+
 (defn- normalize-name [s]
   (some-> s str/trim u/lower-case-en))
 
@@ -41,20 +47,25 @@
                     (keep #(let [t (str/trim %)] (when (seq t) (Float/parseFloat t)))))]
       (float-array nums))))
 
+(defn- fetch-batch
+  "Query the active pgvector index table for a single batch of `(model, model_id)` pairs. Returns a
+  seq of `{:model :model_id :name :embedding}` rows."
+  [pgvector table-name pairs]
+  (let [where   (into [:or]
+                      (for [[m mid] pairs]
+                        [:and [:= :model m] [:= :model_id mid]]))
+        sql-vec (sql/format {:select [:model :model_id :name :embedding]
+                             :from   [(keyword table-name)]
+                             :where  where}
+                            {:quoted true})]
+    (jdbc/execute! pgvector sql-vec {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
 (defn- fetch-by-model+id
-  "Query the active pgvector index table for `(model, model_id)` pairs. Returns a seq of
-  `{:model :model_id :name :embedding}` rows."
+  "Query the active pgvector index for `(model, model_id)` pairs, batching to stay under JDBC
+  limits. Returns a seq of row maps."
   [pgvector table-name pairs]
   (when (seq pairs)
-    (let [where   (into [:or]
-                        (for [[m mid] pairs]
-                          [:and [:= :model m] [:= :model_id mid]]))
-          sql-vec (sql/format {:select [:model :model_id :name :embedding]
-                               :from   [(keyword table-name)]
-                               :where  where}
-                              {:quoted true})]
-      (jdbc/execute! pgvector sql-vec
-                     {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+    (into [] (mapcat #(fetch-batch pgvector table-name %)) (partition-all fetch-batch-size pairs))))
 
 (defn- try-active-index-state
   "Return the active index state, or nil if unavailable. Never throws."
@@ -64,7 +75,8 @@
           md       (semantic.env/get-index-metadata)]
       (when-let [state (semantic.index-metadata/get-active-index-state pgvector md)]
         {:pgvector   pgvector
-         :table-name (-> state :index :table-name)}))
+         :table-name (-> state :index :table-name)
+         :model      (-> state :index :embedding-model)}))
     (catch Throwable t
       (log/debug t "Semantic-search index not available; search-index embedder will return {}")
       nil)))
@@ -72,7 +84,10 @@
 (defn search-index-embedder
   "Embedder that reads vectors from the active semantic-search pgvector index. Returns `{}` when
   the index isn't available (premium feature off, not yet initialized, datasource unreachable).
-  Never throws."
+  Never throws.
+
+  When multiple entities share a normalized name but have different indexed embeddings, the row
+  with the lowest `model_id` wins so the result is deterministic across runs."
   [entities]
   (if-let [{:keys [pgvector table-name]} (try-active-index-state)]
     (try
@@ -80,7 +95,10 @@
                         :let [m (metabot/entity-type->search-model kind)]
                         :when m]
                     [m (str id)])
-            rows  (fetch-by-model+id pgvector table-name pairs)]
+            ;; Sort descending by model_id so `into {}` (last-wins) picks the lowest model_id per
+            ;; normalized name — a stable, deterministic choice when multiple entities share a name.
+            rows  (->> (fetch-by-model+id pgvector table-name pairs)
+                       (sort-by :model_id #(compare %2 %1)))]
         (into {}
               (keep (fn [{:keys [name embedding]}]
                       (when-let [v (parse-pgvector embedding)]
@@ -90,3 +108,16 @@
         (log/warn t "search-index-embedder: failed to read from search index; returning {}")
         {}))
     {}))
+
+(defn active-embedding-model
+  "Return the embedding model metadata when the search index is actually available and reachable.
+  Returns nil when the index is unreachable, not yet initialized, or the feature is disabled. Use
+  this instead of `get-configured-embedding-model` when you need to know what model the index is
+  *actually* serving — not just what the settings say."
+  []
+  (try
+    (when (try-active-index-state)
+      (when-let [model (semantic.env/get-configured-embedding-model)]
+        {:provider   (:provider model)
+         :model-name (:model-name model)}))
+    (catch Throwable _ nil)))

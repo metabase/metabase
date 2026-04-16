@@ -22,17 +22,13 @@
 
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
+  active-embedding-model
   search-index-embedder])
 
 (def max-cosine-distance
   "Cut-off used to filter semantic search results. Exposed so other modules (e.g., semantic-layer)
   can derive consistent similarity thresholds."
   semantic.index/max-cosine-distance)
-
-(def get-configured-embedding-model
-  "Return the currently configured embedding model map (`{:provider ... :model-name ...}`) or nil
-  when semantic search isn't configured on this instance."
-  semantic.env/get-configured-embedding-model)
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."

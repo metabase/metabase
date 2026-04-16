@@ -51,7 +51,7 @@
     [:map
      [:formula-version   pos-int?]
      [:synonym-threshold number?]
-     [:embedding-model   EmbeddingModelMeta]]]])
+     [:embedding-model {:optional true} EmbeddingModelMeta]]]])
 
 (api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
   "Return the current semantic-layer complexity score for this instance. Superuser-only, and quite expensive."

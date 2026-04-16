@@ -279,16 +279,12 @@
     ;;; currently will currently consume (provided we have that memory).
     {:library  (score-catalog (library-entities) embedder)
      :universe (score-catalog (universe-entities) embedder)
-     :meta     {:formula-version   formula-version
-                :synonym-threshold synonym-similarity-threshold
-                ;; Record which embedding model the search-index is using so benchmarks can pin it.
-                ;; nil if semantic search isn't available.
-                :embedding-model
-                (try
-                  (when-let [model (semantic-search/get-configured-embedding-model)]
-                    {:provider   (:provider model)
-                     :model-name (:model-name model)})
-                  (catch Throwable _ nil))}}))
+     :meta     (cond-> {:formula-version   formula-version
+                        :synonym-threshold synonym-similarity-threshold}
+                ;; Only included when we're actually using the search-index embedder AND the index
+                ;; is reachable. For custom embedders the caller knows what model they passed.
+                 (= embedder semantic-search/search-index-embedder)
+                 (assoc :embedding-model (semantic-search/active-embedding-model)))}))
 
 (comment
   (complexity-scores))
