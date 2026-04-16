@@ -22,6 +22,8 @@ You are writing Cypress E2E tests for the **Metabase** codebase.
 Before generating ANY test code, you MUST analyze React component source code
 to understand DOM structure, selectors, and user flows.
 
+@./../_shared/testing-patterns.md
+
 ## Phase 0 — Research
 
 1. Read existing helpers before writing anything:

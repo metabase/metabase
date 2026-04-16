@@ -7,3 +7,6 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 
 @./../_shared/development-workflow.md
 @./../_shared/typescript-commands.md
+@./../_shared/typescript-patterns.md
+@./../_shared/react-redux-patterns.md
+@./../_shared/testing-patterns.md
