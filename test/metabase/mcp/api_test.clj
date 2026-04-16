@@ -181,7 +181,15 @@
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
           (is (string? (:description tool)))
-          (is (map? (:inputSchema tool))))))))
+          (is (map? (:inputSchema tool)))))
+      (testing "search description guides clients toward the expected array shape"
+        (let [tools-by-name (into {} (map (juxt :name identity)) tools)
+              property-desc (fn [tool-name property-name]
+                              (or (get-in tools-by-name [tool-name :inputSchema :properties property-name :description])
+                                  (get-in tools-by-name [tool-name :inputSchema :properties (keyword property-name) :description])))]
+          (is (str/includes? (get-in tools-by-name ["search" :description]) "JSON arrays of strings"))
+          (is (str/includes? (property-desc "search" "term_queries") "JSON array of strings"))
+          (is (str/includes? (property-desc "search" "semantic_queries") "JSON array of strings")))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -236,7 +244,56 @@
         (is (= "text" (:type (first (:content result)))))
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))
-          (is (contains? search-data :total_count)))))))
+          (is (contains? search-data :total_count))))))
+
+  (testing "search rejects singleton string arguments"
+    (search.tu/with-legacy-search
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "search"
+                                                          :arguments {:term_queries "orders"}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        (is (= 200 (:status response)))
+        (is (true? (:isError result)))
+        (is (= "Invalid body" (:text (first (:content result))))))))
+
+  (testing "search rejects singleton semantic query strings"
+    (search.tu/with-legacy-search
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "search"
+                                                          :arguments {:semantic_queries "orders table"}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        (is (= 200 (:status response)))
+        (is (true? (:isError result)))
+        (is (= "Invalid body" (:text (first (:content result))))))))
+
+  (testing "search rejects JSON-stringified arrays"
+    (search.tu/with-legacy-search
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "search"
+                                                          :arguments {:term_queries "[\"orders\"]"}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        (is (= 200 (:status response)))
+        (is (true? (:isError result)))
+        (is (= "Invalid body" (:text (first (:content result)))))))))
+
+(deftest tools-call-query-coerces-stringified-structured-args-test
+  (testing "query accepts JSON-stringified order_by arguments"
+    (let [[session-id _] (initialize!)
+          table-id       (mt/id :orders)
+          query-data     (call-tool session-id "query"
+                                    {:table_id table-id
+                                     :order_by (format "[{\"field\":{\"field_id\":\"t%d-0\"},\"direction\":\"asc\"}]"
+                                                       table-id)
+                                     :limit    5})]
+      (is (= "completed" (:status query-data)))
+      (is (= 5 (:row_count query-data)))
+      (is (seq (get-in query-data [:json_query :stages 0 :order-by]))))))
 
 ;;; ------------------------------------------------ SSE Transport -------------------------------------------------
 

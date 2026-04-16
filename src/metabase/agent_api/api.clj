@@ -35,13 +35,18 @@
   30)
 
 (def ^:private ^:const default-query-row-limit
-  "Default row limit for table queries when no limit is specified."
+  "Default row cap when :limit is omitted from a table query request."
   200)
 
-(def ^:private ^:const max-query-row-limit
-  "Hard cap on rows returned by the combined query endpoint, keeping result sets lean for LLM context windows.
-   Agents can paginate via continuation tokens for more."
+(def ^:private ^:const page-size
+  "Rows returned per page when paginating the combined query endpoint via continuation tokens.
+   Also used as the query processor's per-call row constraint."
   200)
+
+(def ^:private ^:const max-total-row-limit
+  "Ceiling on the user-requested :limit for the combined query endpoint. Agents can paginate
+   through up to this many rows across pages."
+  2000)
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
@@ -300,15 +305,24 @@
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :description "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search."
-           :annotations {:read-only? true}}}
+           :description (str "Search for tables and metrics in Metabase. "
+                             "Use term_queries for keyword search or semantic_queries for natural language search. "
+                             "Both arguments must be JSON arrays of strings.")
+           :annotations {:read-only? true}
+           ;; Surface validation errors to clients instead of silently reshaping stringified arrays,
+           ;; so mis-shaped calls get clear feedback rather than coerced success.
+           :strict-input-shape? true}}
   [_route-params
    _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
    :- [:map
-       [:term_queries     {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-       [:semantic_queries {:optional true} [:maybe [:sequential ms/NonBlankString]]]]]
+       [:term_queries {:optional true
+                       :tool/description "Keyword search queries as a JSON array of strings, for example [\"orders\", \"revenue\"]."}
+        [:maybe [:sequential ms/NonBlankString]]]
+       [:semantic_queries {:optional true
+                           :tool/description "Natural-language search queries as a JSON array of strings, for example [\"how much revenue did we make\"]."}
+        [:maybe [:sequential ms/NonBlankString]]]]]
   (let [results (metabot-search/search
                  {:term-queries     (or term-queries [])
                   :semantic-queries (or semantic-queries [])
@@ -379,10 +393,11 @@
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
 (defn- generate-continuation-token
-  "Build a base64-encoded continuation token containing the query and next-page pagination info."
-  [query-map limit page]
+  "Build a base64-encoded continuation token carrying the query and next-page pagination info.
+   :limit is the user's total row cap across all pages, not the per-page size."
+  [query-map total-limit page]
   (-> {:query      query-map
-       :pagination {:limit limit :page (inc page)}}
+       :pagination {:limit total-limit :page (inc page)}}
       json/encode
       u/encode-base64))
 
@@ -391,13 +406,24 @@
   [token]
   (-> token u/decode-base64 json/decode+kw))
 
-(defn- query-page-size
-  "Determine the per-page row limit for an evaluated MBQL 5 query, taking the
-  user-supplied limit (from the last stage) when present and capping at the
-  combined query endpoint's hard maximum."
+(defn- extract-total-limit
+  "Pull the user's :limit from an evaluated MBQL 5 query's last stage and return
+   {:query <stripped-query> :total-limit <int>}. The :limit is removed from the
+   stage because it is enforced via pagination in the application layer, and capped
+   at the combined query endpoint's hard maximum."
   [query-map]
-  (let [user-limit (-> query-map :stages last :limit)]
-    (min (or user-limit default-query-row-limit) max-query-row-limit)))
+  (let [stages      (:stages query-map)
+        last-idx    (dec (count stages))
+        user-limit  (get-in stages [last-idx :limit])
+        total-limit (min (or user-limit default-query-row-limit) max-total-row-limit)]
+    {:query       (update-in query-map [:stages last-idx] dissoc :limit)
+     :total-limit total-limit}))
+
+(defn- compute-page-items
+  "Rows to request for this page, respecting the user's total cap.
+   Returns at most page-size, and never more than remaining rows under the cap."
+  [total-limit page]
+  (max 0 (min page-size (- total-limit (* (dec page) page-size)))))
 
 (defn- apply-page-to-query
   "Apply :page clause to the last stage of a MBQL 5 query map."
@@ -416,11 +442,12 @@
                            :context     :agent})))
 
 (defn- prepare-combined-query
-  "Apply the tighter row cap used by the combined query endpoint."
+  "Apply the tighter row cap used by the combined query endpoint. Each page is bounded
+   by page-size; the user's total-limit is enforced separately via pagination."
   [query]
   (assoc (prepare-agent-query query)
-         :constraints {:max-results           max-query-row-limit
-                       :max-results-bare-rows max-query-row-limit}))
+         :constraints {:max-results           page-size
+                       :max-results-bare-rows page-size}))
 
 (mr/def ::query-request
   "Request body for /v2/query. Accepts either a structured program or a continuation_token."
@@ -447,13 +474,14 @@
   [_route-params
    _query-params
    body :- ::query-request]
-  (let [{:keys [query limit page]}
+  (let [{:keys [query total-limit page]}
         (if-let [token (:continuation_token body)]
           (let [{:keys [query pagination]} (decode-continuation-token token)]
-            {:query query :limit (:limit pagination) :page (:page pagination)})
-          (let [query (evaluate-program-for-execution body)]
-            {:query query :limit (query-page-size query) :page 1}))
-        mbql5-with-page (apply-page-to-query query page limit)]
+            {:query query :total-limit (:limit pagination) :page (:page pagination)})
+          (let [{:keys [query total-limit]} (extract-total-limit (evaluate-program-for-execution body))]
+            {:query query :total-limit total-limit :page 1}))
+        items           (compute-page-items total-limit page)
+        mbql5-with-page (apply-page-to-query query page items)]
     (qp.streaming/streaming-response
      [rff :api]
       (qp/process-query
@@ -462,8 +490,9 @@
         rff
         (fn [result]
           (assoc result :continuation_token
-                 (when (= (:row_count result) limit)
-                   (generate-continuation-token query limit page)))))))))
+                 (when (and (= (:row_count result) items)
+                            (< (* page page-size) total-limit))
+                   (generate-continuation-token query total-limit page)))))))))
 
 ;;; ------------------------------------------------- Execute Query --------------------------------------------------
 

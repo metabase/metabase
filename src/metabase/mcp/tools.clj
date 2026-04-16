@@ -4,6 +4,8 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.agent-api.api :as agent-api]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
@@ -12,7 +14,8 @@
    [metabase.config.core :as config]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.io ByteArrayOutputStream)
    (java.net URLEncoder)
@@ -76,6 +79,49 @@
   (if config/is-dev?
     (build-tool-index (:tools (manifest)))
     @tool-index-delay))
+
+(defn- parse-json-if-matches
+  "Return `value` parsed as JSON when it's a string that parses into a value matching `pred`,
+   otherwise return `value` unchanged. Used by [[stringified-json-transformer]]."
+  [value pred]
+  (if (and (string? value) (seq value))
+    (try
+      (let [parsed (json/decode+kw value)]
+        (if (pred parsed) parsed value))
+      (catch Exception _ value))
+    value))
+
+(def ^:private stringified-json-transformer
+  "Malli transformer that parses JSON-encoded collection strings into their structured form.
+   Built-in `string-transformer`/`json-transformer` handle scalars but not `\"[...]\"` → vector
+   or `\"{...}\"` → map — some MCP clients stringify structured args, so we add that here."
+  (mtx/transformer
+   {:decoders {:vector     {:compile (fn [_ _] #(parse-json-if-matches % sequential?))}
+               :sequential {:compile (fn [_ _] #(parse-json-if-matches % sequential?))}
+               :map        {:compile (fn [_ _] #(parse-json-if-matches % map?))}
+               :map-of     {:compile (fn [_ _] #(parse-json-if-matches % map?))}}}))
+
+(def ^:private argument-decode-transformer
+  (mtx/transformer
+   (mtx/string-transformer)
+   (mtx/json-transformer)
+   stringified-json-transformer))
+
+(defn- body-decoder
+  "Cached Malli decoder for a tool's body schema, applied before the defendpoint
+   machinery performs its own validation."
+  [schema]
+  (mr/cached ::body-decoder schema
+             #(mc/decoder schema argument-decode-transformer)))
+
+(defn- coerce-body-arguments
+  "Decode body arguments against the tool's Malli body schema. Tools marked
+   `:strict-input-shape?` opt out so validation errors reach the client unchanged."
+  [tool-def arguments]
+  (if-let [schema (and (not (:strict-input-shape? tool-def))
+                       (:body-schema tool-def))]
+    ((body-decoder schema) arguments)
+    arguments))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -179,8 +225,10 @@
         method                (keyword (u/lower-case-en method))
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
-        api-path              (strip-api-prefix resolved-path)]
-    (invoke-agent-api method api-path token-scopes remaining-args)))
+        api-path              (strip-api-prefix resolved-path)
+        body-args             (cond-> remaining-args
+                                (= :post method) (->> (coerce-body-arguments tool-def)))]
+    (invoke-agent-api method api-path token-scopes body-args)))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
