@@ -45,6 +45,7 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
+  PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
   PLUGIN_WRITABLE_CONNECTION,
@@ -269,6 +270,13 @@ export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
           {getMetabotAdminRoutes()}
         </Route>
+
+        {PLUGIN_SECURITY_CENTER.isEnabled && (
+          <Route
+            path="security-center"
+            component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
+          />
+        )}
 
         <Route path="tools" component={createAdminRouteGuard("tools")}>
           <Route title={t`Tools`} component={ToolsApp}>

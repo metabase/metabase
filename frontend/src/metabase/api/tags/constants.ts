@@ -60,6 +60,7 @@ export const TAG_TYPES = [
   "unique-tasks",
   "user-key-value",
   "tenant",
+  "security-advisory",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

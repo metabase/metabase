@@ -9,6 +9,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -250,6 +251,14 @@
   "Transform for json-no-keywordization"
   {:in  json-in
    :out json-out-without-keywordization})
+
+(def transform-edn
+  "Transform that stores Clojure data as EDN strings. Preserves keywords, sets, and other
+   types that JSON cannot represent. Strings are assumed to already be EDN and passed through."
+  {:in  (fn [v] (cond (nil? v)    nil
+                      (string? v) v
+                      :else       (pr-str v)))
+   :out (fn [s] (when (string? s) (edn/read-string s)))})
 
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
