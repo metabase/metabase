@@ -315,8 +315,8 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["April 2022", ""],
-        ["May 2022", "52.76"],
+        ["April 2028", ""],
+        ["May 2028", "52.76"],
       ]);
 
       H.openNotebook();
@@ -380,9 +380,9 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["April 2022", "", "", "", ""],
-        ["May 2022", "", "52.76", "", ""],
-        ["June 2022", "339.14", "203.57", "493.51", "229.5"],
+        ["April 2028", "", "", "", ""],
+        ["May 2028", "", "52.76", "", ""],
+        ["June 2028", "339.14", "203.57", "493.51", "229.5"],
       ]);
     });
 
@@ -398,15 +398,15 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["May 2022", "Doohickey", "339.14", ""],
-        ["June 2022", "Doohickey", "482.56", "339.14"],
-        ["July 2022", "Doohickey", "1,160.83", "482.56"],
-        ["August 2022", "Doohickey", "751.29", "1,160.83"],
-        ["September 2022", "Doohickey", "802.49", "751.29"],
-        ["October 2022", "Doohickey", "1,553.37", "802.49"],
-        ["November 2022", "Doohickey", "1,728.4", "1,553.37"],
-        ["December 2022", "Doohickey", "2,213.47", "1,728.4"],
-        ["January 2023", "Doohickey", "1,939.99", "2,213.47"],
+        ["May 2028", "Doohickey", "339.14", ""],
+        ["June 2028", "Doohickey", "482.56", "339.14"],
+        ["July 2028", "Doohickey", "1,160.83", "482.56"],
+        ["August 2028", "Doohickey", "751.29", "1,160.83"],
+        ["September 2028", "Doohickey", "802.49", "751.29"],
+        ["October 2028", "Doohickey", "1,553.37", "802.49"],
+        ["November 2028", "Doohickey", "1,728.4", "1,553.37"],
+        ["December 2028", "Doohickey", "2,213.47", "1,728.4"],
+        ["January 2029", "Doohickey", "1,939.99", "2,213.47"],
       ]);
     });
 
@@ -573,8 +573,8 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["April 2025", "Gadget", "15,713", "31,426.01"],
-        ["September 2025", "Gadget", "15,017.31", "30,034.62"],
+        ["April 2031", "Gadget", "15,713", "31,426.01"],
+        ["September 2031", "Gadget", "15,017.31", "30,034.62"],
       ]);
     });
   });
@@ -621,14 +621,14 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["Doohickey", "2022", "9,031.56", ""],
-        ["Gadget", "2022", "10,672.63", ""],
-        ["Gizmo", "2022", "9,929.32", ""],
-        ["Widget", "2022", "12,523.37", ""],
-        ["Doohickey", "2023", "43,069.14", "9,031.56"],
-        ["Gadget", "2023", "54,960.62", "10,672.63"],
-        ["Gizmo", "2023", "48,130.71", "9,929.32"],
-        ["Widget", "2023", "59,095.56", "12,523.37"],
+        ["Doohickey", "2028", "9,031.56", ""],
+        ["Gadget", "2028", "10,672.63", ""],
+        ["Gizmo", "2028", "9,929.32", ""],
+        ["Widget", "2028", "12,523.37", ""],
+        ["Doohickey", "2029", "43,069.14", "9,031.56"],
+        ["Gadget", "2029", "54,960.62", "10,672.63"],
+        ["Gizmo", "2029", "48,130.71", "9,929.32"],
+        ["Widget", "2029", "59,095.56", "12,523.37"],
       ]);
 
       H.openNotebook();
@@ -679,14 +679,14 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["Doohickey", "2022", "", "9,031.56"],
-        ["Gadget", "2022", "", "10,672.63"],
-        ["Gizmo", "2022", "", "9,929.32"],
-        ["Widget", "2022", "", "12,523.37"],
-        ["Doohickey", "2023", "9,031.56", "43,069.14"],
-        ["Gadget", "2023", "10,672.63", "54,960.62"],
-        ["Gizmo", "2023", "9,929.32", "48,130.71"],
-        ["Widget", "2023", "12,523.37", "59,095.56"],
+        ["Doohickey", "2028", "", "9,031.56"],
+        ["Gadget", "2028", "", "10,672.63"],
+        ["Gizmo", "2028", "", "9,929.32"],
+        ["Widget", "2028", "", "12,523.37"],
+        ["Doohickey", "2029", "9,031.56", "43,069.14"],
+        ["Gadget", "2029", "10,672.63", "54,960.62"],
+        ["Gizmo", "2029", "9,929.32", "48,130.71"],
+        ["Widget", "2029", "12,523.37", "59,095.56"],
       ]);
 
       H.openNotebook();
@@ -743,9 +743,9 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["2022", "5", "5", ""],
-        ["2023", "5", "5", "5"],
-        ["2024", "5", "5", "5"],
+        ["2028", "5", "5", ""],
+        ["2029", "5", "5", "5"],
+        ["2030", "5", "5", "5"],
       ]);
     });
   });
@@ -782,14 +782,14 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["Doohickey from products", "2022", "9,031.56", ""],
-          ["Gadget from products", "2022", "10,672.63", ""],
-          ["Gizmo from products", "2022", "9,929.32", ""],
-          ["Widget from products", "2022", "12,523.37", ""],
-          ["Doohickey from products", "2023", "43,069.14", "9,031.56"],
-          ["Gadget from products", "2023", "54,960.62", "10,672.63"],
-          ["Gizmo from products", "2023", "48,130.71", "9,929.32"],
-          ["Widget from products", "2023", "59,095.56", "12,523.37"],
+          ["Doohickey from products", "2028", "9,031.56", ""],
+          ["Gadget from products", "2028", "10,672.63", ""],
+          ["Gizmo from products", "2028", "9,929.32", ""],
+          ["Widget from products", "2028", "12,523.37", ""],
+          ["Doohickey from products", "2029", "43,069.14", "9,031.56"],
+          ["Gadget from products", "2029", "54,960.62", "10,672.63"],
+          ["Gizmo from products", "2029", "48,130.71", "9,929.32"],
+          ["Widget from products", "2029", "59,095.56", "12,523.37"],
         ]);
 
         H.openNotebook();
@@ -826,14 +826,14 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["Doohickey", "2022", "9,031.56", ""],
-          ["Gadget", "2022", "10,672.63", ""],
-          ["Gizmo", "2022", "9,929.32", ""],
-          ["Widget", "2022", "12,523.37", ""],
-          ["Doohickey", "2023", "43,069.14", "9,031.56"],
-          ["Gadget", "2023", "54,960.62", "10,672.63"],
-          ["Gizmo", "2023", "48,130.71", "9,929.32"],
-          ["Widget", "2023", "59,095.56", "12,523.37"],
+          ["Doohickey", "2028", "9,031.56", ""],
+          ["Gadget", "2028", "10,672.63", ""],
+          ["Gizmo", "2028", "9,929.32", ""],
+          ["Widget", "2028", "12,523.37", ""],
+          ["Doohickey", "2029", "43,069.14", "9,031.56"],
+          ["Gadget", "2029", "54,960.62", "10,672.63"],
+          ["Gizmo", "2029", "48,130.71", "9,929.32"],
+          ["Widget", "2029", "59,095.56", "12,523.37"],
         ]);
 
         H.openNotebook();
@@ -892,9 +892,9 @@ describe("scenarios > question > offset", () => {
         verifyNoQuestionError();
 
         verifyTableContent([
-          ["2", "1", "ab", "2022", "42,156.87", ""],
-          ["2", "1", "ab", "2023", "205,256.02", "42,156.87"],
-          ["2", "1", "ab", "2024", "510,045.03", "205,256.02"],
+          ["2", "1", "ab", "2028", "42,156.87", ""],
+          ["2", "1", "ab", "2029", "205,256.02", "42,156.87"],
+          ["2", "1", "ab", "2030", "510,045.03", "205,256.02"],
         ]);
 
         H.openNotebook();
@@ -953,9 +953,9 @@ describe("scenarios > question > offset", () => {
         verifyNoQuestionError();
 
         verifyTableContent([
-          ["2022", "2", "1", "ab", "42,156.87", ""],
-          ["2023", "2", "1", "ab", "205,256.02", "42,156.87"],
-          ["2024", "2", "1", "ab", "510,045.03", "205,256.02"],
+          ["2028", "2", "1", "ab", "42,156.87", ""],
+          ["2029", "2", "1", "ab", "205,256.02", "42,156.87"],
+          ["2030", "2", "1", "ab", "510,045.03", "205,256.02"],
         ]);
 
         H.openNotebook();
@@ -994,9 +994,9 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["2022", "Doohickey from products", "9,031.56", ""],
-          ["2022", "Gadget from products", "10,672.63", ""],
-          ["2022", "Gizmo from products", "9,929.32", ""],
+          ["2028", "Doohickey from products", "9,031.56", ""],
+          ["2028", "Gadget from products", "10,672.63", ""],
+          ["2028", "Gizmo from products", "9,929.32", ""],
         ]);
 
         H.openNotebook();
@@ -1032,9 +1032,9 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["2022", "Doohickey", "9,031.56", ""],
-          ["2022", "Gadget", "10,672.63", ""],
-          ["2022", "Gizmo", "9,929.32", ""],
+          ["2028", "Doohickey", "9,031.56", ""],
+          ["2028", "Gadget", "10,672.63", ""],
+          ["2028", "Gizmo", "9,929.32", ""],
         ]);
 
         H.openNotebook();
@@ -1071,9 +1071,9 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["2022", "2", "42,156.87", ""],
-          ["2023", "2", "205,256.02", "42,156.87"],
-          ["2024", "2", "510,045.03", "205,256.02"],
+          ["2028", "2", "42,156.87", ""],
+          ["2029", "2", "205,256.02", "42,156.87"],
+          ["2030", "2", "510,045.03", "205,256.02"],
         ]);
 
         H.openNotebook();
@@ -1285,7 +1285,7 @@ describe("scenarios > question > offset", () => {
     H.visualize();
 
     H.echartsContainer().within(() => {
-      cy.contains("January 2024").should("be.visible");
+      cy.contains("January 2030").should("be.visible");
     });
   });
 });

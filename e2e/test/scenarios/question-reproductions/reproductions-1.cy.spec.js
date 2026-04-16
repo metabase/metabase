@@ -33,7 +33,7 @@ describe("issue 4482", () => {
     H.visualize();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 1, 2022, 12:00 AM");
+    cy.findByText("April 1, 2028, 12:00 AM");
   });
 
   it("should be possible to summarize max of a temporal column (metabase#4482-2)", () => {
@@ -45,7 +45,7 @@ describe("issue 4482", () => {
     H.visualize();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 1, 2025, 12:00 AM");
+    cy.findByText("April 1, 2031, 12:00 AM");
   });
 
   it("should be not possible to average a temporal column (metabase#4482-3)", () => {

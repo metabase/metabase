@@ -54,14 +54,14 @@ describe("scenarios > question > filter", () => {
             [
               "between",
               ["field", PRODUCTS.CREATED_AT, null],
-              "2025-04-15",
-              "2025-04-15",
+              "2031-04-15",
+              "2031-04-15",
             ],
             [
               "between",
               ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
-              "2025-04-15",
-              "2025-04-15",
+              "2031-04-15",
+              "2031-04-15",
             ],
           ],
           joins: [

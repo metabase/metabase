@@ -128,7 +128,7 @@ describe("scenarios > models list view", () => {
 
       cy.log("Verify preview updates with CREATED_AT value");
       cy.get("@listPreview").within(() => {
-        cy.findByText("February 11, 2025, 9:40 PM").should("be.visible");
+        cy.findByText("February 11, 2031, 9:40 PM").should("be.visible");
       });
 
       cy.log("Remove TAX column");
@@ -202,7 +202,7 @@ describe("scenarios > models list view", () => {
         cy.findAllByRole("img")
           .first()
           .should("have.attr", "aria-label", "factory icon");
-        cy.findByText("February 11, 2025, 9:40 PM").should("be.visible");
+        cy.findByText("February 11, 2031, 9:40 PM").should("be.visible");
         cy.findByText("14").should("be.visible");
         cy.findByText("37.65").should("be.visible");
         cy.findByText("2.07").should("not.exist");

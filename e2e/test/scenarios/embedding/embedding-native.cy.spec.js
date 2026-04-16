@@ -138,7 +138,7 @@ describe("scenarios > embedding > native questions", () => {
       H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("December 29, 2024, 4:54 AM");
+      cy.findByText("December 29, 2030, 4:54 AM");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CO");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -271,7 +271,7 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         H.visitEmbeddedPage(payload, {
-          setFilters: { created_at: "Q2-2025", source: "Organic", state: "OR" },
+          setFilters: { created_at: "Q2-2031", source: "Organic", state: "OR" },
         });
 
         H.filterWidget()
@@ -318,7 +318,7 @@ describe("scenarios > embedding > native questions", () => {
             id: [92, 96, 102, 104],
             product_id: [140],
             state: ["AK", "TX"],
-            created_at: "Q3-2024",
+            created_at: "Q3-2030",
             total: [10],
             source: ["Organic"],
           },

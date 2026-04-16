@@ -668,7 +668,7 @@ describe("issue 16756", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/**/${id}/query`).as("cardQuery");
 
-      cy.visit(`/question/${id}?filter=2024-03-31~2025-03-31`);
+      cy.visit(`/question/${id}?filter=2030-03-31~2031-03-31`);
 
       cy.wait("@cardQuery");
     });
@@ -888,8 +888,8 @@ describe("issue 21246", () => {
   });
 
   it("should be able to use sub-query referencing a GUI question and date based filters (metabase#21246)", () => {
-    const fieldFilterValue = "filter=2024-02";
-    const dateFilterValue = "datevariable=2024-02-19";
+    const fieldFilterValue = "filter=2030-02";
+    const dateFilterValue = "datevariable=2030-02-19";
 
     cy.get("@questionId").then((id) => {
       // Let's set filter values directly through URL, rather than through the UI
@@ -1272,7 +1272,7 @@ describe("issue 58061", () => {
     }).then(({ body: card }) => {
       cy.visit({
         url: `/question/${card.id}`,
-        qs: { filter: "2024-09-08" },
+        qs: { filter: "2030-09-08" },
       });
       cy.wait("@cardQuery");
       H.assertQueryBuilderRowCount(1);

@@ -126,7 +126,7 @@ describe("scenarios > visualizations > table", () => {
     cy.realPress(["Meta", "c"]);
     H.readClipboard().should(
       "equal",
-      "Total	Discount ($)	Created At\n39.72		February 11, 2025, 9:40 PM",
+      "Total	Discount ($)	Created At\n39.72		February 11, 2031, 9:40 PM",
     );
 
     // Copy unformatted content with Shift+Cmd+C
@@ -134,7 +134,7 @@ describe("scenarios > visualizations > table", () => {
     H.readClipboard().should(
       "equal",
       "Total	Discount ($)	Created At\n" +
-        "39.718145389078366	null	2025-02-11T21:40:27.892-08:00",
+        "39.718145389078366	null	2031-02-11T21:40:27.892-08:00",
     );
 
     // Escape to clear selection

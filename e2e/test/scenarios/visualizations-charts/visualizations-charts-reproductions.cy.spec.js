@@ -42,7 +42,7 @@ describe("issue 13504", () => {
 
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At: Month is Mar 1–31, 2023").should("be.visible");
+      cy.findByText("Created At: Month is Mar 1–31, 2029").should("be.visible");
     });
   });
 });
@@ -552,7 +552,7 @@ describe("issue 21452", () => {
     H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2028",
       rows: [
         {
           color: "#88BF4D",
@@ -591,7 +591,7 @@ describe("issue 21504", () => {
     H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
-      cy.findByText("January 2025").should("be.visible");
+      cy.findByText("January 2031").should("be.visible");
     });
   });
 });
@@ -751,7 +751,7 @@ describe("issue 25007", () => {
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    H.echartsTooltip().findByText("May 1–7, 2022");
+    H.echartsTooltip().findByText("May 1–7, 2028");
   });
 });
 
@@ -783,11 +783,11 @@ describe("issue 25156", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.echartsContainer()
-      .should("contain", "2022")
-      .and("contain", "2023")
-      .and("contain", "2023")
-      .and("contain", "2024")
-      .and("contain", "2025");
+      .should("contain", "2028")
+      .and("contain", "2029")
+      .and("contain", "2029")
+      .and("contain", "2030")
+      .and("contain", "2031");
   });
 });
 
@@ -1264,8 +1264,8 @@ describe("issue 63671", () => {
           filter: [
             "between",
             ["field", PRODUCTS.CREATED_AT, null],
-            "2025-01-01",
-            "2025-12-31",
+            "2031-01-01",
+            "2031-12-31",
           ],
         },
         display: "bar",
@@ -1276,7 +1276,7 @@ describe("issue 63671", () => {
 
   it("should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)", () => {
     cy.findByTestId("query-visualization-root")
-      .findByText("2025")
+      .findByText("2031")
       .should("have.length", 1);
   });
 });

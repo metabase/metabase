@@ -541,11 +541,11 @@ describe("scenarios > visualizations > pie chart", () => {
       H.visitDashboard(dashboard_id);
     });
 
-    confirmSliceClickBehavior("2025", 6578);
+    confirmSliceClickBehavior("2031", 6578);
     confirmSliceClickBehavior("Affiliate", 1270, 0);
     confirmSliceClickBehavior("Doohickey", 282, 0);
 
-    confirmSliceClickBehavior("2024", 5834);
+    confirmSliceClickBehavior("2030", 5834);
     confirmSliceClickBehavior("Organic", 1180, 1);
     confirmSliceClickBehavior("Gizmo", 354, 8);
   });
@@ -573,7 +573,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.echartsContainer().findByText("79%").realHover();
 
     H.assertEChartsTooltip({
-      header: "2024",
+      header: "2030",
       rows: [
         {
           name: "Affiliate",
