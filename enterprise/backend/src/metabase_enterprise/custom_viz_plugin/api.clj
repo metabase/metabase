@@ -69,10 +69,8 @@
 
 (defn- parse-repo-name
   "Extract the repository name from a git URL.
-   Supports both HTTPS and SSH-style URLs:
      'https://github.com/user/custom-heatmap'     -> 'custom-heatmap'
-     'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'
-     'git@github.com:user/custom-heatmap.git'     -> 'custom-heatmap'"
+     'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'"
   [^String url]
   (-> url
       (str/replace #"\.git$" "")
@@ -108,6 +106,7 @@
                                                       [:access_token   {:optional true} [:maybe :string]]
                                                       [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
+  (cache/validate-repo-url! repo_url)
   (let [identifier (parse-repo-name repo_url)
         _          (api/check-400
                     (not (t2/exists? :model/CustomVizPlugin :repo_url repo_url))
