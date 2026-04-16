@@ -394,8 +394,6 @@
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
-  ;; TODO: figure out correct fix — should the FK have ON DELETE CASCADE, or should Transform have its own before-delete?
-  (t2/delete! :model/Transform :source_database_id id)
   (delete-database-fields! id)
   (->> (eduction
         (map t2.realize/realize)
