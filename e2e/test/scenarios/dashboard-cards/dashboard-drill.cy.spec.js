@@ -826,10 +826,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
     });
     H.tableHeaderColumn("Quantity");
-    cy.get(".test-Table-ID")
-      .first()
-      // Mid-point check that this cell actually contains ID = 1
-      .contains("1")
+    cy.findByTestId("table-body")
+      .get("[data-dataset-index=0] > [data-column-id='ID']")
+      .should("have.text", "3") // Subject to change - sensitive to year shifting in the Sample Database
       .click();
 
     cy.wait("@dataset").then((xhr) => {
@@ -837,7 +836,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("Subtotal");
-      cy.findByText("37.65");
+      cy.findByText("52.72");
     });
   });
 
