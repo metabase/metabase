@@ -859,7 +859,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 0);
       H.assertEChartsTooltip({
-        header: "April 2022",
+        header: "April 2028",
         rows: [
           {
             color: "#88BF4D",
@@ -872,7 +872,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
-        header: "May 2022",
+        header: "May 2028",
         rows: [
           {
             color: "#88BF4D",
@@ -893,7 +893,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 0);
       H.assertEChartsTooltip({
-        header: "April 2022",
+        header: "April 2028",
         rows: [
           {
             color: "#88BF4D",
@@ -905,7 +905,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipExcludesText("Compared to previous month");
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
-        header: "June 2022",
+        header: "June 2028",
         rows: [
           {
             color: "#88BF4D",
@@ -918,7 +918,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 2);
       H.assertEChartsTooltip({
-        header: "July 2022",
+        header: "July 2028",
         rows: [
           {
             color: "#88BF4D",
@@ -931,7 +931,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 3);
       H.assertEChartsTooltip({
-        header: "September 2022",
+        header: "September 2028",
         rows: [
           {
             color: "#88BF4D",
@@ -952,7 +952,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 0);
       H.assertEChartsTooltip({
-        header: "April 2022",
+        header: "April 2028",
         rows: [
           {
             color: "#88BF4D",
@@ -965,7 +965,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
-        header: "May 2022",
+        header: "May 2028",
         rows: [
           {
             color: "#88BF4D",

@@ -206,7 +206,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Should navigate to filtered table view with dimension filter applied
     cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At: Year is Jan 1 – Dec 31, 2022",
+      "Created At: Year is Jan 1 – Dec 31, 2028",
     );
 
     // Verify we're viewing a table with results
@@ -339,7 +339,7 @@ describe("scenarios > visualizations > boxplot", () => {
       cy.findAllByTestId("filter-pill").should("have.length", 2);
       cy.findAllByTestId("filter-pill")
         .eq(0)
-        .should("have.text", "Created At: Year is Jan 1 – Dec 31, 2022");
+        .should("have.text", "Created At: Year is Jan 1 – Dec 31, 2028");
       cy.findAllByTestId("filter-pill")
         .eq(1)
         .should("have.text", "Product → Category is Doohickey");
@@ -405,7 +405,7 @@ describe("scenarios > visualizations > boxplot", () => {
 
       cy.findByTestId("filter-pill").should(
         "have.text",
-        "Created At: Year is Jan 1 – Dec 31, 2022",
+        "Created At: Year is Jan 1 – Dec 31, 2028",
       );
 
       H.tableInteractiveBody().should("exist");

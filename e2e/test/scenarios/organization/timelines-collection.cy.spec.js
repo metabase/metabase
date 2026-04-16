@@ -596,7 +596,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@getTimeline");
 
       cy.findByTestId("event-list")
-        .findByText("October 12, 2022, 18:15")
+        .findByText("October 12, 2028, 18:15")
         .should("be.visible");
     });
   });

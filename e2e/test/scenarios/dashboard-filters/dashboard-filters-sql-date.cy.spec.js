@@ -80,7 +80,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
 
     // Make sure we can override the default value
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("October 2022").click();
+    cy.findByText("October 2028").click();
     H.popover().contains("Aug").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Macy Olson");

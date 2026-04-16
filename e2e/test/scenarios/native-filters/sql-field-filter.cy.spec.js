@@ -215,7 +215,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.filterWidget().click();
       H.popover().findByText("Month").click();
       SQLFilter.runQuery();
-      H.tableInteractive().should("contain", "April 1, 2022");
+      H.tableInteractive().should("contain", "April 1, 2028");
     });
   });
 

@@ -422,7 +422,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Created At" }).should("be.visible");
         const currentYear = new Date().getFullYear();
-        for (let year = 2022; year <= currentYear; year++) {
+        for (let year = 2028; year <= currentYear; year++) {
           cy.findByText(String(year)).should("be.visible");
         }
       });

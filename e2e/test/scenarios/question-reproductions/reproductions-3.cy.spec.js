@@ -643,7 +643,7 @@ describe("issue 33439", () => {
     H.addCustomColumn();
     H.enterCustomColumnDetails({
       formula:
-        'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
+        'convertTimezone("2028-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
       name: "Date",
     });
     H.popover().within(() => {

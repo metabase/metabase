@@ -897,7 +897,7 @@ describe("scenarios > question > custom column > aggregation", () => {
 
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar", "Sum"],
-        firstRows: [["April 2022", "49.54", "52.76", "102.29"]],
+        firstRows: [["April 2028", "49.54", "52.76", "102.29"]],
       });
     });
 
@@ -914,7 +914,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar"],
-        firstRows: [["September 2022", "15.69", "18.57"]],
+        firstRows: [["September 2028", "15.69", "18.57"]],
       });
     });
 
@@ -936,7 +936,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar", "Products - Foo → ID"],
-        firstRows: [["April 2022", "49.54", "52.76", "34"]],
+        firstRows: [["April 2028", "49.54", "52.76", "34"]],
       });
     });
 
@@ -1017,7 +1017,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Count", "Count"],
-        firstRows: [["April 2022", "2", "3"]],
+        firstRows: [["April 2028", "2", "3"]],
       });
 
       cy.log(
@@ -1037,7 +1037,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Count", "Count"],
-        firstRows: [["April 2022", "3", "2"]],
+        firstRows: [["April 2028", "3", "2"]],
       });
     });
   });

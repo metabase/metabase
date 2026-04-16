@@ -105,7 +105,7 @@ describe("scenarios > visualizations > rows", () => {
   it("should handle very long product titles in row chart", () => {
     H.createQuestion(
       {
-        name: "Orders created before June 1st 2022",
+        name: "Orders created before June 1st 2028",
         query: {
           "source-table": PRODUCTS_ID,
           expressions: {

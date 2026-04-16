@@ -228,7 +228,7 @@ describe("scenarios > question > native", () => {
         H.runNativeQuery();
         cy.findByTestId("query-visualization-root").should(
           "contain",
-          "January 1, 2022",
+          "January 1, 2028",
         );
       });
 
@@ -288,7 +288,7 @@ describe("scenarios > question > native", () => {
         );
         cy.findByTestId("visualization-root").should(
           "contain",
-          "January 1, 2022",
+          "January 1, 2028",
         );
 
         cy.get("@q2").then((questionId) => {
@@ -310,7 +310,7 @@ describe("scenarios > question > native", () => {
 
         cy.findByTestId("visualization-root").should(
           "contain",
-          "January 1, 2022",
+          "January 1, 2028",
         );
       });
 
@@ -391,7 +391,7 @@ describe("scenarios > question > native", () => {
         });
 
         cy.findByTestId("visualization-root")
-          .should("contain", "January 1, 2022")
+          .should("contain", "January 1, 2028")
           .should("contain", "January 1, 2029");
       });
 

@@ -939,7 +939,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.assertEChartsTooltip({ rows: [{ name: "Other", value: "9" }] });
       H.otherSeriesChartPaths().first().realHover();
       H.assertEChartsTooltip({
-        header: "September 2022",
+        header: "September 2028",
         rows: [
           { name: "IA", value: "3" },
           { name: "KY", value: "2" },
@@ -1005,7 +1005,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
       H.otherSeriesChartPaths().first().realHover();
       H.assertEChartsTooltip({
-        header: "September 2022",
+        header: "September 2028",
         rows: [
           { name: "IA", value: "3" },
           { name: "KY", value: "2" },

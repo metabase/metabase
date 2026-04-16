@@ -55,7 +55,7 @@ describe("scenarios > data studio > measures > queries", () => {
           breakout("Created At");
         },
       });
-      verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
+      verifyRowValues([["April 2028"], ["May 2028", "52.76"]]);
     });
 
     it("should create a measure with a column from an implicit join", () => {
@@ -86,7 +86,7 @@ describe("scenarios > data studio > measures > queries", () => {
           breakout("Created At");
         },
       });
-      verifyRowValues([["April 2022"], ["May 2022", "49.54"]]);
+      verifyRowValues([["April 2028"], ["May 2028", "49.54"]]);
     });
 
     it("should create a measure with a custom aggregation expression", () => {
@@ -342,7 +342,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
+      verifyRowValues([["April 2028"], ["May 2028", "52.76"]]);
     });
   });
 
@@ -471,7 +471,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      verifyRowValues([["April 2022", "52.76", "8685"]]);
+      verifyRowValues([["April 2028", "52.76", "8685"]]);
     });
   });
 
@@ -505,7 +505,7 @@ describe("scenarios > data studio > measures > queries", () => {
       },
     });
 
-    verifyRowValues([["April 2022", "52.76", "5", "1"]]);
+    verifyRowValues([["April 2028", "52.76", "5", "1"]]);
   });
 
   describe("measure refs", () => {

@@ -235,7 +235,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       cy.log("single breakout");
       addQuestion(singleBreakoutQuestionDetails.name);
-      H.ensureDashboardCardHasText("April 2022");
+      H.ensureDashboardCardHasText("April 2028");
       cy.wait("@queryMetadata");
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
@@ -243,7 +243,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.saveDashboard();
 
       cy.wait("@cardQuery");
-      H.ensureDashboardCardHasText("April 2022");
+      H.ensureDashboardCardHasText("April 2028");
       H.filterWidget().click();
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
@@ -401,8 +401,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.popover().findByText("Week").click();
       H.getDashboardCard().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("April 24, 2022").should("be.visible");
-        cy.findByText("May 1, 2022").should("be.visible");
+        cy.findByText("April 24, 2028").should("be.visible");
+        cy.findByText("May 1, 2028").should("be.visible");
         cy.findByText(multiBreakoutQuestionDetails.name).click();
       });
       H.appBar()
@@ -410,7 +410,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", multiBreakoutQuestionDetails.name);
       H.tableInteractive().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("April 24, 2022").should("be.visible");
+        cy.findByText("April 24, 2028").should("be.visible");
       });
     });
 
@@ -1074,7 +1074,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       H.popover().findByText("Year").click();
       H.saveDashboard();
-      H.getDashboardCard().should("contain", "January 1, 2022");
+      H.getDashboardCard().should("contain", "January 1, 2028");
     });
 
     it("should not be able to use temporal unit parameter with a filter of a different type", () => {

@@ -517,9 +517,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
       // check values in the table
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("42,156.87"); // sum of total for 2022
+      cy.findByText("42,156.87"); // sum of total for 2028
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("84,313.74"); // sum of "twice total" for 2022
+      cy.findByText("84,313.74"); // sum of "twice total" for 2028
 
       // check grand totals
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -873,18 +873,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 9, 2022");
+    cy.findByText("November 9, 2028");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 10, 2022");
+    cy.findByText("November 10, 2028");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 11, 2022");
+    cy.findByText("November 11, 2028");
     collapseRowsFor("Created At: Day");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 9, 2022");
+    cy.findByText("Totals for November 9, 2028");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 10, 2022");
+    cy.findByText("Totals for November 10, 2028");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 11, 2022");
+    cy.findByText("Totals for November 11, 2028");
 
     function collapseRowsFor(column_name) {
       cy.findByText(column_name).parent().find(".Icon-dash").click();

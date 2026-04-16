@@ -747,7 +747,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
       columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
         ["December 2029", "-60  –  -40", "1"],
-        ["September 2022", "0  –  20", "2"],
+        ["September 2028", "0  –  20", "2"],
       ],
     });
 
@@ -776,8 +776,8 @@ describe("issue 53556 - nested question based on native model with remapped valu
     H.assertTableData({
       columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2022", "40  –  60", "1"],
-        ["May 2022", "20  –  40", "1"],
+        ["April 2028", "40  –  60", "1"],
+        ["May 2028", "20  –  40", "1"],
       ],
     });
   });
@@ -1212,7 +1212,7 @@ describe("cumulative count - issue 33330", () => {
     cy.findAllByTestId("header-cell")
       .should("contain", "Created At: Month")
       .and("contain", "Cumulative count");
-    cy.findAllByTestId("cell-data").should("contain", "June 2022");
+    cy.findAllByTestId("cell-data").should("contain", "June 2028");
   });
 
   it("should still work after turning a question into model (metabase#33330-1)", () => {
@@ -1220,7 +1220,7 @@ describe("cumulative count - issue 33330", () => {
     cy.findAllByTestId("header-cell")
       .should("contain", "Created At: Month")
       .and("contain", "Cumulative count");
-    cy.findAllByTestId("cell-data").should("contain", "June 2022");
+    cy.findAllByTestId("cell-data").should("contain", "June 2028");
   });
 
   it("should still work after applying a post-aggregation filter (metabase#33330-2)", () => {
