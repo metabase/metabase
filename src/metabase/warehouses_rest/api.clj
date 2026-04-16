@@ -374,11 +374,11 @@
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
-        has-format-table-metadata-perms?       (fn [{db-id :id}]
-                                                 (= :yes (perms/most-permissive-database-permission-for-user
-                                                          api/*current-user-id*
-                                                          :perms/manage-format-table-metadata
-                                                          db-id)))
+        has-table-metadata-perms?       (fn [{db-id :id}]
+                                          (= :yes (perms/most-permissive-database-permission-for-user
+                                                   api/*current-user-id*
+                                                   :perms/manage-table-metadata
+                                                   db-id)))
         db-list-res                     (cond->> (or (dbs-list :include-tables?                 include-tables?
                                                                :include-saved-questions-db?     saved
                                                                :include-saved-questions-tables? include-saved-questions-tables?
@@ -390,7 +390,7 @@
                                                                :can-query?                      can-query
                                                                :can-write-metadata?             can-write-metadata)
                                                      [])
-                                          can-write-metadata (filter has-format-table-metadata-perms?))]
+                                          can-write-metadata (filter has-table-metadata-perms?))]
     {:data  db-list-res
      :total (count db-list-res)}))
 
