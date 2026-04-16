@@ -8,13 +8,13 @@ import {
 
 import type { State } from "metabase/redux/store";
 
-import { MetabaseReduxContext } from "./custom-context";
+import { metabaseReduxContext } from "./custom-context";
 
 export const useStore: () => Store<State, AnyAction> =
-  createStoreHook(MetabaseReduxContext);
+  createStoreHook(metabaseReduxContext);
 export const useDispatch: () => ThunkDispatch<State, void, AnyAction> =
-  createDispatchHook(MetabaseReduxContext);
+  createDispatchHook(metabaseReduxContext);
 export const useSelector: TypedUseSelectorHook<State> =
-  createSelectorHook(MetabaseReduxContext);
+  createSelectorHook(metabaseReduxContext);
 
 export type DispatchFn = ReturnType<typeof useDispatch>;

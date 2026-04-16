@@ -1,5 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import { createContext } from "react";
+import { type PropsWithChildren, createContext } from "react";
 import {
   Provider,
   type ReactReduxContextValue,
@@ -7,15 +7,15 @@ import {
   connect as _connect,
 } from "react-redux";
 
-export const MetabaseReduxContext =
+export const metabaseReduxContext =
   createContext<ReactReduxContextValue | null>(null);
 
 export const MetabaseReduxProvider = ({
   children,
   store,
-}: React.PropsWithChildren & { store: Store }) => {
+}: PropsWithChildren<{ store: Store }>) => {
   return (
-    <Provider store={store} context={MetabaseReduxContext}>
+    <Provider store={store} context={metabaseReduxContext}>
       {children}
     </Provider>
   );
@@ -28,7 +28,7 @@ export const connect: typeof _connect = (
   options?: any,
 ) => {
   return _connect(mapStateToProps, mapDispatchToProps, mergeProps, {
-    context: MetabaseReduxContext,
+    context: metabaseReduxContext,
     ...options,
   });
 };
