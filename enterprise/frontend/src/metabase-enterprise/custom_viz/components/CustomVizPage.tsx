@@ -119,7 +119,11 @@ export function CustomVizPage({ params }: Props) {
       description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
     >
       <SettingsSection>
-        <Box bdrs="md" bg="background-primary">
+        <Box
+          bdrs="md"
+          bg="background-primary"
+          data-testid="custom-viz-settings-form"
+        >
           <FormProvider
             initialValues={initialValues}
             validationSchema={validationSchema}

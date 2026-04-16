@@ -122,7 +122,7 @@
                                          {:enabled false})]
           (is (not (contains? resp :access_token)))))
       (testing "POST /:id/refresh response does not expose access_token"
-        (with-redefs [cache/fetch-and-update! (constantly nil)]
+        (with-redefs [cache/fetch-and-save! (constantly nil)]
           (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))]
             (is (not (contains? resp :access_token)))))))))
 
@@ -135,7 +135,7 @@
                                                :identifier   "dup-viz"
                                                :display_name "dup-viz"
                                                :status       :active}]
-        (with-redefs [cache/fetch-and-update! (constantly nil)]
+        (with-redefs [cache/fetch-and-save! (constantly nil)]
           (is (re-find #"repo URL.*already exists"
                        (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/"
                                              {:repo_url "https://github.com/test/dup-viz"}))))))))
@@ -147,7 +147,7 @@
                                                :identifier   "my-viz"
                                                :display_name "my-viz"
                                                :status       :active}]
-        (with-redefs [cache/fetch-and-update! (constantly nil)]
+        (with-redefs [cache/fetch-and-save! (constantly nil)]
           (is (re-find #"identifier.*already exists"
                        (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/"
                                              {:repo_url "https://github.com/org-b/my-viz"}))))))))
@@ -191,7 +191,7 @@
                                                       :display_name "dev-sec"
                                                       :status       :active}]
         (testing "SECURITY: rejects file:// dev URL via API in prod mode"
-          (with-redefs [config/is-test? false]
+          (with-redefs [config/is-test? false config/is-dev? false]
             (is (= 400
                    (:status-code
                     (ex-data
@@ -266,32 +266,57 @@
 (deftest register-plugin-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (testing "successful registration creates plugin and fetches bundle"
-        (with-redefs [cache/fetch-and-update! (fn [plugin]
-                                                (t2/update! :model/CustomVizPlugin (:id plugin)
-                                                            {:status :active :resolved_commit "sha123"}))]
-          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
-                                           {:repo_url "https://github.com/test/new-register-viz"})]
+      (testing "successful registration creates plugin and persists manifest fields"
+        (with-redefs [cache/fetch-plugin-data! (fn [_]
+                                                 {:commit-sha  "sha123"
+                                                  :parsed      {:name "Pretty Name" :icon "icon.svg"}
+                                                  :version-str ">=1.59.0"
+                                                  :snapshot    {}})]
+          (let [repo-url "https://github.com/test/new-register-viz"
+                resp     (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
+                                               {:repo_url repo-url})
+                row      (t2/select-one :model/CustomVizPlugin :repo_url repo-url)]
             (is (= "new-register-viz" (:identifier resp))
                 "identifier should be derived from repo name")
-            (is (= "https://github.com/test/new-register-viz" (:repo_url resp)))
+            (is (= repo-url (:repo_url resp)))
             (is (false? (:dev_only resp))
-                "git-registered plugins are not dev-only")))))))
+                "git-registered plugins are not dev-only")
+            (is (= "Pretty Name" (:display_name row))
+                "display_name should come from manifest :name when present")
+            (is (= "sha123" (:resolved_commit row)))
+            (is (= "icon.svg" (:icon row)))
+            (is (= ">=1.59.0" (:metabase_version row)))
+            (is (= :active (:status row)))))))))
 
-(deftest register-plugin-sets-error-on-fetch-failure-test
+(deftest register-plugin-falls-back-to-identifier-when-manifest-name-missing-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (testing "plugin is persisted with error status when fetch-and-update! fails"
-        (with-redefs [cache/fetch-and-update! (fn [plugin]
-                                                (t2/update! :model/CustomVizPlugin (:id plugin)
-                                                            {:status :error
-                                                             :error_message "Connection refused"}))]
-          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
-                                           {:repo_url "https://github.com/test/fail-register-viz"})]
-            (is (= "error" (:status resp))
-                "plugin should be in error state after failed fetch")
-            (is (= "Connection refused" (:error_message resp))
-                "error message should be preserved")))))))
+      (with-redefs [cache/fetch-plugin-data! (fn [_]
+                                               {:commit-sha  "sha456"
+                                                :parsed      {}
+                                                :version-str nil
+                                                :snapshot    {}})]
+        (let [repo-url "https://github.com/test/no-name-viz"
+              _        (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
+                                             {:repo_url repo-url})
+              row      (t2/select-one :model/CustomVizPlugin :repo_url repo-url)]
+          (is (= "no-name-viz" (:display_name row))
+              "display_name falls back to the derived identifier when manifest :name is missing"))))))
+
+(deftest register-plugin-rejects-fetch-failure-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 and persists no row when fetch fails"
+        (with-redefs [cache/fetch-plugin-data! (fn [_]
+                                                 (throw (ex-info "Connection refused"
+                                                                 {:status-code 400})))]
+          (let [repo-url "https://github.com/test/fail-register-viz"
+                resp     (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/"
+                                               {:repo_url repo-url})]
+            (is (re-find #"Connection refused" (or (:message resp) (str resp)))
+                "error message should be returned in the response body")
+            (is (nil? (t2/select-one :model/CustomVizPlugin :repo_url repo-url))
+                "no plugin row should be persisted on failure")))))))
 
 (deftest register-dev-plugin-test
   (mt/with-premium-features #{:custom-viz}
@@ -334,14 +359,16 @@
 
 (deftest update-pinned-version-triggers-refresh-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "updating pinned_version triggers fetch-and-update!"
+    (testing "updating pinned_version triggers fetch-and-save!"
       (let [fetched? (atom false)]
         (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/pin-test"
                                                         :identifier      "pin-test"
                                                         :display_name    "pin-test"
                                                         :status          :active
                                                         :pinned_version  nil}]
-          (with-redefs [cache/fetch-and-update! (fn [_] (reset! fetched? true))]
+          (with-redefs [cache/fetch-and-save! (fn [plugin & _]
+                                                (reset! fetched? true)
+                                                (t2/select-one :model/CustomVizPlugin :id (:id plugin)))]
             (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
                                   {:pinned_version "v1.0.0"})
             (is (true? @fetched?))))))))
@@ -355,20 +382,24 @@
                                                         :display_name    "pin-same"
                                                         :status          :active
                                                         :pinned_version  "v1.0.0"}]
-          (with-redefs [cache/fetch-and-update! (fn [_] (reset! fetched? true))]
+          (with-redefs [cache/fetch-and-save! (fn [plugin & _]
+                                                (reset! fetched? true)
+                                                (t2/select-one :model/CustomVizPlugin :id (:id plugin)))]
             (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
                                   {:pinned_version "v1.0.0"})
             (is (false? @fetched?))))))))
 
 (deftest refresh-git-plugin-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "refresh calls fetch-and-update! for git-based plugins"
+    (testing "refresh calls fetch-and-save! for git-based plugins"
       (let [fetched? (atom false)]
         (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/refresh-git"
                                                         :identifier   "refresh-git"
                                                         :display_name "refresh-git"
                                                         :status       :active}]
-          (with-redefs [cache/fetch-and-update! (fn [_] (reset! fetched? true))]
+          (with-redefs [cache/fetch-and-save! (fn [plugin & _]
+                                                (reset! fetched? true)
+                                                (t2/select-one :model/CustomVizPlugin :id (:id plugin)))]
             (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))
             (is (true? @fetched?))))))))
 
@@ -436,10 +467,11 @@
   (mt/with-premium-features #{:custom-viz :audit-app}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "registering a plugin records a custom-viz-plugin-create audit event"
-        (with-redefs [cache/fetch-and-update! (fn [plugin]
-                                                (t2/update! :model/CustomVizPlugin (:id plugin)
-                                                            {:status          :active
-                                                             :resolved_commit "sha123"}))]
+        (with-redefs [cache/fetch-plugin-data! (fn [_]
+                                                 {:commit-sha  "sha123"
+                                                  :parsed      {}
+                                                  :version-str nil
+                                                  :snapshot    {}})]
           (let [resp  (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
                                             {:repo_url "https://github.com/test/audit-create-viz"})
                 entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
@@ -522,9 +554,10 @@
                                                       :display_name    "audit-refresh-viz"
                                                       :status          :active
                                                       :resolved_commit "old-sha"}]
-        (with-redefs [cache/fetch-and-update! (fn [plugin]
-                                                (t2/update! :model/CustomVizPlugin (:id plugin)
-                                                            {:resolved_commit "new-sha"}))]
+        (with-redefs [cache/fetch-and-save! (fn [plugin & _]
+                                              (t2/update! :model/CustomVizPlugin (:id plugin)
+                                                          {:resolved_commit "new-sha"})
+                                              (t2/select-one :model/CustomVizPlugin :id (:id plugin)))]
           (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))
           (let [entry (mt/latest-audit-log-entry "custom-viz-plugin-update" id)]
             (is (partial=

@@ -100,15 +100,15 @@
           (testing "returns nil for absolute path attempts"
             (is (nil? (cache/resolve-asset plugin "/etc/passwd")))))))))
 
-;;; ------------------------------------------------ fetch-and-update! state consistency ------------------------------------------------
+;;; ------------------------------------------------ fetch-and-save! state consistency ------------------------------------------------
 
-(deftest fetch-and-update!-success-test
+(deftest fetch-and-save!-success-test
   (testing "successful fetch updates plugin to :active with manifest data"
     (mt/with-premium-features #{:custom-viz}
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/fetch-ok"
                                                       :identifier   "fetch-ok"
                                                       :display_name "fetch-ok"
-                                                      :status       :pending}]
+                                                      :status       :error}]
         (with-redefs [rs.git/git-source      (constantly nil)
                       rs.git/snapshot-at-ref  (constantly {:version "abc123"})
                       rs.git/read-file        (fn [_snapshot path]
@@ -116,62 +116,69 @@
                                                   "dist/index.js"          "console.log('hi')"
                                                   "metabase-plugin.json"   "{\"name\":\"My Viz\",\"icon\":\"icon.svg\"}"
                                                   nil))]
-          (let [commit (cache/fetch-and-update! {:id id :repo_url "https://github.com/test/fetch-ok"
-                                                 :identifier "fetch-ok"})]
-            (is (= "abc123" commit) "should return the commit SHA")
-            (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
-              (is (= :active (:status plugin))
-                  "plugin should be active after successful fetch")
-              (is (nil? (:error_message plugin))
-                  "error_message should be cleared on success")
-              (is (= "abc123" (:resolved_commit plugin)))
-              (is (= "My Viz" (:display_name plugin))
-                  "display_name should come from manifest")
-              (is (= "icon.svg" (:icon plugin))
-                  "icon should come from manifest"))))))))
+          (let [result (cache/fetch-and-save! {:id id :repo_url "https://github.com/test/fetch-ok"
+                                               :identifier "fetch-ok"})]
+            (is (= :active (:status result))
+                "plugin should be active after successful fetch")
+            (is (nil? (:error_message result))
+                "error_message should be cleared on success")
+            (is (= "abc123" (:resolved_commit result)))
+            (is (= "My Viz" (:display_name result))
+                "display_name should come from manifest")
+            (is (= "icon.svg" (:icon result))
+                "icon should come from manifest")))))))
 
-(deftest fetch-and-update!-failure-sets-error-state-test
-  (testing "failed fetch sets plugin to :error with error message"
+(deftest fetch-and-save!-insert-test
+  (testing "fetch-and-save! inserts a new row when no :id is provided"
+    (mt/with-premium-features #{:custom-viz}
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (with-redefs [rs.git/git-source      (constantly nil)
+                      rs.git/snapshot-at-ref  (constantly {:version "abc123"})
+                      rs.git/read-file        (fn [_snapshot path]
+                                                (case path
+                                                  "dist/index.js"        "console.log('hi')"
+                                                  "metabase-plugin.json" "{\"name\":\"New Viz\"}"
+                                                  nil))]
+          (let [result (cache/fetch-and-save! {:repo_url   "https://github.com/test/insert-new"
+                                               :identifier "insert-new"})]
+            (is (some? (:id result)) "should return a row with an id")
+            (is (= :active (:status result)))
+            (is (= "New Viz" (:display_name result)))
+            (is (= "abc123" (:resolved_commit result)))))))))
+
+(deftest fetch-and-save!-failure-throws-test
+  (testing "failed fetch throws — caller decides how to handle"
     (mt/with-premium-features #{:custom-viz}
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/fetch-fail"
                                                       :identifier   "fetch-fail"
                                                       :display_name "fetch-fail"
                                                       :status       :active}]
         (with-redefs [rs.git/git-source     (fn [& _] (throw (ex-info "Connection refused" {})))]
-          (let [result (cache/fetch-and-update! {:id id :repo_url "https://github.com/test/fetch-fail"
-                                                 :identifier "fetch-fail"})]
-            (is (nil? result) "should return nil on failure")
-            (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
-              (is (= :error (:status plugin))
-                  "plugin should be in error state after failed fetch")
-              (is (some? (:error_message plugin))
-                  "error_message should be set on failure"))))))))
+          (is (thrown-with-msg? Exception #"Connection refused"
+                                (cache/fetch-and-save! {:id id :repo_url "https://github.com/test/fetch-fail"
+                                                        :identifier "fetch-fail"}))))))))
 
-(deftest fetch-and-update!-missing-bundle-sets-error-test
-  (testing "missing index.js in repo sets plugin to :error"
+(deftest fetch-and-save!-missing-bundle-throws-test
+  (testing "missing index.js in repo throws"
     (mt/with-premium-features #{:custom-viz}
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/no-bundle"
                                                       :identifier   "no-bundle"
                                                       :display_name "no-bundle"
-                                                      :status       :pending}]
+                                                      :status       :active}]
         (with-redefs [rs.git/git-source      (constantly nil)
                       rs.git/snapshot-at-ref  (constantly {:version "abc123"})
                       rs.git/read-file        (constantly nil)]
-          (let [result (cache/fetch-and-update! {:id id :repo_url "https://github.com/test/no-bundle"
-                                                 :identifier "no-bundle"})]
-            (is (nil? result))
-            (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
-              (is (= :error (:status plugin)))
-              (is (re-find #"index\.js.*not found" (:error_message plugin))
-                  "error message should mention the missing file"))))))))
+          (is (thrown-with-msg? Exception #"index\.js.*not found"
+                                (cache/fetch-and-save! {:id id :repo_url "https://github.com/test/no-bundle"
+                                                        :identifier "no-bundle"}))))))))
 
-(deftest fetch-and-update!-incompatible-version-sets-error-test
-  (testing "plugin requiring incompatible Metabase version sets :error"
+(deftest fetch-and-save!-incompatible-version-throws-test
+  (testing "plugin requiring incompatible Metabase version throws"
     (mt/with-premium-features #{:custom-viz}
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/bad-ver"
                                                       :identifier   "bad-ver"
                                                       :display_name "bad-ver"
-                                                      :status       :pending}]
+                                                      :status       :active}]
         (with-redefs [rs.git/git-source      (constantly nil)
                       rs.git/snapshot-at-ref  (constantly {:version "abc123"})
                       rs.git/read-file        (fn [_snapshot path]
@@ -182,13 +189,9 @@
                                                   nil))
                       config/mb-version-info {:tag "v1.60.0"}
                       config/is-dev?         false]
-          (let [result (cache/fetch-and-update! {:id id :repo_url "https://github.com/test/bad-ver"
-                                                 :identifier "bad-ver"})]
-            (is (nil? result))
-            (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
-              (is (= :error (:status plugin)))
-              (is (re-find #"version" (:error_message plugin))
-                  "error message should mention version incompatibility"))))))))
+          (is (thrown-with-msg? Exception #"version"
+                                (cache/fetch-and-save! {:id id :repo_url "https://github.com/test/bad-ver"
+                                                        :identifier "bad-ver"}))))))))
 
 ;;; ------------------------------------------------ resolve-bundle precedence ------------------------------------------------
 

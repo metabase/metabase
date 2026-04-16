@@ -52,7 +52,7 @@ databaseChangeLog:
               - column:
                   name: status
                   type: varchar(32)
-                  remarks: Plugin status - pending, active, or error
+                  remarks: Plugin status - active or error
                   constraints:
                     nullable: false
               - column:
@@ -105,7 +105,7 @@ databaseChangeLog:
               - column:
                   name: metabase_version
                   type: varchar(254)
-                  remarks: Metabase version range requirement from manifest (e.g. ">=59 <62")
+                  remarks: Metabase version range requirement from manifest (e.g. ">=1.59 <1.62")
               - column:
                   name: dev_bundle_url
                   type: varchar(1024)
