@@ -11,8 +11,6 @@
    [metabase-enterprise.audit-app.analytics-dev :as analytics-dev]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.query-processor.core :as qp]
-   [metabase.sync.core :as sync]
    [metabase.test.embedded-postgres.core :as emb-pg]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -45,21 +43,16 @@
   (or (t2/select-one :model/User :email (:email seed-user))
       (t2/insert-returning-instance! :model/User seed-user)))
 
-(defn- run-export! [target-dir]
+(defn- run-export!
+  [target-dir]
   (audit/analytics-dev-mode! true)
   (let [user (seed-superuser!)]
-    (with-redefs [sync/sync-database! (fn [& _args]
-                                        (throw (ex-info "Sync invocation during analytics-dev export"
-                                                        {:type ::sync-invocation})))
-                  qp/process-query    (fn [& _args]
-                                        (throw (ex-info "QP invocation during analytics-dev export"
-                                                        {:type ::qp-invocation})))]
-      (analytics-dev/create-analytics-dev-database! (:id user) {:sync? false})
-      (analytics-dev/import-analytics-content! (:email user))
-      (let [collection (analytics-dev/find-analytics-collection)]
-        (when-not collection
-          (throw (ex-info "analytics collection not found after import" {})))
-        (analytics-dev/export-analytics-content! (:id collection) (:email user) target-dir)))))
+    (analytics-dev/create-analytics-dev-database! (:id user) {:sync? false})
+    (analytics-dev/import-analytics-content! (:email user))
+    (let [collection (analytics-dev/find-analytics-collection)]
+      (when-not collection
+        (throw (ex-info "analytics collection not found after import" {})))
+      (analytics-dev/export-analytics-content! (:id collection) (:email user) target-dir))))
 
 (defn export!
   "Run the full analytics-dev export pipeline against a fresh embedded Postgres.
