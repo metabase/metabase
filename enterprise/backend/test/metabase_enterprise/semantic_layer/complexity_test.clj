@@ -215,19 +215,24 @@
       true  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
       false {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
-(deftest ^:parallel meta-embedding-model-absent-when-unavailable-test
-  (testing ":embedding-model key is absent from :meta when the search index is unreachable"
-    (mt/with-dynamic-fn-redefs [semantic-search/active-embedding-model (constantly nil)
-                                semantic-search/search-index-embedder  (constantly {})]
-      (let [{:keys [meta]} (complexity/complexity-scores)]
-        (is (not (contains? meta :embedding-model))))))
-  (testing ":embedding-model key is present in :meta when the active model is non-nil"
-    (mt/with-dynamic-fn-redefs [semantic-search/active-embedding-model
-                                (constantly {:provider "openai" :model-name "text-embedding-3-small"})
-                                semantic-search/search-index-embedder (constantly {})]
-      (let [{:keys [meta]} (complexity/complexity-scores)]
-        (is (= {:provider "openai" :model-name "text-embedding-3-small"}
-               (:embedding-model meta)))))))
+(deftest ^:sequential meta-embedding-model-absent-when-unavailable-test
+  (with-redefs [complexity/library-entities  (constantly [])
+                complexity/universe-entities (constantly [])]
+    (testing ":embedding-model key is absent from :meta when the search index is unreachable"
+      (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
+        ;; Pass the real search-index-embedder so the identity check in complexity-scores succeeds,
+        ;; but the embedder returns {} because try-active-index-state is nil.
+        (let [{:keys [meta]} (complexity/complexity-scores :embedder semantic-search/search-index-embedder)]
+          (is (not (contains? meta :embedding-model))))))
+    (testing ":embedding-model key is present in :meta when the active model is non-nil"
+      (with-redefs [ss.embedders/try-active-index-state
+                    (constantly {:pgvector   :mock
+                                 :table-name "mock_table"
+                                 :model      {:provider "openai" :model-name "text-embedding-3-small"}})
+                    ss.embedders/fetch-by-model+id (constantly [])]
+        (let [{:keys [meta]} (complexity/complexity-scores :embedder semantic-search/search-index-embedder)]
+          (is (= {:provider "openai" :model-name "text-embedding-3-small"}
+                 (:embedding-model meta))))))))
 
 (deftest ^:sequential active-embedding-model-reads-from-active-index-test
   (testing "active-embedding-model returns the model from the active index, not the configured setting"
