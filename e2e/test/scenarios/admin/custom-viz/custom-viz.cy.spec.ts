@@ -551,336 +551,6 @@ describe("admin > custom visualizations", () => {
     });
   });
 
-  describe("using a plugin — document", () => {
-    const DOC_QUESTION_NAME = "Custom Viz Doc Question";
-
-    before(() => {
-      H.setupCustomVizRepo();
-    });
-
-    beforeEach(() => {
-      H.activateToken("bleeding-edge");
-      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
-
-      H.createQuestion(
-        {
-          name: DOC_QUESTION_NAME,
-          query: {
-            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-            aggregation: [["count"]],
-          },
-          display: H.CUSTOM_VIZ_DISPLAY,
-        },
-        { wrapId: true, idAlias: "questionId" },
-      );
-
-      // Query the card once so it appears in the /chart command's recent list.
-      cy.get<CardId>("@questionId").then((cardId) => {
-        cy.request("POST", `/api/card/${cardId}/query`);
-      });
-    });
-
-    describe("authenticated", () => {
-      beforeEach(() => {
-        cy.get<CardId>("@questionId").then((cardId) => {
-          H.createDocument({
-            name: "Doc with Custom Viz",
-            document: buildDocumentWithCustomVizCard(cardId),
-            collection_id: null,
-            idAlias: "documentId",
-          });
-        });
-      });
-
-      it("renders the custom viz when the document is opened", () => {
-        H.interceptPluginBundle();
-        H.visitDocument("@documentId");
-        cy.wait("@pluginBundle");
-
-        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
-          cy.findByText("Custom viz rendered successfully").should(
-            "be.visible",
-          );
-          cy.findByText(/Value: \d+/).should("be.visible");
-        });
-      });
-
-      it("falls back to the default visualization when the plugin bundle fails to load", () => {
-        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
-          statusCode: 500,
-          body: "boom",
-        }).as("failedBundle");
-
-        H.visitDocument("@documentId");
-        cy.wait("@failedBundle");
-
-        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
-          cy.findByText("Custom viz rendered successfully").should("not.exist");
-          cy.findByTestId("table-root").should("be.visible");
-        });
-      });
-    });
-
-    describe("inserting via slash command", () => {
-      beforeEach(() => {
-        H.createDocument({
-          name: "Empty Doc",
-          document: {
-            type: "doc",
-            content: [{ type: "paragraph", attrs: { _id: "1" } }],
-          },
-          collection_id: null,
-          idAlias: "documentId",
-        });
-      });
-
-      it("renders the custom viz when added via the /chart command", () => {
-        H.interceptPluginBundle();
-        H.visitDocument("@documentId");
-
-        H.documentContent().click();
-        H.addToDocument("/", false);
-        H.commandSuggestionItem("Chart").click();
-        H.commandSuggestionDialog().findByText(DOC_QUESTION_NAME).click();
-
-        cy.wait("@pluginBundle");
-
-        H.getDocumentCard(DOC_QUESTION_NAME)
-          .findByText("Custom viz rendered successfully")
-          .should("be.visible");
-      });
-    });
-
-    describe("public sharing", () => {
-      beforeEach(() => {
-        H.updateSetting("enable-public-sharing", true);
-
-        cy.get<CardId>("@questionId").then((cardId) => {
-          H.createDocument({
-            name: "Public Doc with Custom Viz",
-            document: buildDocumentWithCustomVizCard(cardId),
-            collection_id: null,
-            idAlias: "documentId",
-          });
-        });
-      });
-
-      it("renders the custom viz when viewed via a public link", () => {
-        cy.get("@documentId")
-          .then((documentId) => H.createPublicDocumentLink(Number(documentId)))
-          .then(({ body: { uuid } }) => {
-            cy.signOut();
-            H.interceptPluginBundle();
-            cy.visit(`/public/document/${uuid}`);
-            cy.wait("@pluginBundle");
-
-            H.getDocumentCard(DOC_QUESTION_NAME)
-              .findByText("Custom viz rendered successfully")
-              .should("be.visible");
-          });
-      });
-
-      it("falls back to the default visualization in a public document when the bundle fails", () => {
-        cy.get("@documentId")
-          .then((documentId) => H.createPublicDocumentLink(Number(documentId)))
-          .then(({ body: { uuid } }) => {
-            cy.signOut();
-            cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
-              statusCode: 500,
-              body: "boom",
-            }).as("failedBundle");
-            cy.visit(`/public/document/${uuid}`);
-            cy.wait("@failedBundle");
-
-            H.getDocumentCard(DOC_QUESTION_NAME)
-              .findByTestId("table-root")
-              .should("be.visible");
-          });
-      });
-    });
-  });
-
-  describe("icon rendering across app surfaces", () => {
-    const ICON_QUESTION_NAME = "Custom Viz Icon Test";
-    // EntityIcon renders as a CSS-masked span whose `mask-image: url(...)`
-    // points at /api/ee/custom-viz-plugin/:id/asset?path=icon.svg. Matching on
-    // that URL fragment is the most stable signal that the plugin icon is
-    // actually rendered — some consumers pass `alt` (accessible name) while
-    // others render the icon as decorative/aria-hidden.
-    const PLUGIN_ICON_SELECTOR = 'span[style*="custom-viz-plugin"]';
-
-    before(() => {
-      H.setupCustomVizRepo();
-    });
-
-    beforeEach(() => {
-      H.activateToken("bleeding-edge");
-      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
-
-      H.createQuestion(
-        {
-          name: ICON_QUESTION_NAME,
-          query: {
-            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
-            aggregation: [["count"]],
-          },
-          display: H.CUSTOM_VIZ_DISPLAY,
-        },
-        { wrapId: true, idAlias: "questionId" },
-      );
-
-      // Populate the recents pool so the card surfaces in recents-based UIs
-      // (command palette, document mention dialog, home).
-      cy.get<CardId>("@questionId").then((cardId) => {
-        cy.request("POST", `/api/card/${cardId}/query`);
-      });
-    });
-
-    it("renders in the chart type sidebar on the question editor", () => {
-      H.interceptPluginBundle();
-      H.visitQuestion("@questionId");
-      cy.wait("@pluginBundle");
-
-      cy.findByTestId("viz-type-button").click();
-      cy.findByTestId("chart-type-sidebar")
-        .findByRole("img", { name: "demo-viz" })
-        .should("be.visible");
-    });
-
-    it("renders in the command palette search results", () => {
-      cy.visit("/");
-
-      H.commandPaletteSearch(ICON_QUESTION_NAME, false);
-      H.commandPalette()
-        .findAllByRole("option", { name: new RegExp(ICON_QUESTION_NAME) })
-        .first()
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("be.visible");
-    });
-
-    it("renders in the navigation sidebar bookmarks section", () => {
-      cy.get<CardId>("@questionId").then((cardId) => {
-        cy.request("POST", `/api/bookmark/card/${cardId}`);
-      });
-
-      // Collection page keeps the navigation sidebar open by default.
-      cy.visit("/collection/root");
-
-      H.navigationSidebar()
-        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-    });
-
-    it("renders in the document mention dialog", () => {
-      H.createDocument({
-        name: "Icon Doc Mention",
-        document: {
-          type: "doc",
-          content: [{ type: "paragraph", attrs: { _id: "1" } }],
-        },
-        collection_id: null,
-        idAlias: "documentId",
-      });
-      H.visitDocument("@documentId");
-
-      H.documentContent().click();
-      cy.realType("@");
-      H.documentMentionDialog().should("be.visible");
-      cy.realType("Custom Viz Icon");
-
-      H.documentMentionItem(new RegExp(ICON_QUESTION_NAME))
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-    });
-
-    it("renders in the collection list item", () => {
-      cy.visit("/collection/root");
-
-      cy.findByRole("row", { name: new RegExp(ICON_QUESTION_NAME) })
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-    });
-
-    it("renders in the collection pinned section when the visualization preview is hidden", () => {
-      cy.get<CardId>("@questionId").then((cardId) => {
-        cy.request("PUT", `/api/card/${cardId}`, { collection_position: 1 });
-      });
-      cy.visit("/collection/root");
-
-      H.getPinnedSection()
-        .findByRole("button", { name: "Actions" })
-        .click({ force: true });
-      H.popover()
-        .findByText(/Don.t show visualization/)
-        .click();
-
-      H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
-    });
-
-    it("renders in the search results page", () => {
-      cy.visit(`/search?q=${encodeURIComponent(ICON_QUESTION_NAME)}`);
-
-      cy.findAllByTestId("search-result-item")
-        .filter(`:contains(${ICON_QUESTION_NAME})`)
-        .first()
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-    });
-
-    it("renders in the home page recently-viewed section", () => {
-      cy.visit("/");
-
-      H.main()
-        .findByText("Pick up where you left off")
-        .parent()
-        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-    });
-
-    it("renders in the dashboard add-questions sidesheet", () => {
-      H.createDashboard(
-        { name: "Icon Test Dashboard" },
-        { wrapId: true, idAlias: "dashboardId" },
-      );
-      H.visitDashboard("@dashboardId");
-      H.editDashboard();
-      H.openQuestionsSidebar();
-
-      cy.findByTestId("add-card-sidebar")
-        .findByRole("menuitem", { name: ICON_QUESTION_NAME })
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-    });
-
-    it("renders in the document Visualize-as picker", () => {
-      cy.get<CardId>("@questionId").then((cardId) => {
-        H.createDocument({
-          name: "Icon Doc With Card",
-          document: buildDocumentWithCustomVizCard(cardId),
-          collection_id: null,
-          idAlias: "documentId",
-        });
-      });
-
-      H.interceptPluginBundle();
-      H.visitDocument("@documentId");
-      cy.wait("@pluginBundle");
-
-      H.openDocumentCardMenu(ICON_QUESTION_NAME);
-      H.popover().findByText("Edit Visualization").click();
-      H.getDocumentSidebar()
-        .findByRole("button", { name: /demo-viz/i })
-        .click();
-
-      cy.findByRole("menu")
-        .findByRole("menuitem", { name: /demo-viz/i })
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-    });
-  });
-
   describe("using a plugin — dashboard", () => {
     before(() => {
       H.setupCustomVizRepo();
@@ -1140,6 +810,326 @@ describe("admin > custom visualizations", () => {
           `${parameter.slug}=${AGGREGATED_VALUE}`,
         );
       });
+    });
+  });
+
+  describe("using a plugin — documents", () => {
+    const DOC_QUESTION_NAME = "Custom Viz Doc Question";
+
+    before(() => {
+      H.setupCustomVizRepo();
+    });
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
+
+      H.createQuestion(
+        {
+          name: DOC_QUESTION_NAME,
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "questionId" },
+      );
+
+      // Query the card once so it appears in the /chart command's recent list.
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("POST", `/api/card/${cardId}/query`);
+      });
+    });
+
+    describe("regular documents", () => {
+      beforeEach(() => {
+        cy.get<CardId>("@questionId").then((cardId) => {
+          H.createDocument({
+            name: "Doc with Custom Viz",
+            document: buildDocumentWithCustomVizCard(cardId),
+            collection_id: null,
+            idAlias: "documentId",
+          });
+        });
+      });
+
+      it("renders the custom viz when the document is opened", () => {
+        H.interceptPluginBundle();
+        H.visitDocument("@documentId");
+        cy.wait("@pluginBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
+          cy.findByText("Custom viz rendered successfully").should(
+            "be.visible",
+          );
+          cy.findByText(/Value: \d+/).should("be.visible");
+        });
+      });
+
+      it("falls back to the default visualization when the plugin bundle fails to load", () => {
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+
+        H.visitDocument("@documentId");
+        cy.wait("@failedBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
+          cy.findByText("Custom viz rendered successfully").should("not.exist");
+          cy.findByTestId("table-root").should("be.visible");
+        });
+      });
+    });
+
+    describe("inserting via / command", () => {
+      beforeEach(() => {
+        H.createDocument({
+          name: "Empty Doc",
+          document: {
+            type: "doc",
+            content: [{ type: "paragraph", attrs: { _id: "1" } }],
+          },
+          collection_id: null,
+          idAlias: "documentId",
+        });
+      });
+
+      it("renders the custom viz when added via the /chart command", () => {
+        H.interceptPluginBundle();
+        H.visitDocument("@documentId");
+
+        H.documentContent().click();
+        H.addToDocument("/", false);
+        H.commandSuggestionItem("Chart").click();
+        H.commandSuggestionDialog().findByText(DOC_QUESTION_NAME).click();
+
+        cy.wait("@pluginBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME)
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
+      });
+    });
+
+    describe("public sharing", () => {
+      beforeEach(() => {
+        H.updateSetting("enable-public-sharing", true);
+
+        cy.get<CardId>("@questionId").then((cardId) => {
+          H.createDocument({
+            name: "Public Doc with Custom Viz",
+            document: buildDocumentWithCustomVizCard(cardId),
+            collection_id: null,
+            idAlias: "documentId",
+          });
+        });
+      });
+
+      it("renders the custom viz when viewed via a public link", () => {
+        cy.get("@documentId")
+          .then((documentId) => H.createPublicDocumentLink(Number(documentId)))
+          .then(({ body: { uuid } }) => {
+            cy.signOut();
+            H.interceptPluginBundle();
+            cy.visit(`/public/document/${uuid}`);
+            cy.wait("@pluginBundle");
+
+            H.getDocumentCard(DOC_QUESTION_NAME)
+              .findByText("Custom viz rendered successfully")
+              .should("be.visible");
+          });
+      });
+
+      it("falls back to the default visualization in a public document when the bundle fails", () => {
+        cy.get("@documentId")
+          .then((documentId) => H.createPublicDocumentLink(Number(documentId)))
+          .then(({ body: { uuid } }) => {
+            cy.signOut();
+            cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+              statusCode: 500,
+              body: "boom",
+            }).as("failedBundle");
+            cy.visit(`/public/document/${uuid}`);
+            cy.wait("@failedBundle");
+
+            H.getDocumentCard(DOC_QUESTION_NAME)
+              .findByTestId("table-root")
+              .should("be.visible");
+          });
+      });
+    });
+  });
+
+  describe("icon rendering across the app", () => {
+    const ICON_QUESTION_NAME = "Custom Viz Icon Test";
+    // EntityIcon renders as a CSS-masked span whose `mask-image: url(...)`
+    // points at /api/ee/custom-viz-plugin/:id/asset?path=icon.svg. Matching on
+    // that URL fragment is the most stable signal that the plugin icon is
+    // actually rendered — some consumers pass `alt` (accessible name) while
+    // others render the icon as decorative/aria-hidden.
+    const PLUGIN_ICON_SELECTOR = 'span[style*="custom-viz-plugin"]';
+
+    before(() => {
+      H.setupCustomVizRepo();
+    });
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
+
+      H.createQuestion(
+        {
+          name: ICON_QUESTION_NAME,
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "questionId" },
+      );
+
+      // Populate the recents pool so the card surfaces in recents-based UIs
+      // (command palette, document mention dialog, home).
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("POST", `/api/card/${cardId}/query`);
+      });
+    });
+
+    it("renders in the chart type sidebar on the question editor", () => {
+      H.interceptPluginBundle();
+      H.visitQuestion("@questionId");
+      cy.wait("@pluginBundle");
+
+      cy.findByTestId("viz-type-button").click();
+      cy.findByTestId("chart-type-sidebar")
+        .findByRole("img", { name: "demo-viz" })
+        .should("be.visible");
+    });
+
+    it("renders in the command palette search results", () => {
+      cy.visit("/");
+
+      H.commandPaletteSearch(ICON_QUESTION_NAME, false);
+      H.commandPalette()
+        .findAllByRole("option", { name: new RegExp(ICON_QUESTION_NAME) })
+        .first()
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("be.visible");
+    });
+
+    it("renders in the navigation sidebar bookmarks and collections", () => {
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("POST", `/api/bookmark/card/${cardId}`);
+      });
+
+      // Collection page keeps the navigation sidebar open by default.
+      cy.visit("/collection/root");
+
+      H.navigationSidebar()
+        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      cy.findByRole("row", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      H.openCollectionItemMenu(ICON_QUESTION_NAME);
+      H.popover().findByText("Pin this").click();
+
+      H.getPinnedSection()
+        .findByRole("button", { name: "Actions" })
+        .click({ force: true });
+      H.popover()
+        .findByText(/Don.t show visualization/)
+        .click();
+
+      H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
+    });
+
+    it("renders in the search results page", () => {
+      cy.visit(`/search?q=${encodeURIComponent(ICON_QUESTION_NAME)}`);
+
+      cy.findAllByTestId("search-result-item")
+        .filter(`:contains(${ICON_QUESTION_NAME})`)
+        .first()
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+
+    it("renders in the home page recently-viewed section", () => {
+      cy.visit("/");
+
+      H.main()
+        .findByText("Pick up where you left off")
+        .parent()
+        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+
+    it("renders in the dashboard add-questions sidesheet", () => {
+      H.createDashboard(
+        { name: "Icon Test Dashboard" },
+        { wrapId: true, idAlias: "dashboardId" },
+      );
+      H.visitDashboard("@dashboardId");
+      H.editDashboard();
+      H.openQuestionsSidebar();
+
+      cy.findByTestId("add-card-sidebar")
+        .findByRole("menuitem", { name: ICON_QUESTION_NAME })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+    });
+
+    it("renders in the document mention dialog and visualize-as panel", () => {
+      H.interceptPluginList();
+      H.createDocument({
+        name: "Icon Doc Mention",
+        document: {
+          type: "doc",
+          content: [{ type: "paragraph", attrs: { _id: "1" } }],
+        },
+        collection_id: null,
+        idAlias: "documentId",
+      });
+      H.visitDocument("@documentId");
+
+      H.documentContent().click();
+      cy.realType("@");
+
+      cy.wait("@pluginList");
+
+      H.documentMentionDialog().should("be.visible");
+      cy.realType("Custom");
+
+      H.documentMentionItem(new RegExp(ICON_QUESTION_NAME))
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+      cy.realPress("Enter");
+
+      cy.realType("{enter}");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+      H.commandSuggestionDialog().findByText(ICON_QUESTION_NAME).click();
+
+      H.getDocumentCard(ICON_QUESTION_NAME)
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+      H.openDocumentCardMenu(ICON_QUESTION_NAME);
+      H.popover().findByText("Edit Visualization").click();
+      H.getDocumentSidebar()
+        .findByRole("button", { name: /demo-viz/i })
+        .click();
+
+      cy.findByRole("menu")
+        .findByRole("menuitem", { name: /demo-viz/i })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
     });
   });
 });
