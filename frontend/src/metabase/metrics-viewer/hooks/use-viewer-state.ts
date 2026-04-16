@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { measureApi, metricApi } from "metabase/api";
+import { measureApi, metricApi, segmentApi } from "metabase/api";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
 import { useDispatch, useStore } from "metabase/utils/redux";
@@ -45,9 +45,14 @@ async function loadMetricDefinition(
   getState: ReturnType<typeof useStore>["getState"],
   metricId: MetricId,
 ): Promise<MetricDefinition> {
-  const result = await dispatch(
-    metricApi.endpoints.getMetric.initiate(metricId),
-  );
+  // Ensure segments are present in Redux before building the metadata
+  // provider — the provider closes over the metadata snapshot, so if
+  // listSegments hasn't resolved yet the definition gets a provider with
+  // no segments and LibMetric.availableSegments returns empty.
+  const [result] = await Promise.all([
+    dispatch(metricApi.endpoints.getMetric.initiate(metricId)),
+    dispatch(segmentApi.endpoints.listSegments.initiate()),
+  ]);
   if (!result.data) {
     throw new Error(`Failed to load metric ${metricId}`);
   }
@@ -64,9 +69,10 @@ async function loadMeasureDefinition(
   getState: ReturnType<typeof useStore>["getState"],
   measureId: MeasureId,
 ): Promise<MetricDefinition> {
-  const result = await dispatch(
-    measureApi.endpoints.getMeasure.initiate(measureId),
-  );
+  const [result] = await Promise.all([
+    dispatch(measureApi.endpoints.getMeasure.initiate(measureId)),
+    dispatch(segmentApi.endpoints.listSegments.initiate()),
+  ]);
   if (!result.data) {
     throw new Error(`Failed to load measure ${measureId}`);
   }

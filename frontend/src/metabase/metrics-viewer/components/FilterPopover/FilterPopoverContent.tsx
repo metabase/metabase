@@ -8,6 +8,7 @@ import type {
   DimensionListItem,
   DimensionSection,
   MetricGroup,
+  SegmentListItem,
 } from "metabase/metrics/components/FilterPicker/FilterDimensionPicker/types";
 import { getMetricGroups } from "metabase/metrics/components/FilterPicker/FilterDimensionPicker/utils";
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
@@ -96,6 +97,22 @@ export function FilterPopoverContent({
     [navState, definitionSources, onFilterApplied, onSourceDefinitionChange],
   );
 
+  const handleSegmentSelect = useCallback(
+    (item: SegmentListItem) => {
+      const selected = definitionSources[item.definitionIndex];
+      if (!selected) {
+        return;
+      }
+      const newDefinition = LibMetric.addSegmentFilter(
+        selected.definition,
+        item.segment,
+      );
+      onSourceDefinitionChange(selected, newDefinition);
+      onFilterApplied();
+    },
+    [definitionSources, onFilterApplied, onSourceDefinitionChange],
+  );
+
   const toggleExpanded = useCallback((id: number) => {
     setExpandedItems((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
@@ -105,6 +122,9 @@ export function FilterPopoverContent({
   const isSearching = filteredDisplayGroups !== null;
   const visibleGroups = isSearching ? filteredDisplayGroups : displayGroups;
   const hasNoResults = isSearching && visibleGroups.length === 0;
+  const hasAnySegments = visibleGroups.some(
+    (group) => (group.segments?.length ?? 0) > 0,
+  );
   const showMetricHeaders = definitionSources.length > 1;
 
   if (navState.view === "filter") {
@@ -142,7 +162,9 @@ export function FilterPopoverContent({
         {hasNoResults ? (
           <Box p="xl">
             <Text c="text-secondary" ta="center">
-              {t`No dimensions found`}
+              {hasAnySegments
+                ? t`No dimensions or segments found`
+                : t`No dimensions found`}
             </Text>
           </Box>
         ) : showMetricHeaders ? (
@@ -152,12 +174,21 @@ export function FilterPopoverContent({
             collapsible={!isSearching}
             onToggleExpanded={toggleExpanded}
             onDimensionSelect={handleDimensionSelect}
+            onSegmentSelect={handleSegmentSelect}
           />
         ) : (
-          <DimensionList
-            sections={visibleGroups[0]?.sections ?? []}
-            onSelect={handleDimensionSelect}
-          />
+          <>
+            {(visibleGroups[0]?.segments?.length ?? 0) > 0 && (
+              <SegmentList
+                items={visibleGroups[0]?.segments ?? []}
+                onSelect={handleSegmentSelect}
+              />
+            )}
+            <DimensionList
+              sections={visibleGroups[0]?.sections ?? []}
+              onSelect={handleDimensionSelect}
+            />
+          </>
         )}
       </Box>
     </>
@@ -191,18 +222,48 @@ function DimensionList({
   );
 }
 
+function SegmentList({
+  items,
+  onSelect,
+}: {
+  items: SegmentListItem[];
+  onSelect: (item: SegmentListItem) => void;
+}) {
+  return (
+    <Box>
+      {items.map((item, index) => (
+        <UnstyledButton
+          key={`${item.definitionIndex}-${index}-${item.name}`}
+          className={S.segmentItem}
+          onClick={() => onSelect(item)}
+          w="100%"
+          px="md"
+          py="xs"
+        >
+          <Flex align="center" gap="sm">
+            <Icon name="star" size={16} />
+            <Box>{item.name}</Box>
+          </Flex>
+        </UnstyledButton>
+      ))}
+    </Box>
+  );
+}
+
 function MetricGroupList({
   groups,
   expandedItems,
   collapsible,
   onToggleExpanded,
   onDimensionSelect,
+  onSegmentSelect,
 }: {
   groups: MetricGroup[];
   expandedItems: number[];
   collapsible: boolean;
   onToggleExpanded: (id: number) => void;
   onDimensionSelect: (item: DimensionListItem) => void;
+  onSegmentSelect: (item: SegmentListItem) => void;
 }) {
   return (
     <Box>
@@ -211,14 +272,16 @@ function MetricGroupList({
         const hasDimensions = group.sections.some(
           (section) => section.items && section.items.length > 0,
         );
+        const hasSegments = (group.segments?.length ?? 0) > 0;
         const showDimensions = isExpanded && hasDimensions;
+        const showSegments = isExpanded && hasSegments;
 
         return (
           <Box key={group.id} className={S.accordionItem}>
             {collapsible ? (
               <UnstyledButton
                 className={cx(S.accordionControl, {
-                  [S.accordionControlExpanded]: showDimensions,
+                  [S.accordionControlExpanded]: showDimensions || showSegments,
                 })}
                 onClick={() => onToggleExpanded(group.id)}
                 w="100%"
@@ -246,7 +309,7 @@ function MetricGroupList({
             ) : (
               <Box
                 className={cx(S.accordionHeader, {
-                  [S.accordionHeaderExpanded]: showDimensions,
+                  [S.accordionHeaderExpanded]: showDimensions || showSegments,
                 })}
                 px="md"
               >
@@ -258,6 +321,14 @@ function MetricGroupList({
                   />
                   <Box fw={700}>{group.metricName}</Box>
                 </Flex>
+              </Box>
+            )}
+            {showSegments && (
+              <Box pb="xs">
+                <SegmentList
+                  items={group.segments ?? []}
+                  onSelect={onSegmentSelect}
+                />
               </Box>
             )}
             {showDimensions && (

@@ -2,18 +2,26 @@ import { filterDisplayGroupsBySearch } from "./utils";
 
 type TestItem = { name: string };
 
+type TestSegment = { name: string };
+
 type TestGroup = {
   id: string;
   sections: { name: string; items: TestItem[] }[];
+  segments?: TestSegment[];
 };
 
-function makeGroup(id: string, items: { name: string }[][]): TestGroup {
+function makeGroup(
+  id: string,
+  items: { name: string }[][],
+  segments?: TestSegment[],
+): TestGroup {
   return {
     id,
     sections: items.map((sectionItems, index) => ({
       name: `Section ${index}`,
       items: sectionItems,
     })),
+    segments,
   };
 }
 
@@ -39,10 +47,12 @@ describe("filterDisplayGroupsBySearch", () => {
       {
         id: "revenue",
         sections: [{ name: "Section 0", items: [{ name: "Created At" }] }],
+        segments: undefined,
       },
       {
         id: "orders",
         sections: [{ name: "Section 0", items: [{ name: "Created At" }] }],
+        segments: undefined,
       },
     ]);
   });
@@ -58,6 +68,7 @@ describe("filterDisplayGroupsBySearch", () => {
           },
           { name: "Section 1", items: [{ name: "Category" }] },
         ],
+        segments: undefined,
       },
       {
         id: "orders",
@@ -67,6 +78,7 @@ describe("filterDisplayGroupsBySearch", () => {
             items: [{ name: "Order Date" }, { name: "Created At" }],
           },
         ],
+        segments: undefined,
       },
     ]);
   });
@@ -80,6 +92,7 @@ describe("filterDisplayGroupsBySearch", () => {
       {
         id: "revenue",
         sections: [{ name: "Section 1", items: [{ name: "Region" }] }],
+        segments: undefined,
       },
     ]);
   });
@@ -89,7 +102,57 @@ describe("filterDisplayGroupsBySearch", () => {
       {
         id: "orders",
         sections: [{ name: "Section 0", items: [{ name: "Order Date" }] }],
+        segments: undefined,
       },
     ]);
+  });
+
+  describe("with segments", () => {
+    const groupsWithSegments: TestGroup[] = [
+      makeGroup(
+        "revenue",
+        [[{ name: "Created At" }, { name: "Category" }]],
+        [{ name: "Active customers" }, { name: "Archived" }],
+      ),
+      makeGroup("orders", [[{ name: "Order Date" }]], [{ name: "Big orders" }]),
+    ];
+
+    it("matches segment names alongside dimension names", () => {
+      expect(filterDisplayGroupsBySearch(groupsWithSegments, "active")).toEqual(
+        [
+          {
+            id: "revenue",
+            sections: [],
+            segments: [{ name: "Active customers" }],
+          },
+        ],
+      );
+    });
+
+    it("keeps a group when only its segments match", () => {
+      expect(filterDisplayGroupsBySearch(groupsWithSegments, "big")).toEqual([
+        {
+          id: "orders",
+          sections: [],
+          segments: [{ name: "Big orders" }],
+        },
+      ]);
+    });
+
+    it("matches dimensions and segments together", () => {
+      expect(filterDisplayGroupsBySearch(groupsWithSegments, "order")).toEqual([
+        {
+          id: "orders",
+          sections: [{ name: "Section 0", items: [{ name: "Order Date" }] }],
+          segments: [{ name: "Big orders" }],
+        },
+      ]);
+    });
+
+    it("excludes groups whose dimensions and segments all miss", () => {
+      expect(
+        filterDisplayGroupsBySearch(groupsWithSegments, "nomatch"),
+      ).toEqual([]);
+    });
   });
 });

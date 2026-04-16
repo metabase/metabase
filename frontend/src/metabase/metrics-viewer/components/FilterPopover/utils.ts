@@ -7,6 +7,7 @@ type SectionWithItems<TItem extends NamedItem> = {
 
 type GroupWithSections<TItem extends NamedItem> = {
   sections: SectionWithItems<TItem>[];
+  segments?: NamedItem[];
   [key: string]: unknown;
 };
 
@@ -29,10 +30,19 @@ export function filterDisplayGroupsBySearch<
         }))
         .filter((section) => section.items && section.items.length > 0);
 
+      const filteredSegments = group.segments?.filter((segment) =>
+        segment.name.toLowerCase().includes(lowerSearch),
+      );
+
       return {
         ...group,
         sections: filteredSections,
+        segments: filteredSegments,
       };
     })
-    .filter((group) => group.sections.length > 0);
+    .filter(
+      (group) =>
+        group.sections.length > 0 ||
+        (group.segments && group.segments.length > 0),
+    );
 }

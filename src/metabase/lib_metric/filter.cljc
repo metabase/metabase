@@ -6,6 +6,7 @@
    [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
@@ -132,6 +133,78 @@
   ([definition filter-clause instance-uuid]
    (let [inst-filter {:lib/uuid instance-uuid :filter filter-clause}]
      (update definition :filters (fnil conj []) inst-filter))))
+
+;;; -------------------------------------------------- Segments --------------------------------------------------
+
+(defn- leaf-table-id
+  "Resolve the source table-id for an expression leaf ([:metric _ id] or [:measure _ id])."
+  [provider leaf]
+  (let [leaf-type (definition/expression-leaf-type leaf)
+        leaf-id   (definition/expression-leaf-id leaf)
+        md-type   (case leaf-type
+                    :metric  :metadata/metric
+                    :measure :metadata/measure
+                    nil)]
+    (when md-type
+      (some-> (first (lib.metadata.protocols/metadatas
+                      provider
+                      {:lib/type md-type :id #{leaf-id}}))
+              :table-id))))
+
+(defn available-segments
+  "Return available Segments for a metric definition, scoped to the source table(s) of the
+   definition's expression leaves. Returns a sequence of Segment metadata maps (de-duplicated
+   by :id), each annotated with the `:lib-metric/instance-uuid` of the first matching leaf
+   so callers can attach the segment to the correct instance filter."
+  [definition]
+  (let [provider (:metadata-provider definition)
+        leaves   (definition/expression-leaves (:expression definition))]
+    (->> leaves
+         (mapcat (fn [leaf]
+                   (when-let [table-id (leaf-table-id provider leaf)]
+                     (let [uuid (definition/expression-leaf-uuid leaf)]
+                       (map (fn [segment]
+                              (assoc segment :lib-metric/instance-uuid uuid))
+                            (lib.metadata.protocols/segments provider table-id))))))
+         (reduce (fn [{:keys [seen acc]} segment]
+                   (if (contains? seen (:id segment))
+                     {:seen seen :acc acc}
+                     {:seen (conj seen (:id segment))
+                      :acc  (conj acc segment)}))
+                 {:seen #{} :acc []})
+         :acc)))
+
+(defn segment-clause?
+  "True if `filter-clause` is a segment reference, i.e. `[:segment _opts id]`."
+  [filter-clause]
+  (and (vector? filter-clause)
+       (= :segment (first filter-clause))))
+
+(defn segment-id-from-clause
+  "Return the segment id from a `[:segment _opts id]` clause, or nil."
+  [filter-clause]
+  (when (segment-clause? filter-clause)
+    (nth filter-clause 2 nil)))
+
+(defn segment-metadata-for-clause
+  "Return the segment metadata referenced by a `[:segment _opts id]` filter-clause, or nil."
+  [definition filter-clause]
+  (when-let [segment-id (segment-id-from-clause filter-clause)]
+    (first (lib.metadata.protocols/metadatas
+            (:metadata-provider definition)
+            {:lib/type :metadata/segment :id #{segment-id}}))))
+
+(defn add-segment-filter
+  "Add a segment as a filter on a metric definition. `segment-metadata` is a segment
+   metadata map (must have `:id`). If the metadata carries a `:lib-metric/instance-uuid`
+   the filter is attached to that instance; otherwise the definition's sole leaf uuid is
+   used. The resulting filter clause is `[:segment {:lib/uuid ...} id]`."
+  [definition segment-metadata]
+  (let [segment-id   (:id segment-metadata)
+        instance-uuid (or (:lib-metric/instance-uuid segment-metadata)
+                          (definition/expression-leaf-uuid (:expression definition)))
+        filter-clause (lib/ensure-uuid [:segment {} segment-id])]
+    (add-filter definition filter-clause instance-uuid)))
 
 ;;; -------------------------------------------------- Filter Clause Helpers --------------------------------------------------
 

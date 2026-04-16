@@ -321,6 +321,13 @@
       (is (= :filter/not (:node/type result)))
       (is (= :filter/comparison (get-in result [:child :node/type]))))))
 
+(deftest ^:parallel mbql-filter->ast-filter-segment-test
+  (testing "segment filters are preserved as raw MBQL passthrough"
+    (let [clause [:segment {:lib/uuid "46acdc23-a272-414a-b8eb-f93ead6b98ec"} 2]
+          result (ast.build/mbql-filter->ast-filter clause)]
+      (is (= :filter/mbql (:node/type result)))
+      (is (= clause (:clause result))))))
+
 (deftest ^:parallel mbql-filter->ast-filter-exclude-day-of-week-test
   (let [;; Exclude Monday (1) and Sunday (7) using ISO day-of-week
         ;; This is the MBQL 5 shape produced by lib/fe_util/exclude-date-filter-clause

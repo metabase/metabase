@@ -17,4 +17,12 @@ export type MetricGroup = {
   icon?: "metric" | "ruler";
   colors: string[] | undefined;
   sections: DimensionSection[];
+  segments: SegmentListItem[];
+};
+
+export type SegmentListItem = {
+  name: string;
+  definitionIndex: number;
+  definition: LibMetric.MetricDefinition;
+  segment: LibMetric.SegmentMetadata;
 };

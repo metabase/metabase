@@ -6,7 +6,12 @@ import {
 } from "metabase/metrics-viewer/utils/definition-sources";
 import * as LibMetric from "metabase-lib/metric";
 
-import type { DimensionListItem, DimensionSection, MetricGroup } from "./types";
+import type {
+  DimensionListItem,
+  DimensionSection,
+  MetricGroup,
+  SegmentListItem,
+} from "./types";
 
 export function getMetricGroups(
   definitionSources: DefinitionSource[],
@@ -57,6 +62,24 @@ export function getMetricGroups(
       icon: getDefinitionSourceIcon(definitionSource),
       colors: metricColors[definitionSource.entityIndex],
       sections,
+      segments: getSegmentItemsForSource(definitionSource, definitionIndex),
+    };
+  });
+}
+
+function getSegmentItemsForSource(
+  definitionSource: DefinitionSource,
+  definitionIndex: number,
+): SegmentListItem[] {
+  const definition = definitionSource.definition;
+  const segments = LibMetric.availableSegments(definition);
+  return segments.map((segment) => {
+    const info = LibMetric.displayInfo(definition, segment);
+    return {
+      name: info.displayName,
+      definition,
+      definitionIndex,
+      segment,
     };
   });
 }
