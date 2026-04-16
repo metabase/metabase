@@ -39,7 +39,7 @@
   "Cosine similarity at or above which two names are flagged as synonyms.
   Mirrors [[metabase-enterprise.semantic-search.core/max-cosine-distance]] so the aliasing signal and
   the semantic-search cutoff are consistent."
-  ;; round this to 3 decimal places in case floating point has added some epislon
+  ;; Round to 2 decimal places in case floating point has added some epsilon.
   (* 0.01 (Math/round ^double (* 100 (- 1 semantic-search/max-cosine-distance)))))
 
 ;;; ----------------------------------- enumeration -----------------------------------
