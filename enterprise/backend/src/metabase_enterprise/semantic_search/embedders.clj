@@ -32,6 +32,30 @@
 (defn- normalize-name [s]
   (some-> s str/trim u/lower-case-en))
 
+(defn- prefer-new-row?
+  "Return true when `new-row` should replace `prior` as the representative for a normalized name.
+  Tie-break rule (in priority order):
+   1. Numeric `model_id` — lowest wins; a parseable numeric id always beats a non-parseable one.
+   2. Raw `model_id` string — lexicographic (fallback when both ids are non-numeric).
+   3. `model` string — lexicographic (final tie-break when `model_id` values are identical)."
+  [{new-mid :mid new-model-id :model_id new-model :model}
+   {prior-mid :mid prior-model-id :model_id prior-model :model}]
+  (cond
+    ;; Both numeric: compare numerically, then by model as tie-break
+    (and new-mid prior-mid)
+    (or (< (long new-mid) (long prior-mid))
+        (and (= new-mid prior-mid) (neg? (compare new-model prior-model))))
+
+    ;; Numeric beats non-numeric
+    new-mid   true
+    prior-mid false
+
+    ;; Neither numeric: lexicographic on raw model_id string, then model
+    :else
+    (let [cmp (compare (str new-model-id) (str prior-model-id))]
+      (or (neg? cmp)
+          (and (zero? cmp) (neg? (compare new-model prior-model)))))))
+
 (defn- parse-pgvector
   "Parse a pgvector string (\"[0.1, 0.2, ...]\") or similar into a float-array."
   [v]
@@ -87,7 +111,8 @@
   Never throws.
 
   When multiple entities share a normalized name but have different indexed embeddings, the row
-  with the lowest `model_id` wins so the result is deterministic across runs."
+  with the lowest numeric `model_id` wins (see `prefer-new-row?`) so the result is deterministic
+  across runs regardless of batch boundaries."
   [entities]
   (if-let [{:keys [pgvector table-name]} (try-active-index-state)]
     (try
@@ -96,22 +121,16 @@
                         :when m]
                     [m (str id)])
             rows  (fetch-by-model+id pgvector table-name pairs)
-            ;; Global dedup: when multiple rows share a normalized name, pick the one with
-            ;; the lowest numeric model_id (stable across runs). model is a secondary
-            ;; tie-break for determinism when model_ids happen to collide across types.
+            ;; Global dedup: when multiple rows share a normalized name, pick the winner
+            ;; using `prefer-new-row?` (lowest numeric model_id, then model as tie-break).
             ;; This must happen after all batches are merged so the choice is globally
             ;; correct, not just correct within each 500-row partition.
-            keyed (reduce (fn [acc {:keys [name model_id model] :as row}]
+            keyed (reduce (fn [acc {:keys [name model_id] :as row}]
                             (let [k     (normalize-name name)
-                                  mid   (parse-long model_id)
+                                  row+  (assoc row :mid (parse-long model_id))
                                   prior (get acc k)]
-                              (if (or (nil? prior)
-                                      (and mid
-                                           (let [pmid (:mid prior)]
-                                             (or (nil? pmid)
-                                                 (< mid pmid)
-                                                 (and (= mid pmid) (neg? (compare model (:model prior))))))))
-                                (assoc acc k (assoc row :mid mid))
+                              (if (or (nil? prior) (prefer-new-row? row+ prior))
+                                (assoc acc k row+)
                                 acc)))
                           {}
                           rows)]

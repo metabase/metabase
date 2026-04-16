@@ -162,6 +162,75 @@
     (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))
 
+(deftest ^:sequential search-index-embedder-global-dedup-test
+  (testing "global dedup picks lowest numeric model_id regardless of batch boundaries"
+    (let [winner-vec (float-array [1.0 0.0 0.0])
+          loser-vec  (float-array [0.0 1.0 0.0])]
+      (with-redefs [ss.embedders/try-active-index-state
+                    (constantly {:pgvector :mock :table-name "t" :model nil})
+                    ss.embedders/fetch-batch-size 1 ;; force each pair into its own batch
+                    ss.embedders/fetch-by-model+id
+                    (fn [_ _ _]
+                      ;; Two rows with the same normalized name but different model_ids.
+                      ;; model_id "2" should win (lowest numeric) over "10".
+                      [{:name "Orders" :model_id "10" :model "card" :embedding loser-vec}
+                       {:name "orders" :model_id "2"  :model "card" :embedding winner-vec}])]
+        (let [result (semantic-search/search-index-embedder
+                      [{:id 10 :name "Orders" :kind :table}
+                       {:id 2  :name "orders" :kind :table}])]
+          (is (= 1 (count result)) "duplicate normalized names collapse to one entry")
+          (is (= (seq winner-vec) (seq (get result "orders")))
+              "the row with the lowest numeric model_id wins")))))
+
+  (testing "cross-model duplicates: lowest model_id wins, model is secondary tie-break"
+    (let [card-vec  (float-array [1.0 0.0])
+          table-vec (float-array [0.0 1.0])]
+      (with-redefs [ss.embedders/try-active-index-state
+                    (constantly {:pgvector :mock :table-name "t" :model nil})
+                    ss.embedders/fetch-by-model+id
+                    (fn [_ _ _]
+                      [{:name "Revenue" :model_id "5"  :model "card"  :embedding card-vec}
+                       {:name "revenue" :model_id "5"  :model "table" :embedding table-vec}])]
+        (let [result (semantic-search/search-index-embedder
+                      [{:id 5 :name "Revenue" :kind :model}
+                       {:id 5 :name "revenue" :kind :table}])]
+          (is (= 1 (count result)))
+          (is (= (seq card-vec) (seq (get result "revenue")))
+              "when model_ids tie, the lexicographically smaller model wins (card < table)"))))))
+
+(deftest ^:parallel prefer-new-row-test
+  (testing "lower numeric model_id wins"
+    (is (true?  (#'ss.embedders/prefer-new-row?
+                 {:mid 2  :model_id "2"  :model "card"}
+                 {:mid 10 :model_id "10" :model "card"})))
+    (is (false? (#'ss.embedders/prefer-new-row?
+                 {:mid 10 :model_id "10" :model "card"}
+                 {:mid 2  :model_id "2"  :model "card"}))))
+
+  (testing "equal model_ids tie-break on model name"
+    (is (true?  (#'ss.embedders/prefer-new-row?
+                 {:mid 5 :model_id "5" :model "card"}
+                 {:mid 5 :model_id "5" :model "table"})))
+    (is (false? (#'ss.embedders/prefer-new-row?
+                 {:mid 5 :model_id "5" :model "table"}
+                 {:mid 5 :model_id "5" :model "card"}))))
+
+  (testing "numeric always beats non-numeric"
+    (is (true?  (#'ss.embedders/prefer-new-row?
+                 {:mid 99 :model_id "99" :model "card"}
+                 {:mid nil :model_id "abc" :model "card"})))
+    (is (false? (#'ss.embedders/prefer-new-row?
+                 {:mid nil :model_id "abc" :model "card"}
+                 {:mid 1   :model_id "1"   :model "card"}))))
+
+  (testing "both non-numeric: lexicographic on model_id string"
+    (is (true?  (#'ss.embedders/prefer-new-row?
+                 {:mid nil :model_id "abc" :model "card"}
+                 {:mid nil :model_id "xyz" :model "card"})))
+    (is (false? (#'ss.embedders/prefer-new-row?
+                 {:mid nil :model_id "xyz" :model "card"}
+                 {:mid nil :model_id "abc" :model "card"})))))
+
 (deftest ^:parallel meta-embedding-model-absent-when-unavailable-test
   (testing ":embedding-model key is absent from :meta when the search index is unreachable"
     (mt/with-dynamic-fn-redefs [semantic-search/active-embedding-model (constantly nil)]
