@@ -197,7 +197,7 @@ describe("useMetabot", () => {
       // `Component` is a React component reference — JSON.stringify drops
       // functions, so it appears as `undefined` in the serialized snapshot
       // the harness reads. We assert only the serializable fields here;
-      // component wiring is covered by `CurrentChart` tests.
+      // `Component` wiring is covered by the `messages[n].Component` describe.
       expect(message).toEqual({
         id: expect.any(String),
         role: "agent",
@@ -348,6 +348,101 @@ describe("useMetabot", () => {
 
       await waitFor(() => expect(onResolved).toHaveBeenCalled());
       expect(onResolved).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe("messages[n].Component", () => {
+    const TestMessageComponent = ({ drills }: { drills?: true }) => {
+      const { messages } = useMetabot();
+      const chartMessage = messages.find((m) => m.type === "chart");
+      if (!chartMessage) {
+        return null;
+      }
+      const { Component } = chartMessage;
+      return <Component drills={drills} />;
+    };
+
+    it("renders StaticQuestion when drills is absent", async () => {
+      const { store } = setup({ ui: <TestMessageComponent /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#abc",
+          } as any),
+        );
+      });
+
+      expect(
+        await screen.findByTestId("mock-static-question"),
+      ).toBeInTheDocument();
+    });
+
+    it("renders InteractiveQuestion when drills is true", async () => {
+      const { store } = setup({ ui: <TestMessageComponent drills /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#abc",
+          } as any),
+        );
+      });
+
+      expect(
+        await screen.findByTestId("mock-interactive-question"),
+      ).toBeInTheDocument();
+    });
+
+    it("Component reference is stable after a second chart message arrives", async () => {
+      let firstComponent: unknown = null;
+
+      const TestCapture = () => {
+        const { messages } = useMetabot();
+        const chartMessages = messages.filter((m) => m.type === "chart");
+        if (chartMessages[0]) {
+          firstComponent = chartMessages[0].Component;
+        }
+        return <div data-testid="chart-count">{chartMessages.length}</div>;
+      };
+
+      const { store } = setup({ ui: <TestCapture /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#abc",
+          } as any),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("chart-count")).toHaveTextContent("1");
+      });
+      const capturedComponent = firstComponent;
+      expect(capturedComponent).not.toBeNull();
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#xyz",
+          } as any),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("chart-count")).toHaveTextContent("2");
+      });
+
+      expect(firstComponent).toBe(capturedComponent);
     });
   });
 });
