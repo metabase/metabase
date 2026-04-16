@@ -1,9 +1,9 @@
-(ns metabase-enterprise.checker.format.serdes-test
-  "Tests for the serdes format module — YAML extraction, file indexing, and source resolution."
+(ns metabase-enterprise.checker.format.serdes-schema-test
+  "Tests for the serdes schema format module — database/table/field resolution and lazy indexing."
   (:require
    [clojure.java.io :as io]
-   [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.checker.format.serdes :as serdes]
+   [clojure.test :refer :all]
+   [metabase-enterprise.checker.format.serdes-schema :as serdes-schema]
    [metabase-enterprise.checker.source :as source]
    [metabase.util.yaml :as yaml]))
 
@@ -43,53 +43,10 @@
     (spit file (yaml/generate-string data))
     (.getPath file)))
 
-;;; ===========================================================================
-;;; YAML extraction tests (pure, no files needed)
-;;; ===========================================================================
-
-(deftest extract-entity-id-from-fixture-test
-  (testing "extract-entity-id reads entity_id from a card YAML"
-    (let [card-file (io/file (fixtures-path) "collections" "cards" "simple-orders_simple_orders.yaml")]
-      (is (= "simple-orders" (serdes/extract-entity-id (.getPath card-file)))))))
-
-(deftest extract-model-from-fixture-test
-  (testing "extract-model reads the serdes model from a card YAML"
-    (let [card-file (io/file (fixtures-path) "collections" "cards" "simple-orders_simple_orders.yaml")]
-      (is (= "Card" (serdes/extract-model (.getPath card-file)))))))
-
-(deftest extract-entity-id-from-temp-file-test
-  (testing "extract-entity-id with various formats"
-    (with-temp-dir
-      (fn [dir]
-        (let [f (write-yaml! dir "test.yaml" {:name "X" :entity_id "xYz123AbC"})]
-          (is (= "xYz123AbC" (serdes/extract-entity-id f))))))))
-
-;;; ===========================================================================
-;;; Index tests — databases are indexed, tables/fields are on-demand
-;;; ===========================================================================
-
-(deftest build-file-index-databases-test
-  (testing "build-file-index indexes databases from fixtures"
-    (let [{:keys [index]} (serdes/build-file-index (fixtures-path))]
-      (is (contains? (:database index) "Test Database"))
-      (is (contains? (:database index) "SQLite DB")))))
-
-(deftest build-file-index-cards-test
-  (testing "build-file-index indexes cards by entity_id"
-    (let [{:keys [index]} (serdes/build-file-index (fixtures-path))]
-      (is (contains? (:card index) "simple-orders"))
-      (is (contains? (:card index) "native-orders"))
-      (is (contains? (:card index) "orders-with-products")))))
-
-(deftest build-file-index-no-duplicates-test
-  (testing "fixture index has no duplicates"
-    (let [{:keys [index]} (serdes/build-file-index (fixtures-path))]
-      (is (nil? (:duplicates index))))))
-
 (deftest build-database-dir-index-test
   (testing "build-database-dir-index indexes databases and provides db-name->dir mapping"
     (let [db-dir (str (fixtures-path) "/databases")
-          {:keys [index db-name->dir]} (serdes/build-database-dir-index db-dir)]
+          {:keys [index db-name->dir]} (serdes-schema/build-database-dir-index db-dir)]
       (is (contains? (:database index) "Test Database"))
       (is (contains? (:database index) "SQLite DB"))
       (is (contains? db-name->dir "Test Database"))
@@ -110,7 +67,7 @@
         ;; Create a database with a slugified directory name but real name in YAML
         (write-yaml! dir "databases" "my_fancy_db" "my_fancy_db.yaml"
                      {:name "My Fancy DB" :engine "h2"})
-        (let [{:keys [db-name->dir]} (serdes/build-database-dir-index (str dir "/databases"))]
+        (let [{:keys [db-name->dir]} (serdes-schema/build-database-dir-index (str dir "/databases"))]
           (is (= "my_fancy_db" (get db-name->dir "My Fancy DB")))))))
 
   (testing "db-name->dir includes ALL databases, not just some"
@@ -120,7 +77,7 @@
           (let [slug (str "db_" i)]
             (write-yaml! dir "databases" slug (str slug ".yaml")
                          {:name (str "Database " i) :engine "h2"})))
-        (let [{:keys [db-name->dir]} (serdes/build-database-dir-index (str dir "/databases"))]
+        (let [{:keys [db-name->dir]} (serdes-schema/build-database-dir-index (str dir "/databases"))]
           (is (= 10 (count db-name->dir)))
           (doseq [i (range 10)]
             (is (= (str "db_" i) (get db-name->dir (str "Database " i))))))))))
@@ -130,50 +87,42 @@
 ;;; ===========================================================================
 
 (deftest source-resolves-database-test
-  (testing "SerdesSource resolves databases by name"
-    (let [source (serdes/make-source (fixtures-path))
+  (testing "SerdesSchemaSource resolves databases by name"
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))
           db     (source/resolve-database source "Test Database")]
       (is (some? db))
       (is (= "Test Database" (:name db))))))
 
 (deftest source-resolves-table-on-demand-test
-  (testing "SerdesSource resolves tables by path on demand (no pre-indexing)"
-    (let [source (serdes/make-source (fixtures-path))
+  (testing "SerdesSchemaSource resolves tables by path on demand (no pre-indexing)"
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))
           table  (source/resolve-table source ["Test Database" "public" "orders"])]
       (is (some? table))
       (is (= "orders" (:name table))))
     (testing "schema-less tables"
-      (let [source (serdes/make-source (fixtures-path))
+      (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))
             table  (source/resolve-table source ["SQLite DB" nil "orders"])]
         (is (some? table))
         (is (= "orders" (:name table)))))))
 
 (deftest source-resolves-field-on-demand-test
-  (testing "SerdesSource resolves fields by path on demand"
-    (let [source (serdes/make-source (fixtures-path))
+  (testing "SerdesSchemaSource resolves fields by path on demand"
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))
           field  (source/resolve-field source ["Test Database" "public" "orders" "id"])]
       (is (some? field))
       (is (= "id" (:name field))))
     (testing "schema-less fields"
-      (let [source (serdes/make-source (fixtures-path))
+      (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))
             field  (source/resolve-field source ["SQLite DB" nil "orders" "id"])]
         (is (some? field))
         (is (= "id" (:name field)))))))
 
-(deftest source-resolves-card-test
-  (testing "SerdesSource resolves cards by entity-id"
-    (let [source (serdes/make-source (fixtures-path))
-          card   (source/resolve-card source "simple-orders")]
-      (is (some? card))
-      (is (= "Simple Orders" (:name card))))))
-
 (deftest source-returns-nil-for-unknown-test
-  (testing "SerdesSource returns nil for unknown entities"
-    (let [source (serdes/make-source (fixtures-path))]
+  (testing "SerdesSchemaSource returns nil for unknown entities"
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))]
       (is (nil? (source/resolve-database source "Nonexistent")))
       (is (nil? (source/resolve-table source ["DB" "x" "y"])))
-      (is (nil? (source/resolve-field source ["DB" "x" "y" "z"])))
-      (is (nil? (source/resolve-card source "no-such-card"))))))
+      (is (nil? (source/resolve-field source ["DB" "x" "y" "z"]))))))
 
 ;;; ===========================================================================
 ;;; fields-for-table and all-table-paths — on-demand enumeration
@@ -181,23 +130,23 @@
 
 (deftest fields-for-table-test
   (testing "fields-for-table returns field paths for a table"
-    (let [source (serdes/make-source (fixtures-path))
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))
           fields (source/fields-for-table source ["Test Database" "public" "orders"])]
       (is (set? fields))
       (is (contains? fields ["Test Database" "public" "orders" "id"]))
       (is (contains? fields ["Test Database" "public" "orders" "total"]))))
   (testing "fields-for-table works for schema-less tables"
-    (let [source (serdes/make-source (fixtures-path))
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))
           fields (source/fields-for-table source ["SQLite DB" nil "orders"])]
       (is (set? fields))
       (is (contains? fields ["SQLite DB" nil "orders" "id"]))))
   (testing "fields-for-table returns nil for unknown table"
-    (let [source (serdes/make-source (fixtures-path))]
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))]
       (is (nil? (source/fields-for-table source ["Nope" "x" "y"]))))))
 
 (deftest all-table-paths-test
   (testing "all-table-paths enumerates all tables across databases"
-    (let [source (serdes/make-source (fixtures-path))
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))
           tables (source/all-table-paths source)]
       (is (seq tables))
       (is (some #(= ["Test Database" "public" "orders"] %) tables))
@@ -205,7 +154,7 @@
 
 (deftest all-database-names-test
   (testing "all-database-names returns database names"
-    (let [source (serdes/make-source (fixtures-path))]
+    (let [source (serdes-schema/make-database-source (str (fixtures-path) "/databases"))]
       (is (= #{"Test Database" "SQLite DB"} (set (source/all-database-names source)))))))
 
 ;;; ===========================================================================
@@ -233,7 +182,7 @@
                                       {:id "public" :model "Schema"}
                                       {:id "orders" :model "Table"}
                                       {:id "id" :model "Field"}]})
-          (let [source (serdes/make-database-source db-dir)]
+          (let [source (serdes-schema/make-database-source db-dir)]
             ;; Database resolves by real name
             (is (some? (source/resolve-database source "Analytics Data Warehouse")))
             ;; Table resolves using real db name
@@ -253,7 +202,7 @@
 (deftest index-does-not-contain-tables-or-fields-test
   (testing "the file index only contains databases — tables and fields are resolved on demand"
     (let [db-dir (str (fixtures-path) "/databases")
-          {:keys [index]} (serdes/build-database-dir-index db-dir)]
+          {:keys [index]} (serdes-schema/build-database-dir-index db-dir)]
       (is (seq (:database index)) "databases should be in the index")
       (is (nil? (:table index)) "tables should NOT be in the index")
       (is (nil? (:field index)) "fields should NOT be in the index"))))
@@ -262,7 +211,7 @@
 ;;; Cache shape and lazy resolution
 ;;; ===========================================================================
 
-(def ^:private not-indexed :metabase-enterprise.checker.format.serdes/not-indexed)
+(def ^:private not-indexed ::serdes-schema/not-indexed)
 
 (deftest schema-model-shape-test
   (testing "schema model starts with ::not-indexed for each schema, populates lazily"
@@ -277,24 +226,24 @@
                      {:name "T2" :schema "s2"})
         (write-yaml! dir "databases" "db" "schemas" "s2" "tables" "t2" "fields" "f2.yaml"
                      {:name "F2" :base_type "type/Text"})
-        (let [source (serdes/make-database-source (str dir "/databases"))]
+        (let [source (serdes-schema/make-database-source (str dir "/databases"))]
           ;; Initial: db-file set, all schemas ::not-indexed
           (is (=? {"DB" {:db-file string?
                          :schemas {"s1" not-indexed
                                    "s2" not-indexed}}}
-                  (serdes/schema-model source)))
+                  (serdes-schema/schema-model source)))
           ;; After resolving a table in s1: s1 indexed with tables, s2 untouched
           (source/resolve-table source ["DB" "s1" "T1"])
           (is (=? {"DB" {:schemas {"s1" {"T1" {:table-file string?
                                                :fields     not-indexed}}
                                    "s2" not-indexed}}}
-                  (serdes/schema-model source)))
+                  (serdes-schema/schema-model source)))
           ;; After resolving fields for T1: T1 fields indexed, s2 still untouched
           (source/fields-for-table source ["DB" "s1" "T1"])
           (is (=? {"DB" {:schemas {"s1" {"T1" {:table-file string?
                                                :fields     {"F1" string?}}}
                                    "s2" not-indexed}}}
-                  (serdes/schema-model source))))))))
+                  (serdes-schema/schema-model source))))))))
 
 (deftest case-insensitive-schema-resolution-test
   (testing "schemas with different casing on disk vs YAML resolve correctly"
@@ -306,91 +255,9 @@
                      {:name "ORDERS" :schema "PUBLIC"})
         (write-yaml! dir "databases" "db" "schemas" "public" "tables" "orders" "fields" "id.yaml"
                      {:name "ID" :base_type "type/Integer"})
-        (let [source (serdes/make-database-source (str dir "/databases"))]
+        (let [source (serdes-schema/make-database-source (str dir "/databases"))]
           ;; Resolve by real names (uppercase) — schema re-keys from "public" to "PUBLIC"
           (is (some? (source/resolve-table source ["DB" "PUBLIC" "ORDERS"])))
           (is (some? (source/resolve-field source ["DB" "PUBLIC" "ORDERS" "ID"])))
           (is (=? {"DB" {:schemas {"PUBLIC" {"ORDERS" {:fields {"ID" string?}}}}}}
-                  (serdes/schema-model source))))))))
-
-;;; ===========================================================================
-;;; Segments and measures — indexed from export dir, NOT schema dir
-;;; ===========================================================================
-
-(deftest export-dir-indexes-segments-and-measures-test
-  (testing "build-file-index (export dir) finds segments and measures under databases/"
-    (let [{:keys [index]} (serdes/build-file-index (fixtures-path))]
-      (is (contains? (:segment index) "big-orders-segment")
-          "segment from with-schema table should be indexed")
-      (is (contains? (:segment index) "recent-orders-segment")
-          "segment from schema-less table should be indexed")
-      (is (contains? (:measure index) "total-revenue-measure")
-          "measure should be indexed"))))
-
-(deftest schema-dir-does-not-index-segments-test
-  (testing "build-database-dir-index (schema dir) does NOT index segments or measures"
-    (let [db-dir (str (fixtures-path) "/databases")
-          {:keys [index]} (serdes/build-database-dir-index db-dir)]
-      (is (nil? (:segment index)) "schema dir should not contain segments")
-      (is (nil? (:measure index)) "schema dir should not contain measures"))))
-
-(deftest segments-resolve-from-export-source-test
-  (testing "segments can be resolved from the export source"
-    (let [source (serdes/make-source (fixtures-path))]
-      (let [seg (source/resolve-segment source "big-orders-segment")]
-        (is (some? seg))
-        (is (= "Big Orders" (:name seg))))
-      (let [seg (source/resolve-segment source "recent-orders-segment")]
-        (is (some? seg))
-        (is (= "Recent Orders" (:name seg)))))))
-
-(deftest measures-resolve-from-export-source-test
-  (testing "measures can be resolved from the export source"
-    (let [source (serdes/make-source (fixtures-path))
-          m      (source/resolve-measure source "total-revenue-measure")]
-      (is (some? m))
-      (is (= "Total Revenue" (:name m))))))
-
-;;; ===========================================================================
-;;; Temp file edge cases
-;;; ===========================================================================
-
-(deftest build-file-index-empty-dir-test
-  (testing "build-file-index on empty directory returns empty index"
-    (with-temp-dir
-      (fn [dir]
-        (let [{:keys [index]} (serdes/build-file-index dir)]
-          (is (nil? (:database index)))
-          (is (nil? (:card index))))))))
-
-(def ^:private card-yaml-template
-  "name: %s\nentity_id: %s\nserdes/meta:\n- id: %s\n  model: Card\n")
-
-(deftest build-file-index-detects-duplicates-test
-  (testing "build-file-index reports duplicate entity_ids"
-    (with-temp-dir
-      (fn [dir]
-        ;; Create two cards with the same entity_id in different directories
-        (let [^java.io.File f1 (io/file dir "collections" "a" "cards" "dup.yaml")
-              ^java.io.File f2 (io/file dir "collections" "b" "cards" "dup.yaml")]
-          (.mkdirs (.getParentFile f1))
-          (.mkdirs (.getParentFile f2))
-          (spit f1 (format card-yaml-template "Card A" "dup-id" "dup-id"))
-          (spit f2 (format card-yaml-template "Card B" "dup-id" "dup-id"))
-          (let [{:keys [index]} (serdes/build-file-index dir)]
-            (is (seq (:duplicates index)) "Should detect duplicate entity_ids")
-            (is (= "dup-id" (:ref (first (:duplicates index)))))))))))
-
-(deftest source-index-accessor-test
-  (testing "source-index returns the assets index (no databases — those are in the schema model)"
-    (let [source (serdes/make-source (fixtures-path))
-          index  (serdes/source-index source)]
-      (is (map? index))
-      (is (not (contains? index :database)) "databases are in the schema model, not the assets index")
-      (is (contains? index :card)))))
-
-(deftest all-card-ids-test
-  (testing "all-card-ids returns all card entity-ids"
-    (let [source (serdes/make-source (fixtures-path))]
-      (is (>= (count (serdes/all-card-ids source)) 5))
-      (is (contains? (set (serdes/all-card-ids source)) "simple-orders")))))
+                  (serdes-schema/schema-model source))))))))
