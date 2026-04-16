@@ -1,8 +1,10 @@
 import type { Store } from "@reduxjs/toolkit";
 import { createContext } from "react";
-import { Provider } from "react-redux";
-// eslint-disable-next-line no-restricted-imports
-import * as ReactRedux from "react-redux";
+import {
+  Provider,
+  // eslint-disable-next-line no-restricted-imports
+  connect as _connect,
+} from "react-redux";
 
 export const MetabaseReduxContext = createContext<any>(null);
 
@@ -17,13 +19,13 @@ export const MetabaseReduxProvider = ({
   );
 };
 
-export const connect: typeof ReactRedux.connect = (
+export const connect: typeof _connect = (
   mapStateToProps?: any,
   mapDispatchToProps?: any,
   mergeProps?: any,
   options?: any,
 ) => {
-  return ReactRedux.connect(mapStateToProps, mapDispatchToProps, mergeProps, {
+  return _connect(mapStateToProps, mapDispatchToProps, mergeProps, {
     context: MetabaseReduxContext,
     ...options,
   });
