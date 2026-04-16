@@ -206,14 +206,17 @@
             [:access_token   {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (let [existing (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-        updates  (select-keys body [:enabled :access_token :pinned_version])]
-    (when (seq updates)
-      (t2/update! :model/CustomVizPlugin id updates))
-    (when (and (contains? updates :pinned_version)
-               (not= (:pinned_version updates) (:pinned_version existing)))
-      (let [updated-plugin (t2/select-one :model/CustomVizPlugin :id id)]
-        (cache/fetch-and-update! updated-plugin)))
+  (let [existing        (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+        updates         (select-keys body [:enabled :access_token :pinned_version])
+        pinned-changed? (and (contains? updates :pinned_version)
+                             (not= (:pinned_version updates) (:pinned_version existing)))
+        fetch-result    (when pinned-changed?
+                          (cache/fetch-plugin-data!
+                           (merge (select-keys existing [:repo_url :access_token :pinned_version])
+                                  (select-keys updates [:access_token :pinned_version]))))]
+    (cond
+      fetch-result  (cache/persist-plugin-data! existing fetch-result updates)
+      (seq updates) (t2/update! :model/CustomVizPlugin id updates))
     (let [result (t2/select-one :model/CustomVizPlugin :id id)]
       (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                               :previous-object existing

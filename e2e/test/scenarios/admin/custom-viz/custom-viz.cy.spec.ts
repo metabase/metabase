@@ -261,6 +261,39 @@ describe("admin > custom visualizations", () => {
           cy.wait("@pluginUpdate").then(({ request }) => {
             expect(request.body.pinned_version).to.equal("main");
           });
+
+          const invalidPinnedVersion = "definitely-not-a-real-ref-zzz";
+
+          H.visitCustomVizEditForm(plugin.id);
+
+          cy.findByLabelText(/Pinned version/)
+            .clear()
+            .type(invalidPinnedVersion);
+
+          cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
+            "pluginUpdateInvalid",
+          );
+          cy.findByRole("button", { name: /Save/ }).click();
+
+          cy.wait("@pluginUpdateInvalid")
+            .its("response.statusCode")
+            .should("eq", 400);
+
+          cy.findByTestId("custom-viz-settings-form").within(() => {
+            cy.findByText(/Failed to fetch plugin from repository/).should(
+              "be.visible",
+            );
+          });
+
+          cy.location("pathname").should(
+            "eq",
+            `/admin/settings/custom-visualizations/edit/${plugin.id}`,
+          );
+
+          cy.findByLabelText(/Pinned version/).should(
+            "have.value",
+            invalidPinnedVersion,
+          );
         });
       });
     });

@@ -119,24 +119,34 @@
   [plugin-id snapshot]
   (swap! local-snapshots assoc plugin-id snapshot))
 
+(defn persist-plugin-data!
+  "Persist a successful [[fetch-plugin-data!]] result to the plugin row and seed the snapshot cache.
+   `extra-updates` is merged into the same DB write so callers can apply additional column
+   changes (e.g. `:pinned_version`, `:access_token`) atomically with the derived fields."
+  ([plugin fetch-result]
+   (persist-plugin-data! plugin fetch-result nil))
+  ([{:keys [id identifier]} {:keys [commit-sha parsed version-str snapshot]} extra-updates]
+   (t2/update! :model/CustomVizPlugin id
+               (merge extra-updates
+                      {:status           :active
+                       :error_message    nil
+                       :resolved_commit  commit-sha
+                       :manifest         parsed
+                       :display_name     (or (:name parsed) identifier)
+                       :icon             (:icon parsed)
+                       :metabase_version version-str}))
+   (remember-snapshot! id snapshot)))
+
 (defn fetch-and-update!
   "Fetch index.js and manifest from the plugin's git repo and update the DB record.
    Returns the commit SHA or nil on failure. Catches all errors and records them
    on the row — use [[fetch-plugin-data!]] directly when you want failures to
    surface to the caller instead."
-  [{:keys [id identifier] :as plugin}]
+  [{:keys [id] :as plugin}]
   (try
-    (let [{:keys [commit-sha parsed version-str snapshot]} (fetch-plugin-data! plugin)]
-      (t2/update! :model/CustomVizPlugin id
-                  {:status            :active
-                   :error_message     nil
-                   :resolved_commit   commit-sha
-                   :manifest          parsed
-                   :display_name      (or (:name parsed) identifier)
-                   :icon              (:icon parsed)
-                   :metabase_version  version-str})
-      (remember-snapshot! id snapshot)
-      commit-sha)
+    (let [fetch-result (fetch-plugin-data! plugin)]
+      (persist-plugin-data! plugin fetch-result)
+      (:commit-sha fetch-result))
     (catch Exception e
       (t2/update! :model/CustomVizPlugin id
                   {:status        :error
