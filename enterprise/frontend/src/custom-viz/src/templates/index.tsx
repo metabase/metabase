@@ -27,7 +27,8 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
       throw new Error("Value and threshold need to be numbers");
     }
 
-    const emoji = value >= threshold ? "👍" : "👎";
+    const meetsThreshold = value >= threshold;
+    const finalHeight = Math.min(height * 0.8, 256);
 
     return (
       <div
@@ -35,12 +36,21 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          width,
-          height,
-          fontSize: "10rem",
+          height: "100%",
         }}
       >
-        {emoji}
+        <svg
+          width={(finalHeight * 17) / 16}
+          height={finalHeight}
+          viewBox="0 0 17 16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M7.06606 2.19223C7.18717 1.92309 7.45487 1.75 7.75 1.75H8.25C9.49264 1.75 10.5 2.75736 10.5 4V6.25H13.3456C14.5486 6.25 15.3929 7.43567 14.9994 8.57244L13.4417 13.0724C13.1977 13.7773 12.5338 14.25 11.7879 14.25H3.25C2.55964 14.25 2 13.6904 2 13V8C2 7.30964 2.55964 6.75 3.25 6.75H5.01506L7.06606 2.19223ZM4.75 8.25H3.5V12.75H4.75V8.25ZM6.25 12.75H11.7879C11.8945 12.75 11.9893 12.6825 12.0242 12.5818L13.5819 8.08178C13.6381 7.91938 13.5175 7.75 13.3456 7.75H9.75C9.33579 7.75 9 7.41421 9 7V4C9 3.58579 8.66421 3.25 8.25 3.25H8.23494L6.25 7.66098V12.75Z"
+            fill="var(--mb-color-brand)"
+            transform={meetsThreshold ? undefined : "rotate(-180 8.54854 8)"}
+          />
+        </svg>
       </div>
     );
   };
@@ -48,8 +58,6 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   const StaticVisualizationComponent = (
     props: CustomStaticVisualizationProps<Settings>,
   ) => {
-    const width = 540;
-    const height = 360;
     const { series, settings } = props;
     const { threshold } = settings;
     const value = series[0].data.rows[0][0];
@@ -58,12 +66,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
       throw new Error("Value and threshold need to be numbers");
     }
 
-    const emoji =
-      value >= threshold ? (
-        <img src={getAssetUrl("thumbs-up.png")} />
-      ) : (
-        <img src={getAssetUrl("thumbs-down.png")} />
-      );
+    const meetsThreshold = value >= threshold;
 
     return (
       <div
@@ -71,12 +74,15 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          width,
-          height,
-          fontSize: "10rem",
+          width: 540,
+          height: 360,
         }}
       >
-        {emoji}
+        {meetsThreshold ? (
+          <img src={getAssetUrl("thumbs-up.png")} />
+        ) : (
+          <img src={getAssetUrl("thumbs-down.png")} />
+        )}
       </div>
     );
   };
@@ -84,8 +90,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   return {
     id: "__CUSTOM_VIZ_NAME__",
     getName: () => "__CUSTOM_VIZ_NAME__",
-    minSize: { width: 4, height: 4 },
-    defaultSize: { width: 4, height: 4 },
+    minSize: { width: 2, height: 2 },
     checkRenderable(series, settings) {
       if (series.length !== 1) {
         throw new Error("Only 1 series is supported");
