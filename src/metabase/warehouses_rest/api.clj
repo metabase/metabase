@@ -549,10 +549,12 @@
 ;;; ----------------------------------------- GET /api/database/metadata ------------------------------------------
 
 (defn- format-database-metadata
+  "Formats a Database record for the /metadata endpoint response."
   [{:keys [id name engine]}]
   {:id id :name name :engine engine})
 
 (defn- format-table-metadata
+  "Formats a Table record for the /metadata endpoint response, omitting nil optional fields."
   [{:keys [id db_id name schema description]}]
   (m/assoc-some {:id id :db_id db_id :name name}
                 :schema schema
@@ -563,6 +565,7 @@
    :is-superuser? api/*is-superuser?*})
 
 (defn- format-field-metadata
+  "Formats a Field record for the /metadata endpoint response. Includes effective_type only when it differs from base_type."
   [{:keys [id table_id parent_id name description base_type effective_type semantic_type coercion_strategy]}]
   (m/assoc-some {:id id :table_id table_id :name name}
                 :parent_id parent_id
@@ -591,6 +594,7 @@
   (.write writer "]"))
 
 (defn- write-databases-metadata!
+  "Streams the databases/tables/fields metadata as JSON to the given OutputStream."
   [^java.io.OutputStream os]
   (let [db-filter [:and [:= :is_audit false] [:= :router_database_id nil]
                    [:in :id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]

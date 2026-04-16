@@ -749,6 +749,34 @@
         (is (true? @connections-stay-open?))
         (tx/destroy-db! driver/*driver* empty-dbdef)))))
 
+(deftest databases-metadata-test
+  (testing "GET /api/database/metadata"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "test-db" :engine :h2}
+                   :model/Table    {t-id :id}     {:db_id db-id :name "my_table" :schema "PUBLIC"
+                                                   :description "A test table"}
+                   :model/Field    {f1-id :id}    {:table_id t-id :name "id" :base_type :type/Integer}
+                   :model/Field    {f2-id :id}    {:table_id t-id :name "created_at" :base_type :type/Text
+                                                   :effective_type :type/DateTime
+                                                   :semantic_type :type/Name
+                                                   :coercion_strategy :Coercion/ISO8601->DateTime
+                                                   :description "The creation time"}]
+      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
+        (is (=? {:id db-id :name "test-db" :engine "h2"}
+                (m/find-first (comp #{db-id} :id) databases)))
+        (is (=? {:id t-id :db_id db-id :name "my_table" :schema "PUBLIC" :description "A test table"}
+                (m/find-first (comp #{t-id} :id) tables)))
+        (is (=? {:id f1-id :table_id t-id :name "id" :base_type "type/Integer"}
+                (m/find-first (comp #{f1-id} :id) fields)))
+        (is (=? {:id                f2-id
+                 :table_id          t-id
+                 :name              "created_at"
+                 :base_type         "type/Text"
+                 :effective_type    "type/DateTime"
+                 :semantic_type     "type/Name"
+                 :coercion_strategy "Coercion/ISO8601->DateTime"
+                 :description       "The creation time"}
+                (m/find-first (comp #{f2-id} :id) fields)))))))
+
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (db-details) :details :write_data_details :router_user_attribute)
