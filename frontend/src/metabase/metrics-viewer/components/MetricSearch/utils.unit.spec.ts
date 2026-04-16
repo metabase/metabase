@@ -26,7 +26,6 @@ import {
   buildExpressionText,
   buildFullTextWithIdentities,
   cleanupParens,
-  expressionTokensEqual,
   filterSearchResults,
   findInvalidRanges,
   getWordAtCursor,
@@ -297,94 +296,6 @@ describe("buildExpressionText", () => {
     expect(
       buildExpressionText([k(1), op("/"), m("metric:1")], metricNames),
     ).toBe("1 / Revenue");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// expressionTokensEqual
-// ---------------------------------------------------------------------------
-
-describe("expressionTokensEqual", () => {
-  const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
-    type: "metric",
-    sourceId,
-    count: 1,
-  });
-  const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
-    type: "operator",
-    op: o,
-  });
-  const k = (v: number): ExpressionSubToken => ({
-    type: "constant",
-    value: v,
-  });
-  const open: ExpressionSubToken = { type: "open-paren" };
-  const close: ExpressionSubToken = { type: "close-paren" };
-
-  it("returns true for identical token sequences", () => {
-    const a = [m("metric:1"), op("+"), m("metric:2")];
-    const b = [m("metric:1"), op("+"), m("metric:2")];
-    expect(expressionTokensEqual(a, b)).toBe(true);
-  });
-
-  it("returns false when lengths differ", () => {
-    expect(
-      expressionTokensEqual([m("metric:1")], [m("metric:1"), op("+"), k(1)]),
-    ).toBe(false);
-  });
-
-  it("returns false when a metric sourceId differs", () => {
-    expect(
-      expressionTokensEqual(
-        [m("metric:1"), op("+"), m("metric:2")],
-        [m("metric:1"), op("+"), m("metric:3")],
-      ),
-    ).toBe(false);
-  });
-
-  it("returns false when an operator differs", () => {
-    expect(
-      expressionTokensEqual(
-        [m("metric:1"), op("+"), m("metric:2")],
-        [m("metric:1"), op("-"), m("metric:2")],
-      ),
-    ).toBe(false);
-  });
-
-  it("returns false when a constant value differs", () => {
-    expect(
-      expressionTokensEqual(
-        [m("metric:1"), op("*"), k(2)],
-        [m("metric:1"), op("*"), k(3)],
-      ),
-    ).toBe(false);
-  });
-
-  it("ignores metric count differences", () => {
-    const a: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1", count: 1 },
-      op("+"),
-      { type: "metric", sourceId: "metric:1", count: 2 },
-    ];
-    const b: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1", count: 0 },
-      op("+"),
-      { type: "metric", sourceId: "metric:1", count: 0 },
-    ];
-    expect(expressionTokensEqual(a, b)).toBe(true);
-  });
-
-  it("matches parentheses by type alone", () => {
-    expect(
-      expressionTokensEqual(
-        [open, m("metric:1"), op("+"), m("metric:2"), close],
-        [open, m("metric:1"), op("+"), m("metric:2"), close],
-      ),
-    ).toBe(true);
-  });
-
-  it("returns true for empty sequences", () => {
-    expect(expressionTokensEqual([], [])).toBe(true);
   });
 });
 

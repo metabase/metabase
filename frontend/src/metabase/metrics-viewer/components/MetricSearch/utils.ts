@@ -69,37 +69,6 @@ export function buildExpressionText(
     .join("");
 }
 
-/**
- * Returns true when two token sequences are structurally identical —
- * same token types in the same order with matching sourceIds / ops / values.
- * Used to detect that an expression hasn't changed across an edit session
- * so a user-provided custom name can be preserved.
- */
-export function expressionTokensEqual(
-  a: ExpressionSubToken[],
-  b: ExpressionSubToken[],
-): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  return a.every((tokenA, i) => {
-    const tokenB = b[i];
-    if (tokenA.type !== tokenB.type) {
-      return false;
-    }
-    if (tokenA.type === "metric" && tokenB.type === "metric") {
-      return tokenA.sourceId === tokenB.sourceId;
-    }
-    if (tokenA.type === "operator" && tokenB.type === "operator") {
-      return tokenA.op === tokenB.op;
-    }
-    if (tokenA.type === "constant" && tokenB.type === "constant") {
-      return tokenA.value === tokenB.value;
-    }
-    return true; // parens match by type alone
-  });
-}
-
 export const ENTITY_SEPARATOR = ", ";
 
 export interface FullTextWithIdentities {

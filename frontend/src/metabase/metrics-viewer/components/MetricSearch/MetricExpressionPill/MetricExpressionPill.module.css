@@ -2,6 +2,7 @@
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--default-border-radius);
+  cursor: pointer;
   transition: background-color 150ms ease;
   max-width: 100%;
 }
@@ -28,7 +29,12 @@
   }
 
   textarea {
-    cursor: text;
     white-space: nowrap;
+  }
+
+  &.editableNameEditing {
+    textarea {
+      cursor: text;
+    }
   }
 }

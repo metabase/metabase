@@ -181,7 +181,7 @@ export function MetricSearchInput({
                       expressionEntry={entry}
                       metricNames={metricNames}
                       colors={expressionColors}
-                      onNameChange={(newName: string) => {
+                      onNameChange={(newName) => {
                         const updated = [...formulaEntities];
                         updated[entryIndex] = { ...entry, name: newName };
                         onFormulaEntitiesChange(updated);

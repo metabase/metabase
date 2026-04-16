@@ -23,7 +23,6 @@ import {
   buildExpressionText,
   buildFullTextWithIdentities,
   cleanupParens,
-  expressionTokensEqual,
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
@@ -226,25 +225,31 @@ export function useFormulaEditor({
         metricNamesRef.current,
       );
 
-    // Preserve custom expression names from the previous formula when the
-    // token structure hasn't changed (e.g. user edited unrelated parts of
-    // the formula or just re-ran the same expression).
+    // Preserve custom expression names from the previous formula by matching
+    // on ordinal position among expression entries. The Nth expression after
+    // commit inherits the Nth previous expression's custom name (if any),
+    // regardless of whether its tokens changed. Extra old names are dropped
+    // silently when there are fewer expressions after the edit.
     const prevEntities = formulaEntitiesRef.current;
     const metricNames = metricNamesRef.current;
+    const prevCustomNames: (string | null)[] = [];
+    for (const old of prevEntities) {
+      if (!isExpressionEntry(old)) {
+        continue;
+      }
+      const defaultText = buildExpressionText(old.tokens, metricNames);
+      prevCustomNames.push(old.name !== defaultText ? old.name : null);
+    }
+
+    let newExprIdx = 0;
     const entitiesWithNames = reconciledEntities.map((entity) => {
       if (!isExpressionEntry(entity)) {
         return entity;
       }
-      const prev = prevEntities.find(
-        (old) =>
-          isExpressionEntry(old) &&
-          expressionTokensEqual(old.tokens, entity.tokens),
-      );
-      if (prev && isExpressionEntry(prev)) {
-        const prevFormulaText = buildExpressionText(prev.tokens, metricNames);
-        if (prev.name !== prevFormulaText) {
-          return { ...entity, name: prev.name };
-        }
+      const inherited = prevCustomNames[newExprIdx];
+      newExprIdx += 1;
+      if (inherited) {
+        return { ...entity, name: inherited };
       }
       return entity;
     });
