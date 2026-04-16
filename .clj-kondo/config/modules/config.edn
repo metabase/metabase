@@ -157,12 +157,10 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :friends #{enterprise/agent-api}
    :uses    #{agent-lib
               api
               auth-identity
               lib
-              lib-be
               llm
               metabot
               query-processor
@@ -1072,7 +1070,7 @@
            legacy-mbql
            types
            util}
-   :friends #{agent-lib            ;; Structured MBQL builder; needs direct access to lib internals.
+   :friends #{agent-lib           ;; Structured MBQL builder; needs direct access to a few lib internals.
               legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
@@ -1212,7 +1210,6 @@
               config
               documents
               driver
-              internal-stats
               legacy-mbql
               lib
               lib-be
@@ -2548,6 +2545,7 @@
            request
            sample-data
            secrets
+           server
            settings
            sync
            upload
