@@ -18,10 +18,16 @@ import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
+import { MeasuresSectionLayout } from "./app/pages/MeasuresSectionLayout";
+import { MetricsSectionLayout } from "./app/pages/MetricsSectionLayout";
+import { SegmentsSectionLayout } from "./app/pages/SegmentsSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { MeasureListPage } from "./measures/pages/MeasureListPage/MeasureListPage";
+import { MetricListPage } from "./metrics/pages/MetricListPage/MetricListPage";
+import { SegmentListPage } from "./segments/pages/SegmentListPage/SegmentListPage";
 import {
   DependenciesUpsellPage,
   DependencyDiagnosticsUpsellPage,
@@ -46,6 +52,15 @@ export function getDataStudioRoutes(
           <Route component={DataSectionLayout}>
             {getDataStudioMetadataRoutes()}
           </Route>
+        </Route>
+        <Route path="metrics" component={MetricsSectionLayout}>
+          <IndexRoute component={MetricListPage} />
+        </Route>
+        <Route path="segments" component={SegmentsSectionLayout}>
+          <IndexRoute component={SegmentListPage} />
+        </Route>
+        <Route path="measures" component={MeasuresSectionLayout}>
+          <IndexRoute component={MeasureListPage} />
         </Route>
         <Route path="transforms" component={TransformsSectionLayout}>
           {getDataStudioTransformRoutes()}

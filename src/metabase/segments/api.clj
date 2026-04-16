@@ -62,7 +62,7 @@
                    :archived false
                    {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
-    (t2/hydrate segments :creator :definition_description)))
+    (t2/hydrate segments :creator :definition_description :table)))
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate

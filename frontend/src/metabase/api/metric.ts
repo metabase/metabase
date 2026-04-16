@@ -24,12 +24,15 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const metricApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listMetrics: builder.query<Metric[], void>({
+    listMetrics: builder.query<
+      { total: number; limit: number; offset: number; data: Metric[] },
+      void
+    >({
       query: () => ({
         method: "GET",
         url: "/api/metric",
       }),
-      providesTags: (metrics = []) => provideMetricListTags(metrics),
+      providesTags: (metrics) => provideMetricListTags(metrics?.data || []),
       onQueryStarted: (_, { queryFulfilled, dispatch }) =>
         handleQueryFulfilled(queryFulfilled, (data) =>
           dispatch(updateMetadata(data, [MetricSchema])),

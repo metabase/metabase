@@ -28,6 +28,7 @@
    [:updated_at          :any]
    [:entity_id           {:optional true} [:maybe :string]]
    [:creator             {:optional true} [:maybe :map]]
+   [:table               {:optional true} [:maybe :map]]
    [:dimensions          {:optional true} [:maybe [:sequential :map]]]
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
@@ -90,7 +91,7 @@
   []
   (as-> (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}) measures
     (filter mi/can-read? measures)
-    (t2/hydrate measures :creator :definition_description)))
+    (t2/hydrate measures :creator :definition_description :table)))
 
 (defn- write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate

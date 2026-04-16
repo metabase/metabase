@@ -144,6 +144,27 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           )}
           <DataStudioTab
+            label={t`Metrics`}
+            icon="metric"
+            to={Urls.dataStudioMetricsList()}
+            isSelected={currentTab === "metrics"}
+            showLabel={isNavbarOpened}
+          />
+          <DataStudioTab
+            label={t`Segments`}
+            icon="segment"
+            to={Urls.dataStudioSegmentsList()}
+            isSelected={currentTab === "segments"}
+            showLabel={isNavbarOpened}
+          />
+          <DataStudioTab
+            label={t`Measures`}
+            icon="ruler"
+            to={Urls.dataStudioMeasuresList()}
+            isSelected={currentTab === "measures"}
+            showLabel={isNavbarOpened}
+          />
+          <DataStudioTab
             label={t`Glossary`}
             icon="glossary"
             to={Urls.dataStudioGlossary()}

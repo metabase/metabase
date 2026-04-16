@@ -274,6 +274,18 @@ export function dataStudioMetricHistory(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/history`;
 }
 
+export function dataStudioMetricsList() {
+  return `${ROOT_URL}/metrics`;
+}
+
+export function dataStudioSegmentsList() {
+  return `${ROOT_URL}/segments`;
+}
+
+export function dataStudioMeasuresList() {
+  return `${ROOT_URL}/measures`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }
