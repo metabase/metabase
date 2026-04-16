@@ -74,8 +74,8 @@
                 :chart-type new-chart-type
                 :instructions (str "Chart has been created successfully.\n\n"
                                    "Next steps to present the chart to the user:\n"
-                                   "- Always provide a direct link using: `[Chart]("
+                                   "- Always provide a direct link using: [Chart]("
                                    (format-chart-link (:chart_id new-chart-data))
-                                   ")` "
+                                   ") "
                                    "where Chart is a meaningful link text\n"
                                    "- If creating multiple charts, present all chart links")}})))
