@@ -317,11 +317,7 @@
                      {:description "Number of rows in the active appdb index table."})
    (prometheus/gauge :metabase-semantic-layer/complexity-score
                      {:description
-                      (str "Semantic-layer complexity score for this instance, broken down by "
-                           "catalog (library|universe) and axis (total, or one of the five "
-                           "sub-scores: entity-count, name-collisions, synonym-pairs, field-count, "
-                           "repeated-measures). Refreshed on every call to the complexity endpoint "
-                           "and at startup.")
+                      "Semantic-layer complexity score for this instance, broken down by catalog and axis."
                       :labels [:catalog :axis]})
    (prometheus/gauge :metabase-search/semantic-index-size
                      {:description "Number of rows in the active semantic index table."})
