@@ -420,25 +420,40 @@
                                              transform-timeout                                         240]
             (is (= 15 (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))))))
 
-(deftest sql-jdbc-statement-honors-dynamic-query-timeout-test
-  (testing "statement-or-prepared-statement applies *query-timeout-ms* via Statement.setQueryTimeout, so rebinding
-            the var inside a transform makes per-statement timeouts follow transform-timeout rather than the shorter
-            MB_DB_QUERY_TIMEOUT_MINUTES."
-    (mt/test-driver :h2
-      (let [db (mt/db)]
-        (sql-jdbc.execute/do-with-connection-with-options
-         :h2 db {:write? false}
-         (fn [^java.sql.Connection conn]
-           (testing "default dynamic scope -> statement picks up db-query-timeout"
-             (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 3)]
-               (with-open [^java.sql.Statement stmt (sql-jdbc.execute/statement-or-prepared-statement
-                                                     :h2 conn "SELECT 1" [] nil)]
-                 (is (= (* 3 60) (.getQueryTimeout stmt))))))
-           (testing "transform rebinding -> statement picks up transform-timeout"
-             (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 90)]
-               (with-open [^java.sql.Statement stmt (sql-jdbc.execute/statement-or-prepared-statement
-                                                     :h2 conn "SELECT 1" [] nil)]
-                 (is (= (* 90 60) (.getQueryTimeout stmt))))))))))))
+(deftest ^:parallel set-statement-query-timeout!-test
+  (testing "the helper that populates Statement.setQueryTimeout reads *query-timeout-ms* and converts to seconds.
+            Proved via a mock Statement so the test is deterministic and independent of any driver's enforcement
+            semantics."
+    (let [captured-seconds (atom nil)
+          mock-stmt        (proxy [java.sql.Statement] []
+                             (setQueryTimeout [secs] (reset! captured-seconds secs)))
+          set-timeout!     @#'sql-jdbc.execute/set-statement-query-timeout!]
+      (testing "default dynamic scope"
+        (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 3)]
+          (set-timeout! mock-stmt)
+          (is (= (* 3 60) @captured-seconds))))
+      (testing "transform-scope rebinding lands in the Statement"
+        (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 90)]
+          (set-timeout! mock-stmt)
+          (is (= (* 90 60) @captured-seconds))))
+      (testing "a throwing driver does not propagate the exception"
+        (let [throwing-stmt (proxy [java.sql.Statement] []
+                              (setQueryTimeout [_] (throw (java.sql.SQLFeatureNotSupportedException.))))]
+          (is (nil? (set-timeout! throwing-stmt))))))))
+
+(deftest statement-or-prepared-statement-round-trips-query-timeout-test
+  (testing "statement-or-prepared-statement creates a Statement whose .getQueryTimeout reflects the currently
+            bound *query-timeout-ms*, for every SQL-JDBC driver supported in CI."
+    (mt/test-drivers (into #{} (filter #(isa? driver/hierarchy % :sql-jdbc)) (mt/normal-drivers))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* (mt/db) {:write? false}
+       (fn [^java.sql.Connection conn]
+         (doseq [minutes [3 90]]
+           (binding [driver.settings/*query-timeout-ms* (u/minutes->ms minutes)]
+             (with-open [^java.sql.Statement stmt (sql-jdbc.execute/statement-or-prepared-statement
+                                                   driver/*driver* conn "SELECT 1" [] nil)]
+               (is (= (* minutes 60) (.getQueryTimeout stmt))
+                   (str "driver " driver/*driver* " did not round-trip " minutes "min via setQueryTimeout"))))))))))
 
 (deftest run-cancelable-transform!-propagates-timeout-to-driver-test
   (testing "run-cancelable-transform! rebinds *query-timeout-ms* for the whole transform body, so any driver that
