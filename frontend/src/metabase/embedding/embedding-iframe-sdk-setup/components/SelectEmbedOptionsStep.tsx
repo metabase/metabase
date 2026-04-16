@@ -334,6 +334,15 @@ const AppearanceSection = () => {
 
   const { data: savedThemes } = useListEmbeddingThemesQuery();
 
+  const updateThemeId = useCallback(
+    (themeId: number | undefined) => {
+      updateSettings({
+        theme: themeId ? { id: themeId } : undefined,
+      } satisfies Partial<typeof settings>);
+    },
+    [updateSettings],
+  );
+
   const updateThemePreset = useCallback(
     (preset: MetabaseThemePreset) => {
       updateSettings({ theme: { preset } } satisfies Partial<typeof settings>);
@@ -383,11 +392,7 @@ const AppearanceSection = () => {
           <ThemeSelectorSection
             savedThemes={savedThemes ?? []}
             theme={theme}
-            onThemeChange={(nextTheme) =>
-              updateSettings({
-                theme: nextTheme,
-              } satisfies Partial<typeof settings>)
-            }
+            onThemeChange={updateThemeId}
             onColorChange={updateColors}
             onColorReset={() =>
               updateSettings({ theme: undefined } satisfies Partial<

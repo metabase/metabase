@@ -1,15 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
-import type {
-  MetabaseColors,
-  MetabaseTheme,
-} from "metabase/embedding-sdk/theme";
+import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 
-import { stripDefaultThemeSettings } from "../../utils/strip-default-theme-settings";
+import type { SdkIframeEmbedSetupTheme } from "../../types";
 
 import { ColorCustomizationSection } from "./ColorCustomizationSection";
 import { ThemeCard, getThemeColors } from "./ThemeCard";
@@ -21,8 +17,8 @@ type ThemeSelection =
 
 interface ThemeSelectorSectionProps {
   savedThemes: EmbeddingTheme[];
-  theme: MetabaseTheme | undefined;
-  onThemeChange: (theme: MetabaseTheme | undefined) => void;
+  theme: SdkIframeEmbedSetupTheme | undefined;
+  onThemeChange: (themeId: number | undefined) => void;
   onColorChange: (colors: Partial<MetabaseColors>) => void;
   onColorReset: () => void;
 }
@@ -34,9 +30,11 @@ export const ThemeSelectorSection = ({
   onColorChange,
   onColorReset,
 }: ThemeSelectorSectionProps) => {
-  const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
-  const [selection, setSelection] = useState<ThemeSelection>({
-    type: "default",
+  const [selection, setSelection] = useState<ThemeSelection>(() => {
+    const themeId = theme?.id;
+    const isKnown =
+      themeId !== undefined && savedThemes.some((t) => t.id === themeId);
+    return isKnown ? { type: "saved", themeId } : { type: "default" };
   });
 
   const isCustomSelected = selection.type === "custom";
@@ -47,17 +45,12 @@ export const ThemeSelectorSection = ({
   };
 
   const handleThemeCardClick = (themeId: number) => {
-    const savedTheme = savedThemes.find((t) => t.id === themeId);
-    if (!savedTheme) {
+    if (!savedThemes.some((t) => t.id === themeId)) {
       return;
     }
 
     setSelection({ type: "saved", themeId });
-    const nonDefaultSettings = stripDefaultThemeSettings(
-      savedTheme.settings,
-      defaultThemeSettings,
-    );
-    onThemeChange(nonDefaultSettings);
+    onThemeChange(themeId);
   };
 
   const handleCustomClick = () => {

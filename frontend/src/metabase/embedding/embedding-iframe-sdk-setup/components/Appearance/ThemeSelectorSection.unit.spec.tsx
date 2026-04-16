@@ -92,15 +92,13 @@ describe("ThemeSelectorSection", () => {
       expect(screen.queryByText("Brand color")).not.toBeInTheDocument();
     });
 
-    it("applies theme when a saved theme card is clicked", async () => {
+    it("passes the theme id when a saved theme card is clicked", async () => {
       const { onThemeChange } = setup();
 
       await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
 
       expect(onThemeChange).toHaveBeenCalledTimes(1);
-      const appliedTheme = onThemeChange.mock.calls[0][0];
-      // Should contain non-default colors from the theme
-      expect(appliedTheme.colors).toBeDefined();
+      expect(onThemeChange).toHaveBeenCalledWith(1);
     });
 
     it("clears theme when clicking Default Theme after a saved theme", async () => {
@@ -110,6 +108,28 @@ describe("ThemeSelectorSection", () => {
       await userEvent.click(screen.getByTestId("theme-card-Default Theme"));
 
       expect(onThemeChange).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it("pre-selects the saved theme card matching theme.id on mount", () => {
+      setup({ theme: { id: 2 } });
+
+      expect(screen.getByTestId("theme-card-Ocean Theme")).toHaveAttribute(
+        "data-selected",
+        "true",
+      );
+      expect(screen.getByTestId("theme-card-Default Theme")).toHaveAttribute(
+        "data-selected",
+        "false",
+      );
+    });
+
+    it("falls back to Default Theme when theme.id does not match any saved theme", () => {
+      setup({ theme: { id: 999 } });
+
+      expect(screen.getByTestId("theme-card-Default Theme")).toHaveAttribute(
+        "data-selected",
+        "true",
+      );
     });
 
     it("shows color inputs when Custom card is clicked", async () => {

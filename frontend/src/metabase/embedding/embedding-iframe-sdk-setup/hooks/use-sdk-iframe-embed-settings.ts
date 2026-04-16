@@ -17,17 +17,19 @@ import {
   getResourceIdFromSettings,
 } from "../utils/get-default-sdk-iframe-embed-setting";
 
-/**
- * Currently no settings are persisted across page refreshes.
- * Theme was previously persisted but is now session-only.
- */
 const getSettingsToPersist = ({
-  settings: _settings,
+  isSimpleEmbedFeatureAvailable,
+  settings,
 }: {
   isSimpleEmbedFeatureAvailable: boolean;
   settings: Partial<SdkIframeEmbedSetupSettings>;
-}): Record<string, never> => {
-  return {};
+}): Partial<Pick<SdkIframeEmbedSetupSettings, "theme">> => {
+  // Theme customization requires the `simple embedding` feature.
+  if (!isSimpleEmbedFeatureAvailable || !settings.theme) {
+    return {};
+  }
+
+  return { theme: settings.theme };
 };
 
 const usePersistedSettings = ({

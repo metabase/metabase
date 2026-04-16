@@ -9,6 +9,7 @@ import {
 import { match } from "ts-pattern";
 
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
+import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
 import { useSetting } from "metabase/common/hooks";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 // we import the equivalent of embed.js so that we don't add extra loading time
@@ -22,6 +23,7 @@ import { colors as defaultMetabaseColors } from "metabase/ui/colors";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
+import { resolveSavedTheme } from "../utils/resolve-saved-theme";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
@@ -47,6 +49,8 @@ const SdkIframeEmbedPreviewInner = () => {
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
 
+  const { data: savedThemes } = useListEmbeddingThemesQuery();
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   const defineMetabaseConfig = useCallback(
@@ -65,9 +69,14 @@ const SdkIframeEmbedPreviewInner = () => {
     }
   }, []);
 
+  const effectiveTheme = useMemo(
+    () => resolveSavedTheme({ theme: settings.theme, savedThemes }),
+    [settings.theme, savedThemes],
+  );
+
   const theme = useMemo(() => {
-    if (settings.theme?.preset) {
-      return applyThemePreset(settings.theme);
+    if (effectiveTheme?.preset) {
+      return applyThemePreset(effectiveTheme);
     }
 
     // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
@@ -85,12 +94,12 @@ const SdkIframeEmbedPreviewInner = () => {
 
     const derivedTheme = getDerivedDefaultColorsForEmbedFlow({
       isSimpleEmbedFeatureAvailable,
-      theme: settings.theme ?? defaultTheme,
+      theme: effectiveTheme ?? defaultTheme,
       applicationColors: applicationColors ?? undefined,
     });
 
     return derivedTheme;
-  }, [isSimpleEmbedFeatureAvailable, applicationColors, settings.theme]);
+  }, [isSimpleEmbedFeatureAvailable, applicationColors, effectiveTheme]);
 
   const metabaseConfig = useMemo(
     () => ({

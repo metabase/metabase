@@ -33,6 +33,7 @@ export function ThemeCard({
     <UnstyledButton
       onClick={onClick}
       data-testid={`theme-card-${name}`}
+      data-selected={isSelected}
       className={cx(S.card, isSelected && S.cardSelected)}
       bdrs="md"
       h="42px"
