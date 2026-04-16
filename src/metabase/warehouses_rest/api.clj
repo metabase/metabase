@@ -656,6 +656,154 @@
   (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
                       (write-databases-metadata! os)))
 
+;;; ----------------------------------------- POST /api/database/metadata/import -----------------------------------
+
+(defn- engine-name
+  "Normalize engine (stored as string or keyword) to a string for lookup."
+  [engine]
+  (when engine (name engine)))
+
+(defn- build-db-lookup
+  "Map of [name engine-string] -> target database id."
+  []
+  (into {}
+        (map (juxt (juxt :name (comp engine-name :engine)) :id))
+        (t2/select [:model/Database :id :name :engine])))
+
+(defn- build-table-lookup
+  "Map of [target-db-id schema table-name] -> target table id, for tables in given dbs."
+  [target-db-ids]
+  (if (empty? target-db-ids)
+    {}
+    (into {}
+          (map (juxt (juxt :db_id :schema :name) :id))
+          (t2/select [:model/Table :id :db_id :schema :name]
+                     :db_id [:in target-db-ids] :active true))))
+
+(defn- build-target-field-pathmap
+  "For fields in the given target tables, return:
+    - by-id: map of target-field-id -> {:id :table_id :parent_id :name}
+    - path->id: map of [target-table-id [name1 name2 ... leaf-name]] -> target-field-id"
+  [target-table-ids]
+  (let [rows   (if (empty? target-table-ids)
+                 []
+                 (t2/select [:model/Field :id :table_id :parent_id :name]
+                            :table_id [:in target-table-ids] :active true))
+        by-id  (into {} (map (juxt :id identity)) rows)
+        path   (fn walk [field]
+                 (if-let [pid (:parent_id field)]
+                   (conj (walk (get by-id pid)) (:name field))
+                   [(:name field)]))]
+    {:by-id    by-id
+     :path->id (into {}
+                     (map (fn [{:keys [id table_id] :as field}]
+                            [[table_id (path field)] id]))
+                     rows)}))
+
+(defn- incoming-field-path
+  "Resolve the [name1 name2 ... leaf] path of an incoming field by walking parent_id."
+  [incoming-by-id field-id]
+  (when-let [{:keys [name parent_id]} (get incoming-by-id field-id)]
+    (if parent_id
+      (conj (incoming-field-path incoming-by-id parent_id) name)
+      [name])))
+
+(defn- field-patch
+  "Build a patch map from an incoming field, including fk_target_field_id resolved via lookup.
+  Only keys with non-nil incoming values are included (nil in input = not specified)."
+  [{:keys [description semantic_type coercion_strategy effective_type fk_target_field_id]}
+   incoming->target-field-id]
+  (cond-> {}
+    (some? description)        (assoc :description description)
+    (some? semantic_type)      (assoc :semantic_type semantic_type)
+    (some? coercion_strategy)  (assoc :coercion_strategy coercion_strategy)
+    (some? effective_type)     (assoc :effective_type effective_type)
+    (some? fk_target_field_id) (assoc :fk_target_field_id
+                                      (incoming->target-field-id fk_target_field_id))))
+
+(defn- import-metadata!*
+  "Core logic for POST /metadata/import. See the endpoint doc for behavior."
+  [{:keys [databases tables fields]}]
+  (let [;; databases
+        db-by-key      (build-db-lookup)
+        in-db->target  (into {}
+                             (keep (fn [{:keys [id name engine]}]
+                                     (when-let [tid (db-by-key [name (engine-name engine)])]
+                                       [id tid])))
+                             databases)
+        missing-dbs    (mapv #(select-keys % [:name :engine])
+                             (remove #(in-db->target (:id %)) databases))
+        ;; tables
+        target-db-ids  (vals in-db->target)
+        tbl-by-key     (build-table-lookup target-db-ids)
+        in-tbl->target (into {}
+                             (keep (fn [{:keys [id db_id schema name]}]
+                                     (when-let [tdb (in-db->target db_id)]
+                                       (when-let [tid (tbl-by-key [tdb schema name])]
+                                         [id tid]))))
+                             tables)
+        missing-tables (mapv #(select-keys % [:db_id :schema :name])
+                             (remove #(in-tbl->target (:id %)) tables))
+        ;; fields
+        target-tbl-ids (vals in-tbl->target)
+        {:keys [path->id]} (build-target-field-pathmap target-tbl-ids)
+        incoming-by-id (into {} (map (juxt :id identity)) fields)
+        in-fld->target (into {}
+                             (keep (fn [{:keys [id table_id] :as fld}]
+                                     (when-let [ttbl (in-tbl->target table_id)]
+                                       (when-let [tid (path->id
+                                                       [ttbl (incoming-field-path incoming-by-id id)])]
+                                         [id tid]))))
+                             fields)
+        missing-fields (->> fields
+                            (remove #(in-fld->target (:id %)))
+                            (mapv (fn [fld]
+                                    {:table_id (:table_id fld)
+                                     :path     (incoming-field-path incoming-by-id (:id fld))})))]
+    ;; apply updates in a single transaction
+    (t2/with-transaction [_conn]
+      (doseq [{:keys [id description]} tables
+              :let [tid (in-tbl->target id)]
+              :when (and tid (some? description))]
+        (t2/update! :model/Table tid {:description description}))
+      (doseq [fld fields
+              :let [tid   (in-fld->target (:id fld))
+                    patch (field-patch fld in-fld->target)]
+              :when (and tid (seq patch))]
+        (t2/update! :model/Field tid patch)))
+    {:databases {:matched (count in-db->target)  :missing missing-dbs}
+     :tables    {:matched (count in-tbl->target) :missing missing-tables}
+     :fields    {:matched (count in-fld->target) :missing missing-fields}}))
+
+(mr/def ::metadata-import-report
+  [:map
+   [:databases [:map [:matched :int] [:missing [:sequential :map]]]]
+   [:tables    [:map [:matched :int] [:missing [:sequential :map]]]]
+   [:fields    [:map [:matched :int] [:missing [:sequential :map]]]]])
+
+(api.macros/defendpoint :post "/metadata/import"
+  :- ::metadata-import-report
+  "Import database/table/field metadata previously exported from `GET /api/database/metadata`.
+
+  Entities are matched by natural key — databases by `(name, engine)`, tables by
+  `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids
+  in the payload are only used to link fields to their tables within the request.
+
+  Only user-editable metadata is written: table `description`; field `description`,
+  `semantic_type`, `coercion_strategy`, `effective_type`, and `fk_target_field_id`
+  (which is re-resolved through the natural-key lookup). Database connections, sync
+  status, table/field base types, and database-native types are not modified. Keys
+  that are absent from the payload (including values that were null on export) are
+  left untouched on the target.
+
+  Returns counts of matched entities per type plus a list of entities in the payload
+  that don't exist on this instance."
+  [_route-params
+   _query-params
+   body :- ::databases-metadata-response]
+  (api/check-superuser)
+  (import-metadata!* body))
+
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
 ;; Since the normal `:id` param in the normal version of the endpoint will never match with negative numbers

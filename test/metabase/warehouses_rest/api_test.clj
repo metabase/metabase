@@ -804,6 +804,74 @@
         (is (= {:databases [] :tables [] :fields []}
                (mt/user-http-request :rasta :get 202 "database/metadata")))))))
 
+(deftest databases-metadata-import-test
+  (testing "POST /api/database/metadata/import"
+    (mt/with-temp [:model/Database {db-id :id} {:name "import-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "orders" :schema "PUBLIC"
+                                                :description "original"}
+                   :model/Field    {pk-id :id} {:table_id t-id :name "id" :base_type :type/Integer
+                                                :database_type "BIGINT"}
+                   :model/Field    {fk-id :id} {:table_id t-id :name "order_id" :base_type :type/Integer
+                                                :database_type "BIGINT"}]
+      (testing "matched entities are updated; unmatched entities are reported"
+        ;; Payload carries ids from "another" instance — here we reuse our own ids, but the
+        ;; endpoint matches by natural key regardless of what the numeric ids are.
+        (let [payload   {:databases [{:id db-id :name "import-db" :engine "h2"}
+                                     {:id 9999 :name "does-not-exist" :engine "h2"}]
+                         :tables    [{:id t-id :db_id db-id :name "orders" :schema "PUBLIC"
+                                      :description "updated via import"}
+                                     {:id 9998 :db_id db-id :name "missing_table" :schema "PUBLIC"}]
+                         :fields    [{:id pk-id :table_id t-id :name "id"
+                                      :base_type "type/Integer" :database_type "BIGINT"
+                                      :semantic_type "type/PK"
+                                      :description "primary key"}
+                                     {:id fk-id :table_id t-id :name "order_id"
+                                      :base_type "type/Integer" :database_type "BIGINT"
+                                      :semantic_type "type/FK"
+                                      :fk_target_field_id pk-id}
+                                     {:id 9997 :table_id t-id :name "missing_field"
+                                      :base_type "type/Integer"}]}
+              report    (mt/user-http-request :crowberto :post 200
+                                              "database/metadata/import" payload)]
+          (is (=? {:databases {:matched 1 :missing [{:name "does-not-exist"}]}
+                   :tables    {:matched 1 :missing [{:name "missing_table"}]}
+                   :fields    {:matched 2 :missing [{:path ["missing_field"]}]}}
+                  report))
+          (is (= "updated via import" (t2/select-one-fn :description :model/Table :id t-id)))
+          (is (= :type/PK (t2/select-one-fn :semantic_type :model/Field :id pk-id)))
+          (is (= "primary key" (t2/select-one-fn :description :model/Field :id pk-id)))
+          (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))))
+
+      (testing "base_type and database_type are never overwritten"
+        (let [payload {:databases [{:id db-id :name "import-db" :engine "h2"}]
+                       :tables    [{:id t-id :db_id db-id :name "orders" :schema "PUBLIC"}]
+                       :fields    [{:id pk-id :table_id t-id :name "id"
+                                    :base_type "type/Text" :database_type "TEXT"
+                                    :description "still a pk"}]}]
+          (mt/user-http-request :crowberto :post 200 "database/metadata/import" payload)
+          (is (= :type/Integer (t2/select-one-fn :base_type :model/Field :id pk-id)))
+          (is (= "BIGINT" (t2/select-one-fn :database_type :model/Field :id pk-id)))))
+
+      (testing "nested fields are matched by parent path"
+        (mt/with-temp [:model/Field {parent-id :id} {:table_id t-id :name "payload"
+                                                     :base_type :type/JSON :database_type "JSON"}
+                       :model/Field {child-id :id}  {:table_id t-id :parent_id parent-id :name "amount"
+                                                     :base_type :type/Integer :database_type "BIGINT"}]
+          (let [payload {:databases [{:id db-id :name "import-db" :engine "h2"}]
+                         :tables    [{:id t-id :db_id db-id :name "orders" :schema "PUBLIC"}]
+                         :fields    [{:id 1 :table_id t-id :name "payload" :base_type "type/JSON"}
+                                     {:id 2 :table_id t-id :parent_id 1 :name "amount"
+                                      :base_type "type/Integer"
+                                      :description "nested description"
+                                      :semantic_type "type/Quantity"}]}]
+            (mt/user-http-request :crowberto :post 200 "database/metadata/import" payload)
+            (is (= "nested description" (t2/select-one-fn :description :model/Field :id child-id)))
+            (is (= :type/Quantity (t2/select-one-fn :semantic_type :model/Field :id child-id))))))
+
+      (testing "non-superusers are rejected"
+        (mt/user-http-request :rasta :post 403 "database/metadata/import"
+                              {:databases [] :tables [] :fields []})))))
+
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (db-details) :details :write_data_details :router_user_attribute)
