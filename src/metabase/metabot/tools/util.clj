@@ -49,18 +49,24 @@
   Uses the real field `:id` when available, falling back to column name for
   expression/aggregation columns that don't have a database field ID."
   [query column]
-  (let [semantic-type (some-> (:semantic-type column) name u/->snake_case_en)
-        field-id      (or (:id column)
-                          (:lib/desired-column-alias column)
-                          (:lib/source-column-alias column))]
+  (let [base-type         (some-> (:base-type column) u/qualified-name)
+        effective-type    (some-> (:effective-type column) u/qualified-name)
+        semantic-type     (some-> (:semantic-type column) u/qualified-name)
+        coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
+        field-id          (or (:id column)
+                              (:lib/desired-column-alias column)
+                              (:lib/source-column-alias column))]
     (-> {:field_id field-id
          :name (or (:lib/desired-column-alias column)
                    (:lib/source-column-alias column))
          :display_name (lib/display-name query column)
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
-                      :database_type (:database-type column)
+                      :base_type base-type
+                      :effective_type (when (not= effective-type base-type) effective-type)
                       :semantic_type semantic-type
+                      :database_type (:database-type column)
+                      :coercion_strategy coercion-strategy
                       :field_values (:field-values column)
                       :table_reference (:table-reference column)))))
 

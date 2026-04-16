@@ -79,8 +79,11 @@
    [:display_name :string]
    [:type {:optional true} [:maybe ::field-type]]
    [:description {:optional true} [:maybe :string]]
+   [:base_type {:optional true} [:maybe :string]]
+   [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type {:optional true} [:maybe :string]]
    [:database_type {:optional true} [:maybe :string]]
+   [:coercion_strategy {:optional true} [:maybe :string]]
    [:field_values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::entity-type
