@@ -400,7 +400,9 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     </Text>
                   }
                   type="password"
-                  {...getEnvSettingProps(settingDetails?.[TOKEN_KEY])}
+                  {...getEnvSettingProps(settingDetails?.[TOKEN_KEY], {
+                    inputWrapperOrder: ["label", "description", "erorr"],
+                  })}
                 />
               </RemoteSyncSettingsSection>
 
@@ -469,7 +471,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   title={t`Branch to sync with`}
                   variant={variant}
                 >
-                  <Flex align="flex-end" gap="md">
+                  <Stack gap="md">
                     <Box style={{ flex: 1 }}>
                       <FormTextInput
                         name={BRANCH_KEY}
@@ -484,8 +486,12 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                       mb="0.6125rem"
                       name={AUTO_IMPORT_KEY}
                       size="sm"
+                      {...getEnvSettingProps(
+                        settingDetails?.[AUTO_IMPORT_KEY],
+                        { disabled: true },
+                      )}
                     />
-                  </Flex>
+                  </Stack>
                   {isRemoteSyncEnabled && (
                     <Box>
                       <PullChangesButton
@@ -616,11 +622,12 @@ const RemoteSyncSettingsSection = ({
   );
 };
 
-const getEnvSettingProps = (setting?: SettingDefinition) => {
+const getEnvSettingProps = <T,>(setting?: SettingDefinition, extras?: T) => {
   if (setting?.is_env_setting) {
     return {
       description: t`Using ${setting.env_name}`,
       readOnly: true,
+      ...extras,
     };
   }
   return {};
