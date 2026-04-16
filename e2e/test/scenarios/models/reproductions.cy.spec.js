@@ -711,7 +711,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
       "Created At is May 1–31, 2027",
     );
 
-    H.assertQueryBuilderRowCount(36);
+    H.assertQueryBuilderRowCount(43);
   });
 
   it("Sort drill-through should work (metabase#53556)", () => {

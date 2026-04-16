@@ -1014,7 +1014,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       display: "line",
     };
 
-    const DST_WEEK_CHANGES = [null, "+191.48%", "+4.76%", "-2.36%"];
+    const DST_WEEK_CHANGES = [null, "+27.3%", "-5.8%", "-1.36%"]; // fragile - depends on the year
 
     const SUM_OF_TOTAL_DST_DAY = {
       name: "Q1",

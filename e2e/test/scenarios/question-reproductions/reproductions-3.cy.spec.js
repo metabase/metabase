@@ -1141,9 +1141,7 @@ describe("issue 31960", () => {
     });
     H.assertEChartsTooltip({
       header: "July 13–19, 2025", // expect this to break when we shift years in the Sample Database
-      rows: [
-        { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
-      ],
+      rows: [{ name: "Count", value: String(rowCount), secondaryValue: "0%" }],
     });
     H.getDashboardCard().within(() => {
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -1152,7 +1150,7 @@ describe("issue 31960", () => {
 
     H.popover().findByText("See these Orders").click();
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At: Week is Jul 10–16, 2025")
+      .findByText("Created At: Week is Jul 13–19, 2025")
       .should("be.visible");
     H.assertQueryBuilderRowCount(rowCount);
   });
