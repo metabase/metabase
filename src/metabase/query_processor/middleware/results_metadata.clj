@@ -14,6 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.settings :as qp.settings]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -146,7 +147,8 @@
   "Post-processing middleware that records metadata about the columns returned when running the query. Returns an rff."
   [{{:keys [skip-results-metadata?]} :middleware, :as query} :- ::qp.schema/any-query
    rff                                                       :- ::qp.schema/rff]
-  (if skip-results-metadata?
+  (if (or skip-results-metadata?
+          (qp.settings/ludicrous-speed))
     rff
     (let [record! (partial record-metadata! query)]
       (fn record-and-return-metadata!-rff* [metadata]
