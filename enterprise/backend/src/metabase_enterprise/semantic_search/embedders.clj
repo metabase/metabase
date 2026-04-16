@@ -96,9 +96,11 @@
                         :let [m (metabot/entity-type->search-model kind)]
                         :when m]
                     [m (str id)])
-            ;; Query returns rows ordered by CAST(model_id AS bigint) DESC so `into {}` (last-wins)
-            ;; picks the lowest model_id per normalized name — a stable, deterministic choice when
-            ;; duplicates exist. The cast avoids lexicographic text comparison ("10" < "2").
+            ;; Query returns rows ordered by (model ASC, CAST(model_id AS bigint) DESC) so
+            ;; `into {}` (last-wins) picks the last model alphabetically with the lowest
+            ;; model_id per normalized name — a stable, deterministic choice when duplicates
+            ;; exist across models or within the same model. The cast avoids lexicographic
+            ;; text comparison ("10" < "2").
             rows  (fetch-by-model+id pgvector table-name pairs)]
         (into {}
               (keep (fn [{:keys [name embedding]}]

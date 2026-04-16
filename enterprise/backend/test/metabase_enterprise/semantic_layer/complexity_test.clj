@@ -5,6 +5,7 @@
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-layer.init]
    [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase-enterprise.semantic-search.embedders :as ss.embedders]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
@@ -121,16 +122,16 @@
 (deftest ^:parallel fn-embedder-test
   (testing "normalizes names, dedupes, zips vectors by position, and omits entries with no vector"
     (let [known-vectors {"foo" (float-array [1.0 0.0])
-                         "bar" (float-array [0.0 1.0])}
+                         "bar" (float-array [0.0 1.0])
+                         "baz" (float-array [0.5 0.5])}
           embedder      (embedders/fn-embedder (partial mapv known-vectors))
           result        (embedder [{:name "Foo"}
                                    {:name " BAR"}
                                    {:name " Foo  \t "}
                                    {:name "missing\n"}])]
-      (is (= #{"foo" "bar"} (set (keys result))))
-      (is (some? (get result "foo")))
-      (is (some? (get result "bar")))
-      (is (not (contains? result "missing"))))))
+      (is (=? {"foo" (known-vectors "foo")
+               "bar" (known-vectors "bar")}
+              result)))))
 
 (deftest ^:sequential library-empty-when-no-library-collection-test
   (testing "on an instance with no Library collection, the library score is zero and universe still reports"
@@ -160,6 +161,38 @@
   (testing "returns {} when semantic-search index isn't available (no throw)"
     (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))
+
+(deftest ^:parallel meta-embedding-model-absent-when-unavailable-test
+  (testing ":embedding-model key is absent from :meta when the search index is unreachable"
+    (mt/with-dynamic-fn-redefs [semantic-search/active-embedding-model (constantly nil)]
+      (let [{:keys [meta]} (complexity/complexity-scores {:embedder nil})]
+        (is (not (contains? meta :embedding-model))))))
+  (testing ":embedding-model key is present in :meta when the active model is non-nil"
+    (mt/with-dynamic-fn-redefs [semantic-search/active-embedding-model
+                                (constantly {:provider "openai" :model-name "text-embedding-3-small"})]
+      (let [{:keys [meta]} (complexity/complexity-scores {:embedder nil})]
+        (is (= {:provider "openai" :model-name "text-embedding-3-small"}
+               (:embedding-model meta)))))))
+
+(deftest ^:sequential active-embedding-model-reads-from-active-index-test
+  (testing "active-embedding-model returns the model from the active index, not the configured setting"
+    (let [active-model {:provider "openai" :model-name "text-embedding-ada-002"}]
+      ;; try-active-index-state is private, so we use with-redefs + var for sequential tests.
+      (with-redefs [ss.embedders/try-active-index-state
+                    (constantly {:pgvector   :mock
+                                 :table-name "mock_table"
+                                 :model      active-model})]
+        (is (= {:provider "openai" :model-name "text-embedding-ada-002"}
+               (semantic-search/active-embedding-model))))))
+  (testing "active-embedding-model returns nil when the index state has no model"
+    (with-redefs [ss.embedders/try-active-index-state
+                  (constantly {:pgvector   :mock
+                               :table-name "mock_table"
+                               :model      nil})]
+      (is (nil? (semantic-search/active-embedding-model)))))
+  (testing "active-embedding-model returns nil when the index is unreachable"
+    (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
+      (is (nil? (semantic-search/active-embedding-model))))))
 
 (deftest ^:sequential complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"
