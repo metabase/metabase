@@ -26,9 +26,10 @@
 
 (defn fn-embedder
   "Build an embedder that delegates to a plain `(name-embed-fn names) -> [vectors]` function.
-  Distinct normalized names are passed in; the returned vectors are zipped back by position."
+  Distinct normalized names are passed in; the returned vectors are zipped back by position.
+  Names whose embedding function returns nil are omitted from the result map."
   [name-embed-fn]
   (fn embed [entities]
     (let [names   (->> entities (keep (comp normalize-name :name)) distinct vec)
           vectors (when (seq names) (vec (name-embed-fn names)))]
-      (zipmap names vectors))))
+      (into {} (filter val) (zipmap names vectors)))))

@@ -54,9 +54,10 @@
   (let [where   (into [:or]
                       (for [[m mid] pairs]
                         [:and [:= :model m] [:= :model_id mid]]))
-        sql-vec (sql/format {:select [:model :model_id :name :embedding]
-                             :from   [(keyword table-name)]
-                             :where  where}
+        sql-vec (sql/format {:select   [:model :model_id :name :embedding]
+                             :from     [(keyword table-name)]
+                             :where    where
+                             :order-by [[:model :asc] [:model_id :desc]]}
                             {:quoted true})]
     (jdbc/execute! pgvector sql-vec {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
@@ -95,10 +96,9 @@
                         :let [m (metabot/entity-type->search-model kind)]
                         :when m]
                     [m (str id)])
-            ;; Sort descending by model_id so `into {}` (last-wins) picks the lowest model_id per
-            ;; normalized name — a stable, deterministic choice when multiple entities share a name.
-            rows  (->> (fetch-by-model+id pgvector table-name pairs)
-                       (sort-by :model_id #(compare %2 %1)))]
+            ;; Query returns rows ordered by model_id DESC so `into {}` (last-wins) picks the lowest
+            ;; model_id per normalized name — a stable, deterministic choice when duplicates exist.
+            rows  (fetch-by-model+id pgvector table-name pairs)]
         (into {}
               (keep (fn [{:keys [name embedding]}]
                       (when-let [v (parse-pgvector embedding)]

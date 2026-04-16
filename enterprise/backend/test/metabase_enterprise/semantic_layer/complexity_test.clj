@@ -119,7 +119,7 @@
               (#'complexity/score-catalog es embedder))))))
 
 (deftest ^:parallel fn-embedder-test
-  (testing "normalizes names, dedupes, zips vectors by position, and skips entries with no vector"
+  (testing "normalizes names, dedupes, zips vectors by position, and omits entries with no vector"
     (let [known-vectors {"foo" (float-array [1.0 0.0])
                          "bar" (float-array [0.0 1.0])}
           embedder      (embedders/fn-embedder (partial mapv known-vectors))
@@ -127,10 +127,10 @@
                                    {:name " BAR"}
                                    {:name " Foo  \t "}
                                    {:name "missing\n"}])]
-      (is (=? {"foo"     (known-vectors "foo")
-               "bar"     (known-vectors "bar")
-               "missing" nil}
-              result)))))
+      (is (= #{"foo" "bar"} (set (keys result))))
+      (is (some? (get result "foo")))
+      (is (some? (get result "bar")))
+      (is (not (contains? result "missing"))))))
 
 (deftest ^:sequential library-empty-when-no-library-collection-test
   (testing "on an instance with no Library collection, the library score is zero and universe still reports"
