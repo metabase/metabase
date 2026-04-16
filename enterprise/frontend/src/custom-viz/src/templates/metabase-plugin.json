@@ -1,6 +1,7 @@
 {
   "name": "__CUSTOM_VIZ_NAME__",
   "icon": "icon.svg",
+  "assets": ["thumbs-up.png", "thumbs-down.png"],
   "metabase": {
     "version": ">=1.60.0"
   }
