@@ -8,6 +8,12 @@ import {
   utf8_to_b64,
   utf8_to_b64url,
 } from "metabase/utils/encoding";
+import type {
+  Card,
+  StructuredDatasetQuery,
+  UnsavedCard,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 const CARD_ID = 31;
 
@@ -17,10 +23,18 @@ const getCard = ({
   hasOriginalCard = false,
   isNative = false,
   database = 1,
-  display = "table",
-  queryFields = {},
-  table = undefined,
-}) => {
+  display = "table" as VisualizationDisplay,
+  queryFields = {} as StructuredDatasetQuery["query"],
+  table,
+}: {
+  newCard?: boolean;
+  hasOriginalCard?: boolean;
+  isNative?: boolean;
+  database?: number;
+  display?: VisualizationDisplay;
+  queryFields?: StructuredDatasetQuery["query"];
+  table?: number;
+} = {}): Card | UnsavedCard => {
   const savedCardFields = {
     name: "Example Saved Question",
     description: "For satisfying your craving for information",
@@ -28,30 +42,29 @@ const getCard = ({
     id: CARD_ID,
   };
 
+  const datasetQuery = isNative
+    ? ({
+        database,
+        type: "native" as const,
+        native: { query: "SELECT * FROM ORDERS" },
+      } satisfies Record<string, unknown>)
+    : ({
+        database,
+        type: "query" as const,
+        query: {
+          ...(table ? { "source-table": table } : {}),
+          ...queryFields,
+        },
+      } satisfies Record<string, unknown>);
+
   return {
     name: null,
-    display: display,
+    display,
     visualization_settings: {},
-    dataset_query: {
-      database: database,
-      type: isNative ? "native" : "query",
-      ...(!isNative
-        ? {
-            query: {
-              ...(table ? { "source-table": table } : {}),
-              ...queryFields,
-            },
-          }
-        : {}),
-      ...(isNative
-        ? {
-            native: { query: "SELECT * FROM ORDERS" },
-          }
-        : {}),
-    },
+    dataset_query: datasetQuery,
     ...(newCard ? {} : savedCardFields),
     ...(hasOriginalCard ? { original_card_id: CARD_ID } : {}),
-  };
+  } as Card | UnsavedCard;
 };
 
 describe("lib/card", () => {
