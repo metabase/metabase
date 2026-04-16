@@ -698,30 +698,25 @@ describe("scenarios > admin > localization", () => {
     // programatically create and save a question based on Orders table
     // filter: created before June 1st, 2025
     // summarize: Count by CreatedAt: Week
-
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    H.createQuestion({
-      name: "Orders created before June 1st 2025",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
+    H.createQuestion(
+      {
+        name: "Orders created before June 1st 2025",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
+        },
+        display: "bar",
       },
-      display: "line",
-    });
-
-    // find and open that question
-    cy.visit("/collection/root");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders created before June 1st 2025").click();
-
-    cy.wait("@cardQuery");
+      { visitQuestion: true },
+    );
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    H.echartsContainer().get("text").contains("April 25, 2025");
+    // April 28 is Monday in year 2025. Expect this to break when we shift years in the Sample Database.
+    H.echartsContainer().find("text").should("contain", "April 28, 2025");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
