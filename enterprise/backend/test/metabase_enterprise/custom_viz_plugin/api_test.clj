@@ -389,13 +389,13 @@
                                                  :display_name      "Compatible"
                                                  :status            :active
                                                  :enabled           true
-                                                 :metabase_version  ">=59"}
+                                                 :metabase_version  ">=1.59"}
                        :model/CustomVizPlugin _ {:repo_url          "https://github.com/test/incompat-viz"
                                                  :identifier        "incompat-viz"
                                                  :display_name      "Incompatible"
                                                  :status            :active
                                                  :enabled           true
-                                                 :metabase_version  ">=99"}]
+                                                 :metabase_version  ">=1.99"}]
           (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
                 identifiers (set (map :identifier result))]
             (is (contains? identifiers "compat-viz"))

@@ -4,17 +4,18 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { moveParameter } from "metabase/dashboard/actions";
-import { getCurrentDashcards, getTabs } from "metabase/dashboard/selectors";
-import {
-  findDashCardForInlineParameter,
-  isHeadingDashCard,
-} from "metabase/dashboard/utils";
 import { Flex, Group, Icon, type IconName, Select, Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import visualizations from "metabase/visualizations";
 import type { BaseDashboardCard, ParameterId } from "metabase-types/api";
+
+import { moveParameter } from "../../../actions";
+import { getCurrentDashcards, getTabs } from "../../../selectors";
+import {
+  findDashCardForInlineParameter,
+  isHeadingDashCard,
+} from "../../../utils";
 
 import S from "./MoveParameterMenu.module.css";
 
