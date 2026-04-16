@@ -506,6 +506,11 @@ describe("issue 40635", () => {
     cy.button("Save").click();
     H.modal().button("Save").click();
 
+    H.undoToast()
+      .should("contain", "Add this to a dashboard")
+      .icon("close")
+      .click();
+
     assertSettingsSidebar();
     assertVisualizationColumns();
 
