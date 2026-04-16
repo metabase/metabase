@@ -2,12 +2,12 @@
 
 (ns athena
   (:require
-    [babashka.cli :as cli]
-    [babashka.process :as p]
-    [clojure.data.xml :as x]
-    [clojure.java.io :as io]
-    [clojure.string :as str]
-    [clojure.zip :as z]))
+   [babashka.cli :as cli]
+   [babashka.process :as p]
+   [clojure.data.xml :as x]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.zip :as z]))
 
 ;; Since amazon is still not putting their athena jdbc on to maven, the easiest thing for us to do is setup a maven-y s3 repo and copy their jar into it.
 ;;
@@ -49,26 +49,32 @@
 (defn jar-file-name [version]
   (str "athena-jdbc-" version ".jar"))
 
+(defn pom-file-name [version]
+  (str "athena-jdbc-" version ".pom"))
+
 (defn create-new-metadata [version]
   (let [existing (x/parse (io/reader "https://s3.amazonaws.com/metabase-maven-downloads/com/metabase/athena-jdbc/maven-metadata.xml"))
         z        (z/xml-zip existing)]
-    (when (find-pred z (every-pred (tag= :version)
-                                   (content= version)))
-      (throw (Exception. "Version already exists in maven-metadata.xml")))
-    (let [indent (-> z (find-pred (tag= :versions)) z/down first)
-          indent (when (string? indent) indent)
-          xml    (-> z
-                     (find-pred (tag= :versions))
-                     (z/insert-child (x/element :version {} version))
-                     (z/insert-child indent)
-                     topmost
-                     (find-pred (tag= :release))
-                     (z/down)
-                     (z/replace version)
-                     (z/root))]
-      (println version "=> maven-metadata.xml")
-      (with-open [w (io/writer "maven-metadata.xml")]
-        (x/emit xml w)))))
+    (if (find-pred z (every-pred (tag= :version)
+                                 (content= version)))
+      (do
+        (println version "already in maven-metadata.xml, preserving existing file")
+        (with-open [w (io/writer "maven-metadata.xml")]
+          (x/emit (z/root z) w)))
+      (let [indent (-> z (find-pred (tag= :versions)) z/down first)
+            indent (when (string? indent) indent)
+            xml    (-> z
+                       (find-pred (tag= :versions))
+                       (z/insert-child (x/element :version {} version))
+                       (z/insert-child indent)
+                       topmost
+                       (find-pred (tag= :release))
+                       (z/down)
+                       (z/replace version)
+                       (z/root))]
+        (println version "=> maven-metadata.xml")
+        (with-open [w (io/writer "maven-metadata.xml")]
+          (x/emit xml w))))))
 
 (defn download-latest [version]
   (let [base-url  "https://s3.amazonaws.com/athena-downloads/"
@@ -84,20 +90,39 @@
     (println jar-file "=>" (jar-file-name version))
     (p/shell "curl --progress-bar -o " (jar-file-name version) (str base-url jar-file))))
 
+(defn sha1-of [file]
+  (-> (p/shell {:out :string} "shasum -a 1" file)
+      :out
+      (str/split #"\s+")
+      first))
+
+(defn write-sha1 [file]
+  (println "sha1" file "=>" (str file ".sha1"))
+  (with-open [w (io/writer (str file ".sha1"))]
+    (.write w (sha1-of file))))
+
 (defn create-sha1 [version]
-  (let [jar  (jar-file-name version)
-        sha1 (-> (p/shell {:out :string} "shasum -a 1" jar)
-                 :out
-                 (str/split #"\s+")
-                 first)]
-    (println "sha1(jar) =>" (str jar ".sha1"))
-    (with-open [w (io/writer (str jar ".sha1"))]
-      (.write w sha1))))
+  (write-sha1 (jar-file-name version)))
+
+(defn create-pom [version]
+  (let [pom (pom-file-name version)
+        xml (x/element :project {}
+                       (x/element :modelVersion {} "4.0.0")
+                       (x/element :groupId {} "com.metabase")
+                       (x/element :artifactId {} "athena-jdbc")
+                       (x/element :version {} version)
+                       (x/element :packaging {} "jar"))]
+    (println "pom =>" pom)
+    (with-open [w (io/writer pom)]
+      (x/emit xml w))
+    (write-sha1 pom)))
 
 (defn copy-to-s3 [version]
   (let [root-dir "com/metabase/athena-jdbc/"
         files [{:remote-dir (str version "/") :fname (jar-file-name version)}
                {:remote-dir (str version "/") :fname (str (jar-file-name version) ".sha1")}
+               {:remote-dir (str version "/") :fname (pom-file-name version)}
+               {:remote-dir (str version "/") :fname (str (pom-file-name version) ".sha1")}
                {:remote-dir nil :fname "maven-metadata.xml"}]]
     (doseq [{:keys [remote-dir fname]} files
             :let [target (str "s3://metabase-maven-downloads/" root-dir remote-dir fname)]]
@@ -108,6 +133,7 @@
   (create-new-metadata version)
   (download-latest version)
   (create-sha1 version)
+  (create-pom version)
   (when deploy?
     (copy-to-s3 version)))
 
