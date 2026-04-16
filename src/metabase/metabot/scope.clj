@@ -34,6 +34,10 @@
 (api-scope/defscope agent-query-execute "agent:query:execute"
   (deferred-tru "Execute queries"))
 
+;; Question (saved cards via Agent API)
+(api-scope/defscope agent-question-create "agent:question:create"
+  (deferred-tru "Create saved questions"))
+
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
   (deferred-tru "View transforms"))
@@ -143,7 +147,7 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*"}
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"}})
 
 (def always-granted-scopes

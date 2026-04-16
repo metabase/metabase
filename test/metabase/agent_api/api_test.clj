@@ -470,3 +470,90 @@
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestMetric"]}))))))))
+
+;;; ------------------------------------------------ Create Question Tests -------------------------------------------
+
+(deftest create-question-test
+  (testing "Creates a saved question from a constructed query"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                               {:table_id (mt/id :orders) :limit 10})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                               {:name  "Agent Test Question"
+                                                :query (:query construct-resp)})]
+      (is (=? {:id            pos?
+               :name          "Agent Test Question"
+               :display       "table"
+               :collection_id nil
+               :description   nil}
+              create-resp))
+      (is (t2/exists? :model/Card :id (:id create-resp)))
+      (t2/delete! :model/Card :id (:id create-resp))))
+
+  (testing "Creates a question with optional fields"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
+      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                                 {:table_id (mt/id :orders) :limit 10})
+            create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                                 {:name          "Agent Question With Options"
+                                                  :query         (:query construct-resp)
+                                                  :display       "bar"
+                                                  :description   "A test question"
+                                                  :collection_id coll-id})]
+        (is (=? {:id            pos?
+                 :name          "Agent Question With Options"
+                 :display       "bar"
+                 :collection_id coll-id
+                 :description   "A test question"}
+                create-resp))
+        (t2/delete! :model/Card :id (:id create-resp))))))
+
+;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
+
+(deftest create-dashboard-test
+  (testing "Creates an empty dashboard"
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name "Agent Test Dashboard"})]
+      (is (=? {:id            pos?
+               :name          "Agent Test Dashboard"
+               :collection_id nil
+               :description   nil
+               :dashcard_ids  []}
+              resp))
+      (t2/delete! :model/Dashboard :id (:id resp))))
+
+  (testing "Creates a dashboard with questions"
+    (mt/with-temp [:model/Card {card1-id :id} {:name          "DashQ1"
+                                               :dataset_query (orders-count-query)
+                                               :display       :table}
+                   :model/Card {card2-id :id} {:name          "DashQ2"
+                                               :dataset_query (orders-count-query)
+                                               :display       :bar}]
+      (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                       {:name         "Dashboard With Questions"
+                                        :description  "Test dashboard"
+                                        :question_ids [card1-id card2-id]})]
+        (is (=? {:id           pos?
+                 :name         "Dashboard With Questions"
+                 :description  "Test dashboard"
+                 :dashcard_ids #(= 2 (count %))}
+                resp))
+        ;; Verify dashcards reference the correct cards and have valid positions
+        (let [dashcards (t2/select :model/DashboardCard :dashboard_id (:id resp))]
+          (is (= #{card1-id card2-id} (set (map :card_id dashcards))))
+          (is (every? #(and (nat-int? (:col %)) (nat-int? (:row %))
+                            (pos? (:size_x %)) (pos? (:size_y %)))
+                      dashcards)))
+        (t2/delete! :model/Dashboard :id (:id resp)))))
+
+  (testing "Creates a dashboard in a specific collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Dashboard Collection"}]
+      (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                       {:name          "Collection Dashboard"
+                                        :collection_id coll-id})]
+        (is (= coll-id (:collection_id resp)))
+        (t2/delete! :model/Dashboard :id (:id resp)))))
+
+  (testing "Returns 404 when a question_id does not exist"
+    (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
+                          {:name         "Bad Dashboard"
+                           :question_ids [999999]})))
