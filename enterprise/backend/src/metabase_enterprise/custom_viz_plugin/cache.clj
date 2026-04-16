@@ -79,27 +79,54 @@
 
 ;;; ------------------------------------------------ Fetch & Update ------------------------------------------------
 
-(defn fetch-and-update!
-  "Fetch index.js and manifest from the plugin's git repo and update the DB record.
-   Returns the commit SHA or nil on failure."
-  [{:keys [id repo_url access_token pinned_version identifier]}]
+(defn fetch-plugin-data!
+  "Fetch and validate index.js and manifest from a plugin's git repo.
+   Returns `{:commit-sha :parsed :version-str :snapshot}` on success.
+   Throws ex-info with `:status-code 400` on any failure (unreachable repo,
+   missing bundle, missing/invalid manifest, incompatible Metabase version)."
+  [{:keys [repo_url access_token pinned_version]}]
   (try
-    (let [source        (rs.git/git-source repo_url nil access_token nil)
-          snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
-          commit-sha    (:version snapshot)
-          _content       (or (rs.git/read-file snapshot (git-path bundle-rel-path))
-                             (throw (ex-info (str (git-path bundle-rel-path) " not found in repository") {:commit commit-sha})))
-          parsed        (or (some-> (rs.git/read-file snapshot (manifest/manifest-path))
-                                    manifest/parse-manifest)
-                            (throw (ex-info (str (manifest/manifest-path) " not found or invalid in repository")
-                                            {:commit commit-sha})))
-          version-str   (get-in parsed [:metabase :version])]
+    (let [source      (rs.git/git-source repo_url nil access_token nil)
+          snapshot    (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
+          commit-sha  (:version snapshot)
+          _content    (or (rs.git/read-file snapshot (git-path bundle-rel-path))
+                          (throw (ex-info (str (git-path bundle-rel-path) " not found in repository")
+                                          {:status-code 400 :commit commit-sha})))
+          parsed      (or (some-> (rs.git/read-file snapshot (manifest/manifest-path))
+                                  manifest/parse-manifest)
+                          (throw (ex-info (str (manifest/manifest-path) " not found or invalid in repository")
+                                          {:status-code 400 :commit commit-sha})))
+          version-str (get-in parsed [:metabase :version])]
       (when (and version-str
                  (not (manifest/compatible? {:metabase_version version-str})))
         (throw (ex-info
                 (format "Plugin requires Metabase version %s but current version is %s"
                         version-str (:tag config/mb-version-info))
-                {:metabase_version version-str})))
+                {:status-code 400 :metabase_version version-str})))
+      {:commit-sha  commit-sha
+       :parsed      parsed
+       :version-str version-str
+       :snapshot    snapshot})
+    (catch Exception e
+      (if (:status-code (ex-data e))
+        (throw e)
+        (throw (ex-info (str "Failed to fetch plugin from repository: " (ex-message e))
+                        {:status-code 400}
+                        e))))))
+
+(defn remember-snapshot!
+  "Seed the per-plugin snapshot cache with a pre-fetched GitSnapshot."
+  [plugin-id snapshot]
+  (swap! local-snapshots assoc plugin-id snapshot))
+
+(defn fetch-and-update!
+  "Fetch index.js and manifest from the plugin's git repo and update the DB record.
+   Returns the commit SHA or nil on failure. Catches all errors and records them
+   on the row — use [[fetch-plugin-data!]] directly when you want failures to
+   surface to the caller instead."
+  [{:keys [id identifier] :as plugin}]
+  (try
+    (let [{:keys [commit-sha parsed version-str snapshot]} (fetch-plugin-data! plugin)]
       (t2/update! :model/CustomVizPlugin id
                   {:status            :active
                    :error_message     nil
@@ -108,7 +135,7 @@
                    :display_name      (or (:name parsed) identifier)
                    :icon              (:icon parsed)
                    :metabase_version  version-str})
-      (swap! local-snapshots assoc id snapshot)
+      (remember-snapshot! id snapshot)
       commit-sha)
     (catch Exception e
       (t2/update! :model/CustomVizPlugin id

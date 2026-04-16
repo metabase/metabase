@@ -259,32 +259,57 @@
 (deftest register-plugin-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (testing "successful registration creates plugin and fetches bundle"
-        (with-redefs [cache/fetch-and-update! (fn [plugin]
-                                                (t2/update! :model/CustomVizPlugin (:id plugin)
-                                                            {:status :active :resolved_commit "sha123"}))]
-          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
-                                           {:repo_url "https://github.com/test/new-register-viz"})]
+      (testing "successful registration creates plugin and persists manifest fields"
+        (with-redefs [cache/fetch-plugin-data! (fn [_]
+                                                 {:commit-sha  "sha123"
+                                                  :parsed      {:name "Pretty Name" :icon "icon.svg"}
+                                                  :version-str ">=1.59.0"
+                                                  :snapshot    {}})]
+          (let [repo-url "https://github.com/test/new-register-viz"
+                resp     (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
+                                               {:repo_url repo-url})
+                row      (t2/select-one :model/CustomVizPlugin :repo_url repo-url)]
             (is (= "new-register-viz" (:identifier resp))
                 "identifier should be derived from repo name")
-            (is (= "https://github.com/test/new-register-viz" (:repo_url resp)))
+            (is (= repo-url (:repo_url resp)))
             (is (false? (:dev_only resp))
-                "git-registered plugins are not dev-only")))))))
+                "git-registered plugins are not dev-only")
+            (is (= "Pretty Name" (:display_name row))
+                "display_name should come from manifest :name when present")
+            (is (= "sha123" (:resolved_commit row)))
+            (is (= "icon.svg" (:icon row)))
+            (is (= ">=1.59.0" (:metabase_version row)))
+            (is (= :active (:status row)))))))))
 
-(deftest register-plugin-sets-error-on-fetch-failure-test
+(deftest register-plugin-falls-back-to-identifier-when-manifest-name-missing-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (testing "plugin is persisted with error status when fetch-and-update! fails"
-        (with-redefs [cache/fetch-and-update! (fn [plugin]
-                                                (t2/update! :model/CustomVizPlugin (:id plugin)
-                                                            {:status :error
-                                                             :error_message "Connection refused"}))]
-          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
-                                           {:repo_url "https://github.com/test/fail-register-viz"})]
-            (is (= "error" (:status resp))
-                "plugin should be in error state after failed fetch")
-            (is (= "Connection refused" (:error_message resp))
-                "error message should be preserved")))))))
+      (with-redefs [cache/fetch-plugin-data! (fn [_]
+                                               {:commit-sha  "sha456"
+                                                :parsed      {}
+                                                :version-str nil
+                                                :snapshot    {}})]
+        (let [repo-url "https://github.com/test/no-name-viz"
+              _        (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/"
+                                             {:repo_url repo-url})
+              row      (t2/select-one :model/CustomVizPlugin :repo_url repo-url)]
+          (is (= "no-name-viz" (:display_name row))
+              "display_name falls back to the derived identifier when manifest :name is missing"))))))
+
+(deftest register-plugin-rejects-fetch-failure-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 and persists no row when fetch fails"
+        (with-redefs [cache/fetch-plugin-data! (fn [_]
+                                                 (throw (ex-info "Connection refused"
+                                                                 {:status-code 400})))]
+          (let [repo-url "https://github.com/test/fail-register-viz"
+                resp     (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/"
+                                               {:repo_url repo-url})]
+            (is (re-find #"Connection refused" (or (:message resp) (str resp)))
+                "error message should be returned in the response body")
+            (is (nil? (t2/select-one :model/CustomVizPlugin :repo_url repo-url))
+                "no plugin row should be persisted on failure")))))))
 
 (deftest register-dev-plugin-test
   (mt/with-premium-features #{:custom-viz}

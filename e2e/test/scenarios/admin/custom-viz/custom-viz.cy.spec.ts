@@ -114,25 +114,36 @@ describe("admin > custom visualizations", () => {
       );
     });
 
-    it("should show error status for invalid repo URL", () => {
+    it("should surface an inline error and keep the form open for an invalid repo URL", () => {
+      const invalidRepoUrl = "file:///nonexistent/repo/.git";
+
       H.visitCustomVizNewForm();
 
-      cy.findByLabelText(/Repository URL/).type(
-        "file:///nonexistent/repo/.git",
-      );
+      cy.findByLabelText(/Repository URL/).type(invalidRepoUrl);
       cy.findByLabelText(/I understand/).click();
 
       cy.intercept("POST", "/api/ee/custom-viz-plugin").as(
         "pluginCreateInvalid",
       );
       cy.findByRole("button", { name: /Save/ }).click();
-      cy.wait("@pluginCreateInvalid");
 
-      // API returns 200 with status "error" — redirects to manage page
-      // where the error message is shown in the plugin list item
-      H.main()
-        .findByText(/Failed to clone git repository/)
-        .should("be.visible");
+      cy.wait("@pluginCreateInvalid")
+        .its("response.statusCode")
+        .should("eq", 400);
+
+      cy.findByTestId("custom-viz-settings-form").within(() => {
+        cy.findByText(/Failed to clone git repository/).should("be.visible");
+      });
+
+      cy.location("pathname").should(
+        "eq",
+        "/admin/settings/custom-visualizations/new",
+      );
+
+      cy.findByLabelText(/Repository URL/).should("have.value", invalidRepoUrl);
+
+      H.visitCustomVizSettings();
+      H.main().findByText(invalidRepoUrl).should("not.exist");
     });
 
     it("should support multiple plugins", () => {

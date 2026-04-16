@@ -106,21 +106,25 @@
         _          (api/check-400
                     (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
                     (format "A custom visualization with identifier \"%s\" already exists." identifier))
+        {:keys [commit-sha parsed version-str snapshot]}
+        (cache/fetch-plugin-data! {:repo_url       repo_url
+                                   :access_token   access_token
+                                   :pinned_version pinned_version})
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
-                                                          :repo_url        repo_url
-                                                          :access_token    access_token
-                                                          :display_name    identifier
-                                                          :identifier      identifier
-                                                          :status          :pending
-                                                          :pinned_version  pinned_version))]
-    ;; fetch bundle synchronously — validates the repo is accessible
-    ;; and updates display_name/icon from manifest
-    (cache/fetch-and-update! plugin)
-    ;; re-read to get updated status
-    (let [result (t2/select-one :model/CustomVizPlugin :id (:id plugin))]
-      (events/publish-event! :event/custom-viz-plugin-create {:object  result
-                                                              :user-id api/*current-user-id*})
-      (plugin->response result))))
+                                                          :repo_url         repo_url
+                                                          :access_token     access_token
+                                                          :display_name     (or (:name parsed) identifier)
+                                                          :identifier       identifier
+                                                          :status           :active
+                                                          :pinned_version   pinned_version
+                                                          :resolved_commit  commit-sha
+                                                          :manifest         parsed
+                                                          :icon             (:icon parsed)
+                                                          :metabase_version version-str))]
+    (cache/remember-snapshot! (:id plugin) snapshot)
+    (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
+                                                            :user-id api/*current-user-id*})
+    (plugin->response plugin)))
 
 (api.macros/defendpoint :post "/dev" :- CustomVizPluginResponse
   "Register a dev-only custom visualization plugin from a local dev server.
