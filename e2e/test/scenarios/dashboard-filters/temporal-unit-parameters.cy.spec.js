@@ -399,10 +399,11 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.popover().findByText("Year").click();
       H.filterWidget().eq(1).click();
       H.popover().findByText("Week").click();
+      // Expect these dates to change when we shift years in the Sample Database
       H.getDashboardCard().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("April 24, 2025").should("be.visible");
-        cy.findByText("May 1, 2025").should("be.visible");
+        cy.findByText("April 27, 2025").should("be.visible");
+        cy.findByText("May 4, 2025").should("be.visible");
         cy.findByText(multiBreakoutQuestionDetails.name).click();
       });
       H.appBar()
@@ -410,7 +411,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", multiBreakoutQuestionDetails.name);
       H.tableInteractive().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("April 24, 2025").should("be.visible");
+        cy.findByText("April 27, 2025").should("be.visible");
       });
     });
 
