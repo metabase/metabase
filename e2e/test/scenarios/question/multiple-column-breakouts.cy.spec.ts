@@ -253,9 +253,9 @@ function assertTableDataForFilteredTemporalBreakouts() {
   H.assertTableData({
     columns: ["Created At: Year", "Created At: Month", "Count"],
     firstRows: [
-      ["2026", "March 2026", "256"],
-      ["2026", "April 2026", "238"],
-      ["2026", "May 2026", "271"],
+      ["2029", "March 2029", "256"],
+      ["2029", "April 2029", "238"],
+      ["2029", "May 2029", "271"],
     ],
   });
   H.assertQueryBuilderRowCount(3);
@@ -390,8 +390,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Created At: Year", "Created At: Month", "Count"],
           firstRows: [
-            ["2029", "January 2029", "580"],
-            ["2029", "February 2029", "543"],
+            ["2032", "January 2032", "580"],
+            ["2032", "February 2032", "543"],
           ],
         });
 
@@ -472,7 +472,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         H.assertTableData({
           columns: ["Created At: Quarter", "Created At: Week", "Count"],
-          firstRows: [["Q2 2025", "April 24, 2025 – April 30, 2025", "1"]],
+          firstRows: [["Q2 2022", "April 27, 2025 – May 3, 2025", "1"]],
         });
 
         cy.log("'num-bin' breakouts");
@@ -519,7 +519,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertQueryBuilderRowCount(49);
         H.assertTableData({
           columns: ["Created At: Quarter", "Created At: Month", "Count"],
-          firstRows: [["Q2 2025", "April 2025", "1"]],
+          firstRows: [["Q2 2022", "April 2022", "1"]],
         });
 
         cy.log("add a filter");
@@ -530,14 +530,14 @@ describe("scenarios > question > multiple column breakouts", () => {
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.popover().last().findByText("On").click();
         H.popover().within(() => {
-          cy.findByLabelText("Date").clear().type("August 14, 2026");
+          cy.findByLabelText("Date").clear().type("August 14, 2029");
           cy.button("Apply").click();
         });
         cy.wait("@dataset");
         H.assertQueryBuilderRowCount(1);
         H.assertTableData({
           columns: ["Created At: Quarter", "Created At: Month", "Count"],
-          firstRows: [["Q3 2026", "August 2026", "9"]],
+          firstRows: [["Q3 2029", "August 2029", "9"]],
         });
 
         cy.log("change the filter");
@@ -545,14 +545,14 @@ describe("scenarios > question > multiple column breakouts", () => {
           .should("contain.text", "Aug 14")
           .click();
         H.popover().within(() => {
-          cy.findByLabelText("Date").clear().type("August 14, 2025");
+          cy.findByLabelText("Date").clear().type("August 14, 2022");
           cy.button("Apply").click();
         });
         cy.wait("@dataset");
         H.assertQueryBuilderRowCount(1);
         H.assertTableData({
           columns: ["Created At: Quarter", "Created At: Month", "Count"],
-          firstRows: [["Q3 2025", "August 2025", "1"]],
+          firstRows: [["Q3 2022", "August 2022", "1"]],
         });
       });
     });
@@ -825,11 +825,11 @@ describe("scenarios > question > multiple column breakouts", () => {
           ],
           firstRows: [
             [
-              "2025",
-              "April 2025",
+              "2022",
+              "April 2022",
               "1",
-              "January 1, 2026, 12:00 AM",
-              "May 1, 2025, 12:00 AM",
+              "January 1, 2029, 12:00 AM",
+              "May 1, 2022, 12:00 AM",
             ],
           ],
         });
@@ -999,11 +999,11 @@ describe("scenarios > question > multiple column breakouts", () => {
         testDatePostAggregationFilter({
           questionDetails: questionWith2TemporalBreakoutsDetails,
           column1Name: "Created At: Year",
-          column1MinValue: "January 1, 2026",
-          column1MaxValue: "December 31, 2026",
+          column1MinValue: "January 1, 2029",
+          column1MaxValue: "December 31, 2029",
           column2Name: "Created At: Month",
-          column2MinValue: "March 1, 2026",
-          column2MaxValue: "May 31, 2026",
+          column2MinValue: "March 1, 2029",
+          column2MaxValue: "May 31, 2029",
         });
         assertTableDataForFilteredTemporalBreakouts();
 
@@ -1088,7 +1088,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         H.assertTableData({
           columns: ["Min of Created At: Year", "Max of Created At: Month"],
-          firstRows: [["January 1, 2025, 12:00 AM", "April 1, 2029, 12:00 AM"]],
+          firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2032, 12:00 AM"]],
         });
 
         cy.log("'num-bins' breakouts");
@@ -1159,7 +1159,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         H.assertTableData({
           columns: ["Created At: Year", "Created At: Month", "Count"],
-          firstRows: [["2025", "April 2025", "1"]],
+          firstRows: [["2022", "April 2022", "1"]],
         });
 
         cy.log("'num-bins' breakouts");
@@ -1318,11 +1318,11 @@ describe("scenarios > question > multiple column breakouts", () => {
         testDatePostAggregationFilter({
           questionDetails: questionWith2TemporalBreakoutsDetails,
           column1Name: "Created At: Year",
-          column1MinValue: "January 1, 2026",
-          column1MaxValue: "December 31, 2026",
+          column1MinValue: "January 1, 2029",
+          column1MaxValue: "December 31, 2029",
           column2Name: "Created At: Month",
-          column2MinValue: "March 1, 2026",
-          column2MaxValue: "May 31, 2026",
+          column2MinValue: "March 1, 2029",
+          column2MaxValue: "May 31, 2029",
         });
         assertTableDataForFilteredTemporalBreakouts();
 
@@ -1586,11 +1586,11 @@ describe("scenarios > question > multiple column breakouts", () => {
         testDatePostAggregationFilter({
           questionDetails: questionWith2TemporalBreakoutsDetails,
           column1Name: "Created At: Year",
-          column1MinValue: "January 1, 2026",
-          column1MaxValue: "December 31, 2026",
+          column1MinValue: "January 1, 2029",
+          column1MaxValue: "December 31, 2029",
           column2Name: "Created At: Month",
-          column2MinValue: "March 1, 2026",
-          column2MaxValue: "May 31, 2026",
+          column2MinValue: "March 1, 2029",
+          column2MaxValue: "May 31, 2029",
         });
         assertTableDataForFilteredTemporalBreakouts();
 
@@ -1677,7 +1677,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         H.assertTableData({
           columns: ["Min of Created At: Year", "Max of Created At: Month"],
-          firstRows: [["January 1, 2025, 12:00 AM", "April 1, 2029, 12:00 AM"]],
+          firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2032, 12:00 AM"]],
         });
 
         cy.log("'num-bins' breakouts");
@@ -1751,7 +1751,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         H.assertTableData({
           columns: ["Created At: Year", "Created At: Month", "Count"],
-          firstRows: [["2025", "April 2025", "1"]],
+          firstRows: [["2022", "April 2022", "1"]],
         });
 
         cy.log("'num-bins' breakouts");

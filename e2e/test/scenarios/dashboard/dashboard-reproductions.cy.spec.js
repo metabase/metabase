@@ -583,7 +583,7 @@ describe("issue 17879", () => {
   it("should map dashcard date parameter to correct date range filter in target question - week -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "week",
-      expectedFilterText: "Created At is Apr 24–30, 2025",
+      expectedFilterText: "Created At is Apr 27 – May 3, 2025",
     });
   });
 

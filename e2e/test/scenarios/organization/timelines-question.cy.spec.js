@@ -475,10 +475,10 @@ describe("scenarios > organization > timelines > question", () => {
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
         events: [
-          { name: "Last week", timestamp: "2029-04-21T12:00:00Z" },
-          { name: "Last month", timestamp: "2029-04-27T12:00:00Z" },
-          { name: "Last quarter", timestamp: "2029-05-10T12:00:00Z" },
-          { name: "Last year", timestamp: "2029-09-10T12:00:00Z" },
+          { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
+          { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
+          { name: "Last quarter", timestamp: "2026-05-10T12:00:00Z" },
+          { name: "Last year", timestamp: "2026-09-10T12:00:00Z" },
         ],
       });
 
