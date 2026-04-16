@@ -6,4 +6,7 @@
   com.databricks/databricks-jdbc-thin {:mvn/version "3.3.1"
                                        ;; lang3 is a dep in top-level deps.edn, so not actually used anyway; exclusion
                                        ;; here fixes security warnings about version used in JDBC driver
-                                       :exclusions  [org.apache.commons/commons-lang3]}}}
+                                       :exclusions  [org.apache.commons/commons-lang3]}
+  ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
+  org.bouncycastle/bcpkix-jdk18on     {:mvn/version "1.84"}
+  org.bouncycastle/bcprov-jdk18on     {:mvn/version "1.84"}}}
