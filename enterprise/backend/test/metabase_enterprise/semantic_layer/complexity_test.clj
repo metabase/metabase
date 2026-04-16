@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-layer.complexity :as complexity]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
+   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.collections.core :as collections]
    [metabase.test :as mt]))
 
@@ -113,7 +114,7 @@
 
 (deftest search-index-embedder-degrades-gracefully-test
   (testing "returns {} when semantic-search index isn't available (no throw)"
-    (is (= {} (embedders/search-index-embedder
+    (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))
 
 (deftest complexity-score-library-hermetic-test
@@ -183,7 +184,7 @@
                                      "revenue"       [0.0  0.0  0.0  0.0 1.0 0.0 0.0]   ; "Revenue" cards normalize here
                                      "audit_events"  [0.0  0.0  0.0  0.0 0.0 1.0 0.0]
                                      "audit_log"     [0.0  0.0  0.0  0.0 0.0 0.99 0.1]}) ; ≈ audit_events (universe-only)
-            {:keys [library universe]} (complexity/complexity-score {:embedder embedder})]
+            {:keys [library universe]} (complexity/complexity-scores {:embedder embedder})]
         (testing "library reflects exactly what we put in the Library collection tree"
           ;; Library: 4 tables + 2 metric cards = 6 entities.
           ;;  entity-count       6 × 10 = 60

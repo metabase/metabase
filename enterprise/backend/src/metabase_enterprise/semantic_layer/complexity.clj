@@ -14,8 +14,8 @@
   semantic-search index so computing a score adds essentially no embedding cost."
   (:require
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
+   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.env :as semantic.env]
-   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.util.log :as log]
@@ -35,9 +35,9 @@
    :repeated-measure 2})
 
 (def ^:private synonym-similarity-threshold
-  "Cosine similarity at or above which two names are flagged as synonyms. Derived exactly from
-  [[semantic.index/max-cosine-distance]] via `BigDecimal` so the double round-trip stays clean."
-  (- 1 semantic.index/max-cosine-distance))
+  "Cosine similarity at or above which two names are flagged as synonyms.
+  Mirrors the semantic search system's cosine-distance cutoff."
+  (- 1 semantic-search/max-cosine-distance))
 
 ;;; ----------------------------------- enumeration -----------------------------------
 
@@ -255,7 +255,7 @@
 
 ;;; ----------------------------------- public API ------------------------------------
 
-(defn complexity-score
+(defn complexity-scores
   "Compute the complexity score for the `:library` and `:universe` catalogs of this Metabase instance.
 
   Returns a map of the shape:
@@ -269,11 +269,11 @@
   Optional opts:
     :embedder — embedder function (see `complexity-embedders`). Defaults to `search-index-embedder` so scoring reuses
                 existing vectors and adds no embedding cost. Pass `nil` to disable synonym scoring."
-  ([] (complexity-score nil))
+  ([] (complexity-scores nil))
   ([{:keys [embedder] :as opts}]
    (let [embedder (if (contains? opts :embedder)
                     embedder
-                    embedders/search-index-embedder)]
+                    semantic-search/search-index-embedder)]
      {:library  (score-catalog (library-entities) embedder)
       :universe (score-catalog (universe-entities) embedder)
       :meta     {:formula-version   formula-version
