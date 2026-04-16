@@ -8,7 +8,8 @@
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [metabase-enterprise.checker.semantic :as checker]
-   [metabase.util.json :as json]))
+   [metabase.classloader.core :as classloader]
+   [metabase.plugins.core :as plugins]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,22 +69,9 @@
       (output!))
     (output! (format "Ran %d entities, %d failed" (count results) (count failures)))))
 
-(defn- print-json
-  "Print results as a JSON object: {\"summary\": {...}, \"failures\": [...]}.
-   Each failure is the raw result map plus its computed status."
-  [results]
-  (let [failures (->> results
-                      (keep (fn [[eid result]]
-                              (let [status (checker/result-status result)]
-                                (when (not= :ok status)
-                                  (assoc result :entity-id eid :status status)))))
-                      (sort-by :name))]
-    (output! (json/encode {:summary  (checker/summarize-results results)
-                           :failures (vec failures)}))))
-
 (defn- run-checker
   "Run the semantic checker."
-  [export-dir {:keys [output schema-dir schema-format format]}]
+  [export-dir {:keys [output schema-dir schema-format]}]
   (when-not schema-dir
     (fail! "Missing --schema-dir option"))
   (let [schema-fmt (case schema-format
@@ -92,12 +80,6 @@
                      nil       :serdes
                      (fail! (str "Unknown --schema-format: " schema-format
                                  " (must be 'serdes' or 'concise')")))
-        out-fmt    (case format
-                     "json"  :json
-                     "human" :human
-                     nil     :human
-                     (fail! (str "Unknown --format: " format
-                                 " (must be 'human' or 'json')")))
         _          (validate-schema-path! schema-dir schema-fmt)
         {:keys [results]} (try
                             (checker/check export-dir schema-dir nil {:schema-format schema-fmt})
@@ -106,9 +88,7 @@
         summary    (checker/summarize-results results)]
     (when output
       (spit output (pr-str results)))
-    (case out-fmt
-      :human (print-human results)
-      :json  (print-json results))
+    (print-human results)
     (flush)
     (System/exit (if (zero? (+ (:errors summary) (:unresolved summary)
                                (:native-errors summary) (:issues summary)))
@@ -121,7 +101,6 @@
    [nil "--export PATH" "Path to serdes export directory"]
    [nil "--schema-dir PATH" "Path to schema source (directory for serdes, JSON file for concise)"]
    [nil "--schema-format FMT" "Schema format: 'serdes' (default) or 'concise'"]
-   [nil "--format FMT" "Output format: 'human' (default) or 'json'"]
    [nil "--output PATH" "Path to output file for raw EDN results"]
    ["-h" "--help" "Show this help"]])
 
