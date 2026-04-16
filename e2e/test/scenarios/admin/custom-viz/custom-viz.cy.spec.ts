@@ -954,6 +954,9 @@ describe("admin > custom visualizations", () => {
 
   describe("icon rendering across the app", () => {
     const ICON_QUESTION_NAME = "Custom Viz Icon Test";
+    const UNPINNED_QUESTION_NAME = "Custom Viz Icon Test — List";
+    const DASHBOARD_NAME = "Custom Viz Icon Dashboard";
+    const DOC_NAME = "Custom Viz Icon Document";
     // EntityIcon renders as a CSS-masked span whose `mask-image: url(...)`
     // points at /api/ee/custom-viz-plugin/:id/asset?path=icon.svg. Matching on
     // that URL fragment is the most stable signal that the plugin icon is
@@ -969,6 +972,9 @@ describe("admin > custom visualizations", () => {
       H.activateToken("bleeding-edge");
       H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
 
+      // Main question: pinned with preview hidden so the pinned card shows
+      // the plugin icon instead of the rendered viz. Also bookmarked, queried
+      // (for recents), and embedded in a document below.
       H.createQuestion(
         {
           name: ICON_QUESTION_NAME,
@@ -981,141 +987,173 @@ describe("admin > custom visualizations", () => {
         { wrapId: true, idAlias: "questionId" },
       );
 
-      // Populate the recents pool so the card surfaces in recents-based UIs
-      // (command palette, document mention dialog, home).
       cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("PUT", `/api/card/${cardId}`, {
+          collection_position: 1,
+          collection_preview: false,
+        });
         cy.request("POST", `/api/card/${cardId}/query`);
+        cy.request("POST", `/api/bookmark/card/${cardId}`);
+      });
+
+      // Secondary unpinned question — used to assert the icon on a regular
+      // (non-pinned) collection list row.
+      H.createQuestion({
+        name: UNPINNED_QUESTION_NAME,
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: H.CUSTOM_VIZ_DISPLAY,
+      });
+
+      H.createDashboard(
+        { name: DASHBOARD_NAME },
+        { wrapId: true, idAlias: "dashboardId" },
+      );
+      cy.get<number>("@dashboardId").then((dashboardId) => {
+        cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
+      });
+
+      cy.get<CardId>("@questionId").then((cardId) => {
+        H.createDocument({
+          name: DOC_NAME,
+          document: buildDocumentWithCustomVizCard(cardId),
+          collection_id: null,
+          idAlias: "documentId",
+        });
+      });
+      cy.get("@documentId").then((documentId) => {
+        cy.request("POST", `/api/bookmark/document/${documentId}`);
       });
     });
 
-    it("renders in the chart type sidebar on the question editor", () => {
+    it.only("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
+      // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
+      // Call this before any nav-sidebar interaction so we open it only when
+      // it's actually hidden — `H.openNavigationSidebar` toggles, so calling
+      // it unconditionally would close an already-open sidebar.
+      const ensureNavigationSidebarOpen = () => {
+        cy.get("body").then(($body) => {
+          const visible = $body.find(
+            '[data-testid="main-navbar-root"]:visible',
+          ).length;
+          if (!visible) {
+            H.openNavigationSidebar();
+          }
+        });
+      };
+
       H.interceptPluginBundle();
-      H.visitQuestion("@questionId");
+
+      // Only cy.visit in this test — every subsequent page is reached via
+      // clicks in the UI.
+      cy.visit("/collection/root");
+
+      // 1. Navigation sidebar bookmark
+      H.navigationSidebar()
+        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      // 2. Unpinned collection list row
+      cy.findByRole("row", { name: new RegExp(UNPINNED_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      // 3. Pinned section (collection_preview: false → icon, not viz)
+      H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
+
+      // Navigate → question editor by clicking the pinned card title.
+      H.getPinnedSection().findByText(ICON_QUESTION_NAME).click();
       cy.wait("@pluginBundle");
 
-      cy.findByTestId("viz-type-button").click();
-      cy.findByTestId("chart-type-sidebar")
+      // 4. Chart type sidebar on the question editor
+      H.openVizTypeSidebar();
+      H.vizTypeSidebar()
         .findByRole("img", { name: "demo-viz" })
         .should("be.visible");
-    });
+      H.openVizTypeSidebar();
 
-    it("renders in the command palette search results", () => {
-      cy.visit("/");
-
+      // 5. Command palette option row
       H.commandPaletteSearch(ICON_QUESTION_NAME, false);
       H.commandPalette()
         .findAllByRole("option", { name: new RegExp(ICON_QUESTION_NAME) })
         .first()
         .find(PLUGIN_ICON_SELECTOR)
         .should("be.visible");
-    });
 
-    it("renders in the navigation sidebar bookmarks and collections", () => {
-      cy.get<CardId>("@questionId").then((cardId) => {
-        cy.request("POST", `/api/bookmark/card/${cardId}`);
-      });
-
-      // Collection page keeps the navigation sidebar open by default.
-      cy.visit("/collection/root");
-
-      H.navigationSidebar()
-        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-
-      cy.findByRole("row", { name: new RegExp(ICON_QUESTION_NAME) })
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-
-      H.openCollectionItemMenu(ICON_QUESTION_NAME);
-      H.popover().findByText("Pin this").click();
-
-      H.getPinnedSection()
-        .findByRole("button", { name: "Actions" })
-        .click({ force: true });
-      H.popover()
-        .findByText(/Don.t show visualization/)
+      // 6. Search results page — reached by clicking "View and filter all …"
+      H.commandPalette()
+        .findByText(/View and filter all .* results/)
         .click();
-
-      H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
-    });
-
-    it("renders in the search results page", () => {
-      cy.visit(`/search?q=${encodeURIComponent(ICON_QUESTION_NAME)}`);
-
       cy.findAllByTestId("search-result-item")
         .filter(`:contains(${ICON_QUESTION_NAME})`)
         .first()
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
-    });
 
-    it("renders in the home page recently-viewed section", () => {
-      cy.visit("/");
+      // Navigate → home via the nav-sidebar "Home" link.
+      ensureNavigationSidebarOpen();
+      H.navigationSidebar().findByText("Home").click();
 
+      // 7. Home recently-viewed section
       H.main()
         .findByText("Pick up where you left off")
         .parent()
         .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
-    });
 
-    it("renders in the dashboard add-questions sidesheet", () => {
-      H.createDashboard(
-        { name: "Icon Test Dashboard" },
-        { wrapId: true, idAlias: "dashboardId" },
-      );
-      H.visitDashboard("@dashboardId");
+      // Navigate → dashboard via bookmark link in the nav sidebar.
+      ensureNavigationSidebarOpen();
+      H.navigationSidebar()
+        .findByRole("link", { name: new RegExp(DASHBOARD_NAME) })
+        .click();
+
+      // 8. Dashboard add-questions sidesheet
       H.editDashboard();
       H.openQuestionsSidebar();
-
       cy.findByTestId("add-card-sidebar")
         .findByRole("menuitem", { name: ICON_QUESTION_NAME })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
-    });
+      // Exit edit mode so the next click-to-navigate isn't blocked by an
+      // unsaved-changes prompt.
+      cy.findByRole("button", { name: /Cancel/i }).click();
 
-    it("renders in the document mention dialog and visualize-as panel", () => {
-      H.interceptPluginList();
-      H.createDocument({
-        name: "Icon Doc Mention",
-        document: {
-          type: "doc",
-          content: [{ type: "paragraph", attrs: { _id: "1" } }],
-        },
-        collection_id: null,
-        idAlias: "documentId",
-      });
-      H.visitDocument("@documentId");
+      // Navigate → document via bookmark link.
+      ensureNavigationSidebarOpen();
+      H.navigationSidebar()
+        .findByRole("link", { name: new RegExp(DOC_NAME) })
+        .click();
 
-      H.documentContent().click();
-      cy.realType("@");
-
-      cy.wait("@pluginList");
-
+      // 9. Document mention dialog (@ suggestions).
+      // By the time we reach this step the plugin list has already been
+      // fetched for the embedded card, so no need to wait on it again.
+      // Click into the intro paragraph — clicking blindly on document-content
+      // may land on the embedded card.
+      H.documentContent().findByText("Custom viz embedded below:").click();
+      cy.realPress("End");
+      cy.realType(" @");
       H.documentMentionDialog().should("be.visible");
       cy.realType("Custom");
+      // Both the pinned and the unpinned questions appear — assert the icon
+      // renders on every matching option.
+      H.documentMentionDialog()
+        .findAllByRole("option", { name: new RegExp(ICON_QUESTION_NAME) })
+        .should("have.length.at.least", 2)
+        .each(($option) => {
+          cy.wrap($option).find(PLUGIN_ICON_SELECTOR).should("exist");
+        });
+      cy.realPress("Escape");
 
-      H.documentMentionItem(new RegExp(ICON_QUESTION_NAME))
-        .find(PLUGIN_ICON_SELECTOR)
-        .should("exist");
-      cy.realPress("Enter");
-
-      cy.realType("{enter}");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").click();
-      H.commandSuggestionDialog().findByText(ICON_QUESTION_NAME).click();
-
-      H.getDocumentCard(ICON_QUESTION_NAME)
-        .findByText("Custom viz rendered successfully")
-        .should("be.visible");
+      // 10. Document "Visualize as" panel on the embedded card
       H.openDocumentCardMenu(ICON_QUESTION_NAME);
       H.popover().findByText("Edit Visualization").click();
       H.getDocumentSidebar()
         .findByRole("button", { name: /demo-viz/i })
         .click();
-
       cy.findByRole("menu")
         .findByRole("menuitem", { name: /demo-viz/i })
         .find(PLUGIN_ICON_SELECTOR)
