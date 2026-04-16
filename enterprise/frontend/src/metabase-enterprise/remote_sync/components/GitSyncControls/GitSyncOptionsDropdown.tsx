@@ -7,6 +7,7 @@ export interface GitSyncOptionsDropdownProps {
   isPullError: boolean;
   isLoadingPull: boolean;
   isPushDisabled: boolean;
+  isSwitchBranchDisabled?: boolean;
   onPullClick: VoidFunction;
   onPushClick: VoidFunction;
   onSwitchBranchClick: VoidFunction;
@@ -17,6 +18,7 @@ export const GitSyncOptionsDropdown = ({
   isPullError,
   isLoadingPull,
   isPushDisabled,
+  isSwitchBranchDisabled,
   onPullClick,
   onPushClick,
   onSwitchBranchClick,
@@ -73,13 +75,18 @@ export const GitSyncOptionsDropdown = ({
         </Tooltip>
 
         <Combobox.Option
+          disabled={isSwitchBranchDisabled}
           onClick={onSwitchBranchClick}
           py="sm"
           value="switch-branch"
         >
           <Group gap="md" wrap="nowrap">
             <Icon name="git_branch" size={12} />
-            <Text>{t`Switch branch`}</Text>
+            <Text>
+              {isSwitchBranchDisabled
+                ? t`Branch is set by an environment variable`
+                : t`Switch branch`}
+            </Text>
           </Group>
         </Combobox.Option>
       </Combobox.Options>
