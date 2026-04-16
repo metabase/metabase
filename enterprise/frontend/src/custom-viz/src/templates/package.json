@@ -10,8 +10,8 @@
   },
   "devDependencies": {
     "@metabase/custom-viz": "__CUSTOM_VIZ_VERSION__",
-    "@types/react": "^19.2.14",
-    "react": "^19.1.0",
+    "@types/react": "^18.3.3",
+    "react": "^18.2.0",
     "typescript": "^5.9.3",
     "vite": "^8.0.0"
   }

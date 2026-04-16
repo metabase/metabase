@@ -35,9 +35,11 @@ var __customVizPlugin__ = (function () {
         onClick({
           value: value,
           column: cols[0],
+          settings: settings,
           event: ev.nativeEvent,
           element: ev.currentTarget,
           origin: { row: rows[0], cols: cols },
+          data: [{ key: cols[0].name, value: value, col: cols[0] }],
         });
       }
 

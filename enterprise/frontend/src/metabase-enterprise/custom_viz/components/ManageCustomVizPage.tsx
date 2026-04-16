@@ -2,13 +2,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import {
-  useDeleteCustomVizPluginMutation,
-  useListAllCustomVizPluginsQuery,
-} from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { Box, Button, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
+import {
+  useDeleteCustomVizPluginMutation,
+  useListAllCustomVizPluginsQuery,
+} from "metabase-enterprise/api";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizListItem } from "./CustomVizListItem";

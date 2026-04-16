@@ -51,7 +51,8 @@
     (let [table-results (mapv #(safe-fetch
                                 (fn [table-id]
                                   (entity-details-tools/get-table-details
-                                   {:table-id table-id
+                                   {:entity-type :table
+                                    :entity-id table-id
                                     :with-fields? true
                                     :with-field-values? false
                                     :with-related-tables? false
@@ -64,7 +65,8 @@
           model-results (mapv #(safe-fetch
                                 (fn [model-id]
                                   (entity-details-tools/get-table-details
-                                   {:model-id model-id
+                                   {:entity-type :model
+                                    :entity-id model-id
                                     :with-fields? true
                                     :with-field-values? false
                                     :with-related-tables? false
