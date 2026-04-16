@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -192,14 +193,6 @@
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
 
-(mr/def ::database
-  "Details of a database, optionally including its tables."
-  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]
-   [:engine :string]
-   [:tables {:optional true} [:maybe [:sequential ::table]]]])
-
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
@@ -207,40 +200,6 @@
   {:scope :unchecked}
   []
   {:message "pong"})
-
-(api.macros/defendpoint :get "/v1/database" :- [:sequential ::database]
-  "List all databases the current user has access to."
-  {:scope "agent:database:read"
-   :tool  {:name "list_databases"}}
-  []
-  (check-tool-result (entity-details/list-databases)))
-
-(api.macros/defendpoint :get "/v1/database/:id" :- ::database
-  "Get details for a database by ID."
-  {:scope "agent:database:read"
-   :tool  {:name "get_database"}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [with-tables with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
-    :or   {with-tables false, with-fields false, with-field-values false, with-related-tables false,
-           with-metrics false, with-measures false, with-segments false}}
-   :- [:map
-       [:with-tables          {:optional true} [:maybe :boolean]]
-       [:with-fields          {:optional true} [:maybe :boolean]]
-       [:with-field-values    {:optional true} [:maybe :boolean]]
-       [:with-related-tables  {:optional true} [:maybe :boolean]]
-       [:with-metrics         {:optional true} [:maybe :boolean]]
-       [:with-measures        {:optional true} [:maybe :boolean]]
-       [:with-segments        {:optional true} [:maybe :boolean]]]]
-  (check-tool-result
-   (entity-details/get-database-details
-    {:database-id          id
-     :with-tables?         with-tables
-     :with-fields?         with-fields
-     :with-field-values?   with-field-values
-     :with-related-tables? with-related-tables
-     :with-metrics?        with-metrics
-     :with-measures?       with-measures
-     :with-segments?       with-segments})))
 
 (api.macros/defendpoint :get "/v1/table/:id" :- ::table
   "Get details for a table by ID."
@@ -896,6 +855,10 @@
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
+
+(def +agent-api-enabled
+  "Wrap routes so they may only be accessed when the Agent API is enabled."
+  agent-api.validation/+agent-api-enabled)
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 

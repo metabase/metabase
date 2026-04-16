@@ -57,6 +57,22 @@
            #"Setting llm-proxy-base-url is not enabled because feature :metabase-ai-managed is not available"
            (llm.settings/llm-proxy-base-url! "https://proxy.example"))))))
 
+(deftest ai-service-base-url-feature-guard-test
+  (testing "can be set and read when :metabase-ai-managed feature is enabled"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [ai-service-base-url "https://ai-service.example"]
+        (is (= "https://ai-service.example" (llm.settings/ai-service-base-url)))
+        (testing "returns default (nil) when :metabase-ai-managed feature is not enabled, even if a value is set"
+          (mt/with-premium-features #{}
+            (is (nil? (llm.settings/ai-service-base-url))))))))
+
+  (testing "cannot be set when :metabase-ai-managed feature is not enabled"
+    (mt/with-premium-features #{}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting ai-service-base-url is not enabled because feature :metabase-ai-managed is not available"
+           (llm.settings/ai-service-base-url! "https://ai-service.example"))))))
+
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 
 (deftest llm-max-tokens-test
