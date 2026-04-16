@@ -32,10 +32,10 @@
 
 (defn- allowed-schemes
   "Set of URL schemes allowed for repo and dev bundle URLs.
-   In dev/test/e2e mode, `file://` is also permitted."
+   In dev/test/e2e mode, `file://` and `git://` are also permitted."
   []
   (cond-> #{"http" "https"}
-    (or config/is-dev? config/is-test? config/is-e2e?) (conj "file")))
+    (or config/is-dev? config/is-test? config/is-e2e?) (conj "file" "git")))
 
 (defn- validate-url!
   "Validate that a URL uses an allowed scheme. Throws on invalid input."
