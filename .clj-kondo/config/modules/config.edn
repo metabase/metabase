@@ -1941,8 +1941,7 @@
   settings
   {:team "DevEx"
    :api  #{metabase.settings.core
-           metabase.settings.init
-           metabase.settings.models.setting}
+           metabase.settings.init}
    :uses #{api
            app-db
            config

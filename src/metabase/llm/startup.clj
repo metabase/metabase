@@ -5,18 +5,13 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
-   [metabase.settings.models.setting :as setting.models]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(defn- raw-setting
-  [k]
-  ((var-get #'setting.models/db-or-cache-value) k))
-
 (defn- sync-managed-metabot-provider!
   []
-  (let [raw-provider (raw-setting :llm-metabot-provider)
+  (let [raw-provider (setting/db-stored-value :llm-metabot-provider)
         configured?  (metabot.settings/llm-metabot-configured?)]
     (if (and (str/blank? raw-provider)
              (not configured?))
@@ -30,11 +25,9 @@
   []
   (let [legacy-result  (premium-features/canonically-has-feature? :metabot-v3)
         managed-result (premium-features/canonically-has-feature? :metabase-ai-managed)]
-    (case [legacy-result managed-result]
-      [true false]  (sync-managed-metabot-provider!)
-      [nil _]       :retry
-      [_ nil]       :retry
-      nil)))
+    (cond
+      (or (nil? legacy-result) (nil? managed-result))   nil
+      (and legacy-result (not managed-result))          (sync-managed-metabot-provider!))))
 
 (defn check-and-sync-settings-on-startup!
   "For legacy `:metabot-v3` customers that do not have `:metabase-ai-managed`,
