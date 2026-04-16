@@ -28,11 +28,35 @@
 ;; {plugin-id -> GitSnapshot}
 (defonce ^:private local-snapshots (atom {}))
 
+;;; ------------------------------------------------ URL Validation ------------------------------------------------
+
+(defn- allowed-schemes
+  "Set of URL schemes allowed for repo and dev bundle URLs.
+   In dev/test/e2e mode, `file://` and `git://` are also permitted."
+  []
+  (cond-> #{"http" "https"}
+    (or config/is-dev? config/is-test? config/is-e2e?) (conj "file" "git")))
+
+(defn- validate-url!
+  "Validate that a URL uses an allowed scheme. Throws on invalid input."
+  [^String url ^String label]
+  (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
+    (when-not (contains? (allowed-schemes) scheme)
+      (throw (ex-info (str label " must use http or https, got: " scheme)
+                      {:status-code 400 :url url})))))
+
+(defn validate-repo-url!
+  "Validate that a repo URL uses an allowed scheme (http/https, plus file:// in dev/test/e2e).
+   Throws on invalid input."
+  [^String url]
+  (validate-url! url "Repo URL"))
+
 (defn- plugin-snapshot
   "Return a GitSnapshot for a plugin at its resolved commit.
    Caches the snapshot per plugin; only fetches from remote on first access
    or when the resolved commit has changed."
   [{:keys [id repo_url access_token pinned_version resolved_commit]}]
+  (validate-repo-url! repo_url)
   (let [cached (get @local-snapshots id)]
     (if (and cached (= (:version cached) resolved_commit))
       cached
@@ -84,6 +108,7 @@
   "Fetch index.js and manifest from the plugin's git repo and update the DB record.
    Returns the commit SHA or nil on failure."
   [{:keys [id repo_url access_token pinned_version identifier]}]
+  (validate-repo-url! repo_url)
   (try
     (let [source        (rs.git/git-source repo_url nil access_token nil)
           snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
@@ -142,18 +167,10 @@
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
-(defn- validate-dev-url!
-  "Validate that a dev bundle URL uses http or https scheme. Throws on invalid input."
-  [^String url]
-  (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
-    (when-not (#{"http" "https"} scheme)
-      (throw (ex-info (str "Dev bundle URL must use http or https, got: " scheme)
-                      {:status-code 400 :url url})))))
-
 (defn dev-base-url
   "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
   ^String [^String url]
-  (validate-dev-url! url)
+  (validate-url! url "Dev bundle URL")
   (if (str/ends-with? url "/") url (str url "/")))
 
 (defn- dev-url
@@ -196,7 +213,7 @@
   "Set or clear the dev base URL for a plugin. Persists to the database."
   [id dev-bundle-url]
   (let [url (not-empty dev-bundle-url)]
-    (some-> url validate-dev-url!)
+    (some-> url (validate-url! "Dev bundle URL"))
     (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle

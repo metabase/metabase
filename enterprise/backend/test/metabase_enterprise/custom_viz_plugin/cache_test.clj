@@ -8,7 +8,28 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-;;; ------------------------------------------------ Dev URL Validation ------------------------------------------------
+;;; ------------------------------------------------ URL Validation ------------------------------------------------
+
+(deftest validate-repo-url-test
+  (testing "accepts http URLs"
+    (is (nil? (cache/validate-repo-url! "http://github.com/user/repo"))))
+  (testing "accepts https URLs"
+    (is (nil? (cache/validate-repo-url! "https://github.com/user/repo"))))
+  (testing "accepts file:// URLs in test mode"
+    (is (nil? (cache/validate-repo-url! "file:///tmp/repo"))))
+  (testing "SECURITY: rejects ssh:// URLs"
+    (is (thrown-with-msg? Exception #"http or https"
+                          (cache/validate-repo-url! "ssh://git@github.com/user/repo"))))
+  (testing "SECURITY: rejects ftp:// URLs"
+    (is (thrown-with-msg? Exception #"http or https"
+                          (cache/validate-repo-url! "ftp://evil.com/repo"))))
+  (testing "SECURITY: rejects gopher:// URLs"
+    (is (thrown-with-msg? Exception #"http or https"
+                          (cache/validate-repo-url! "gopher://evil.com/repo"))))
+  (testing "SECURITY: rejects file:// URLs in prod mode"
+    (with-redefs [config/is-test? false]
+      (is (thrown-with-msg? Exception #"http or https"
+                            (cache/validate-repo-url! "file:///etc/passwd"))))))
 
 (deftest dev-base-url-test
   (testing "accepts http URLs"
@@ -16,9 +37,8 @@
     (is (= "http://localhost:5174/" (cache/dev-base-url "http://localhost:5174/"))))
   (testing "accepts https URLs"
     (is (= "https://dev.example.com/" (cache/dev-base-url "https://dev.example.com"))))
-  (testing "SECURITY: rejects file:// URLs (SSRF)"
-    (is (thrown-with-msg? Exception #"http or https"
-                          (cache/dev-base-url "file:///etc/passwd"))))
+  (testing "accepts file:// URLs in test mode"
+    (is (= "file:///tmp/bundle/" (cache/dev-base-url "file:///tmp/bundle"))))
   (testing "SECURITY: rejects ftp:// URLs"
     (is (thrown-with-msg? Exception #"http or https"
                           (cache/dev-base-url "ftp://evil.com/bundle"))))
@@ -27,7 +47,11 @@
                           (cache/dev-base-url "jar:file:///app.jar!/secret"))))
   (testing "SECURITY: rejects URLs with no scheme"
     (is (thrown? Exception
-                 (cache/dev-base-url "localhost:5174")))))
+                 (cache/dev-base-url "localhost:5174"))))
+  (testing "SECURITY: rejects file:// URLs in prod mode"
+    (with-redefs [config/is-test? false]
+      (is (thrown-with-msg? Exception #"http or https"
+                            (cache/dev-base-url "file:///etc/passwd"))))))
 
 (deftest set-or-clear-dev-bundle!-test
   (mt/with-premium-features #{:custom-viz}
@@ -46,9 +70,14 @@
         (cache/set-or-clear-dev-bundle! id "http://localhost:5174")
         (cache/set-or-clear-dev-bundle! id "")
         (is (nil? (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
-      (testing "SECURITY: rejects file:// URLs at write time"
-        (is (thrown-with-msg? Exception #"http or https"
-                              (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")))))))
+      (testing "accepts file:// URLs in test mode"
+        (cache/set-or-clear-dev-bundle! id "file:///tmp/bundle")
+        (is (= "file:///tmp/bundle"
+               (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
+      (testing "SECURITY: rejects file:// URLs in prod mode"
+        (with-redefs [config/is-test? false]
+          (is (thrown-with-msg? Exception #"http or https"
+                                (cache/set-or-clear-dev-bundle! id "file:///etc/passwd"))))))))
 
 ;;; ------------------------------------------------ Asset Whitelist ------------------------------------------------
 

@@ -190,13 +190,14 @@
                                                       :identifier   "dev-sec"
                                                       :display_name "dev-sec"
                                                       :status       :active}]
-        (testing "SECURITY: rejects file:// dev URL via API"
-          (is (= 400
-                 (:status-code
-                  (ex-data
-                   (try
-                     (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")
-                     (catch Exception e e)))))))
+        (testing "SECURITY: rejects file:// dev URL via API in prod mode"
+          (with-redefs [config/is-test? false]
+            (is (= 400
+                   (:status-code
+                    (ex-data
+                     (try
+                       (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")
+                       (catch Exception e e))))))))
         (testing "SECURITY: rejects ftp:// dev URL via API"
           (is (= 400
                  (:status-code
