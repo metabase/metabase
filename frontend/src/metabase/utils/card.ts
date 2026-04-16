@@ -2,7 +2,11 @@ import querystring from "querystring";
 
 import _ from "underscore";
 
-import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
+import {
+  b64hash_to_utf8,
+  b64url_to_utf8,
+  utf8_to_b64url,
+} from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
@@ -84,6 +88,27 @@ export function serializeCardForUrl(
 
 export function deserializeCardFromUrl(serialized: string): Card {
   return JSON.parse(b64hash_to_utf8(serialized));
+}
+
+/**
+ * Converts a base64-encoded query string into a Card suitable for `deserializedCard`.
+ *
+ * Accepts:
+ * - Raw base64 from `/api/agent/v1/construct-query`
+ * - A Metabot `navigate_to` path like `/question#<base64>` (prefix is stripped)
+ */
+export function deserializeCardFromQuery(query: string): Card {
+  // Strip /question# or question# or # prefix, then decode as URL-safe base64
+  const base64 = query.replace(/^\/question#|^question#|^#/, "");
+  const decoded = JSON.parse(b64url_to_utf8(base64));
+
+  // Embedding Metabot wraps the query: { dataset_query: ... }
+  // API returns the raw query directly.
+  if (decoded.dataset_query) {
+    return decoded as Card;
+  }
+
+  return { dataset_query: decoded } as unknown as Card;
 }
 
 export function deserializeCard(serializedCard: string) {

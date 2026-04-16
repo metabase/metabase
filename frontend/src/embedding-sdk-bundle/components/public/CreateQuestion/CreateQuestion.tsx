@@ -2,7 +2,7 @@ import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/priv
 
 import {
   InteractiveQuestion,
-  type InteractiveQuestionProps,
+  type InteractiveQuestionBaseProps,
 } from "../InteractiveQuestion";
 
 /**
@@ -11,8 +11,8 @@ import {
  * @category CreateQuestion
  */
 export type CreateQuestionProps = Omit<
-  Partial<InteractiveQuestionProps>,
-  "questionId" | "children"
+  Partial<InteractiveQuestionBaseProps>,
+  "children"
 >;
 
 const CreateQuestionInner = (props: CreateQuestionProps = {}) => (
