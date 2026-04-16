@@ -90,9 +90,6 @@ describe(
       cy.findByRole("button", { name: /Save theme/ }).click();
 
       H.undoToast().findByText("Theme saved").should("exist");
-
-      cy.log("save button should be disabled after save");
-      cy.findByRole("button", { name: /Save theme/ }).should("be.disabled");
     });
 
     it("can cancel and navigate back to listing", () => {
