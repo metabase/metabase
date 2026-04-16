@@ -7,7 +7,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
-   [metabase-enterprise.checker.semantic :as checker]))
+   [metabase-enterprise.checker.semantic :as checker]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,54 +55,60 @@
       (fail! (str "--schema-format concise expects a single JSON file, got a directory: " path)
              "Did you mean --schema-format serdes?"))))
 
+(defn- print-human
+  "Print one FAIL block per failing entity, then a one-line summary."
+  [results]
+  (let [failures (->> results
+                      (filter #(not= :ok (checker/result-status (second %))))
+                      (sort-by (comp :name second)))]
+    (doseq [entry failures
+            :let [block (checker/format-fail entry)]
+            :when block]
+      (output! block)
+      (output!))
+    (output! (format "Ran %d entities, %d failed" (count results) (count failures)))))
+
+(defn- print-json
+  "Print results as a JSON object: {\"summary\": {...}, \"failures\": [...]}.
+   Each failure is the raw result map plus its computed status."
+  [results]
+  (let [failures (->> results
+                      (keep (fn [[eid result]]
+                              (let [status (checker/result-status result)]
+                                (when (not= :ok status)
+                                  (assoc result :entity-id eid :status status)))))
+                      (sort-by :name))]
+    (output! (json/encode {:summary  (checker/summarize-results results)
+                           :failures (vec failures)}))))
+
 (defn- run-checker
   "Run the semantic checker."
-  [export-dir {:keys [output errors-only schema-dir schema-format]}]
+  [export-dir {:keys [output schema-dir schema-format format]}]
   (when-not schema-dir
     (fail! "Missing --schema-dir option"))
-  (let [fmt (case schema-format
-              "concise" :concise
-              "serdes"  :serdes
-              nil       :serdes
-              (fail! (str "Unknown --schema-format: " schema-format
-                          " (must be 'serdes' or 'concise')")))
-        _   (validate-schema-path! schema-dir fmt)
+  (let [schema-fmt (case schema-format
+                     "concise" :concise
+                     "serdes"  :serdes
+                     nil       :serdes
+                     (fail! (str "Unknown --schema-format: " schema-format
+                                 " (must be 'serdes' or 'concise')")))
+        out-fmt    (case format
+                     "json"  :json
+                     "human" :human
+                     nil     :human
+                     (fail! (str "Unknown --format: " format
+                                 " (must be 'human' or 'json')")))
+        _          (validate-schema-path! schema-dir schema-fmt)
         {:keys [results]} (try
-                            (checker/check export-dir schema-dir nil {:schema-format fmt})
+                            (checker/check export-dir schema-dir nil {:schema-format schema-fmt})
                             (catch clojure.lang.ExceptionInfo e
                               (fail! (.getMessage e))))
-        summary  (checker/summarize-results results)
-        failures (filter #(not= :ok (checker/result-status (second %))) results)]
-    (if errors-only
-      ;; Errors-only mode: just errors to stdout, nothing else
-      (doseq [entry (sort-by (comp :name second) failures)
-              :let [error-str (checker/format-error entry)]
-              :when error-str]
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (output! error-str))
-      ;; Normal mode: full output
-      (do
-        ;; Write to output file if specified
-        (when output
-          (spit output (pr-str results))
-          (output! "Results written to:" output))
-        ;; Print summary
-        (output! "Semantic Check Results")
-        (output! "=====================")
-        (output! "Total entities:"      (:total summary))
-        (output! "  OK:"                (:ok summary))
-        (output! "  Errors:"            (:errors summary))
-        (output! "  Unresolved refs:"   (:unresolved summary))
-        (output! "  Native SQL errors:" (:native-errors summary))
-        (output! "  Issues:"            (:issues summary))
-        ;; Print failures
-        (when (seq failures)
-          (output! "\nFailures:")
-          (output! "---------")
-          (doseq [entry (sort-by (comp :name second) failures)]
-            (output!)
-            (output! (checker/format-result entry))))))
-    ;; Exit with appropriate code
+        summary    (checker/summarize-results results)]
+    (when output
+      (spit output (pr-str results)))
+    (case out-fmt
+      :human (print-human results)
+      :json  (print-json results))
     (flush)
     (System/exit (if (zero? (+ (:errors summary) (:unresolved summary)
                                (:native-errors summary) (:issues summary)))
@@ -114,8 +121,8 @@
    [nil "--export PATH" "Path to serdes export directory"]
    [nil "--schema-dir PATH" "Path to schema source (directory for serdes, JSON file for concise)"]
    [nil "--schema-format FMT" "Schema format: 'serdes' (default) or 'concise'"]
-   [nil "--output PATH" "Path to output file for results"]
-   [nil "--errors-only" "Output only errors to stdout (concise format for LLM consumption)"]
+   [nil "--format FMT" "Output format: 'human' (default) or 'json'"]
+   [nil "--output PATH" "Path to output file for raw EDN results"]
    ["-h" "--help" "Show this help"]])
 
 (defn- usage [summary]
@@ -148,4 +155,8 @@
       :else
       (do
         (validate-directory! export)
+        ;; Drivers are jar-loaded plugins; install the dynamic classloader and
+        ;; load them so query validation can resolve driver multimethods.
+        (classloader/the-classloader)
+        (plugins/load-plugins!)
         (run-checker export options)))))
