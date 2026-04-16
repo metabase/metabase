@@ -77,7 +77,8 @@
 
       ;; metabase://table/123/fields
       (= sub-resource "fields")
-      (entity-details/get-table-details {:table-id table-id
+      (entity-details/get-table-details {:entity-type :table
+                                         :entity-id table-id
                                          :with-fields? true
                                          :with-field-values? false
                                          :with-related-tables? false
@@ -86,7 +87,8 @@
 
       ;; metabase://table/123
       (nil? sub-resource)
-      (entity-details/get-table-details {:table-id table-id
+      (entity-details/get-table-details {:entity-type :table
+                                         :entity-id table-id
                                          :with-fields? false
                                          :with-field-values? false
                                          :with-related-tables? false
@@ -97,30 +99,36 @@
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for table. Supported: fields")
                       {:resource-id resource-id :sub-resource sub-resource})))))
 
-(defn- fetch-model-resource
+(defn- fetch-model-or-card-resource
   "Fetch model resource based on URI components."
-  [{:keys [resource-id sub-resource sub-resource-id]}]
-  (let [model-id (parse-long resource-id)]
+  [{:keys [resource-id resource-type sub-resource sub-resource-id]}]
+  (let [resource-id* (parse-long resource-id)
+        resource-type* (keyword resource-type)]
+    (assert (#{:question :model} resource-type*))
     (cond
-      ;; metabase://model/123/fields/FIELD_ID
+      ;; metabase://<model,question>/123/fields/FIELD_ID
       (and (= sub-resource "fields") sub-resource-id)
-      (field-stats/field-values {:entity-type "model"
-                                 :entity-id model-id
+      ;; field-values takes type as string and id as integer
+      (field-stats/field-values {:entity-type resource-type
+                                 :entity-id resource-id*
                                  :field-id sub-resource-id
                                  :limit 30})
 
-      ;; metabase://model/123/fields
+      ;; metabase://<model,question>/123/fields
       (= sub-resource "fields")
-      (entity-details/get-table-details {:model-id model-id
+      ;; get-table-details takes type as kw and id as integer
+      (entity-details/get-table-details {:entity-type resource-type*
+                                         :entity-id resource-id*
                                          :with-fields? true
                                          :with-field-values? false
                                          :with-related-tables? false
                                          :with-measures? true
                                          :with-segments? true})
 
-      ;; metabase://model/123
+      ;; metabase://<model,question>/123
       (nil? sub-resource)
-      (entity-details/get-table-details {:model-id model-id
+      (entity-details/get-table-details {:entity-type resource-type*
+                                         :entity-id resource-id*
                                          :with-fields? false
                                          :with-field-values? false
                                          :with-related-tables? false
@@ -182,7 +190,8 @@
 (def ^:private resource-handlers
   "Map of resource type to handler function."
   {"table"     fetch-table-resource
-   "model"     fetch-model-resource
+   "model"     fetch-model-or-card-resource
+   "question"  fetch-model-or-card-resource
    "metric"    fetch-metric-resource
    "transform" fetch-transform-resource
    "dashboard" fetch-dashboard-resource})
