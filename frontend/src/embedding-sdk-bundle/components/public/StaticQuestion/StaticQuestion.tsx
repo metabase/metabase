@@ -163,22 +163,15 @@ const StaticQuestionInner = (
 
               <RenderIfHasContent
                 component={MobileToolbar}
-                data-testid="result-mobile-toolbar"
-              >
-                {withChartTypeSelector && (
-                  <ChartTypeDropdown
-                    className={MobileToolbarS.LeftButton}
-                    styles={{
-                      inner: { width: "100%" },
-                      label: { marginRight: "auto" },
-                    }}
+                isEditorOpen={false}
+                withChartTypeSelector={withChartTypeSelector}
+                rightButton={({ className }) => (
+                  <SdkQuestion.DownloadWidgetDropdown
+                    buttonClassName={className}
                   />
                 )}
-
-                <SdkQuestion.DownloadWidgetDropdown
-                  buttonClassName={MobileToolbarS.RightButton}
-                />
-              </RenderIfHasContent>
+                data-testid="result-mobile-toolbar"
+              />
 
               <RenderIfHasContent
                 component={ResultToolbar}

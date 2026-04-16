@@ -50,9 +50,7 @@ import {
   shouldShowSaveButton,
 } from "../SdkQuestion/components/SaveButton";
 import { SummarizeDropdown } from "../SdkQuestion/components/Summarize/SummarizeDropdown";
-import { ToolbarButton } from "../SdkQuestion/components/util/ToolbarButton";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
-import ToolbarButtonS from "../SdkQuestion/styles/ToolbarButton.module.css";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import { MobileToolbar } from "./MobileToolbar";
@@ -215,39 +213,19 @@ export const SdkQuestionDefaultView = ({
 
         {/* Mobile toolbar — visible when container < 640px */}
         {queryResults && (
-          <MobileToolbar data-testid="result-mobile-toolbar">
-            {isEditorOpen ? (
-              <ToolbarButton
-                isHighlighted={false}
-                variant="default"
-                icon="chevronleft"
-                label={t`Back to visualization`}
-                c="brand"
-                justify="start"
-                className={cx(
-                  ToolbarButtonS.PrimaryToolbarButton,
-                  MobileToolbarS.LeftButton,
-                )}
+          <MobileToolbar
+            isEditorOpen={isEditorOpen}
+            toggleEditor={toggleEditor}
+            withChartTypeSelector={withChartTypeSelector}
+            rightButton={({ className }) => (
+              <EditorButton
+                className={className}
+                isOpen={isEditorOpen}
                 onClick={toggleEditor}
               />
-            ) : (
-              withChartTypeSelector && (
-                <ChartTypeDropdown
-                  className={MobileToolbarS.LeftButton}
-                  styles={{
-                    inner: { width: "100%" },
-                    label: { marginRight: "auto" },
-                  }}
-                />
-              )
             )}
-
-            <EditorButton
-              className={MobileToolbarS.RightButton}
-              isOpen={isEditorOpen}
-              onClick={toggleEditor}
-            />
-          </MobileToolbar>
+            data-testid="result-mobile-toolbar"
+          />
         )}
 
         {/* Desktop toolbar — visible when container >= 640px */}
