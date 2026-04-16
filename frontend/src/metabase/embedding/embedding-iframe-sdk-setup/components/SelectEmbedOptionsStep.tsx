@@ -359,6 +359,16 @@ const AppearanceSection = () => {
     [theme, updateSettings],
   );
 
+  const resetTheme = useCallback(
+    () =>
+      updateSettings({ theme: undefined } satisfies Partial<typeof settings>),
+    [updateSettings],
+  );
+
+  const hasSavedThemes = (savedThemes?.length ?? 0) > 0;
+  const showHeaderReset =
+    isSimpleEmbedFeatureAvailable && !hasSavedThemes && !!theme?.colors;
+
   const appearanceSection = match(settings)
     .with({ template: "exploration" }, () => null)
     .with({ componentName: "metabase-metabot" }, () => <MetabotLayoutSetting />)
@@ -387,18 +397,29 @@ const AppearanceSection = () => {
 
   return (
     <Card p="md">
-      <BaseAppearanceSection>
+      <BaseAppearanceSection
+        icons={
+          showHeaderReset ? (
+            <Tooltip label={t`Reset colors`}>
+              <Icon
+                name="revert"
+                size={16}
+                c="brand"
+                onClick={resetTheme}
+                aria-label={t`Reset colors`}
+                style={{ cursor: "pointer" }}
+              />
+            </Tooltip>
+          ) : null
+        }
+      >
         {isSimpleEmbedFeatureAvailable ? (
           <ThemeSelectorSection
             savedThemes={savedThemes ?? []}
             theme={theme}
             onThemeChange={updateThemeId}
             onColorChange={updateColors}
-            onColorReset={() =>
-              updateSettings({ theme: undefined } satisfies Partial<
-                typeof settings
-              >)
-            }
+            onColorReset={resetTheme}
           />
         ) : (
           <SimpleThemeSwitcherSection
