@@ -3174,6 +3174,18 @@
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
 
+  enterprise/semantic-layer
+  {:team "Metabot"
+   :api  #{metabase-enterprise.semantic-layer.api
+           metabase-enterprise.semantic-layer.init}
+   :uses #{api
+           audit-app
+           collections
+           startup
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/Card :model/Measure :model/Table}}
+
   enterprise/semantic-search
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.api
@@ -3196,19 +3208,6 @@
            tracing
            util}
    :model-imports #{:model/Card :model/Collection :model/ModelIndex}}
-
-  enterprise/semantic-layer
-  {:team "Metabot"
-   :api  #{metabase-enterprise.semantic-layer.api
-           metabase-enterprise.semantic-layer.complexity
-           metabase-enterprise.semantic-layer.init}
-   :uses #{api
-           audit-app
-           collections
-           startup
-           util
-           enterprise/semantic-search}
-   :model-imports #{:model/Card :model/Collection :model/Field :model/Measure :model/Table}}
 
   enterprise/serialization
   {:team "Graphy"
