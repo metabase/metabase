@@ -36,7 +36,10 @@
    :embedded-csv-download
    :embedded-xlsx-download
    :embedded-json-download
-   :table-grid])
+   :table-grid
+   :table-rows-sample
+   :transform-inspector
+   :slackbot])
 
 (mr/def ::hash
   #?(:clj bytes?
