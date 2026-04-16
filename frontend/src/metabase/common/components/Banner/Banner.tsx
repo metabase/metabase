@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { FlexProps, GroupProps, IconName } from "metabase/ui";
 import { Flex, Group, Icon } from "metabase/ui";
 
