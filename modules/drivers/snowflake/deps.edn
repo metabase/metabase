@@ -10,4 +10,7 @@
                                                    ;; from complaining about it as well.
                                                    io.netty/netty-codec-http]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
-  io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}}}
+  io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
+  ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
+  org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.84"}
+  org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.84"}}}
