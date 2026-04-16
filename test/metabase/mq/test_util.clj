@@ -2,9 +2,9 @@
   "Test fixture for exercising the MQ subsystem in tests. `with-test-mq` starts a
   fresh async memory backend and exposes a fixture context that carries the layer,
   the backend instances, and convenience fns (`flush!`, `wait-for-idle!`,
-  `eventually`) for driving delivery and waiting for quiescence.
+  `eventually!`) for driving delivery and waiting for quiescence.
 
-  `do-with-test-mq` also accepts `:backend :appdb` for running the real database-
+  `do-with-test-mq!` also accepts `:backend :appdb` for running the real database-
   backed backend in parity tests, and `:duplicate-delivery? true` to wrap the
   backends with a decorator that publishes every message twice. The duplicate-
   delivery mode exists to force listeners under test to prove they handle the
@@ -94,12 +94,12 @@
    (publish-buffer/flush-publish-buffer!)
    (wait-for-idle! ctx timeout-ms)))
 
-(defn eventually
+(defn eventually!
   "Polls `pred` until truthy or `timeout-ms` elapses. Returns the final value of
   `pred`. Use when the thing you're waiting on can't be expressed as 'MQ is idle'
   — for example, when waiting for a specific count to be reached or for
   appdb-backed delivery to round-trip through the database."
-  ([_ctx pred] (eventually _ctx pred 2000))
+  ([_ctx pred] (eventually! _ctx pred 2000))
   ([_ctx pred timeout-ms]
    (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
      (loop []
@@ -147,9 +147,9 @@
              :queue-be q.appdb/backend
              :topic-be topic.appdb/backend}))
 
-(defn- double-delivery-queue-backend
+(defn- double-delivery-queue-backend!
   "Wraps an inner `QueueBackend` so that `publish!` calls the inner backend's
-  `publish!` twice with the same payload. Used by `do-with-test-mq` when
+  `publish!` twice with the same payload. Used by `do-with-test-mq!` when
   `:duplicate-delivery?` is set, to force listeners under test to handle the
   MQ's at-least-once contract."
   [inner]
@@ -164,9 +164,9 @@
     (start! [_] (q.backend/start! inner))
     (shutdown! [_] (q.backend/shutdown! inner))))
 
-(defn- double-delivery-topic-backend
+(defn- double-delivery-topic-backend!
   "Wraps an inner `TopicBackend` so that `publish!` calls the inner backend's
-  `publish!` twice with the same payload. Used by `do-with-test-mq` when
+  `publish!` twice with the same payload. Used by `do-with-test-mq!` when
   `:duplicate-delivery?` is set."
   [inner]
   (reify topic.backend/TopicBackend
@@ -180,7 +180,7 @@
     (start! [_] (topic.backend/start! inner))
     (shutdown! [_] (topic.backend/shutdown! inner))))
 
-(defn do-with-test-mq
+(defn do-with-test-mq!
   "Function form of [[with-test-mq]]. `opts` may include:
 
   - `:backend`                 `:memory` (default) or `:appdb`
@@ -192,7 +192,7 @@
   The fixture forces `*publish-buffer-ms*` to 0 so publishes go straight to the
   backend without waiting for the background flush scheduler. Tests that want to
   exercise buffering behaviour must rebind it explicitly in the body."
-  ([f] (do-with-test-mq {} f))
+  ([f] (do-with-test-mq! {} f))
   ([opts f]
    (let [{:keys [kind listeners duplicate-delivery?] :or {kind :memory}} opts]
      (binding [listener/*listeners*               (atom {})
@@ -200,9 +200,9 @@
                publish-buffer/*publish-buffer-ms* 0]
        (let [backends (make-fixture-backends kind)
              queue-be (cond-> (:queue-be backends)
-                        duplicate-delivery? double-delivery-queue-backend)
+                        duplicate-delivery? double-delivery-queue-backend!)
              topic-be (cond-> (:topic-be backends)
-                        duplicate-delivery? double-delivery-topic-backend)
+                        duplicate-delivery? double-delivery-topic-backend!)
              handle   (mq.init/start! queue-be topic-be)
              ctx      (assoc backends :queue-be queue-be :topic-be topic-be :handle handle)]
          (try
@@ -219,13 +219,13 @@
 
   The binding vector is `[ctx-sym]` or `[ctx-sym opts-map]` where `opts-map`
   may contain `:backend`, `:duplicate-delivery?`, etc. — anything
-  [[do-with-test-mq]] accepts.
+  [[do-with-test-mq!]] accepts.
 
   An optional listener map may follow the binding vector (same shape as the
   old `with-sync-mq`). It is merged into the opts under `:listeners`.
 
   Use `(mq.tu/flush! ctx)` between publishes and assertions, and
-  `(mq.tu/wait-for-idle! ctx)` / `(mq.tu/eventually ctx pred)` where finer
+  `(mq.tu/wait-for-idle! ctx)` / `(mq.tu/eventually! ctx pred)` where finer
   control is needed.
 
   Examples:
@@ -244,8 +244,8 @@
   (let [[listeners body] (if (map? (first body))
                            [(first body) (rest body)]
                            [nil body])]
-    `(do-with-test-mq (merge ~opts-expr {:listeners ~listeners})
-                      (fn [~ctx-sym] ~@body))))
+    `(do-with-test-mq! (merge ~opts-expr {:listeners ~listeners})
+                       (fn [~ctx-sym] ~@body))))
 
 ;;; ------------------------------------------- Fixture self-tests -------------------------------------------
 
@@ -256,7 +256,7 @@
         (mq/listen! :queue/chaos-smoke {} #(swap! received conj %))
         (mq/with-queue :queue/chaos-smoke [q]
           (mq/put q "hello"))
-        (eventually ctx #(= 2 (count @received)) 5000)
+        (eventually! ctx #(= 2 (count @received)) 5000)
         (is (= ["hello" "hello"] @received)
             "Single published message is delivered to the listener twice")
         (mq/unlisten! :queue/chaos-smoke)))))
@@ -268,7 +268,7 @@
         (mq/listen! :topic/chaos-smoke {} #(swap! received conj %))
         (mq/with-topic :topic/chaos-smoke [t]
           (mq/put t "ping"))
-        (eventually ctx #(= 2 (count @received)) 5000)
+        (eventually! ctx #(= 2 (count @received)) 5000)
         (is (= ["ping" "ping"] @received)
             "Single published topic message is delivered to the subscriber twice")
         (mq/unlisten! :topic/chaos-smoke)))))
@@ -280,7 +280,7 @@
         (mq/listen! :queue/chaos-default {} #(swap! received conj %))
         (mq/with-queue :queue/chaos-default [q]
           (mq/put q "once"))
-        (eventually ctx #(>= (count @received) 1) 5000)
+        (eventually! ctx #(>= (count @received) 1) 5000)
         ;; Give the poll thread an extra moment in case a second (unexpected)
         ;; delivery is on the way, then confirm exactly one happened.
         (Thread/sleep 100)

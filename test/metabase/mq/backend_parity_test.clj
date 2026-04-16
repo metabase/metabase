@@ -11,7 +11,7 @@
   exact-sequence equality so that a single logical message can legitimately
   be delivered more than once.
 
-  Scenarios use `mq.tu/eventually` rather than `mq.tu/flush!` for their
+  Scenarios use `mq.tu/eventually!` rather than `mq.tu/flush!` for their
   assertions, because `wait-for-idle!` cannot see pending rows inside the
   appdb tables — it only checks the publish buffer, the worker-pool busy
   set, and memory channels."
@@ -83,9 +83,9 @@
          (mq/put q "a")
          (mq/put q "b")
          (mq/put q "c"))
-       (mq.tu/eventually ctx
-                         #(= #{"a" "b" "c"} (set @received))
-                         scenario-timeout-ms)
+       (mq.tu/eventually! ctx
+                          #(= #{"a" "b" "c"} (set @received))
+                          scenario-timeout-ms)
        (is (= #{"a" "b" "c"} (set @received))
            "Every unique message was delivered at least once")
        (is (every? pos? (vals (frequencies @received)))
@@ -101,9 +101,9 @@
        (mq/with-topic topic-name [t]
          (mq/put t "x")
          (mq/put t "y"))
-       (mq.tu/eventually ctx
-                         #(= #{"x" "y"} (set @received))
-                         scenario-timeout-ms)
+       (mq.tu/eventually! ctx
+                          #(= #{"x" "y"} (set @received))
+                          scenario-timeout-ms)
        (is (= #{"x" "y"} (set @received))
            "Every unique topic message was delivered at least once")
        (mq/unlisten! topic-name)))))
@@ -122,9 +122,9 @@
          (mq/put t "good-1")
          (mq/put t "bad")
          (mq/put t "good-2"))
-       (mq.tu/eventually ctx
-                         #(= #{"good-1" "good-2"} (set @received))
-                         scenario-timeout-ms)
+       (mq.tu/eventually! ctx
+                          #(= #{"good-1" "good-2"} (set @received))
+                          scenario-timeout-ms)
        (is (= #{"good-1" "good-2"} (set @received))
            "Good messages delivered; bad message isolated from neighbours")
        (is (not (contains? (set @received) "bad"))
@@ -143,9 +143,9 @@
                          (throw (ex-info "first attempt" {:msg msg}))))))
        (mq/with-queue queue-name [q]
          (mq/put q "retry-me"))
-       (mq.tu/eventually ctx
-                         #(>= (get @calls-by-msg "retry-me" 0) 2)
-                         scenario-timeout-ms)
+       (mq.tu/eventually! ctx
+                          #(>= (get @calls-by-msg "retry-me" 0) 2)
+                          scenario-timeout-ms)
        (is (>= (get @calls-by-msg "retry-me" 0) 2)
            "Message delivered at least twice (retry-after-failure or chaos duplication)")
        (mq/unlisten! queue-name)))))
