@@ -17,8 +17,8 @@ import type {
   VisualizerVizDefinitionWithColumns,
   VisualizerVizDefinitionWithColumnsAndFallbacks,
 } from "metabase/redux/store/visualizer";
+import { createAsyncThunk, createThunkAction_ } from "metabase/redux/utils";
 import { clone } from "metabase/utils/clone";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -305,7 +305,7 @@ export const redo = createAction("visualizer/redo");
 const CLEAR_HISTORY = "visualizer/clearHistory";
 const clearHistory = createAction(CLEAR_HISTORY);
 
-export const resetVisualizer = createThunkAction(
+export const resetVisualizer = createThunkAction_(
   CLEAR_HISTORY,
   () => (dispatch) => {
     dispatch(_resetVisualizer());

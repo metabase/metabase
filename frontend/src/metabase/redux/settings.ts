@@ -1,8 +1,8 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import { sessionApi } from "metabase/api";
+import { createAsyncThunk, createThunkAction_ } from "metabase/redux/utils";
 import { SettingsApi } from "metabase/services";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import type { Settings, UserSettings } from "metabase-types/api";
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
@@ -62,7 +62,7 @@ export const updateUserSetting = createAsyncThunk(
 );
 
 export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
-export const updateSetting = createThunkAction(
+export const updateSetting = createThunkAction_(
   UPDATE_SETTING,
   function (setting: { key: string; value: unknown }) {
     return async function (dispatch: any) {

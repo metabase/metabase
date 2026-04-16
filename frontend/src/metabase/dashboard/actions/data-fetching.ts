@@ -26,6 +26,7 @@ import {
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { createAsyncThunk, createThunkAction_ } from "metabase/redux/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -44,7 +45,6 @@ import {
 import { entityCompatibleQuery } from "metabase/utils/entities";
 import type { Deferred } from "metabase/utils/promise";
 import { defer } from "metabase/utils/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -128,7 +128,7 @@ function isNewAdditionalSeriesCard(
 export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
 export const setDocumentTitle = createAction<string>(SET_DOCUMENT_TITLE);
 
-const updateLoadingTitle = createThunkAction(
+const updateLoadingTitle = createThunkAction_(
   SET_DOCUMENT_TITLE,
   (totalCards) => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
@@ -143,7 +143,7 @@ export const setShowLoadingCompleteFavicon = createAction<boolean>(
   SET_SHOW_LOADING_COMPLETE_FAVICON,
 );
 
-const loadingComplete = createThunkAction(
+const loadingComplete = createThunkAction_(
   SET_LOADING_DASHCARDS_COMPLETE,
   () => (dispatch, getState) => {
     dispatch(setShowLoadingCompleteFavicon(true));
@@ -596,7 +596,7 @@ export const reloadDashboardCards =
     await runWithConcurrencyLimit(reloadTasks, CONCURRENT_CARD_FETCH_LIMIT);
   };
 
-export const cancelFetchDashboardCardData = createThunkAction(
+export const cancelFetchDashboardCardData = createThunkAction_(
   CANCEL_FETCH_DASHBOARD_CARD_DATA,
   () => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
