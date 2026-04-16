@@ -1,0 +1,27 @@
+{
+  "name": "Test Database",
+  "engine": "h2",
+  "tables": [
+    {
+      "name": "orders",
+      "display_name": "Orders",
+      "database_schema": "public",
+      "fields": [
+        {"name": "id", "display_name": "ID", "base_type": "type/BigInteger", "semantic_type": "type/PK", "database_type": "BIGINT"},
+        {"name": "total", "display_name": "Total", "base_type": "type/Float", "database_type": "DOUBLE PRECISION"},
+        {"name": "product_id", "display_name": "Product ID", "base_type": "type/Integer", "semantic_type": "type/FK", "database_type": "INTEGER"},
+        {"name": "created_at", "display_name": "Created At", "base_type": "type/DateTime", "database_type": "TIMESTAMP"}
+      ]
+    },
+    {
+      "name": "products",
+      "display_name": "Products",
+      "database_schema": "public",
+      "fields": [
+        {"name": "id", "display_name": "ID", "base_type": "type/BigInteger", "semantic_type": "type/PK", "database_type": "BIGINT"},
+        {"name": "title", "display_name": "Title", "base_type": "type/Text", "database_type": "CHARACTER VARYING"},
+        {"name": "price", "display_name": "Price", "base_type": "type/Float", "database_type": "DOUBLE PRECISION"}
+      ]
+    }
+  ]
+}

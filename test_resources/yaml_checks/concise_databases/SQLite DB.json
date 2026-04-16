@@ -1,0 +1,22 @@
+{
+  "name": "SQLite DB",
+  "engine": "sqlite",
+  "tables": [
+    {
+      "name": "orders",
+      "display_name": "Orders",
+      "fields": [
+        {"name": "id", "display_name": "ID", "base_type": "type/BigInteger", "semantic_type": "type/PK", "database_type": "INTEGER"},
+        {"name": "user_id", "display_name": "User ID", "base_type": "type/Integer", "semantic_type": "type/FK", "database_type": "INTEGER"}
+      ]
+    },
+    {
+      "name": "users",
+      "display_name": "Users",
+      "fields": [
+        {"name": "id", "display_name": "ID", "base_type": "type/BigInteger", "semantic_type": "type/PK", "database_type": "INTEGER"},
+        {"name": "name", "display_name": "Name", "base_type": "type/Text", "database_type": "TEXT"}
+      ]
+    }
+  ]
+}

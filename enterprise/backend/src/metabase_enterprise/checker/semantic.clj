@@ -10,7 +10,9 @@
    - `(check export-dir schema-dir)` — check all entities, returns results map
    - `(setup export-dir schema-dir)` + `(check-one ctx entity-id)` — REPL workflow"
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.checker.format.concise :as concise]
    [metabase-enterprise.checker.format.serdes-assets :as serdes-assets]
    [metabase-enterprise.checker.format.serdes-schema :as serdes.schema]
    [metabase-enterprise.checker.provider :as provider]
@@ -714,11 +716,21 @@
           (swap! lines conj (str "  error: " (:error result))))
         (str/join "\n" @lines)))))
 
+(defn- concise-schema-dir?
+  "True if `schema-dir` contains JSON files (concise format) rather than
+   database subdirectories (serdes YAML format)."
+  [schema-dir]
+  (some #(.endsWith (.getName ^java.io.File %) ".json")
+        (.listFiles (io/file schema-dir))))
+
 (defn- make-sources-and-index
   "Build schema and assets sources from `schema-dir` and `export-dir`,
-   and a merged assets index (cards, dashboards, segments, etc.)."
+   and a merged assets index (cards, dashboards, segments, etc.).
+   Auto-detects concise JSON vs serdes YAML format."
   [export-dir schema-dir]
-  (let [schema-source (serdes.schema/make-database-source schema-dir)
+  (let [schema-source (if (concise-schema-dir? schema-dir)
+                        (concise/make-source schema-dir)
+                        (serdes.schema/make-database-source schema-dir))
         assets-source (serdes-assets/make-source export-dir)
         index         (serdes-assets/source-index assets-source)]
     {:schema-source schema-source :assets-source assets-source :index index}))
