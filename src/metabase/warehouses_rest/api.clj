@@ -28,6 +28,7 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
+   [metabase.server.streaming-response :as server.streaming-response :refer [streaming-response]]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
@@ -37,6 +38,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -306,7 +308,7 @@
         where-clause (if filter-by-data-access?
                        [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
                                          (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
+                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-format-table-metadata :yes}))]]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]
@@ -372,11 +374,11 @@
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
-        has-table-metadata-perms?       (fn [{db-id :id}]
-                                          (= :yes (perms/most-permissive-database-permission-for-user
-                                                   api/*current-user-id*
-                                                   :perms/manage-table-metadata
-                                                   db-id)))
+        has-format-table-metadata-perms?       (fn [{db-id :id}]
+                                                 (= :yes (perms/most-permissive-database-permission-for-user
+                                                          api/*current-user-id*
+                                                          :perms/manage-format-table-metadata
+                                                          db-id)))
         db-list-res                     (cond->> (or (dbs-list :include-tables?                 include-tables?
                                                                :include-saved-questions-db?     saved
                                                                :include-saved-questions-tables? include-saved-questions-tables?
@@ -388,7 +390,7 @@
                                                                :can-query?                      can-query
                                                                :can-write-metadata?             can-write-metadata)
                                                      [])
-                                          can-write-metadata (filter has-table-metadata-perms?))]
+                                          can-write-metadata (filter has-format-table-metadata-perms?))]
     {:data  db-list-res
      :total (count db-list-res)}))
 
@@ -544,6 +546,107 @@
                          :when query]
                      [query model])})))
 
+;;; ----------------------------------------- GET /api/database/metadata ------------------------------------------
+
+(defn- format-database-metadata
+  [{:keys [id name engine]}]
+  {:id id :name name :engine engine})
+
+(defn- format-table-metadata
+  [{:keys [id db_id name schema description]}]
+  (m/assoc-some {:id id :db_id db_id :name name}
+                :schema schema
+                :description description))
+
+(defn- perm-user-info []
+  {:user-id       api/*current-user-id*
+   :is-superuser? api/*is-superuser?*})
+
+(defn- format-field-metadata
+  [{:keys [id table_id parent_id name description base_type effective_type semantic_type coercion_strategy]}]
+  (m/assoc-some {:id id :table_id table_id :name name}
+                :parent_id parent_id
+                :description description
+                :base_type base_type
+                :effective_type (when (and effective_type (not= base_type effective_type)) effective_type)
+                :semantic_type semantic_type
+                :coercion_strategy coercion_strategy))
+
+(defn- perm-mapping []
+  {:perms/view-data      :unrestricted
+   :perms/create-queries :query-builder})
+
+(defn- write-json-array!
+  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row."
+  [^java.io.Writer writer reducible format-fn]
+  (.write writer "[")
+  (let [first? (volatile! true)]
+    (reduce (fn [_ row]
+              (if @first?
+                (vreset! first? false)
+                (.write writer ","))
+              (json/encode-to (format-fn row) writer {}))
+            nil
+            reducible))
+  (.write writer "]"))
+
+(defn- databases-metadata-response []
+  (let [db-filter [:and [:= :is_audit false] [:= :router_database_id nil]
+                   [:in :id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
+        t-filter  [:and [:= :active true] [:= :visibility_type nil]
+                   [:in :id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
+        f-filter  [:and [:= :active true] [:<> :visibility_type "sensitive"]
+                   [:in :table_id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]]
+    (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+                        (let [writer (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
+                          (.write writer "{\"databases\":")
+                          (write-json-array! writer
+                                             (t2/reducible-select [:model/Database :id :name :engine] {:where db-filter})
+                                             format-database-metadata)
+                          (.write writer ",\"tables\":")
+                          (write-json-array! writer
+                                             (t2/reducible-select [:model/Table :id :db_id :name :schema :description] {:where t-filter})
+                                             format-table-metadata)
+                          (.write writer ",\"fields\":")
+                          (write-json-array! writer
+                                             (t2/reducible-select [:model/Field :id :table_id :parent_id :name :description
+                                                                   :base_type :effective_type :semantic_type :coercion_strategy]
+                                                                  {:where f-filter})
+                                             format-field-metadata)
+                          (.write writer "}")
+                          (.flush writer)))))
+
+(mr/def ::databases-metadata-response
+  [:map
+   [:databases [:sequential [:map
+                             [:id ::lib.schema.id/database]
+                             [:name :string]
+                             [:engine :string]]]]
+   [:tables [:sequential [:map
+                          [:id ::lib.schema.id/table]
+                          [:db_id ::lib.schema.id/database]
+                          [:name :string]
+                          [:schema {:optional true} :string]
+                          [:description {:optional true} :string]]]]
+   [:fields [:sequential [:map
+                          [:id ::lib.schema.id/field]
+                          [:table_id ::lib.schema.id/table]
+                          [:name :string]
+                          [:parent_id {:optional true} ::lib.schema.id/field]
+                          [:description {:optional true} :string]
+                          [:base_type :string]
+                          [:effective_type {:optional true} :string]
+                          [:semantic_type {:optional true} :string]
+                          [:coercion_strategy {:optional true} :string]]]]])
+
+(api.macros/defendpoint :get "/metadata"
+  :- (server.streaming-response/streaming-response-schema ::databases-metadata-response)
+  "Get metadata (databases, tables, and fields) for all databases visible to the current user.
+  Returns a flat structure with three arrays: databases, tables, and fields.
+  Response is streamed for efficiency with large schemas."
+  []
+  (databases-metadata-response))
+
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
 ;; Since the normal `:id` param in the normal version of the endpoint will never match with negative numbers
@@ -564,9 +667,8 @@
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
                (t2/hydrate
-                (if skip-fields?
-                  [:tables :segments :metrics]
-                  [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
+                (cond-> [:tables :segments :metrics :measures]
+                  (not skip-fields?) (conj [:fields :has_field_values [:target :has_field_values]]))))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
