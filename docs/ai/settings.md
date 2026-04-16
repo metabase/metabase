@@ -45,9 +45,9 @@ To enable AI features with your own API key:
 2. Select your **Provider**.
 3. Enter your **API key**. The **Get or manage keys in [provider]** link opens your provider's key management page in a new tab.
 4. Click **Connect**.
-5. Select a **Model** from the dropdown. Available models are fetched from the selected provider using its configured API key.
+5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
 
-When your connection is active, the provider card header shows a green dot with **Connected to [provider]** (for example, "Connected to Anthropic"). With your key connected, you get access to [Metabot](./metabot.md), [inline SQL generation](./metabot.md#inline-sql-editing), the [MCP server](./mcp.md), and the [Agent API](./agent-api.md).
+When your connection is active, the provider card header shows **Connected to [provider]** (for example, "Connected to Anthropic") next to a green status dot. With your key connected, you get access to [Metabot](./metabot.md), [inline SQL generation](./metabot.md#inline-sql-editing), the [MCP server](./mcp.md), and the [Agent API](./agent-api.md).
 
 To clear your provider connection, click **Disconnect**. Disconnecting removes the stored API key and turns off any AI features that depend on the provider.
 
@@ -118,7 +118,7 @@ Click **Regenerate suggested prompts** to generate a fresh set of prompts. You c
 
 Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
 
-### MCP clients settings
+### Supported MCP clients
 
 Under **Supported MCP clients**, switch on any clients you want to allow:
 
@@ -202,7 +202,7 @@ If you're using your own API key, you can track usage and costs through your AI 
 
 ## Choosing the AI model
 
-If you're using your own API key, you can choose which AI model Metabase uses in [Connection settings](#bring-your-own-api-key).
+If you're using your own API key, you can choose which AI model Metabase uses when you [bring your own API key](#bring-your-own-api-key).
 
 On Metabase Cloud, Metabase's AI service selects models automatically. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
 
