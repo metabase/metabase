@@ -15,7 +15,6 @@
   (:require
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-search.core :as semantic-search]
-   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.util.log :as log]
@@ -37,10 +36,11 @@
 (def ^:private synonym-similarity-threshold
   "Cosine similarity at or above which two names are flagged as synonyms.
   Mirrors the semantic search system's cosine-distance cutoff."
-  (- 1 semantic-search/max-cosine-distance))
+  ;; round this to 3 decimal places in case floating point has added some epislon
+  (* 0.01 (Math/round ^double (* 100 (- 1 semantic-search/max-cosine-distance)))))
 
 ;;; ----------------------------------- enumeration -----------------------------------
-
+;;;
 (defn- table-field-counts
   "Return `{table-id field-count}` for active fields on the given `table-ids`. Single group-by query."
   [table-ids]
@@ -90,9 +90,10 @@
 (defn- library-collection-ids
   "Set of collection IDs that make up the Library (root + descendants). Empty when the instance has no Library yet."
   []
-  (or (when-let [root (collections/library-collection)]
-        (into #{(:id root)} (collections/descendant-ids root)))
-      #{}))
+  (into #{}
+        (when-let [root (collections/library-collection)]
+          ;; This is cheaper and less brittle than referencing the collection type constants for every entity type.
+          (cons (:id root) (collections/descendant-ids root)))))
 
 (defn- collect-card-entities
   "Stream Cards matching `filter-kvs` via a reducible select over the minimum columns we need,
@@ -142,41 +143,38 @@
 
 ;;; ------------------------------------- scoring -------------------------------------
 
-(defn- repeated-count
-  "Number of occurrences past the first for a grouping-count `n`. 3 identical items = 2 repeats."
-  [^long n]
-  (max 0 (dec n)))
+(defn- component-score
+  "Build a sub-score map: `n` under `count-key` (`:count` or `:pairs`), plus the weighted total
+  under `:score`. `weight-key` selects which weight from [[weights]]."
+  [count-key weight-key n]
+  {count-key n
+   :score    (* n (get weights weight-key))})
+
+(defn- repeated-names
+  "Count of name occurrences past the first (normalized for comparison). Single pass, no
+  intermediate frequency map. `raw-names` may contain nils — they're skipped."
+  [raw-names]
+  (second
+   (reduce (fn [[seen repeats] raw-name]
+             (if-let [n-name (embedders/normalize-name raw-name)]
+               (if (contains? seen n-name)
+                 [seen (inc repeats)]
+                 [(conj seen n-name) repeats])
+               [seen repeats]))
+           [#{} 0]
+           raw-names)))
 
 (defn- score-entity-count [entities]
-  (let [n (count entities)]
-    {:count n
-     :score (* n (:entity weights))}))
+  (component-score :count :entity (count entities)))
 
 (defn- score-name-collisions [entities]
-  (let [groups  (->> entities
-                     (keep (comp embedders/normalize-name :name))
-                     frequencies
-                     vals
-                     (filter #(> % 1)))
-        repeats (reduce + 0 (map repeated-count groups))]
-    {:pairs repeats
-     :score (* repeats (:name-collision weights))}))
+  (component-score :pairs :name-collision (repeated-names (map :name entities))))
 
 (defn- score-field-count [entities]
-  (let [n (reduce + 0 (map #(or (:field-count %) 0) entities))]
-    {:count n
-     :score (* n (:field weights))}))
+  (component-score :count :field (reduce + 0 (map #(or (:field-count %) 0) entities))))
 
 (defn- score-repeated-measures [entities]
-  (let [repeats (->> entities
-                     (mapcat :measure-names)
-                     (keep embedders/normalize-name)
-                     frequencies
-                     vals
-                     (map repeated-count)
-                     (reduce +))]
-    {:count repeats
-     :score (* repeats (:repeated-measure weights))}))
+  (component-score :count :repeated-measure (repeated-names (mapcat :measure-names entities))))
 
 (defn- dot ^double [^floats a ^floats b]
   (let [len (alength a)]
@@ -194,9 +192,10 @@
   `norms-product` is `‖a‖² · ‖b‖²` precomputed by the caller; folding it into one arg keeps us
   within Clojure's 4-argument cap for primitive-typed `defn`s."
   [^floats a ^floats b ^double norms-product ^double threshold-sq]
-  (let [dot-ab (dot a b)]
-    (and (>= dot-ab 0.0)
-         (>= (* dot-ab dot-ab) (* threshold-sq norms-product)))))
+  (and (pos? norms-product)
+       (let [dot-ab (dot a b)]
+         (and (>= dot-ab 0.0)
+              (>= (* dot-ab dot-ab) (* threshold-sq norms-product))))))
 
 (defn- synonym-pair-count
   "Count of vector pairs whose cosine similarity is ≥ `threshold`. Walks the upper triangle of the
@@ -236,11 +235,11 @@
                                     (keep name->vec))
                               entities)
           pairs         (synonym-pair-count known-vectors synonym-similarity-threshold)]
-      {:pairs pairs
-       :score (* pairs (:synonym-pair weights))})
+      (component-score :pairs :synonym-pair pairs))
     (catch Throwable t
       (log/warn t "Complexity score: synonym detection failed; falling back to 0")
-      {:pairs 0 :score 0 :error (.getMessage t)})))
+      (assoc (component-score :pairs :synonym-pair 0)
+             :error (.getMessage t)))))
 
 (defn score-catalog
   "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`."
@@ -256,9 +255,8 @@
 ;;; ----------------------------------- public API ------------------------------------
 
 (defn complexity-scores
-  "Compute the complexity score for the `:library` and `:universe` catalogs of this Metabase instance.
-
-  Returns a map of the shape:
+  "Compute the complexity score for the `:library` and `:universe` catalogs of this Metabase
+  instance. Returns a map of the shape:
 
     {:library  {:total n :components {...}}
      :universe {:total n :components {...}}
@@ -266,23 +264,31 @@
                 :synonym-threshold 0.30
                 :embedding-model {...}}}
 
-  Optional opts:
-    :embedder — embedder function (see `complexity-embedders`). Defaults to `search-index-embedder` so scoring reuses
-                existing vectors and adds no embedding cost. Pass `nil` to disable synonym scoring."
-  ([] (complexity-scores nil))
-  ([{:keys [embedder] :as opts}]
-   (let [embedder (if (contains? opts :embedder)
-                    embedder
-                    semantic-search/search-index-embedder)]
-     {:library  (score-catalog (library-entities) embedder)
-      :universe (score-catalog (universe-entities) embedder)
-      :meta     {:formula-version   formula-version
-                 :synonym-threshold synonym-similarity-threshold
-                 ;; Record which embedding model the search-index is using so benchmarks can pin it.
-                 ;; nil if semantic search isn't available.
-                 :embedding-model
-                 (try
-                   (when-let [model (semantic.env/get-configured-embedding-model)]
-                     {:provider   (:provider model)
-                      :model-name (:model-name model)})
-                   (catch Throwable _ nil))}})))
+  Optional opt `:embedder` overrides the synonym-axis embedder (defaults to
+  [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
+  synonym scoring."
+  [& {:keys [embedder] :as opts}]
+  (let [embedder (if (contains? opts :embedder)
+                   embedder
+                   semantic-search/search-index-embedder)]
+    ;;; NOTE: we fully materialize a vector off all entities, along with one of those in the library, rather than
+    ;;; returning reducibles. For very large instances that holds a non-trivial slim-entity list in memory
+    ;;; (name, kind, field-count, measure-names — no fat columns like `result_metadata`),
+    ;;; but each catalog is consumed by FIVE sub-score functions that each walk the collection, so making this
+    ;;; reducible would re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory we
+    ;;; currently will currently consume (provided we have that memory).
+    {:library  (score-catalog (library-entities) embedder)
+     :universe (score-catalog (universe-entities) embedder)
+     :meta     {:formula-version   formula-version
+                :synonym-threshold synonym-similarity-threshold
+                ;; Record which embedding model the search-index is using so benchmarks can pin it.
+                ;; nil if semantic search isn't available.
+                :embedding-model
+                (try
+                  (when-let [model (semantic-search/get-configured-embedding-model)]
+                    {:provider   (:provider model)
+                     :model-name (:model-name model)})
+                  (catch Throwable _ nil))}}))
+
+(comment
+  (complexity-scores))

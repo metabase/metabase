@@ -3,15 +3,21 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-layer.complexity :as complexity]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
+   [metabase-enterprise.semantic-layer.init]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.collections.core :as collections]
+   [metabase.collections.test-utils :as collections.tu]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]))
 
+(def ^:private test-entity-ids (atom 0))
+
 (defn- entity
-  "Build a fake entity map for scoring tests."
+  "Build a fake entity map for scoring tests. Uses a monotonically-increasing counter for `:id`
+  so every test entity is distinct (and so test failures print stable, readable ids)."
   [& {:keys [name kind field-count measure-names]
       :or   {kind :table field-count 0 measure-names []}}]
-  {:id            (rand-int Integer/MAX_VALUE)
+  {:id            (swap! test-entity-ids inc)
    :name          name
    :kind          kind
    :field-count   field-count
@@ -111,6 +117,28 @@
           embedder (fn [_] (throw (ex-info "boom" {})))]
       (is (=? {:components {:synonym-pairs {:pairs 0 :score 0 :error "boom"}}}
               (#'complexity/score-catalog es embedder))))))
+
+(deftest library-empty-when-no-library-collection-test
+  (testing "on an instance with no Library collection, the library score is zero and universe still reports"
+    (collections.tu/without-library
+     (mt/with-temp [:model/Database {db-id :id} {:name "No-library Test DB"}
+                    :model/Table    _           {:db_id db-id :name "contributes_to_universe" :active true}]
+       (let [{:keys [library universe]} (complexity/complexity-scores {:embedder nil})]
+         (testing "library is empty (no collection tree)"
+           (is (= {:total 0
+                   :components {:entity-count      {:count 0 :score 0}
+                                :name-collisions   {:pairs 0 :score 0}
+                                :synonym-pairs     {:pairs 0 :score 0}
+                                :field-count       {:count 0 :score 0}
+                                :repeated-measures {:count 0 :score 0}}}
+                  library)))
+         (testing "universe still enumerates appdb content (our temp table + whatever else is there)"
+           (is (pos? (:total universe)))))))))
+
+(deftest startup-logic-registered-test
+  (testing "loading the semantic-layer init namespace registers a startup-logic method"
+    (is (contains? (methods startup/def-startup-logic!)
+                   :metabase-enterprise.semantic-layer.init/PrintSemanticComplexityScore))))
 
 (deftest search-index-embedder-degrades-gracefully-test
   (testing "returns {} when semantic-search index isn't available (no throw)"

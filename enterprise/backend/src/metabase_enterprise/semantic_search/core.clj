@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase-enterprise.semantic-search.embedders :as semantic.embedders]
+   [metabase-enterprise.semantic-search.embedders]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -22,9 +22,17 @@
 
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
-  search-index-embedder]
- [metabase-enterprise.semantic-search.index
-  max-cosine-distance])
+  search-index-embedder])
+
+(def max-cosine-distance
+  "Cut-off used to filter semantic search results. Exposed so other modules (e.g., semantic-layer)
+  can derive consistent similarity thresholds."
+  semantic.index/max-cosine-distance)
+
+(def get-configured-embedding-model
+  "Return the currently configured embedding model map (`{:provider ... :model-name ...}`) or nil
+  when semantic search isn't configured on this instance."
+  semantic.env/get-configured-embedding-model)
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
