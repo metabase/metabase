@@ -23,8 +23,8 @@ const getCard = ({
   hasOriginalCard = false,
   isNative = false,
   database = 1,
-  display = "table" as VisualizationDisplay,
-  queryFields = {} as StructuredDatasetQuery["query"],
+  display = "table",
+  queryFields = {},
   table,
 }: {
   newCard?: boolean;
@@ -43,19 +43,19 @@ const getCard = ({
   };
 
   const datasetQuery = isNative
-    ? ({
+    ? {
         database,
         type: "native" as const,
         native: { query: "SELECT * FROM ORDERS" },
-      } satisfies Record<string, unknown>)
-    : ({
+      }
+    : {
         database,
         type: "query" as const,
         query: {
           ...(table ? { "source-table": table } : {}),
           ...queryFields,
         },
-      } satisfies Record<string, unknown>);
+      };
 
   return {
     name: null,
@@ -64,7 +64,7 @@ const getCard = ({
     dataset_query: datasetQuery,
     ...(newCard ? {} : savedCardFields),
     ...(hasOriginalCard ? { original_card_id: CARD_ID } : {}),
-  } as Card | UnsavedCard;
+  };
 };
 
 describe("lib/card", () => {

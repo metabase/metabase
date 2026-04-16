@@ -12,7 +12,6 @@ import {
   modelEditor,
   question,
 } from "metabase/utils/urls";
-import type { CardOrSearchResult } from "metabase/utils/urls/models";
 import type { Bookmark, CollectionId } from "metabase-types/api";
 
 describe("urls", () => {
@@ -166,7 +165,7 @@ describe("urls", () => {
         card_id: 42,
         model: "dataset",
         name: "Foo",
-      } as CardOrSearchResult;
+      };
       expect(model(card)).toBe("/model/42-foo");
     });
 
@@ -226,15 +225,11 @@ describe("urls", () => {
     });
 
     it("should treat `null` ID as a root collection", () => {
-      // CollectionId does not include null, but the function handles it defensively.
-      // We need to test this runtime behavior so we widen the id type.
-      const col: { id: CollectionId | null; name: string } = {
+      const col = {
         id: null,
         name: "Root",
       };
-      expect(collection(col as Parameters<typeof collection>[0])).toBe(
-        "/collection/root",
-      );
+      expect(collection(col)).toBe("/collection/root");
     });
 
     it("returns correct url", () => {
@@ -249,7 +244,7 @@ describe("urls", () => {
           id: 1,
           name: "John Doe's Personal Collection",
           personal_owner_id: 1,
-        } as Parameters<typeof collection>[0]),
+        }),
       ).toBe("/collection/1-john-doe-s-personal-collection");
     });
 
@@ -259,7 +254,7 @@ describe("urls", () => {
           id: 1,
           name: "🍎's Personal Collection",
           personal_owner_id: 1,
-        } as Parameters<typeof collection>[0]),
+        }),
       ).toBe("/collection/1-personal-collection");
     });
 
@@ -270,7 +265,7 @@ describe("urls", () => {
           name: "Your personal collection",
           originalName: "John Doe's Personal Collection",
           personal_owner_id: 1,
-        } as Parameters<typeof collection>[0]),
+        }),
       ).toBe("/collection/1-john-doe-s-personal-collection");
     });
   });

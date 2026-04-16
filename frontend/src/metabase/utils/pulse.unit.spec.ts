@@ -26,7 +26,7 @@ describe("recipientIsValid", () => {
     const recipient = {
       id: 1,
       email: "user@metabase.example",
-    } as RecipientPickerValue;
+    };
     MetabaseSettings.set("subscription-allowed-domains", "metabase.test");
     expect(recipientIsValid(recipient)).toBeTruthy();
   });
