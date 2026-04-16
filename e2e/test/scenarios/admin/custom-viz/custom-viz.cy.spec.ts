@@ -702,7 +702,7 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("enable-public-sharing", true);
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitPublicDashboard(checkNotNull(dashcard.dashboard_id));
+        H.visitPublicDashboard(Number(checkNotNull(dashcard.dashboard_id)));
       });
 
       H.getDashboardCard().findByTestId("table-root").should("be.visible");
@@ -771,7 +771,7 @@ describe("admin > custom visualizations", () => {
           createCustomVizDashboard().then(({ body: dashcard }) => {
             H.addOrUpdateDashboardCard({
               dashboard_id: dashcard.dashboard_id,
-              card_id: dashcard.card_id,
+              card_id: checkNotNull(dashcard.card_id),
               card: {
                 id: dashcard.id,
                 visualization_settings: {
@@ -812,7 +812,7 @@ describe("admin > custom visualizations", () => {
           createCustomVizDashboard().then(({ body: dashcard }) => {
             H.addOrUpdateDashboardCard({
               dashboard_id: dashcard.dashboard_id,
-              card_id: dashcard.card_id,
+              card_id: checkNotNull(dashcard.card_id),
               card: {
                 id: dashcard.id,
                 visualization_settings: {
@@ -841,7 +841,7 @@ describe("admin > custom visualizations", () => {
         createCustomVizDashboard().then(({ body: dashcard }) => {
           H.addOrUpdateDashboardCard({
             dashboard_id: dashcard.dashboard_id,
-            card_id: dashcard.card_id,
+            card_id: checkNotNull(dashcard.card_id),
             card: {
               id: dashcard.id,
               visualization_settings: {
@@ -856,7 +856,7 @@ describe("admin > custom visualizations", () => {
           H.visitDashboard(dashcard.dashboard_id);
         });
 
-        H.onNextAnchorClick((anchor) => {
+        H.onNextAnchorClick((anchor: HTMLAnchorElement) => {
           expect(anchor).to.have.attr(
             "href",
             "https://metabase.test/custom-viz",
@@ -882,7 +882,7 @@ describe("admin > custom visualizations", () => {
         }).then(({ body: dashcard }) => {
           H.addOrUpdateDashboardCard({
             dashboard_id: dashcard.dashboard_id,
-            card_id: dashcard.card_id,
+            card_id: checkNotNull(dashcard.card_id),
             card: {
               id: dashcard.id,
               visualization_settings: {
@@ -1132,7 +1132,7 @@ describe("admin > custom visualizations", () => {
       });
     });
 
-    it.only("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
+    it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
       // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
       // Call this before any nav-sidebar interaction so we open it only when
       // it's actually hidden — `H.openNavigationSidebar` toggles, so calling
