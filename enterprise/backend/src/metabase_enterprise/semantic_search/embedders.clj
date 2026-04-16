@@ -34,27 +34,20 @@
 
 (defn- prefer-new-row?
   "Return true when `new-row` should replace `prior` as the representative for a normalized name.
-  Tie-break rule (in priority order):
-   1. Numeric `model_id` — lowest wins; a parseable numeric id always beats a non-parseable one.
-   2. Raw `model_id` string — lexicographic (fallback when both ids are non-numeric).
-   3. `model` string — lexicographic (final tie-break when `model_id` values are identical)."
-  [{new-mid :mid new-model-id :model_id new-model :model}
-   {prior-mid :mid prior-model-id :model_id prior-model :model}]
-  (cond
-    ;; Both numeric: compare numerically, then by model as tie-break
-    (and new-mid prior-mid)
-    (or (< (long new-mid) (long prior-mid))
-        (and (= new-mid prior-mid) (neg? (compare new-model prior-model))))
-
-    ;; Numeric beats non-numeric
-    new-mid   true
-    prior-mid false
-
-    ;; Neither numeric: lexicographic on raw model_id string, then model
-    :else
-    (let [cmp (compare (str new-model-id) (str prior-model-id))]
-      (or (neg? cmp)
-          (and (zero? cmp) (neg? (compare new-model prior-model)))))))
+  The only requirement is **determinism** — every run with the same data must pick the same winner,
+  regardless of DB row order or batch boundaries. The actual winner (lowest-id vs highest-id) is
+  unimportant because duplicate-name entities contribute the same similarity signal either way.
+  We compare by numeric `:mid` (parsed model_id) — numeric always beats nil, two numerics compare
+  naturally, two nils fall back to lexicographic `:model_id` — then `:model` as final tie-break."
+  [{new-mid :mid new-model :model new-mid-str :model_id}
+   {prior-mid :mid prior-model :model prior-mid-str :model_id}]
+  (let [cmp (cond
+              (and new-mid prior-mid) (compare (long new-mid) (long prior-mid))
+              new-mid                 -1   ; numeric beats non-numeric
+              prior-mid                1
+              :else                   (compare (str new-mid-str) (str prior-mid-str)))]
+    (or (neg? cmp)
+        (and (zero? cmp) (neg? (compare new-model prior-model))))))
 
 (defn- parse-pgvector
   "Parse a pgvector string (\"[0.1, 0.2, ...]\") or similar into a float-array."

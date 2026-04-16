@@ -127,8 +127,8 @@
           embedder      (embedders/fn-embedder (partial mapv known-vectors))
           result        (embedder [{:name "Foo"}
                                    {:name " BAR"}
-                                   {:name " Foo  \t "}
-                                   {:name "missing\n"}])]
+                                   {:name " Foo  \t \n"}
+                                   {:name "missing"}])]
       (is (=? {"foo" (known-vectors "foo")
                "bar" (known-vectors "bar")}
               result)))))
@@ -199,47 +199,33 @@
               "when model_ids tie, the lexicographically smaller model wins (card < table)"))))))
 
 (deftest ^:parallel prefer-new-row-test
-  (testing "lower numeric model_id wins"
-    (is (true?  (#'ss.embedders/prefer-new-row?
-                 {:mid 2  :model_id "2"  :model "card"}
-                 {:mid 10 :model_id "10" :model "card"})))
-    (is (false? (#'ss.embedders/prefer-new-row?
-                 {:mid 10 :model_id "10" :model "card"}
-                 {:mid 2  :model_id "2"  :model "card"}))))
-
-  (testing "equal model_ids tie-break on model name"
-    (is (true?  (#'ss.embedders/prefer-new-row?
-                 {:mid 5 :model_id "5" :model "card"}
-                 {:mid 5 :model_id "5" :model "table"})))
-    (is (false? (#'ss.embedders/prefer-new-row?
-                 {:mid 5 :model_id "5" :model "table"}
-                 {:mid 5 :model_id "5" :model "card"}))))
-
-  (testing "numeric always beats non-numeric"
-    (is (true?  (#'ss.embedders/prefer-new-row?
-                 {:mid 99 :model_id "99" :model "card"}
-                 {:mid nil :model_id "abc" :model "card"})))
-    (is (false? (#'ss.embedders/prefer-new-row?
-                 {:mid nil :model_id "abc" :model "card"}
-                 {:mid 1   :model_id "1"   :model "card"}))))
-
-  (testing "both non-numeric: lexicographic on model_id string"
-    (is (true?  (#'ss.embedders/prefer-new-row?
-                 {:mid nil :model_id "abc" :model "card"}
-                 {:mid nil :model_id "xyz" :model "card"})))
-    (is (false? (#'ss.embedders/prefer-new-row?
-                 {:mid nil :model_id "xyz" :model "card"}
-                 {:mid nil :model_id "abc" :model "card"})))))
+  (let [prefer? #'ss.embedders/prefer-new-row?]
+    (are [expected new-row prior-row]
+         (= expected (prefer? new-row prior-row))
+      ;; lower numeric model_id wins
+      true  {:mid 2  :model_id "2"  :model "card"}   {:mid 10 :model_id "10" :model "card"}
+      false {:mid 10 :model_id "10" :model "card"}   {:mid 2  :model_id "2"  :model "card"}
+      ;; equal model_ids tie-break on model name
+      true  {:mid 5  :model_id "5"  :model "card"}   {:mid 5  :model_id "5"  :model "table"}
+      false {:mid 5  :model_id "5"  :model "table"}  {:mid 5  :model_id "5"  :model "card"}
+      ;; numeric always beats non-numeric
+      true  {:mid 99 :model_id "99" :model "card"}   {:mid nil :model_id "abc" :model "card"}
+      false {:mid nil :model_id "abc" :model "card"}  {:mid 1  :model_id "1"   :model "card"}
+      ;; both non-numeric: lexicographic on model_id string
+      true  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
+      false {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
 (deftest ^:parallel meta-embedding-model-absent-when-unavailable-test
   (testing ":embedding-model key is absent from :meta when the search index is unreachable"
-    (mt/with-dynamic-fn-redefs [semantic-search/active-embedding-model (constantly nil)]
-      (let [{:keys [meta]} (complexity/complexity-scores {:embedder nil})]
+    (mt/with-dynamic-fn-redefs [semantic-search/active-embedding-model (constantly nil)
+                                semantic-search/search-index-embedder  (constantly {})]
+      (let [{:keys [meta]} (complexity/complexity-scores)]
         (is (not (contains? meta :embedding-model))))))
   (testing ":embedding-model key is present in :meta when the active model is non-nil"
     (mt/with-dynamic-fn-redefs [semantic-search/active-embedding-model
-                                (constantly {:provider "openai" :model-name "text-embedding-3-small"})]
-      (let [{:keys [meta]} (complexity/complexity-scores {:embedder nil})]
+                                (constantly {:provider "openai" :model-name "text-embedding-3-small"})
+                                semantic-search/search-index-embedder (constantly {})]
+      (let [{:keys [meta]} (complexity/complexity-scores)]
         (is (= {:provider "openai" :model-name "text-embedding-3-small"}
                (:embedding-model meta)))))))
 
