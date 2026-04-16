@@ -11,6 +11,7 @@ import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Search } from "metabase/entities/search";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -23,7 +24,6 @@ import { Icon, Text } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { modelToUrl } from "metabase/utils/urls";
 import {

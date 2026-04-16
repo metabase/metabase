@@ -8,11 +8,11 @@ import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-t
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
+import { type DispatchFn, connect } from "metabase/redux";
 import { fetchField } from "metabase/redux/metadata";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
-import { type DispatchFn, connect } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";

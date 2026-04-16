@@ -22,6 +22,7 @@ import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
@@ -40,7 +41,6 @@ import {
   getHasConfiguredAnyChannel,
   getHasConfiguredEmailOrSlackChannel,
 } from "metabase/utils/pulse";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CreateAlertNotificationRequest,

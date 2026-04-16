@@ -11,6 +11,7 @@ import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Box, Button, Text } from "metabase/ui";
 import {
   canEditMembership,
@@ -18,7 +19,6 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/utils/groups";
-import { useDispatch } from "metabase/utils/redux";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { Alert } from "./Alert";

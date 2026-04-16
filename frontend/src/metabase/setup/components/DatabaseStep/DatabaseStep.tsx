@@ -3,6 +3,7 @@ import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { InviteInfo } from "metabase/redux/store";
 import {
   getDatabase,
@@ -12,7 +13,6 @@ import {
   getUser,
 } from "metabase/setup";
 import { Text } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { DatabaseData } from "metabase-types/api";
 
 import {

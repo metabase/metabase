@@ -7,7 +7,7 @@ import _ from "underscore";
 import { useListUserAttributesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
-import { connect } from "metabase/utils/redux";
+import { connect } from "metabase/redux";
 import {
   getGroupTableAccessPolicy,
   getPolicyRequestState,

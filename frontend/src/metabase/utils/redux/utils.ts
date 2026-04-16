@@ -13,10 +13,6 @@ import {
 import type { Dispatch, State } from "metabase/redux/store";
 import { delay } from "metabase/utils/promise";
 
-// convenience
-export { combineReducers, compose } from "@reduxjs/toolkit";
-export { handleActions, createAction } from "redux-actions";
-
 export type FetchDataArgs = {
   dispatch: Dispatch;
   getState: () => State;

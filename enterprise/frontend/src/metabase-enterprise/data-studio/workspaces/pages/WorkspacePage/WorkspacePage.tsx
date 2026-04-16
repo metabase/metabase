@@ -23,6 +23,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { Sortable } from "metabase/common/components/Sortable";
 import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
+import { useDispatch } from "metabase/redux";
 import { NAME_MAX_LENGTH } from "metabase/transforms/constants";
 import {
   ActionIcon,
@@ -34,7 +35,6 @@ import {
   Stack,
   Tabs,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
 import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";

@@ -1,7 +1,7 @@
 import { createAction } from "redux-actions";
 
+import { createThunkAction } from "metabase/redux";
 import { UserApi } from "metabase/services";
-import { createThunkAction } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 

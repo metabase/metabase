@@ -7,6 +7,7 @@ import {
   getMetabotSuggestedTransform,
 } from "metabase/metabot/state";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { RunStatus } from "metabase/transforms/components/RunStatus";
 import {
@@ -14,7 +15,6 @@ import {
   getInitialPythonSource,
 } from "metabase/transforms/pages/NewTransformPage/utils";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useDryRunWorkspaceTransformMutation } from "metabase-enterprise/api";
 import { useWorkspaceTransformRun } from "metabase-enterprise/data-studio/workspaces/hooks";
 import * as Lib from "metabase-lib";

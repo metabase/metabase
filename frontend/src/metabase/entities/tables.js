@@ -18,6 +18,12 @@ import {
 import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
 import { Segments } from "metabase/entities/segments";
+import {
+  compose,
+  createThunkAction,
+  useDispatch,
+  useSelector,
+} from "metabase/redux";
 import { TableSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -30,10 +36,6 @@ import {
   notify,
 } from "metabase/utils/entities";
 import {
-  compose,
-  createThunkAction,
-  useDispatch,
-  useSelector,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,

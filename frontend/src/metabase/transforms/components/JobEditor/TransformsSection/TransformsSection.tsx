@@ -7,8 +7,8 @@ import { useListTransformJobTransformsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/redux";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Transform, TransformJobId } from "metabase-types/api";
 

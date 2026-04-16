@@ -13,6 +13,7 @@ import {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections/utils";
+import { compose } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { color } from "metabase/ui/colors";
 import {
@@ -20,7 +21,7 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/utils/entities";
-import { compose, withAction, withRequestState } from "metabase/utils/redux";
+import { withAction, withRequestState } from "metabase/utils/redux";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 

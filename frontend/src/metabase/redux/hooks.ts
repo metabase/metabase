@@ -8,7 +8,7 @@ import {
 
 import type { State } from "metabase/redux/store";
 
-import { metabaseReduxContext } from "./custom-context";
+import { metabaseReduxContext } from "./context";
 
 export const useStore: () => Store<State, AnyAction> =
   createStoreHook(metabaseReduxContext);

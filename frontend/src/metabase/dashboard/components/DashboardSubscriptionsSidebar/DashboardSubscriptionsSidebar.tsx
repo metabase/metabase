@@ -17,6 +17,7 @@ import {
   getEditingPulse,
   getPulseFormInput,
 } from "metabase/notifications/pulse/selectors";
+import { connect } from "metabase/redux";
 import type { DraftDashboardSubscription, State } from "metabase/redux/store";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
@@ -25,7 +26,6 @@ import {
   cleanPulse,
   createChannel,
 } from "metabase/utils/pulse";
-import { connect } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,

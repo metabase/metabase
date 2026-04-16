@@ -10,6 +10,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import S from "metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.module.css";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { WorkspacesSectionProps } from "metabase/plugins/oss/database";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
   ActionIcon,
@@ -27,7 +28,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type { MetabaseColorKey } from "metabase/ui/colors/types";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import {
   useArchiveWorkspaceMutation,

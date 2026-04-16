@@ -1,9 +1,9 @@
 import _ from "underscore";
 
 import { Tables } from "metabase/entities/tables";
+import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { connect } from "metabase/utils/redux";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import * as Urls from "metabase/utils/urls";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";

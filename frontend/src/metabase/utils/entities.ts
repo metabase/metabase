@@ -77,6 +77,7 @@ import createCachedSelector from "re-reselect";
 import type React from "react";
 import _ from "underscore";
 
+import { combineReducers, compose } from "metabase/redux";
 import {
   type RequestsStateTree,
   requestsReducer,
@@ -87,8 +88,6 @@ import { addUndo } from "metabase/redux/undo";
 
 import { DELETE, GET, POST, PUT } from "./api";
 import {
-  combineReducers,
-  compose,
   withAction,
   withCachedDataAndRequestState,
   withRequestState,

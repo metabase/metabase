@@ -3,8 +3,8 @@ import { parse as parseUrl } from "url";
 import type { LocationDescriptor } from "history";
 import { push, replace } from "react-router-redux";
 
+import { createThunkAction } from "metabase/redux";
 import { isEqualCard } from "metabase/utils/card";
-import { createThunkAction } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";

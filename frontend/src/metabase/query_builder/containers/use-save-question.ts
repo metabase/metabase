@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
 import type { ScheduleCallback } from "metabase/common/hooks/use-callback-effect";
+import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 
 import { apiUpdateQuestion } from "../actions/core/core";

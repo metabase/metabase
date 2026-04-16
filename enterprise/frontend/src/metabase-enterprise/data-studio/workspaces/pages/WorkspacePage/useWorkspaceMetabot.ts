@@ -23,8 +23,8 @@ import {
 } from "metabase/metabot/state/actions";
 import { metabotActions } from "metabase/metabot/state/reducer";
 import { getMetabotState } from "metabase/metabot/state/selectors";
+import { useDispatch } from "metabase/redux";
 import { getIsWorkspace } from "metabase/selectors/routing";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import type {

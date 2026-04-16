@@ -9,6 +9,12 @@ import {
   useGetFieldQuery,
   useGetFieldValuesQuery,
 } from "metabase/api";
+import {
+  compose,
+  createAction,
+  createThunkAction,
+  handleActions,
+} from "metabase/redux";
 import { FieldSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -20,10 +26,6 @@ import {
   notify,
 } from "metabase/utils/entities";
 import {
-  compose,
-  createAction,
-  createThunkAction,
-  handleActions,
   updateData,
   withAction,
   withCachedDataAndRequestState,

@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { EditTransformMenuProps } from "metabase/plugins/oss/database";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,
@@ -17,7 +18,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { transformEdit } from "metabase/utils/urls";
 import {

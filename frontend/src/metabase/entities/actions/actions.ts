@@ -6,6 +6,7 @@ import {
   useGetActionQuery,
   useListActionsQuery,
 } from "metabase/api";
+import { createThunkAction } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import { ActionSchema } from "metabase/schema";
 import {
@@ -13,7 +14,6 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/utils/entities";
-import { createThunkAction } from "metabase/utils/redux";
 import type {
   CreateActionRequest,
   GetActionRequest,

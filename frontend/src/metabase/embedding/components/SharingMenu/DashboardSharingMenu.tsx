@@ -1,8 +1,8 @@
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { getIsDashCardsRunning } from "metabase/dashboard/selectors";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { useSelector } from "metabase/redux";
 import { Flex, Menu } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
 
 import { useSharingModal } from "../../hooks/use-sharing-modal";

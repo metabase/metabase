@@ -3,7 +3,7 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 import {
   useLazyGetWorkspaceTablesQuery,

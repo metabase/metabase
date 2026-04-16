@@ -1,9 +1,9 @@
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { useSelector } from "metabase/utils/redux";
 
 import { InfoText } from "./Description.styled";
 
