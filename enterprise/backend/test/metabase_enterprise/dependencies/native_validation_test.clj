@@ -598,3 +598,14 @@
                          FROM ORDERS)
                        SELECT prev_total AS source, TOTAL AS target
                        FROM ranked")))))))
+
+(deftest ^:parallel table-template-tag-skipped-test
+  (testing "queries with table-type template tags are skipped (table is dynamic)"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))
+          query  (-> (lib/native-query mp "SELECT * FROM {{my_table}}")
+                     (lib/with-template-tags {"my_table" {:type         :table
+                                                          :name         "my_table"
+                                                          :display-name "My Table"
+                                                          :table-id     1}}))]
+      (is (empty? (deps.native-validation/validate-native-query driver query))))))

@@ -259,29 +259,33 @@
 (mu/defn validate-native-query
   "Compiles a (native) query and validates that the fields and tables it refers to really exist.
 
-   Returns a set of errors, each enriched with source entity information when possible."
+   Returns a set of errors, each enriched with source entity information when possible.
+   Returns empty set for queries with table-type template tags since the actual
+   table (and therefore columns) is unknown at check time."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (into #{}
-        (comp
-         ;; Strip :unknown source attribution — consumers should not distinguish between
-         ;; "we tried and couldn't determine the source" vs "no source info available".
-         (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
-         ;; Remove errors referencing table placeholder names
-         (remove #(some-> (:name %) (str/starts-with? table-placeholder-prefix))))
-        (if (has-substitutable-template-tags? query)
-          (if-let [compiled (compile-toplevel-query query)]
-            (let [errors (validate-with-sources driver compiled true)]
+  (if (has-table-template-tags? query)
+    #{}
+    (into #{}
+          (comp
+           ;; Strip :unknown source attribution — consumers should not distinguish between
+           ;; "we tried and couldn't determine the source" vs "no source info available".
+           (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
+           ;; Remove errors referencing table placeholder names
+           (remove #(some-> (:name %) (str/starts-with? table-placeholder-prefix))))
+          (if (has-substitutable-template-tags? query)
+            (if-let [compiled (compile-toplevel-query query)]
+              (let [errors (validate-with-sources driver compiled true)]
+                (if (empty? errors)
+                  errors
+                  (fallback-enrich driver compiled errors)))
+              ;; Fallback: cards with placeholder collision
+              (driver/validate-native-query-fields driver (compile-query query)))
+            (let [compiled (compile-query query)
+                  errors   (validate-with-sources driver compiled false)]
               (if (empty? errors)
                 errors
-                (fallback-enrich driver compiled errors)))
-            ;; Fallback: cards with placeholder collision
-            (driver/validate-native-query-fields driver (compile-query query)))
-          (let [compiled (compile-query query)
-                errors   (validate-with-sources driver compiled false)]
-            (if (empty? errors)
-              errors
-              (fallback-enrich driver compiled errors))))))
+                (fallback-enrich driver compiled errors)))))))
 
 (defn- has-table-template-tags?
   "Returns true if the query has any table-type template tags."
