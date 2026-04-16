@@ -162,99 +162,102 @@
     (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))
 
+(defn- stub-fetch-batch
+  "Build a `fetch-batch` stub backed by a map of expected pair-sets -> rows. Each
+  invocation looks up rows by the incoming `(model, model_id)` pairs, so the stub
+  validates the real batching contract (which pair-sets are requested) without
+  coupling to call order. Unknown or duplicate pair-sets throw. Returns
+  `{:unseen <atom>, :stub <fn>}`; after the call under test, assert
+  `(empty? @unseen)` to catch missing invocations."
+  [expected]
+  (let [unseen (atom (set (keys expected)))]
+    {:unseen unseen
+     :stub   (fn [_ _ pairs]
+               (let [k (mapv vec pairs)]
+                 (if (contains? @unseen k)
+                   (do (swap! unseen disj k)
+                       (get expected k))
+                   (throw (ex-info (format "fetch-batch called with unexpected or duplicate pairs: %s (remaining expected: %s)"
+                                           (pr-str k) (pr-str @unseen))
+                                   {:pairs k :remaining @unseen})))))}))
+
 (deftest ^:sequential search-index-embedder-global-dedup-test
   (testing "global dedup picks lowest numeric model_id regardless of batch boundaries"
     ;; Stub at fetch-batch (not fetch-by-model+id) so the real partition-all + mapcat batching
     ;; path executes. With batch-size 1, each entity pair lands in its own SQL batch, so the
     ;; two duplicates come back from separate partitions and must be merged by the caller.
-    ;; Each batch entry pairs the expected `(model, model_id)` pair-seq (to validate the batching
-    ;; contract — specifically that `entity-type->search-model` maps the entity :kind correctly)
-    ;; with the rows to return.
+    ;; The stub keys the expected batches by `(model, model_id)` pair-seq, so a regression in
+    ;; `entity-type->search-model` (or any extra/missing fetch call) fails the test.
     (let [winner-vec (float-array [1.0 0.0 0.0])
           loser-vec  (float-array [0.0 1.0 0.0])
-          batches    (atom [;; batch 1: table with model_id "10" (loser — higher id)
-                            {:expected [["table" "10"]]
-                             :rows [{:name "Orders" :model_id "10" :model "table" :embedding loser-vec}]}
-                            ;; batch 2: table with model_id "2" (winner — lower id)
-                            {:expected [["table" "2"]]
-                             :rows [{:name "orders" :model_id "2"  :model "table" :embedding winner-vec}]}])]
+          {:keys [unseen stub]}
+          (stub-fetch-batch
+           {;; table with model_id "10" (loser — higher id)
+            [["table" "10"]] [{:name "Orders" :model_id "10" :model "table" :embedding loser-vec}]
+            ;; table with model_id "2" (winner — lower id)
+            [["table" "2"]]  [{:name "orders" :model_id "2"  :model "table" :embedding winner-vec}]})]
       (with-redefs [ss.embedders/try-active-index-state
                     (constantly {:pgvector :mock :table-name "t" :model nil})
                     ss.embedders/fetch-batch-size 1
-                    ss.embedders/fetch-batch
-                    (fn [_ _ pairs]
-                      (let [{:keys [expected rows]} (first @batches)]
-                        (swap! batches rest)
-                        (is (= expected (mapv vec pairs))
-                            "fetch-batch should receive the (model, model_id) pairs for this batch")
-                        rows))]
+                    ss.embedders/fetch-batch stub]
         (let [result (semantic-search/search-index-embedder
                       [{:id 10 :name "Orders" :kind :table}
                        {:id 2  :name "orders" :kind :table}])]
           (is (= 1 (count result)) "duplicate normalized names collapse to one entry")
           (is (= (seq winner-vec) (seq (get result "orders")))
-              "the row with the lowest numeric model_id wins")))))
+              "the row with the lowest numeric model_id wins")
+          (is (empty? @unseen)
+              "every expected fetch-batch pair-set must be requested")))))
 
   (testing "cross-model duplicates: lowest model_id wins, model is secondary tie-break"
     ;; :kind :question maps to "card" and :kind :table maps to "table" via entity-type->search-model,
     ;; so the real (model, model_id) query contract is exercised. Both have id 5, so model_ids tie
-    ;; and the lexicographically smaller model ("card" < "table") must win. The stub asserts on the
-    ;; incoming pairs so a regression in entity-type->search-model (e.g. :question no longer mapping
-    ;; to "card") fails this test instead of passing silently.
+    ;; and the lexicographically smaller model ("card" < "table") must win. The stub is keyed by
+    ;; pairs so a regression in entity-type->search-model (e.g. :question no longer mapping to
+    ;; "card") throws from the stub instead of passing silently.
     (let [card-vec  (float-array [1.0 0.0])
           table-vec (float-array [0.0 1.0])
-          batches   (atom [;; batch 1: card (from :question entity)
-                           {:expected [["card" "5"]]
-                            :rows [{:name "Revenue" :model_id "5" :model "card"  :embedding card-vec}]}
-                           ;; batch 2: table (from :table entity)
-                           {:expected [["table" "5"]]
-                            :rows [{:name "revenue" :model_id "5" :model "table" :embedding table-vec}]}])]
+          {:keys [unseen stub]}
+          (stub-fetch-batch
+           {;; card (from :question entity)
+            [["card" "5"]]  [{:name "Revenue" :model_id "5" :model "card"  :embedding card-vec}]
+            ;; table (from :table entity)
+            [["table" "5"]] [{:name "revenue" :model_id "5" :model "table" :embedding table-vec}]})]
       (with-redefs [ss.embedders/try-active-index-state
                     (constantly {:pgvector :mock :table-name "t" :model nil})
                     ss.embedders/fetch-batch-size 1
-                    ss.embedders/fetch-batch
-                    (fn [_ _ pairs]
-                      (let [{:keys [expected rows]} (first @batches)]
-                        (swap! batches rest)
-                        (is (= expected (mapv vec pairs))
-                            "fetch-batch should receive the (model, model_id) pairs for this batch")
-                        rows))]
+                    ss.embedders/fetch-batch stub]
         (let [result (semantic-search/search-index-embedder
                       [{:id 5 :name "Revenue" :kind :question}
                        {:id 5 :name "revenue" :kind :table}])]
           (is (= 1 (count result)))
           (is (= (seq card-vec) (seq (get result "revenue")))
-              "when model_ids tie, the lexicographically smaller model wins (card < table)"))))))
+              "when model_ids tie, the lexicographically smaller model wins (card < table)")
+          (is (empty? @unseen)
+              "every expected fetch-batch pair-set must be requested"))))))
 
 (deftest ^:sequential search-index-embedder-cross-batch-dedup-test
   (testing "duplicates split across separate fetch batches are resolved globally"
     ;; Mock at the fetch-batch level (not fetch-by-model+id) so the real partition-all + mapcat
     ;; path in fetch-by-model+id executes. With batch-size 1, each entity pair lands in its own
-    ;; SQL batch. Each batch entry pairs an expected `(model, model_id)` pair-seq (to validate the
-    ;; batching contract) with the rows to return. Entity kinds are chosen so that the search-model
-    ;; mapping (`:question` → "card", `:table` → "table") is exercised, not assumed.
+    ;; SQL batch. The stub is keyed by the expected `(model, model_id)` pair-seq, so it validates
+    ;; the batching contract — `entity-type->search-model` mapping (`:question` → "card",
+    ;; `:table` → "table") is exercised, not assumed, and extra/missing batches fail the test.
     (let [winner-vec (float-array [1.0 0.0 0.0])
           loser-vec  (float-array [0.0 1.0 0.0])
           other-vec  (float-array [0.0 0.0 1.0])
-          batches    (atom [;; batch 1: table with model_id "7"
-                            {:expected [["table" "7"]]
-                             :rows [{:name "Orders" :model_id "7" :model "table" :embedding loser-vec}]}
-                            ;; batch 2: card with model_id "3" — should win globally
-                            {:expected [["card" "3"]]
-                             :rows [{:name "orders" :model_id "3" :model "card" :embedding winner-vec}]}
-                            ;; batch 3: different entity, no collision
-                            {:expected [["table" "1"]]
-                             :rows [{:name "Products" :model_id "1" :model "table" :embedding other-vec}]}])]
+          {:keys [unseen stub]}
+          (stub-fetch-batch
+           {;; table with model_id "7"
+            [["table" "7"]] [{:name "Orders" :model_id "7" :model "table" :embedding loser-vec}]
+            ;; card with model_id "3" — should win globally
+            [["card" "3"]]  [{:name "orders" :model_id "3" :model "card" :embedding winner-vec}]
+            ;; different entity, no collision
+            [["table" "1"]] [{:name "Products" :model_id "1" :model "table" :embedding other-vec}]})]
       (with-redefs [ss.embedders/try-active-index-state
                     (constantly {:pgvector :mock :table-name "t" :model nil})
                     ss.embedders/fetch-batch-size 1
-                    ss.embedders/fetch-batch
-                    (fn [_ _ pairs]
-                      (let [{:keys [expected rows]} (first @batches)]
-                        (swap! batches rest)
-                        (is (= expected (mapv vec pairs))
-                            "fetch-batch should receive the (model, model_id) pairs for this batch")
-                        rows))]
+                    ss.embedders/fetch-batch stub]
         (let [result (semantic-search/search-index-embedder
                       [{:id 7 :name "Orders"   :kind :table}
                        {:id 3 :name "orders"   :kind :question}
@@ -263,7 +266,9 @@
           (is (= (seq winner-vec) (seq (get result "orders")))
               "lowest model_id wins across batch boundaries")
           (is (some? (get result "products"))
-              "non-colliding entity is retained")))))
+              "non-colliding entity is retained")
+          (is (empty? @unseen)
+              "every expected fetch-batch pair-set must be requested")))))
 
   (testing "cross-batch, cross-model duplicates: model_id primary, model secondary"
     ;; Same normalized name from three different batches and three different model types.
@@ -273,32 +278,27 @@
     (let [winner-vec          (float-array [1.0 0.0])
           same-id-other-model (float-array [0.0 1.0])
           higher-id-vec       (float-array [0.5 0.5])
-          batches             (atom [;; batch 1: high model_id, model "table"
-                                     {:expected [["table" "12"]]
-                                      :rows [{:name "Revenue" :model_id "12" :model "table" :embedding higher-id-vec}]}
-                                     ;; batch 2: low model_id, model "dataset"
-                                     {:expected [["dataset" "5"]]
-                                      :rows [{:name "revenue" :model_id "5" :model "dataset" :embedding same-id-other-model}]}
-                                     ;; batch 3: low model_id, model "card" — card < dataset so this wins
-                                     {:expected [["card" "5"]]
-                                      :rows [{:name "REVENUE" :model_id "5" :model "card" :embedding winner-vec}]}])]
+          {:keys [unseen stub]}
+          (stub-fetch-batch
+           {;; high model_id, model "table"
+            [["table" "12"]]  [{:name "Revenue" :model_id "12" :model "table" :embedding higher-id-vec}]
+            ;; low model_id, model "dataset"
+            [["dataset" "5"]] [{:name "revenue" :model_id "5" :model "dataset" :embedding same-id-other-model}]
+            ;; low model_id, model "card" — card < dataset so this wins
+            [["card" "5"]]    [{:name "REVENUE" :model_id "5" :model "card" :embedding winner-vec}]})]
       (with-redefs [ss.embedders/try-active-index-state
                     (constantly {:pgvector :mock :table-name "t" :model nil})
                     ss.embedders/fetch-batch-size 1
-                    ss.embedders/fetch-batch
-                    (fn [_ _ pairs]
-                      (let [{:keys [expected rows]} (first @batches)]
-                        (swap! batches rest)
-                        (is (= expected (mapv vec pairs))
-                            "fetch-batch should receive the (model, model_id) pairs for this batch")
-                        rows))]
+                    ss.embedders/fetch-batch stub]
         (let [result (semantic-search/search-index-embedder
                       [{:id 12 :name "Revenue" :kind :table}
                        {:id 5  :name "revenue" :kind :model}
                        {:id 5  :name "REVENUE" :kind :question}])]
           (is (= 1 (count result)) "all three collapse to one normalized name")
           (is (= (seq winner-vec) (seq (get result "revenue")))
-              "model_id 5 + model card wins (lowest id, then lexicographic: card < dataset)"))))))
+              "model_id 5 + model card wins (lowest id, then lexicographic: card < dataset)")
+          (is (empty? @unseen)
+              "every expected fetch-batch pair-set must be requested"))))))
 
 (deftest ^:parallel prefer-new-row-test
   (let [prefer? #'ss.embedders/prefer-new-row?]
