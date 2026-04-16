@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -61,19 +62,18 @@
 ;; - Use :encode/api transformers to convert kebab-case data from internal functions
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
-(mr/def ::field-type
-  "A data type for a field derived from Metabase's type hierarchy."
-  [:enum :boolean :date :datetime :time :number :string])
-
 (mr/def ::field
   "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:field_id :string]
    [:name :string]
-   [:type {:optional true} [:maybe ::field-type]]
+   [:display_name :string]
    [:description {:optional true} [:maybe :string]]
-   [:database_type {:optional true} [:maybe :string]]
+   [:base_type :string]
+   [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type {:optional true} [:maybe :string]]
+   [:database_type {:optional true} [:maybe :string]]
+   [:coercion_strategy {:optional true} [:maybe :string]]
    [:field_values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::entity-type
@@ -220,7 +220,8 @@
        [:with-segments       {:optional true} [:maybe :boolean]]]]
   (check-tool-result
    (entity-details/get-table-details
-    {:table-id             id
+    {:entity-type          :table
+     :entity-id            id
      :with-fields?         with-fields
      :with-field-values?   with-field-values
      :with-related-tables? with-related-tables
@@ -855,6 +856,10 @@
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
+
+(def +agent-api-enabled
+  "Wrap routes so they may only be accessed when the Agent API is enabled."
+  agent-api.validation/+agent-api-enabled)
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 

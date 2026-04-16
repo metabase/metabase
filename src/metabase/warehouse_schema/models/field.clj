@@ -420,8 +420,8 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/generate-path "Field" [_ field]
-  (let [[db schema table & fields] (serdes/*export-field-fk* (:id field))]
+(defmethod serdes/generate-path "Field" [_ {:keys [id]}]
+  (let [[db schema table & fields] (serdes/*export-field-fk* id)]
     (->> (into (serdes/table->path [db schema table])
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
@@ -465,13 +465,13 @@
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id opts)}
-   :defaults {:active                     true
-              :database_is_auto_increment false
-              :database_required          false
-              :is_defective_duplicate     false
-              :json_unfolding             false
-              :preview_display            true}})
+               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
+   :defaults  {:active                     true
+               :database_is_auto_increment false
+               :database_required          false
+               :is_defective_duplicate     false
+               :json_unfolding             false
+               :preview_display            true}})
 
 (defmethod serdes/storage-path "Field" [field _]
   (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))

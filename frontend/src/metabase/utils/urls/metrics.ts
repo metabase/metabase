@@ -1,8 +1,5 @@
 import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
-import type {
-  MetricSourceId,
-  MetricsViewerDisplayType,
-} from "metabase/metrics-viewer/types/viewer-state";
+import type { MetricsViewerDisplayType } from "metabase/metrics-viewer/types/viewer-state";
 import {
   type SerializedMetricsViewerPageState,
   encodeState,
@@ -25,6 +22,10 @@ export function exploreMetric(metricId: number): string {
   return `${METRICS_VIEWER_ROOT}?metricId=${metricId}`;
 }
 
+export function exploreMeasure(measureId: number): string {
+  return `${METRICS_VIEWER_ROOT}?measureId=${measureId}`;
+}
+
 export interface ExploreMetricDimensionOptions {
   metricId: number;
   dimensionId: string;
@@ -40,16 +41,15 @@ export function exploreMetricDimension({
   displayType,
   label,
 }: ExploreMetricDimensionOptions): string {
-  const sourceId: MetricSourceId = `metric:${metricId}`;
   const state: SerializedMetricsViewerPageState = {
-    sources: [{ type: "metric", id: metricId }],
+    formulaEntities: [{ type: "metric", id: metricId }],
     tabs: [
       {
         id: dimensionId,
         type: dimensionType,
         label: label ?? null,
         display: displayType,
-        definitions: [{ definitionId: sourceId, dimensionId }],
+        definitions: [{ slotIndex: 0, dimensionId }],
       },
     ],
     selectedTabId: dimensionId,

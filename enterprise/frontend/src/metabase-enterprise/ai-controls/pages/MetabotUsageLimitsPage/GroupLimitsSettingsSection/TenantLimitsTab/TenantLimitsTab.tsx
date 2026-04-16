@@ -5,7 +5,15 @@ import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Alert, Box, Icon, Stack, Text, TextInput } from "metabase/ui";
+import {
+  Alert,
+  Box,
+  Icon,
+  NumberInput,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import { useUpdateAIControlsTenantLimitMutation } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
 
@@ -18,6 +26,7 @@ import {
   getColumnName,
   getDescription,
   getInputLabel,
+  getMaxUsageInputSuffix,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -73,13 +82,18 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
     SAVE_DEBOUNCE_MS,
   );
 
-  const handleChange = (tenant: Tenant, inputValue: string) => {
+  const handleChange = (tenant: Tenant, inputValue: string | number) => {
     const maxUsage = sanitizeUsageLimitValue(inputValue);
     setLocalLimitsMap((prev: Record<number, number | null>) => ({
       ...prev,
       [tenant.id]: maxUsage,
     }));
-    debouncedSaveTenantLimit(tenant, maxUsage);
+    const isOverInstanceLimit =
+      maxUsage != null && instanceLimit != null && maxUsage > instanceLimit;
+
+    if (!isOverInstanceLimit) {
+      debouncedSaveTenantLimit(tenant, maxUsage);
+    }
   };
 
   const filteredTenants = useMemo(() => {
@@ -134,28 +148,46 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTenants.map((tenant) => (
-                      <tr key={tenant.id} className={S.BodyRow}>
-                        <td className={S.BodyCell}>{tenant.name}</td>
-                        <td className={S.BodyCell}>
-                          <TextInput
-                            placeholder={placeholder}
-                            value={localLimitsMap?.[tenant.id] ?? ""}
-                            onChange={(e) =>
-                              handleChange(tenant, e.target.value)
-                            }
-                            classNames={{ input: S.LimitInput }}
-                            type="number"
-                            min={1}
-                            aria-label={getInputLabel(
-                              tenant.name,
-                              limitType,
-                              limitPeriod,
-                            )}
-                          />
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredTenants.map((tenant) => {
+                      const inputValue = String(
+                        localLimitsMap?.[tenant.id] ?? "",
+                      );
+                      const maxUsage = sanitizeUsageLimitValue(inputValue);
+                      const isOverInstanceLimit =
+                        maxUsage != null &&
+                        instanceLimit != null &&
+                        maxUsage > instanceLimit;
+
+                      return (
+                        <tr key={tenant.id} className={S.BodyRow}>
+                          <td className={S.BodyCell}>{tenant.name}</td>
+                          <td className={S.BodyCell}>
+                            <NumberInput
+                              placeholder={placeholder}
+                              value={inputValue}
+                              onChange={(value) => handleChange(tenant, value)}
+                              classNames={{ input: S.LimitInput }}
+                              error={
+                                isOverInstanceLimit
+                                  ? t`Can't be higher than the instance limit`
+                                  : undefined
+                              }
+                              min={0}
+                              decimalScale={0}
+                              aria-label={getInputLabel(
+                                tenant.name,
+                                limitType,
+                                limitPeriod,
+                              )}
+                              suffix={getMaxUsageInputSuffix(
+                                limitType,
+                                localLimitsMap?.[tenant.id],
+                              )}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </Box>

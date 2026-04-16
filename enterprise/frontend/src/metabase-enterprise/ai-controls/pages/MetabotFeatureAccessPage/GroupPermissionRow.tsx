@@ -129,7 +129,7 @@ export function GroupPermissionRow(props: GroupPermissionRowProps) {
         }
 
         return (
-          <td key={key} className={S.Cell}>
+          <td key={key} className={cx(S.Cell, S.CenterText)}>
             <Box className={S.CellContent}>
               <Checkbox
                 aria-label={t`Allow ${group.name} user group to access ${label} AI tool.`}

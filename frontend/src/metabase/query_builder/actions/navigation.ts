@@ -2,9 +2,9 @@ import type { Location } from "history";
 import _ from "underscore";
 
 import { resetUIControls } from "metabase/redux/query-builder";
+import type { Dispatch } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
 import { createThunkAction } from "metabase/utils/redux";
-import type { Dispatch } from "metabase-types/store";
 
 import {
   getCard,

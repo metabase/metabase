@@ -21,6 +21,13 @@ import {
   OPEN_NAVBAR,
   isNavbarOpenForPathname,
 } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
+import {
+  createMockAppState,
+  createMockEmbedOptions,
+  createMockEmbedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { User } from "metabase-types/api";
 import {
@@ -28,13 +35,6 @@ import {
   createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import {
-  createMockAppState,
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import Navbar from "./Navbar";
 
@@ -129,6 +129,16 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/question/1" });
     await expectNavbarClosed();
+  });
+
+  it("should stay open when navigating to the database reference questions page (metabase#72001)", async () => {
+    const store = await setup({ pathname: "/reference/databases/1" });
+    await expectNavbarOpen();
+    dispatchLocationChange({
+      store,
+      pathname: "/reference/databases/1/tables/2/questions",
+    });
+    await expectNavbarOpen();
   });
 
   it("should hide when visiting a question and stay hidden when returning to collection", async () => {

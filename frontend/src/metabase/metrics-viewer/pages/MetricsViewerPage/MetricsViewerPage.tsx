@@ -1,7 +1,8 @@
 import type { Location } from "history";
 import { useCallback } from "react";
 
-import { Box, Flex, Stack } from "metabase/ui";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import {
   trackMetricsViewerMetricAdded,
@@ -27,22 +28,27 @@ export type MetricsViewerPageProps = {
 };
 
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
+  const useMetricsViewerResult = useMetricsViewer(props);
+
   const {
     definitions,
+    formulaEntities,
     tabs,
     activeTab,
     activeTabId,
-    errorsByDefinitionId,
-    modifiedDefinitions,
+    initialLoadComplete,
+    queriesAreLoading,
+    queriesError,
+    modifiedDefinitionsBySlotIndex,
+    metricSlots,
     series,
-    cardIdToDefinitionId,
+    cardIdToEntityIndex,
     activeBreakoutColors,
     sourceColors,
     selectedMetrics,
     sourceOrder,
     sourceDataById,
     availableDimensions,
-    isExecuting,
     addMetric,
     swapMetric,
     removeMetric,
@@ -52,9 +58,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     updateActiveTab,
     changeTabDimension,
     removeTabDimension,
-    updateDefinition,
     setBreakoutDimension,
-  } = useMetricsViewer(props);
+    setFormulaEntities,
+  } = useMetricsViewerResult;
 
   const handleAddMetric = useCallback(
     (metric: SelectedMetric) => {
@@ -72,29 +78,39 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     [removeMetric],
   );
 
-  const hasDefinitions = definitions.length > 0;
-  const hasLoadedDefinitions = definitions.some(
+  if (!initialLoadComplete) {
+    // parsing formulas won't work until the initial set of definitions are loaded
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading />
+      </Center>
+    );
+  }
+
+  const hasDefinitions = Object.keys(definitions).length > 0;
+  const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
 
   return (
-    <Stack h="100%" gap={0} className={S.root}>
-      <Box px="lg" pt="md" flex="0 0 auto">
+    <Stack px="3rem" h="100%" gap={0} className={S.root}>
+      <Box pt="md" flex="0 0 auto">
         <MetricSearchPanel
+          definitions={definitions}
+          formulaEntities={formulaEntities}
+          onFormulaEntitiesChange={setFormulaEntities}
           selectedMetrics={selectedMetrics}
           metricColors={sourceColors}
-          definitions={definitions}
           onAddMetric={handleAddMetric}
           onRemoveMetric={handleRemoveMetric}
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
-          onUpdateDefinition={updateDefinition}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>
         <Stack gap={0} flex={1} mih={0} miw={0}>
           {hasDefinitions && (
-            <Box px="lg" pt="xs" flex="0 0 auto" className={S.tabsBar}>
+            <Box pt="sm" flex="0 0 auto" className={S.tabsBar}>
               <MetricsViewerTabs
                 tabs={tabs}
                 activeTabId={activeTabId}
@@ -108,10 +124,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
               />
             </Box>
           )}
-          <Flex flex="1 1 auto" mih={0}>
+          <Flex flex="1 1 auto" mih={0} pt="lg">
             <Flex
               direction="column"
-              px="lg"
               pt="md"
               pb="lg"
               flex={1}
@@ -123,19 +138,23 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
               ) : activeTab ? (
                 <MetricsViewerTabContent
                   definitions={definitions}
+                  formulaEntities={formulaEntities}
                   tab={activeTab}
-                  errorsByDefinitionId={errorsByDefinitionId}
-                  modifiedDefinitions={modifiedDefinitions}
-                  series={series}
-                  cardIdToDefinitionId={cardIdToDefinitionId}
-                  sourceColors={sourceColors}
-                  isExecuting={isExecuting}
-                  onTabUpdate={updateActiveTab}
-                  onDimensionChange={(defId, dim) =>
-                    changeTabDimension(activeTab.id, defId, dim)
+                  queriesAreLoading={queriesAreLoading}
+                  queriesError={queriesError}
+                  modifiedDefinitionsBySlotIndex={
+                    modifiedDefinitionsBySlotIndex
                   }
-                  onDimensionRemove={(defId) =>
-                    removeTabDimension(activeTab.id, defId)
+                  metricSlots={metricSlots}
+                  series={series}
+                  cardIdToEntityIndex={cardIdToEntityIndex}
+                  sourceColors={sourceColors}
+                  onTabUpdate={updateActiveTab}
+                  onDimensionChange={(slotIndex, dim) =>
+                    changeTabDimension(activeTab.id, slotIndex, dim)
+                  }
+                  onDimensionRemove={(slotIndex) =>
+                    removeTabDimension(activeTab.id, slotIndex)
                   }
                 />
               ) : hasLoadedDefinitions ? (
@@ -143,6 +162,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
               ) : null}
             </Flex>
             <BreakoutLegend
+              formulaEntities={formulaEntities}
               definitions={definitions}
               activeBreakoutColors={activeBreakoutColors}
             />

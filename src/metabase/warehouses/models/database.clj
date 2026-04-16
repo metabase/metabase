@@ -648,7 +648,7 @@
                                         ::serdes/skip))
                                     :import identity}
                :creator_id          (serdes/fk :model/User)
-               :router_database_id (serdes/fk :model/Database :name)
+               :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}
    :defaults {:auto_run_queries true
               :is_attached_dwh  false

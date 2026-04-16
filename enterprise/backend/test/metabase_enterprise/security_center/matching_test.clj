@@ -1,6 +1,7 @@
 (ns metabase-enterprise.security-center.matching-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.security-center.matching :as matching]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
@@ -215,7 +216,8 @@
                   :published_at      #t "2026-03-24T00:00:00Z"
                   :updated_at        #t "2026-03-24T00:00:00Z"}]
     (matching/evaluate-all-advisories!)
-    (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory :advisory_id id))]
+    (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory :advisory_id id))
+          past #t "2020-01-01T00:00:00Z"]
       (testing "each advisory gets the correct status and timestamp"
         (is (=? {:match_status      :active
                  :last_evaluated_at some?}
@@ -226,9 +228,22 @@
         (is (=? {:match_status      :error
                  :last_evaluated_at some?}
                 (fetch "SC-EVAL-003"))))
-      (testing "acknowledged advisories are skipped"
+      (testing "acknowledged + active advisories are still re-evaluated"
         (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-001"}
-                    {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)})
-        (let [before-eval (:last_evaluated_at (fetch "SC-EVAL-001"))]
-          (matching/evaluate-all-advisories!)
-          (is (= before-eval (:last_evaluated_at (fetch "SC-EVAL-001")))))))))
+                    {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
+                     :last_evaluated_at past})
+        (matching/evaluate-all-advisories!)
+        (is (not= past (:last_evaluated_at (fetch "SC-EVAL-001")))))
+      (testing "acknowledged + not_affected advisories are skipped"
+        (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-002"}
+                    {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
+                     :last_evaluated_at past})
+        (matching/evaluate-all-advisories!)
+        (is (= (t/instant past)
+               (t/instant (:last_evaluated_at (fetch "SC-EVAL-002"))))))
+      (testing "acknowledged + error advisories are still re-evaluated"
+        (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-003"}
+                    {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
+                     :last_evaluated_at past})
+        (matching/evaluate-all-advisories!)
+        (is (not= past (:last_evaluated_at (fetch "SC-EVAL-003"))))))))

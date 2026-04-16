@@ -19,6 +19,8 @@
   :type       :boolean
   :visibility :public
   :default    true
+  :getter     #(and (llm.settings/ai-features-enabled?)
+                    (setting/get-value-of-type :boolean :metabot-enabled?))
   :export?    true
   :doc        false)
 
@@ -87,6 +89,8 @@
   :type       :boolean
   :visibility :public
   :default    true
+  :getter     #(and (llm.settings/ai-features-enabled?)
+                    (setting/get-value-of-type :boolean :embedded-metabot-enabled?))
   :export?    true
   :doc        false)
 
@@ -99,6 +103,14 @@
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
   #{"anthropic" "openai" "openrouter"})
+
+(def default-llm-metabot-provider
+  "Default provider/model used for Metabot when no explicit model is selected."
+  "anthropic/claude-sonnet-4-6")
+
+(def default-metabase-llm-metabot-provider
+  "Managed-provider version of [[default-llm-metabot-provider]]."
+  (str provider-util/metabase-provider-prefix "/" default-llm-metabot-provider))
 
 (defn- validate-metabot-provider!
   "Validate that `value` has the format `provider/model` with a supported provider prefix.
@@ -138,7 +150,7 @@
   (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
   :type             :string
   :encryption       :no
-  :default          "anthropic/claude-sonnet-4-6"
+  :default          default-llm-metabot-provider
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
@@ -147,20 +159,6 @@
                       (when new-value
                         (validate-metabot-provider! new-value))
                       (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
-
-(defsetting llm-metabot-provider-lite
-  (deferred-tru "The AI provider and model for lightweight Metabot tasks (e.g. user intent classification).")
-  :type             :string
-  :encryption       :no
-  :default          "anthropic/claude-haiku-4-5"
-  :visibility       :settings-manager
-  :export?          false
-  :deprecated-name  :ee-ai-metabot-provider-lite
-  :doc              false
-  :setter           (fn [new-value]
-                      (when new-value
-                        (validate-metabot-provider! new-value))
-                      (setting/set-value-of-type! :string :llm-metabot-provider-lite new-value)))
 
 (defn- token-configured?
   [token]
@@ -188,17 +186,6 @@
              provider-util/provider-and-model->provider
              configured-provider-api-key
              token-configured?))))
-
-(defsetting llm-metabot-internal-tasks-enabled?
-  (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
-  :type             :boolean
-  :visibility       :settings-manager
-  :default          false
-  :export?          false
-  :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
-  :doc              false
-  :getter           #(and (setting/get-value-of-type :boolean :llm-metabot-internal-tasks-enabled?)
-                          (llm-provider-configured? (llm-metabot-provider-lite))))
 
 (defsetting llm-metabot-configured?
   "Whether the API key for the selected Metabot provider is configured."

@@ -5,6 +5,10 @@ import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import {
   createMockDatabase,
   createMockSavedQuestionsDatabase,
   createMockTable,
@@ -13,10 +17,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;

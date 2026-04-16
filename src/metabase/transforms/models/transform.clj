@@ -364,7 +364,7 @@
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
-               :source_database_id (serdes/fk :model/Database :name)
+               :source_database_id (serdes/fk :model/Database)
                :source             {:export (fn [source]
                                               (-> source
                                                   (m/update-existing :query serdes/export-mbql)
@@ -389,7 +389,7 @@
                                                                                         (m/update-existing :database_id import-maybe-int-database-fk)))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]
