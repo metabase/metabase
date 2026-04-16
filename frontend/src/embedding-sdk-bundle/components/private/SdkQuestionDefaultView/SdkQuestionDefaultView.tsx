@@ -232,7 +232,13 @@ export const SdkQuestionDefaultView = ({
               />
             ) : (
               withChartTypeSelector && (
-                <ChartTypeDropdown className={MobileToolbarS.LeftButton} />
+                <ChartTypeDropdown
+                  className={MobileToolbarS.LeftButton}
+                  styles={{
+                    inner: { width: "100%" },
+                    label: { marginRight: "auto" },
+                  }}
+                />
               )
             )}
 
