@@ -155,14 +155,17 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api}
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init}
    :uses    #{api
               auth-identity
               lib
+              llm
               metabot
               query-processor
               request
               server
+              settings
               util}
    :model-imports #{:model/User}}
 
@@ -1146,6 +1149,7 @@
    :uses #{agent-api
            api
            config
+           llm
            oauth-server
            request
            server
@@ -1455,7 +1459,6 @@
   {:team "UX West"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
-           app-db
            audit-app
            events
            permissions
@@ -1497,6 +1500,7 @@
            config
            events
            internal-stats
+           llm
            settings
            startup
            task
@@ -1549,7 +1553,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Document}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Document}}
 
   pulse
   {:team "Gadget"
@@ -2053,6 +2057,7 @@
               permissions
               premium-features
               request
+              server
               settings
               system
               util}
@@ -2733,6 +2738,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Dashboard
+                    :model/DatabaseRouter
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
@@ -3045,6 +3051,7 @@
                     :model/Field
                     :model/Measure
                     :model/PersistedInfo
+                    :model/Sandbox
                     :model/Segment
                     :model/Table
                     :model/Transform}}

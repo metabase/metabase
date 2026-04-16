@@ -131,6 +131,16 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarClosed();
   });
 
+  it("should stay open when navigating to the database reference questions page (metabase#72001)", async () => {
+    const store = await setup({ pathname: "/reference/databases/1" });
+    await expectNavbarOpen();
+    dispatchLocationChange({
+      store,
+      pathname: "/reference/databases/1/tables/2/questions",
+    });
+    await expectNavbarOpen();
+  });
+
   it("should hide when visiting a question and stay hidden when returning to collection", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
