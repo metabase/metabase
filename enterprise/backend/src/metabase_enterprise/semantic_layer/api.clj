@@ -15,8 +15,8 @@
    [:score nat-int?]])
 
 (def ^:private PairsSubScore
-  "Sub-score block for components counted as pairs (collision or synonym pairs). `:error` is set
-  when synonym detection failed at runtime and the score was forced to 0."
+  "Sub-score block for components counted as pairs (collision or synonym pairs).
+  `:error` is set when synonym detection failed at runtime and the score was forced to 0."
   [:map
    [:pairs nat-int?]
    [:score nat-int?]
@@ -54,7 +54,8 @@
      [:embedding-model {:optional true} EmbeddingModelMeta]]]])
 
 (api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
-  "Return the current semantic-layer complexity score for this instance. Superuser-only, and quite expensive."
+  "Return the current semantic-layer complexity score for this instance.
+  Superuser-only, and quite expensive."
   [_route _query _body]
   (api/check-superuser)
   (complexity/complexity-scores))

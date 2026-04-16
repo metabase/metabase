@@ -1,15 +1,15 @@
 (ns metabase-enterprise.semantic-search.embedders
-  "Embedders that expose the pgvector semantic-search index as a name → vector lookup for other
-  features (initially the complexity score's synonym axis).
+  "Embedders that expose the pgvector semantic-search index as a name → vector lookup for other features
+  (initially the complexity score's synonym axis).
 
-  An embedder takes a seq of entity maps `{:id :name :kind}` and returns a `{normalized-name →
-  ^floats vector}` map, omitting entities the index doesn't know about. This lets callers fold
-  reuse of the indexed embeddings into their own pipelines without having to know about the
-  pgvector datasource, index metadata, or row shapes.
+  An embedder takes a seq of entity maps `{:id :name :kind}` and returns a `{normalized-name → ^floats
+  vector}` map, omitting entities the index doesn't know about.
+  This lets callers fold reuse of the indexed embeddings into their own pipelines without having to know
+  about the pgvector datasource, index metadata, or row shapes.
 
-  The indexed text combines name + description + other search fields, so the similarity signal is
-  closer to *\"semantically overlapping entities\"* than *\"synonymous names\"*. Good enough when
-  the alternative is paying to embed every entity name from scratch."
+  The indexed text combines name + description + other search fields, so the similarity signal is closer
+  to *\"semantically overlapping entities\"* than *\"synonymous names\"*.
+  Good enough when the alternative is paying to embed every entity name from scratch."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -25,8 +25,8 @@
 
 (def ^:private fetch-batch-size
   "Maximum number of `(model, model_id)` pairs per SQL query when reading from the pgvector index.
-  Keeps the generated OR predicate bounded so we don't hit JDBC bind-parameter limits or produce
-  query plans that choke on large installs."
+  Keeps the generated OR predicate bounded so we don't hit JDBC bind-parameter limits or produce query
+  plans that choke on large installs."
   500)
 
 (defn- normalize-name [s]
@@ -110,13 +110,14 @@
       nil)))
 
 (defn search-index-embedder
-  "Embedder that reads vectors from the active semantic-search pgvector index. Returns `{}` when
-  the index isn't available (premium feature off, not yet initialized, datasource unreachable).
+  "Embedder that reads vectors from the active semantic-search pgvector index.
+  Returns `{}` when the index isn't available (premium feature off, not yet initialized, datasource
+  unreachable).
   Never throws.
 
-  When multiple entities share a normalized name but have different indexed embeddings, the row
-  with the lowest numeric `model_id` wins (see `prefer-new-row?`) so the result is deterministic
-  across runs regardless of batch boundaries."
+  When multiple entities share a normalized name but have different indexed embeddings, the row chosen
+  by [[prefer-new-row?]] wins so the result is deterministic across runs regardless of batch
+  boundaries."
   [entities]
   (if-let [{:keys [pgvector table-name]} (try-active-index-state)]
     (try
@@ -150,9 +151,9 @@
 
 (defn active-embedding-model
   "Return the embedding model metadata for the *active* search index, not the current configuration.
-  Returns nil when the index is unreachable, not yet initialized, or the feature is disabled. Use
-  this instead of `get-configured-embedding-model` when you need to know what model the index is
-  *actually* serving — not just what the settings say."
+  Returns nil when the index is unreachable, not yet initialized, or the feature is disabled.
+  Use this instead of [[metabase-enterprise.semantic-search.env/get-configured-embedding-model]] when
+  you need to know what model the index is *actually* serving — not just what the settings say."
   []
   (when-let [{:keys [model]} (try-active-index-state)]
     (when model

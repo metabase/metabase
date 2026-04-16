@@ -7,11 +7,13 @@
     :universe — everything (library entities + all active physical tables)
 
   The score and its sub-scores are intentionally additive and close to the original back-of-envelope
-  proposal so v1 output is easy to reason about. See notes in the plan file for deferred tuning ideas.
+  proposal so v1 output is easy to reason about.
+  See notes in the plan file for deferred tuning ideas.
 
   The synonym sub-score is delegated to a pluggable embedder — see
-  [[metabase-enterprise.semantic-layer.complexity-embedders]]. Default in prod reuses vectors from the
-  semantic-search index so computing a score adds essentially no embedding cost."
+  [[metabase-enterprise.semantic-layer.complexity-embedders]].
+  Default in prod reuses vectors from the semantic-search index so computing a score adds essentially no
+  embedding cost."
   (:require
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-search.core :as semantic-search]
@@ -35,7 +37,8 @@
 
 (def ^:private synonym-similarity-threshold
   "Cosine similarity at or above which two names are flagged as synonyms.
-  Mirrors the semantic search system's cosine-distance cutoff."
+  Mirrors [[metabase-enterprise.semantic-search.core/max-cosine-distance]] so the aliasing signal and
+  the semantic-search cutoff are consistent."
   ;; round this to 3 decimal places in case floating point has added some epislon
   (* 0.01 (Math/round ^double (* 100 (- 1 semantic-search/max-cosine-distance)))))
 

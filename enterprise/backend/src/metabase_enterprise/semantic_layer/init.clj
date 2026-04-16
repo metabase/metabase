@@ -1,7 +1,7 @@
 (ns metabase-enterprise.semantic-layer.init
-  "Startup wiring for the semantic-layer module. Currently only registers an optional
-  development aid: if the `MB_PRINT_SEMANTIC_COMPLEXITY_SCORE` env var is truthy, the computed
-  complexity score for this instance is printed once at boot."
+  "Startup wiring for the semantic-layer module.
+  Currently only registers an optional development aid: if the `MB_PRINT_SEMANTIC_COMPLEXITY_SCORE` env
+  var is truthy, the computed complexity score for this instance is printed once at boot."
   (:require
    [clojure.pprint :as pprint]
    [metabase-enterprise.semantic-layer.complexity :as complexity]

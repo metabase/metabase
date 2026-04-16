@@ -13,17 +13,30 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 endpoint)))))
 
-(deftest complexity-endpoint-returns-schema-shaped-response-test
-  (testing "superusers receive a shape matching the endpoint's response schema"
-    (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
-      (is (=? {:library  {:total       nat-int?
-                          :components {:entity-count      {:count nat-int? :score nat-int?}
-                                       :name-collisions   {:pairs nat-int? :score nat-int?}
-                                       :synonym-pairs     {:pairs nat-int? :score nat-int?}
-                                       :field-count       {:count nat-int? :score nat-int?}
-                                       :repeated-measures {:count nat-int? :score nat-int?}}}
-               :universe {:total       nat-int?
-                          :components map?}
-               :meta     {:formula-version   pos-int?
-                          :synonym-threshold number?}}
-              resp)))))
+(deftest complexity-endpoint-superuser-gets-consistent-totals-test
+  (testing "check invariants not covered by schema"
+    (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
+          component-count  (fn [cat k] (or (get-in resp [cat :components k :count])
+                                           (get-in resp [cat :components k :pairs])))
+          component-score  (fn [cat k] (get-in resp [cat :components k :score]))
+          component-keys   [:entity-count :name-collisions :synonym-pairs
+                            :field-count :repeated-measures]]
+      (testing ":total equals the sum of its component :score values"
+        (doseq [catalog [:library :universe]
+                :let [{:keys [total components]} (get resp catalog)]]
+          (is (= total (reduce + 0 (map :score (vals components))))
+              (format "%s :total should equal sum of component :score values" catalog))))
+      (testing "universe is a superset of library: every count and score ≥ library's"
+        (doseq [k component-keys
+                metric [:count :score]
+                :let [lib (if (= metric :count) (component-count :library k)  (component-score :library k))
+                      uni (if (= metric :count) (component-count :universe k) (component-score :universe k))]]
+          (is (>= uni lib)
+              (format "universe %s %s (%d) should be ≥ library's (%d)" k metric uni lib))))
+      (testing ":synonym-pairs can't exceed the number of distinct-name pairs possible"
+        (doseq [catalog [:library :universe]
+                :let [n-entities (component-count catalog :entity-count)
+                      syn-pairs  (component-count catalog :synonym-pairs)
+                      max-pairs  (/ (* n-entities (dec n-entities)) 2)]]
+          (is (<= syn-pairs max-pairs)
+              (format "%s :synonym-pairs (%d) can't exceed n*(n-1)/2 for n=%d" catalog syn-pairs n-entities)))))))
