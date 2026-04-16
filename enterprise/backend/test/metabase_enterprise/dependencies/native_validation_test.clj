@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.native-validation-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
    [metabase.driver.sql :as driver.sql]
@@ -516,3 +517,41 @@
                                                {:source-entity-type :card
                                                 :source-entity-id 1234})})
                (deps.native-validation/validate-native-query driver query)))))))
+
+;;; ===========================================================================
+;;; Transform duplicate-column detection
+;;;
+;;; The :transform check in deps.analysis groups output fields by their
+;;; user-visible name (the alias when present), not the underlying column's
+;;; :name. Otherwise `t1.name AS user_name` and `t2.name AS venue_name` would
+;;; look like duplicates because both columns have :name "name".
+;;; ===========================================================================
+
+(defn- mp-with-transform [native-sql]
+  (let [query     (lib/->legacy-MBQL (lib/native-query meta/metadata-provider native-sql))
+        transform {:id     1
+                   :name   "tx"
+                   :source {:type :query :query query}
+                   :target {:type :table :schema "public" :name "out"}}]
+    (lib.tu/mock-metadata-provider meta/metadata-provider {:transforms [transform]})))
+
+(deftest ^:parallel transform-aliased-name-columns-not-duplicate-test
+  (testing "two `xxx.name` columns aliased to distinct names are NOT flagged as duplicates"
+    (let [mp     (mp-with-transform
+                  "SELECT u.NAME AS user_name, v.NAME AS venue_name
+                   FROM CHECKINS c
+                   JOIN USERS u ON c.USER_ID = u.ID
+                   JOIN VENUES v ON c.VENUE_ID = v.ID")
+          errors (deps.analysis/check-entity mp :transform 1)
+          dupes  (filter #(= :duplicate-column (:type %)) errors)]
+      (is (empty? dupes)
+          (str "Expected no :duplicate-column errors, got: " (pr-str dupes))))))
+
+(deftest ^:parallel transform-real-duplicate-still-flagged-test
+  (testing "a genuine output-name collision IS still flagged"
+    (let [mp     (mp-with-transform
+                  "SELECT TOTAL, SUBTOTAL AS total FROM ORDERS")
+          errors (deps.analysis/check-entity mp :transform 1)
+          dupes  (filter #(= :duplicate-column (:type %)) errors)]
+      (is (= [{:type :duplicate-column :name "TOTAL"}] dupes)
+          (str "Expected one :duplicate-column error, got: " (pr-str dupes))))))
