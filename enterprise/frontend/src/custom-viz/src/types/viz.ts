@@ -157,47 +157,115 @@ export type CustomStaticVisualizationProps<
 };
 
 export type ClickObject<TSettings extends Record<string, unknown>> = {
+  /** The raw value of the clicked cell. */
   value?: RowValue;
+
+  /** Column metadata for the clicked cell. */
   column?: Column;
+
+  /**
+   * Dimension values associated with the clicked data point.
+   * For example, when clicking a bar in a bar chart, dimensions
+   * contain the breakout values (e.g. the category and date) that
+   * identify the clicked bar.
+   */
   dimensions?: ClickObjectDimension[];
+
+  /** The browser MouseEvent that triggered the click. Used to position popovers. */
   event?: MouseEvent;
+
+  /** The DOM element that was clicked. Used to anchor popovers. */
   element?: Element;
-  // seriesIndex?: number;
-  // cardId?: CardId;
+
+  /** Visualization settings at the time of the click. */
   settings?: CustomVisualizationSettings<TSettings>;
-  // columnShortcuts?: boolean;
+
+  /**
+   * The full row of data and column metadata for the clicked data point.
+   * Provides access to the raw row values and their columns — useful when
+   * the click needs context beyond the single clicked cell.
+   */
   origin?: {
+    /** All values in the clicked row. */
     row: RowValue[];
+    /** Column metadata for each value in `row`. */
     cols: Column[];
   };
-  // extraData?: Record<string, unknown>;
-  // data?: ClickObjectDataRow[];
+
+  /**
+   * Column–value pairs for every column in the clicked row.
+   * Used by the drill-through system to determine available actions
+   * (e.g. filtering, detail views).
+   */
+  data?: ClickObjectDataRow[];
 };
 
-export interface ClickObjectDimension {
+/** A single column–value pair within a {@link ClickObject.data} array. */
+export interface ClickObjectDataRow {
+  /** Column metadata. May be `null` for computed/custom columns. */
+  col: Column | null;
+  /** The raw value for this column in the clicked row. */
   value: RowValue;
+}
+
+/** A dimension value associated with a clicked data point. */
+export interface ClickObjectDimension {
+  /** The raw value of the dimension. */
+  value: RowValue;
+  /** Column metadata for the dimension. */
   column: Column;
 }
 
+/** A single data point shown as a row in the hover tooltip. */
 export type HoveredDataPoint = {
+  /** Label displayed in the tooltip row. */
   key: string;
+  /** The raw value displayed in the tooltip row. */
   value: RowValue;
+  /** Column metadata used to format the value. */
   col: Column;
 };
 
+/** A dimension value shown in the hover tooltip. */
 export type HoveredDimension = {
+  /** The raw dimension value. */
   value: RowValue;
+  /** Column metadata for the dimension. */
   column: Column;
 };
 
 export type HoverObject = {
+  /**
+   * Index of the hovered series. Used by the legend to highlight
+   * the active series and mute the others.
+   */
   index?: number;
+
+  /** Index of the hovered series within the series array. */
   seriesIndex?: number;
+
+  /** The raw value of the hovered data point. Used as a single-row tooltip when `data` and `dimensions` are absent. */
   value?: unknown;
+
+  /** Column metadata for the hovered value. Used for formatting in the tooltip. */
   column?: Column;
+
+  /**
+   * Array of column–value pairs to display as rows in the tooltip.
+   * This is the primary way to provide tooltip content.
+   */
   data?: HoveredDataPoint[];
+
+  /**
+   * Dimension values for the hovered data point.
+   * Used as fallback tooltip content when `data` is not provided.
+   */
   dimensions?: HoveredDimension[];
+
+  /** The DOM element being hovered. Used to anchor the tooltip popover. */
   element?: Element;
+
+  /** The browser MouseEvent. Used as a fallback anchor when `element` is not available. */
   event?: MouseEvent;
 };
 
