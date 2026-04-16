@@ -1383,23 +1383,31 @@ describe("admin > custom visualizations", () => {
       cy.log(
         "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up SVG should render (no rotation).",
       );
-      H.main().find("svg > path").should("be.visible");
-      H.main().find("svg > path").should("not.have.attr", "transform");
+      // Use the plugin's unique viewBox to avoid matching UI icon SVGs.
+      const pluginPath = 'svg[viewBox="0 0 17 16"] > path';
+      H.main().find(pluginPath).should("be.visible");
+      H.main().find(pluginPath).should("not.have.attr", "transform");
 
       cy.log("Modifying plugin source to change the SVG fill color");
       cy.readFile(pluginSrcPath).then((src) => {
-        const updated = src.replace(
+        // Restore original fill first in case of a retry where it was already
+        // replaced on the previous attempt.
+        const restored = src.replace(
+          'fill="red"',
+          'fill="var(--mb-color-brand)"',
+        );
+        const updated = restored.replace(
           'fill="var(--mb-color-brand)"',
           'fill="red"',
         );
-        if (updated === src) {
+        if (updated === restored) {
           throw new Error(`Expected to replace fill in ${pluginSrcPath}`);
         }
         cy.writeFile(pluginSrcPath, updated);
       });
 
       cy.log("Checking if hot reload works");
-      H.main().find("svg > path").should("have.attr", "fill", "red");
+      H.main().find(pluginPath).should("have.attr", "fill", "red");
 
       cy.log("Verify plugin settings affect rendering.");
       cy.log(
@@ -1415,7 +1423,7 @@ describe("admin > custom visualizations", () => {
         name: /Done/,
       }).click();
       H.main()
-        .find("svg > path")
+        .find(pluginPath)
         .should("have.attr", "transform")
         .and("match", /rotate\(-180/);
 
@@ -1428,7 +1436,7 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("dialog", { name: /Save question/ }).should("not.exist");
       cy.reload();
       H.main()
-        .find("svg > path")
+        .find(pluginPath)
         .should("have.attr", "transform")
         .and("match", /rotate\(-180/);
     });
