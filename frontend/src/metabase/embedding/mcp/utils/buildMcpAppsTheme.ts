@@ -2,7 +2,7 @@ import type {
   MetabaseColor,
   MetabaseTheme,
 } from "metabase/embedding-sdk/theme";
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 import { resolveConcreteColor } from "../utils/resolveConcreteColor";
 

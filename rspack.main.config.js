@@ -233,19 +233,19 @@ const config = {
           priority: -10,
         },
         sqlFormatter: {
-          test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
+          test: /[\\/]sql-formatter[\\/]/,
           chunks: "all",
           name: "sql-formatter",
           priority: 10,
         },
         jspdf: {
-          test: /[\\/]node_modules[\\/]jspdf[\\/]/,
+          test: /[\\/]jspdf[\\/]/,
           chunks: "all",
           name: "jspdf",
           priority: 10,
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
+          test: /[\\/](html2canvas|html2canvas-pro)[\\/]/,
           chunks: "all",
           name: "html2canvas",
           priority: 10,
