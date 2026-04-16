@@ -355,12 +355,8 @@
                                                  (swap! calls inc)
                                                  (is (= "anthropic" provider))
                                                  (is (= "sk-ant-valid" api-key))
-                                                 (case (long @calls)
-                                                   1 (is (nil? (llm.settings/llm-anthropic-api-key))
-                                                         "verification should happen before saving the key")
-                                                   2 (is (= "sk-ant-valid" (llm.settings/llm-anthropic-api-key))
-                                                         "response should use the saved key")
-                                                   (is false (str "unexpected list-models call: " @calls)))
+                                                 (is (nil? (llm.settings/llm-anthropic-api-key))
+                                                     "verification should happen before saving the key")
                                                  {:models [{:id "claude-haiku-4-5"
                                                             :display_name "Claude Haiku 4.5"}]})]
           (is (= {:value  (metabot.settings/llm-metabot-provider)
@@ -370,8 +366,8 @@
                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                        {:provider "anthropic"
                                         :api-key  "sk-ant-valid"})))
-          (is (= 2 @calls)
-              "should verify first, then fetch models again after saving")
+          (is (= 1 @calls)
+              "should verify before saving and reuse the verified response")
           (is (= "sk-ant-valid"
                  (llm.settings/llm-anthropic-api-key))))))))
 
@@ -408,6 +404,22 @@
                                             :api-key  "sk-valid"})]
         (is (= "OpenAI API is not working but not saying why" (:message response)))
         (is (nil? (llm.settings/llm-openai-api-key)))))))
+
+(deftest settings-put-does-not-save-model-when-preflight-fails-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                     llm.settings/llm-anthropic-api-key      "sk-ant-valid"]
+    (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                             (is (= "anthropic" provider))
+                                             (is (= "sk-ant-valid" api-key))
+                                             (throw (ex-info "Anthropic API key has insufficient permissions"
+                                                             {:api-error true
+                                                              :status-code 403})))]
+      (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                           {:provider "anthropic"
+                                            :model    "claude-sonnet-4-5"})]
+        (is (= "Anthropic API key has insufficient permissions" (:message response)))
+        (is (= "anthropic/claude-haiku-4-5"
+               (metabot.settings/llm-metabot-provider)))))))
 
 (deftest settings-get-surfaces-invalid-api-key-error-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-invalid"]
@@ -603,6 +615,26 @@
       (is (false? (:ai_proxied msg)))
       (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
              (:usage msg))))))
+
+(deftest strip-tool-output-bloat-test
+  (testing "strips transient keys from tool-output results, keeping only :output"
+    (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-1"
+             :result {:output            "<result>XML</result>"
+                      :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
+                      :structured-output {:result-type :search :data [{:id 1}]}
+                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+  (testing "leaves non-tool-output parts untouched"
+    (let [text-part {:type :text :text "hello"}]
+      (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
+  (testing "handles result with no :output key"
+    (is (= {:type :tool-output :id "call-2" :result {}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-2"
+             :result {:structured-output {:some "data"}}})))))
 
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."

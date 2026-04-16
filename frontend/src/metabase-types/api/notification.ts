@@ -57,9 +57,19 @@ export type NotificationRecipientRawValue = {
   updated_at?: string;
 };
 
+export type NotificationRecipientGroup = {
+  type: "notification-recipient/group";
+  permissions_group_id: number;
+
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type NotificationRecipient =
   | NotificationRecipientUser
-  | NotificationRecipientRawValue;
+  | NotificationRecipientRawValue
+  | NotificationRecipientGroup;
 
 type NotificationHandlerBase = {
   notification_id?: NotificationId;

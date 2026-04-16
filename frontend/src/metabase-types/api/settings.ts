@@ -7,6 +7,7 @@ import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
+import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
 
 export interface OidcAuthProvider {
@@ -366,6 +367,7 @@ export const tokenFeatures = [
   "tenants",
   "workspaces",
   "writable_connection",
+  "admin_security_center",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -504,6 +506,8 @@ interface AdminSettings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "security-center-email-recipients": NotificationRecipient[] | null;
+  "security-center-slack-channel": string | null;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -527,6 +531,8 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "ai-features-enabled?": boolean;
+  "agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
@@ -581,6 +587,7 @@ interface PublicSettings {
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
+  "mcp-enabled?": boolean;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!

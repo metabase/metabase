@@ -148,6 +148,7 @@ export const createMockTokenFeatures = (
   tenants: false,
   workspaces: false,
   writable_connection: false,
+  admin_security_center: false,
   ...opts,
 });
 
@@ -315,6 +316,7 @@ export const createMockSettings = (
   "ldap-group-membership-filter": "(member={dn})",
   "loading-message": "doing-science",
   "llm-anthropic-api-key-configured?": false,
+  "mcp-enabled?": true,
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "native-query-autocomplete-match-style": "substring",
   "openai-api-key": null,
@@ -369,6 +371,8 @@ export const createMockSettings = (
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
+  "ai-features-enabled?": true,
+  "agent-api-enabled?": true,
   "metabot-enabled?": true,
   "embedded-metabot-enabled?": true,
   "show-metabase-links": true,
@@ -382,6 +386,8 @@ export const createMockSettings = (
   "slack-app-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",
+  "security-center-email-recipients": null,
+  "security-center-slack-channel": null,
   "store-url": "https://store.staging.metabase.com",
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
