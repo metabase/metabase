@@ -151,7 +151,7 @@ describe("issue 12228", () => {
 
   it("can load a question with a date filter (metabase#12228)", () => {
     H.createNativeQuestion(nativeQuery).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}?created_at=2026-01`);
+      cy.visit(`/question/${id}?created_at=2032-01`);
       cy.contains("580");
     });
   });

@@ -390,8 +390,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Created At: Year", "Created At: Month", "Count"],
           firstRows: [
-            ["2026", "January 2026", "580"],
-            ["2026", "February 2026", "543"],
+            ["2032", "January 2032", "580"],
+            ["2032", "February 2032", "543"],
           ],
         });
 
@@ -1088,7 +1088,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         H.assertTableData({
           columns: ["Min of Created At: Year", "Max of Created At: Month"],
-          firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2026, 12:00 AM"]],
+          firstRows: [["January 1, 2028, 12:00 AM", "April 1, 2032, 12:00 AM"]],
         });
 
         cy.log("'num-bins' breakouts");
@@ -1677,7 +1677,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         H.assertTableData({
           columns: ["Min of Created At: Year", "Max of Created At: Month"],
-          firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2026, 12:00 AM"]],
+          firstRows: [["January 1, 2028, 12:00 AM", "April 1, 2032, 12:00 AM"]],
         });
 
         cy.log("'num-bins' breakouts");

@@ -756,7 +756,7 @@ describe("issue 36027", () => {
       cy.findByText("Count").should("be.visible"); // y-axis
 
       // x-axis values
-      ["January 2023", "January 2024", "January 2025", "January 2026"].forEach(
+      ["January 2029", "January 2030", "January 2031", "January 2032"].forEach(
         (state) => {
           cy.findByText(state).should("be.visible");
         },

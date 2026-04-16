@@ -36,7 +36,7 @@ describe("scenarios > organization > timelines > collection", () => {
         cy.findByText(/via markdown/).should("be.visible");
         cy.findByLabelText("Description").type("*1.0-rc1* release");
 
-        cy.findByLabelText("Date").clear().type("10/20/2026");
+        cy.findByLabelText("Date").clear().type("10/20/2032");
 
         cy.button("Create").click();
         cy.wait("@createEvent");
@@ -44,7 +44,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.findByTestId("event-list").within(() => {
         cy.findByText("RC1").should("be.visible");
-        cy.findByText("October 20, 2026").should("be.visible");
+        cy.findByText("October 20, 2032").should("be.visible");
         cy.icon("star").should("be.visible");
       });
 
@@ -85,7 +85,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.findByTestId("event-form").within(() => {
         cy.findByLabelText("Event name").type("RC1");
-        cy.findByLabelText("Date").clear().type("10/20/2026");
+        cy.findByLabelText("Date").clear().type("10/20/2032");
         cy.button("Create").click();
         cy.wait("@createEvent");
       });
@@ -125,7 +125,7 @@ describe("scenarios > organization > timelines > collection", () => {
         cy.button("Add time").click();
         cy.findByLabelText("Time").type("10:20");
 
-        cy.findByLabelText("Date").clear().type("10/20/2026");
+        cy.findByLabelText("Date").clear().type("10/20/2032");
         cy.findByText("Create").click();
         cy.wait("@createEvent");
       });
@@ -144,7 +144,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByLabelText("Event name").type("RC1");
 
       cy.findByTestId("event-form").within(() => {
-        cy.findByLabelText("Date").clear().type("10/20/2026");
+        cy.findByLabelText("Date").clear().type("10/20/2032");
         cy.button("Add time").click();
         cy.findByLabelText("Time").type("00:00");
         cy.findByText("Create").click();
@@ -534,7 +534,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").click();
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByLabelText("Date").type("10/20/2026");
+      cy.findByLabelText("Date").type("10/20/2032");
       cy.button("Create").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First collection events");
@@ -664,7 +664,7 @@ describe("scenarios > collections > timelines", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Create event").click();
     cy.findByLabelText("Event name").type("Event");
-    cy.findByLabelText("Date").type("10/20/2026");
+    cy.findByLabelText("Date").type("10/20/2032");
     H.expectSnowplowEvent({
       eventType: "page_view",
       event: {

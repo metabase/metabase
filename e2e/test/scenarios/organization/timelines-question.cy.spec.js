@@ -71,9 +71,9 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "v1", timestamp: "2027-01-01T00:00:00Z" },
-          { name: "v2", timestamp: "2023-01-01T00:00:00Z" },
-          { name: "v3", timestamp: "2026-01-01T00:00:00Z" },
+          { name: "v1", timestamp: "2033-01-01T00:00:00Z" },
+          { name: "v2", timestamp: "2029-01-01T00:00:00Z" },
+          { name: "v3", timestamp: "2032-01-01T00:00:00Z" },
         ],
       });
 
@@ -409,7 +409,7 @@ describe("scenarios > organization > timelines > question", () => {
 
         H.modal().within(() => {
           cy.findByLabelText("Event name").type("Event at the end of range");
-          cy.findByLabelText("Date").clear().type("10/20/2026");
+          cy.findByLabelText("Date").clear().type("10/20/2032");
 
           cy.button("Create").click();
         });
@@ -475,10 +475,10 @@ describe("scenarios > organization > timelines > question", () => {
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
         events: [
-          { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
-          { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
-          { name: "Last quarter", timestamp: "2026-05-10T12:00:00Z" },
-          { name: "Last year", timestamp: "2026-09-10T12:00:00Z" },
+          { name: "Last week", timestamp: "2032-04-21T12:00:00Z" },
+          { name: "Last month", timestamp: "2032-04-27T12:00:00Z" },
+          { name: "Last quarter", timestamp: "2032-05-10T12:00:00Z" },
+          { name: "Last year", timestamp: "2032-09-10T12:00:00Z" },
         ],
       });
 

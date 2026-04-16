@@ -146,7 +146,7 @@ describe("scenarios > visualizations > waterfall", () => {
         cy.findByText("Sum of Total").should("not.exist");
 
         // x-axis labels (some)
-        ["2022", "2023", "2026", "Total"].forEach((label) => {
+        ["2028", "2029", "2032", "Total"].forEach((label) => {
           cy.findByText(label).should("exist");
         });
 
@@ -175,7 +175,7 @@ describe("scenarios > visualizations > waterfall", () => {
         cy.findByText("Count").should("not.exist");
 
         // x-axis labels (some)
-        ["2022", "2023", "2026", "Total"].forEach((label) => {
+        ["2028", "2029", "2032", "Total"].forEach((label) => {
           cy.findByText(label).should("exist");
         });
 

@@ -126,7 +126,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
       // assert that temporal unit parameter was applied
       cy.findByTestId("chart-container")
-        .findByText("Q1 2026")
+        .findByText("Q1 2032")
         .should("be.visible");
     });
   });

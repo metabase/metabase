@@ -761,8 +761,8 @@ describe("issue 53556 - nested question based on native model with remapped valu
     H.assertTableData({
       columns: ["Created At: Month", "Total: 8 bins", "Count"],
       firstRows: [
-        ["April 2026", "20  –  40", "27"],
-        ["April 2026", "40  –  60", "57"],
+        ["April 2032", "20  –  40", "27"],
+        ["April 2032", "40  –  60", "57"],
       ],
     });
 

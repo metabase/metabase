@@ -291,7 +291,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2028", "2029", "2030", "2031", "2032"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
@@ -306,7 +306,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2028", "2029", "2030", "2031", "2032"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
@@ -320,7 +320,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.popover().findByText("Product → Category").click();
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2028", "2029", "2030", "2031", "2032"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
 
@@ -330,7 +330,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.popover().findByText("User → Source").click();
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2028", "2029", "2030", "2031", "2032"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );

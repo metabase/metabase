@@ -38,7 +38,7 @@ describe("scenarios > visualizations > boxplot", () => {
   it("should render boxplot and update chart on display settings changes", () => {
     H.visitQuestionAdhoc(singleSeriesQuestion);
 
-    // 5 Boxes: 2022-2026
+    // 5 Boxes: 2028-2032
     H.BoxPlot.getBoxes().should("have.length", 5);
 
     // By default: Tukey whiskers, outliers shown, mean shown
@@ -127,7 +127,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Hover over the outlier point
     H.BoxPlot.getPoints().first().trigger("mousemove");
     H.assertEChartsTooltip({
-      header: "2026 (outlier)",
+      header: "2032 (outlier)",
       rows: [
         { name: "Count", value: "189" },
         { name: "Total: 50 bins", value: "70 – 75" },
@@ -193,7 +193,7 @@ describe("scenarios > visualizations > boxplot", () => {
     });
 
     H.echartsContainer().should("be.visible");
-    // Verify boxplot renders in dashboard context (5 boxes: 2022-2026)
+    // Verify boxplot renders in dashboard context (5 boxes: 2028-2032)
     H.BoxPlot.getBoxes().should("have.length", 5);
     H.BoxPlot.getMeanMarkers().should("have.length", 5);
 
@@ -228,7 +228,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Should filter to specific dimension and show table
     cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At: Year is Jan 1 – Dec 31, 2026",
+      "Created At: Year is Jan 1 – Dec 31, 2032",
     );
 
     // Verify we're viewing a table with results

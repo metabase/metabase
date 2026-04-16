@@ -376,8 +376,8 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
         H.echartsContainer().within(() => {
           // x-axis labels
-          cy.findByText("January 2023").should("exist");
-          cy.findByText("January 2026").should("exist");
+          cy.findByText("January 2029").should("exist");
+          cy.findByText("January 2032").should("exist");
           // y-axis labels
           cy.findByText("600").should("exist");
           cy.findByText("10").should("exist");

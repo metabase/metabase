@@ -367,8 +367,8 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     verifyRowValues([
-      ["January 2026", "52,249.59"],
-      ["January 2025", "51,634.16"],
+      ["January 2032", "52,249.59"],
+      ["January 2031", "51,634.16"],
     ]);
   });
 
@@ -399,9 +399,9 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     verifyRowValues([
-      ["August 2023", "16"],
-      ["April 2026", "16"],
-      ["May 2022", "17"],
+      ["August 2029", "16"],
+      ["April 2032", "16"],
+      ["May 2028", "17"],
     ]);
   });
 

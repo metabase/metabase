@@ -218,11 +218,11 @@ describe("issue 12720, issue 47172", () => {
     cy.findAllByTestId("dashcard-container").contains(title).click();
 
     cy.location("search").should("contain", dashboardFilter.default);
-    H.filterWidget().contains("After January 1, 2026");
+    H.filterWidget().contains("After January 1, 2032");
   }
-  // After January 1st, 2026
+  // After January 1st, 2032
   const dashboardFilter = {
-    default: "2026-01-01~",
+    default: "2032-01-01~",
     id: "d3b78b27",
     name: "Date Filter",
     slug: "date_filter",
