@@ -138,6 +138,7 @@ export {
 } from "./oss/transforms";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
+export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
 
@@ -173,6 +174,7 @@ import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
+import { reinitialize as reinitializeSecurityCenter } from "./oss/security-center";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
 import { reinitialize as reinitializeSmtpOverride } from "./oss/smtp-override";
@@ -213,6 +215,7 @@ export function reinitialize() {
   reinitializePermissions();
   reinitializeRemoteSync();
   reinitializeResourceDownloads();
+  reinitializeSecurityCenter();
   reinitializeSemanticSearch();
   reinitializeSettings();
   reinitializeSmtpOverride();
