@@ -1,45 +1,34 @@
 import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type {
   MetricsViewerDefinitionEntry,
   SelectedMetric,
 } from "../../../types/viewer-state";
+import {
+  REVENUE_METRIC,
+  createMetricMetadata,
+  setupDefinition,
+} from "../../../utils/__tests__/test-helpers";
 
 import { MetricPill } from "./MetricPill";
 
-const defaultDefinitionEntry: MetricsViewerDefinitionEntry = {
-  id: "measure:1",
-  definition: null,
-};
-
 function setup({
   metric,
-  hasDataStudioAccess = false,
+  definitionEntry,
 }: {
   metric: SelectedMetric;
-  hasDataStudioAccess?: boolean;
+  definitionEntry?: MetricsViewerDefinitionEntry;
 }) {
-  const state = createMockState({
-    currentUser: createMockUser({
-      is_superuser: hasDataStudioAccess,
-    }),
-  });
-
   renderWithProviders(
     <MetricPill
       metric={metric}
-      definitionEntry={defaultDefinitionEntry}
-      selectedMetricIds={new Set()}
-      selectedMeasureIds={new Set()}
+      definitionEntry={definitionEntry ?? { id: "measure:1", definition: null }}
       onSwap={jest.fn()}
       onRemove={jest.fn()}
       onSetBreakout={jest.fn()}
     />,
-    { storeInitialState: state },
   );
 }
 
@@ -49,37 +38,40 @@ function openContextMenu() {
 }
 
 describe("MetricPill context menu", () => {
-  it("should not show bottom menu items for a measure without data studio access", () => {
+  it("should not show bottom menu items for a measure", () => {
     setup({
       metric: { id: 1, name: "Revenue", sourceType: "measure" },
     });
     openContextMenu();
 
-    expect(screen.queryByRole("separatar")).not.toBeInTheDocument();
-
-    expect(screen.queryByText("Edit in Data Studio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Go to metric home page"),
     ).not.toBeInTheDocument();
   });
 
-  it("should show 'Go to metric home page' for metric source type", () => {
+  it("should show 'Go to metric home page' without separator when no breakout items", () => {
     setup({
       metric: { id: 1, name: "Revenue", sourceType: "metric" },
     });
     openContextMenu();
 
-    expect(screen.getByRole("separator")).toBeInTheDocument();
+    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
     expect(screen.getByText("Go to metric home page")).toBeInTheDocument();
   });
 
-  it("should show 'Edit in Data Studio' when user has data studio access", () => {
+  it("should show separator between breakout items and 'Go to metric home page'", () => {
+    const metadata = createMetricMetadata([REVENUE_METRIC]);
+    const definition = setupDefinition(metadata, REVENUE_METRIC.id);
+
     setup({
-      metric: { id: 1, name: "Revenue", sourceType: "measure" },
-      hasDataStudioAccess: true,
+      metric: { id: REVENUE_METRIC.id, name: "Revenue", sourceType: "metric" },
+      definitionEntry: { id: "metric:1", definition },
     });
     openContextMenu();
+
     expect(screen.getByRole("separator")).toBeInTheDocument();
-    expect(screen.getByText("Edit in Data Studio")).toBeInTheDocument();
+    expect(screen.getByText("Break out")).toBeInTheDocument();
+    expect(screen.getByText("Go to metric home page")).toBeInTheDocument();
   });
 });

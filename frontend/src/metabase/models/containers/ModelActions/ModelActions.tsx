@@ -10,15 +10,15 @@ import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { Tables } from "metabase/entities/tables";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import ModelActionsView from "metabase/models/components/ModelActions";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import type { State } from "metabase/redux/store";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Card, WritebackAction } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 type OwnProps = {
   params: {

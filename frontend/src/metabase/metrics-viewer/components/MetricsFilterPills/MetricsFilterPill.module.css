@@ -4,3 +4,7 @@
   border: 1px solid var(--mb-color-border-filter);
   border-radius: 0.75rem;
 }
+
+.root:hover {
+  background-color: var(--mb-color-background-secondary);
+}

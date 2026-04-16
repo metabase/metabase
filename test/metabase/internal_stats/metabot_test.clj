@@ -3,6 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.internal-stats.metabot :as sut]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
@@ -18,8 +20,7 @@
   "Send a message through the real streaming endpoint, returning the HTTP response body.
    The LLM is mocked to return a simple text response with the given model/usage."
   [conversation-id message model prompt-tokens completion-tokens]
-  (with-redefs [openrouter/openrouter
-                (fn [_]
+  (let [mock-fn (fn [_]
                   (mut/mock-llm-response
                    [{:type :start :id "msg-1"}
                     {:type :text  :text "Hello!"}
@@ -27,12 +28,15 @@
                      :model model
                      :usage {:promptTokens prompt-tokens :completionTokens completion-tokens}
                      :id    "msg-1"}]))]
-    (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                          {:message         message
-                           :context         {}
-                           :conversation_id conversation-id
-                           :history         []
-                           :state           {}})))
+    (with-redefs [openrouter/openrouter mock-fn
+                  claude/claude         mock-fn
+                  openai/openai         mock-fn]
+      (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                            {:message         message
+                             :context         {}
+                             :conversation_id conversation-id
+                             :history         []
+                             :state           {}}))))
 
 (defn- backdate-messages!
   "Update created_at on all messages for a conversation to the given timestamp."
@@ -60,7 +64,8 @@
           conv-3       (str (random-uuid))
           conv-4       (str (random-uuid))
           conv-5       (str (random-uuid))
-          all-convs    [conv-1 conv-2 conv-3 conv-4 conv-5]
+          conv-6       (str (random-uuid))
+          all-convs    [conv-1 conv-2 conv-3 conv-4 conv-5 conv-6]
           ;; OpenRouter returns model names like "anthropic/claude-haiku-4-5" in its API.
           ;; This is the bare model name that flows from the SSE adapter → extract-usage → DB.
           model        "anthropic/claude-haiku-4-5"]
@@ -81,9 +86,13 @@
             (send-message! conv-3 "Old question" model 999 999)
             (backdate-messages! conv-3 two-days-ago)
 
-            ;; conv-4: today — out of window
+            ;; conv-4: today — in rolling window
             (send-message! conv-4 "Today's question" model 888 888)
-            (backdate-messages! conv-4 today))
+            (backdate-messages! conv-4 today)
+
+            ;; conv-6: today, same model — exercises rolling aggregation
+            (send-message! conv-6 "Another today question" model 100 100)
+            (backdate-messages! conv-6 today))
 
           ;; -- BYOK conversation (no metabase/ prefix) --
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
@@ -117,9 +126,8 @@
               ;; conv-1: 150, conv-2: 280 → total 430
               (is (= 430 (:metabot-tokens stats))))
 
-            (testing ":metabot-usage aggregates by model:in/out"
-              (is (= {"openrouter:anthropic/claude-haiku-4-5:in"  300
-                      "openrouter:anthropic/claude-haiku-4-5:out" 130}
+            (testing ":metabot-usage aggregates combined tokens by model"
+              (is (= {"openrouter:anthropic/claude-haiku-4-5:tokens" 430}
                      (:metabot-usage stats))))
 
             (testing ":metabot-queries counts ai-proxied user messages for yesterday"
@@ -129,13 +137,106 @@
               (is (= 1 (:metabot-users stats))))
 
             (testing ":metabot-usage-date is yesterday's date"
-              (is (= "2026-03-31" (:metabot-usage-date stats)))))
+              (is (= "2026-03-31" (:metabot-usage-date stats))))
+
+            (testing ":metabot-rolling-usage aggregates today's combined tokens by model"
+              (is (= {"openrouter:anthropic/claude-haiku-4-5:tokens" 1976}
+                     (:metabot-rolling-usage stats))))
+
+            (testing ":metabot-rolling-usage-date is today's date"
+              (is (= "2026-04-01" (:metabot-rolling-usage-date stats)))))
 
           ;; -- BYOK-only scenario --
-          (cleanup! conv-1 conv-2 conv-3 conv-4)
+          (cleanup! conv-1 conv-2 conv-3 conv-4 conv-6)
 
           (testing "returns nil when only BYOK (non-proxied) messages exist yesterday"
             (is (nil? (sut/metabot-stats))))
 
           (finally
             (apply cleanup! all-convs)))))))
+
+(deftest metabot-stats-rolling-only-test
+  (search.tu/with-index-disabled
+    (let [clock   (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          today   (t/offset-date-time 2026 4 1 9 0 0 0 (t/zone-offset "+00"))
+          conv-id (str (random-uuid))]
+      (t/with-clock clock
+        (try
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/anthropic/claude-sonnet-4-6"]
+            (send-message! conv-id "Hello" "claude-sonnet-4-6" 500 100)
+            (backdate-messages! conv-id today))
+          (let [stats (sut/metabot-stats)]
+            (testing "returns rolling keys when only today has data"
+              (is (= {"anthropic:claude-sonnet-4-6:tokens" 600}
+                     (:metabot-rolling-usage stats)))
+              (is (= "2026-04-01" (:metabot-rolling-usage-date stats))))
+            (testing "yesterday keys are absent when no yesterday data"
+              (is (nil? (:metabot-tokens stats)))
+              (is (nil? (:metabot-usage stats)))
+              (is (nil? (:metabot-usage-date stats)))))
+          (finally
+            (cleanup! conv-id)))))))
+
+(deftest metabot-usage-anthropic-provider-test
+  (search.tu/with-index-disabled
+    (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          conv-id   (str (random-uuid))]
+      (t/with-clock clock
+        (try
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/anthropic/claude-sonnet-4-6"]
+            (send-message! conv-id "Hello" "claude-sonnet-4-6" 1000 250)
+            (backdate-messages! conv-id yesterday))
+          (let [stats (sut/metabot-stats)]
+            (is (= {"anthropic:claude-sonnet-4-6:tokens" 1250}
+                   (:metabot-usage stats))))
+          (finally
+            (cleanup! conv-id)))))))
+
+(deftest metabot-usage-openai-provider-test
+  (search.tu/with-index-disabled
+    (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          conv-id   (str (random-uuid))]
+      (t/with-clock clock
+        (try
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/openai/gpt-4o"]
+            (send-message! conv-id "Hello" "gpt-4o" 600 200)
+            (backdate-messages! conv-id yesterday))
+          (let [stats (sut/metabot-stats)]
+            (is (= {"openai:gpt-4o:tokens" 800}
+                   (:metabot-usage stats))))
+          (finally
+            (cleanup! conv-id)))))))
+
+(deftest metabot-usage-multiple-providers-test
+  (search.tu/with-index-disabled
+    (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          conv-1    (str (random-uuid))
+          conv-2    (str (random-uuid))
+          conv-3    (str (random-uuid))]
+      (t/with-clock clock
+        (try
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/openrouter/anthropic/claude-haiku-4-5"]
+            (send-message! conv-1 "Q1" "anthropic/claude-haiku-4-5" 100 50)
+            (backdate-messages! conv-1 yesterday))
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/anthropic/claude-sonnet-4-6"]
+            (send-message! conv-2 "Q2" "claude-sonnet-4-6" 200 80)
+            (backdate-messages! conv-2 yesterday))
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/openai/gpt-4o"]
+            (send-message! conv-3 "Q3" "gpt-4o" 300 120)
+            (backdate-messages! conv-3 yesterday))
+          (let [stats (sut/metabot-stats)]
+            (is (= {"openrouter:anthropic/claude-haiku-4-5:tokens" 150
+                    "anthropic:claude-sonnet-4-6:tokens"           280
+                    "openai:gpt-4o:tokens"                         420}
+                   (:metabot-usage stats))))
+          (finally
+            (cleanup! conv-1 conv-2 conv-3)))))))

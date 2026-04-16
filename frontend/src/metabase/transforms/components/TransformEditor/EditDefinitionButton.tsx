@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { transformEdit } from "metabase/lib/urls";
 import { Button, type ButtonProps } from "metabase/ui";
+import { transformEdit } from "metabase/utils/urls";
 import type { TransformId } from "metabase-types/api";
 
 type EditDefinitionButtonProps = {

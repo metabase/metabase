@@ -1,7 +1,6 @@
 import type { FocusEvent } from "react";
 import { t } from "ttag";
 
-import { currency } from "metabase/lib/formatting";
 import {
   Combobox,
   Flex,
@@ -11,6 +10,7 @@ import {
   type SelectProps,
   Text,
 } from "metabase/ui";
+import { currency } from "metabase/utils/formatting";
 
 import S from "./CurrencyPicker.module.css";
 

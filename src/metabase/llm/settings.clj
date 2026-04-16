@@ -2,6 +2,7 @@
   "Settings for LLM integration (API keys, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -123,15 +124,43 @@
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url
-  (deferred-tru "Base URL for the LLM proxy. When set, all LLM requests are routed through this proxy and authenticated with the instance token instead of provider API keys.")
-  :feature          :metabase-ai-provider
+  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key.")
+  :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
+                         (premium-features/has-feature? :metabot-v3))
   :encryption       :no
   :visibility       :internal
   :default          nil
   :export?          false
   :doc              false)
 
+(defsetting ai-service-base-url
+  (deferred-tru "Base URL for the managed Metabase AI service.")
+  :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
+                         (premium-features/has-feature? :metabot-v3))
+  :encryption       :no
+  :visibility       :internal
+  :default          nil
+  :export?          false
+  :doc              false)
+
+(defsetting llm-proxy-configured?
+  (deferred-tru "Whether the LLM proxy is configured for the managed Metabase AI service.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :export?          false
+  :setter           :none
+  :getter           #(boolean (some? (llm-proxy-base-url)))
+  :doc              false)
+
 ;;; -------------------------------------------------- General --------------------------------------------------
+
+(defsetting ai-features-enabled?
+  (deferred-tru "Whether AI features are enabled.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :export?    true
+  :doc        false)
 
 (defsetting llm-max-tokens
   (deferred-tru "Maximum tokens for LLM responses.")

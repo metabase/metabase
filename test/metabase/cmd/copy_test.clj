@@ -36,6 +36,7 @@
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Dependency
+    :model/DependencyStatus
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotPermissions
@@ -50,6 +51,7 @@
     :model/RemoteSyncTask
     :model/ReplacementRun
     :model/SearchIndexMetadata
+    :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog
     :model/TaskHistory

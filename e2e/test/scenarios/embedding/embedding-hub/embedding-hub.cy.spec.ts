@@ -27,7 +27,7 @@ describe("scenarios - embedding hub", () => {
         .should("exist");
     });
 
-    it('"Create a dashboard" card should work correctly', () => {
+    it('"Create a dashboard" card should show return toast after saving x-ray', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Create a dashboard' card");
@@ -43,11 +43,24 @@ describe("scenarios - embedding hub", () => {
         H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
       });
 
-      cy.log("Should navigate to auto dashboard creation");
+      cy.log("Should navigate to auto dashboard with from param");
       cy.url().should("include", "/auto/dashboard/table/");
+      cy.url().should("include", "returnToEmbeddingSetupGuide=");
+
+      cy.log("Wait for x-ray dashboard to load and save it");
+      cy.findByRole("button", { name: "Save this", timeout: 30_000 }).click();
+
+      cy.log("Should show modal prompting to return to setup guide");
+      H.modal().within(() => {
+        cy.findByText("Dashboard saved!").should("be.visible");
+        cy.findByText("Return to the setup guide").click();
+      });
+
+      cy.log("Should navigate back to the setup guide");
+      cy.url().should("include", "/admin/embedding/setup-guide");
     });
 
-    it('"Connect a database" card should work correctly', () => {
+    it('"Connect a database" card should pass from param in navigation URL', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Connect a database' card");
@@ -59,6 +72,13 @@ describe("scenarios - embedding hub", () => {
       cy.findByRole("dialog").within(() => {
         cy.findByRole("heading", { name: "Add data" }).should("be.visible");
       });
+
+      cy.log("Select a database engine");
+      cy.findByRole("dialog").findByText("PostgreSQL").click();
+
+      cy.log("Should navigate with from param");
+      cy.url().should("include", "/admin/databases/create");
+      cy.url().should("include", "returnToEmbeddingSetupGuide=");
     });
 
     it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
@@ -1621,6 +1641,13 @@ describe("scenarios - embedding hub", () => {
       cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log(
+        "wait for checklist to load and page to settle on the summary step",
+      );
+      H.main()
+        .findByRole("listitem", { name: "Summary", timeout: 10_000 })
+        .should("have.attr", "aria-current", "step");
 
       cy.log("reopen the strategy step and switch to connection impersonation");
       H.main()

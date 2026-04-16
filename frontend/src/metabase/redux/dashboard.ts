@@ -1,6 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
 
-import { createAction as createLegacyAction } from "metabase/lib/redux";
+import { createAction as createLegacyAction } from "metabase/utils/redux";
 import type { DashboardTabId } from "metabase-types/api";
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";

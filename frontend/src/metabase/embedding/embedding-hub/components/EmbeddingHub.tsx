@@ -110,6 +110,7 @@ export const EmbeddingHub = () => {
         initialTab={
           openedModal?.type === "add-data" ? openedModal?.initialTab : undefined
         }
+        fromEmbeddingSetupGuide
       />
       <CreateDashboardModal
         opened={openedModal?.type === "new-dashboard"}
@@ -118,6 +119,7 @@ export const EmbeddingHub = () => {
       <EmbeddingHubXrayPickerModal
         opened={openedModal?.type === "xray-dashboard"}
         onClose={closeModal}
+        fromEmbeddingSetupGuide
       />
       {openedModal?.type === "user-strategy" && (
         <PLUGIN_TENANTS.EditUserStrategyModal onClose={closeModal} />

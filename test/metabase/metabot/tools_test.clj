@@ -35,18 +35,6 @@
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/navigate-user-tool #'agent-tools/create-chart-tool]
           capabilities #{:frontend-navigate-user-v1}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= tool-vars result))))
-
-  (testing "filters snippet tools by capabilities"
-    (let [tool-vars [#'agent-tools/list-snippets-tool #'agent-tools/get-snippet-details-tool #'agent-tools/search-tool]
-          capabilities #{}
-          result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= ["search"] (mapv #(:tool-name (meta %)) result)))))
-
-  (testing "includes snippet tools when capability present"
-    (let [tool-vars [#'agent-tools/list-snippets-tool #'agent-tools/get-snippet-details-tool #'agent-tools/search-tool]
-          capabilities #{:feature-snippets}
-          result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= tool-vars result)))))
 
 (defn- tools-for-profile
@@ -54,13 +42,6 @@
   [profile-id]
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (profiles/get-tools-for-profile profile-id #{})))
-
-(deftest ^:parallel get-tools-for-embedding-next-profile-test
-  (let [tools (tools-for-profile :embedding_next)]
-    (is (map? tools))
-    (is (contains? tools "construct_notebook_query"))
-    (is (contains? tools "read_resource"))
-    (is (contains? tools "list_available_data_sources"))))
 
 (deftest ^:parallel get-tools-for-internal-profile-test
   (let [tools (tools-for-profile :internal)]

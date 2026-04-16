@@ -1,10 +1,10 @@
 import { type PropsWithChildren, forwardRef } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SidebarFeatures } from "metabase/querying/editor/types";
 import { Flex } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -54,6 +54,7 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => void;
   databaseIsDisabled?: (database: Database) => boolean;
+  databaseDisabledTooltip?: (database: Database) => string | undefined;
 }
 
 export const NativeQueryEditorTopBar = forwardRef<
@@ -91,6 +92,7 @@ export const NativeQueryEditorTopBar = forwardRef<
     hasParametersList = true,
     setDatasetQuery,
     databaseIsDisabled,
+    databaseDisabledTooltip,
   } = props;
 
   const dispatch = useDispatch();
@@ -138,6 +140,7 @@ export const NativeQueryEditorTopBar = forwardRef<
           setTableId={setTableId}
           editorContext={editorContext}
           databaseIsDisabled={databaseIsDisabled}
+          databaseDisabledTooltip={databaseDisabledTooltip}
         />
       )}
       {hasParametersList && setParameterValue && (

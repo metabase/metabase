@@ -197,10 +197,10 @@
    [:namespace   :symbol]
 
    ;; description is validated via the macro, not schema
-   ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
-   ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:description :any]
 
+   ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
+   ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:doc     :any]
    [:default :any]
 
@@ -567,6 +567,14 @@
                   (log/warnf "Deprecated setting key %s found in database; rename it to %s."
                              dep-key (setting-name setting))))
               v))))))
+
+(defn db-stored-value
+  "Return the raw value persisted in the DB/cache for `setting-definition-or-name`, or nil if none.
+
+  Unlike [[get-raw-value]], this does not consult user-local values, database-local values, env vars, defaults, or
+  init functions."
+  ^String [setting-definition-or-name]
+  (db-or-cache-value setting-definition-or-name))
 
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 

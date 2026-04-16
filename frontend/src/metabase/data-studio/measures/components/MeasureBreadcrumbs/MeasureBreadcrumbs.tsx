@@ -4,7 +4,7 @@ import {
   DataModelBreadcrumbs,
   PublishedTableBreadcrumbs,
 } from "metabase/data-studio/common/components/Breadcrumbs";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { Measure, Table } from "metabase-types/api";
 
 type MeasureBreadcrumbsProps = {

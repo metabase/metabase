@@ -17,10 +17,10 @@ dataset_query:
       - {lib/uuid: 857bbd5b-6fd6-40b2-aaf4-27f85792fa62}
     breakout:
     - - field
-      - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
       - [Internal Metabase Database, public, v_content, name]
     - - field
-      - {base-type: type/Integer, join-alias: Content - Entity Qualified, effective-type: type/Integer}
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Entity Qualified}
       - [Internal Metabase Database, public, v_content, entity_id]
     filters:
     - - =
@@ -38,7 +38,7 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       stages:
       - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
@@ -53,7 +53,7 @@ dataset_query:
           - {base-type: type/Integer, lib/uuid: 88d4ae9e-b992-4e5d-a887-930269472242}
           - user_id
         - - field
-          - {base-type: type/Integer, join-alias: People - Creator, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - Creator}
           - [Internal Metabase Database, public, v_users, user_id]
       stages:
       - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
@@ -68,7 +68,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_view_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
       stages:
       - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}

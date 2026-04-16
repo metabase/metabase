@@ -16,6 +16,7 @@
    [metabase-enterprise.metabot.init]
    [metabase-enterprise.remote-sync.init]
    [metabase-enterprise.scim.init]
+   [metabase-enterprise.security-center.init]
    [metabase-enterprise.semantic-search.init]
    [metabase-enterprise.sso.init]
    [metabase-enterprise.stale.init]

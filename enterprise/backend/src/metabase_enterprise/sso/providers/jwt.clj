@@ -80,7 +80,7 @@
 (methodical/defmethod auth-identity/authenticate :provider/jwt
   [_provider {:keys [token] :as _request}]
   (cond
-    (not (sso-settings/jwt-enabled))
+    (not (sso-settings/jwt-enabled-and-configured))
     {:success? false
      :error :jwt-not-enabled
      :message (str (tru "JWT authentication is not enabled"))}

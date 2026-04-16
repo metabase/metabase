@@ -16,13 +16,15 @@ import {
   isDashcardLoading,
 } from "metabase/dashboard/utils";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isQuestionCard, isQuestionDashCard } from "metabase/lib/dashboard";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import type { StoreDashcard } from "metabase/redux/store";
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
+import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { useDispatch, useSelector, useStore } from "metabase/utils/redux";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import {
@@ -39,8 +41,6 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { StoreDashcard } from "metabase-types/store";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
