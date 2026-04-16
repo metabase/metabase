@@ -15,10 +15,10 @@ import {
   getDashcardResultsError,
   isDashcardLoading,
 } from "metabase/dashboard/utils";
+import EmbedFrameS from "metabase/embed/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { getMetadata } from "metabase/selectors/metadata";

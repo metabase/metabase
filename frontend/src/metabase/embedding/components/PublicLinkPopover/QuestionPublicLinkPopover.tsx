@@ -8,7 +8,7 @@ import { type ExportFormat, exportFormats } from "metabase/common/types/export";
 import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
-} from "metabase/public/lib/analytics";
+} from "metabase/embed/lib/analytics";
 import { publicQuestion as getPublicQuestionUrl } from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 

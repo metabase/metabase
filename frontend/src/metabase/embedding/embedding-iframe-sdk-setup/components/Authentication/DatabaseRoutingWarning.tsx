@@ -9,7 +9,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import type {
   EmbedResource,
   GuestEmbedResourceType,
-} from "metabase/public/lib/types";
+} from "metabase/embed/types";
 import { Alert, Icon } from "metabase/ui";
 import type { Card, Dashboard } from "metabase-types/api";
 

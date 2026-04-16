@@ -1,10 +1,10 @@
 import type React from "react";
 import { useMemo } from "react";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { getIsTenantUser } from "metabase/selectors/user";
 import {
   Box,

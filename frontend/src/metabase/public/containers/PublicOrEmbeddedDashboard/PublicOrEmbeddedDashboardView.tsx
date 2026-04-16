@@ -6,13 +6,12 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { getTabHiddenParameterSlugs } from "metabase/embed/lib/tab-parameters";
+import type { DisplayTheme } from "metabase/embed/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { isWithinIframe } from "metabase/utils/iframe";
-
-import { EmbedFrame } from "../../components/EmbedFrame";
 
 export function PublicOrEmbeddedDashboardView() {
   const {

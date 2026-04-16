@@ -43,6 +43,7 @@ const elements = [
   createElement({ type: "shared", name: "api" }),
   // shared
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "embed" }),
   createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "visualizations" }),
   // feature
@@ -53,6 +54,7 @@ const elements = [
     enforceOutgoing: true,
   }),
   createElement({ type: "feature", name: "admin" }),
+  createElement({ type: "feature", name: "public" }),
   createElement({ type: "feature", name: "reference" }),
   createElement({
     type: "feature",
@@ -125,6 +127,11 @@ const rules = [
     from: ["feature/enterprise"],
     allow: ["feature/*"],
     message: "Enterprise module can import from all feature modules",
+  },
+  {
+    from: ["feature/public"],
+    allow: ["feature/*"],
+    message: "Public module can import from all feature modules",
   },
   {
     from: ["app/*"],

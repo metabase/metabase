@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
+import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
@@ -23,7 +23,8 @@ export const PublicDocumentCardMenu = ({
   card,
   dataset,
 }: PublicDocumentCardMenuProps) => {
-  const { publicDocumentUuid } = usePublicDocumentContext();
+  const externalCardCtx = useExternalCardData();
+  const publicDocumentUuid = externalCardCtx?.documentUuid;
   const [menuView, setMenuView] = useState<string | null>(null);
   const [isOpen, { close, toggle }] = useDisclosure(false, {
     onClose: () => {

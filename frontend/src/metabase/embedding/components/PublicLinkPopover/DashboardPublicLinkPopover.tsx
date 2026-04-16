@@ -5,7 +5,7 @@ import {
 import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
-} from "metabase/public/lib/analytics";
+} from "metabase/embed/lib/analytics";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/utils/urls";
 import type { Dashboard } from "metabase-types/api";
 

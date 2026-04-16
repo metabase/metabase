@@ -13,7 +13,7 @@ import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/Dashboa
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+} from "metabase/dashboard/context/mock-context";
 import { publicReducers } from "metabase/reducers-public";
 import {
   createMockDashboardState,

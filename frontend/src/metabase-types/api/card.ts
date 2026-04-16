@@ -1,7 +1,4 @@
-import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
+import type { EmbeddingParameters, EmbeddingType } from "metabase/embed/types";
 import type { IconName } from "metabase/ui";
 import type { CurrencyStyle } from "metabase/utils/formatting";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";

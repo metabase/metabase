@@ -9,7 +9,7 @@ import {
   trackPublicEmbedCodeCopied,
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
-} from "metabase/public/lib/analytics";
+} from "metabase/embed/lib/analytics";
 import { Box, Popover, Title } from "metabase/ui";
 import { publicDocument as getPublicDocumentUrl } from "metabase/utils/urls/documents";
 import type { Document } from "metabase-types/api";

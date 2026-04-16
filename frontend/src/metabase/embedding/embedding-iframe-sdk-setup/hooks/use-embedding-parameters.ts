@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 
+import type { EmbeddingParameters } from "metabase/embed/types";
+import { getDefaultEmbeddingParams } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useEmbeddingParametersConversion } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion";
-import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 export const useEmbeddingParameters = ({

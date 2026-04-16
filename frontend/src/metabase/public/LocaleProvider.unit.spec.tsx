@@ -3,8 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useLocale } from "metabase/common/hooks";
-
-import { LocaleProvider, getLocaleToUse } from "./LocaleProvider";
+import { LocaleProvider, getLocaleToUse } from "metabase/embed/LocaleProvider";
 
 const expectLocale = ({
   locale,

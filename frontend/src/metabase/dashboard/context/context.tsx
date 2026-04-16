@@ -13,8 +13,8 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
+import { getTabHiddenParameterSlugs } from "metabase/embed/lib/tab-parameters";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
 import type {
   Dashboard,
   DashboardCard,

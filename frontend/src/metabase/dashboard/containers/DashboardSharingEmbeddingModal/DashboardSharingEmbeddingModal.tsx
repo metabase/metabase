@@ -3,8 +3,8 @@ import {
   useUpdateDashboardEnableEmbeddingMutation,
 } from "metabase/api";
 import { getParameters } from "metabase/dashboard/selectors";
+import { EmbedModal } from "metabase/embedding/components/EmbedModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { EmbedModal } from "metabase/public/components/EmbedModal";
 import { useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
 

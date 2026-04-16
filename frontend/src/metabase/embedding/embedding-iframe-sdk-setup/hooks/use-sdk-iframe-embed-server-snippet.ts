@@ -1,19 +1,14 @@
 import { useMemo, useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
-import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
-import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
-import {
-  clojure,
-  node,
-  python,
-  ruby,
-} from "metabase/public/lib/code-templates";
+import { clojure, node, python, ruby } from "metabase/embed/lib/code-templates";
 import type {
   CodeSampleParameters,
   ServerCodeSampleConfig,
-} from "metabase/public/lib/types";
+} from "metabase/embed/types";
+import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 
 const getEmbedServerCodeExampleOptions = (
   codeSampleParameters: Omit<CodeSampleParameters, "displayOptions">,

@@ -5,8 +5,8 @@ import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/Dashboa
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
+import { LocaleProvider } from "metabase/embed/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";

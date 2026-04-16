@@ -1,15 +1,12 @@
 import { useCallback, useState } from "react";
 
+import type { EmbedResource, EmbedResourceType } from "metabase/embed/types";
 import type {
   DashboardSharingModalType,
   QuestionSharingModalType,
 } from "metabase/embedding/components/SharingMenu/types";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
-import type {
-  EmbedResource,
-  EmbedResourceType,
-} from "metabase/public/lib/types";
 import { setOpenModal } from "metabase/redux/ui";
 import { useDispatch } from "metabase/utils/redux";
 

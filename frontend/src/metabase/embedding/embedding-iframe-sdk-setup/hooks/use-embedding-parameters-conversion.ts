@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
+import type { EmbeddingParameters } from "metabase/embed/types";
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { Parameter } from "metabase-types/api";
 
 export const useEmbeddingParametersConversion = () => {

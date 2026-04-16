@@ -24,11 +24,13 @@ import {
 } from "metabase/documents/analytics";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
 import { MAX_GROUP_SIZE } from "metabase/documents/constants";
+import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
+import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
 import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
@@ -36,8 +38,6 @@ import {
   getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
-import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
-import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -178,7 +178,8 @@ export const CardEmbedComponent = memo(
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
-    const { publicDocumentUuid } = usePublicDocumentContext();
+    const externalCardCtx = useExternalCardData();
+    const isPublicDocument = Boolean(externalCardCtx);
     const { _id } = node.attrs;
     const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
 
@@ -202,16 +203,13 @@ export const CardEmbedComponent = memo(
 
     const embedIndex = getEmbedIndex(editor, getPos);
 
-    // Use public hook when viewing a public document, otherwise use regular hook
-    const isPublicDocument = Boolean(publicDocumentUuid);
+    // Use external data source when provided (e.g. public documents),
+    // otherwise load via authenticated API
     const regularCardData = useCardData({ id });
-    const publicCardData = usePublicDocumentCardData({
-      cardId: id,
-      documentUuid: publicDocumentUuid || "",
-    });
+    const externalCardData = useExternalCardDataLoader(id);
 
-    const { card, dataset, isLoading, series, error } = isPublicDocument
-      ? publicCardData
+    const { card, dataset, isLoading, series, error } = externalCardCtx
+      ? externalCardData
       : regularCardData;
 
     const metadata = useSelector(getMetadata);

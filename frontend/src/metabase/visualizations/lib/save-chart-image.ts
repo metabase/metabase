@@ -1,5 +1,5 @@
+import EmbedFrameS from "metabase/embed/theme.module.css";
 import { isStorybookActive } from "metabase/env";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 
 import {
