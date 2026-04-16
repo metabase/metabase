@@ -37,17 +37,23 @@
   The only requirement is **determinism** — every run with the same data must pick the same winner,
   regardless of DB row order or batch boundaries. The actual winner (lowest-id vs highest-id) is
   unimportant because duplicate-name entities contribute the same similarity signal either way.
-  We compare by numeric `:mid` (parsed model_id) — numeric always beats nil, two numerics compare
-  naturally, two nils fall back to lexicographic `:model_id` — then `:model` as final tie-break."
+  Priority chain: numeric `:mid` (parsed `model_id`) — numeric beats nil, two numerics compare
+  naturally — then the raw `model_id` string (so `\"2\"` vs `\"02\"` sorts deterministically even
+  though they parse to the same number) — then `:model` as final tie-break."
   [{new-mid :mid new-model :model new-mid-str :model_id}
    {prior-mid :mid prior-model :model prior-mid-str :model_id}]
-  (let [cmp (cond
-              (and new-mid prior-mid) (compare (long new-mid) (long prior-mid))
-              new-mid                 -1   ; numeric beats non-numeric
-              prior-mid                1
-              :else                   (compare (str new-mid-str) (str prior-mid-str)))]
-    (or (neg? cmp)
-        (and (zero? cmp) (neg? (compare new-model prior-model))))))
+  (let [num-cmp (cond
+                  (and new-mid prior-mid) (compare (long new-mid) (long prior-mid))
+                  new-mid                 -1   ; numeric beats non-numeric
+                  prior-mid                1
+                  :else                   0)
+        cmp     (if-not (zero? num-cmp)
+                  num-cmp
+                  (let [str-cmp (compare (str new-mid-str) (str prior-mid-str))]
+                    (if-not (zero? str-cmp)
+                      str-cmp
+                      (compare new-model prior-model))))]
+    (neg? cmp)))
 
 (defn- parse-pgvector
   "Parse a pgvector string (\"[0.1, 0.2, ...]\") or similar into a float-array."

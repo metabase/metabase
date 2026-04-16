@@ -280,6 +280,9 @@
       ;; equal model_ids tie-break on model name
       true  {:mid 5  :model_id "5"  :model "card"}   {:mid 5  :model_id "5"  :model "table"}
       false {:mid 5  :model_id "5"  :model "table"}  {:mid 5  :model_id "5"  :model "card"}
+      ;; same parsed number but different raw strings → tie-break on raw model_id before model
+      true  {:mid 2  :model_id "02" :model "card"}   {:mid 2  :model_id "2"  :model "card"}
+      false {:mid 2  :model_id "2"  :model "card"}   {:mid 2  :model_id "02" :model "card"}
       ;; numeric always beats non-numeric
       true  {:mid 99 :model_id "99" :model "card"}   {:mid nil :model_id "abc" :model "card"}
       false {:mid nil :model_id "abc" :model "card"}  {:mid 1  :model_id "1"   :model "card"}
