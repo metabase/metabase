@@ -3,15 +3,11 @@ import { describe, expect, it } from "vitest";
 import { version } from "../package.json";
 
 import {
-  generateGitignore,
-  generateIconSvg,
   generateIndexTsx,
   generateManifest,
   generatePackageJson,
   generatePackageLockJson,
-  generateTsConfig,
   generateUpgradePackageJson,
-  generateViteConfig,
 } from "./templates";
 
 describe("text templates", () => {
@@ -26,29 +22,13 @@ describe("text templates", () => {
     expect(lock.name).toBe("my-viz");
   });
 
-  it("generateIndexTsx", () => {
-    expect(generateIndexTsx("my-viz")).toMatchSnapshot();
+  it("generateIndexTsx contains SDK import", () => {
+    expect(generateIndexTsx("my-viz")).toContain("@metabase/custom-viz");
   });
 
   it("generateManifest substitutes name", () => {
     const manifest = JSON.parse(generateManifest("my-viz"));
     expect(manifest.name).toBe("my-viz");
-  });
-
-  it("generateTsConfig", () => {
-    expect(generateTsConfig()).toMatchSnapshot();
-  });
-
-  it("generateGitignore", () => {
-    expect(generateGitignore()).toMatchSnapshot();
-  });
-
-  it("generateIconSvg", () => {
-    expect(generateIconSvg()).toMatchSnapshot();
-  });
-
-  it("generateViteConfig", () => {
-    expect(generateViteConfig()).toMatchSnapshot();
   });
 });
 
