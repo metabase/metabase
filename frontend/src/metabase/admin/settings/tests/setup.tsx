@@ -172,7 +172,9 @@ export const setup = async ({
   }
 
   renderWithProviders(
-    <Route path="admin/settings">{getSettingsRoutes()}</Route>,
+    <Route path="admin/settings">
+      {getSettingsRoutes({ getState: () => store })}
+    </Route>,
     {
       storeInitialState: store,
       withRouter: true,

@@ -235,7 +235,7 @@ export const getRoutes = (
 
         {/* SETTINGS */}
         <Route path="settings" component={createAdminRouteGuard("settings")}>
-          {getSettingsRoutes()}
+          {getSettingsRoutes(store)}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" component={IsAdmin}>
