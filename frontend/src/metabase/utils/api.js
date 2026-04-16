@@ -87,8 +87,9 @@ export class Api extends EventEmitter {
       }
       if (typeof self.requestClient === "object") {
         headers["X-Metabase-Client"] = self.requestClient.name;
-        headers["X-Metabase-Client-Version"] =
-          self.requestClient.version ?? "unknown";
+        if (self.requestClient.version) {
+          headers["X-Metabase-Client-Version"] = self.requestClient.version;
+        }
       } else {
         headers["X-Metabase-Client"] = self.requestClient;
       }
