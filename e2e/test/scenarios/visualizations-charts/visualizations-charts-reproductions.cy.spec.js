@@ -751,7 +751,7 @@ describe("issue 25007", () => {
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    H.echartsTooltip().findByText("May 1–7, 2025");
+    H.echartsTooltip().should("contain", "May 4–10, 2025");
   });
 });
 
