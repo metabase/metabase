@@ -36,25 +36,36 @@
       (not (.isDirectory f))
       (fail! (str "Not a directory: " path)))))
 
-(defn- validate-path!
-  "Validate that path exists (file or directory). Exits on failure."
-  [path]
+(defn- validate-schema-path!
+  "Validate that --schema-dir matches the expected shape for `fmt`:
+     :serdes  → must be a directory (containing database subdirectories)
+     :concise → must be a regular file (the JSON metadata file)"
+  [path fmt]
   (let [f (io/file path)]
-    (when-not (.exists f)
-      (fail! (str "Path does not exist: " path)))))
+    (cond
+      (not (.exists f))
+      (fail! (str "--schema-dir does not exist: " path))
+
+      (and (= fmt :serdes) (not (.isDirectory f)))
+      (fail! (str "--schema-format serdes expects a directory of database folders, got a file: " path)
+             "Did you mean --schema-format concise?")
+
+      (and (= fmt :concise) (not (.isFile f)))
+      (fail! (str "--schema-format concise expects a single JSON file, got a directory: " path)
+             "Did you mean --schema-format serdes?"))))
 
 (defn- run-checker
   "Run the semantic checker."
   [export-dir {:keys [output errors-only schema-dir schema-format]}]
   (when-not schema-dir
     (fail! "Missing --schema-dir option"))
-  (validate-path! schema-dir)
   (let [fmt (case schema-format
               "concise" :concise
               "serdes"  :serdes
               nil       :serdes
               (fail! (str "Unknown --schema-format: " schema-format
                           " (must be 'serdes' or 'concise')")))
+        _   (validate-schema-path! schema-dir fmt)
         {:keys [results]} (try
                             (checker/check export-dir schema-dir nil {:schema-format fmt})
                             (catch clojure.lang.ExceptionInfo e
