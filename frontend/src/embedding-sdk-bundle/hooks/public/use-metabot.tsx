@@ -52,7 +52,10 @@ export const useMetabot = (): UseMetabotResult => {
   );
 
   const messages = useMemo<MetabotMessage[]>(
-    () => agent.messages.filter(isPublicMessage).map(mapMessage),
+    () =>
+      agent.messages
+        .filter(isPublicMessage)
+        .map((message) => mapMessage(message, chartComponentsCache.current)),
     [agent.messages],
   );
 
@@ -110,7 +113,10 @@ const isPublicMessage = (
   message.type !== "action" &&
   message.type !== "todo_list";
 
-const mapMessage = (message: PublicChatMessage): MetabotMessage =>
+const mapMessage = (
+  message: PublicChatMessage,
+  cache: Map<string, ReturnType<typeof createChartComponent>>,
+): MetabotMessage =>
   match(message)
     .with(
       { role: "user", type: "text" },
@@ -121,5 +127,16 @@ const mapMessage = (message: PublicChatMessage): MetabotMessage =>
       { role: "agent", type: "text" },
       ({ id, message }) =>
         ({ id, role: "agent", type: "text", message }) as const,
+    )
+    .with(
+      { role: "agent", type: "chart" },
+      ({ id, navigateTo }) =>
+        ({
+          id,
+          role: "agent",
+          type: "chart",
+          questionPath: navigateTo,
+          Component: getCachedChartComponent(navigateTo, cache),
+        }) as const,
     )
     .exhaustive();

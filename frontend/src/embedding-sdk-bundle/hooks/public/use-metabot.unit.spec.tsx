@@ -180,6 +180,32 @@ describe("useMetabot", () => {
       });
     });
 
+    it("renames `navigateTo` to `questionPath` on agent.chart", async () => {
+      const { store } = setup({ ui: <TestMessages /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#base64",
+          } as any),
+        );
+      });
+
+      const [message] = await readMessages();
+      // `Component` is a React component reference — JSON.stringify drops
+      // functions, so it appears as `undefined` in the serialized snapshot
+      // the harness reads. We assert only the serializable fields here;
+      // component wiring is covered by `CurrentChart` tests.
+      expect(message).toEqual({
+        id: expect.any(String),
+        role: "agent",
+        type: "chart",
+        questionPath: "/question#base64",
+      });
+    });
+
     it("filters out internal-only variants (tool_call, edit_suggestion, user action, todo_list)", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 

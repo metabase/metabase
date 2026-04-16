@@ -21,12 +21,22 @@ type MetabotAgentTextMessage = {
   message: string;
 };
 
+type MetabotAgentChartMessage = {
+  id: string;
+  role: "agent";
+  type: "chart";
+  /** URL path to the question, e.g. `/question#<base64>` */
+  questionPath: string;
+  /** A pre-wired React component that renders the chart. */
+  Component: React.ComponentType<MetabotChartProps>;
+};
+
 // Internal variants intentionally omitted. `use-metabot.tsx` filters these out before mapping:
 // - `tool_call`: debug-only, gated on metabot's `debugMode`.
 // - `edit_suggestion`: targets the in-app Transform editor, which the SDK does not render.
 // - `action`: unused in shipped code.
 // - `todo_list`: only reachable via the `codegen/transforms` profile, not the SDK.
-type MetabotAgentMessage = MetabotAgentTextMessage;
+type MetabotAgentMessage = MetabotAgentTextMessage | MetabotAgentChartMessage;
 
 export type MetabotMessage = MetabotUserTextMessage | MetabotAgentMessage;
 
@@ -57,7 +67,7 @@ export type UseMetabotResult = {
   /** Clear all messages and start fresh. */
   resetConversation: () => void;
 
-  /** All messages in the conversation. */
+  /** All messages in the conversation. Chart messages include a `Component` property. */
   messages: MetabotMessage[];
   /** Errors are conversation-level, not attached to individual messages. */
   errorMessages: MetabotErrorMessage[];
