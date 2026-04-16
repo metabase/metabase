@@ -31,6 +31,7 @@ export * from "./permission";
 export * from "./persist";
 export * from "./premium-features";
 export * from "./revision";
+export * from "./security-center";
 export * from "./search";
 export * from "./segment";
 export * from "./session";

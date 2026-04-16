@@ -376,3 +376,11 @@
 (methodical/defmethod events/publish-event! ::tenant-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::security-advisory-event ::event)
+(derive :event/security-advisory-acknowledge ::security-advisory-event)
+(derive :event/security-advisory-match ::security-advisory-event)
+
+(methodical/defmethod events/publish-event! ::security-advisory-event
+  [topic event]
+  (audit-log/record-event! topic event))

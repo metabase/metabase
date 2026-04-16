@@ -569,7 +569,8 @@
     :llm-autodescription
     :query-reference-validation
     :cloud-custom-smtp
-    :session-timeout-config})
+    :session-timeout-config
+    :admin-security-center})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

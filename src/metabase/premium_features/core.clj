@@ -24,6 +24,7 @@
   assert-has-feature
   assert-has-any-features
   ee-feature-error
+  is-trial?
   has-any-features?
   has-feature?
   log-enabled?
@@ -32,6 +33,7 @@
   quotas
   TokenStatus
   clear-cache!
+  token-check-url
   transform-stats]
 
  (metabase.premium-features.settings
@@ -89,6 +91,7 @@
   hide-embed-branding?
   is-hosted?
   premium-embedding-token
+  security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?
   token-features
