@@ -52,6 +52,7 @@ export type SdkQuestionEntityPublicProps =
        */
       questionId: SdkQuestionId | null;
       token?: never;
+      query?: never;
     }
   | {
       questionId?: never;
@@ -59,6 +60,17 @@ export type SdkQuestionEntityPublicProps =
        * A valid JWT token for the guest embed.
        */
       token: SdkEntityToken | null;
+      query?: never;
+    }
+  | {
+      questionId?: never;
+      token?: never;
+      /**
+       * A base64-encoded query, as returned by `/api/agent/v1/construct-query`,
+       * or a Metabot `navigate_to` path (e.g. `/question#<base64>`).
+       * The `question#` prefix is stripped automatically when present.
+       */
+      query: string;
     };
 
 export interface SdkQuestionState {

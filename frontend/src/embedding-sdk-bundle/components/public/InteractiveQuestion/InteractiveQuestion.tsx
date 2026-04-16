@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {
@@ -28,20 +30,29 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
+import { deserializeCardFromQuery } from "metabase/utils/card";
 
 import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
 
 import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
+
+export type InteractiveQuestionBaseProps = Omit<
+  SdkQuestionProps,
+  | "token"
+  | "questionId"
+  | "getClickActionMode"
+  | "navigateToNewCard"
+  | "backToDashboard"
+>;
 
 /**
  * @interface
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionProps = Omit<
-  SdkQuestionProps,
-  "token" | "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
->;
+export type InteractiveQuestionProps = InteractiveQuestionBaseProps &
+  SdkQuestionEntityPublicProps;
 
 /**
  * @interface
@@ -79,9 +90,26 @@ export type InteractiveQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
-  <SdkQuestion {...props} />
-);
+function InteractiveQuestionInner({
+  query,
+  questionId,
+  ...rest
+}: InteractiveQuestionProps) {
+  const deserializedCard = useMemo(
+    () => (query ? deserializeCardFromQuery(query) : undefined),
+    [query],
+  );
+
+  return (
+    <SdkQuestion
+      {...rest}
+      questionId={questionId ?? null}
+      deserializedCard={deserializedCard}
+    />
+  );
+}
+
+export const _InteractiveQuestion = InteractiveQuestionInner;
 
 const subComponents: InteractiveQuestionComponents = {
   BackButton: BackButton,

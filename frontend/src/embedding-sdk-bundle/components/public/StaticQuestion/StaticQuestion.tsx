@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useMemo } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -34,6 +34,7 @@ import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { Box, Group, Stack } from "metabase/ui";
+import { deserializeCardFromQuery } from "metabase/utils/card";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -96,6 +97,7 @@ const StaticQuestionInner = (
   const {
     questionId,
     token,
+    query,
     withChartTypeSelector,
     height,
     width,
@@ -108,6 +110,11 @@ const StaticQuestionInner = (
     title = false, // Hidden by default for backwards-compatibility.
     children,
   } = normalizedProps;
+
+  const deserializedCard = useMemo(
+    () => (query ? deserializeCardFromQuery(query) : undefined),
+    [query],
+  );
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
@@ -129,6 +136,7 @@ const StaticQuestionInner = (
     <SdkQuestion
       questionId={questionId ?? null}
       token={token}
+      deserializedCard={deserializedCard}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}

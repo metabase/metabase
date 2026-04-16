@@ -33,6 +33,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
     .noUnknown(),
   questionId: Yup.mixed().required(),
   token: Yup.mixed().optional(),
+  query: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   targetCollection: Yup.mixed().optional(),
   targetDashboardId: Yup.mixed().optional(),

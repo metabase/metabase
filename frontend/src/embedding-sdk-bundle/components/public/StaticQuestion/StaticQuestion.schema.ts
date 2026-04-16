@@ -16,6 +16,7 @@ const propsSchema: Yup.SchemaOf<StaticQuestionProps> = Yup.object({
     otherwise: (schema) => schema.required(),
   }),
   token: Yup.mixed().optional(),
+  query: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   title: Yup.mixed().optional(),
   width: Yup.mixed().optional(),

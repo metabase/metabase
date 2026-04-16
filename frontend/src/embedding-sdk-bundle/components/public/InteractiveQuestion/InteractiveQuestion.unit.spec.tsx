@@ -570,11 +570,11 @@ async function findModal() {
 
 describe('questionId: "new"', () => {
   interface SetupOpts {
-    questionId?: SdkQuestionId;
+    questionId: SdkQuestionId;
     dataPicker?: EmbeddingDataPicker;
   }
 
-  async function setup({ questionId, dataPicker }: SetupOpts = {}) {
+  async function setup({ questionId, dataPicker }: SetupOpts) {
     setupDatabasesEndpoints([TEST_DB]);
     setupCollectionByIdEndpoint({
       collections: [createMockCollection({ id: 1 })],
