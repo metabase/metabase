@@ -29,7 +29,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByLabelText("Date").type("10/20/2024");
+      cy.findByLabelText("Date").type("10/20/2027");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -42,7 +42,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should create an event within the default timeline", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -55,7 +55,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC2");
-      cy.findByLabelText("Date").type("10/30/2024");
+      cy.findByLabelText("Date").type("10/30/2027");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -71,9 +71,9 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "v1", timestamp: "2027-01-01T00:00:00Z" },
-          { name: "v2", timestamp: "2023-01-01T00:00:00Z" },
-          { name: "v3", timestamp: "2026-01-01T00:00:00Z" },
+          { name: "v1", timestamp: "2030-01-01T00:00:00Z" },
+          { name: "v2", timestamp: "2026-01-01T00:00:00Z" },
+          { name: "v3", timestamp: "2029-01-01T00:00:00Z" },
         ],
       });
 
@@ -102,7 +102,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should edit an event", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -132,7 +132,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimeline({ name: "Releases" });
       H.createTimelineWithEvents({
         timeline: { name: "Builds" },
-        events: [{ name: "RC2", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC2", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -160,7 +160,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should archive and unarchive an event", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -194,7 +194,7 @@ describe("scenarios > organization > timelines > question", () => {
           {
             name: "RC1",
             description: "[Release notes](https://metabase.test)",
-            timestamp: "2024-10-20T00:00:00Z",
+            timestamp: "2027-10-20T00:00:00Z",
           },
         ],
       });
@@ -211,7 +211,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should show events for ad-hoc questions", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -239,7 +239,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should not show events for non-timeseries questions", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -269,7 +269,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should show events for native queries", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -300,7 +300,7 @@ describe("scenarios > organization > timelines > question", () => {
         H.createTimelineWithEvents({
           timeline: { name: "Releases" },
           events: [
-            { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "cloud" },
+            { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "cloud" },
           ],
         });
 
@@ -310,7 +310,7 @@ describe("scenarios > organization > timelines > question", () => {
             collection_id: PARENT_COLLECTION_ID,
           },
           events: [
-            { name: "TC1", timestamp: "2022-05-20T00:00:00Z", icon: "warning" },
+            { name: "TC1", timestamp: "2025-05-20T00:00:00Z", icon: "warning" },
           ],
         });
 
@@ -336,7 +336,7 @@ describe("scenarios > organization > timelines > question", () => {
         // should show a newly created event
         cy.button("Create event").click();
         cy.findByLabelText("Event name").type("RC2");
-        cy.findByLabelText("Date").clear().type("10/20/2023");
+        cy.findByLabelText("Date").clear().type("10/20/2026");
         cy.button("Create").click();
         waitForTimelinesAfterCreatingAnEvent("RC2");
 
@@ -399,7 +399,7 @@ describe("scenarios > organization > timelines > question", () => {
          * This tests the case where group by unit with the event in the end range bucket
          * not included when it's the only event selected.
          *
-         * e.g. group by month from 2024-01-01 to 2025-01-01 with event at 2025-01-15,
+         * e.g. group by month from 2027-01-01 to 2028-01-01 with event at 2028-01-15,
          * it should be included, but was not previously
          */
         cy.log(
@@ -409,7 +409,7 @@ describe("scenarios > organization > timelines > question", () => {
 
         H.modal().within(() => {
           cy.findByLabelText("Event name").type("Event at the end of range");
-          cy.findByLabelText("Date").clear().type("10/20/2026");
+          cy.findByLabelText("Date").clear().type("10/20/2029");
 
           cy.button("Create").click();
         });
@@ -430,7 +430,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
         ],
       });
 
@@ -445,7 +445,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
         ],
       });
 
@@ -475,10 +475,10 @@ describe("scenarios > organization > timelines > question", () => {
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
         events: [
-          { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
-          { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
-          { name: "Last quarter", timestamp: "2026-05-10T12:00:00Z" },
-          { name: "Last year", timestamp: "2026-09-10T12:00:00Z" },
+          { name: "Last week", timestamp: "2029-04-21T12:00:00Z" },
+          { name: "Last month", timestamp: "2029-04-27T12:00:00Z" },
+          { name: "Last quarter", timestamp: "2029-05-10T12:00:00Z" },
+          { name: "Last year", timestamp: "2029-09-10T12:00:00Z" },
         ],
       });
 
@@ -559,7 +559,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.signInAsAdmin();
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
       cy.signOut();
       cy.signIn("readonly");

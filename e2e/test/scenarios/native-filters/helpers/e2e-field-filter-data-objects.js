@@ -62,25 +62,25 @@ export const DATE_FILTER_SUBTYPES = {
   "Month and Year": {
     value: {
       month: "Sep",
-      year: "2022",
+      year: "2025",
     },
     representativeResult: "Aerodynamic Paper Computer",
   },
   "Quarter and Year": {
     value: {
       quarter: "Q2",
-      year: "2022",
+      year: "2025",
     },
     representativeResult: "Synergistic Steel Chair",
   },
   "Single Date": {
-    value: "05/24/2022",
+    value: "05/24/2025",
     representativeResult: "Synergistic Steel Chair",
   },
   "Date Range": {
     value: {
-      startDate: "05/25/2022",
-      endDate: "06/01/2022",
+      startDate: "05/25/2025",
+      endDate: "06/01/2025",
     },
     representativeResult: "Gorgeous Wooden Car",
   },
@@ -91,8 +91,8 @@ export const DATE_FILTER_SUBTYPES = {
         // When the filter is "Previous N months", we must ensure that N is large
         // enough that the representative result appears. For this filter, the
         // representative result is Synergistic Steel Chair, created on May 24,
-        // 2022.
-        dayjs().diff(dayjs("2022-05-24"), "month") + 2,
+        // 2025.
+        dayjs().diff(dayjs("2025-05-24"), "month") + 2,
     },
     representativeResult: "Rustic Paper Wallet",
   },

@@ -291,7 +291,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
@@ -306,7 +306,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
@@ -320,7 +320,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.popover().findByText("Product → Category").click();
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
 
@@ -330,7 +330,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.popover().findByText("User → Source").click();
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
@@ -541,11 +541,11 @@ describe("scenarios > visualizations > pie chart", () => {
       H.visitDashboard(dashboard_id);
     });
 
-    confirmSliceClickBehavior("2025", 6578);
+    confirmSliceClickBehavior("2028", 6578);
     confirmSliceClickBehavior("Affiliate", 1270, 0);
     confirmSliceClickBehavior("Doohickey", 282, 0);
 
-    confirmSliceClickBehavior("2024", 5834);
+    confirmSliceClickBehavior("2027", 5834);
     confirmSliceClickBehavior("Organic", 1180, 1);
     confirmSliceClickBehavior("Gizmo", 354, 8);
   });
@@ -573,7 +573,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.echartsContainer().findByText("79%").realHover();
 
     H.assertEChartsTooltip({
-      header: "2024",
+      header: "2027",
       rows: [
         {
           name: "Affiliate",

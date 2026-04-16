@@ -215,7 +215,7 @@ describe("issue 47847", () => {
 
     H.cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
     H.assertEChartsTooltip({
-      header: "April 24–30, 2022",
+      header: "April 24–30, 2025",
       blurAfter: false,
       footer: null,
       rows: [
@@ -255,7 +255,7 @@ describe("issue 51926", () => {
       cy.findByTestId("Pivot Table-button").click();
     });
 
-    cy.findAllByTestId("pivot-table-cell").contains("April 24, 2022");
+    cy.findAllByTestId("pivot-table-cell").contains("April 24, 2025");
   });
 });
 
@@ -286,7 +286,7 @@ describe("issue 51952", () => {
 
     cy.findByTestId("settings-CREATED_AT").click();
     H.popover().findByText("Abbreviate days and months").click();
-    H.echartsContainer().findByText("Jan 2024");
+    H.echartsContainer().findByText("Jan 2027");
   });
 });
 
