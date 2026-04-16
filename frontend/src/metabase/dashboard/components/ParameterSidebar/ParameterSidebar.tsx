@@ -3,12 +3,8 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { useDashboardContext } from "metabase/dashboard/context";
-import {
-  getEditingParameterInlineDashcard,
-  getEmbeddedParameterVisibility,
-} from "metabase/dashboard/selectors";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
+import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
 import type { IconName } from "metabase/ui";
 import { Tabs } from "metabase/ui";
 import { slugify } from "metabase/utils/formatting";
@@ -24,7 +20,11 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 
-import { canUseLinkedFilters } from "../../utils/linked-filters";
+import { useDashboardContext } from "../../context";
+import {
+  getEditingParameterInlineDashcard,
+  getEmbeddedParameterVisibility,
+} from "../../selectors";
 import { ParameterLinkedFilters } from "../ParameterLinkedFilters";
 import { ParameterSettings } from "../ParameterSettings";
 

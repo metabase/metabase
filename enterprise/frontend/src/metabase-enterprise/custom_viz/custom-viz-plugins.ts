@@ -63,7 +63,7 @@ export function useCustomVizPlugins({
     skip: !shouldLoad,
   });
 
-  return { plugins, isLoading };
+  return { plugins, isLoading, disabled: isPublicOrStaticEmbed };
 }
 
 /**
@@ -127,7 +127,7 @@ function useCustomVizDevReload(
 export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
 } {
-  const { plugins } = useCustomVizPlugins();
+  const { plugins, disabled } = useCustomVizPlugins();
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
@@ -187,6 +187,13 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   }
 
   const needsCustomViz = isCustomVizDisplay(display);
+
+  /**
+   * Short-circuit if custom-viz plugins are disabled (e.g., public or embedded questions/dashboards).
+   */
+  if (disabled) {
+    return { loading: false };
+  }
 
   // Plugin list loaded but no matching plugin found — the custom viz was
   // removed or is otherwise unavailable.  Stop loading so the visualization

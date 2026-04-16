@@ -1005,6 +1005,7 @@ const configs = [
     files: ["enterprise/frontend/src/custom-viz/src/templates/index.tsx"],
     rules: {
       "import/no-default-export": "off",
+      "metabase/no-color-literals": "off",
     },
   },
   {

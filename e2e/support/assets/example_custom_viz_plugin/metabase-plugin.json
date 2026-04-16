@@ -3,6 +3,6 @@
   "icon": "icon.svg",
   "assets": ["icon.svg", "thumbs-up.png", "thumbs-down.png"],
   "metabase": {
-    "version": ">=1.59"
+    "version": ">=0.57"
   }
 }

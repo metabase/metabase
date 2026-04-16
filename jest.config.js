@@ -121,13 +121,13 @@ const config = {
 
       setupFiles: [
         ...baseConfig.setupFiles,
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-env.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-env.ts",
       ],
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-after-env.js",
-        "<rootDir>/frontend/src/embedding-sdk-shared/jest/console-restrictions.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-after-env.ts",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/console-restrictions.ts",
       ],
     },
     {

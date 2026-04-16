@@ -3,6 +3,7 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   CardId,
   CustomVizPlugin,
@@ -143,25 +144,36 @@ describe("admin > custom visualizations", () => {
       );
     });
 
-    it("should show error status for invalid repo URL", () => {
+    it("should surface an inline error and keep the form open for an invalid repo URL", () => {
+      const invalidRepoUrl = "file:///nonexistent/repo/.git";
+
       H.visitCustomVizNewForm();
 
-      cy.findByLabelText(/Repository URL/).type(
-        "file:///nonexistent/repo/.git",
-      );
+      cy.findByLabelText(/Repository URL/).type(invalidRepoUrl);
       cy.findByLabelText(/I understand/).click();
 
       cy.intercept("POST", "/api/ee/custom-viz-plugin").as(
         "pluginCreateInvalid",
       );
       cy.findByRole("button", { name: /Save/ }).click();
-      cy.wait("@pluginCreateInvalid");
 
-      // API returns 200 with status "error" — redirects to manage page
-      // where the error message is shown in the plugin list item
-      H.main()
-        .findByText(/Failed to clone git repository/)
-        .should("be.visible");
+      cy.wait("@pluginCreateInvalid")
+        .its("response.statusCode")
+        .should("eq", 400);
+
+      cy.findByTestId("custom-viz-settings-form").within(() => {
+        cy.findByText(/Failed to clone git repository/).should("be.visible");
+      });
+
+      cy.location("pathname").should(
+        "eq",
+        "/admin/settings/custom-visualizations/new",
+      );
+
+      cy.findByLabelText(/Repository URL/).should("have.value", invalidRepoUrl);
+
+      H.visitCustomVizSettings();
+      H.main().findByText(invalidRepoUrl).should("not.exist");
     });
 
     it("should support multiple plugins", () => {
@@ -279,6 +291,39 @@ describe("admin > custom visualizations", () => {
           cy.wait("@pluginUpdate").then(({ request }) => {
             expect(request.body.pinned_version).to.equal("main");
           });
+
+          const invalidPinnedVersion = "definitely-not-a-real-ref-zzz";
+
+          H.visitCustomVizEditForm(plugin.id);
+
+          cy.findByLabelText(/Pinned version/)
+            .clear()
+            .type(invalidPinnedVersion);
+
+          cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
+            "pluginUpdateInvalid",
+          );
+          cy.findByRole("button", { name: /Save/ }).click();
+
+          cy.wait("@pluginUpdateInvalid")
+            .its("response.statusCode")
+            .should("eq", 400);
+
+          cy.findByTestId("custom-viz-settings-form").within(() => {
+            cy.findByText(/Failed to fetch plugin from repository/).should(
+              "be.visible",
+            );
+          });
+
+          cy.location("pathname").should(
+            "eq",
+            `/admin/settings/custom-visualizations/edit/${plugin.id}`,
+          );
+
+          cy.findByLabelText(/Pinned version/).should(
+            "have.value",
+            invalidPinnedVersion,
+          );
         });
       });
     });
@@ -486,6 +531,68 @@ describe("admin > custom visualizations", () => {
           .findByText(/"demo-viz" visualization is currently unavailable/)
           .should("be.visible");
       });
+
+      it("falls back to the default viz when the bundle endpoint fails, then recovers on revisit", () => {
+        const bundleMatcher = {
+          method: "GET",
+          pathname: "/api/ee/custom-viz-plugin/*/bundle",
+        };
+
+        cy.intercept(bundleMatcher, {
+          statusCode: 503,
+          body: { error: "Bundle not available" },
+        }).as("bundleUnavailable");
+
+        H.createQuestion(
+          {
+            name: "Custom Viz — Bundle Recovery",
+            query: {
+              "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+              aggregation: [["count"]],
+            },
+            display: H.CUSTOM_VIZ_DISPLAY,
+          },
+          { wrapId: true, idAlias: "recoveryCardId", visitQuestion: true },
+        );
+
+        cy.findByTestId("visualization-root")
+          .findByTestId("table-root")
+          .should("be.visible");
+
+        H.undoToastList()
+          .findByText(/visualization is currently unavailable/i)
+          .should("be.visible");
+
+        cy.intercept(bundleMatcher, (req) => req.continue()).as(
+          "bundleRestored",
+        );
+
+        cy.reload();
+
+        H.main()
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
+      });
+    });
+
+    it("falls back to the default viz on a public question (metabase#GDGT-2234)", () => {
+      H.updateSetting("enable-public-sharing", true);
+
+      H.createQuestion(
+        {
+          name: "Public Custom Viz Fallback",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "publicQuestionId" },
+      );
+
+      cy.get<number>("@publicQuestionId").then(H.visitPublicQuestion);
+
+      cy.findByTestId("table-root").should("be.visible");
     });
 
     it("calls onClick when the viz fires a click", () => {
@@ -591,17 +698,14 @@ describe("admin > custom visualizations", () => {
         .should("be.visible");
     });
 
-    // TODO: public dashboard support for custom viz. Tracked by GDGT-2234 subtask.
-    it.skip("renders a custom viz question on a public dashboard", () => {
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    it("falls back to the default viz on a public dashboard (metabase#GDGT-2234)", () => {
+      H.updateSetting("enable-public-sharing", true);
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitPublicDashboard(dashcard.dashboard_id);
+        H.visitPublicDashboard(checkNotNull(dashcard.dashboard_id));
       });
 
-      H.getDashboardCard()
-        .findByText("Custom viz rendered successfully")
-        .should("be.visible");
+      H.getDashboardCard().findByTestId("table-root").should("be.visible");
     });
 
     it("exports the dashboard as a PDF", () => {
@@ -1158,6 +1262,163 @@ describe("admin > custom visualizations", () => {
         .findByRole("menuitem", { name: /demo-viz/i })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
+    });
+  });
+
+  describe("development mode", () => {
+    const CUSTOM_VIZ_DEV_PROJECT_NAME = "custom-viz-dev-plugin";
+    const CUSTOM_VIZ_DEV_PORT = 5174;
+    const TIMEOUT = 120000;
+    const tmpDir = `${Cypress.config("projectRoot")}/e2e/tmp`;
+    const sdkDir = `${Cypress.config("projectRoot")}/enterprise/frontend/src/custom-viz`;
+    const cliPath = `${sdkDir}/dist/cli.js`;
+    const projectDir = `${tmpDir}/${CUSTOM_VIZ_DEV_PROJECT_NAME}`;
+    const devUrl = `http://localhost:${CUSTOM_VIZ_DEV_PORT}`;
+    const pluginSrcPath = `${projectDir}/src/index.tsx`;
+    const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
+    let devServerPid: number | null = null;
+
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+    });
+
+    before(() => {
+      cy.exec(`mkdir -p ${tmpDir}`);
+      cy.log("Build the SDK so we can use the repo-local CLI");
+      cy.exec(`cd "${sdkDir}" && bun install && bun run build`, {
+        timeout: TIMEOUT,
+      });
+
+      // Scaffold the boilerplate plugin using the init CLI command.
+      cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
+      cy.exec(
+        `cd "${tmpDir}" && node "${cliPath}" init "${CUSTOM_VIZ_DEV_PROJECT_NAME}"`,
+        {
+          timeout: TIMEOUT,
+        },
+      );
+
+      // The scaffolded template requires Metabase >= 60.0, but the e2e runner may
+      // run an older version. Rewrite the manifest to a permissive range so the
+      // dev-only plugin is included in /api/ee/custom-viz-plugin/list and becomes
+      // selectable in the visualization picker.
+      cy.readFile(`${projectDir}/metabase-plugin.json`).then((manifest) => {
+        cy.writeFile(
+          `${projectDir}/metabase-plugin.json`,
+          JSON.stringify(
+            {
+              ...manifest,
+              metabase: {
+                ...(manifest?.metabase ?? {}),
+                version: "", // empty strings means compatibility with any version
+              },
+            },
+            null,
+            2,
+          ),
+        );
+      });
+
+      // Install dependencies in the tmp plugin folder.
+      cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
+
+      // Start the plugin dev server and keep it running
+      cy.task<{ pid: number }>("startCustomVizDevServer", {
+        cwd: projectDir,
+      }).then(({ pid }) => {
+        devServerPid = pid;
+      });
+    });
+
+    after(() => {
+      if (devServerPid == null) {
+        return;
+      }
+
+      cy.task("stopCustomVizDevServer", devServerPid);
+    });
+
+    it("should load a dev-only plugin from a local dev server URL and use it in a question", () => {
+      H.visitCustomVizDevelopment();
+
+      cy.findByLabelText(/Dev server URL/).type(devUrl);
+      cy.log(
+        "It should not be possible to add the plugin until the user understands the risks",
+      );
+      cy.findByRole("button", { name: /Add/ }).should("be.disabled");
+      cy.findByLabelText(/I understand/).click();
+
+      cy.findByRole("button", { name: /Add/ }).click();
+
+      cy.log("Verify the dev plugin is registered.");
+      H.main().findByText(CUSTOM_VIZ_DEV_PROJECT_NAME).should("be.visible");
+
+      // Use the dev plugin in a question (Count of Orders) — this yields a
+      // single numeric value so the scaffolded plugin renders.
+      H.createQuestion(
+        {
+          name: "Custom Viz Dev Mode Question Test",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: "table",
+        },
+        { visitQuestion: true },
+      );
+
+      cy.findByTestId("viz-type-button").click();
+      cy.findByTestId("custom-viz-plugins-toggle").click();
+      cy.log("Checking if dev badge is visible");
+      cy.findByLabelText(
+        "This is a development version of the visualization",
+      ).should("exist");
+      cy.findByTestId(`${CUSTOM_VIZ_DEV_PROJECT_NAME}-button`).click();
+
+      // Close the picker so the viz is visible.
+      cy.findByTestId("viz-type-button").click();
+
+      cy.log(
+        "Threshold defaults to 0 and Count(Orders) is > 0, so we should see 👍",
+      );
+      H.main().findByText("👍").should("be.visible");
+
+      cy.log("Modifying plugin source");
+      cy.readFile(pluginSrcPath).then((src) => {
+        const updated = src.replace('"👍"', '"🥦"');
+        if (updated === src) {
+          throw new Error(`Expected to replace 👍 in ${pluginSrcPath}`);
+        }
+        cy.writeFile(pluginSrcPath, updated);
+      });
+
+      cy.log("Checking if hot reload works");
+      H.main().findByText("🥦").should("be.visible");
+
+      cy.log("Verify plugin settings affect rendering.");
+      cy.log("Set threshold higher than Count(Orders) so it flips to 👎.");
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByPlaceholderText("Set threshold")
+        .clear()
+        .type("100000")
+        .should("have.value", "100000");
+      cy.findByRole("button", {
+        name: /Done/,
+      }).click();
+      H.main().findByText("👎").should("be.visible");
+
+      cy.log(
+        "Saving the question and reloading to verify persistence of settings and dev URL",
+      );
+      cy.log("handling modal");
+      H.saveQuestion(QUESTION_NAME, { shouldReplaceOriginalQuestion: true });
+      // Wait for the dialog to close
+      cy.findByRole("dialog", { name: /Save question/ }).should("not.exist");
+      cy.reload();
+      H.main().findByText("👎").should("be.visible");
     });
   });
 });

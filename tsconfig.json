@@ -27,6 +27,7 @@
   },
   "include": [
     "frontend/src/**/*",
+    "frontend/build/**/*",
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
     "enterprise/frontend/test/**/*"

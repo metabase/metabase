@@ -304,6 +304,7 @@ export function saveQuestion(
       cy.findByLabelText(/Replace original question/i).should("be.checked");
       cy.button("Save").click();
     });
+    return;
   }
   if (shouldSaveAsNewQuestion) {
     modal().within(() => {

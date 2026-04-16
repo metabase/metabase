@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCustomViz } from "metabase/admin/upsells";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 
 export function CustomVisualizationsManagePage() {
@@ -39,6 +39,7 @@ export function CustomVisualizationsFormPage({
 
 export function CustomVisualizationsDevelopmentPage() {
   const hasCustomViz = useHasTokenFeature("custom-viz");
+  const devModeEnabled = useSetting("custom-viz-plugin-dev-mode-enabled");
 
   if (!hasCustomViz) {
     return (
@@ -46,6 +47,10 @@ export function CustomVisualizationsDevelopmentPage() {
         <UpsellCustomViz location="settings-custom-viz" />
       </SettingsPageWrapper>
     );
+  }
+
+  if (!devModeEnabled) {
+    return null;
   }
 
   return <PLUGIN_CUSTOM_VIZ.CustomVizDevPage />;

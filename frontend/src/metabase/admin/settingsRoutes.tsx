@@ -7,6 +7,7 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { IsAdmin } from "metabase/route-guards";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
 import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
@@ -29,7 +30,6 @@ import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSett
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
-import { createAdminRouteGuard } from "./utils";
 
 export const getSettingsRoutes = () => (
   <Route
@@ -80,7 +80,7 @@ export const getSettingsRoutes = () => (
     <Route
       path="custom-visualizations"
       /* do not allow users with "Settings access" permissions to access custom viz pages */
-      component={createAdminRouteGuard("custom-visualizations")}
+      component={IsAdmin}
     >
       <IndexRoute component={CustomVisualizationsManagePage} />
       <Route path="new" component={CustomVisualizationsFormPage} />

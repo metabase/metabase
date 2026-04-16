@@ -54,11 +54,6 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/tools",
       key: "tools",
     },
-    {
-      name: t`Custom visualizations`,
-      path: "/admin/settings/custom-visualizations",
-      key: "custom-visualizations",
-    },
   ];
 
   return items;
