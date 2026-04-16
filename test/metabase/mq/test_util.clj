@@ -4,9 +4,15 @@
   the backend instances, and convenience fns (`flush!`, `wait-for-idle!`,
   `eventually`) for driving delivery and waiting for quiescence.
 
-  `do-with-test-mq` also accepts `:kind :appdb` for running the real database-
-  backed backend in parity tests."
+  `do-with-test-mq` also accepts `:backend :appdb` for running the real database-
+  backed backend in parity tests, and `:duplicate-delivery? true` to wrap the
+  backends with a decorator that publishes every message twice. The duplicate-
+  delivery mode exists to force listeners under test to prove they handle the
+  MQ's at-least-once contract — any scenario that silently relies on exactly-
+  once delivery will fail loudly under this mode."
   (:require
+   [clojure.test :refer :all]
+   [metabase.mq.core :as mq]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.init :as mq.init]
    [metabase.mq.listener :as listener]
@@ -14,8 +20,10 @@
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.appdb :as q.appdb]
+   [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.topic.appdb :as topic.appdb]
+   [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.memory :as topic.memory])
   (:import
    (java.util.concurrent LinkedBlockingQueue)))
@@ -131,30 +139,72 @@
   [kind]
   (case kind
     :memory (let [layer (memory/make-layer)]
-              {:kind     :memory
+              {:backend     :memory
                :layer    layer
                :queue-be (q.memory/make-backend layer)
                :topic-be (topic.memory/make-backend layer)})
-    :appdb  {:kind     :appdb
+    :appdb  {:backend     :appdb
              :queue-be q.appdb/backend
              :topic-be topic.appdb/backend}))
 
+(defn- double-delivery-queue-backend
+  "Wraps an inner `QueueBackend` so that `publish!` calls the inner backend's
+  `publish!` twice with the same payload. Used by `do-with-test-mq` when
+  `:duplicate-delivery?` is set, to force listeners under test to handle the
+  MQ's at-least-once contract."
+  [inner]
+  (reify q.backend/QueueBackend
+    (publish! [_ queue-name messages]
+      (q.backend/publish! inner queue-name messages)
+      (q.backend/publish! inner queue-name messages))
+    (batch-successful! [_ queue-name batch-id]
+      (q.backend/batch-successful! inner queue-name batch-id))
+    (batch-failed! [_ queue-name batch-id]
+      (q.backend/batch-failed! inner queue-name batch-id))
+    (start! [_] (q.backend/start! inner))
+    (shutdown! [_] (q.backend/shutdown! inner))))
+
+(defn- double-delivery-topic-backend
+  "Wraps an inner `TopicBackend` so that `publish!` calls the inner backend's
+  `publish!` twice with the same payload. Used by `do-with-test-mq` when
+  `:duplicate-delivery?` is set."
+  [inner]
+  (reify topic.backend/TopicBackend
+    (publish! [_ topic-name messages]
+      (topic.backend/publish! inner topic-name messages)
+      (topic.backend/publish! inner topic-name messages))
+    (subscribe! [_ topic-name]
+      (topic.backend/subscribe! inner topic-name))
+    (unsubscribe! [_ topic-name]
+      (topic.backend/unsubscribe! inner topic-name))
+    (start! [_] (topic.backend/start! inner))
+    (shutdown! [_] (topic.backend/shutdown! inner))))
+
 (defn do-with-test-mq
-  "Implementation detail for [[with-test-mq]] and backend-parity tests.
-  `opts` may include `:kind` (`:memory` default or `:appdb`) and `:listeners`.
+  "Function form of [[with-test-mq]]. `opts` may include:
+
+  - `:backend`                 `:memory` (default) or `:appdb`
+  - `:listeners`            listener map, same shape as `with-sync-mq` had
+  - `:duplicate-delivery?`  when true, wraps both backends with a decorator
+                            that publishes every message twice — used to
+                            verify listeners handle at-least-once delivery
 
   The fixture forces `*publish-buffer-ms*` to 0 so publishes go straight to the
   backend without waiting for the background flush scheduler. Tests that want to
   exercise buffering behaviour must rebind it explicitly in the body."
   ([f] (do-with-test-mq {} f))
   ([opts f]
-   (let [{:keys [kind listeners] :or {kind :memory}} opts]
+   (let [{:keys [kind listeners duplicate-delivery?] :or {kind :memory}} opts]
      (binding [listener/*listeners*               (atom {})
                publish-buffer/*publish-buffer*    (atom {})
                publish-buffer/*publish-buffer-ms* 0]
        (let [backends (make-fixture-backends kind)
-             handle   (mq.init/start! (:queue-be backends) (:topic-be backends))
-             ctx      (assoc backends :handle handle)]
+             queue-be (cond-> (:queue-be backends)
+                        duplicate-delivery? double-delivery-queue-backend)
+             topic-be (cond-> (:topic-be backends)
+                        duplicate-delivery? double-delivery-topic-backend)
+             handle   (mq.init/start! queue-be topic-be)
+             ctx      (assoc backends :queue-be queue-be :topic-be topic-be :handle handle)]
          (try
            (merge-listeners! listeners)
            (let [result (f ctx)]
@@ -164,20 +214,77 @@
              (mq.init/stop! handle))))))))
 
 (defmacro with-test-mq
-  "Starts an MQ subsystem backed by isolated memory queue + topic backends on a
-  fresh `MemoryLayer`, runs body with `ctx-sym` bound to a fixture context map of
-  the form `{:layer :queue-be :topic-be :handle}`, then drains and shuts down.
+  "Starts an MQ subsystem, runs body with `ctx-sym` bound to a fixture context
+  map, then drains and shuts down.
 
-  An optional listener map may follow the binding vector, same shape as the old
-  `with-sync-mq`.
+  The binding vector is `[ctx-sym]` or `[ctx-sym opts-map]` where `opts-map`
+  may contain `:backend`, `:duplicate-delivery?`, etc. — anything
+  [[do-with-test-mq]] accepts.
+
+  An optional listener map may follow the binding vector (same shape as the
+  old `with-sync-mq`). It is merged into the opts under `:listeners`.
 
   Use `(mq.tu/flush! ctx)` between publishes and assertions, and
   `(mq.tu/wait-for-idle! ctx)` / `(mq.tu/eventually ctx pred)` where finer
-  control is needed."
+  control is needed.
+
+  Examples:
+
+      (with-test-mq [ctx]
+        body)
+
+      (with-test-mq [ctx]
+        {:queue/foo (fn [msg] ...)}
+        body)
+
+      (with-test-mq [ctx {:backend :appdb :duplicate-delivery? true}]
+        body)"
   {:style/indent 1}
-  [[ctx-sym] & body]
+  [[ctx-sym & [opts-expr]] & body]
   (let [[listeners body] (if (map? (first body))
                            [(first body) (rest body)]
                            [nil body])]
-    `(do-with-test-mq {:listeners ~listeners} (fn [~ctx-sym] ~@body))))
+    `(do-with-test-mq (merge ~opts-expr {:listeners ~listeners})
+                      (fn [~ctx-sym] ~@body))))
+
+;;; ------------------------------------------- Fixture self-tests -------------------------------------------
+
+(deftest duplicate-delivery-doubles-queue-messages-test
+  (testing "With :duplicate-delivery? true, the queue backend delivers each message twice"
+    (with-test-mq [ctx {:duplicate-delivery? true}]
+      (let [received (atom [])]
+        (mq/listen! :queue/chaos-smoke {} #(swap! received conj %))
+        (mq/with-queue :queue/chaos-smoke [q]
+          (mq/put q "hello"))
+        (eventually ctx #(= 2 (count @received)) 5000)
+        (is (= ["hello" "hello"] @received)
+            "Single published message is delivered to the listener twice")
+        (mq/unlisten! :queue/chaos-smoke)))))
+
+(deftest duplicate-delivery-doubles-topic-messages-test
+  (testing "With :duplicate-delivery? true, the topic backend delivers each message twice"
+    (with-test-mq [ctx {:duplicate-delivery? true}]
+      (let [received (atom [])]
+        (mq/listen! :topic/chaos-smoke {} #(swap! received conj %))
+        (mq/with-topic :topic/chaos-smoke [t]
+          (mq/put t "ping"))
+        (eventually ctx #(= 2 (count @received)) 5000)
+        (is (= ["ping" "ping"] @received)
+            "Single published topic message is delivered to the subscriber twice")
+        (mq/unlisten! :topic/chaos-smoke)))))
+
+(deftest duplicate-delivery-off-by-default-test
+  (testing "The default fixture delivers each message exactly once"
+    (with-test-mq [ctx]
+      (let [received (atom [])]
+        (mq/listen! :queue/chaos-default {} #(swap! received conj %))
+        (mq/with-queue :queue/chaos-default [q]
+          (mq/put q "once"))
+        (eventually ctx #(>= (count @received) 1) 5000)
+        ;; Give the poll thread an extra moment in case a second (unexpected)
+        ;; delivery is on the way, then confirm exactly one happened.
+        (Thread/sleep 100)
+        (is (= ["once"] @received)
+            "Default fixture delivers exactly once")
+        (mq/unlisten! :queue/chaos-default)))))
 
