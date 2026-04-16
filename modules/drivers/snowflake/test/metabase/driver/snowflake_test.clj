@@ -515,8 +515,9 @@
             (let [new-field (t2/select-one :model/Field :id (:id original-field))]
               (testing "after sync, base_type and effective_type both reflect the new numeric column,
                        and stale coercion/semantic type are cleared"
-                (is (=? {:base_type         :type/Number
-                         :effective_type    :type/Number
+                ;; TRY_TO_NUMBER with no precision returns NUMBER(38,0) -> :type/BigInteger
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
                          :coercion_strategy nil
                          :semantic_type     nil}
                         new-field))))
@@ -539,8 +540,9 @@
                 fresh-field (t2/select-one :model/Field :table_id (:id fresh-table) :name "text_column")]
             (testing "after fresh-state CREATE OR REPLACE to numeric, base_type and effective_type
                      both reflect the new numeric column"
-              (is (=? {:base_type         :type/Number
-                       :effective_type    :type/Number
+              ;; TRY_TO_NUMBER(x, 38, 2) returns NUMBER(38,2) -> :type/Decimal
+              (is (=? {:base_type         :type/Decimal
+                       :effective_type    :type/Decimal
                        :coercion_strategy nil
                        :semantic_type     nil}
                       fresh-field))))
