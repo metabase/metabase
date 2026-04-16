@@ -1,12 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "upstack",
-        "onto",
-        "emb-942-add-embedding-theme-preview-placeholder-cards-to-theme"
-      ],
-      "branch": "emb-944-ability-to-duplicate-and-delete-named-themes"
-    }
-  ]
+  "continuations": null
 }
