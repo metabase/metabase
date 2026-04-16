@@ -287,4 +287,3 @@
         (is (= ["once"] @received)
             "Default fixture delivers exactly once")
         (mq/unlisten! :queue/chaos-default)))))
-
