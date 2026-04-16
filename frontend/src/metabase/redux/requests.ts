@@ -11,38 +11,42 @@ export type RequestState = {
   _isRequestState: true;
 };
 
-type RequestsState = Record<string, unknown> & {
-  statePath?: (string | number)[];
-  queryKey?: string;
-  queryPromise?: Promise<unknown>;
-};
-type RequestsAction<Type extends string = string> = Partial<
-  Action<RequestsState>
-> & {
-  type: Type;
+export type RequestsStateTree = {
+  [key: string]: RequestsStateTree | RequestState;
 };
 
+type StatePath = (string | number)[];
+
+type RequestActionPayload = {
+  statePath?: StatePath;
+  queryKey?: string;
+  queryPromise?: Promise<unknown>;
+  error?: unknown;
+};
+
+type RequestsAction = Action<RequestActionPayload | undefined>;
+
 export const setRequestLoading = createAction<
-  RequestsAction["payload"],
-  RequestsState["statePath"],
+  RequestActionPayload,
+  StatePath,
   string | undefined
 >(
   "metabase/requests/SET_REQUEST_LOADING",
-  (statePath: RequestsState["statePath"], queryKey?: string) => ({
+  (statePath: StatePath, queryKey?: string) => ({
     statePath,
     queryKey,
   }),
 );
 
 export const setRequestPromise = createAction<
-  RequestsAction["payload"],
-  RequestsState["statePath"],
+  RequestActionPayload,
+  StatePath,
   string | undefined,
   Promise<unknown>
 >(
   "metabase/requests/SET_REQUEST_PROMISE",
   (
-    statePath: RequestsState["statePath"],
+    statePath: StatePath,
     queryKey: string | undefined,
     queryPromise: Promise<unknown>,
   ) => ({
@@ -53,37 +57,34 @@ export const setRequestPromise = createAction<
 );
 
 export const setRequestLoaded = createAction<
-  RequestsAction["payload"],
-  RequestsState["statePath"],
+  RequestActionPayload,
+  StatePath,
   string | undefined
 >(
   "metabase/requests/SET_REQUEST_LOADED",
-  (statePath: RequestsState["statePath"], queryKey?: string) => ({
+  (statePath: StatePath, queryKey?: string) => ({
     statePath,
     queryKey,
   }),
 );
 
 export const setRequestError = createAction<
-  RequestsAction["payload"],
-  RequestsState["statePath"],
+  RequestActionPayload,
+  StatePath,
   string | undefined,
   unknown
 >(
   "metabase/requests/SET_REQUEST_ERROR",
-  (
-    statePath: RequestsState["statePath"],
-    queryKey: string | undefined,
-    error: unknown,
-  ) => ({ statePath, queryKey, error }),
+  (statePath: StatePath, queryKey: string | undefined, error: unknown) => ({
+    statePath,
+    queryKey,
+    error,
+  }),
 );
 
-export const setRequestUnloaded = createAction<
-  RequestsAction["payload"],
-  RequestsState["statePath"]
->(
+export const setRequestUnloaded = createAction<RequestActionPayload, StatePath>(
   "metabase/requests/SET_REQUEST_UNLOADED",
-  (statePath: RequestsState["statePath"]) => ({ statePath }),
+  (statePath: StatePath) => ({ statePath }),
 );
 
 const initialRequestState: RequestState = {
@@ -96,7 +97,7 @@ const initialRequestState: RequestState = {
 
 const requestStateReducer = handleActions<
   RequestState,
-  RequestsState | undefined
+  RequestActionPayload | undefined
 >(
   {
     [setRequestLoading.toString()]: {
@@ -153,11 +154,17 @@ const requestStateReducer = handleActions<
   initialRequestState,
 );
 
+function isRequestState(
+  state: RequestState | RequestsStateTree,
+): state is RequestState {
+  return "_isRequestState" in state && !!state._isRequestState;
+}
+
 function requestStateReducerRecursive(
-  state: RequestState | undefined,
-  action: Action<RequestsState | undefined>,
-): RequestState {
-  if (!state || state._isRequestState) {
+  state: RequestState | RequestsStateTree | undefined,
+  action: RequestsAction,
+): RequestState | RequestsStateTree {
+  if (!state || isRequestState(state)) {
     return requestStateReducer(state, action);
   } else {
     let newState = state;
@@ -165,9 +172,10 @@ function requestStateReducerRecursive(
       newState = assoc(
         newState,
         key,
-        requestStateReducerRecursive(subState as RequestState, action),
+        requestStateReducerRecursive(subState, action),
       );
     }
+
     return newState;
   }
 }
@@ -178,9 +186,9 @@ const isBulkInvalidation = (statePath: (string | number)[]): boolean => {
 };
 
 export const requestsReducer = (
-  state: RequestsState = {},
-  action: Action<RequestsState | undefined>,
-): RequestsState => {
+  state: RequestsStateTree,
+  action: RequestsAction,
+): RequestsStateTree => {
   if (action?.payload?.statePath) {
     const statePath = action.payload.statePath;
     const hasStateToUpdate = !!getIn(state, statePath);

@@ -3,7 +3,10 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import type { Action } from "redux-actions";
 
 import * as entities from "metabase/redux/entities";
-import { requestsReducer } from "metabase/redux/requests";
+import {
+  type RequestsStateTree,
+  requestsReducer,
+} from "metabase/redux/requests";
 import type { State } from "metabase/redux/store";
 
 /**
@@ -26,7 +29,7 @@ export function getStore(
   const reducer = combineReducers({
     entities: entities.reducer,
     requests: (
-      state: Record<string, unknown> | undefined,
+      state: RequestsStateTree | undefined,
       action: Action<undefined>,
     ) => requestsReducer(entities.requestsReducer(state, action), action),
     ...reducers,

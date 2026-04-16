@@ -77,8 +77,12 @@ import createCachedSelector from "re-reselect";
 import type React from "react";
 import _ from "underscore";
 
-import { requestsReducer, setRequestUnloaded } from "metabase/redux/requests";
-import type { EntitiesState } from "metabase/redux/store";
+import {
+  type RequestsStateTree,
+  requestsReducer,
+  setRequestUnloaded,
+} from "metabase/redux/requests";
+import type { EntitiesState, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 
 import { DELETE, GET, POST, PUT } from "./api";
@@ -102,6 +106,8 @@ export type EntityId = string | number;
  */
 export type EntityObject = {
   id: EntityId;
+  name?: string;
+  collection?: unknown;
 };
 
 type NormalizedPayload = {
@@ -134,7 +140,7 @@ type EntitySelector = (state: any, ...args: any[]) => any;
 
 type EntityQuery = any;
 
-/** Named selectors that every entity must expose, plus an index for custom ones. */
+/** Named selectors that every entity must expose. */
 export type EntitySelectors = {
   getObject: EntitySelector;
   getList: EntitySelector;
@@ -144,7 +150,8 @@ export type EntitySelectors = {
   getFetched: EntitySelector;
   getError: EntitySelector;
   getListMetadata: EntitySelector;
-  [key: string]: EntitySelector;
+  getInitialCollectionId: EntitySelector;
+  getExpandedCollectionsById: EntitySelector;
 };
 
 /** Shape returned by createEntity */
@@ -162,7 +169,19 @@ export type Entity = {
 
   // API — each method may accept any arguments (raw data + options objects)
 
-  api: Record<string, (...args: any[]) => Promise<any>>;
+  api: {
+    list?: (...args: any[]) => Promise<
+      | EntityObject[]
+      | {
+          data: EntityObject[];
+          [key: string]: unknown;
+        }
+    >;
+    create?: (...args: any[]) => Promise<any>;
+    get?: (...args: any[]) => Promise<any>;
+    update?: (...args: any[]) => Promise<any>;
+    delete?: (...args: any[]) => Promise<any>;
+  };
 
   // Action type constants. The values are strings at runtime, but consumers use them
   // with `builder.addCase(actionType, reducer)` and rely on the second arg being typed
@@ -234,11 +253,11 @@ export type Entity = {
 
   // Reducers
   reducer?: EntitiesReducer;
-  reducers: Record<string, EntitiesReducer>;
+  reducers: Record<string, EntitiesReducer | Reducer<Record<string, unknown>>>;
   requestsReducer: (
-    state: Record<string, unknown> | undefined,
+    state: RequestsStateTree,
     action: { type: string },
-  ) => Record<string, unknown>;
+  ) => RequestsStateTree;
   actionShouldInvalidateLists: (action: { type: string }) => boolean;
 
   // Writable properties (subset of entity fields sent to the API)
@@ -273,12 +292,9 @@ export type Entity = {
  */
 
 type EntityRtkBridge = Record<string, any>;
-type EntitiesStateType = Partial<
-  Record<keyof EntitiesState, Record<string, unknown>>
->;
 type EntitiesReducer = Reducer<
-  EntitiesStateType,
-  { type: string; payload: EntitiesStateType }
+  EntitiesState | undefined,
+  { type: string; payload: EntitiesState }
 >;
 
 type EntityDef = {
@@ -300,7 +316,7 @@ type EntityDef = {
   actions?: Record<string, EntityActionCreator>;
   selectors?: Partial<EntitySelectors>;
   createSelectors?: (
-    defaultSelectors: EntitySelectors,
+    defaultSelectors: Partial<EntitySelectors>,
   ) => Partial<EntitySelectors>;
   objectSelectors?: Partial<Entity["objectSelectors"]>;
   // Reducers in entity defs typically destructure `{ type, payload }` from the action
@@ -320,13 +336,13 @@ type EntityDef = {
 // helper for working with normalizr
 // merge each entity from newEntities with existing entity, if any
 // this ensures partial entities don't overwrite existing entities with more properties
-export function mergeEntities(
-  entities: EntitiesStateType,
-  newEntities: EntitiesStateType,
-): EntitiesStateType {
+export function mergeEntities<T = EntitiesState>(
+  entities: T,
+  newEntities: Partial<T>,
+): T {
   const result = { ...entities };
   // Casting is necessary here because Object.keys always returns string[]
-  const ids = Object.keys(newEntities) as Array<keyof EntitiesState>;
+  const ids = Object.keys(newEntities) as Array<keyof T>;
 
   for (const id of ids) {
     const entry = newEntities[id];
@@ -346,9 +362,9 @@ export function handleEntities(
   entityType: string,
   reducer?: EntitiesReducer,
 ): EntitiesReducer {
-  return (state: EntitiesStateType | undefined = {}, action) => {
+  return (state, action) => {
     const entities = getIn(action, ["payload", "entities", entityType]);
-    if (actionPattern.test(action.type) && entities) {
+    if (state && actionPattern.test(action.type) && entities) {
       state = mergeEntities(state, entities);
     }
     return reducer?.(state, action) ?? state;
@@ -384,7 +400,7 @@ export function createEntity(def: EntityDef): Entity {
 
   // API
   if (!entity.api) {
-    entity.api = {} as Entity["api"];
+    entity.api = {};
   }
   if (entity.path) {
     const path = entity.path;
@@ -396,7 +412,7 @@ export function createEntity(def: EntityDef): Entity {
       delete: DELETE(`${path}/:id`),
     };
     // merge: user-provided overrides win over path-derived defaults
-    entity.api = { ...defaultApi, ...entity.api } as Entity["api"];
+    entity.api = { ...defaultApi, ...entity.api };
   }
 
   const getQueryKey = (entityQuery: EntityQuery): string =>
@@ -481,146 +497,126 @@ export function createEntity(def: EntityDef): Entity {
     return entity.actionDecorators[action] || ((fn: EntityActionCreator) => fn);
   }
 
-  /** compose loses types across multiple levels; this cast recovers them */
-  function makeAction(composed: unknown): EntityActionCreator {
-    return composed as EntityActionCreator;
-  }
-
   // `objectActions` are for actions that accept an entity as their first argument,
   // and they are bound to instances when `wrapped: true` is passed to `EntityListLoader`
   // compose(decorator, decorator)(fn) loses types through multiple levels; makeAction recovers them
   entity.objectActions = {
-    fetch: makeAction(
-      compose(
-        withAction(FETCH_ACTION),
-        withCachedDataAndRequestState(
-          ({ id }: { id: EntityId }) => [...getObjectStatePath(id).map(String)],
-          ({ id }: { id: EntityId }) => [
-            ...getObjectStatePath(id).map(String),
-            "fetch",
-          ],
-          (entityQuery: EntityQuery) => getQueryKey(entityQuery),
-        ),
-        withEntityActionDecorators("fetch"),
-      )(
-        (entityQuery: EntityQuery, options: Record<string, unknown> = {}) =>
-          async (dispatch: AnyDispatch, getState: AnyGetState) =>
-            entity.normalize(
-              (await entity.api.get(
-                entityQuery,
-                options,
-                dispatch,
-                getState,
-              )) as EntityObject,
+    fetch: compose<EntityActionCreator>(
+      withAction(FETCH_ACTION),
+      withCachedDataAndRequestState(
+        ({ id }: { id: EntityId }) => [...getObjectStatePath(id).map(String)],
+        ({ id }: { id: EntityId }) => [
+          ...getObjectStatePath(id).map(String),
+          "fetch",
+        ],
+        (entityQuery: EntityQuery) => getQueryKey(entityQuery),
+      ),
+      withEntityActionDecorators("fetch"),
+    )(
+      (entityQuery: EntityQuery, options: Record<string, unknown> = {}) =>
+        async (dispatch: AnyDispatch, getState: AnyGetState) =>
+          entity.normalize(
+            await entity.api.get?.(entityQuery, options, dispatch, getState),
+          ),
+    ),
+
+    create: compose<EntityActionCreator>(
+      withAction(CREATE_ACTION),
+      withEntityRequestState(() => ["create"]),
+      withEntityActionDecorators("create"),
+    )(
+      (entityObject: EntityObject) =>
+        async (dispatch: AnyDispatch, getState: AnyGetState) => {
+          return entity.normalize(
+            await entity.api.create?.(
+              getWritableProperties(entityObject),
+              dispatch,
+              getState,
             ),
-      ),
+          );
+        },
     ),
 
-    create: makeAction(
-      compose(
-        withAction(CREATE_ACTION),
-        withEntityRequestState(() => ["create"]),
-        withEntityActionDecorators("create"),
-      )(
-        (entityObject: EntityObject) =>
-          async (dispatch: AnyDispatch, getState: AnyGetState) => {
-            return entity.normalize(
-              (await entity.api.create(
-                getWritableProperties(entityObject),
-                dispatch,
-                getState,
-              )) as EntityObject,
-            );
-          },
-      ),
-    ),
+    update: compose<EntityActionCreator>(
+      withAction(UPDATE_ACTION),
+      withEntityRequestState((object: EntityObject) => [
+        String(object.id),
+        "update",
+      ]),
+      withEntityActionDecorators("update"),
+    )(
+      (
+        entityObject: EntityObject,
+        updatedObject: Partial<EntityObject> | null = null,
+        {
+          notify,
+        }: {
+          notify?: { undo?: boolean; subject?: string; verb?: string } | false;
+        } = {},
+      ) =>
+        async (dispatch: AnyDispatch, getState: AnyGetState) => {
+          // save the original object for undo
+          const originalObject = getObject(getState(), {
+            entityId: entityObject.id,
+          });
+          // If a second object is provided just take the id from the first and
+          // update it with all the properties in the second
+          if (updatedObject) {
+            entityObject = { id: entityObject.id, ...updatedObject };
+          }
 
-    update: makeAction(
-      compose(
-        withAction(UPDATE_ACTION),
-        withEntityRequestState((object: EntityObject) => [
-          String(object.id),
-          "update",
-        ]),
-        withEntityActionDecorators("update"),
-      )(
-        (
-          entityObject: EntityObject,
-          updatedObject: Partial<EntityObject> | null = null,
-          {
-            notify,
-          }: {
-            notify?:
-              | { undo?: boolean; subject?: string; verb?: string }
-              | false;
-          } = {},
-        ) =>
-          async (dispatch: AnyDispatch, getState: AnyGetState) => {
-            // save the original object for undo
-            const originalObject = getObject(getState(), {
-              entityId: entityObject.id,
-            });
-            // If a second object is provided just take the id from the first and
-            // update it with all the properties in the second
-            if (updatedObject) {
-              entityObject = { id: entityObject.id, ...updatedObject };
+          const result = entity.normalize(
+            await entity.api.update?.(
+              getWritableProperties(entityObject),
+              dispatch,
+              getState,
+            ),
+          );
+
+          if (notify) {
+            if (notify.undo) {
+              // pick only the attributes that were updated
+              const undoObject = _.pick(
+                originalObject,
+                ...Object.keys(updatedObject || {}),
+              );
+              dispatch(
+                addUndo({
+                  actions: [
+                    entity.objectActions.update(
+                      entityObject,
+                      undoObject,
+                      // don't show an undo for the undo
+                      { notify: false },
+                    ),
+                  ],
+                  ...notify,
+                }),
+              );
+            } else {
+              dispatch(addUndo(notify));
             }
-
-            const result = entity.normalize(
-              (await entity.api.update(
-                getWritableProperties(entityObject),
-                dispatch,
-                getState,
-              )) as EntityObject,
-            );
-
-            if (notify) {
-              if (notify.undo) {
-                // pick only the attributes that were updated
-                const undoObject = _.pick(
-                  originalObject as EntityObject,
-                  ...Object.keys(updatedObject || {}),
-                );
-                dispatch(
-                  addUndo({
-                    actions: [
-                      entity.objectActions.update(
-                        entityObject,
-                        undoObject,
-                        // don't show an undo for the undo
-                        { notify: false },
-                      ),
-                    ],
-                    ...notify,
-                  }),
-                );
-              } else {
-                dispatch(addUndo(notify));
-              }
-            }
-            return result;
-          },
-      ),
+          }
+          return result;
+        },
     ),
 
-    delete: makeAction(
-      compose(
-        withAction(DELETE_ACTION),
-        withEntityRequestState((object: EntityObject) => [
-          String(object.id),
-          "delete",
-        ]),
-        withEntityActionDecorators("delete"),
-      )(
-        (entityObject: EntityObject) =>
-          async (dispatch: AnyDispatch, getState: AnyGetState) => {
-            await entity.api.delete(entityObject, dispatch, getState);
-            return {
-              entities: { [entity.name]: { [entityObject.id]: null } },
-              result: entityObject.id,
-            };
-          },
-      ),
+    delete: compose<EntityActionCreator>(
+      withAction(DELETE_ACTION),
+      withEntityRequestState((object: EntityObject) => [
+        String(object.id),
+        "delete",
+      ]),
+      withEntityActionDecorators("delete"),
+    )(
+      (entityObject: EntityObject) =>
+        async (dispatch: AnyDispatch, getState: AnyGetState) => {
+          await entity.api.delete?.(entityObject, dispatch, getState);
+          return {
+            entities: { [entity.name]: { [entityObject.id]: null } },
+            result: entityObject.id,
+          };
+        },
     ),
 
     // user defined object actions should override defaults
@@ -629,58 +625,51 @@ export function createEntity(def: EntityDef): Entity {
 
   // ACTION CREATORS
   entity.actions = {
-    fetchList: makeAction(
-      compose(
-        withAction(FETCH_LIST_ACTION),
-        withCachedDataAndRequestState(
-          (entityQuery: EntityQuery) => [...getListStatePath(entityQuery)],
-          (entityQuery: EntityQuery) => [
-            ...getListStatePath(entityQuery),
-            "fetch",
-          ],
-          (entityQuery: EntityQuery) => entity.getQueryKey(entityQuery),
-        ),
-      )(
-        (entityQuery: EntityQuery = null) =>
-          async (dispatch: AnyDispatch, getState: AnyGetState) => {
-            const fetched = await entity.api.list(
-              entityQuery || EMPTY_ENTITY_QUERY,
-              dispatch,
-              getState,
-            );
-
-            let results: EntityObject[];
-            let metadata: Record<string, unknown> = {};
-
-            if ((fetched as Record<string, unknown>).data) {
-              const { data, ...rest } = fetched as {
-                data: EntityObject[];
-                [key: string]: unknown;
-              };
-              results = data;
-              metadata = rest;
-            } else {
-              results = fetched as EntityObject[];
-            }
-
-            if (!Array.isArray(results)) {
-              throw `Invalid response listing ${entity.name}`;
-            }
-            return {
-              ...entity.normalizeList(results),
-              metadata,
-              entityQuery,
-            };
-          },
+    fetchList: compose<EntityActionCreator>(
+      withAction(FETCH_LIST_ACTION),
+      withCachedDataAndRequestState(
+        (entityQuery: EntityQuery) => [...getListStatePath(entityQuery)],
+        (entityQuery: EntityQuery) => [
+          ...getListStatePath(entityQuery),
+          "fetch",
+        ],
+        (entityQuery: EntityQuery) => entity.getQueryKey(entityQuery),
       ),
+    )(
+      (entityQuery: EntityQuery = null) =>
+        async (dispatch: AnyDispatch, getState: AnyGetState) => {
+          const fetched = await entity.api.list?.(
+            entityQuery || EMPTY_ENTITY_QUERY,
+            dispatch,
+            getState,
+          );
+
+          let results: EntityObject[] | undefined;
+          let metadata: Record<string, unknown> = {};
+
+          if (!fetched || _.isArray(fetched)) {
+            results = fetched;
+          } else {
+            const { data, ...rest } = fetched;
+            results = data;
+            metadata = rest;
+          }
+
+          if (!Array.isArray(results)) {
+            throw `Invalid response listing ${entity.name}`;
+          }
+          return {
+            ...entity.normalizeList(results),
+            metadata,
+            entityQuery,
+          };
+        },
     ),
 
-    invalidateLists: makeAction(
-      compose(
-        withAction(INVALIDATE_LISTS_ACTION),
-        withEntityActionDecorators("invalidateLists"),
-      )(() => null),
-    ),
+    invalidateLists: compose<EntityActionCreator>(
+      withAction(INVALIDATE_LISTS_ACTION),
+      withEntityActionDecorators("invalidateLists"),
+    )(() => null),
 
     // user defined actions should override defaults
     ...entity.objectActions,
@@ -688,9 +677,9 @@ export function createEntity(def: EntityDef): Entity {
   };
 
   entity.HACK_getObjectFromAction = (
-    rawAction: EntityAction | unknown,
+    rawAction: EntityAction | undefined,
   ): EntityObject | EntityObject[] | NormalizedPayload | undefined => {
-    const { payload } = (rawAction as EntityAction) ?? {};
+    const { payload } = rawAction ?? {};
     if (payload && "entities" in payload && "result" in payload) {
       if (Array.isArray(payload.result)) {
         return payload.result.map((id) => payload.entities![entity.name][id]);
@@ -704,29 +693,22 @@ export function createEntity(def: EntityDef): Entity {
 
   // SELECTORS
 
-  const getEntities = (state: any) =>
-    (state as Record<string, unknown>).entities as Record<
-      string,
-      Record<EntityId, EntityObject>
-    >;
-  const getSettings = (state: any) =>
-    (state as Record<string, unknown>).settings;
+  const getEntities = (state: State) => state.entities;
+  const getSettings = (state: State) => state.settings;
 
   // OBJECT SELECTORS
 
   const getEntityId = (
-    state: any,
+    state: State,
     props: { params?: { entityId?: EntityId }; entityId?: EntityId },
   ): EntityId | undefined =>
     (props.params && props.params.entityId) || props.entityId;
 
   const getObject = createCachedSelector(
     [getEntities, getEntityId],
-    (
-      entities: Record<string, Record<EntityId, EntityObject>>,
-      entityId: EntityId | undefined,
-    ) => denormalize(entityId, entity.schema, entities),
-  )((state: any, { entityId }: { entityId?: EntityId } = {}) =>
+    (entities: EntitiesState, entityId: EntityId | undefined) =>
+      denormalize(entityId, entity.schema, entities),
+  )((state: State, { entityId }: { entityId?: EntityId } = {}) =>
     typeof entityId === "object"
       ? JSON.stringify(entityId)
       : entityId
@@ -741,13 +723,11 @@ export function createEntity(def: EntityDef): Entity {
     props: { entityQuery?: EntityQuery } | null | undefined,
   ): string => getQueryKey(props?.entityQuery);
 
-  const getEntityLists = createSelector(
-    [getEntities],
-    (entities: Record<string, Record<EntityId, EntityObject>>) =>
-      (entities as Record<string, unknown>)[`${entity.name}_list`] as
-        | Record<string, { list?: EntityId[]; metadata?: unknown }>
-        | undefined,
-  );
+  const getEntityLists = createSelector([getEntities], (entities) => {
+    return entities[`${entity.name}_list`] as
+      | Record<string, { list?: EntityId[]; metadata?: unknown }>
+      | undefined;
+  });
 
   const getEntityList = createSelector(
     [getEntityQueryId, getEntityLists],
@@ -774,7 +754,7 @@ export function createEntity(def: EntityDef): Entity {
   const getList = createCachedSelector(
     [getEntities, getEntityIds, getSettings],
     (
-      entities: Record<string, Record<EntityId, EntityObject>>,
+      entities: EntitiesState,
       entityIds: EntityId[] | undefined,
       settings: unknown,
     ) =>
@@ -826,15 +806,14 @@ export function createEntity(def: EntityDef): Entity {
 
   const defaultRequestState: RequestStateEntry = {};
   const getRequestState = (
-    state: any,
+    state: EntitiesState,
     props?: {
       entityId?: EntityId;
       entityQuery?: EntityQuery;
       requestType?: string;
     },
   ): RequestStateEntry =>
-    (getIn(state as object, getRequestStatePath(props)) as RequestStateEntry) ||
-    defaultRequestState;
+    getIn(state, getRequestStatePath(props)) || defaultRequestState;
 
   const getLoading = createSelector(
     [getRequestState],
@@ -854,15 +833,15 @@ export function createEntity(def: EntityDef): Entity {
   );
 
   // createSelector/createCachedSelector attach cache methods; cast to the clean selector types
-  const defaultSelectors: EntitySelectors = {
-    getEntityIds: getEntityIds as EntitySelectors["getEntityIds"],
-    getList: getList as EntitySelectors["getList"],
-    getObject: getObject as EntitySelectors["getObject"],
-    getFetched: getFetched as EntitySelectors["getFetched"],
-    getLoading: getLoading as EntitySelectors["getLoading"],
-    getLoaded: getLoaded as EntitySelectors["getLoaded"],
-    getError: getError as EntitySelectors["getError"],
-    getListMetadata: getListMetadata as EntitySelectors["getListMetadata"],
+  const defaultSelectors: Partial<EntitySelectors> = {
+    getEntityIds,
+    getList,
+    getObject,
+    getFetched,
+    getLoading,
+    getLoaded,
+    getError,
+    getListMetadata,
   };
   entity.selectors = {
     ...defaultSelectors,
@@ -872,7 +851,7 @@ export function createEntity(def: EntityDef): Entity {
 
   entity.objectSelectors = {
     getName(object: EntityObject) {
-      return (object as { name?: string }).name;
+      return object.name;
     },
     getIcon(_object: EntityObject) {
       return { name: "unknown" };
@@ -881,7 +860,7 @@ export function createEntity(def: EntityDef): Entity {
       return undefined;
     },
     getCollection(object: EntityObject) {
-      return (object as { collection?: unknown }).collection;
+      return object.collection;
     },
     ...(def.objectSelectors || {}),
   };
@@ -909,15 +888,7 @@ export function createEntity(def: EntityDef): Entity {
     }
     if (action.type === FETCH_LIST_ACTION) {
       if (action.payload && action.payload.result) {
-        const {
-          entityQuery,
-          metadata,
-          result: list,
-        } = action.payload as {
-          entityQuery: EntityQuery;
-          metadata: Record<string, unknown>;
-          result: EntityId[];
-        };
+        const { entityQuery, metadata, result: list } = action.payload;
         return {
           ...state,
           [getQueryKey(entityQuery)]: {
@@ -945,7 +916,7 @@ export function createEntity(def: EntityDef): Entity {
     }
     return state;
   };
-  entity.reducers[entity.name + "_list"] = listReducer;
+  entity.reducers[`${entity.name}_list`] = listReducer;
 
   // REQUEST STATE REDUCER
 
@@ -958,14 +929,14 @@ export function createEntity(def: EntityDef): Entity {
   }
 
   entity.requestsReducer = (
-    state: Record<string, unknown> | undefined,
+    state: RequestsStateTree = {},
     action: { type: string },
   ) => {
     if (entity.actionShouldInvalidateLists(action)) {
       return requestsReducer(
         state,
         setRequestUnloaded(["entities", entity.name + "_list"]),
-      ) as Record<string, unknown>;
+      );
     }
     return state ?? {};
   };
@@ -974,6 +945,7 @@ export function createEntity(def: EntityDef): Entity {
 
   if (!entity.wrapEntity) {
     class EntityWrapper {
+      [key: string]: unknown;
       _dispatch: AnyDispatch | null;
 
       constructor(
@@ -987,25 +959,25 @@ export function createEntity(def: EntityDef): Entity {
     // object selectors
     for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
       if (method) {
-        (EntityWrapper.prototype as unknown as Record<string, unknown>)[
-          methodName
-        ] = function (this: EntityWrapper, ...args: unknown[]) {
-          return method(this as unknown as EntityObject, ...args);
+        EntityWrapper.prototype[methodName] = function (
+          this: EntityWrapper,
+          ...args: unknown[]
+        ) {
+          return method(this, ...args);
         };
       }
     }
     // object actions
     for (const [methodName, method] of Object.entries(entity.objectActions)) {
       if (method) {
-        (EntityWrapper.prototype as unknown as Record<string, unknown>)[
-          methodName
-        ] = function (this: EntityWrapper, ...args: unknown[]) {
+        EntityWrapper.prototype[methodName] = function (
+          this: EntityWrapper,
+          ...args: unknown[]
+        ) {
           if (this._dispatch) {
-            return this._dispatch(
-              method(this as unknown as EntityObject, ...args) as EntityAction,
-            );
+            return this._dispatch(method(this, ...args));
           } else {
-            return method(this as unknown as EntityObject, ...args);
+            return method(this, ...args);
           }
         };
       }
@@ -1027,11 +999,11 @@ export function createEntity(def: EntityDef): Entity {
 type CombinedEntities = {
   entities: Record<string, Entity>;
   reducers: Record<string, Reducer<Record<string, unknown>>>;
-  reducer: Reducer<Record<string, unknown>>;
+  reducer: Reducer<Record<string, Record<string, unknown>>>;
   requestsReducer: (
-    state: Record<string, unknown> | undefined,
+    state: RequestsStateTree | undefined,
     action: { type: string },
-  ) => Record<string, unknown>;
+  ) => RequestsStateTree;
 };
 
 export function combineEntities(entities: Entity[]): CombinedEntities {
@@ -1048,10 +1020,10 @@ export function combineEntities(entities: Entity[]): CombinedEntities {
   }
 
   const combinedRequestsReducer = (
-    state: Record<string, unknown> | undefined,
+    state: RequestsStateTree = {},
     action: { type: string },
-  ): Record<string, unknown> => {
-    let current: Record<string, unknown> = state ?? {};
+  ): RequestsStateTree => {
+    let current = state;
     for (const entity of entities) {
       if (entity.requestsReducer) {
         current = entity.requestsReducer(current, action);
@@ -1063,7 +1035,7 @@ export function combineEntities(entities: Entity[]): CombinedEntities {
   return {
     entities: entitiesMap,
     reducers: reducersMap,
-    reducer: combineReducers(reducersMap) as Reducer<Record<string, unknown>>,
+    reducer: combineReducers(reducersMap),
     requestsReducer: combinedRequestsReducer,
   };
 }

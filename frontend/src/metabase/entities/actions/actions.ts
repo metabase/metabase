@@ -70,7 +70,7 @@ const enableImplicitActionsForModel =
     // So if we want to show Create, Update, Delete, then we need
     // to create them in the reverse order.
     if (options.delete) {
-      await Actions.api.create(
+      await Actions.api.create?.(
         {
           name: t`Delete`,
           type: "implicit",
@@ -82,7 +82,7 @@ const enableImplicitActionsForModel =
     }
 
     if (options.update) {
-      await Actions.api.create(
+      await Actions.api.create?.(
         {
           name: t`Update`,
           type: "implicit",
@@ -94,7 +94,7 @@ const enableImplicitActionsForModel =
     }
 
     if (options.insert) {
-      await Actions.api.create(
+      await Actions.api.create?.(
         {
           name: t`Create`,
           type: "implicit",
@@ -206,7 +206,7 @@ export const Actions = createEntity({
         undo({}, t`action`, archived ? t`archived` : t`unarchived`),
       ),
   },
-  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+  reducer: (state, { type, payload }: { type: string; payload: any }) => {
     switch (type) {
       case CREATE_PUBLIC_LINK: {
         const { id, uuid } = payload;

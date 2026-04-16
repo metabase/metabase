@@ -1,6 +1,9 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
-import { requestsReducer } from "metabase/redux/requests";
+import {
+  type RequestsStateTree,
+  requestsReducer,
+} from "metabase/redux/requests";
 
 import { combineEntities, createEntity, mergeEntities } from "./entities";
 
@@ -24,7 +27,7 @@ function setup() {
   const reducer = combineReducers({
     entities: entities.reducer,
     requests: (
-      state: Record<string, unknown> | undefined,
+      state: RequestsStateTree | undefined,
       action: { type: string; payload: Record<string, unknown> | undefined },
     ) => requestsReducer(entities.requestsReducer(state, action), action),
   });
@@ -119,7 +122,7 @@ describe("entities", () => {
   describe("mergeEntities", () => {
     it("add an entity", () => {
       expect(
-        mergeEntities(
+        mergeEntities<Record<string, { id: number; name: string }>>(
           { actions: { id: 1, name: "foo" } },
           { questions: { id: 2, name: "bar" } },
         ),
@@ -131,7 +134,7 @@ describe("entities", () => {
 
     it("merge entity keys", () => {
       expect(
-        mergeEntities(
+        mergeEntities<Record<string, Record<string, string | number>>>(
           { actions: { id: 1, name: "foo", prop1: 123 } },
           { actions: { id: 1, name: "bar", prop2: 456 } },
         ),
