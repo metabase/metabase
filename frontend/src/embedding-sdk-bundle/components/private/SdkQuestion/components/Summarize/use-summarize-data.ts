@@ -10,7 +10,6 @@ import {
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../context";
-import { getLastVisibleStageIndex } from "../../utils/stages";
 
 export interface SDKAggregationItem extends AggregationItem {
   onRemoveAggregation: () => void;
@@ -18,12 +17,15 @@ export interface SDKAggregationItem extends AggregationItem {
 }
 
 export const useSummarizeData = () => {
-  const { question, updateQuestion } = useSdkQuestionContext();
+  const {
+    question,
+    updateQuestion,
+    lastVisibleStageIndex: stageIndex,
+  } = useSdkQuestionContext();
   const tc = useTranslateContent();
   const { locale } = useLocale();
 
   const query = question?.query();
-  const stageIndex = getLastVisibleStageIndex(query);
 
   const onQueryChange = useCallback(
     (newQuery: Lib.Query) => {

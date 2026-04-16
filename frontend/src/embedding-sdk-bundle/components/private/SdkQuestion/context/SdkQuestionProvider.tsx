@@ -38,6 +38,8 @@ import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/Em
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
+import { getLastVisibleStageIndex } from "../utils/stages";
+
 import type { SdkQuestionContextType, SdkQuestionProviderProps } from "./types";
 
 /**
@@ -219,8 +221,15 @@ export const SdkQuestionProvider = ({
     [navigateToNewCard, navigation, question, loadAndQueryQuestion],
   );
 
+  const query = question?.query();
+  const lastVisibleStageIndex = useMemo(
+    () => getLastVisibleStageIndex(query),
+    [query],
+  );
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    lastVisibleStageIndex,
     token,
     isQuestionLoading,
     isQueryRunning,

@@ -442,12 +442,43 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.log("Stage switch tooltip should appear on the summary button");
     cy.findByRole("tooltip").should(
       "contain.text",
-      "Switched to the previous stag",
+      "Switched to the previous stage",
     );
     getSdkRoot().within(() => {
       cy.log("Stage 0 (Count + Created At)");
       cy.findByText("1 summary").should("be.visible");
       cy.findByText("1 grouping").should("be.visible");
+
+      cy.log("Add a new summary to stage 0");
+      cy.findByText("1 summary").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Add another summary").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Total").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("2 summaries").should("be.visible");
+
+      cy.log("Add a new grouping to stage 0");
+      cy.findByText("1 grouping").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Add another grouping").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Product ID").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("2 groupings").should("be.visible");
     });
   });
 

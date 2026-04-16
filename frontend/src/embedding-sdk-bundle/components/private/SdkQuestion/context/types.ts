@@ -164,6 +164,7 @@ export type SdkQuestionContextType = Omit<
     mode: QueryClickActionsMode | ClickActionsMode | null | undefined;
     originalId: SdkQuestionId | null;
     token: EntityToken | null | undefined;
+    lastVisibleStageIndex: number;
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;

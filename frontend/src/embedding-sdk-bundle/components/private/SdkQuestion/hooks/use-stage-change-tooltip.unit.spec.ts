@@ -1,29 +1,31 @@
 import { act, renderHook } from "@testing-library/react";
 
-import { getLastVisibleStageIndex } from "../utils/stages";
+import { useSdkQuestionContext } from "../context";
 
 import { useStageChangeTooltip } from "./use-stage-change-tooltip";
 
 jest.mock("../context", () => ({
-  useSdkQuestionContext: jest.fn(() => ({
-    question: {
-      query: () => ({}),
-    },
-  })),
+  useSdkQuestionContext: jest.fn(() => ({ lastVisibleStageIndex: 1 })),
 }));
 
-jest.mock("../utils/stages", () => ({
-  getLastVisibleStageIndex: jest.fn(() => 1),
-}));
-
-const mockStageIndex = getLastVisibleStageIndex as jest.MockedFunction<
-  typeof getLastVisibleStageIndex
+const mockContext = useSdkQuestionContext as jest.MockedFunction<
+  typeof useSdkQuestionContext
 >;
+
+const setup = ({
+  lastVisibleStageIndex,
+}: {
+  lastVisibleStageIndex: number;
+}) => {
+  mockContext.mockReturnValue({
+    lastVisibleStageIndex,
+  } as ReturnType<typeof useSdkQuestionContext>);
+};
 
 describe("useStageChangeTooltip", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    mockStageIndex.mockReturnValue(1);
+    setup({ lastVisibleStageIndex: 1 });
   });
 
   afterEach(() => {
@@ -43,10 +45,10 @@ describe("useStageChangeTooltip", () => {
   ])(
     "returns $expected when stage index $desc ($from → $to)",
     ({ from, to, expected }) => {
-      mockStageIndex.mockReturnValue(from);
+      setup({ lastVisibleStageIndex: from });
       const { result, rerender } = renderHook(() => useStageChangeTooltip());
 
-      mockStageIndex.mockReturnValue(to);
+      setup({ lastVisibleStageIndex: to });
       rerender();
 
       expect(result.current).toBe(expected);
@@ -56,7 +58,7 @@ describe("useStageChangeTooltip", () => {
   it("auto-hides after 3 seconds", () => {
     const { result, rerender } = renderHook(() => useStageChangeTooltip());
 
-    mockStageIndex.mockReturnValue(0);
+    setup({ lastVisibleStageIndex: 0 });
     rerender();
     expect(result.current).toBe(true);
 
@@ -64,17 +66,31 @@ describe("useStageChangeTooltip", () => {
     expect(result.current).toBe(false);
   });
 
-  it("resets timer on consecutive stage decreases", () => {
-    mockStageIndex.mockReturnValue(2);
+  it("hides tooltip when stage index increases before timeout", () => {
     const { result, rerender } = renderHook(() => useStageChangeTooltip());
 
-    mockStageIndex.mockReturnValue(1);
+    setup({ lastVisibleStageIndex: 0 });
+    rerender();
+    expect(result.current).toBe(true);
+
+    act(() => jest.advanceTimersByTime(1000));
+
+    setup({ lastVisibleStageIndex: 1 });
+    rerender();
+    expect(result.current).toBe(false);
+  });
+
+  it("resets timer on consecutive stage decreases", () => {
+    setup({ lastVisibleStageIndex: 2 });
+    const { result, rerender } = renderHook(() => useStageChangeTooltip());
+
+    setup({ lastVisibleStageIndex: 1 });
     rerender();
     expect(result.current).toBe(true);
 
     act(() => jest.advanceTimersByTime(1500));
 
-    mockStageIndex.mockReturnValue(0);
+    setup({ lastVisibleStageIndex: 0 });
     rerender();
     expect(result.current).toBe(true);
 

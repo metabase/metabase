@@ -7,7 +7,6 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { useSdkQuestionContext } from "../../context";
-import { getLastVisibleStageIndex } from "../../utils/stages";
 
 export interface SDKBreakoutItem extends BreakoutListItem {
   breakoutIndex: number;
@@ -17,8 +16,11 @@ export interface SDKBreakoutItem extends BreakoutListItem {
 }
 
 export const useBreakoutData = (): SDKBreakoutItem[] => {
-  const { updateQuestion, ...interactiveQuestionContext } =
-    useSdkQuestionContext();
+  const {
+    updateQuestion,
+    lastVisibleStageIndex: stageIndex,
+    ...interactiveQuestionContext
+  } = useSdkQuestionContext();
   const question = interactiveQuestionContext.question as Question;
   const onQueryChange = (nextQuery: Lib.Query) => {
     if (question) {
@@ -33,8 +35,6 @@ export const useBreakoutData = (): SDKBreakoutItem[] => {
   if (!query) {
     return [];
   }
-
-  const stageIndex = getLastVisibleStageIndex(query);
   const breakouts = Lib.breakouts(query, stageIndex);
 
   return breakouts

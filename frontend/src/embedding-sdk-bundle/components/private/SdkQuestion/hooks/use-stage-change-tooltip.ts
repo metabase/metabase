@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useSdkQuestionContext } from "../context";
-import { getLastVisibleStageIndex } from "../utils/stages";
 
 const TOOLTIP_DURATION_MS = 3000;
 
@@ -11,9 +10,7 @@ const TOOLTIP_DURATION_MS = 3000;
  * causing a fallback to a previous stage).
  */
 export function useStageChangeTooltip() {
-  const { question } = useSdkQuestionContext();
-  const query = question?.query();
-  const stageIndex = getLastVisibleStageIndex(query);
+  const { lastVisibleStageIndex: stageIndex } = useSdkQuestionContext();
 
   const prevStageIndexRef = useRef(stageIndex);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -31,7 +28,10 @@ export function useStageChangeTooltip() {
       );
 
       return () => clearTimeout(timer);
+    } else if (showTooltip) {
+      setShowTooltip(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- showTooltip is intentionally excluded to avoid re-triggering the effect when it changes
   }, [stageIndex]);
 
   return showTooltip;

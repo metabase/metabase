@@ -9,7 +9,6 @@ import { Button, Divider, Icon, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";
-import { LAST_STAGE_INDEX } from "../../../utils/stages";
 import type { SDKBreakoutItem } from "../use-breakout-data";
 
 export const BreakoutPickerInner = ({
@@ -67,7 +66,11 @@ export const BreakoutPicker = ({
   onClose?: () => void;
   breakoutItem?: SDKBreakoutItem;
 }) => {
-  const { question, updateQuestion } = useSdkQuestionContext();
+  const {
+    question,
+    updateQuestion,
+    lastVisibleStageIndex: stageIndex,
+  } = useSdkQuestionContext();
 
   if (!question) {
     return null;
@@ -89,7 +92,7 @@ export const BreakoutPicker = ({
       breakoutItem={breakoutItem}
       query={query}
       onQueryChange={onQueryChange}
-      stageIndex={LAST_STAGE_INDEX}
+      stageIndex={stageIndex}
     />
   );
 };
