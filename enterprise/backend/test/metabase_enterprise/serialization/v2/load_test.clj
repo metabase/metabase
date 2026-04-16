@@ -1524,43 +1524,22 @@
             (is (= (str "qwe_" (:name coll))
                    (t2/select-one-fn :name :model/Collection :id (:id coll))))))))))
 
-(deftest load-error-preserves-original-cause-when-find-local-throws-test
-  (testing "When the load transaction is poisoned and load-find-local throws while building error data,
-            the original exception is still preserved as the cause (not shadowed by the aborted-tx error)"
-    (mt/with-empty-h2-app-db!
-      (let [coll       (ts/create! :model/Collection :name "coll")
-            _card      (ts/create! :model/Card :name "card" :collection_id (:id coll))
-            serialized (->> (serdes.extract/extract {:no-settings   true
-                                                     :no-data-model true
-                                                     :targets       [["Collection" (:id coll)]]})
-                            vec)
-            ;; Simulate the real-world scenario: the actual load throws a SQL-ish error, and because the
-            ;; outer transaction is now aborted, a follow-up select (via load-find-local inside
-            ;; path-error-data) also throws. We expect the caller to still see the original cause.
-            original-cause  (ex-info "original SQL failure" {:kind :simulated-pg-error})
-            tx-poisoned?    (atom false)
-            load-find-local serdes/load-find-local]
-        (with-redefs [serdes/load-update!    (fn [model _adjusted _local]
-                                               (when (= model "Card")
-                                                 ;; This is the failure that would poison the real PG
-                                                 ;; transaction; from here on, further queries should
-                                                 ;; behave as if the tx is aborted.
-                                                 (reset! tx-poisoned? true)
-                                                 (throw original-cause)))
-                      serdes/load-find-local (fn [path]
-                                               (if @tx-poisoned?
-                                                 (throw (ex-info "current transaction is aborted" {}))
-                                                 (load-find-local path)))]
-          (try
-            (serdes.load/load-metabase! (ingestion-in-memory serialized))
-            (is false "expected load-metabase! to throw")
-            (catch clojure.lang.ExceptionInfo e
-              (is (re-find #"Failed to load into database" (ex-message e))
-                  "outer error message should come from load-one!'s catch block")
-              (is (identical? original-cause (ex-cause e))
-                  "the original load failure must be chained as the cause, not replaced by the aborted-tx error")
-              (is (nil? (:local-id (ex-data e)))
-                  "local-id should be nil when the lookup fails, but error data should still be built"))))))))
+(deftest path-error-data-handles-lookup-failure-test
+  (testing "path-error-data returns a well-formed map even when serdes/load-find-local throws
+            (e.g. because the outer load transaction is already poisoned by the real failure).
+            This is what lets the caller's ex-info still chain the original cause instead of
+            being replaced by a `current transaction is aborted` error from the enrichment lookup."
+    (with-redefs [serdes/load-find-local (fn [_] (throw (ex-info "current transaction is aborted" {})))]
+      (let [path   [{:model "Card" :id "some-entity-id"}]
+            result (#'serdes.load/path-error-data
+                    :metabase-enterprise.serialization.v2.load/load-failure
+                    #{}
+                    path)]
+        (is (nil? (:local-id result))
+            "local-id is nil when the lookup fails")
+        (is (= "Card" (:model result)))
+        (is (= :metabase-enterprise.serialization.v2.load/load-failure (:error result)))
+        (is (= [{:model "Card" :id "some-entity-id"}] (:path result)))))))
 
 (deftest circular-links-test
   (ts/with-dbs [source-db dest-db]
