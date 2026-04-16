@@ -57,7 +57,7 @@
         sql-vec (sql/format {:select   [:model :model_id :name :embedding]
                              :from     [(keyword table-name)]
                              :where    where
-                             :order-by [[:model :asc] [:model_id :desc]]}
+                             :order-by [[:model :asc] [[:cast :model_id :bigint] :desc]]}
                             {:quoted true})]
     (jdbc/execute! pgvector sql-vec {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
@@ -96,8 +96,9 @@
                         :let [m (metabot/entity-type->search-model kind)]
                         :when m]
                     [m (str id)])
-            ;; Query returns rows ordered by model_id DESC so `into {}` (last-wins) picks the lowest
-            ;; model_id per normalized name — a stable, deterministic choice when duplicates exist.
+            ;; Query returns rows ordered by CAST(model_id AS bigint) DESC so `into {}` (last-wins)
+            ;; picks the lowest model_id per normalized name — a stable, deterministic choice when
+            ;; duplicates exist. The cast avoids lexicographic text comparison ("10" < "2").
             rows  (fetch-by-model+id pgvector table-name pairs)]
         (into {}
               (keep (fn [{:keys [name embedding]}]
@@ -110,14 +111,12 @@
     {}))
 
 (defn active-embedding-model
-  "Return the embedding model metadata when the search index is actually available and reachable.
+  "Return the embedding model metadata for the *active* search index, not the current configuration.
   Returns nil when the index is unreachable, not yet initialized, or the feature is disabled. Use
   this instead of `get-configured-embedding-model` when you need to know what model the index is
   *actually* serving — not just what the settings say."
   []
-  (try
-    (when (try-active-index-state)
-      (when-let [model (semantic.env/get-configured-embedding-model)]
-        {:provider   (:provider model)
-         :model-name (:model-name model)}))
-    (catch Throwable _ nil)))
+  (when-let [{:keys [model]} (try-active-index-state)]
+    (when model
+      {:provider   (:provider model)
+       :model-name (:model-name model)})))

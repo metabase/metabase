@@ -284,7 +284,10 @@
                 ;; Only included when we're actually using the search-index embedder AND the index
                 ;; is reachable. For custom embedders the caller knows what model they passed.
                  (= embedder semantic-search/search-index-embedder)
-                 (assoc :embedding-model (semantic-search/active-embedding-model)))}))
+                 (as-> m
+                       (if-let [model (semantic-search/active-embedding-model)]
+                         (assoc m :embedding-model model)
+                         m)))}))
 
 (comment
   (complexity-scores))
