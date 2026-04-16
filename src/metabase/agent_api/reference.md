@@ -9,8 +9,6 @@ Base path: /api/agent
 
 ## Key concepts
 
-- **Databases**: Data sources connected to Metabase. Use /v1/database to list
-  them, and /v1/database/{id} to inspect a database's tables.
 - **Tables**: Database tables visible to the user.
 - **Metrics**: Standalone saved queries that represent pre-defined aggregations
   (e.g., "Total Revenue"). Metrics are stored in collections and can be used
@@ -104,73 +102,6 @@ all endpoints.
 Health check.
 
 Response: `{"message": "pong"}`
-
-### GET /v1/database
-
-List all databases the current user has access to.
-
-Response:
-
-```json
-[
-  {
-    "id": 1,
-    "name": "Production DB",
-    "engine": "postgres"
-  }
-]
-```
-
-### GET /v1/database/{id}
-
-Get details for a database by ID, optionally including its tables.
-
-Query parameters (all boolean, all optional):
-
-| Parameter           | Default | Description                             |
-|---------------------|---------|-----------------------------------------|
-| with-tables         | false   | Include tables in this database         |
-| with-fields         | false   | Include field metadata on each table    |
-| with-field-values   | false   | Include sample values on each field     |
-| with-related-tables | false   | Include FK-related tables               |
-| with-metrics        | false   | Include metrics defined on each table   |
-| with-measures       | false   | Include measures on each table          |
-| with-segments       | false   | Include segments defined on each table  |
-
-Response (without tables):
-
-```json
-{
-  "id": 1,
-  "name": "Production DB",
-  "engine": "postgres"
-}
-```
-
-Response (with-tables=true):
-
-```json
-{
-  "id": 1,
-  "name": "Production DB",
-  "engine": "postgres",
-  "tables": [
-    {
-      "type": "table",
-      "id": 42,
-      "name": "ORDERS",
-      "display_name": "Orders",
-      "database_id": 1,
-      "database_engine": "postgres",
-      "database_schema": "PUBLIC",
-      "fields": []
-    }
-  ]
-}
-```
-
-When with-fields, with-metrics, etc. are enabled, each table in the response
-follows the same shape as GET /v1/table/{id} with the corresponding options.
 
 ### GET /v1/table/{id}
 

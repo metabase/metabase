@@ -2,6 +2,7 @@
   "Settings for LLM integration (API keys, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -124,7 +125,8 @@
 
 (defsetting llm-proxy-base-url
   (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key.")
-  :feature          :metabase-ai-managed
+  :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
+                         (premium-features/has-feature? :metabot-v3))
   :encryption       :no
   :visibility       :internal
   :default          nil
@@ -133,7 +135,8 @@
 
 (defsetting ai-service-base-url
   (deferred-tru "Base URL for the managed Metabase AI service.")
-  :feature          :metabase-ai-managed
+  :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
+                         (premium-features/has-feature? :metabot-v3))
   :encryption       :no
   :visibility       :internal
   :default          nil

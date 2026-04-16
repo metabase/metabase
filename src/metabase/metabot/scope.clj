@@ -96,10 +96,6 @@
 (api-scope/defscope agent-metric-read "agent:metric:read"
   (deferred-tru "View metric definitions"))
 
-;; Database
-(api-scope/defscope agent-database-read "agent:database:read"
-  (deferred-tru "View database metadata"))
-
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
 ;;; ──────────────────────────────────────────────────────────────────
@@ -147,7 +143,7 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:database:*"}
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"}})
 
 (def always-granted-scopes
