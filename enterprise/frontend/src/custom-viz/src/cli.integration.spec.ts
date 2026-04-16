@@ -162,8 +162,6 @@ describe("build output validation", () => {
   }, 60_000);
 
   it("lint check passes", async () => {
-    // oxlint auto-discovers vite.config.ts as an eslint flat config and fails
-    // on Node < 22.18, so we point --config to an explicit empty JSON config.
     const oxlintConfig = join(projectDir, ".oxlintrc.json");
     writeFileSync(oxlintConfig, "{}");
 
