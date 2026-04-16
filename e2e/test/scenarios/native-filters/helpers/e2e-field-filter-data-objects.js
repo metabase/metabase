@@ -1,5 +1,3 @@
-import dayjs from "dayjs";
-
 export const STRING_FILTER_SUBTYPES = {
   String: {
     searchTerm: "Synerg",
@@ -86,14 +84,9 @@ export const DATE_FILTER_SUBTYPES = {
   },
   "All Options": {
     value: {
-      timeBucket: "month",
-      quantity:
-        // When the filter is "Previous N months", we must ensure that N is large
-        // enough that the representative result appears. For this filter, the
-        // representative result is Synergistic Steel Chair, created on May 24,
-        // 2025.
-        dayjs().diff(dayjs("2025-05-24"), "month") + 2,
+      timeBucket: "year",
+      quantity: 12,
     },
-    representativeResult: "Rustic Paper Wallet",
+    representativeResult: "Ergonomic Paper Wallet",
   },
 };
