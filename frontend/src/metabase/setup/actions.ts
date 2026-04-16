@@ -8,13 +8,13 @@ import {
 } from "metabase/admin/settings/settings";
 import { userApi } from "metabase/api";
 import { updateSetting } from "metabase/redux/settings";
+import type { InviteInfo, Locale, State, UserInfo } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
 import { loadLocalization } from "metabase/utils/i18n";
 import { createAsyncThunk } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
-import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
 import {
   trackAddDataLaterClicked,

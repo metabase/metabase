@@ -7,7 +7,11 @@ import { MetabotStatsLayout } from "./components/MetabotStatsLayout";
 
 export function getMetabotAnalyticsRoutes() {
   return (
-    <Route key="usage-stats" path="usage-stats" component={MetabotStatsLayout}>
+    <Route
+      key="usage-auditing"
+      path="usage-auditing"
+      component={MetabotStatsLayout}
+    >
       <IndexRoute component={ConversationStatsPage} />
       <Route path="conversations" component={ConversationsPage} />
       <Route path="conversations/:convoId" component={ConversationDetailPage} />

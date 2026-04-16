@@ -4,6 +4,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.api :as api]
@@ -202,8 +203,10 @@
 
 (deftest extract-charts-test
   (testing "extracts charts from tool output parts"
-    (let [chart-data {:chart-id "c-456"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          chart-data {:chart-id "c-456"
                       :query-id "q-123"
+                      :query query
                       :chart-type :bar}
           parts [{:type :tool-output
                   :id "t1"
@@ -211,21 +214,9 @@
                   :result {:structured-output chart-data}}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-charts memory parts)]
-      (is (= chart-data (get-in (memory/get-state updated) [:charts "c-456"])))))
-
-  (testing "stores charts even when query details are included"
-    (let [query-data {:chart-id "c-789"
-                      :query-id "q-789"
-                      :query {:database 1}
-                      :result-columns []}
-          parts [{:type :tool-output
-                  :id "t1"
-                  :function "query_model"
-                  :result {:structured-output query-data}}]
-          memory {:state {:queries {} :charts {}}}
-          updated (#'agent/extract-charts memory parts)]
-      (is (= query-data (get-in (memory/get-state updated) [:charts "c-789"])))))
-
+      (is (= {:chart_id "c-456"
+              :queries [query]
+              :visualization_settings {:chart_type :bar}} (get-in (memory/get-state updated) [:charts "c-456"])))))
   (testing "ignores parts without chart-id"
     (let [parts [{:type :tool-output
                   :id "t1"

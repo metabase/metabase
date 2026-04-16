@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { Card, Flex, Stack, Text } from "metabase/ui";
+import { Card, Flex, Title } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
 import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
@@ -52,24 +53,26 @@ export function ConversationsPage({ location }: WithRouterProps) {
   }, [conversations]);
 
   return (
-    <Stack>
-      <ConversationFilters
-        date={date}
-        onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-        user={user}
-        onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-        group={group}
-        onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-        profile={profile}
-        onProfileChange={(val) => patchUrlState({ profile: val, page: 0 })}
-        userOptions={userOptions}
-        groupOptions={groupOptions}
-        profileOptions={profileOptions}
-      />
+    <SettingsPageWrapper mt="sm">
+      <Flex align="center" justify="space-between">
+        <Title order={2} display="flex" style={{ alignItems: "center" }}>
+          {t`Conversations`}
+        </Title>
 
-      <Text size="sm" c="text-tertiary">
-        {t`${total} conversations`}
-      </Text>
+        <ConversationFilters
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+          group={group}
+          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+          profile={profile}
+          onProfileChange={(val) => patchUrlState({ profile: val, page: 0 })}
+          userOptions={userOptions}
+          groupOptions={groupOptions}
+          profileOptions={profileOptions}
+        />
+      </Flex>
 
       <Card withBorder p={0}>
         <ConversationsTable
@@ -93,6 +96,6 @@ export function ConversationsPage({ location }: WithRouterProps) {
           total={total}
         />
       </Flex>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

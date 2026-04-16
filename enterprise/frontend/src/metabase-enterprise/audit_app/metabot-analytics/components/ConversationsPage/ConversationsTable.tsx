@@ -38,7 +38,9 @@ export function ConversationsTable({
 
   const handleRowClick = (convo: ConversationSummary) => {
     dispatch(
-      push(`/admin/metabot/usage-stats/conversations/${convo.conversation_id}`),
+      push(
+        `/admin/metabot/usage-auditing/conversations/${convo.conversation_id}`,
+      ),
     );
   };
 
@@ -57,13 +59,13 @@ export function ConversationsTable({
             name="message_count"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
-          >{t`Msgs`}</SortableColumnHeader>
+            columnHeaderProps={{ style: { width: "5rem" } }}
+          >{t`Messages`}</SortableColumnHeader>
           <SortableColumnHeader
             name="total_tokens"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
           >{t`Tokens`}</SortableColumnHeader>
-          <th>{t`Cost`}</th>
           <th>{t`Queries`}</th>
           <th>{t`Searches`}</th>
           <th>{t`IP`}</th>
@@ -72,7 +74,7 @@ export function ConversationsTable({
       <tbody>
         {showLoadingAndError && (
           <tr>
-            <td colSpan={9}>
+            <td colSpan={8}>
               <LoadingAndErrorWrapper loading={isLoading} error={error} />
             </td>
           </tr>
@@ -82,7 +84,7 @@ export function ConversationsTable({
           <>
             {conversations.length === 0 && (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={8}>
                   <Flex c="text-tertiary" justify="center">
                     {t`No conversations found`}
                   </Flex>
@@ -114,9 +116,6 @@ export function ConversationsTable({
                 </Box>
                 <Box component="td" ta="right">
                   {convo.total_tokens.toLocaleString()}
-                </Box>
-                <Box component="td" ta="right">
-                  {`$${(convo.total_tokens * 0.0001).toFixed(2)}`}
                 </Box>
                 <Box component="td" ta="right">
                   0

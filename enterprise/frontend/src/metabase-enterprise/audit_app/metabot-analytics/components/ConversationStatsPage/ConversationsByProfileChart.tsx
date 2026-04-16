@@ -1,19 +1,26 @@
-import { t } from "ttag";
-
 import type { DateFilterValue } from "metabase/querying/common/types";
 
 import { BreakoutChart } from "./BreakoutChart";
+import { type UsageStatsMetric, getChartTitle } from "./query-utils";
 
 type Props = {
   dateFilter: DateFilterValue;
+  metric: UsageStatsMetric;
+  onDimensionClick?: (value: unknown) => void;
 };
 
-export function ConversationsByProfileChart({ dateFilter }: Props) {
+export function ConversationsByProfileChart({
+  dateFilter,
+  metric,
+  onDimensionClick,
+}: Props) {
   return (
     <BreakoutChart
       dateFilter={dateFilter}
       breakoutColumn="model"
-      title={t`Conversations by profile`}
+      title={getChartTitle(metric, "profile")}
+      metric={metric}
+      onDimensionClick={onDimensionClick}
     />
   );
 }

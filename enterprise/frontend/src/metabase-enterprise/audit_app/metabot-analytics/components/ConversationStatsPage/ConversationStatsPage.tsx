@@ -1,23 +1,30 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
+import type { WithRouterProps } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useGetDatabaseMetadataQuery } from "metabase/api";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { useUrlState } from "metabase/common/hooks/use-url-state";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { SimpleGrid, Skeleton, Title } from "metabase/ui";
+import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
-import { AUDIT_DB_ID } from "../../constants";
+import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 import {
-  ConversationFilters,
-  DEFAULT_DATE,
-  DEFAULT_GROUP,
-  useFilterOptions,
-} from "../ConversationFilters";
+  type UrlState as ConversationsUrlState,
+  urlStateConfig as conversationsUrlStateConfig,
+} from "../ConversationsPage/utils";
 
+import S from "./ConversationStatsPage.module.css";
 import { ConversationsByDayChart } from "./ConversationsByDayChart";
-import { ConversationsByProfileChart } from "./ConversationsByProfileChart";
+import { ConversationsByGroupChart } from "./ConversationsByGroupChart";
+import { ConversationsByIPAddressChart } from "./ConversationsByIPAddressChart";
+import { ConversationsByProfileBarChart } from "./ConversationsByProfileBarChart";
+import { ConversationsBySourceChart } from "./ConversationsBySourceChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
-import { StatCards } from "./StatCards";
+import type { UsageStatsMetric } from "./query-utils";
+import { statsUrlStateConfig } from "./utils";
 
 const DEFAULT_DATE_FILTER: DateFilterValue = {
   type: "relative",
@@ -26,67 +33,136 @@ const DEFAULT_DATE_FILTER: DateFilterValue = {
   options: { includeCurrent: true },
 };
 
-export function ConversationStatsPage() {
-  const [dateValue, setDateValue] = useState(DEFAULT_DATE);
-  const [user, setUser] = useState<string | null>(null);
-  const [group, setGroup] = useState<string | null>(DEFAULT_GROUP);
-  const [profile, setProfile] = useState<string | null>(null);
+export function ConversationStatsPage({ location }: WithRouterProps) {
+  const dispatch = useDispatch();
+  const [{ date, user, group, metric }, { patchUrlState }] = useUrlState(
+    location,
+    statsUrlStateConfig,
+  );
 
   const dateFilter: DateFilterValue = useMemo(() => {
-    if (!dateValue) {
+    if (!date) {
       return DEFAULT_DATE_FILTER;
     }
-    const parsed = deserializeDateParameterValue(dateValue);
+    const parsed = deserializeDateParameterValue(date);
     if (parsed && "type" in parsed) {
       return parsed as DateFilterValue;
     }
     return DEFAULT_DATE_FILTER;
-  }, [dateValue]);
+  }, [date]);
 
   const { userOptions, groupOptions } = useFilterOptions();
-  const { isLoading: isLoadingMetadata } = useGetDatabaseMetadataQuery({
-    id: AUDIT_DB_ID,
-  });
+
+  const navigateToConversations = useCallback(
+    (filterOverrides: Partial<ConversationsUrlState>) => {
+      dispatch(
+        push({
+          pathname: "/admin/metabot/usage-auditing/conversations",
+          query: conversationsUrlStateConfig.serialize({
+            page: 0,
+            sort_column: "created_at",
+            sort_direction: "desc",
+            date,
+            user,
+            group,
+            profile: null,
+            ...filterOverrides,
+          }),
+        }),
+      );
+    },
+    [dispatch, date, user, group],
+  );
+
+  const handleDayClick = useCallback(
+    (value: unknown) => {
+      if (value == null) {
+        return;
+      }
+      const dateStr = String(value).slice(0, 10);
+      navigateToConversations({ date: dateStr });
+    },
+    [navigateToConversations],
+  );
+
+  const handleUserClick = useCallback(
+    (value: unknown) => {
+      if (value == null) {
+        return;
+      }
+      const displayName = String(value);
+      const match = userOptions.find((opt) => opt.label === displayName);
+      if (match) {
+        navigateToConversations({ user: match.value });
+      }
+    },
+    [navigateToConversations, userOptions],
+  );
 
   return (
-    <>
-      <ConversationFilters
-        date={dateValue}
-        onDateChange={setDateValue}
-        user={user}
-        onUserChange={setUser}
-        group={group}
-        onGroupChange={setGroup}
-        profile={profile}
-        onProfileChange={setProfile}
-        userOptions={userOptions}
-        groupOptions={groupOptions}
-        profileOptions={[]}
+    <SettingsPageWrapper mt="sm">
+      <Flex align="center" justify="space-between">
+        <Title order={2} display="flex" style={{ alignItems: "center" }}>
+          {t`Usage stats`}
+        </Title>
+
+        <ConversationFilters
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val })}
+          group={group}
+          onGroupChange={(val) => patchUrlState({ group: val })}
+          userOptions={userOptions}
+          groupOptions={groupOptions}
+        />
+      </Flex>
+
+      <Tabs
+        variant="pills"
+        value={metric}
+        onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
+      >
+        <Tabs.List className={S.metricTabs}>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="conversations"
+          >{t`Conversations`}</Tabs.Tab>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="tokens"
+          >{t`Tokens`}</Tabs.Tab>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="messages"
+          >{t`Messages`}</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
+
+      <ConversationsByDayChart
+        dateFilter={dateFilter}
+        metric={metric}
+        onDimensionClick={handleDayClick}
       />
-
-      <Title order={3}>{t`Trends`}</Title>
-
-      <StatCards dateFilter={dateFilter} />
-
-      <Title order={3} mt="xl">{t`Conversations`}</Title>
-
-      {isLoadingMetadata ? (
-        <>
-          <Skeleton h={350} />
-          <SimpleGrid cols={2} spacing="lg">
-            <Skeleton h={350} />
-            <Skeleton h={350} />
-          </SimpleGrid>
-        </>
-      ) : (
-        <>
-          <ConversationsByDayChart dateFilter={dateFilter} />
-          <SimpleGrid cols={2} spacing="lg">
-            <ConversationsByUserChart dateFilter={dateFilter} />
-            <ConversationsByProfileChart dateFilter={dateFilter} />
-          </SimpleGrid>
-        </>
-      )}
-    </>
+      <SimpleGrid cols={2} spacing="lg">
+        <ConversationsBySourceChart dateFilter={dateFilter} metric={metric} />
+        <ConversationsByProfileBarChart
+          dateFilter={dateFilter}
+          metric={metric}
+        />
+      </SimpleGrid>
+      <SimpleGrid cols={3} spacing="lg">
+        <ConversationsByGroupChart dateFilter={dateFilter} metric={metric} />
+        <ConversationsByUserChart
+          dateFilter={dateFilter}
+          metric={metric}
+          onDimensionClick={handleUserClick}
+        />
+        <ConversationsByIPAddressChart
+          dateFilter={dateFilter}
+          metric={metric}
+        />
+      </SimpleGrid>
+    </SettingsPageWrapper>
   );
 }
