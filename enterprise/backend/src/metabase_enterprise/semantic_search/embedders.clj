@@ -56,8 +56,7 @@
                         [:and [:= :model m] [:= :model_id mid]]))
         sql-vec (sql/format {:select   [:model :model_id :name :embedding]
                              :from     [(keyword table-name)]
-                             :where    where
-                             :order-by [[:model :asc] [[:cast :model_id :bigint] :desc]]}
+                             :where    where}
                             {:quoted true})]
     (jdbc/execute! pgvector sql-vec {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
@@ -96,17 +95,31 @@
                         :let [m (metabot/entity-type->search-model kind)]
                         :when m]
                     [m (str id)])
-            ;; Query returns rows ordered by (model ASC, CAST(model_id AS bigint) DESC) so
-            ;; `into {}` (last-wins) picks the last model alphabetically with the lowest
-            ;; model_id per normalized name — a stable, deterministic choice when duplicates
-            ;; exist across models or within the same model. The cast avoids lexicographic
-            ;; text comparison ("10" < "2").
-            rows  (fetch-by-model+id pgvector table-name pairs)]
+            rows  (fetch-by-model+id pgvector table-name pairs)
+            ;; Global dedup: when multiple rows share a normalized name, pick the one with
+            ;; the lowest numeric model_id (stable across runs). model is a secondary
+            ;; tie-break for determinism when model_ids happen to collide across types.
+            ;; This must happen after all batches are merged so the choice is globally
+            ;; correct, not just correct within each 500-row partition.
+            keyed (reduce (fn [acc {:keys [name model_id model] :as row}]
+                            (let [k     (normalize-name name)
+                                  mid   (parse-long model_id)
+                                  prior (get acc k)]
+                              (if (or (nil? prior)
+                                      (and mid
+                                           (let [pmid (:mid prior)]
+                                             (or (nil? pmid)
+                                                 (< mid pmid)
+                                                 (and (= mid pmid) (neg? (compare model (:model prior))))))))
+                                (assoc acc k (assoc row :mid mid))
+                                acc)))
+                          {}
+                          rows)]
         (into {}
-              (keep (fn [{:keys [name embedding]}]
+              (keep (fn [[k {:keys [embedding]}]]
                       (when-let [v (parse-pgvector embedding)]
-                        [(normalize-name name) v])))
-              rows))
+                        [k v])))
+              keyed))
       (catch Throwable t
         (log/warn t "search-index-embedder: failed to read from search index; returning {}")
         {}))
