@@ -30,9 +30,10 @@
 
 ;;; ------------------------------------------------ URL Validation ------------------------------------------------
 
-(def ^:private allowed-schemes
+(defn- allowed-schemes
   "Set of URL schemes allowed for repo and dev bundle URLs.
-   In dev/test mode, `file://` is also permitted."
+   In dev/test/e2e mode, `file://` is also permitted."
+  []
   (cond-> #{"http" "https"}
     (or config/is-dev? config/is-test? config/is-e2e?) (conj "file")))
 
@@ -40,7 +41,7 @@
   "Validate that a URL uses an allowed scheme. Throws on invalid input."
   [^String url ^String label]
   (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
-    (when-not (contains? allowed-schemes scheme)
+    (when-not (contains? (allowed-schemes) scheme)
       (throw (ex-info (str label " must use http or https, got: " scheme)
                       {:status-code 400 :url url})))))
 
