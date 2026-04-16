@@ -316,9 +316,6 @@
    [:model {:optional true} [:maybe :string]]
    [:api-key {:optional true} [:maybe :string]]])
 
-(def ^:private metabase-default-model
-  "anthropic/claude-sonnet-4-6")
-
 (defn- provider-api-key-setting-key
   [provider]
   (case provider
@@ -337,7 +334,7 @@
   [provider model]
   (cond
     (nil? model) nil
-    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabase-default-model
+    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabot.settings/default-llm-metabot-provider
     :else (non-blank-string model)))
 
 (def ^:private invalid-api-key-statuses
