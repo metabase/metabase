@@ -13,7 +13,7 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
         return;
       }
     } catch {
-      // server not up yet
+      console.log(`${url} is not up yet`);
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
   }
