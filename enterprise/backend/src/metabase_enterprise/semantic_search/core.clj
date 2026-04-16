@@ -26,8 +26,7 @@
   search-index-embedder])
 
 (def max-cosine-distance
-  "Maximum cosine distance used to filter semantic search results. The complexity score derives its
-   similarity threshold from the complement (`1 - max-cosine-distance`)."
+  "Threshold used to filter semantic search results. Also used to determine aliasing in the complexity score."
   semantic.index/max-cosine-distance)
 
 (defn- fallback-engine
