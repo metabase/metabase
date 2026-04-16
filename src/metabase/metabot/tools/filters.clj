@@ -556,22 +556,96 @@
     :else
     (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true :status-code 400}))))
 
+(defn- add-joins
+  "Add explicit joins to the query. Conditions auto-detected from FK/PK relationships.
+   Throws if no FK relationship exists, or if the same table is joined twice."
+  [query joins]
+  (let [table-ids (mapv :table-id joins)]
+    (when (not= (count table-ids) (count (set table-ids)))
+      (throw (ex-info "Cannot join the same table more than once"
+                      {:agent-error? true :status-code 400})))
+    (reduce
+     (fn [q {:keys [table-id strategy]}]
+       (let [table-meta (try
+                          (lib.metadata/table q table-id)
+                          (catch Exception _
+                            (throw (ex-info (str "No table found with table_id " table-id)
+                                            {:agent-error? true :status-code 404}))))
+             conditions (lib/suggested-join-conditions q -1 table-meta)]
+         (when (empty? conditions)
+           (throw (ex-info (str "Cannot join table " table-id
+                                " (" (lib/display-name q table-meta) ")"
+                                ": no foreign key relationship found.")
+                           {:agent-error? true :status-code 400})))
+         (lib/join q (lib/join-clause table-meta conditions
+                                      (or strategy :left-join)))))
+     query
+     joins)))
+
+(defn- build-multi-table-resolver
+  "Build a field ID resolver that handles field IDs from the source table
+   or any joined table. Source table fields use the standard resolve-column.
+   Joined table fields use two-phase resolution: positional index in the
+   standalone table's columns, then identity match by :id in the post-join
+   visible-columns (which carry the correct :lib/join-alias metadata)."
+  [base-query post-join-query source-table-id joined-table-ids]
+  (let [source-prefix (metabot.tools.u/table-field-id-prefix source-table-id)
+        source-cols   (vec (lib/visible-columns base-query))
+        joined-cols   (into {}
+                            (map (fn [tid]
+                                   [tid (vec (lib/visible-columns
+                                              (metabot.tools.u/table-query tid)))]))
+                            joined-table-ids)
+        post-join-vis (lib/visible-columns post-join-query)
+        valid-ids     (into #{source-table-id} joined-table-ids)]
+    (fn [{:keys [field-id] :as item}]
+      (let [{:keys [model-tag model-id field-index]}
+            (or (metabot.tools.u/parse-field-id field-id)
+                (throw (ex-info (str "Invalid field_id format: " field-id)
+                                {:agent-error? true :status-code 400})))]
+        (when (not= model-tag "t")
+          (throw (ex-info (str "field " field-id " is not a table field")
+                          {:agent-error? true :status-code 400})))
+        (when-not (contains? valid-ids model-id)
+          (throw (ex-info (str "field " field-id " refers to table " model-id
+                               " which is not the source or a joined table")
+                          {:agent-error? true :status-code 400})))
+        (if (= model-id source-table-id)
+          (metabot.tools.u/resolve-column item source-prefix source-cols)
+          (let [standalone-cols (get joined-cols model-id)
+                standalone-col (or (get standalone-cols field-index)
+                                   (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
+                                                   {:agent-error? true :status-code 404
+                                                    :field-id field-id})))
+                matched        (first (filter #(and (= (:id %) (:id standalone-col))
+                                                    (= (:lib/source %) :source/joins))
+                                              post-join-vis))]
+            (if matched
+              (assoc item :column matched)
+              (throw (ex-info (str "field " field-id " could not be resolved in joined query")
+                              {:agent-error? true :status-code 400})))))))))
+
 (defn- query-datasource*
-  [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
+  [{:keys [fields filters aggregations group-by order-by limit joins] :as arguments}]
   (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
-        visible-cols (lib/visible-columns base-query)
-        resolve-visible-column #(metabot.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        query-with-joins (if (seq joins) (add-joins base-query joins) base-query)
+        visible-cols (lib/visible-columns query-with-joins)
+        resolve-visible-column (if (seq joins)
+                                 (build-multi-table-resolver base-query query-with-joins
+                                                             (:table-id arguments)
+                                                             (mapv :table-id joins))
+                                 #(metabot.tools.u/resolve-column % filter-field-id-prefix visible-cols))
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
                                                                             bucket (assoc :unit bucket))]
-                                                               (lib/display-name base-query -1 column :long))))
+                                                               (lib/display-name query-with-joins -1 column :long))))
                               resolve-visible-column)
                         fields)
         all-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
         all-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
-        query (-> base-query
+        query (-> query-with-joins
                   (reduce-query (fn [query [expr-or-column expr-name]]
                                   (lib/expression query expr-name expr-or-column))
                                 (filter (comp expression? first) projection))

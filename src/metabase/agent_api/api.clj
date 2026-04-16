@@ -500,6 +500,20 @@
    [:field ::field]
    [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]])
 
+(mr/def ::join-strategy
+  [:enum {:encode/tool-api-request keyword}
+   "left-join" "right-join" "inner-join" "full-join"])
+
+(mr/def ::join-spec
+  [:and
+   [:map
+    [:table_id {:description "ID of the table to join. Must have a FK relationship with the source or a previously joined table."}
+     ms/PositiveInt]
+    [:strategy {:optional true
+                :description "Join strategy. Defaults to left-join."}
+     [:maybe ::join-strategy]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
 (mr/def ::construct-query-table-request
   "Request schema for constructing a query from a table.
 
@@ -509,10 +523,14 @@
    - aggregations: Aggregation functions (sum, count, avg, etc.). Use sort_order on the aggregation to order by it.
    - group_by: Fields to group by, with optional temporal granularity
    - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.
-   - limit: Maximum rows to return"
+   - limit: Maximum rows to return
+   - joins: Tables to join via FK relationships"
   [:and
    [:map
     [:table_id ms/PositiveInt]
+    [:joins        {:optional true
+                    :description "Tables to join via FK relationships. Call get_table to find related_tables. Field IDs from joined tables work in filters, group_by, and aggregations."}
+     [:maybe [:sequential ::join-spec]]]
     [:filters      {:optional true} [:maybe [:sequential ::filter]]]
     [:fields       {:optional true} [:maybe [:sequential ::field]]]
     [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
@@ -586,7 +604,10 @@
            :description (str "Construct a query against a Metabase table or metric. "
                              "Returns an opaque query string that can be executed with execute_query.\n\n"
                              "For table queries: provide table_id. "
-                             "Supports filters, fields, aggregations, group_by, order_by, and limit.\n\n"
+                             "Supports filters, fields, aggregations, group_by, order_by, limit, and joins.\n\n"
+                             "Joins: add related tables via foreign key relationships. "
+                             "Call get_table to find related_tables and their field IDs. "
+                             "Field IDs from joined tables work in filters, group_by, and aggregations.\n\n"
                              "For metric queries: provide metric_id. "
                              "Supports only filters and group_by (aggregation is defined by the metric).\n\n"
                              "Provide either table_id or metric_id, not both.")

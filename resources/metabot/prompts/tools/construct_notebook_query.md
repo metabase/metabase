@@ -82,6 +82,14 @@ There are 3 query types based on what data source and operations you need:
    - Available fields: All fields from source + related tables (auto-joined)
    - Note: No aggregations - this returns row-level data
 
+**Joining tables:**
+When data spans multiple related tables, use `joins` to combine them in a single query.
+- Only tables with foreign key relationships can be joined. Check `related_tables` from `get_table`.
+- Join conditions (ON clause) are automatic based on FK/PK relationships.
+- Strategy defaults to `left-join`. Use `inner-join` only when you need to exclude unmatched rows.
+- Field IDs from joined tables (obtained via `get_table` on the joined table) work in filters, group_by, aggregations, and fields.
+- Example: Orders with product categories: `{"table_id": 1, "joins": [{"table_id": 4}], "aggregations": [{"function": "count"}], "group_by": [{"field_id": "t4-1"}]}`
+
 **Temporal grouping (`field_granularity` for `group_by`):**
 When grouping by date/time fields, specify how to group:
 - `year`: 2024-01-15T12:13:14 → 2024
@@ -142,14 +150,14 @@ Note: Metabase will automatically map data to chart aesthetics (axes, labels). Y
 - **No post-aggregation filtering (HAVING clause)**: Cannot filter on count, sum, avg, etc.
   - ❌ "Find items appearing more than once" → Cannot filter count > 1
   - ✅ Instead: Group by item, count, sort descending, limit 100 (frequent items appear at top)
-- No joins, unions, subqueries, or combining multiple sources
+- No unions, subqueries, or combining multiple sources
 - No field calculations (e.g., field_a / field_b, field_a + field_b)
 - No window functions, cohort analysis, or advanced analytics
 - Filters are combined with AND logic; values within a filter use OR logic
 
 **When NOT to use this tool:**
 - Post-aggregation filtering needed (e.g., "categories where total sales > $10k")
-- Joins or complex SQL required
+- Complex SQL required (e.g., window functions, subqueries)
 - Field calculations or transformations needed
 - User explicitly requests SQL
 

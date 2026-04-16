@@ -378,6 +378,105 @@
       (let [decoded (decode-query response)]
         (is (seq (lib/filters decoded)) "Query should have filters")))))
 
+;;; ------------------------------------------------ Join Tests ---------------------------------------------------
+
+(deftest construct-query-with-joins-test
+  (testing "Basic join - Orders JOIN Products"
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id (mt/id :orders)
+                                          :joins    [{:table_id (mt/id :products)}]
+                                          :limit    10})
+          decoded  (decode-query response)
+          joins    (lib/joins decoded)]
+      (is (= 1 (count joins)))
+      (is (= :left-join (:strategy (first joins))))
+      (is (= "Products" (:alias (first joins))))))
+
+  (testing "Filter on joined column"
+    (let [cat-field-id (visible-field-id (mt/id :products) "Category")
+          response     (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                             {:table_id (mt/id :orders)
+                                              :joins    [{:table_id (mt/id :products)}]
+                                              :filters  [{:field_id  cat-field-id
+                                                          :operation "equals"
+                                                          :value     "Gadget"}]
+                                              :limit    10})
+          decoded      (decode-query response)]
+      (is (= 1 (count (lib/filters decoded))) "Should have one filter")
+      (is (= 1 (count (lib/joins decoded))) "Should have one join")))
+
+  (testing "Aggregation + group-by on joined column"
+    (let [cat-field-id (visible-field-id (mt/id :products) "Category")
+          response     (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                             {:table_id     (mt/id :orders)
+                                              :joins        [{:table_id (mt/id :products)}]
+                                              :aggregations [{:function "count"}]
+                                              :group_by     [{:field_id cat-field-id}]})
+          decoded      (decode-query response)]
+      (is (= 1 (count (lib/aggregations decoded))))
+      (is (= 1 (count (lib/breakouts decoded))))))
+
+  (testing "Explicit join strategy"
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id (mt/id :orders)
+                                          :joins    [{:table_id (mt/id :products)
+                                                      :strategy "inner-join"}]
+                                          :limit    10})
+          decoded  (decode-query response)
+          joins    (lib/joins decoded)]
+      (is (= :inner-join (:strategy (first joins))))))
+
+  (testing "Multiple joins"
+    (let [response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id (mt/id :orders)
+                                          :joins    [{:table_id (mt/id :products)}
+                                                     {:table_id (mt/id :people)}]
+                                          :limit    10})
+          decoded  (decode-query response)
+          joins    (lib/joins decoded)]
+      (is (= 2 (count joins)))
+      (is (= :left-join (:strategy (first joins))))
+      (is (= :left-join (:strategy (second joins))))))
+
+  (testing "No FK relationship returns 400"
+    (let [response (mt/user-http-request :rasta :post 400 "agent/v1/construct-query"
+                                         {:table_id (mt/id :products)
+                                          :joins    [{:table_id (mt/id :people)}]
+                                          :limit    10})]
+      (is (re-find #"no foreign key relationship" response))))
+
+  (testing "Non-existent join table returns 404"
+    (is (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
+                              {:table_id (mt/id :orders)
+                               :joins    [{:table_id 999999}]
+                               :limit    10})))
+
+  (testing "Duplicate table joins return 400"
+    (let [response (mt/user-http-request :rasta :post 400 "agent/v1/construct-query"
+                                         {:table_id (mt/id :orders)
+                                          :joins    [{:table_id (mt/id :products)}
+                                                     {:table_id (mt/id :products)}]
+                                          :limit    10})]
+      (is (re-find #"same table more than once" response)))))
+
+(deftest construct-and-execute-with-joins-test
+  (testing "End-to-end: construct joined query then execute"
+    (let [cat-field-id   (visible-field-id (mt/id :products) "Category")
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                               {:table_id     (mt/id :orders)
+                                                :joins        [{:table_id (mt/id :products)}]
+                                                :aggregations [{:function "count"}]
+                                                :group_by     [{:field_id cat-field-id}]})
+          execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
+                                               {:query (:query construct-resp)})]
+      (is (=? {:status    "completed"
+               :row_count pos?
+               :data      {:cols (fn [cols]
+                                   (and (seq cols)
+                                        (every? :name cols)))
+                           :rows (fn [rows] (pos? (count rows)))}}
+              execute-resp)))))
+
 (deftest get-table-details-with-measures-test
   (let [measure-def (-> (lib/query (mt/metadata-provider)
                                    (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
