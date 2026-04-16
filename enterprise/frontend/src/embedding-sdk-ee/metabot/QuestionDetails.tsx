@@ -4,8 +4,8 @@ import { useBreakoutData } from "embedding-sdk-bundle/components/private/SdkQues
 import { useFilterData } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/hooks/use-filter-data";
 import { useSummarizeData } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/use-summarize-data";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { isNotNull } from "metabase/lib/types";
 import { Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -45,7 +45,7 @@ export function QuestionDetails() {
   ].filter((section) => section.length > 0);
 
   return (
-    <Text size="0.75rem" c="var(--mb-color-text-tertiary)">
+    <Text size="0.75rem" c="text-tertiary">
       {sections.join(" ")}
     </Text>
   );

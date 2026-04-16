@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import type { VisualizerState } from "metabase/redux/store/visualizer";
 import {
   extractRemappings,
   getVisualization,
@@ -15,7 +16,6 @@ import type {
   RawSeries,
   SingleSeries,
 } from "metabase-types/api";
-import type { VisualizerState } from "metabase-types/store/visualizer";
 
 import {
   createDataSource,
@@ -151,8 +151,9 @@ const getVisualizerFlatRawSeries = createSelector(
     getVisualizerRawSettings,
     getVisualizerDatasetData,
     getCards,
+    getVisualizerColumnValuesMapping,
   ],
-  (display, settings, data, cards): RawSeries => {
+  (display, settings, data, cards, columnValuesMapping): RawSeries => {
     if (!display) {
       return [];
     }
@@ -168,6 +169,8 @@ const getVisualizerFlatRawSeries = createSelector(
         } as Card,
 
         data,
+
+        columnValuesMapping,
 
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
@@ -203,10 +206,7 @@ export const getVisualizerRawSeries = createSelector(
         )
       : flatSeries;
 
-    return series.map((s) => ({
-      ...s,
-      columnValuesMapping,
-    }));
+    return series;
   },
 );
 
@@ -237,28 +237,6 @@ export const getVisualizerComputedSettingsForFlatSeries = createSelector(
   [getVisualizerFlatRawSeries],
   (series): ComputedVisualizationSettings =>
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
-);
-
-export const getVisualizerPrimaryColumn = createSelector(
-  [
-    getVisualizationType,
-    getVisualizerComputedSettings,
-    getVisualizerDatasetColumns,
-  ],
-  (display, settings, columns) => {
-    if (!display) {
-      return undefined;
-    }
-
-    if (isCartesianChart(display)) {
-      const dimensionName = settings["graph.dimensions"]?.[0];
-      if (dimensionName) {
-        return columns.find((column) => column.name === dimensionName);
-      }
-    }
-
-    return undefined;
-  },
 );
 
 export const getTabularPreviewSeries = createSelector(

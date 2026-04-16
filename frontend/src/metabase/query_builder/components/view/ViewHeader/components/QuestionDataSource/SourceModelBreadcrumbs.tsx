@@ -2,8 +2,8 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Tooltip } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
@@ -38,7 +38,7 @@ export function SourceModelBreadcrumbs({
           key="collection"
           to={Urls.collection(collection)}
           icon={getQuestionIcon(question)}
-          inactiveColor="text-light"
+          inactiveColor="text-tertiary"
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
@@ -52,8 +52,8 @@ export function SourceModelBreadcrumbs({
             {/* We use span here for ref forwarding */}
             <span>
               <HeadBreadcrumbs.Badge
-                inactiveColor="text-light"
-                icon={{ name: "warning", color: "var(--mb-color-danger)" }}
+                inactiveColor="text-tertiary"
+                icon={{ name: "warning", c: "danger" }}
                 to={Urls.question(question.card())}
               >
                 {question.displayName()}
@@ -64,7 +64,7 @@ export function SourceModelBreadcrumbs({
           <HeadBreadcrumbs.Badge
             key="name"
             to={Urls.question(question.card())}
-            inactiveColor="text-light"
+            inactiveColor="text-tertiary"
           >
             {question.displayName()}
           </HeadBreadcrumbs.Badge>

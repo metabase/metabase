@@ -11,23 +11,19 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListCommentsQuery } from "metabase/api/comment";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
+import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
 import { Box } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { useDispatch, useSelector } from "metabase/utils/redux/hooks";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import { cleanupFlexContainerNodes } from "../HandleEditorDrop/utils";
@@ -142,20 +138,9 @@ const SupportingTextComponent = ({
 }: NodeViewProps) => {
   const childTargetId = useSelector(getChildTargetId);
   const document = useSelector(getCurrentDocument);
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
-  );
-  const comments = commentsData?.comments;
   const { _id } = node.attrs;
+  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
   const isOpen = childTargetId === _id;
-  const threads = useMemo(
-    () => getTargetChildCommentThreads(comments, _id),
-    [comments, _id],
-  );
-  const unresolvedCommentsCount = useMemo(
-    () => getUnresolvedComments(threads).length,
-    [threads],
-  );
   const commentsPath = document
     ? `/document/${document.id}/comments/${_id}`
     : "";
@@ -218,7 +203,9 @@ const SupportingTextComponent = ({
           className={S.handle}
           onClick={() => {
             const pos = getPos();
-            pos && editor.commands.setNodeSelection(pos);
+            if (pos) {
+              editor.commands.setNodeSelection(pos);
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === "Backspace" || e.key === "Delete") {

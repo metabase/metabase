@@ -2,7 +2,7 @@ import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
-import FormField from "metabase/common/components/FormField";
+import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Center, Icon, SegmentedControl } from "metabase/ui";
 

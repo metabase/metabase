@@ -8,7 +8,7 @@ export const MonospaceErrorDisplay = styled.div`
   margin-top: 0.5rem;
   font-weight: bold;
   border-radius: 0.5rem;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border: 1px solid var(--mb-color-border);
   max-height: 16rem;
   overflow-y: auto;

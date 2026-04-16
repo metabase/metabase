@@ -2,11 +2,11 @@ import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getIcon } from "metabase/lib/icon";
-import { getName } from "metabase/lib/name";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
+import { getIcon } from "metabase/utils/icon";
+import { getName } from "metabase/utils/name";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { RecentItem } from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";
@@ -14,7 +14,7 @@ import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
 
-import { SectionBody } from "./HomeRecentSection.styled";
+import S from "./HomeRecentSection.module.css";
 
 export const HomeRecentSection = () => {
   const { data: recentItems = [], isLoading, error } = useListRecentsQuery();
@@ -29,7 +29,7 @@ export const HomeRecentSection = () => {
   return (
     <div>
       <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
-      <SectionBody>
+      <div className={S.SectionBody}>
         {recentsFilter(recentItems).map((item, index) => (
           <HomeModelCard
             key={index}
@@ -39,7 +39,7 @@ export const HomeRecentSection = () => {
           />
         ))}
         {hasHelpCard && <HomeHelpCard />}
-      </SectionBody>
+      </div>
     </div>
   );
 };

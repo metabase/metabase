@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
 import { Box, Modal } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getTabularPreviewSeries } from "metabase/visualizer/selectors";
 

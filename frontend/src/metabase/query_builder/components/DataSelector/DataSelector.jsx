@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
@@ -13,23 +13,23 @@ import { Questions } from "metabase/entities/questions";
 import { Schemas } from "metabase/entities/schemas";
 import { Search } from "metabase/entities/search";
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { canUserCreateQueries } from "metabase/selectors/user";
 import { Box, Popover } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import DataBucketPicker from "./DataSelectorDataBucketPicker";
-import DatabasePicker from "./DataSelectorDatabasePicker";
-import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
-import FieldPicker from "./DataSelectorFieldPicker";
-import SchemaPicker from "./DataSelectorSchemaPicker";
-import TablePicker from "./DataSelectorTablePicker";
+import { DataSelectorDataBucketPicker } from "./DataSelectorDataBucketPicker";
+import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
+import { DataSelectorDatabaseSchemaPicker } from "./DataSelectorDatabaseSchemaPicker";
+import { DataSelectorFieldPicker } from "./DataSelectorFieldPicker";
+import { DataSelectorSchemaPicker } from "./DataSelectorSchemaPicker";
+import { DataSelectorTablePicker } from "./DataSelectorTablePicker";
 import {
   DatabaseTrigger,
   FieldTrigger,
@@ -37,7 +37,7 @@ import {
   Trigger,
 } from "./TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
-import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
+import { SavedEntityPicker } from "./saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "./utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
@@ -163,6 +163,7 @@ export class UnconnectedDataSelector extends Component {
     canSelectMetric: PropTypes.bool,
     canSelectSavedQuestion: PropTypes.bool,
     databaseIsDisabled: PropTypes.func,
+    databaseDisabledTooltip: PropTypes.func,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -905,13 +906,14 @@ export class UnconnectedDataSelector extends Component {
       hasFiltering: true,
       hasInitialFocus: true,
       databaseIsDisabled: this.props.databaseIsDisabled,
+      databaseDisabledTooltip: this.props.databaseDisabledTooltip,
     };
 
     switch (this.state.activeStep) {
       case DATA_BUCKET_STEP:
         return (
           <Box p="sm">
-            <DataBucketPicker
+            <DataSelectorDataBucketPicker
               dataTypes={getDataTypes({
                 hasModels: this.hasModels(),
                 hasTables: this.props.canSelectTable,
@@ -925,20 +927,26 @@ export class UnconnectedDataSelector extends Component {
         );
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
+          <DataSelectorDatabaseSchemaPicker
+            {...props}
+            hasBackButton={hasBackButton}
+          />
         ) : (
-          <DatabasePicker {...props} />
+          <DataSelectorDatabasePicker {...props} />
         );
       case SCHEMA_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
+          <DataSelectorDatabaseSchemaPicker
+            {...props}
+            hasBackButton={hasBackButton}
+          />
         ) : (
-          <SchemaPicker {...props} />
+          <DataSelectorSchemaPicker {...props} />
         );
       case TABLE_STEP:
-        return <TablePicker {...props} />;
+        return <DataSelectorTablePicker {...props} />;
       case FIELD_STEP:
-        return <FieldPicker {...props} />;
+        return <DataSelectorFieldPicker {...props} />;
     }
 
     return null;
@@ -1032,6 +1040,7 @@ export class UnconnectedDataSelector extends Component {
           onDismiss={this.handleDismiss}
           position="bottom-start"
           opened={this.isPopoverOpen()}
+          disabled={this.props.readOnly}
         >
           <Popover.Target>
             <Box
@@ -1074,17 +1083,17 @@ const DataSelector = _.compose(
       databases:
         ownProps.databases ||
         Databases.selectors.getList(state, {
-          entityQuery: ownProps.databaseQuery,
+          entityQuery: { ...ownProps.databaseQuery, "can-query": true },
         }) ||
         [],
       hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", saved: true },
+        entityQuery: { include: "tables", saved: true, "can-query": true },
       }),
       hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { saved: true },
+        entityQuery: { saved: true, "can-query": true },
       }),
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables" },
+        entityQuery: { include: "tables", "can-query": true },
       }),
       hasDataAccess: canUserCreateQueries(state),
       hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
@@ -1094,10 +1103,11 @@ const DataSelector = _.compose(
     }),
     {
       fetchDatabases: (databaseQuery) =>
-        Databases.actions.fetchList(databaseQuery),
+        Databases.actions.fetchList({ ...databaseQuery, "can-query": true }),
       fetchSchemas: (databaseId) =>
-        Schemas.actions.fetchList({ dbId: databaseId }),
-      fetchSchemaTables: (schemaId) => Schemas.actions.fetch({ id: schemaId }),
+        Schemas.actions.fetchList({ dbId: databaseId, "can-query": true }),
+      fetchSchemaTables: (schemaId) =>
+        Schemas.actions.fetch({ id: schemaId, "can-query": true }),
       fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
       fetchQuestion: (id) =>
         Questions.actions.fetch({

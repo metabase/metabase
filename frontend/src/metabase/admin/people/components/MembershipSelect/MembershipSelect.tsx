@@ -1,14 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
 import {
   getGroupNameLocalized,
   isAdminGroup,
+  isDataAnalystGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
-import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";
@@ -20,10 +22,14 @@ const getGroupSections = (groups: GroupInfo[]) => {
     (g) => isDefaultGroup(g) || PLUGIN_TENANTS.isExternalUsersGroup(g),
   );
   const adminGroup = groups.find(isAdminGroup);
-  const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
+  const dataAnalystGroup = groups.find(isDataAnalystGroup);
+  const pinnedGroups = [defaultGroup, adminGroup, dataAnalystGroup].filter(
+    isNotNull,
+  );
   const regularGroups = groups.filter(
     (group) =>
       !isAdminGroup(group) &&
+      !isDataAnalystGroup(group) &&
       !isDefaultGroup(group) &&
       !PLUGIN_TENANTS.isExternalUsersGroup(group),
   );
@@ -59,7 +65,10 @@ export const MembershipSelect = ({
   const [popoverOpened, { open: openPopover, toggle: togglePopover }] =
     useDisclosure();
   const selectedGroupIds = Array.from(memberships.keys());
-  const { pinnedGroups, regularGroups } = getGroupSections(groups);
+  const { pinnedGroups, regularGroups } = useMemo(
+    () => getGroupSections(groups),
+    [groups],
+  );
 
   const handleToggleMembership = (groupId: number) => {
     if (memberships.has(groupId)) {
@@ -144,7 +153,7 @@ export const MembershipSelect = ({
             groups={groups}
             selectedGroupIds={selectedGroupIds}
           />
-          <Icon c="text-light" name="chevrondown" size={10} />
+          <Icon c="text-tertiary" name="chevrondown" size={10} />
         </Flex>
       </Popover.Target>
       <Popover.Dropdown w="300px" mah="600px" py="sm">

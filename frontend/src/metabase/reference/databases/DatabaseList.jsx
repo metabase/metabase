@@ -4,17 +4,18 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import List from "metabase/common/components/List";
+import { List } from "metabase/common/components/List";
 import S from "metabase/common/components/List/List.module.css";
-import ListItem from "metabase/common/components/ListItem";
+import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
+import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
+import { connect } from "metabase/utils/redux";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import { getDatabases, getError, getLoading } from "../selectors";
+import { getError, getLoading } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
   entities: getDatabases(state, props),
@@ -80,4 +81,5 @@ class DatabaseList extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(DatabaseList);

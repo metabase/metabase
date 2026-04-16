@@ -24,7 +24,7 @@
   }
 
   &.shouldForceHiddenBackground {
-    background: var(--mb-color-bg-light);
+    background: var(--mb-color-background-secondary);
     border: none !important;
 
     &.isEmbeddingSdk {

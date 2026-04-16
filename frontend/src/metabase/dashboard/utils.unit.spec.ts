@@ -15,8 +15,9 @@ import {
   setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockLocation } from "metabase/redux/store/mocks";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import {
@@ -31,7 +32,6 @@ import {
   createMockTextDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
-import { createMockLocation } from "metabase-types/store/mocks";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,
@@ -75,7 +75,8 @@ describe("Dashboard utils", () => {
       const failedFetch = Promise.reject(error);
 
       const result = await fetchDataOrError(failedFetch);
-      expect(result.error).toEqual(error);
+      expect(result).toBeTruthy();
+      expect((result as { error: unknown }).error).toEqual(error);
     });
 
     it("should return true if a database has model actions enabled", () => {

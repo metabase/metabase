@@ -2,13 +2,13 @@ import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
+import { addUndo } from "metabase/redux/undo";
 import {
   combineReducers,
   createAction,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+} from "metabase/utils/redux";
 
 import { ApplicationPermissionsApi } from "./api";
 
@@ -109,6 +109,7 @@ const applicationPermissionsRevision = handleActions(
   null,
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   applicationPermissions,
   originalApplicationPermissions,

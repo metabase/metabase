@@ -4,12 +4,14 @@ import {
   isRootTrashCollection,
   isSyncedCollection,
 } from "metabase/collections/utils";
-import { color } from "metabase/lib/colors";
-import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { getLibraryCollectionType } from "metabase/data-studio/utils";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { IconName, IconProps } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { PERSONAL_COLLECTIONS, ROOT_COLLECTION } from "./constants";
 
@@ -22,7 +24,7 @@ export function getCollectionIcon(
   { tooltip = "default", isTenantUser = false } = {},
 ): {
   name: IconName;
-  color?: string;
+  color?: ColorName;
   tooltip?: string;
 } {
   if (collection.id === PERSONAL_COLLECTIONS.id) {
@@ -42,7 +44,7 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
-  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type)) {
+  switch (getLibraryCollectionType(collection.type)) {
     case "root":
       return { name: "repository" };
     case "data":

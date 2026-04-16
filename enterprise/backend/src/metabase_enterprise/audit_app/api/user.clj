@@ -6,7 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
-   [metabase.users-rest.api :as api.user]
+   [metabase.users.core :as users]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -39,7 +39,7 @@
   Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api.user/check-self-or-superuser id)
+  (users/check-self-or-superuser id)
   ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions
   (t2/delete! :model/PulseChannelRecipient :user_id id)

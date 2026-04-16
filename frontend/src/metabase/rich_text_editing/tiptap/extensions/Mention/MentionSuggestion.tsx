@@ -7,7 +7,7 @@ import {
   SuggestionPaper,
 } from "metabase/documents/components/Editor/shared/SuggestionPaper";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
@@ -109,6 +109,7 @@ const MentionSuggestionComponent = forwardRef<
         query={query}
         searchResults={searchResults}
         modal={modal}
+        viewMode="linkTo"
         onModalSelect={handlers.handleModalSelect}
         onModalClose={handlers.handleModalClose}
         onItemHover={handlers.hoverHandler}

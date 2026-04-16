@@ -5,7 +5,7 @@ summary: Set up the Modular embedding SDK with a sample React app and JWT authen
 
 # Modular embedding SDK - quickstart with sample app
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
 This guide sets up the modular embedding SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable), but you can follow along with your own application.
 
@@ -32,7 +32,7 @@ git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
 git checkout {{page.version}}-stable
 ```
 
-E.g., if you're running Metabase 1.57 make sure the sample app repo is on the `57-stable` branch. You can find your Metabase version in the Metabase UI by clicking on the gears icon in the upper right and selecting **About Metabase**.
+E.g., if you're running Metabase 1.57 make sure the sample app repo is on the `57-stable` branch. You can find your Metabase version in the Metabase UI by clicking the **grid icon** in the upper right, selecting **Help**, then choosing **About Metabase**.
 
 ## Two ways to set up the sample app with Metabase
 
@@ -123,7 +123,7 @@ To enable SSO with JWT when self-hosting, you'll need to [activate your license]
 
 ## Enable embedding in Metabase
 
-From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Embedding**.
+From any Metabase page, click the **grid** icon in the upper right and select **Admin** > **Embedding**.
 
 Turn on:
 
@@ -135,7 +135,7 @@ Otherwise, this whole thing is hopeless.
 
 We'll also need to update our JWT Provider URI in Metabase. By default, this URI is where the SDK will redirect login requests.
 
-From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Settings** > **Authentication**.
+From any Metabase page, click the **grid** icon in the upper right and select **Admin** > **Settings** > **Authentication**.
 
 On the card that says **JWT**, click the **Setup** button.
 

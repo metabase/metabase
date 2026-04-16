@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import type {
-  BaseEntityId,
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
-} from "metabase-types/api";
+} from "metabase/collections/types";
+import type { BaseEntityId } from "metabase-types/api";
 
 export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
   type: null,
@@ -23,7 +23,7 @@ export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   name: t`Official`,
   icon: "official_collection",
-  color: "saturated-yellow",
+  color: "saturated-yellow" as const,
   tooltips: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     default: t`Official collection`,

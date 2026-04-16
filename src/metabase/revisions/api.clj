@@ -13,6 +13,7 @@
   {"card"      :model/Card
    "dashboard" :model/Dashboard
    "document"  :model/Document
+   "measure"   :model/Measure
    "segment"   :model/Segment
    "transform" :model/Transform})
 

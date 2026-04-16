@@ -1,0 +1,42 @@
+diff --git a/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js b/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
+index d49f1bd..1387285 100644
+--- a/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
++++ b/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
+@@ -5875,6 +5875,8 @@ class SVGElementContainer extends ElementContainer {
+     constructor(context, img) {
+         super(context, img);
+         const s = new XMLSerializer();
++        // Remove transform to prevent double-application (transform is already accounted for in bounds/positioning)
++        img.style.transform = "none";
+         const bounds = parseBounds(context, img);
+         img.setAttribute('width', `${bounds.width}px`);
+         img.setAttribute('height', `${bounds.height}px`);
+@@ -7534,7 +7536,8 @@ class ElementPaint {
+             const rotateMatrix = [cos, sin, -sin, cos, 0, 0];
+             this.effects.push(new TransformEffect(offsetX, offsetY, rotateMatrix));
+         }
+-        if (this.container.styles.transform !== null) {
++        // Skip TransformEffect for SVG elements - their transform is already baked into bounds
++        if (this.container.styles.transform !== null && !(this.container instanceof SVGElementContainer)) {
+             const origin = this.container.styles.transformOrigin;
+             const offsetX = this.container.bounds.left + getAbsoluteValue(origin[0], this.container.bounds.width);
+             const offsetY = this.container.bounds.top + getAbsoluteValue(origin[1], this.container.bounds.height);
+@@ -10373,12 +10376,12 @@ class Validator {
+         }
+         // Basic format validation - nonce should be base64-like
+         // Typical format: base64 string, often 32+ characters
+-        if (nonce.length < 16) {
+-            return {
+-                valid: false,
+-                error: 'CSP nonce is too short (minimum 16 characters recommended)'
+-            };
+-        }
++        // if (nonce.length < 16) {
++        //     return {
++        //         valid: false,
++        //         error: 'CSP nonce is too short (minimum 16 characters recommended)'
++        //     };
++        // }
+         // Check for suspicious characters
+         if (!/^[A-Za-z0-9+/=_-]+$/.test(nonce)) {
+             return {

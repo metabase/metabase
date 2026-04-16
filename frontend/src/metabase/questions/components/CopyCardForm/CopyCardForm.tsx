@@ -1,13 +1,13 @@
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import { getEntityTypeFromCardType } from "metabase/collections/utils";
+import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import type { CollectionPickerModel } from "metabase/common/components/Pickers/CollectionPicker";
-import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   Form,
   FormErrorMessage,
@@ -16,9 +16,9 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Button, Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import type {
   Card,
   CardType,
@@ -97,7 +97,7 @@ export const CopyCardForm = ({
     onSaved?.(newCard, { dashboardTabId });
   };
 
-  const models: CollectionPickerModel[] =
+  const models: OmniPickerItem["model"][] =
     model === "question" ? ["collection", "dashboard"] : ["collection"];
 
   return (
@@ -133,15 +133,7 @@ export const CopyCardForm = ({
                 entityType={
                   model ? getEntityTypeFromCardType(model) : undefined
                 }
-                collectionPickerModalProps={{
-                  models,
-                  recentFilter: (items) =>
-                    items.filter((item) => {
-                      // narrow type and make sure it's a dashboard or
-                      // collection that the user can write to
-                      return item.model !== "table" && item.can_write;
-                    }),
-                }}
+                collectionPickerModalProps={{ models }}
               />
               <FormDashboardTabSelect
                 name="dashboard_tab_id"
@@ -155,7 +147,10 @@ export const CopyCardForm = ({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton label={t`Duplicate`} variant="filled" />
+            <FormSubmitButton
+              label={c(`A verb, not a noun`).t`Duplicate`}
+              variant="filled"
+            />
           </FormFooter>
         </Form>
       )}

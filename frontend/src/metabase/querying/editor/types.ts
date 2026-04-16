@@ -1,7 +1,5 @@
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker/types";
-import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker/types";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { MiniPickerTableItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type {
   CardDisplayType,
   CardType,
@@ -13,16 +11,34 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+export type Location = {
+  row: number;
+  column: number;
+};
+
+export type SelectionRange = {
+  start: Location;
+  end: Location;
+};
+
+export type SidebarFeatures = {
+  dataReference?: boolean;
+  variables?: boolean;
+  snippets?: boolean;
+  promptInput?: boolean;
+  formatQuery?: boolean;
+};
+
 export type QueryEditorSidebarType =
   | "data-reference"
   | "snippet"
-  | "native-query";
+  | "native-query"
+  | "template-tags";
 
 export type QueryEditorModalType = "preview-query";
 
 export type QueryEditorDataPickerItem =
-  | DataPickerItem
-  | CollectionPickerItem
+  | OmniPickerItem
   | RecentCollectionItem
   | MiniPickerTableItem;
 
@@ -45,13 +61,22 @@ export type QueryEditorUiOptions = {
   cardType?: CardType;
   cardDisplay?: CardDisplayType;
   cardVizSettings?: VisualizationSettings;
+  canChangeDatabase?: boolean;
   readOnly?: boolean;
   canConvertToNative?: boolean;
   convertToNativeTitle?: string;
   convertToNativeButtonLabel?: string;
+  disableDefaultLimit?: boolean;
   shouldDisableDataPickerItem?: (item: QueryEditorDataPickerItem) => boolean;
+  getDataPickerItemTooltip?: (
+    item: QueryEditorDataPickerItem,
+  ) => string | undefined;
   shouldDisableDatabasePickerItem?: (
     item: QueryEditorDatabasePickerItem,
   ) => boolean;
+  editorHeight?: number;
   shouldShowLibrary?: false;
+  hidePreview?: boolean;
+  hideRunButton?: boolean;
+  resizable?: boolean;
 };

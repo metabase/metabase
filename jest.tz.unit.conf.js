@@ -1,65 +1,22 @@
 // @ts-check
 
-const esmPackages = [
-  "bail",
-  "ccount",
-  "character-entities.*",
-  "character-reference-invalid",
-  "comma-separated-tokens",
-  "csv-parse",
-  "d3-*",
-  "d3",
-  "decode-named-character-reference",
-  "devlop",
-  "echarts",
-  "estree.*",
-  "fetch-mock",
-  "hast.*",
-  "html-url-attributes",
-  "html-void-elements",
-  "is-alphabetical",
-  "is-alphanumerical",
-  "is-decimal",
-  "is-hexadecimal",
-  "is-absolute-url",
-  "is-plain-obj",
-  "jose",
-  "longest-streak",
-  "markdown-table",
-  "mdast.*",
-  "micromark.*",
-  "parse-entities",
-  "property-information",
-  "react-markdown",
-  "rehype-external-links",
-  "remark.*",
-  "space-separated-tokens",
-  "stringify-entities",
-  "trim-lines",
-  "trough",
-  "unified",
-  "unist.*",
-  "vfile-location",
-  "vfile-message",
-  "vfile",
-  "web-namespaces",
-  "zrender",
-  "zwitch",
-];
+// eslint-disable-next-line import/no-commonjs
+const esmPackages = require("./jest.esm-packages.js");
 
 /** @type {import('jest').Config} */
+// eslint-disable-next-line import/no-commonjs
 module.exports = {
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
-    "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "\\.svg\\?(component|source)":
-      "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
+      "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
   },
   transformIgnorePatterns: [
-    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
+    // Combined pattern for both flat and bun isolated node_modules structures
+    `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
   ],
   testMatch: ["<rootDir>/frontend/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
   modulePaths: [

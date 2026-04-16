@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { adjustBrightness, alpha, color } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
+import { adjustBrightness, alpha, color } from "metabase/ui/colors";
 
 import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
 
@@ -56,7 +56,7 @@ const getCellBackgroundColor = ({
 
   if (isEmphasized) {
     if (isDarkMode) {
-      return color("bg-black");
+      return color("background-primary-inverse");
     }
 
     if (backgroundColor) {
@@ -67,10 +67,10 @@ const getCellBackgroundColor = ({
   }
 
   if (isDarkMode) {
-    return alpha("bg-black", 0.1);
+    return alpha("background-primary-inverse", 0.1);
   }
 
-  return color(backgroundColor ?? "bg-white");
+  return color(backgroundColor ?? "background-primary");
 };
 
 const getCellHoverBackground = (
@@ -89,7 +89,7 @@ const getCellHoverBackground = (
 
 const getColor = ({ theme }: PivotTableCellProps & { theme: MantineTheme }) => {
   if (theme.other.colorScheme === "dark") {
-    return color("text-white");
+    return color("text-primary-inverse");
   }
 
   return color(theme.other.table.cell.textColor);
@@ -120,7 +120,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   border-bottom: 1px solid
     ${(props) =>
     props.isBorderedHeader
-      ? color("border-secondary")
+      ? "var(--mb-color-border)"
       : "var(--mb-color-table-border)"};
   background-color: ${getCellBackgroundColor};
   ${(props) =>
@@ -136,9 +136,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   }
 `;
 
-interface PivotTableTopLeftCellsContainerProps {}
-
-export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
+export const PivotTableTopLeftCellsContainer = styled.div`
   display: flex;
   align-items: flex-end;
   position: relative;
@@ -192,7 +190,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 
 export const PivotTableSettingLabel = styled.span`
   font-weight: 700;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const ResizeHandle = styled.div`

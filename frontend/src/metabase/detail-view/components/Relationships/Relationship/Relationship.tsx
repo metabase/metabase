@@ -6,9 +6,9 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type { ForeignKey } from "metabase-types/api";
 
@@ -77,7 +77,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
 
       {!isFetching && (
         <Text
-          c={count === 0 ? "text-light" : "text-medium"}
+          c={count === 0 ? "text-tertiary" : "text-secondary"}
           className={S.text}
           fw="bold"
           fz={rem(24)}
@@ -88,7 +88,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
       )}
 
       <Text
-        c={count === 0 ? "text-light" : "text-medium"}
+        c={count === 0 ? "text-tertiary" : "text-secondary"}
         className={S.text}
         fw="bold"
         lh={1}

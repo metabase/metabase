@@ -1,17 +1,26 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { defer } from "metabase/lib/promise";
-import { createThunkAction } from "metabase/lib/redux";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
+import {
+  CANCEL_QUERY,
+  QUERY_COMPLETED as QUERY_COMPLETED_TYPE,
+  QUERY_ERRORED as QUERY_ERRORED_TYPE,
+  RUN_QUERY as RUN_QUERY_TYPE,
+  SET_DOCUMENT_TITLE,
+  SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+} from "metabase/redux/query-builder";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
+import { defer } from "metabase/utils/promise";
+import { createThunkAction } from "metabase/utils/redux";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import type { Dataset } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   getAllNativeEditorSelectedText,
@@ -28,11 +37,8 @@ import {
 
 import { updateUrl } from "./url";
 
-export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
 const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
 
-export const SET_SHOW_LOADING_COMPLETE_FAVICON =
-  "metabase/qb/SET_SHOW_LOADING_COMPLETE_FAVICON";
 const showLoadingCompleteFavicon = createAction(
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   () => true,
@@ -45,8 +51,6 @@ const hideLoadingCompleteFavicon = createAction(
 const LOAD_START_UI_CONTROLS = "metabase/qb/LOAD_START_UI_CONTROLS";
 const LOAD_COMPLETE_UI_CONTROLS = "metabase/qb/LOAD_COMPLETE_UI_CONTROLS";
 const LOAD_ERROR_UI_CONTROLS = "metabase/qb/LOAD_ERROR_UI_CONTROLS";
-export const SET_DOCUMENT_TITLE_TIMEOUT_ID =
-  "metabase/qb/SET_DOCUMENT_TITLE_TIMEOUT_ID";
 const setDocumentTitleTimeoutId = createAction(SET_DOCUMENT_TITLE_TIMEOUT_ID);
 
 const loadCompleteUIControls = createThunkAction(
@@ -112,7 +116,6 @@ export const runDirtyQuestionQuery =
  * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
  */
-export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
@@ -165,7 +168,7 @@ export const runQuestionQuery = ({
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
       .catch((error) => dispatch(queryErrored(startTime, error)));
 
-    dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
+    dispatch({ type: RUN_QUERY_TYPE, payload: { cancelQueryDeferred } });
   };
 };
 
@@ -192,10 +195,6 @@ const loadStartUIControls = createThunkAction(
   },
 );
 
-export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
-export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
-
-export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const [{ data, error }] = queryResults;
@@ -205,12 +204,14 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
 
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const { isEditable } = Lib.queryDisplayInfo(question.query());
-    const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
+    const isDirty =
+      isEditable &&
+      (!originalQuestion || question.isDirtyComparedTo(originalQuestion));
 
     if (isDirty) {
       const series = [{ card: question.card(), data, error }];
       const previousSeries =
-        prevCard && (prevData || prevError)
+        prevCard && prevData
           ? [{ card: prevCard, data: prevData, error: prevError }]
           : null;
       if (series && previousSeries) {
@@ -234,7 +235,7 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
     const card = question.card();
 
     dispatch({
-      type: QUERY_COMPLETED,
+      type: QUERY_COMPLETED_TYPE,
       payload: {
         card,
         queryResults,
@@ -244,9 +245,8 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
   };
 };
 
-export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
-  QUERY_ERRORED,
+  QUERY_ERRORED_TYPE,
   (startTime, error) => {
     return async (dispatch) => {
       if (error && error.isCancelled) {
@@ -260,7 +260,6 @@ export const queryErrored = createThunkAction(
   },
 );
 
-export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   const isRunning = getIsRunning(getState());
   if (isRunning) {

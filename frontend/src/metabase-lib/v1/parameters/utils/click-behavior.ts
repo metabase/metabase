@@ -3,10 +3,10 @@ import _ from "underscore";
 import {
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
-} from "metabase/lib/formatting/date";
-import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { checkNotNull } from "metabase/lib/types";
+} from "metabase/utils/formatting/date";
+import type { ValueAndColumnForColumnNameDate } from "metabase/utils/formatting/link";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { checkNotNull } from "metabase/utils/types";
 import type { ClickObjectDimension as DimensionType } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
@@ -237,6 +237,7 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
           dimension: undefined,
           snippet: undefined,
           "temporal-unit": undefined,
+          table: undefined,
           text: TYPE.Text,
           number: TYPE.Number,
           date: TYPE.Temporal,

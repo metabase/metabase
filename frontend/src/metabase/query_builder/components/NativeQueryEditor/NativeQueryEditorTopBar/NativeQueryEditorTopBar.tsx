@@ -1,9 +1,10 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, forwardRef } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
-import type { QueryModalType } from "metabase/query_builder/constants";
+import type { QueryModalType } from "metabase/querying/constants";
+import type { SidebarFeatures } from "metabase/querying/editor/types";
 import { Flex } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -16,10 +17,9 @@ import type {
 } from "metabase-types/api";
 
 import { ResponsiveParametersList } from "../../ResponsiveParametersList";
-import DataSourceSelectors from "../DataSourceSelectors/DataSourceSelectors";
+import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
-import type { SidebarFeatures } from "../types";
 
 interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   question: Question;
@@ -38,24 +38,29 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   readOnly?: boolean;
 
   snippets?: NativeQuerySnippet[];
-  editorContext?: "question";
+  editorContext?: "question" | "action";
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
   toggleEditor?: () => void;
   toggleDataReference?: () => void;
   toggleSnippetSidebar?: () => void;
+  toggleTemplateTagsEditor?: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
   onOpenModal?: (modalType: QueryModalType) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setDatasetQuery: (query: NativeQuery) => void;
   databaseIsDisabled?: (database: Database) => boolean;
+  databaseDisabledTooltip?: (database: Database) => string | undefined;
 }
 
-const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
+export const NativeQueryEditorTopBar = forwardRef<
+  HTMLDivElement,
+  NativeQueryEditorTopBarProps
+>(function NativeQueryEditorTopBarInner(props, ref) {
   const {
     children,
     query,
@@ -82,10 +87,12 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     toggleEditor,
     toggleDataReference,
     toggleSnippetSidebar,
+    toggleTemplateTagsEditor,
     onSetDatabaseId,
     hasParametersList = true,
     setDatasetQuery,
     databaseIsDisabled,
+    databaseDisabledTooltip,
   } = props;
 
   const dispatch = useDispatch();
@@ -122,7 +129,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
   const parameters = question.parameters();
 
   return (
-    <Flex align="flex-start" data-testid="native-query-top-bar">
+    <Flex align="flex-start" data-testid="native-query-top-bar" ref={ref}>
       {canChangeDatabase && (
         <DataSourceSelectors
           isNativeEditorOpen={isNativeEditorOpen}
@@ -133,6 +140,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           setTableId={setTableId}
           editorContext={editorContext}
           databaseIsDisabled={databaseIsDisabled}
+          databaseDisabledTooltip={databaseDisabledTooltip}
         />
       )}
       {hasParametersList && setParameterValue && (
@@ -162,6 +170,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
             isShowingSnippetSidebar={isShowingSnippetSidebar}
             toggleDataReference={toggleDataReference}
             toggleSnippetSidebar={toggleSnippetSidebar}
+            toggleTemplateTagsEditor={toggleTemplateTagsEditor}
             onOpenModal={onOpenModal}
           />
         )}
@@ -178,6 +187,4 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
       </Flex>
     </Flex>
   );
-};
-
-export { NativeQueryEditorTopBar };
+});

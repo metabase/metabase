@@ -2,7 +2,6 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -14,6 +13,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
   CardDisplayType,
@@ -156,7 +156,7 @@ export const EmbedQuestionSettingsSidebar = ({
 
                 {nonsensibleItems.length > 0 && (
                   <>
-                    <Menu.Label>{t`Other charts`}</Menu.Label>
+                    <Menu.Label>{t`More charts`}</Menu.Label>
                     {nonsensibleItems.map(
                       ({ iconName, label, value }, index) => (
                         <Menu.Item
@@ -179,7 +179,7 @@ export const EmbedQuestionSettingsSidebar = ({
           <ActionIcon
             mt="1rem"
             mr="1rem"
-            color="text-dark"
+            color="text-primary"
             onClick={handleDone}
           >
             <Icon name="close" />

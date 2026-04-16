@@ -3,11 +3,10 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useUrlWithUtm } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { isEEBuild } from "metabase/lib/utils";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { PLUGIN_EMBEDDING_SDK, PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";
 
@@ -19,7 +18,7 @@ const utmTags = {
 };
 
 export const EmbeddingSdkSettings = () => {
-  const isEE = isEEBuild();
+  const isEE = PLUGIN_IS_EE_BUILD.isEEBuild();
   const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
 
   const implementJwtUrl = useDocsUrl("embedding/sdk/authentication", {

@@ -1,6 +1,8 @@
 import type { Schema as NormalizrSchema } from "normalizr";
 import { normalize } from "normalizr";
 
+import type { EntitiesState } from "metabase/redux/store";
+import { createMockNormalizedEntitiesState } from "metabase/redux/store/mocks";
 import {
   ActionSchema,
   CollectionSchema,
@@ -8,7 +10,10 @@ import {
   DatabaseSchema,
   DocumentSchema,
   FieldSchema,
+  GroupSchema,
   IndexedEntitySchema,
+  MeasureSchema,
+  MetricSchema,
   QuestionSchema,
   SchemaSchema,
   SegmentSchema,
@@ -21,6 +26,7 @@ import type {
   Dashboard,
   Database,
   Field,
+  Measure,
   NativeQuerySnippet,
   SavedQuestionDatabase,
   Schema,
@@ -29,8 +35,6 @@ import type {
   User,
   WritebackAction,
 } from "metabase-types/api";
-import type { EntitiesState } from "metabase-types/store";
-import { createMockNormalizedEntitiesState } from "metabase-types/store/mocks";
 
 export interface EntitiesStateOpts {
   actions?: WritebackAction[];
@@ -41,6 +45,7 @@ export interface EntitiesStateOpts {
   tables?: Table[];
   fields?: Field[];
   segments?: Segment[];
+  measures?: Measure[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];
@@ -56,9 +61,12 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   tables: [TableSchema],
   fields: [FieldSchema],
   segments: [SegmentSchema],
+  measures: [MeasureSchema],
+  metrics: [MetricSchema],
   snippets: [SnippetSchema],
   indexedEntities: [IndexedEntitySchema],
   questions: [QuestionSchema],
+  groups: [GroupSchema],
 };
 
 export const createMockEntitiesState = (

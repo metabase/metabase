@@ -5,6 +5,7 @@
    [metabase.channel.events.comments]
    [metabase.channel.events.persisted-model-refresh-error]
    [metabase.channel.events.slack]
+   [metabase.channel.events.transforms]
    [metabase.channel.impl.email]
    [metabase.channel.impl.http]
    [metabase.channel.impl.slack]

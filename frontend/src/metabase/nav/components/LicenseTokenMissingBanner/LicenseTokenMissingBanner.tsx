@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { Banner } from "metabase/common/components/Banner";
-import Link from "metabase/common/components/Link";
-import { adminLicense } from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
 import { Flex, Text } from "metabase/ui";
+import { adminLicense } from "metabase/utils/urls";
 
 import styles from "./LicenseTokenMissingBanner.module.css";
 
@@ -14,9 +14,9 @@ export const LicenseTokenMissingBanner = ({
 }) => {
   return (
     <Banner
-      iconColor="var(--mb-color-tooltip-text)"
+      iconColor="tooltip-text"
       className={styles.BannerContainer}
-      bg="var(--mb-color-tooltip-background)"
+      bg="tooltip-background"
       aria-label={t`License activation notice`}
       aria-live="polite"
       role="status"

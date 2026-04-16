@@ -377,7 +377,7 @@
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 (mr/def ::snake-cased-type-info
-  "E.g. the version coming back from the app DB as opposed to MLv2 metadata. This should eventually be considered
+  "E.g. the version coming back from the app DB as opposed to Lib metadata. This should eventually be considered
   deprecated."
   [:map
    [:base_type :any]])
@@ -528,7 +528,7 @@
                  (select-keys (coercion-hierarchies/non-descending-strategies) [base-type]))
          not-empty)))
 
-(defn ^:export is_coerceable
+(defn ^:export is-coerceable
   "Returns a boolean of whether a field base-type has any coercion strategies available."
   [base-type]
   (boolean (not-empty (coercion-possibilities (keyword base-type)))))
@@ -538,7 +538,7 @@
   [coercion]
   (coercion-hierarchies/effective-type-for-strategy coercion))
 
-(defn ^:export coercions_for_type
+(defn ^:export coercions-for-type
   "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
   clojure will return a sequence of keywords."
   [base-type]

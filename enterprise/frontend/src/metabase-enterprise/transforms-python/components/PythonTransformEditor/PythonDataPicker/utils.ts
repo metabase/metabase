@@ -1,8 +1,8 @@
-import { slugify as toSlug } from "metabase/lib/formatting";
+import { slugify as toSlug } from "metabase/utils/formatting";
 import type {
-  ConcreteTableId,
   PythonTransformTableAliases,
-  TableId,
+  PythonTransformTableEntry,
+  Table,
 } from "metabase-types/api";
 
 import type { TableSelection } from "./types";
@@ -10,9 +10,9 @@ import type { TableSelection } from "./types";
 export function getInitialTableSelections(
   tables: PythonTransformTableAliases | undefined,
 ) {
-  if (tables && Object.keys(tables).length > 0) {
-    return Object.entries(tables).map(([alias, tableId]) => ({
-      tableId,
+  if (tables && tables.length > 0) {
+    return tables.map(({ alias, table_id }) => ({
+      tableId: table_id,
       alias,
     }));
   }
@@ -27,16 +27,23 @@ export function getInitialTableSelections(
 
 export function selectionsToTableAliases(
   selections: TableSelection[],
+  tableInfo: Table[],
 ): PythonTransformTableAliases {
-  const tableAliases: PythonTransformTableAliases = {};
-
-  for (const selection of selections) {
-    const { alias, tableId } = selection;
-    if (tableId !== undefined && alias !== "") {
-      tableAliases[alias] = tableId;
-    }
-  }
-  return tableAliases;
+  return selections
+    .filter((s) => s.tableId !== undefined && s.alias !== "")
+    .map((s) => {
+      const table = tableInfo.find((tbl) => tbl.id === s.tableId);
+      if (!table || !s.tableId) {
+        return null;
+      }
+      return {
+        alias: s.alias,
+        table_id: s.tableId,
+        schema: table.schema,
+        database_id: table.db_id,
+      } satisfies PythonTransformTableEntry;
+    })
+    .filter((t) => t !== null);
 }
 
 export function slugify(
@@ -62,10 +69,4 @@ export function slugify(
     }
   }
   return name;
-}
-
-export function isConcreteTableId(
-  id: TableId | undefined,
-): id is ConcreteTableId {
-  return typeof id === "number";
 }

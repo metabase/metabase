@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import {
   InteractiveDashboard,
   InteractiveQuestion,
@@ -15,8 +16,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { defer } from "metabase/lib/promise";
-import { Stack } from "metabase/ui";
+import { defer } from "metabase/utils/promise";
 import type {
   ConcreteFieldReference,
   DashboardCard,
@@ -86,11 +86,11 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         <InteractiveDashboard
           dashboardId={dashboardId}
           renderDrillThroughQuestion={() => (
-            <Stack>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               <InteractiveQuestion.Title />
               <InteractiveQuestion.QuestionVisualization />
               <div>This is a custom question layout.</div>
-            </Stack>
+            </div>
           )}
         />,
       );
@@ -210,6 +210,37 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       cy.findByTestId("interactive-question-result-toolbar").should(
         "be.visible",
       );
+    });
+  });
+
+  it('should render staged picker when passing `drillThroughQuestionProps.dataPicker = "staged"`', () => {
+    cy.get("@dashboardId").then((dashboardId) => {
+      mountSdkContent(
+        <InteractiveDashboard
+          dashboardId={dashboardId}
+          drillThroughQuestionProps={{ dataPicker: "staged" }}
+        />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      getTableCell("User ID", 1).findByText("1").should("be.visible").click();
+
+      H.popover().findByText("View this User's Orders").click();
+
+      cy.button("Edit question").click();
+
+      // Data step
+      cy.findByText("Orders").click();
+
+      cy.log("Go back to the bucket step");
+      H.popover().within(() => {
+        cy.icon("chevronleft").click();
+        cy.icon("chevronleft").click();
+
+        cy.findByText("Raw Data").should("be.visible");
+        cy.findByText("Models").should("be.visible");
+      });
     });
   });
 
@@ -422,3 +453,19 @@ describe("scenarios > embedding-sdk > interactive-dashboard > tabs", () => {
     });
   });
 });
+
+function getTableCell(columnName, rowIndex) {
+  cy.findAllByRole("columnheader").then(($columnHeaders) => {
+    const columnHeaderIndex = $columnHeaders
+      .toArray()
+      .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findAllByRole("row")
+      .eq(rowIndex)
+      .findAllByTestId("cell-data")
+      .eq(columnHeaderIndex)
+      .as("cellData");
+  });
+
+  return cy.get("@cellData");
+}

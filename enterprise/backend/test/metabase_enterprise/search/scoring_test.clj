@@ -184,8 +184,8 @@
                 ["card" 2 "card verified"]]
                (appdb.scoring-test/search-results* "card")))))))
 
-(deftest ^:parallel transforms-user-recency-test
-  (mt/with-premium-features #{:transforms}
+(deftest transforms-user-recency-test
+  (mt/with-premium-features #{:transforms-basic}
     (let [user-id (mt/user->id :crowberto)
           now     (Instant/now)
           recent-view (fn [model-id timestamp]
@@ -199,12 +199,12 @@
                                                   :source {:type "query"
                                                            :query (mt/native-query {:query "SELECT 1"})}
                                                   :target {:type "table"
-                                                           :name "test_table"}}
+                                                           :name (mt/random-name)}}
                      :model/RecentViews _ (recent-view c1 now)]
         (appdb.scoring-test/with-index-contents
           [{:model "card"      :id c1 :name "test card recent"}
            {:model "card"      :id c2 :name "test card unseen"}
-           {:model "transform" :id t1 :name "test transform"}]
+           {:model "transform" :id t1 :name "test transform" :source_type "mbql"}]
           (testing "Transforms get a hardcoded 1-day recency (between recently viewed card and never viewed card)"
             (is (= [["card"      c1 "test card recent"]
                     ["transform" t1 "test transform"]

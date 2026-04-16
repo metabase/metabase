@@ -14,14 +14,14 @@ concurrency:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       cljs: ${{ steps.changes.outputs.cljs }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
+        uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
@@ -30,7 +30,7 @@ jobs:
   shared-tests-cljs:
     needs: files-changed
     if: needs.files-changed.outputs.cljs == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
@@ -39,4 +39,4 @@ jobs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
     - name: Run Cljs tests
-      run: yarn run test-cljs
+      run: bun run test-cljs

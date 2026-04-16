@@ -1,6 +1,7 @@
 (ns metabase.premium-features.settings
   "Impls for settings that need to fetch token status live in [[metabase.premium-features.token-check]]."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -146,6 +147,10 @@
   "Should we enable SAML-based authentication?"
   :sso-saml)
 
+(define-premium-feature ^{:added "0.59.0"} enable-sso-oidc?
+  "Should we enable OIDC-based authentication?"
+  :sso-oidc)
+
 (define-premium-feature enable-sso-ldap?
   "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
@@ -163,6 +168,7 @@
   []
   (or (enable-sso-jwt?)
       (enable-sso-saml?)
+      (enable-sso-oidc?)
       (enable-sso-ldap?)
       (enable-sso-google?)))
 
@@ -206,10 +212,6 @@
   "Enable restrict email recipients?"
   :email-restrict-recipients)
 
-(define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
-  "Enable automatic descriptions of questions and dashboards by LLMs?"
-  :llm-autodescription)
-
 (define-premium-feature ^{:added "0.51.0"} enable-query-reference-validation?
   "Enable the Query Validator Tool?"
   :query-reference-validation)
@@ -238,18 +240,6 @@
   "Is this a development instance that should have watermarks?"
   :development-mode)
 
-(define-premium-feature ^{:added "0.52.0"} enable-metabot-v3?
-  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase-enterprise.metabot-v3.core]].)"
-  :metabot-v3)
-
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-fixer?
-  "Should Metabase suggest SQL fixes?"
-  :ai-sql-fixer)
-
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
-  "Should Metabase generate SQL queries?"
-  :ai-sql-generation)
-
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
   "Should we enable modular embedding?"
@@ -258,18 +248,6 @@
 (define-premium-feature ^{:added "0.57.0"} enable-embedding-hub?
   "Should we enable the embedding hub?"
   :embedding-hub)
-
-(define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
-  "Should Metabase do AI analysis on entities?"
-  :ai-entity-analysis)
-
-(define-premium-feature ^{:added "0.55.0"} offer-metabase-ai-trial?
-  "Should we offer a trial of the Metabase AI add-on?"
-  :offer-metabase-ai)
-
-(define-premium-feature ^{:added "0.56.0"} offer-metabase-ai-paid?
-  "Should we offer the paid Metabase AI add-on?"
-  :offer-metabase-ai-tiered)
 
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
@@ -295,9 +273,9 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
-(define-premium-feature ^{:added "0.57.0"} enable-transforms?
-  "Should we allow users to use transforms?"
-  :transforms)
+(define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
+  "Should we allow users to use transforms? Replacement for transforms"
+  :transforms-basic)
 
 (define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
   "Should we allow users to use Python transforms?"
@@ -311,19 +289,49 @@
   "Should users be allowed to enable support users in-app?"
   :support-users)
 
-(define-premium-feature ^{:added "0.58.0"} enable-data-studio?
-  "Should we enable the Data Studio?"
-  :data-studio)
+(define-premium-feature ^{:added "0.58.0"} enable-library?
+  "Should we enable the Library?"
+  :library)
+
+(define-premium-feature security-center-enabled?
+  "True if the current instance has Security Center access.
+   Requires the `:admin-security-center` feature flag, a non-trial subscription,
+   and a self-hosted instance."
+  :admin-security-center
+  :getter (fn []
+            (and (has-feature? :admin-security-center)
+                 (not (is-hosted?))
+                 (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
+                 (or config/is-test? config/is-e2e?
+                     (not= (mdb/db-type) :h2)))))
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Should the multi-tenant feature be enabled?"
   :tenants)
 
+(define-premium-feature ^{:added "0.59.0"} enable-workspaces?
+  "Should we allow users to use workspaces?"
+  :workspaces)
+
+(define-premium-feature ^{:added "0.60.0"} enable-metabase-ai-managed?
+  "Should we allow users to use the Metabase-managed AI provider?"
+  :metabase-ai-managed)
+
+(define-premium-feature ^{:added "0.60.0"} enable-offer-metabase-ai-managed?
+  "Should we offer users the Metabase-managed AI provider?"
+  :offer-metabase-ai-managed)
+
+(define-premium-feature enable-writable-connection?
+  "Should we allow admins to configure separate write connection credentials?"
+  :writable-connection)
+
+(define-premium-feature ^{:added "0.61.0"} enable-ai-controls?
+  "Should we enable AI controls (metabot permissions, scope management)?"
+  :ai-controls)
+
 (defn- -token-features []
-  {:advanced_permissions           (enable-advanced-permissions?)
-   :ai_sql_fixer                   (enable-ai-sql-fixer?)
-   :ai_sql_generation              (enable-ai-sql-generation?)
-   :ai_entity_analysis             (enable-ai-entity-analysis?)
+  {:admin_security_center          (security-center-enabled?)
+   :advanced_permissions           (enable-advanced-permissions?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)
@@ -336,7 +344,7 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
-   :data_studio                    (enable-data-studio?)
+   :library                        (enable-library?)
    :dependencies                   (enable-dependencies?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
@@ -348,10 +356,8 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :llm_autodescription            (enable-llm-autodescription?)
-   :metabot_v3                     (enable-metabot-v3?)
-   :offer_metabase_ai              (offer-metabase-ai-trial?)
-   :offer_metabase_ai_tiered       (offer-metabase-ai-paid?)
+   :metabase-ai-managed            (enable-metabase-ai-managed?)
+   :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)
@@ -365,17 +371,29 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :sso_oidc                       (enable-sso-oidc?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :tenants                        (enable-tenants?)
-   :transforms                     (enable-transforms?)
+   :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
-   :whitelabel                     (enable-whitelabeling?)})
+   :whitelabel                     (enable-whitelabeling?)
+   :workspaces                     (enable-workspaces?)
+   :writable_connection            (enable-writable-connection?)
+   :ai_controls                    (enable-ai-controls?)})
 
 (defsetting token-features
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
   :getter     -token-features
+  :doc        false)
+
+(defsetting send-metering-interval-ms
+  "Interval in milliseconds between metering event sends."
+  :type       :integer
+  :default    nil
+  :visibility :internal
+  :export?    false
   :doc        false)

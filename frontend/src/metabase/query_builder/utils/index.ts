@@ -1,13 +1,14 @@
-import type { Location } from "history";
 import querystring from "querystring";
+
+import type { Location } from "history";
 import _ from "underscore";
 
-import { serializeCardForUrl } from "metabase/lib/card";
-import * as Urls from "metabase/lib/urls";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import { serializeCardForUrl } from "metabase/utils/card";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, Field, Series } from "metabase-types/api";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -49,7 +50,14 @@ export function getURLForCardState(
     objectId?: string;
   }
   const options: Options = {
-    hash: card && dirty ? serializeCardForUrl(card) : "",
+    hash:
+      card && dirty
+        ? serializeCardForUrl(card, {
+            includeOriginalCardId: true,
+            includeDatasetQuery: true,
+            includeDisplayIsLocked: true,
+          })
+        : "",
     query,
   };
   const isAdHocQuestion = !card.id;
@@ -166,8 +174,7 @@ export const createRawSeries = (options: {
   );
 };
 
-const WRITABLE_COLUMN_PROPERTIES = [
-  "id",
+const WRITABLE_MBQL_COLUMN_PROPERTIES = [
   "display_name",
   "description",
   "semantic_type",
@@ -176,6 +183,16 @@ const WRITABLE_COLUMN_PROPERTIES = [
   "settings",
 ];
 
-export function getWritableColumnProperties(column: Field) {
-  return _.pick(column, WRITABLE_COLUMN_PROPERTIES);
+const WRITABLE_NATIVE_COLUMN_PROPERTIES = [
+  "id",
+  ...WRITABLE_MBQL_COLUMN_PROPERTIES,
+];
+
+export function getWritableColumnProperties(column: Field, isNative: boolean) {
+  return _.pick(
+    column,
+    isNative
+      ? WRITABLE_NATIVE_COLUMN_PROPERTIES
+      : WRITABLE_MBQL_COLUMN_PROPERTIES,
+  );
 }

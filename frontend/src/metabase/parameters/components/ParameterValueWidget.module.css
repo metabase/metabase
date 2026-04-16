@@ -4,7 +4,7 @@
   font-weight: 700;
   height: 32px;
   min-width: 120px;
-  background: var(--mb-color-background);
+  background: var(--mb-color-background-primary);
   color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
   padding-left: var(--mantine-spacing-sm);
@@ -24,14 +24,14 @@
 
   &:hover {
     border-color: var(--mb-color-brand);
-    color: var(--mb-color-brand-dark);
+    color: var(--mb-color-text-hover);
 
     .Prefix,
     .parameterIcon,
     .widgetStatus,
     .widgetStatus button {
       transition: all 0.2s ease-in-out;
-      color: var(--mb-color-brand-dark);
+      color: var(--mb-color-text-hover);
     }
   }
 }
@@ -72,7 +72,7 @@
 
 .parameter.noPopover input:focus {
   outline: none;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .parameter.noPopover input::-webkit-input-placeholder {

@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 
-import { getFocusColor } from "metabase/lib/colors";
+import { getFocusColor } from "metabase/ui/colors";
 
 import type { InputSize } from "./types";
 
@@ -37,18 +37,6 @@ const inputTypographyBySize = {
 
 export const inputTypography = (size: InputSize = "medium") =>
   inputTypographyBySize[size];
-
-export const numericInputReset = () => css`
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  &[type="number"] {
-    -moz-appearance: textfield;
-  }
-`;
 
 export const focusOutlineStyle = (color: string) => css`
   &:focus {

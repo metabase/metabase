@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import { Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
@@ -16,7 +16,7 @@ export function SidebarHeader() {
       align="center"
       className={S.sidebarHeader}
     >
-      <Text fz="sm" c="var(--mb-color-text-tertiary)">
+      <Text fz="sm" c="text-tertiary">
         {t`AI isn't perfect. Double-check results.`}
       </Text>
 
@@ -25,11 +25,7 @@ export function SidebarHeader() {
           onClick={() => metabot.resetConversation()}
           data-testid="metabot-new-conversation"
         >
-          <Icon
-            name="edit_document_outlined"
-            size="1rem"
-            c="var(--mb-color-text-tertiary)"
-          />
+          <Icon name="edit_document_outlined" size="1rem" c="text-tertiary" />
         </UnstyledButton>
       </Tooltip>
     </Flex>

@@ -1,5 +1,3 @@
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName, IconProps } from "metabase/ui";
 import type {
   BaseEntityId,
   CollectionEssentials,
@@ -15,11 +13,11 @@ import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
-
 export type CollectionNamespace =
   | null
   | "snippets"
   | "transforms"
+  | "analytics"
   | "tenant-specific"
   | "shared-tenant-collection";
 
@@ -56,22 +54,6 @@ export type LastEditInfo = Pick<
   timestamp: string;
 };
 
-export type CollectionAuthorityLevelConfig = {
-  type: CollectionAuthorityLevel;
-  name: string;
-  icon: IconName;
-  color?: ColorName;
-  tooltips?: Record<string, string>;
-};
-
-export type CollectionInstanceAnaltyicsConfig = {
-  type: CollectionType;
-  name?: string;
-  icon: IconName;
-  color?: string;
-  tooltips?: Record<string, string>;
-};
-
 export interface Collection {
   id: CollectionId;
   name: string;
@@ -82,7 +64,7 @@ export interface Collection {
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
-  archived: boolean;
+  archived?: boolean;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
@@ -118,6 +100,7 @@ export const COLLECTION_ITEM_MODELS = [
   "indexed-entity",
   "document",
   "table",
+  "transform",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
@@ -137,11 +120,12 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
+  namespace?: CollectionNamespace; // namespace of the item itself
   collection_namespace?: CollectionNamespace; // namespace of the parent collection
   display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
-  moderated_status?: string;
+  moderated_status?: string | null;
   type?: CollectionType | CardType;
   here?: CollectionItemModel[];
   below?: CollectionItemModel[];
@@ -150,17 +134,15 @@ export interface CollectionItem {
   can_delete?: boolean;
   can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
-  location?: string;
+  location?: string | null;
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  getIcon?: () => IconProps;
-  getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (
     isArchived: boolean,
     opts?: Record<string, unknown>,
   ) => Promise<void>;
-  setPinned?: (isPinned: boolean) => void;
+  setPinned?: (isPinned: number | boolean) => void;
   setCollection?: (
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;
@@ -287,6 +269,8 @@ type LibraryChild = {
   name: string;
 };
 
-export type GetLibraryCollectionResponse =
-  | (CollectionItem & { effective_children: LibraryChild[] })
-  | { data: null };
+export type LibraryCollection = CollectionItem & {
+  effective_children: LibraryChild[];
+};
+
+export type GetLibraryCollectionResponse = LibraryCollection | { data: null };

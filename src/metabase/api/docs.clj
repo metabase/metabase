@@ -7,6 +7,7 @@
    [compojure.core :refer [GET]]
    [metabase.api.open-api :as open-api]
    [metabase.api.util.handlers :as handlers]
+   [metabase.config.core :as config]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.middleware.content-type :as content-type]
@@ -119,7 +120,8 @@
   [root-handler]
   (fn handler*
     ([_request]
-     (let [spec (or (read-openapi-spec-from-file)
+     (let [spec (or (when (config/config-bool :mb-enable-openapi-auto-regen)
+                      (read-openapi-spec-from-file))
                     (do
                       (log/warn "OpenAPI spec file not found, generating on-the-fly")
                       (merge

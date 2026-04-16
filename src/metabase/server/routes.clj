@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
    [metabase.initialization-status.core :as init-status]
+   [metabase.oauth-server.api :as oauth-server.api]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
@@ -71,6 +72,10 @@
 (defroutes ^:private static-files-handler
   (GET "/embedding-sdk.js" request
     ((mw.embedding-sdk-bundle/serve-bundle-handler) request))
+  ;; All SDK chunks live in embedding-sdk/chunks/ — filenames contain content
+  ;; hashes, so we serve them with far-future immutable cache headers.
+  (GET ["/embedding-sdk/chunks/:filename" :filename #"[^/]+\.js"] [filename :as request]
+    ((mw.embedding-sdk-bundle/serve-chunk-handler filename) request))
 
   ;; fall back to serving _all_ other files under /app
   (route/resources "/" {:root "frontend_client/app"})
@@ -93,6 +98,8 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    auth-wrapper/routes
+   (context "/.well-known" [] oauth-server.api/well-known-routes)
+   (context "/oauth" [] oauth-server.api/oauth-routes)
    ;; ^/$ -> index.html
    (GET "/" [] index/index)
    (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))

@@ -9,9 +9,9 @@
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.send-test :as pulse.send-test]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.update-used-cards :as qp.update-used-cards]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

@@ -6,12 +6,25 @@
    [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 ;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically
 (def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
+
+(def ^:private available-sort-columns
+  "Valid columns for sorting cache configs."
+  #{:name :collection :policy})
+
+(def SortParams
+  "Schema for sort parameters."
+  [:map
+   [:sort_column    {:default :name} (into [:enum] available-sort-columns)]
+   [:sort_direction {:default :asc}  [:enum :asc :desc]]])
 
 (doto :model/CacheConfig
   (derive :metabase/model)
@@ -23,6 +36,56 @@
   {:strategy mi/transform-keyword
    :config   mi/transform-json
    :state    mi/transform-json})
+
+(defn- target-collection-id
+  "Get the collection_id for the target entity of a CacheConfig."
+  [{:keys [model model_id]}]
+  (case model
+    "dashboard" (:collection_id (t2/select-one [:model/Dashboard :collection_id] :id model_id))
+    "question"  (:collection_id (t2/select-one [:model/Card :collection_id] :id model_id))
+    nil))
+
+(defmethod mi/can-write? :model/CacheConfig
+  ([instance]
+   (case (:model instance)
+     "root"      (mi/superuser?)
+     "database"  (mi/can-write? :model/Database (:model_id instance))
+     ("dashboard" "question")
+     (mi/current-user-has-full-permissions?
+      (perms/perms-objects-set-for-parent-collection
+       {:collection_id (target-collection-id instance)}
+       :write))))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/CacheConfig pk))))
+
+(defmethod mi/can-read? :model/CacheConfig
+  ([instance]
+   (case (:model instance)
+     "root"      (mi/superuser?)
+     "database"  (mi/can-read? :model/Database (:model_id instance))
+     "dashboard" (mi/can-read? :model/Dashboard (:model_id instance))
+     "question"  (mi/can-read? :model/Card (:model_id instance))))
+  ([_model pk]
+   (mi/can-read? (t2/select-one :model/CacheConfig pk))))
+
+(defn- can-set-cache-policy?
+  "Check if the current user can set a cache policy for an entity.
+   Uses collection permissions directly, bypassing remote-sync content lock."
+  [{model-id :id :as instance}]
+  (mi/can-write? (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
+                                                             name
+                                                             u/lower-case-en)
+                                                  :model_id model-id})))
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_set_cache_policy]
+  [_model k models]
+  (mi/instances-with-hydrated-data
+   models k
+   #(into {}
+          (map (juxt :id can-set-cache-policy?))
+          (t2/hydrate (remove nil? models) :collection))
+   :id
+   {:default false}))
 
 (defn- audit-caching-change! [user-id id prev new]
   (events/publish-event!
@@ -46,13 +109,22 @@
   "Transform from how cache config is stored to how it's used/exposed in the API."
   [row]
   (when row
-    {:model    (:model row)
-     :model_id (:model_id row)
-     :strategy (-> (:config row)
-                   (assoc :type (:strategy row))
-                   (cond->
-                    (#{:duration :schedule} (:strategy row))
-                     (assoc :refresh_automatically (:refresh_automatically row))))}))
+    (cond-> {:model    (:model row)
+             :model_id (:model_id row)
+             :strategy (-> (:config row)
+                           (assoc :type (:strategy row))
+                           (cond->
+                            (#{:duration :schedule} (:strategy row))
+                             (assoc :refresh_automatically (:refresh_automatically row))))}
+      ;; Include name if present (from JOINed query)
+      (:item_name row)
+      (assoc :name (:item_name row))
+      ;; Include collection if present (from JOINed query)
+      (:collection_id row)
+      (assoc :collection {:id              (:collection_id row)
+                          :name            (:collection_name row)
+                          :authority_level (:collection_authority_level row)
+                          :type            (:collection_type row)}))))
 
 (defn card-strategy
   "Shapes `row` into strategy for a given `card`."
@@ -70,30 +142,73 @@
    :config                (dissoc strategy :type :refresh_automatically)
    :refresh_automatically (:refresh_automatically strategy)})
 
-(defn get-list
-  "Get a list of cache configurations for given `models` and a `collection`."
+(defn- sort-column->order-by
+  "Convert a sort column to the appropriate SQL order-by expression."
+  [sort-column]
+  (case sort-column
+    :name       [:coalesce :report_card.name :report_dashboard.name]
+    :collection [:coalesce :report_card.collection_id :report_dashboard.collection_id]
+    :policy     :cache_config.strategy))
+
+(defn- base-query
+  "Build the base query for cache configs with JOINs for name/collection access."
   [models collection id]
-  (->>
-   (if id
-     (t2/select :model/CacheConfig {:where [:and [:in :model models] [:= :model_id id]]})
-     (t2/select
-      :model/CacheConfig
-      :model [:in models]
-      {:left-join [:report_card      [:and
-                                      [:= :model [:inline "question"]]
-                                      [:= :model_id :report_card.id]
-                                      (when collection
-                                        [:= :report_card.collection_id collection])]
-                   :report_dashboard [:and
-                                      [:= :model [:inline "dashboard"]]
-                                      [:= :model_id :report_dashboard.id]
-                                      (when collection
-                                        [:= :report_dashboard.collection_id collection])]]
-       :where     [:case
-                   [:= :model [:inline "question"]]  [:!= :report_card.id nil]
-                   [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
-                   :else                             true]}))
-   (mapv row->config)))
+  (if id
+    {:select [:cache_config.*]
+     :from   [:cache_config]
+     :where  [:and [:in :model models] [:= :model_id id]]}
+    {:select    [:cache_config.*
+                 [[:coalesce :report_card.name :report_dashboard.name] :item_name]
+                 [[:coalesce :report_card.collection_id :report_dashboard.collection_id] :collection_id]
+                 [:collection.name :collection_name]
+                 [:collection.authority_level :collection_authority_level]
+                 [:collection.type :collection_type]]
+     :from      [:cache_config]
+     :left-join [:report_card      [:and
+                                    [:= :model [:inline "question"]]
+                                    [:= :model_id :report_card.id]
+                                    (when collection
+                                      [:= :report_card.collection_id collection])]
+                 :report_dashboard [:and
+                                    [:= :model [:inline "dashboard"]]
+                                    [:= :model_id :report_dashboard.id]
+                                    (when collection
+                                      [:= :report_dashboard.collection_id collection])]
+                 :collection       [:= :collection.id
+                                    [:coalesce :report_card.collection_id
+                                     :report_dashboard.collection_id]]]
+     :where     [:and
+                 [:in :model models]
+                 [:case
+                  [:= :model [:inline "question"]]  [:!= :report_card.id nil]
+                  [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
+                  :else                             true]]}))
+
+(mu/defn get-list
+  "Get a list of cache configurations for given `models` and a `collection`.
+   Supports pagination via `limit` and `offset`, and sorting via `sort-params`."
+  [models collection id
+   limit       :- [:maybe ms/PositiveInt]
+   offset      :- [:maybe ms/IntGreaterThanOrEqualToZero]
+   sort-params :- [:maybe SortParams]]
+  (let [{:keys [sort_column sort_direction]
+         :or   {sort_column :name sort_direction :asc}} sort-params
+        ;; Only apply sorting when paginating (limit provided) and not querying by id
+        apply-sorting? (and limit (nil? id))
+        query (cond-> (base-query models collection id)
+                apply-sorting? (assoc :order-by [[(sort-column->order-by sort_column) sort_direction]])
+                limit          (assoc :limit limit)
+                offset         (assoc :offset offset))]
+    (->> (t2/select :model/CacheConfig query)
+         (mapv row->config))))
+
+(mu/defn get-list-total
+  "Get the total count of cache configurations for given `models` and a `collection`."
+  [models collection id]
+  (let [query (-> (base-query models collection id)
+                  (dissoc :select)
+                  (assoc :select [[[:count :*] :count]]))]
+    (:count (t2/query-one query))))
 
 (defn store!
   "Store cache configuration in DB."

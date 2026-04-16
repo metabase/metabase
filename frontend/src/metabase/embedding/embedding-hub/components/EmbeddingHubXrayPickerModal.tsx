@@ -2,23 +2,28 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
-import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
-import { useDispatch } from "metabase/lib/redux";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
+import { useDispatch } from "metabase/utils/redux";
 import type { TableId } from "metabase-types/api";
 
 interface EmbeddingHubXrayPickerModalProps {
   opened: boolean;
   onClose: () => void;
+  fromEmbeddingSetupGuide?: boolean;
 }
 
 export const EmbeddingHubXrayPickerModal = ({
   opened,
   onClose,
+  fromEmbeddingSetupGuide,
 }: EmbeddingHubXrayPickerModalProps) => {
   const dispatch = useDispatch();
 
   function handleTableSelect(tableId: TableId) {
-    dispatch(push(`/auto/dashboard/table/${tableId}`));
+    const params = fromEmbeddingSetupGuide
+      ? `?${RETURN_TO_SETUP_GUIDE_PARAM}=true`
+      : "";
+    dispatch(push(`/auto/dashboard/table/${tableId}${params}`));
   }
 
   if (!opened) {
@@ -28,14 +33,13 @@ export const EmbeddingHubXrayPickerModal = ({
   return (
     <DataPickerModal
       title={t`Choose a table to generate a dashboard`}
-      value={{ model: "table", id: null } as unknown as TablePickerValue}
       models={["table"]}
       onChange={handleTableSelect}
       onClose={onClose}
       options={{
-        showLibrary: false,
-        showRootCollection: false,
-        showPersonalCollections: false,
+        hasLibrary: false,
+        hasRootCollection: false,
+        hasPersonalCollections: false,
       }}
     />
   );

@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import TextArea, { type TextAreaProps } from "./TextArea";
+import { TextArea, type TextAreaProps } from "./TextArea";
 
 export default {
   title: "Components/Ask Before Using/Text Area",

@@ -198,7 +198,9 @@
 (def ^:dynamic *skip-warning* "Skips warnings for can-run?" false)
 
 (defn can-run? [cmd]
-  (try (boolean (sh (str "command -v " cmd)))
+  ;; Use "which" instead of "command -v" because "command" is a shell builtin
+  ;; that doesn't exist as a binary on Linux (only macOS has /usr/bin/command)
+  (try (boolean (sh "which" cmd))
        (catch Exception _
          (when-not *skip-warning*
            (println (c/red "MAGE checked if you can run " cmd ", but it is not installed. Consider installing it for a better experience.")))

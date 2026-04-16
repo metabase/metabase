@@ -8,15 +8,15 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
-import Link from "metabase/common/components/Link";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { Link } from "metabase/common/components/Link";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { formatValue } from "metabase/lib/formatting";
-import { connect, useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
+import { formatValue } from "metabase/utils/formatting";
+import { connect, useSelector } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
@@ -28,14 +28,14 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 
-import ChartWithLegend from "./ChartWithLegend";
-import LeafletChoropleth from "./LeafletChoropleth";
-import LegacyChoropleth from "./LegacyChoropleth";
+import { ChartWithLegend } from "./ChartWithLegend";
+import { LeafletChoropleth } from "./LeafletChoropleth";
+import { LegacyChoropleth } from "./LegacyChoropleth";
 
 // TODO COLOR
-// eslint-disable-next-line no-color-literals
+// eslint-disable-next-line metabase/no-color-literals
 const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
-// eslint-disable-next-line no-color-literals
+// eslint-disable-next-line metabase/no-color-literals
 const HEAT_MAP_ZERO_COLOR = "#CCC";
 
 export function getColorplethColorScale(
@@ -171,7 +171,7 @@ class ChoroplethMapInner extends Component {
     },
   ]) {
     if (cols.length < 2) {
-      throw new MinColumnsError(2, cols.length);
+      throw new MinColumnsError(2);
     }
   }
 
@@ -411,6 +411,7 @@ class ChoroplethMapInner extends Component {
         onHoverChange={onHoverChange}
         isDashboard={this.props.isDashboard}
         isDocument={this.props.isDocument}
+        isMetricsViewer={this.props.isMetricsViewer}
       >
         {projection ? (
           <LegacyChoropleth
@@ -439,4 +440,4 @@ class ChoroplethMapInner extends Component {
   }
 }
 
-export default connector(ChoroplethMapInner);
+export const ChoroplethMap = connector(ChoroplethMapInner);

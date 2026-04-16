@@ -5,9 +5,9 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { RemoteSyncEntity } from "metabase-types/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 export const setupCollectionEndpoints = () => {
   fetchMock.get("path:/api/collection/tree", []);
@@ -58,9 +58,6 @@ export const createMockDirtyEntity = (
 ): RemoteSyncEntity => ({
   id: 1,
   name: "Test Card",
-  description: null,
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: null,
   model: "card",
   sync_status: "update",
   collection_id: 1,

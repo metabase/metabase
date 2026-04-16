@@ -11,15 +11,15 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
-import { getIcon } from "metabase/lib/icon";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../MainNavbar.styled";
@@ -68,7 +68,7 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
 }
 
 function getBookmarkModel(bookmark: Bookmark) {
-  // we should reall fix this on the backend
+  // we should really fix this on the backend
   return bookmark.card_type === "model" ? "dataset" : bookmark.type;
 }
 

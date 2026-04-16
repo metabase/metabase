@@ -164,7 +164,7 @@ describe("personal collections", () => {
       });
 
       cy.visit(`/collection/${NO_DATA_PERSONAL_COLLECTION_ID}`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Foo");
     });
   });

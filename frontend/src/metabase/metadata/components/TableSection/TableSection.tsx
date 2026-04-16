@@ -6,8 +6,7 @@ import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
-import * as Urls from "metabase/lib/urls";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
@@ -20,6 +19,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { FieldOrderPicker } from "../FieldOrderPicker";
@@ -158,7 +158,7 @@ const TableSectionBase = ({
         pos="sticky"
         pt="lg"
         top={0}
-        bg="bg-light"
+        bg="background-secondary"
       >
         {withName && (
           <NameDescriptionInput
@@ -174,7 +174,7 @@ const TableSectionBase = ({
                   component={Link}
                   to={Urls.queryBuilderTable(table.id, table.db_id)}
                   variant="subtle"
-                  color="text-light"
+                  color="text-tertiary"
                   size="sm"
                   mr="sm"
                   aria-label={t`Go to this table`}
@@ -220,7 +220,7 @@ const TableSectionBase = ({
               >{t`Sorting`}</ResponsiveButton>
             )}
 
-            {!isSorting && (
+            {!isSorting && !table.db?.is_attached_dwh && (
               <ResponsiveButton
                 icon="gear_settings_filled"
                 showLabel={showButtonLabel}

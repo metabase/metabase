@@ -7,9 +7,10 @@ import { BasicAdminSettingInput } from "metabase/admin/settings/components/widge
 import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticSearch";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
+import type { SearchSettingsWidgetProps } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
 
 function useLatch(bool: boolean) {
@@ -26,9 +27,7 @@ function useLatch(bool: boolean) {
 
 export function SearchSettingsWidget({
   statusPollingInterval = 5000,
-}: {
-  statusPollingInterval?: number;
-}) {
+}: SearchSettingsWidgetProps) {
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
@@ -109,7 +108,7 @@ export function SearchSettingsWidget({
                 maw="25rem"
                 animated={progress < 100}
               />
-              <Text c="text-light" size="md">
+              <Text c="text-tertiary" size="md">
                 {progress === 100
                   ? t`Initialized search index`
                   : t`Initializing search index...`}

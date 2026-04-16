@@ -6,8 +6,7 @@ import {
   screen,
   getIcon as testGetIcon,
 } from "__support__/ui";
-import { getIcon } from "metabase/lib/icon";
-import type { IconName } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
 import {
   createMockCollection,
@@ -49,8 +48,6 @@ const getCollectionItem = ({
   name = "My Item",
   description = "description foo foo foo",
   collection_position = 1,
-  icon = "dashboard",
-  url = "/dashboard/1",
   setArchived = jest.fn(),
   setPinned = jest.fn(),
   ...rest
@@ -60,10 +57,8 @@ const getCollectionItem = ({
   name?: string;
   description?: string;
   collection_position?: number;
-  icon?: IconName;
-  url?: string;
   setArchived?: (isArchived: boolean) => Promise<void>;
-  setPinned?: (isPinned: boolean) => void;
+  setPinned?: (isPinned: boolean | number) => void;
 } = {}): CollectionItem & { description: string } => {
   return createMockCollectionItem({
     ...rest,
@@ -72,8 +67,6 @@ const getCollectionItem = ({
     name,
     description,
     collection_position,
-    getIcon: () => ({ name: icon }),
-    getUrl: () => url,
     setArchived,
     setPinned,
   }) as CollectionItem & { description: string };

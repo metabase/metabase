@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
 import { CountdownIcon } from "metabase/common/components/icons/CountdownIcon";
-import { isNotNull } from "metabase/lib/types";
 import type { ActionIconProps } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 
 type RefreshWidgetTargetProps = {
   period: number | null;
@@ -44,6 +44,7 @@ export const RefreshWidgetTarget = ({
       }
       name="clock"
       aria-label={t`Auto Refresh`}
+      {...buttonProps}
     >
       <CountdownIcon
         width={16}

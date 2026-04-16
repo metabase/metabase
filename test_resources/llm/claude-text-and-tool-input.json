@@ -1,0 +1,254 @@
+[ {
+  "type" : "message_start",
+  "message" : {
+    "model" : "claude-haiku-4-5-20251001",
+    "id" : "msg_01GxLdEKty6CYJf9HJVsfLpD",
+    "type" : "message",
+    "role" : "assistant",
+    "content" : [ ],
+    "stop_reason" : null,
+    "stop_sequence" : null,
+    "usage" : {
+      "input_tokens" : 614,
+      "cache_creation_input_tokens" : 0,
+      "cache_read_input_tokens" : 0,
+      "cache_creation" : {
+        "ephemeral_5m_input_tokens" : 0,
+        "ephemeral_1h_input_tokens" : 0
+      },
+      "output_tokens" : 6,
+      "service_tier" : "standard",
+      "inference_geo" : "not_available"
+    }
+  }
+}, {
+  "type" : "content_block_start",
+  "index" : 0,
+  "content_block" : {
+    "type" : "text",
+    "text" : ""
+  }
+}, {
+  "type" : "ping"
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : "I'll help you find out"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " what time it is in Kyiv"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : ". Here"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : "'s what I'm"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " going to do:\n\n1"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : ". I"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : "'ll call"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " the `get-time` function with"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " the"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " IANA timezone for"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " Kyiv,"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " which is \"Europe/Kyiv"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : "\"\n2. The"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " function will return the current time in"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " that"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " timezone"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : "\n3. I'll share"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " the result with you\n\nLet"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " me make"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " that"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : " call now"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "text_delta",
+    "text" : ":"
+  }
+}, {
+  "type" : "content_block_stop",
+  "index" : 0
+}, {
+  "type" : "content_block_start",
+  "index" : 1,
+  "content_block" : {
+    "type" : "tool_use",
+    "id" : "toolu_01B4zVySim9VMfEXbaM9rA18",
+    "name" : "get-time",
+    "input" : { },
+    "caller" : {
+      "type" : "direct"
+    }
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 1,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : ""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 1,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "{\""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 1,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "tz\": "
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 1,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "\"Europe/Kyi"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 1,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "v\"}"
+  }
+}, {
+  "type" : "content_block_stop",
+  "index" : 1
+}, {
+  "type" : "message_delta",
+  "delta" : {
+    "stop_reason" : "tool_use",
+    "stop_sequence" : null
+  },
+  "usage" : {
+    "input_tokens" : 614,
+    "cache_creation_input_tokens" : 0,
+    "cache_read_input_tokens" : 0,
+    "output_tokens" : 147
+  }
+}, {
+  "type" : "message_stop"
+} ]

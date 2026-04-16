@@ -251,4 +251,54 @@
                                            :effective_type :type/DateTime
                                            :source :aggregation}])
                       [["2024-08-09" 10.0 "2024-08-01"]
-                       ["2024-08-10" 20.0 "2024-08-02"]]))))))
+                       ["2024-08-10" 20.0 "2024-08-02"]]))))
+    (testing "Aggregated datetime should be used as fallback when no breakout datetime exists"
+      (is (some?
+           (transduce identity
+                      (insights/insights [{:base_type :type/Boolean
+                                           :source :breakout}
+                                          {:base_type :type/DateTime
+                                           :source :aggregation}
+                                          {:base_type :type/Number
+                                           :source :aggregation}])
+                      [[false "2024-08-09" 10.0]
+                       [true "2024-08-10" 20.0]]))))))
+
+(deftest ^:parallel timeseries-with-relation-semantic-type-test
+  (testing "A datetime column with Entity Key or Foreign Key semantic type should still work for timeseries (#35281)"
+    (testing "Should recognize timeseries when datetime breakout has :type/FK semantic type"
+      (is (some?
+           (transduce identity
+                      (insights/insights [{:base_type :type/DateTime
+                                           :semantic_type :type/FK
+                                           :source :breakout}
+                                          {:base_type :type/Number}])
+                      [["2024-08-09" 10.0]
+                       ["2024-08-10" 20.0]]))))
+    (testing "Should recognize timeseries when datetime breakout has :type/PK semantic type"
+      (is (some?
+           (transduce identity
+                      (insights/insights [{:base_type :type/DateTime
+                                           :semantic_type :type/PK
+                                           :source :breakout}
+                                          {:base_type :type/Number}])
+                      [["2024-08-09" 10.0]
+                       ["2024-08-10" 20.0]]))))
+    (testing "Non-datetime FK/PK columns should not be treated as datetimes"
+      (is (nil?
+           (transduce identity
+                      (insights/insights [{:base_type :type/Integer
+                                           :semantic_type :type/FK
+                                           :source :breakout}
+                                          {:base_type :type/Number}])
+                      [[1 10.0]
+                       [2 20.0]]))))
+    (testing "Integer FK/PK columns should not be treated as numbers (they are identifiers)"
+      (is (nil?
+           (transduce identity
+                      (insights/insights [{:base_type :type/DateTime
+                                           :source :breakout}
+                                          {:base_type :type/Integer
+                                           :semantic_type :type/FK}])
+                      [["2024-08-09" 1]
+                       ["2024-08-10" 2]]))))))

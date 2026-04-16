@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import Alert, { type AlertProps } from "./Alert";
+import { Alert, type AlertProps } from "./Alert";
 
 export default {
   title: "Components/Ask Before Using/Alert",

@@ -23,8 +23,7 @@ function getParameterType(tag: TemplateTag) {
   if (type === "date") {
     return "date/single";
   }
-  // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  if (type === "string" || type === "text") {
+  if (type === "text") {
     return "string/=";
   }
   if (type === "number") {
@@ -37,7 +36,7 @@ function getParameterType(tag: TemplateTag) {
     return "temporal-unit";
   }
 
-  return "category";
+  return "string/=";
 }
 
 function getParameterTarget(tag: TemplateTag): ParameterTarget {
@@ -80,6 +79,7 @@ export function getTemplateTagParameters(
       (tag) =>
         tag.type != null &&
         tag.type !== "card" &&
+        tag.type !== "table" &&
         tag.type !== "snippet" &&
         ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
           tag.dimension != null ||

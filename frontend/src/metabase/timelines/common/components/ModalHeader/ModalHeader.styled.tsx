@@ -1,9 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { Icon } from "metabase/ui";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { Ellipsified, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
 export const HeaderLink = styled.div`
@@ -11,7 +10,7 @@ export const HeaderLink = styled.div`
   align-items: center;
   min-width: 0;
   margin-right: auto;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   cursor: ${(props) => props.onClick && "pointer"};
 
   &:hover {
@@ -42,5 +41,5 @@ export const HeaderCloseButton = styled(IconButtonWrapper)`
   height: 36px;
   width: 36px;
   flex: 0 0 auto;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 `;

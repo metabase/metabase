@@ -193,19 +193,17 @@
 
 #?(:clj
    (defn- smallest-count
-     (^long [c1 c2] (min (count c1) (count c2)))
-     (^long [c1 c2 c3] (min (count c1) (count c2) (count c3)))
-     (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4)))))
+     (^long [c1 c2] (min (bounded-count 33 c1) (bounded-count 33 c2)))
+     (^long [c1 c2 c3] (min (bounded-count 33 c1) (bounded-count 33 c2) (bounded-count 33 c3)))
+     (^long [c1 c2 c3 c4] (min (bounded-count 33 c1) (bounded-count 33 c2) (bounded-count 33 c3) (bounded-count 33 c4)))))
 
 (defn mapv
-  "**Nearly** drop-in replacement for `clojure.core/mapv`.
+  "Drop-in replacement for `clojure.core/mapv`.
 
   Iterates multiple collections more efficiently and uses Java iterators under the hood (the CLJ version). CLJS
-  version is only optimized for a single collection arity.
-
-  Checks the `count` of all inputs - DO NOT give this infinite sequences!"
+  version is only optimized for a single collection arity."
   ([f coll1]
-   (let [n (count coll1)]
+   (let [n (bounded-count 33 coll1)]
      (cond (= n 0) []
            (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1))
            :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))

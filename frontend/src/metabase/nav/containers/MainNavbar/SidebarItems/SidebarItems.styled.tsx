@@ -5,12 +5,13 @@ import styled from "@emotion/styled";
 import type { ComponentProps } from "react";
 import { forwardRef } from "react";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import { alpha } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 export const SidebarIcon = styled(
@@ -20,7 +21,7 @@ export const SidebarIcon = styled(
     },
   ),
 )<{
-  color?: string | null;
+  color?: ColorName | string;
   isSelected: boolean;
 }>`
   ${(props) =>
@@ -83,7 +84,7 @@ export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
 `;
 
 const collectionDragAndDropHoverStyle = css`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-brand);
 `;
 

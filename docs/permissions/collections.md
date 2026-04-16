@@ -84,7 +84,7 @@ People in groups with Curate access to a collection can pin items in the collect
 
 To pin an item, select the **pin icon** next to the item's name.
 
-Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing/), admins can designate [Official Collections][offical-collections].
+Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing/), admins can designate [Official Collections][official-collections].
 
 ## Special collections
 
@@ -104,6 +104,14 @@ Administrators can see and edit the contents of every user's personal collection
 
 A personal collection works just like any other collection except that its permissions are fixed and cannot be changed. If a sub-collection within a personal collection is moved to a different collection, the sub-collection will inherit the permissions of its new parent collection.
 
+### Library collection
+
+See [Data Studio > Library](../data-studio/library.md)
+
+### External collections
+
+See [Tenants > External collections](../embedding/tenants.md#collection-types)
+
 ## Further reading
 
 - [Working with collection permissions][collection-permissions].
@@ -111,7 +119,7 @@ A personal collection works just like any other collection except that its permi
 [collections]: ../exploration-and-organization/collections.md
 [collection-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/collection-permissions
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[offical-collections]: ../exploration-and-organization/collections.md#official-collections
+[official-collections]: ../exploration-and-organization/collections.md#official-collections
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
 [slack-integration]: ../configuring-metabase/slack.md
 [sql-snippet-folders]: ../questions/native-editor/snippets.md

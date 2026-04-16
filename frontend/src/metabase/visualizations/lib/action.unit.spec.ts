@@ -1,4 +1,4 @@
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 import type {
   QuestionChangeClickAction,
   UrlClickAction,
@@ -27,7 +27,7 @@ describe("performAction", () => {
 
     expect(action.url).toHaveBeenCalledTimes(1);
 
-    expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
+    expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
     expect(extraProps.dispatch).toHaveBeenCalledWith({
       payload: {
         args: [
@@ -91,7 +91,7 @@ describe("performAction", () => {
 
         expect(action.url).toHaveBeenCalledTimes(1);
 
-        expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
+        expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
         expect(extraProps.dispatch).toHaveBeenCalledWith({
           payload: {
             args: [
@@ -130,7 +130,7 @@ describe("performAction", () => {
 
         expect(action.url).toHaveBeenCalledTimes(1);
 
-        expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
+        expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
         expect(extraProps.dispatch).toHaveBeenCalledWith({
           payload: {
             args: [
@@ -170,7 +170,7 @@ describe("performAction", () => {
 
       expect(action.url).toHaveBeenCalledTimes(1);
 
-      expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
+      expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
       expect(extraProps.dispatch).toHaveBeenCalledWith({
         payload: {
           args: [
@@ -209,7 +209,7 @@ describe("performAction", () => {
 
       expect(action.url).toHaveBeenCalledTimes(1);
 
-      expect(extraProps.dispatch).toHaveBeenCalledTimes(2);
+      expect(extraProps.dispatch).toHaveBeenCalledTimes(1);
       expect(extraProps.dispatch).toHaveBeenCalledWith({
         payload: {
           args: [

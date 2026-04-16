@@ -1,5 +1,5 @@
 .TablesDivider {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-size: 1em;
   font-weight: bold;
   padding: 0 0.2em;
@@ -7,7 +7,7 @@
 }
 
 .IconWrapper {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   display: inline-block;
   font-size: 1rem;
   margin-left: 0.5rem;

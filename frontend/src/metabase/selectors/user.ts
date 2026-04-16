@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 export const getUser = (state: State) => state.currentUser;
 
@@ -10,6 +10,11 @@ export const getUserId = createSelector([getUser], (user) => user?.id);
 export const getUserIsAdmin = createSelector(
   [getUser],
   (user) => user?.is_superuser || false,
+);
+
+export const getUserIsAnalyst = createSelector(
+  [getUser],
+  (user) => !!user?.is_data_analyst,
 );
 
 export const canManageSubscriptions = createSelector(

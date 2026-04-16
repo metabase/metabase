@@ -6,7 +6,7 @@
    [java-time.api :as t]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.mongo.parameters :as mongo.params]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -58,7 +58,7 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"missing required parameters: #\{:x\}"
                             (substitute nil [(param :x)]))))
-    (testing "params preceeded or followed by strings should get combined into a single string"
+    (testing "params preceded or followed by strings should get combined into a single string"
       (is (= "2100"
              (substitute {:x 100} ["2" (param :x)]))
           "\"2{{x}}\" with x = 100 should be replaced with string \"2100\""))
@@ -524,7 +524,7 @@
                                                    :dimension [:field (mt/id :products :created_at) nil]
                                                    :alias "join_alias_Products.created_at"
                                                    :widget-type :date/all-options
-                                                   :default "past6years"}}})]
+                                                   :default "past10years"}}})]
         (is (seq (-> query qp/process-query mt/rows)))))))
 
 (deftest ^:parallel field-filter-single-date-with-alias-test

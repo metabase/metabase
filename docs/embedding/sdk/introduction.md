@@ -18,6 +18,12 @@ To give you an idea of what's possible with the SDK, we've put together example 
 
 Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
+## Modular embedding SDK playground
+
+![Modular embedding SDK playground](../images/embedding-sdk-playground.png)
+
+Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground.metabase.com/), no setup required. The playground lets you experiment with components, theming, and interactivity in your browser.
+
 ## Modular embedding SDK prerequisites
 
 - React application using React 18 or React 19.
@@ -38,7 +44,7 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Enable the SDK in Metabase
 
-1. Enable the Modular embedding SDK by going to **Admin settings > Embedding**.
+1. Enable the Modular embedding SDK by going to **Admin > Embedding**.
 2. Toggle on **Modular embedding SDK**.
 3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
@@ -108,16 +114,6 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
 
-## Changelog
-
-View the SDK's changelog:
-
-- [56-stable](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [54-stable](https://github.com/metabase/metabase/blob/release-x.54.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-
 ## Modular embedding SDK on npm
 
 Check out the Metabase Modular embedding SDK on npm: [metaba.se/sdk-npm](https://metaba.se/sdk-npm).
@@ -128,14 +124,12 @@ The SDK doesn't support:
 
 - Verified content
 - Official collections
-- Subscriptions
-- Alerts
-- Click behavior with custom destinations to other items in the same Metabase (like to other questions or dashboards)
+- Dashboard link cards
 - Server-side rendering (SSR)
 
 Other limitations:
 
-- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- You can only have one dashboard per application page. You can, however, embed multiple questions on the same app page, or use [dashboard tabs](../../dashboards/introduction.md#dashboard-tabs) to create multiple different card layouts on one dashboard.
 - If you have Leaflet 1.x as a dependency in your app, you may run into compatibility issues. You can try using Leaflet 2.x instead.
 
 ## Issues, feature requests and support

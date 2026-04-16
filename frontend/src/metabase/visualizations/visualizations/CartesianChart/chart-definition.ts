@@ -9,10 +9,12 @@ import {
   GRAPH_TREND_SETTINGS,
   LEGEND_SETTINGS,
   LINE_SETTINGS,
+  SPLIT_PANELS_SETTINGS,
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
 import {
+  validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
@@ -20,15 +22,29 @@ import {
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type {
   Visualization,
+  VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  TransformedSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { transformSeries } from "./chart-definition-legacy";
 
+const transformCartesianSeries = (series: Series): TransformedSeries => {
+  if ("_raw" in series) {
+    return series;
+  }
+
+  const transformed = transformSeries(series);
+  return Object.assign([...transformed], { _raw: series });
+};
+
 export const getCartesianChartDefinition = (
-  props: Partial<Visualization>,
+  props: Partial<VisualizationDefinition>,
 ): Partial<Visualization> => {
   return {
     noHeader: true,
@@ -50,13 +66,14 @@ export const getCartesianChartDefinition = (
 
     checkRenderable(series, settings) {
       validateDatasetRows(series);
+      validateBreakoutSeriesCount(series, settings);
       validateChartDataSettings(settings);
       validateStacking(settings);
     },
 
     hasEmptyState: true,
 
-    transformSeries,
+    transformSeries: transformCartesianSeries,
 
     onDisplayUpdate: (settings) => {
       if (settings[SERIES_SETTING_KEY] == null) {
@@ -89,15 +106,17 @@ export const getCartesianChartDefinition = (
   };
 };
 
-export const COMBO_CHARTS_SETTINGS_DEFINITIONS = {
-  ...STACKABLE_SETTINGS,
-  ...LINE_SETTINGS,
-  ...GRAPH_GOAL_SETTINGS,
-  ...GRAPH_TREND_SETTINGS,
-  ...GRAPH_COLORS_SETTINGS,
-  ...GRAPH_AXIS_SETTINGS,
-  ...GRAPH_DISPLAY_VALUES_SETTINGS,
-  ...GRAPH_DATA_SETTINGS,
-  ...TOOLTIP_SETTINGS,
-  ...LEGEND_SETTINGS,
-} as any as VisualizationSettingsDefinitions;
+export const COMBO_CHARTS_SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions =
+  {
+    ...STACKABLE_SETTINGS,
+    ...SPLIT_PANELS_SETTINGS,
+    ...LINE_SETTINGS,
+    ...GRAPH_GOAL_SETTINGS,
+    ...GRAPH_TREND_SETTINGS,
+    ...GRAPH_COLORS_SETTINGS,
+    ...GRAPH_AXIS_SETTINGS,
+    ...GRAPH_DISPLAY_VALUES_SETTINGS,
+    ...GRAPH_DATA_SETTINGS,
+    ...TOOLTIP_SETTINGS,
+    ...LEGEND_SETTINGS,
+  };

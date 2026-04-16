@@ -2,16 +2,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
-import { sumArray } from "metabase/lib/arrays";
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
-import { measureText } from "metabase/lib/measure-text";
+import { sumArray } from "metabase/utils/arrays";
+import { measureText } from "metabase/utils/measure-text";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   ColumnNameColumnSplitSetting,
   DatasetColumn,
-  DatasetData,
   PivotTableColumnSplitSetting,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -224,15 +224,25 @@ export function isSensible({ cols }: { cols: DatasetColumn[] }) {
 }
 
 export function checkRenderable(
-  [{ data }]: [{ data: DatasetData }],
+  [{ data }]: Series,
   settings: VisualizationSettings,
   query?: NativeQuery | null,
 ) {
+  if (data.cols.some((col) => col.source === "native")) {
+    throw new Error(
+      t`Pivot tables are only supported for questions built in the query builder.`,
+    );
+  }
   if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
     throw new Error(t`Pivot tables can only be used with aggregated queries.`);
   }
   if (!databaseSupportsPivotTables(query)) {
     throw new Error(t`This database does not support pivot tables.`);
+  }
+  if (data.pivot_rows_truncated != null) {
+    throw new Error(
+      t`Too many rows for a pivot table. Please add a filter or remove breakouts to reduce the number of rows.`,
+    );
   }
 }
 
@@ -241,14 +251,14 @@ export const leftHeaderCellSizeAndPositionGetter = (
   leftHeaderWidths: number[],
   rowIndexes: number[],
 ) => {
-  const { offset, span, depth, maxDepthBelow } = item;
+  const { offset, span, depth, maxDepthBelow, isSubtotal } = item;
 
   const columnsToSpan = rowIndexes.length - depth - maxDepthBelow;
 
-  // add up all the widths of the columns, other than itself, that this cell spans
-  const spanWidth = sumArray(
-    leftHeaderWidths.slice(depth + 1, depth + columnsToSpan),
-  );
+  // for subtotals, add up all the widths of the columns, other than itself, that this cell spans
+  const spanWidth = isSubtotal
+    ? sumArray(leftHeaderWidths.slice(depth + 1, depth + columnsToSpan))
+    : 0;
   const columnPadding = depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0;
   const columnWidth = leftHeaderWidths[depth];
 

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
-import LogoIcon from "metabase/common/components/LogoIcon";
-import { useSelector } from "metabase/lib/redux";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
+import { useSelector } from "metabase/utils/redux";
 
 import {
   LayoutBody,

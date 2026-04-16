@@ -1,16 +1,16 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 import { Card, Flex, Icon, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export const HomeHelpCard = (): JSX.Element | null => {
   const cardTitleId = useUniqueId();
@@ -32,7 +32,7 @@ export const HomeHelpCard = (): JSX.Element | null => {
       px="lg"
       classNames={{
         root: cx(
-          CS.bgBrandLighterHover,
+          CS.bgBrandHover,
           CS.hoverParent,
           CS.hoverDisplay,
           CS.textBrandHover,

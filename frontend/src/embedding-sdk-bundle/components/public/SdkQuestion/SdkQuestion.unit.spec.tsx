@@ -7,6 +7,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
@@ -16,9 +17,14 @@ import {
   act,
   mockGetBoundingClientRect,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import {
+  SdkInternalNavigationContext,
+  type SdkInternalNavigationContextValue,
+} from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import {
   SdkQuestionDefaultView,
   type SdkQuestionDefaultViewProps,
@@ -31,6 +37,7 @@ import type { BaseEntityId, CardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
   createMockColumn,
   createMockDatabase,
   createMockDataset,
@@ -94,6 +101,21 @@ const TEST_CARD = createMockCard({
   parameters: [TEST_PARAM],
 });
 
+function makeMockNavigation(
+  overrides: Partial<SdkInternalNavigationContextValue> = {},
+): SdkInternalNavigationContextValue {
+  return {
+    stack: [],
+    push: jest.fn(),
+    pop: jest.fn(),
+    canGoBack: false,
+    currentEntry: undefined,
+    previousEntry: undefined,
+    initWithDashboard: jest.fn(),
+    ...overrides,
+  };
+}
+
 const setup = async ({
   isValidCard = true,
   title,
@@ -102,12 +124,16 @@ const setup = async ({
   initialSqlParameters,
   cardId = TEST_CARD_ID,
   preventWaitForLoader = false,
+  mockNavigation,
 }: Partial<
   Pick<BaseSdkQuestionProps, "initialSqlParameters"> &
     Pick<SdkQuestionDefaultViewProps, "withChartTypeSelector" | "title"> & {
       isValidCard?: boolean;
       withCustomLayout?: boolean;
-    } & { cardId: BaseEntityId | CardId; preventWaitForLoader?: boolean }
+      cardId: BaseEntityId | CardId | null;
+      preventWaitForLoader?: boolean;
+      mockNavigation?: SdkInternalNavigationContextValue;
+    }
 > = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
@@ -133,15 +159,31 @@ const setup = async ({
 
   setupEntityIdEndpoint({ card: { [TEST_ENTITY_ID]: TEST_CARD_ID } });
 
+  const BOBBY_TEST_COLLECTION = createMockCollection({
+    archived: false,
+    can_write: true,
+    description: null,
+    id: 1,
+    location: "/",
+    name: "Bobby Tables's Personal Collection",
+    personal_owner_id: 100,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [BOBBY_TEST_COLLECTION],
+  });
+
   renderWithSDKProviders(
-    <SdkQuestion
-      questionId={cardId}
-      title={title}
-      withChartTypeSelector={withChartTypeSelector}
-      initialSqlParameters={initialSqlParameters}
-    >
-      {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
-    </SdkQuestion>,
+    <SdkInternalNavigationContext.Provider value={mockNavigation ?? null}>
+      <SdkQuestion
+        questionId={cardId}
+        title={title}
+        withChartTypeSelector={withChartTypeSelector}
+        initialSqlParameters={initialSqlParameters}
+      >
+        {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
+      </SdkQuestion>
+    </SdkInternalNavigationContext.Provider>,
     {
       componentProviderProps: {
         authConfig: createMockSdkConfig(),
@@ -170,14 +212,18 @@ describe("InteractiveQuestion", () => {
     it("should render loading state when rerunning the query", async () => {
       await setup({ withCustomLayout: true });
 
-      expect(
-        await within(screen.getByTestId("table-root")).findByText(
-          TEST_COLUMN.display_name,
-        ),
-      ).toBeInTheDocument();
-      expect(
-        await within(screen.getByRole("gridcell")).findByText("Test Row"),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          within(screen.getByTestId("table-root")).getByText(
+            TEST_COLUMN.display_name,
+          ),
+        ).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole("gridcell")).getByText("Test Row"),
+        ).toBeInTheDocument();
+      });
 
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
@@ -186,9 +232,11 @@ describe("InteractiveQuestion", () => {
 
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-      expect(
-        within(await screen.findByRole("gridcell")).getByText("Test Row"),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole("gridcell")).getByText("Test Row"),
+        ).toBeInTheDocument();
+      });
     });
   });
 
@@ -273,9 +321,9 @@ describe("InteractiveQuestion", () => {
     for (const visType of VISUALIZATION_TYPES) {
       await userEvent.click(screen.getByTestId("chart-type-selector-button"));
       await userEvent.click(
-        await within(screen.getByRole("menu")).findByText(visType),
+        await within(screen.getByRole("listbox")).findByText(visType),
       );
-      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
       expect(
         within(screen.getByTestId("chart-type-selector-button")).getByText(
           visType,
@@ -333,5 +381,30 @@ describe("InteractiveQuestion", () => {
       screen.queryByText("Query results will appear here."),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
+  });
+
+  describe("navigation stack initialization", () => {
+    it("should push a question entry with id=null for an ad-hoc question (questionId is null)", async () => {
+      const mockNavigation = makeMockNavigation();
+      await setup({ cardId: null, mockNavigation });
+
+      expect(mockNavigation.push).toHaveBeenCalledWith({
+        type: "question",
+        id: null,
+        name: expect.any(String),
+      });
+    });
+
+    it("should not push to the navigation stack when the stack is already populated", async () => {
+      const existingEntry = {
+        type: "dashboard" as const,
+        id: 1,
+        name: "Sales Dashboard",
+      };
+      const mockNavigation = makeMockNavigation({ stack: [existingEntry] });
+      await setup({ mockNavigation });
+
+      expect(mockNavigation.push).not.toHaveBeenCalled();
+    });
   });
 });

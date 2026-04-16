@@ -1,13 +1,13 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import linkStyles from "metabase/css/core/link.module.css";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { UnstyledButton } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export function UpsellSdkLink() {
   const campaign = "embedding-sdk";

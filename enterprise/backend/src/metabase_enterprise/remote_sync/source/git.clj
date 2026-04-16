@@ -10,6 +10,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
+   (java.net URI)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
@@ -43,11 +44,30 @@
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (clean-git-exception e command false))))))
 
-(defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
+(defmulti credentials-provider
+  "Creates a JGit CredentialsProvider based on the authentication method.
+
+  Dispatches on auth-method keyword. The credentials argument is method-specific
+  and can be any data structure appropriate for that authentication method.
+
+  Returns a CredentialsProvider instance or nil if no authentication is needed."
+  {:arglists '([remote-url credentials])}
+  (fn [remote-url _credentials] (keyword (u/lower-case-en (.getHost (URI. remote-url))))))
+
+(defmethod credentials-provider :default
+  [_remote-url ^String token]
+  (UsernamePasswordCredentialsProvider. "x-access-token" token))
+
+(defmethod credentials-provider :bitbucket.org
+  [_auth-method ^String token]
+  (when token
+    (UsernamePasswordCredentialsProvider. "x-token-auth" token)))
+
+(defn- call-remote-command [^TransportCommand command {:keys [^String token ^String remote-url]}]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
-        credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
+        credentials-provider (when token (credentials-provider remote-url token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
 
     (try
@@ -67,7 +87,7 @@
   "Fetches updates from the remote git repository.
 
   Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
-  of the git fetch operation.
+  of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
@@ -76,37 +96,54 @@
     (u/prog1 (call-remote-command (.fetch git) git-source))
     (log/info "Successfully fetched repository")))
 
-(defn- repo-path [{:keys [^String url ^String token]}]
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [url token]) buddy-hash/sha1 codecs/bytes->hex)))
+(defn- repo-path [{:keys [^String remote-url ^String token]}]
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
 
 (defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
 
-  Takes a map with :url (the git repository URL) and optional :token (authentication token for private
+  Takes a map with :remote-url (the git repository URL) and optional :token (authentication token for private
   repositories). Returns a Git instance for the cloned repository. If the repository already exists in the temp
   directory and is valid, returns the existing repository after fetching.
 
   Throws ExceptionInfo if cloning fails due to network issues, invalid URL, authentication failure, etc."
-  [repo-path {:keys [^String url ^String token]}]
-  (log/info "Cloning repository" {:url url :repo-path repo-path})
+  [repo-path {:keys [^String remote-url ^String token]}]
+  (log/info "Cloning repository" {:url remote-url :repo-path repo-path})
   (io/make-parents repo-path)
   (try
     (u/prog1 (call-remote-command (-> (Git/cloneRepository)
                                       (.setDirectory repo-path)
-                                      (.setURI url)
-                                      (.setBare true)) {:token token})
+                                      (.setURI remote-url)
+                                      (.setBare true)) {:token token :remote-url remote-url})
       (log/info "Successfully cloned repository" {:repo-path repo-path}))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
-                      {:url       url
+                      {:url       remote-url
                        :repo-path repo-path
                        :error     (.getMessage e)} e)))))
 
-(defn- open-jgit [^File repo-path args]
+(defn- ensure-origin-configured!
+  "Ensures the 'origin' remote is configured with the correct URL.
+
+  This fixes issues where the origin remote may be missing or have an incorrect URL
+  (e.g., after repository corruption or configuration changes). If the URL doesn't
+  match, it's updated and saved."
+  [^Git git ^String url]
+  (let [config (.getConfig (.getRepository git))
+        current-url (.getString config "remote" "origin" "url")]
+    (when (not= url current-url)
+      (log/info "Configuring origin remote" {:current current-url :new url})
+      (.setString config "remote" "origin" "url" url)
+      (.setString config "remote" "origin" "fetch" "+refs/heads/*:refs/heads/*")
+      (.save config))))
+
+(defn- open-jgit [^File repo-path {:keys [remote-url] :as args}]
   (if (.exists repo-path)
-    (do
-      (log/debugf "Opening existing at %" repo-path)
-      (Git/open repo-path))
+    (let [git (do
+                (log/debugf "Opening existing at %" repo-path)
+                (Git/open repo-path))]
+      (ensure-origin-configured! git remote-url)
+      git)
     (clone-repository! repo-path args)))
 
 (defn commit-sha
@@ -175,7 +212,7 @@
   "Pushes a local branch to the remote repository.
 
   Takes a git-source map containing a :git Git instance, :branch, and optional :token for
-  authentication.
+  authentication. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
   non-OK/UP_TO_DATE status."
@@ -183,7 +220,6 @@
   (let [branch-name (qualify-branch branch)
         push-response (call-remote-command
                        (-> (.push git)
-                           (.setRemote "origin")
                            (.setRefSpecs (doto (java.util.ArrayList.)
                                            (.add (RefSpec. (str branch-name ":" branch-name))))))
                        git-source)
@@ -195,52 +231,44 @@
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
     push-response))
 
-(defn- path-prefix
-  "Extracts the unique collection identifier from a serialized file path.
-
-  Takes a path string like \"collections/abc123_CollectionName/...\" and returns the collection prefix (e.g.,
-  \"collections/abc123\") which remains stable even when collection names change.
-
-  Returns the original path if no collection prefix is found."
+(defn- top-level-dir
+  "Extracts the first path segment from a file path.
+  E.g., \"databases/my_db/my_db.yaml\" => \"databases\""
   [path]
-  (let [matcher (re-matcher #"^(collections/[^/]{21})_[^/]+/" path)]
-    (if (re-find matcher)
-      (second (re-groups matcher))
-      path)))
-
-(defn- matches-prefix [path prefixes]
-  (some #(or (= % path) (str/starts-with? path %)) prefixes))
+  (when-let [idx (str/index-of path "/")]
+    (subs path 0 idx)))
 
 (defn default-branch
   "Retrieves the default branch name of the git repository.
 
   Takes a git-source map containing a :git Git instance.
 
-  Returns the default branch name as a string (without 'refs/heads/' prefix), or nil if no default branch is found."
-  [{:keys [^Git git]}]
-  (let [repo (.getRepository git)
-        head-ref (.findRef repo "HEAD")]
-    (when head-ref
-      (when-let [target-ref (.getTarget head-ref)]
-        (str/replace-first (.getName target-ref) "refs/heads/" "")))))
+  Returns the default branch name as a string (without 'refs/heads/' prefix).
+  Throws ExceptionInfo if no default branch is found."
+  [{:keys [^Git git] :as git-source}]
+  ;; Query the remote directly to get HEAD - lsRemote returns symbolic refs
+  (let [refs (call-remote-command (.lsRemote git) git-source)
+        head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
+    (or (when head-ref
+          (when (.isSymbolic ^Ref head-ref)
+            (when-let [target (.getTarget ^Ref head-ref)]
+              (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
+        (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
 (defn write-files!
   "Writes multiple files to the git repository and commits the changes.
 
-  Takes a snapshot map containing a :git Git instance and :version, a commit message string,
-  and a sequence of file specs (paths should be relative to the repository root).
+  Takes a snapshot map containing a :git Git instance, :version, and :managed-dirs,
+  a commit message string, and a sequence of file specs (maps with :path and :content keys,
+  paths should be relative to the repository root).
 
-  Each file spec is a map with either:
-  - :path and :content keys for writing/updating a file
-  - :path and :remove? true for recursively removing all files at that path
-
-  Replaces all files in the branch organized by collection prefix - files not in the provided list but in the same
-  collection prefix will be deleted. Removal entries with empty paths are no-ops. Removing non-existent paths
-  is also a no-op (idempotent).
+  All existing files within managed directories that are not in the write set are removed.
+  This ensures stale files (from renames, moves, or deletions) are cleaned up automatically.
+  Files outside managed directories are always preserved.
 
   Returns the version written. Throws ExceptionInfo if the write or push
   operation fails."
-  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message files]
+  [{:keys [^Git git ^String version ^String branch managed-dirs] :as snapshot} ^String message files]
   (let [repo (.getRepository git)
         branch-ref (qualify-branch branch)
         parent-id (.resolve repo version)]
@@ -248,21 +276,25 @@
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
             builder (.builder index)
-            updated-prefixes (into #{}
-                                   (comp
-                                    (map (fn [{:keys [path content remove?]}]
-                                           (when-not remove?
-                                             (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
-                                                   entry (doto (DirCacheEntry. ^String path)
-                                                           (.setFileMode FileMode/REGULAR_FILE)
-                                                           (.setObjectId blob-id))]
-                                               (.add builder entry)))
-                                           (when (not-empty path)
-                                             (path-prefix path))))
-                                    (remove nil?))
-                                   files)]
+            ;; Set of all paths being written in this commit
+            write-paths (into #{}
+                              (comp (map :path)
+                                    (remove str/blank?))
+                              files)]
 
-        ;; Copy existing tree entries, excluding files under updated-prefixes
+        ;; Add new/updated files to the index
+        (doseq [{:keys [path content]} files
+                :when (not (str/blank? path))]
+          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
+                entry (doto (DirCacheEntry. ^String path)
+                        (.setFileMode FileMode/REGULAR_FILE)
+                        (.setObjectId blob-id))]
+            (.add builder entry)))
+
+        ;; Copy existing tree entries that should be preserved:
+        ;; - Outside managed directories AND not being overwritten by the write set
+        ;; Files in managed dirs not in write-paths are dropped (stale file cleanup)
+        ;; Files in write-paths are skipped here (already added above with new content)
         (when parent-id
           (with-open [rev-walk (RevWalk. repo)
                       tree-walk (TreeWalk. repo)]
@@ -271,7 +303,8 @@
               (.setRecursive tree-walk true)
               (while (.next tree-walk)
                 (let [path (.getPathString tree-walk)]
-                  (when-not (matches-prefix path updated-prefixes)
+                  (when (and (not (contains? write-paths path))
+                             (not (contains? managed-dirs (top-level-dir path))))
                     (let [entry (doto (DirCacheEntry. path)
                                   (.setFileMode (.getFileMode tree-walk 0))
                                   (.setObjectId (.getObjectId tree-walk 0)))]
@@ -301,6 +334,7 @@
   "Retrieves all branch names from the remote repository.
 
   Takes a source map containing a :git Git instance and optional :token for authentication.
+  Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
   [{:keys [^Git git] :as source}]
@@ -364,7 +398,7 @@
     (push-branch! (assoc source :branch branch-name))
     branch-name))
 
-(defrecord GitSnapshot [git remote-url branch version token]
+(defrecord GitSnapshot [git remote-url branch version token managed-dirs]
   source.p/SourceSnapshot
 
   (list-files [this]
@@ -379,15 +413,55 @@
   (version [this]
     (:version this)))
 
-(defn- snapshot
+(def ^:private jgit (atom {}))
+
+(defn- stale-cache-error?
+  "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
+  [^Exception e]
+  (some-> (ex-message e) (str/includes? "Missing commit")))
+
+(defn- clear-cached-repo!
+  "Clears a cached git repository from memory and disk."
+  [^File repo-path]
+  (log/info "Clearing stale git cache" {:repo-path (str repo-path)})
+  (swap! jgit dissoc (.getPath repo-path))
+  (FileUtils/deleteDirectory repo-path))
+
+(defn- get-jgit [^File path {:keys [remote-url token] :as args}]
+  (if-let [obj (get @jgit (.getPath path))]
+    obj
+    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
+                                                                     :token      token})
+                                             (when-not (has-data? (assoc args :git <>))
+                                               (FileUtils/deleteDirectory path)
+                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
+         (.getPath path))))
+
+(defn- snapshot*
+  "Internal snapshot implementation. Returns a GitSnapshot or throws."
   [source]
   (fetch! source)
   (let [version (commit-sha source (:branch source))]
     (if version
-      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))
+      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
       (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
 
-(defrecord GitSource [git remote-url branch token]
+(defn- snapshot
+  "Creates a snapshot, recovering from stale cache errors by re-cloning."
+  [{:keys [remote-url token] :as source}]
+  (try
+    (snapshot* source)
+    (catch Exception e
+      (if (stale-cache-error? e)
+        (let [path (repo-path {:remote-url remote-url :token token})]
+          (clear-cached-repo! path)
+          (let [fresh-git (get-jgit path {:remote-url remote-url :token token})
+                fresh-source (assoc source :git fresh-git)]
+            (log/info "Retrying snapshot after clearing stale cache")
+            (snapshot* fresh-source)))
+        (throw e)))))
+
+(defrecord GitSource [git remote-url branch token managed-dirs]
   source.p/Source
   (branches [source] (branches source))
 
@@ -400,25 +474,15 @@
   (snapshot [this]
     (snapshot this)))
 
-(def ^:private jgit (atom {}))
-
-(defn- get-jgit [^File path {:keys [url token] :as args}]
-  (if-let [obj (get @jgit (.getPath path))]
-    obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:url   url
-                                                                     :token token})
-                                             (when-not (has-data? (assoc args :git <>))
-                                               (FileUtils/deleteDirectory path)
-                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url url})))))
-         (.getPath path))))
-
 (defn git-source
   "Creates a new GitSource instance for a git repository.
 
-  Takes a URL string (the git repository URL), a branch, and an
-  optional token string (authentication token for private repositories).
+  Takes a URL string (the git repository URL), a branch, an
+  optional token string (authentication token for private repositories),
+  and a set of managed top-level directory names. Files in managed directories
+  are fully replaced during writes — any existing file not in the write set is removed.
 
   Returns a GitSource record implementing the Source protocol."
-  [url branch token]
-  (->GitSource (get-jgit (repo-path {:url url :token token}) {:url url :token token})
-               url branch token))
+  [url branch token managed-dirs]
+  (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
+               url branch token managed-dirs))

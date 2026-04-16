@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { color } from "metabase/ui/utils/colors";
 
 export const VisualizationRoot = styled.div`
@@ -29,5 +29,5 @@ export const VisualizationSlowSpinner = styled(
   LoadingSpinner,
 )<VisualizationSlowSpinnerProps>`
   color: ${(props) =>
-    props.isUsuallySlow ? color("accent4") : color("text-medium")};
+    props.isUsuallySlow ? color("accent4") : color("text-secondary")};
 `;

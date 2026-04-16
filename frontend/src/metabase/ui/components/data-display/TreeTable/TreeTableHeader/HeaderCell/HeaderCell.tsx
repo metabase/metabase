@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Flex, Icon, SortableHeaderPill } from "metabase/ui";
 
 import type { TreeTableHeaderVariant } from "../../types";
@@ -8,7 +10,11 @@ interface HeaderCellProps {
   variant: TreeTableHeaderVariant;
 }
 
-export function HeaderCell({ name, sort, variant }: HeaderCellProps) {
+export const HeaderCell = memo(function HeaderCell({
+  name,
+  sort,
+  variant,
+}: HeaderCellProps) {
   if (variant === "pill") {
     return <SortableHeaderPill name={name} sort={sort} />;
   }
@@ -20,7 +26,7 @@ export function HeaderCell({ name, sort, variant }: HeaderCellProps) {
       gap="0.25rem"
       fz="0.75rem"
       fw={700}
-      c="text-medium"
+      c="text-secondary"
     >
       {name}
       {sort && (
@@ -28,4 +34,4 @@ export function HeaderCell({ name, sort, variant }: HeaderCellProps) {
       )}
     </Flex>
   );
-}
+});

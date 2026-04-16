@@ -58,7 +58,7 @@ export const FormField = forwardRef(function FormField(
             {!!optional && !hasError && (
               <Text
                 component="span"
-                c={"text-medium"}
+                c={"text-secondary"}
                 fw="900"
                 fz="sm"
                 ml="xs"
@@ -67,22 +67,22 @@ export const FormField = forwardRef(function FormField(
             {(infoLabel || infoTooltip) && (
               <Tooltip multiline label={infoTooltip}>
                 {infoLabel ? (
-                  <Text c="text-medium" mb="sm" fz="md" ml="auto">
+                  <Text c="text-secondary" mb="sm" fz="md" ml="auto">
                     {infoLabel}
                   </Text>
                 ) : (
-                  <Icon c="bg-dark" ml="sm" name="info" />
+                  <Icon c="background-tertiary-inverse" ml="sm" name="info" />
                 )}
               </Tooltip>
             )}
             {actions && (
-              <Box ml="auto" fz="0.75rem" fw="900" c="text-medium">
+              <Box ml="auto" fz="0.75rem" fw="900" c="text-secondary">
                 {actions}
               </Box>
             )}
           </Flex>
           {description && (
-            <Text c="text-medium" mb="sm" fz="sm" lh="md">
+            <Text c="text-secondary" mb="sm" fz="sm" lh="md">
               {description}
             </Text>
           )}

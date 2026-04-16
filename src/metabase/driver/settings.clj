@@ -95,13 +95,16 @@
   :default    (if config/is-prod?
                 20
                 3)
-  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
-  If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
+  :doc "Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
+  If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
+
+  This setting also applies to individual queries executed within transforms, so make sure the duration is long enough
+  that it doesn't timeout any long-running queries in your transforms.
+
   Please be aware that other services (like Nginx) may still drop long-running queries.")
 
-;; This is normally set via the env var `MB_JDBC_NETWORKOUT_TIMEOUT_MS`
-(defsetting jdbc-networkout-timeout-ms
+;; This is normally set via the env var `MB_JDBC_NETWORK_TIMEOUT_MS`
+(defsetting jdbc-network-timeout-ms
   "By default, this is 30 minutes."
   :visibility :internal
   :export?    false
@@ -131,7 +134,7 @@
 
 (def ^:dynamic ^Long *network-timeout-ms*
   "Maximum amount of time to wait for a response from the database, in ms."
-  (jdbc-networkout-timeout-ms))
+  (jdbc-network-timeout-ms))
 
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
@@ -160,7 +163,7 @@
   "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
   [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
 
-  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
+  Note: You also need to update the com.mchange log level to INFO or higher in the Log4j configs in order to see the
   stack traces in the logs."
   :visibility :internal
   :type       :boolean

@@ -119,7 +119,7 @@ Unlike commingled data, one-schema-per-customer data is incompatible with row an
 
 Say you have a single database with ten different tables, each corresponding to a different customer (company). You want each customer to only access their own table.
 
-1. **Create a group** for your first customer in **Admin settings** > **People**. If you need different permission levels within a company (some employees can ask questions, others can only view), create multiple groups like **Company A (Self-service)** and **Company A (View only)**.
+1. **Create a group** for your first customer in **Admin** > **People**. If you need different permission levels within a company (some employees can ask questions, others can only view), create multiple groups like **Company A (Self-service)** and **Company A (View only)**.
 
 2. **Grant table access** by going to **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
 

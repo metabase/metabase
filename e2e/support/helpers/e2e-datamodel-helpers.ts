@@ -5,29 +5,56 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import {
+  assertTableData,
+  hovercard,
+  modal,
+  popover,
+  undoToast,
+} from "./e2e-ui-elements-helpers";
+
 export const DataModel = {
   visit,
   visitDataStudio,
   visitDataStudioSegments,
+  visitDataStudioMeasures,
   get: getDataModel,
+  Shared: {
+    visitArea,
+    getBasePathForArea,
+    getCheckLocation,
+    getTriggeredFromArea,
+    verifyAndCloseToast,
+    verifyTablePreview,
+    verifyObjectDetailPreview,
+    getInterceptsForArea,
+  },
   TablePicker: {
     get: getTablePicker,
     getDatabase: getTablePickerDatabase,
     getDatabaseToggle: getTablePickerDatabaseToggle,
+    getDatabaseCheckbox,
     getDatabases: getTablePickerDatabases,
     getSchemas: getTablePickerSchemas,
     getSchema: getTablePickerSchema,
     getSchemaToggle: getTablePickerSchemaToggle,
+    getSchemaCheckbox,
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
     getFilterForm: getTablePickerFilter,
+    openFilterPopover,
+    selectFilterOption,
+    applyFilters,
   },
   TableSection: {
     get: getTableSection,
+    clickFieldsTab,
+    clickDetailsTab,
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
     getQueryBuilderLink: getTableQueryBuilderLink,
+    getDependencyGraphLink: getDependencyGraphLink,
     getSortButton: getTableSortButton,
     getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
@@ -93,6 +120,39 @@ export const DataModel = {
   },
   SegmentRevisionHistory: {
     get: getSegmentRevisionHistory,
+  },
+  MeasureList: {
+    get: getMeasureList,
+    getEmptyState: getMeasureListEmptyState,
+    getNewMeasureLink: getMeasureListNewLink,
+    getMeasure: getMeasureListItem,
+    getMeasures: getMeasureListItems,
+  },
+  MeasureEditor: {
+    get: getMeasureEditor,
+    getNameInput: getMeasureEditorNameInput,
+    getDescriptionInput: getMeasureEditorDescriptionInput,
+    getAggregationPlaceholder: getMeasureEditorAggregationPlaceholder,
+    getPreviewLink: getMeasureEditorPreviewLink,
+    getSaveButton: getMeasureEditorSaveButton,
+    getCancelButton: getMeasureEditorCancelButton,
+    getActionsButton: getMeasureEditorActionsButton,
+    getBreadcrumb: getMeasureEditorBreadcrumb,
+    getDefinitionTab: getMeasureEditorDefinitionTab,
+    getRevisionHistoryTab: getMeasureEditorRevisionHistoryTab,
+    getDependenciesTab: getMeasureEditorDependenciesTab,
+  },
+  MeasureRevisionHistory: {
+    get: getMeasureRevisionHistory,
+  },
+  SourceReplacement: {
+    getModal: getSourceReplacementModal,
+    getConfirmationModal: getSourceReplacementConfirmationModal,
+    getReplaceButton: getSourceReplacementReplaceButton,
+    getCancelButton: getSourceReplacementCancelButton,
+    getTargetPickerButton: getSourceReplacementTargetPickerButton,
+    getDependentsTab: getSourceReplacementDependentsTab,
+    getFindAndReplaceButton: getSourceReplacementFindAndReplaceButton,
   },
 };
 
@@ -271,6 +331,14 @@ function getTablePickerTables() {
 
 /** table section helpers */
 
+function clickFieldsTab() {
+  cy.findByRole("tab", { name: /Fields/ }).click();
+}
+
+function clickDetailsTab() {
+  cy.findByRole("tab", { name: /Details/ }).click();
+}
+
 function getTableSection() {
   return cy.findByTestId("table-section");
 }
@@ -285,6 +353,10 @@ function getTableNameInput() {
 
 function getTableQueryBuilderLink() {
   return getTableSection().findByLabelText("Go to this table");
+}
+
+function getDependencyGraphLink() {
+  return getTableSection().findByRole("link", { name: "Dependency graph" });
 }
 
 function getTableDescriptionInput() {
@@ -322,7 +394,7 @@ function getTableSectionSortableFields() {
 }
 
 function getTableSectionVisibilityTypeInput() {
-  return getTableSection().findByRole("textbox", { name: "Visibility type" });
+  return getTableSection().findByRole("textbox", { name: "Visibility layer" });
 }
 
 function getTableSectionFieldNameInput(name: string) {
@@ -546,4 +618,275 @@ function getSegmentEditorDependenciesTab() {
 
 function getSegmentRevisionHistory() {
   return cy.findByTestId("segment-revision-history-page");
+}
+
+/** measure list helpers */
+
+function visitDataStudioMeasures(options: {
+  databaseId: DatabaseId;
+  schemaId: SchemaId;
+  tableId: TableId;
+}) {
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "datamodel/visit/metadata",
+  );
+  cy.visit(
+    `/data-studio/data/database/${options.databaseId}/schema/${options.schemaId}/table/${options.tableId}/measures`,
+  );
+  cy.wait("@datamodel/visit/metadata");
+}
+
+function getMeasureList() {
+  return cy.findByTestId("table-measures-page");
+}
+
+function getMeasureListEmptyState() {
+  return getMeasureList().findByText("No measures yet");
+}
+
+function getMeasureListNewLink() {
+  return getMeasureList().findByRole("link", { name: /New measure/i });
+}
+
+function getMeasureListItem(name: string) {
+  return getMeasureList().findByRole("listitem", { name });
+}
+
+function getMeasureListItems() {
+  return getMeasureList().findAllByRole("listitem");
+}
+
+/** measure editor helpers */
+
+function getMeasureEditor() {
+  return cy.get(
+    "[data-testid='new-measure-page'], [data-testid='measure-detail-page']",
+  );
+}
+
+function getMeasureEditorNameInput() {
+  return getMeasureEditor().findByPlaceholderText("New measure");
+}
+
+function getMeasureEditorDescriptionInput() {
+  return getMeasureEditor().findByLabelText("Give it a description");
+}
+
+function getMeasureEditorAggregationPlaceholder() {
+  return getMeasureEditor().findByText("Pick an aggregation function");
+}
+
+function getMeasureEditorPreviewLink() {
+  return getMeasureEditor().findByRole("link", { name: /Preview/i });
+}
+
+function getMeasureEditorSaveButton() {
+  return getMeasureEditor().button("Save");
+}
+
+function getMeasureEditorCancelButton() {
+  return getMeasureEditor().button("Cancel");
+}
+
+function getMeasureEditorActionsButton() {
+  return cy.findByLabelText("Measure actions");
+}
+
+function getMeasureEditorBreadcrumb(tableName: string) {
+  return cy.findByText(tableName);
+}
+
+function getMeasureEditorDefinitionTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Definition");
+}
+
+function getMeasureEditorRevisionHistoryTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Revision history");
+}
+
+function getMeasureEditorDependenciesTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Dependencies");
+}
+
+function getMeasureRevisionHistory() {
+  return cy.findByTestId("measure-revision-history-page");
+}
+
+export function openFilterPopover() {
+  cy.findByRole("button", { name: "Filter" }).click();
+  popover();
+}
+
+export function selectFilterOption(fieldLabel: string, optionLabel: string) {
+  cy.findByRole("textbox", { name: fieldLabel }).click();
+  popover().contains(optionLabel).click();
+}
+
+export function applyFilters() {
+  cy.findByRole("button", { name: "Apply" }).click();
+  cy.wait("@listTables");
+}
+
+export function getDatabaseCheckbox(databaseName: string) {
+  return getTablePickerDatabase(databaseName).find('input[type="checkbox"]');
+}
+
+export function getSchemaCheckbox(schemaName: string) {
+  return getTablePickerSchema(schemaName).find('input[type="checkbox"]');
+}
+
+export const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
+export type Area = (typeof areas)[number];
+
+export function getBasePathForArea(area: Area) {
+  return () => (area === "admin" ? "/admin/datamodel" : "/data-studio/data");
+}
+
+export function getCheckLocation(area: Area) {
+  return (path: string) => {
+    const basePath = getBasePathForArea(area)();
+    cy.location("pathname").should("eq", `${basePath}${path}`);
+  };
+}
+
+export function getTriggeredFromArea(area: Area) {
+  return () => (area === "admin" ? "admin" : "data_studio");
+}
+
+export function visitArea(area: Area) {
+  return (
+    ...args:
+      | Parameters<typeof H.DataModel.visit>
+      | Parameters<typeof H.DataModel.visitDataStudio>
+  ) => {
+    if (area === "admin") {
+      cy.log("visit admin");
+      visit(...args);
+    } else {
+      cy.log("visit datastudio");
+      visitDataStudio(...args);
+    }
+  };
+}
+
+function verifyAndCloseToast(message: string) {
+  undoToast().should("contain.text", message);
+  undoToast().icon("close").click({ force: true });
+}
+
+function verifyTablePreview({
+  column,
+  description,
+  values,
+}: {
+  column: string;
+  description?: string;
+  values: string[];
+}) {
+  getPreviewTabsInput().findByText("Table").click();
+  cy.wait("@dataset");
+
+  getPreviewSection().within(() => {
+    assertTableData({
+      columns: [column],
+      firstRows: values.map((value) => [value]),
+    });
+
+    if (description != null) {
+      cy.findByTestId("header-cell").realHover();
+    }
+  });
+
+  if (description != null) {
+    hovercard().should("contain.text", description);
+  }
+}
+
+function verifyObjectDetailPreview({
+  rowNumber,
+  row,
+}: {
+  rowNumber: number;
+  row: [string, string];
+}) {
+  const [label, value] = row;
+
+  getPreviewTabsInput().findByText("Detail").click();
+  cy.wait("@dataset");
+
+  cy.findAllByTestId("column-name").then(($els) => {
+    const foundRowIndex = $els
+      .toArray()
+      .findIndex((el) => el.textContent?.trim() === label);
+
+    expect(rowNumber).to.eq(foundRowIndex);
+
+    cy.findAllByTestId("value")
+      .should("have.length.gte", foundRowIndex)
+      .eq(foundRowIndex)
+      .should("contain", value);
+  });
+}
+
+function getInterceptsForArea(area: Area) {
+  cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
+  cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+  cy.intercept("GET", "/api/database/*/schema/*").as("schema");
+  cy.intercept("POST", "/api/dataset*").as("dataset");
+  cy.intercept("GET", "/api/field/*/values").as("fieldValues");
+  cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
+    "updateField",
+  );
+  cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
+  cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+  cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
+  cy.intercept("PUT", "/api/table").as("updateTables");
+  cy.intercept("PUT", "/api/table/*").as("updateTable");
+
+  if (area === "admin") {
+    cy.intercept("GET", "/api/database?*").as("databases");
+    cy.intercept("GET", "/api/field/*/values").as("fieldValues");
+    cy.intercept("PUT", "/api/table/*").as("updateTable");
+  }
+
+  if (area === "data studio") {
+    cy.intercept("GET", "/api/database").as("databases");
+  }
+}
+
+/** source replacement helpers */
+
+function getSourceReplacementModal() {
+  return modal().first();
+}
+
+function getSourceReplacementConfirmationModal() {
+  return modal().should("have.length", 2).last();
+}
+
+function getSourceReplacementReplaceButton() {
+  return getSourceReplacementModal().findByRole("button", {
+    name: /Replace data source/,
+  });
+}
+
+function getSourceReplacementCancelButton() {
+  return getSourceReplacementModal().findByRole("button", { name: "Cancel" });
+}
+
+function getSourceReplacementTargetPickerButton() {
+  return getSourceReplacementModal().contains(
+    "button",
+    "Pick a table, model, or saved question",
+  );
+}
+
+function getSourceReplacementDependentsTab(count: number) {
+  return getSourceReplacementModal().findByRole("tab", {
+    name: new RegExp(`${count} items? will be changed`),
+  });
+}
+
+function getSourceReplacementFindAndReplaceButton() {
+  return cy.findByRole("button", { name: "Find and replace" });
 }

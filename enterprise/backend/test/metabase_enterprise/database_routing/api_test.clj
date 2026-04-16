@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -125,9 +126,19 @@
     (is (= "Cannot enable database routing for a database with uploads enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
+  (mt/with-temp [:model/Database {db-id :id} {:write_data_details {:host "other-host"}}]
+    (is (= "Cannot enable database routing for a database with a write connection configured"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"}))))
   (mt/with-temp [:model/Database {router-db-id :id} {}
                  :model/Database {db-id :id} {:router_database_id router-db-id}]
     (is (= "Cannot make a destination database a router database"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"}))))
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Transform _ {:source_database_id db-id
+                                     :name "Test Transform"}]
+    (is (= "Cannot enable database routing for a database with transforms"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"})))))
 
@@ -193,3 +204,28 @@
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/syncable_schemas")))
     (testing "GET /database/:id/schemas"
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/schemas")))))
+
+(deftest destination-databases-excluded-from-permissions-graph
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
+                 :model/Database {destination-db-id :id} {:router_database_id db-id}]
+    (testing "Permissions graph does not include destination databases"
+      (let [graph (data-perms.graph/data-permissions-graph)]
+        (is (not (some (fn [[_group-id db-perms]]
+                         (contains? db-perms destination-db-id))
+                       graph)))))
+    (testing "API permissions graph does not include destination databases"
+      (let [api-graph (:groups (data-perms.graph/api-graph))]
+        (is (not (some (fn [[_group-id db-perms]]
+                         (contains? db-perms destination-db-id))
+                       api-graph)))))))
+
+(deftest new-group-does-not-get-destination-database-permissions
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
+                 :model/Database {destination-db-id :id} {:router_database_id db-id}]
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group for Routing"}]
+      (testing "New group should have permissions for the router database"
+        (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
+      (testing "New group should NOT have permissions for the destination database"
+        (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))

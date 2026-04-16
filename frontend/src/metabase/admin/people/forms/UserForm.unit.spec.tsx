@@ -5,6 +5,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Tenant } from "metabase-types/api";
 import {
   createMockGroup,
@@ -12,7 +13,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { UserForm } from "./UserForm";
 
@@ -292,9 +292,9 @@ describe("UserForm", () => {
       await userEvent.click(await screen.findByText("Add an attribute"));
 
       // We need a delay in typing into the form so that the error
-      // state is handled apropriately. Formik clears errors when you call
+      // state is handled appropriately. Formik clears errors when you call
       // setValue, so we need to ensure that no other setValue calls are in
-      // flight before typing the letter can causes the error.
+      // flight before typing the letter can cause the error.
       await userEvent.type(
         (await screen.findAllByPlaceholderText("Key"))[1],
         "team",

@@ -9,6 +9,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
@@ -17,9 +18,35 @@ import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { isWithinIframe } from "metabase/lib/dom";
-import { connect, useSelector } from "metabase/lib/redux";
+import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
+import {
+  getDatabasesList,
+  getSampleDatabaseId,
+} from "metabase/querying/selectors";
 import { closeNavbar } from "metabase/redux/app";
+import {
+  closeQB,
+  closeQbNewbModal,
+  editSummary,
+  navigateBackToDashboard,
+  onCloseAIQuestionAnalysisSidebar,
+  onCloseChartSettings,
+  onCloseChartType,
+  onCloseQuestionInfo,
+  onCloseQuestionSettings,
+  onCloseSidebars,
+  onCloseSummary,
+  onCloseTimelines,
+  onOpenAIQuestionAnalysisSidebar,
+  onOpenChartSettings,
+  onOpenChartType,
+  onOpenQuestionInfo,
+  onOpenQuestionSettings,
+  onOpenTimelines,
+  setParameterValue,
+  setUIControls,
+} from "metabase/redux/query-builder";
+import type { QueryBuilderUIControls, State } from "metabase/redux/store";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -28,22 +55,76 @@ import {
   getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import { connect, useSelector } from "metabase/utils/redux";
 import type {
   BookmarkId,
   Bookmark as BookmarkType,
   Series,
   Timeline,
 } from "metabase-types/api";
-import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
-import * as actions from "../actions";
+import {
+  cancelQuery,
+  cancelQuestionChanges,
+  closeObjectDetail,
+  closeSnippetModal,
+  deselectTimelineEvents,
+  followForeignKey,
+  hideTimelineEvents,
+  initializeQB,
+  insertSnippet,
+  loadObjectDetailFKReferences,
+  locationChanged,
+  navigateToNewCardInsideQB,
+  onCancelCreateNewModel,
+  onModelPersistenceChange,
+  onReplaceAllVisualizationSettings,
+  onUpdateVisualizationSettings,
+  openDataReferenceAtQuestion,
+  openSnippetModalWithSelectedText,
+  popDataReferenceStack,
+  pushDataReferenceStack,
+  queryCompleted,
+  queryErrored,
+  resetRowZoom,
+  runDirtyQuestionQuery,
+  runOrCancelQuestionOrSelectedQuery,
+  runQuestionQuery,
+  selectTimelineEvents,
+  setCurrentState,
+  setDatasetEditorTab,
+  setDatasetQuery,
+  setDidFirstNonTableChartRender,
+  setIsNativeEditorOpen,
+  setIsShowingSnippetSidebar,
+  setLimit,
+  setMetadataDiff,
+  setModalSnippet,
+  setNativeEditorSelectedRange,
+  setNotebookNativePreviewSidebarWidth,
+  setParameterValueToDefault,
+  setQueryBuilderMode,
+  setSnippetCollectionId,
+  setTemplateTag,
+  setTemplateTagConfig,
+  showTimelineEvents,
+  showTimelinesForCollection,
+  softReloadCard,
+  toggleDataReference,
+  toggleSnippetSidebar,
+  toggleTemplateTagsEditor,
+  turnModelIntoQuestion,
+  turnQuestionIntoModel,
+  updateQuestion,
+  viewNextObjectDetail,
+  viewPreviousObjectDetail,
+  zoomInRow,
+} from "../actions";
 import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
-import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
-  getDatabasesList,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
   getFilteredTimelines,
@@ -73,7 +154,6 @@ import {
   getQueryStartTime,
   getQuestion,
   getRawSeries,
-  getSampleDatabaseId,
   getSelectedTimelineEventIds,
   getShouldShowUnsavedChangesWarning,
   getSnippetCollectionId,
@@ -199,7 +279,86 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
 };
 
 const mapDispatchToProps = {
-  ...actions,
+  // from metabase/redux/query-builder (shared tier)
+  closeQB,
+  closeQbNewbModal,
+  navigateBackToDashboard,
+  onCloseAIQuestionAnalysisSidebar,
+  onCloseChartSettings,
+  onCloseChartType,
+  onCloseQuestionInfo,
+  onCloseQuestionSettings,
+  onCloseSidebars,
+  onCloseSummary,
+  onCloseTimelines,
+  editSummary,
+  onOpenAIQuestionAnalysisSidebar,
+  onOpenChartSettings,
+  onOpenChartType,
+  onOpenQuestionInfo,
+  onOpenQuestionSettings,
+  onOpenTimelines,
+  setParameterValue,
+  setUIControls,
+
+  // from query_builder/actions
+  cancelQuery,
+  cancelQuestionChanges,
+  closeObjectDetail,
+  closeSnippetModal,
+  deselectTimelineEvents,
+  followForeignKey,
+  hideTimelineEvents,
+  initializeQB,
+  insertSnippet,
+  loadObjectDetailFKReferences,
+  locationChanged,
+  navigateToNewCardInsideQB,
+  onCancelCreateNewModel,
+  onModelPersistenceChange,
+  onReplaceAllVisualizationSettings,
+  onUpdateVisualizationSettings,
+  openDataReferenceAtQuestion,
+  openSnippetModalWithSelectedText,
+  popDataReferenceStack,
+  pushDataReferenceStack,
+  queryCompleted,
+  queryErrored,
+  resetRowZoom,
+  runDirtyQuestionQuery,
+  runOrCancelQuestionOrSelectedQuery,
+  runQuestionQuery,
+  selectTimelineEvents,
+  setCurrentState,
+  setDatasetEditorTab,
+  setDatasetQuery,
+  setDidFirstNonTableChartRender,
+  setIsNativeEditorOpen,
+  setIsShowingSnippetSidebar,
+  setLimit,
+  setMetadataDiff,
+  setModalSnippet,
+  setNativeEditorSelectedRange,
+  setNotebookNativePreviewSidebarWidth,
+  setParameterValueToDefault,
+  setQueryBuilderMode,
+  setSnippetCollectionId,
+  setTemplateTag,
+  setTemplateTagConfig,
+  showTimelineEvents,
+  showTimelinesForCollection,
+  softReloadCard,
+  toggleDataReference,
+  toggleSnippetSidebar,
+  toggleTemplateTagsEditor,
+  turnModelIntoQuestion,
+  turnQuestionIntoModel,
+  updateQuestion,
+  viewNextObjectDetail,
+  viewPreviousObjectDetail,
+  zoomInRow,
+
+  // other
   closeNavbar,
   onChangeLocation: push,
   createBookmark: (id: BookmarkId) =>
@@ -269,7 +428,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
       ) {
-        setDidFirstNonTableChartRender(card);
+        if (card) {
+          setDidFirstNonTableChartRender(card);
+        }
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
@@ -317,7 +478,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       trackCardBookmarkAdded(card);
     }
 
-    toggleBookmark(card.id);
+    if (card) {
+      toggleBookmark(card.id.toString());
+    }
   };
 
   /**
@@ -331,10 +494,12 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const handleSave = useSaveQuestion({ scheduleCallback });
 
   useMount(() => {
-    const isRouteInSync = window.location.pathname === location.pathname;
-    if (isWithinIframe() && !isRouteInSync) {
-      return null; // Don't initialize query builder until route syncs (metabase#65500)
+    // Prevent initializing the query builder if the route is out of sync
+    // metabase#65500
+    if (!isRouteInSync(location.pathname)) {
+      return;
     }
+
     initializeQB(location, params);
   });
 
@@ -428,7 +593,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       ) {
         showNotification(
           t`All Set! Your question is ready.`,
-          t`${card.name} is loaded.`,
+          t`${card?.name} is loaded.`,
         );
       }
     }

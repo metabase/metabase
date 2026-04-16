@@ -28,6 +28,7 @@ export type GroupInfo = {
     | "all-internal-users"
     | "admin"
     | "all-external-users"
+    | "data-analyst"
     | null;
   is_tenant_group?: boolean;
 };

@@ -5,19 +5,21 @@ import { t } from "ttag";
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncInProgress } from "metabase/lib/syncing";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
-import { getDatabases } from "metabase/reference/selectors";
+import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { ActionIcon, Group, Icon, Loader, Paper } from "metabase/ui";
+import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import { isSyncInProgress } from "metabase/utils/syncing";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
-import { trackBrowseXRayClicked, trackTableClick } from "../analytics";
+import {
+  trackBrowseXRayClicked,
+  trackEditDataButtonClicked,
+  trackTableClick,
+} from "../analytics";
 
 import S from "./TableBrowser.module.css";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
@@ -52,7 +54,7 @@ export const TableBrowser = ({
 
   return (
     <>
-      <BrowseHeaderContent>
+      <Flex align="center" pt="md" pr="sm" pb="sm">
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
@@ -60,7 +62,7 @@ export const TableBrowser = ({
             showSchemaInHeader && { title: schemaName },
           ]}
         />
-      </BrowseHeaderContent>
+      </Flex>
       <BrowseGrid pt="lg">
         {tables.map((table) => (
           <TableBrowserItem
@@ -139,11 +141,7 @@ const TableBrowserItemButtons = ({
   canEditTables,
 }) => {
   const handleEditTableClicked = () => {
-    trackSimpleEvent({
-      event: "edit_data_button_clicked",
-      target_id: tableId,
-      triggered_from: "table-browser",
-    });
+    trackEditDataButtonClicked(tableId);
   };
 
   return (
@@ -169,7 +167,7 @@ const TableBrowserItemButtons = ({
             onClick={handleEditTableClicked}
             size="sm"
             tooltip={t`Edit this table`}
-            color="text-medium"
+            color="text-secondary"
             aria-label={t`Edit this table`}
             data-testid="edit-table-icon"
           >
@@ -181,7 +179,7 @@ const TableBrowserItemButtons = ({
           to={`/reference/databases/${dbId}/tables/${tableId}`}
           size="sm"
           tooltip={t`Learn about this table`}
-          color="text-medium"
+          color="text-secondary"
           aria-label={t`Learn about this table`}
         >
           <Icon name="reference" />
@@ -193,4 +191,5 @@ const TableBrowserItemButtons = ({
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableBrowser;

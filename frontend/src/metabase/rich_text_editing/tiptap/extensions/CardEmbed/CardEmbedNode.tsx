@@ -13,17 +13,15 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
+import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
+import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { navigateToCardFromDocument } from "metabase/documents/actions";
 import {
   trackDocumentAddSupportingText,
   trackDocumentReplaceCard,
 } from "metabase/documents/analytics";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
 import { MAX_GROUP_SIZE } from "metabase/documents/constants";
 import {
@@ -31,20 +29,28 @@ import {
   openVizSettingsSidebar,
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
+import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
   getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
 import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
-import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Loader,
+  Menu,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
@@ -173,23 +179,12 @@ export const CardEmbedComponent = memo(
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const { publicDocumentUuid } = usePublicDocumentContext();
-    const { data: commentsData } = useListCommentsQuery(
-      getListCommentsQuery(document),
-    );
-
-    const comments = commentsData?.comments;
-    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const { _id } = node.attrs;
+    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
+
+    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const threads = useMemo(
-      () => getTargetChildCommentThreads(comments, _id),
-      [comments, _id],
-    );
-    const unresolvedCommentsCount = useMemo(
-      () => getUnresolvedComments(threads).length,
-      [threads],
-    );
     const commentsPath = document
       ? `/document/${document.id}/comments/${_id}`
       : "";
@@ -436,7 +431,7 @@ export const CardEmbedComponent = memo(
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
                 <Box className={styles.titleContainer}>
-                  <Text size="md" color="text-dark" fw={700}>
+                  <Text size="md" color="text-primary" fw={700}>
                     {t`Loading question...`}
                   </Text>
                 </Box>
@@ -541,7 +536,8 @@ export const CardEmbedComponent = memo(
                           backgroundColor: "transparent",
                           "&:focus": {
                             border: "1px solid var(--mb-color-border)",
-                            backgroundColor: "var(--mb-color-bg-white)",
+                            backgroundColor:
+                              "var(--mb-color-background-primary)",
                             padding: "0 0.25rem",
                           },
                         },
@@ -554,13 +550,15 @@ export const CardEmbedComponent = memo(
                           className={styles.titleText}
                           data-testid="card-embed-title"
                           size="md"
-                          color="text-dark"
+                          c="text-primary"
                           fw={700}
-                          c={isPublicDocument ? undefined : "pointer"}
                           truncate="end"
                           onClick={
                             isPublicDocument ? undefined : handleTitleClick
                           }
+                          style={{
+                            cursor: isPublicDocument ? undefined : "pointer",
+                          }}
                         >
                           {displayName}
                         </Text>
@@ -569,9 +567,8 @@ export const CardEmbedComponent = memo(
                         <Icon
                           name="pencil"
                           size={14}
-                          color="var(--mb-color-text-medium)"
+                          c="text-secondary"
                           className={styles.titleEditIcon}
-                          c="pointer"
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             setEditedTitle(displayName);
@@ -621,7 +618,7 @@ export const CardEmbedComponent = memo(
                             <Icon
                               name="ellipsis"
                               size={16}
-                              color="var(--mb-color-text-medium)"
+                              c="text-secondary"
                             />
                           </Flex>
                         </Menu.Target>
@@ -655,29 +652,31 @@ export const CardEmbedComponent = memo(
             {series ? (
               <>
                 <Box className={styles.questionResults}>
-                  <Visualization
-                    rawSeries={series}
-                    metadata={metadata}
-                    mode={DocumentMode}
-                    onChangeCardAndRun={
-                      isPublicDocument ? undefined : handleChangeCardAndRun
-                    }
-                    onUpdateQuestion={
-                      isPublicDocument ? undefined : handleUpdateQuestion
-                    }
-                    onUpdateVisualizationSettings={
-                      isPublicDocument
-                        ? undefined
-                        : handleUpdateVisualizationSettings
-                    }
-                    getExtraDataForClick={() => ({})}
-                    isEditing={false}
-                    isDashboard={false}
-                    isDocument={true}
-                    showTitle={false}
-                    error={datasetError?.message}
-                    errorIcon={datasetError?.icon}
-                  />
+                  <ExplicitSizeRefreshModeContext.Provider value="layout">
+                    <Visualization
+                      rawSeries={series}
+                      metadata={metadata}
+                      mode={DocumentMode}
+                      onChangeCardAndRun={
+                        isPublicDocument ? undefined : handleChangeCardAndRun
+                      }
+                      onUpdateQuestion={
+                        isPublicDocument ? undefined : handleUpdateQuestion
+                      }
+                      onUpdateVisualizationSettings={
+                        isPublicDocument
+                          ? undefined
+                          : handleUpdateVisualizationSettings
+                      }
+                      getExtraDataForClick={() => ({})}
+                      isEditing={false}
+                      isDashboard={false}
+                      isDocument={true}
+                      showTitle={false}
+                      error={datasetError?.message}
+                      errorIcon={datasetError?.icon}
+                    />
+                  </ExplicitSizeRefreshModeContext.Provider>
                 </Box>
               </>
             ) : (

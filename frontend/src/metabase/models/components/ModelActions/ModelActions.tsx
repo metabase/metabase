@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 
-import Link from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
 import { Group, Icon, Paper, Stack, Title } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import ModelActionDetails from "./ModelActionDetails";

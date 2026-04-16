@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import {
   type PropsWithChildren,
   createContext,
@@ -7,8 +8,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePrevious } from "react-use";
+import { isEqual } from "underscore";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import {
@@ -17,8 +19,9 @@ import {
   isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { getUser } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 
@@ -59,6 +62,7 @@ export const SaveQuestionContext =
  *
  * Thanks for coming to my TED talk.
  * */
+
 export const SaveQuestionProvider = ({
   question,
   originalQuestion: latestOriginalQuestion,
@@ -74,26 +78,16 @@ export const SaveQuestionProvider = ({
     originalQuestion?.collectionId(),
   );
 
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
 
   const targetCollection =
     userTargetCollection === "personal" && currentUser
       ? currentUser.personal_collection_id
       : userTargetCollection;
 
-  const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
-  const { data: recentItems, isLoading } = useListRecentsQuery(
-    { context: ["selections"] },
-    { skip: hasLoadedRecentItems },
-  );
-  // We need to stop refetching recent items as the user makes selections in the ui that could cause a refetch
-  // This causes new initial values getting calculated, which combined with Formik's `enableReinitialize`
-  // prop, results in a dirty form getting values replaced within initial state.
-  useEffect(() => {
-    if (!isLoading) {
-      setHasLoadedRecentItems(true);
-    }
-  }, [isLoading]);
+  const { data: recentItems } = useListRecentsQuery({
+    context: ["selections"],
+  });
 
   const lastSelectedEntityModel = useMemo(() => {
     return recentItems?.find(
@@ -187,30 +181,30 @@ export const SaveQuestionProvider = ({
       initialValues={initialValues}
       onSubmit={handleSubmit}
       validationSchema={SAVE_QUESTION_SCHEMA}
-      enableReinitialize
     >
       {({ values, setValues }) => (
-        <SaveQuestionContext.Provider
-          value={{
-            question,
-            originalQuestion,
-            initialValues,
-            handleSubmit,
-            values,
-            setValues,
-            showSaveType,
-            multiStep,
-            targetCollection,
-            saveToDashboard,
-          }}
-        >
-          {children}
-        </SaveQuestionContext.Provider>
+        <FormValuesPatcher nextValues={initialValues}>
+          <SaveQuestionContext.Provider
+            value={{
+              question,
+              originalQuestion,
+              initialValues,
+              handleSubmit,
+              values,
+              setValues,
+              showSaveType,
+              multiStep,
+              targetCollection,
+              saveToDashboard,
+            }}
+          >
+            {children}
+          </SaveQuestionContext.Provider>
+        </FormValuesPatcher>
       )}
     </FormProvider>
   );
 };
-
 export const useSaveQuestionContext = () => {
   const context = useContext(SaveQuestionContext);
   if (!context) {
@@ -219,4 +213,49 @@ export const useSaveQuestionContext = () => {
     );
   }
   return context;
+};
+
+/**
+ * Patches form values when `nextValues` change asynchronously (e.g., after API calls).
+ *
+ * Terminology:
+ * - "changed": nextValues differs from prevValues (new data arrived)
+ * - "untouched": formValues[key] === prevValues[key] (user hasn't edited this field)
+ * - "modified": formValues[key] !== prevValues[key] (user has edited this field)
+ *
+ * For each changed field:
+ * - If untouched → apply the new value (safe to update)
+ * - If modified → preserve user's input (don't overwrite)
+ *
+ * Uses deep comparison to correctly handle nested object values.
+ */
+export const FormValuesPatcher = <T extends object>({
+  nextValues,
+  children,
+}: PropsWithChildren<{ nextValues: T }>) => {
+  const { values: formValues, setValues } = useFormikContext<T>();
+  const prevValues = usePrevious(nextValues);
+
+  useEffect(() => {
+    if (!prevValues || isEqual(nextValues, prevValues)) {
+      return;
+    }
+    const patches: Partial<T> = {};
+    for (const key of Object.keys(nextValues) as (keyof T)[]) {
+      if (isEqual(formValues[key], prevValues[key])) {
+        /**
+         * While comparison is deep, patching is shallow.
+         * This works for SaveQuestionForm since all fields are primitives. If reused with nested
+         * objects, consider implementing deep/recursive patching to preserve user edits
+         * within nested structures.
+         */
+        patches[key] = nextValues[key];
+      }
+    }
+    if (Object.keys(patches).length > 0) {
+      setValues({ ...formValues, ...patches });
+    }
+  }, [nextValues, prevValues, formValues, setValues]);
+
+  return children;
 };

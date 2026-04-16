@@ -9,10 +9,8 @@ import {
 } from "metabase/admin/people/constants";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
-import { regexpEscape } from "metabase/lib/string";
 import {
   Box,
   Button,
@@ -23,6 +21,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
 import * as Urls from "metabase-enterprise/urls";
 import type { Tenant } from "metabase-types/api";
@@ -57,8 +56,11 @@ export const TenantsListing = ({
   };
 
   const filteredTenants = useMemo(() => {
-    const filter = new RegExp(`\\b${regexpEscape(searchInputValue)}`, "i");
-    return tenants.filter((g) => filter.test(g.name));
+    if (!searchInputValue) {
+      return tenants;
+    }
+    const lowerSearch = searchInputValue.toLowerCase();
+    return tenants.filter((g) => g.name.toLowerCase().includes(lowerSearch));
   }, [searchInputValue, tenants]);
 
   if (hasNoTenants) {
@@ -117,13 +119,13 @@ export const TenantsListing = ({
 
       {((tenants.length !== 0 && filteredTenants.length === 0) ||
         (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-tertiary">
           {t`No matching tenants found.`}
         </Text>
       )}
 
       {tenants.length === 0 && status === ACTIVE_STATUS.active && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-tertiary">
           {t`Add your first tenant to get started.`}
         </Text>
       )}
@@ -142,7 +144,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
     <Menu shadow="md" width={200} position="bottom-end">
       <Menu.Target>
         <UnstyledButton>
-          <Icon c="text-light" name="ellipsis" />
+          <Icon c="text-tertiary" name="ellipsis" />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>

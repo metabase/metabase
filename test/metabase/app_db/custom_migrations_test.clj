@@ -2253,6 +2253,14 @@
       (migrate!)
       (is (false? (sample-content-created?))))))
 
+(deftest ^:mb/old-migrations-test create-sample-content-effective-type-test
+  (testing "Every sample-database field has a non-null effective_type after migration (GHY-3367)"
+    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+      (migrate!)
+      (let [fields (t2/query "SELECT name, base_type, effective_type FROM metabase_field")]
+        (is (seq fields))
+        (is (empty? (filter #(nil? (:effective_type %)) fields)))))))
+
 (defn- insert-returning-pk!
   [table record]
   (first (t2/insert-returning-pks! table record)))
@@ -2625,10 +2633,10 @@
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
 
 (deftest migrate-clickhouse-details-to-multi-db-test
-  (testing "v57.2025-08-22T00:16:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
+  (testing "v57.2025-08-23T16:00:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (impl/test-migrations
-       ["v57.2025-08-22T00:16:00"] [migrate!]
+       ["v57.2025-08-23T16:00:00"] [migrate!]
         (letfn [(insert-clickhouse-db [name details]
                   (let [details (merge {:host "localhost"
                                         :port 8123
@@ -2699,7 +2707,8 @@
           ;; rollback
           (migrate! :down 56)
           ;; assert pre conditions
-          (assert-pre-conditions))))))
+          (testing "everything back to normal after downgrade"
+            (assert-pre-conditions)))))))
 
 (deftest escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
@@ -2726,36 +2735,343 @@
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
 
-(deftest backfill-transform-target-database-id-test
-  (testing "Migration v58.2025-12-15T12:16:16: backfill target_db_id for existing transforms"
-    (impl/test-migrations ["v58.2025-12-15T12:16:16"] [migrate!]
-      (let [user-id (first (t2/insert-returning-pks! :core_user {:first_name  "Test"
-                                                                 :last_name   "User"
-                                                                 :email       "test@example.com"
-                                                                 :password    "password"
-                                                                 :date_joined :%now}))
-            db-id   (first (t2/insert-returning-pks! :metabase_database {:name    "test-db"
-                                                                         :engine  "h2"
-                                                                         :details "{}"
-                                                                         :created_at :%now
-                                                                         :updated_at :%now}))
-            xf-id   (first (t2/insert-returning-pks! :transform
-                                                     {:name        "Query transform"
-                                                      :source      (json/encode {:type  "query"
-                                                                                 :query {:database db-id
-                                                                                         :type     "native"
-                                                                                         :native   {:query "SELECT 1"}}})
-                                                      :source_type "native"
-                                                      :target      (json/encode {:type     "table"
-                                                                                 :schema   "public"
-                                                                                 :name     "output_table"
-                                                                                 :database db-id})
-                                                      :creator_id  user-id
-                                                      :created_at  :%now
-                                                      :updated_at  :%now}))]
-        (testing "before migration, target_db_id is nil"
-          (is (nil? (:target_db_id (t2/select-one :transform :id xf-id)))))
+(deftest backfill-transform-target-db-id-test
+  (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
+    (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
+      (let [db-id         (:id (new-instance-with-default :metabase_database))
+            deleted-db-id (+ db-id 9999)
+            query-source  (fn [id] (json/encode {:type "query" :query {:database id}}))
+            ;; Python transforms were meant to support 0-N source databases, but the table now has a single source id.
+            python-db-id  db-id
+            python-source (json/encode {:type "python" :script "x = 1", :source-database python-db-id})
+            target        (fn [& {:keys [database]}]
+                            (json/encode (cond-> {:schema "public" :table "out" :type "append"}
+                                           database (assoc :database database))))
+            insert!       (fn [source-type source target]
+                            (t2/insert-returning-pk!
+                             :transform
+                             {:name               "t"
+                              :source             source
+                              :target             target
+                              :source_type        source-type
+                              :source_database_id db-id
+                              :created_at         :%now
+                              :updated_at         :%now}))
+            ;; source.query.database takes precedence over target.database
+            both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
+            ;; source.query.database used when target has no database
+            source-id     (insert! "mbql" (query-source db-id) (target))
+            ;; target.database used as fallback for python transforms
+            target-id     (insert! "python" python-source (target :database db-id))
+            ;; no database anywhere — stays nil
+            none-id       (insert! "python" python-source (target))
+            ;; deleted database reference — stays nil
+            deleted-id    (insert! "mbql" (query-source deleted-db-id) (target :database deleted-db-id))
+            id->target    #(t2/select-one-fn :target_db_id :transform :id %)]
+        (testing "Before backfill, the field is uniformly empty"
+          ;; Haven't turned this into a loop, as it would obscure which case failed.
+          (is (nil? (id->target both-id)))
+          (is (nil? (id->target source-id)))
+          (is (nil? (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))
         (migrate!)
-        (testing "after migration, target_db_id is populated"
-          (is (= db-id (:target_db_id (t2/select-one :transform :id xf-id)))
-              "Query transform target_db_id should equal target.database"))))))
+        (testing "Valid database ids are backfilled"
+          ;; Ditto, since the IDs are opaque in CI, give each case its own line for transparent failures.
+          (is (= db-id (id->target both-id)))
+          (is (= db-id (id->target source-id)))
+          (is (= db-id (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))))))
+
+(deftest fix-clickhouse-upload-db-schema-names-test
+  (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
+    (encryption-test/with-secret-key "fake-secret-key"
+      ;; Test when the upload db doesn't have an upload_schema_name set (both upload db and upload
+      ;; tables are in a bad state) and when it does have an upload_schema_name set (upload db and
+      ;; new upload tables are in a good state, but existing upload tables are in a bad state)
+      (doseq [uploads-schema-name [nil "db_foo"]]
+        (impl/test-migrations
+         ["v59.2026-03-04T00:00:00"] [migrate!]
+          (let [db-id (t2/insert-returning-pk! :metabase_database
+                                               {:name "clickhouse cloud upload db"
+                                                :engine "clickhouse"
+                                                :created_at :%now
+                                                :updated_at :%now
+                                                :uploads_enabled true
+                                                :uploads_schema_name uploads-schema-name
+                                                :uploads_table_prefix "uploads_"
+                                                :details (mi/encrypted-json-in {:dbname "db_foo"})})
+                insert-table! (fn [db-id name schema active is-upload display-name]
+                                (t2/insert-returning-pk! :metabase_table
+                                                         {:db_id db-id
+                                                          :name name
+                                                          :schema schema
+                                                          :active active
+                                                          :is_upload is-upload
+                                                          :display_name display-name
+                                                          :created_at :%now
+                                                          :updated_at :%now}))
+                ;; An uploads table in a good state, created before uploads_schema_name was set to null
+                uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true true "Test Table 0")
+                ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
+                uploaded-1 (insert-table! db-id "uploads_test_table_1" nil false true "Test Table 1")
+                uploaded-2 (insert-table! db-id "uploads_test_table_2" nil false true "Test Table 2")
+                ;; The two non-upload versions of the above tables, created by the sync process
+                synced-1 (insert-table! db-id "uploads_test_table_1" "db_foo" true false "Uploads Test Table 1")
+                synced-2 (insert-table! db-id "uploads_test_table_2" "db_foo" true false "Uploads Test Table 2")
+                ;; An unrelated non-upload table in the same schema that should be left alone
+                unrelated (insert-table! db-id "unrelated_table" "db_foo" true false "Unrelated Table")]
+            (migrate!)
+            ;; The uploads db has the correct uploads_schema_name from the details
+            (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database :id db-id))))
+            (are [exp table-id] (= exp
+                                   (t2/select-one [:metabase_table :name :schema :active :is_upload] :id table-id))
+              ;; The upload table that was already in a good state remains unchanged
+              {:name "uploads_test_table_0"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-0
+              ;; The two upload tables in a bad state are updated to be active and have the correct schema
+              {:name "uploads_test_table_1"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-1
+              {:name "uploads_test_table_2"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-2
+              ;; The two non-upload tables created by the sync have been renamed and set as inactive
+              {:name "uploads_test_table_1_retired_69667"
+               :schema "db_foo"
+               :active false
+               :is_upload false} synced-1
+              {:name "uploads_test_table_2_retired_69667"
+               :schema "db_foo"
+               :active false
+               :is_upload false} synced-2
+              ;; The unrelated table remains unchanged
+              {:name "unrelated_table"
+               :schema "db_foo"
+               :active true
+               :is_upload false} unrelated)))))))
+
+(deftest remove-legacy-incremental-strategies-test
+  (testing "v59.2026-03-13T00:00:00: migrate legacy checkpoint-filter to checkpoint-filter-field-id"
+    (impl/test-migrations ["v59.2026-03-13T00:00:00"] [migrate!]
+      (let [db-id    (:id (new-instance-with-default :metabase_database))
+            table-id (:id (new-instance-with-default :metabase_table {:db_id db-id}))
+            field-id (t2/insert-returning-pk! :metabase_field
+                                              {:name          "updated_at"
+                                               :table_id      table-id
+                                               :base_type     "type/DateTimeWithLocalTZ"
+                                               :database_type "timestamptz"
+                                               :active        true
+                                               :created_at    :%now
+                                               :updated_at    :%now})
+            target   (json/encode {:type "table" :schema "public" :name "out"})
+            insert-transform!
+            (fn [source]
+              (t2/insert-returning-pk!
+               :transform {:name               (mt/random-name)
+                           :source             source
+                           :target             target
+                           :source_type        "mbql"
+                           :source_database_id db-id
+                           :created_at         :%now
+                           :updated_at         :%now}))
+            ;; Transform with resolvable legacy checkpoint strategy
+            resolvable-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            resolvable-id (insert-transform! resolvable-source)
+            ;; Transform with unresolvable legacy checkpoint strategy (no matching field)
+            unresolvable-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$nonexistent_column"
+                           :checkpoint-filter           {:some "filter"}}})
+            unresolvable-id (insert-transform! unresolvable-source)
+            ;; Transform without any incremental strategy — should be untouched
+            no-strategy-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}})
+            no-strategy-id (insert-transform! no-strategy-source)
+            ;; Python transform with resolvable checkpoint strategy
+            python-resolvable-source
+            (json/encode {:type          "python"
+                          :body          "x=1"
+                          :source-tables [{"alias" "t" "table_id" table-id}]
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            python-resolvable-id (insert-transform! python-resolvable-source)
+            ;; Native transform — can't resolve source table, strategy stripped
+            native-source
+            (json/encode {:type "native"
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            native-id (insert-transform! native-source)
+            get-source (fn [id]
+                         (json/decode
+                          (t2/select-one-fn :source :transform :id id)
+                          keyword))]
+        (migrate!)
+        (testing "Resolvable legacy strategy is migrated to checkpoint-filter-field-id"
+          (let [strategy (:source-incremental-strategy (get-source resolvable-id))]
+            (is (= field-id (:checkpoint-filter-field-id strategy)))
+            (is (not (contains? strategy :checkpoint-filter-unique-key)))
+            (is (not (contains? strategy :checkpoint-filter)))))
+        (testing "Unresolvable legacy strategy is stripped entirely"
+          (is (not (contains? (get-source unresolvable-id) :source-incremental-strategy))))
+        (testing "Transform without strategy is untouched"
+          (is (not (contains? (get-source no-strategy-id) :source-incremental-strategy))))
+        (testing "Python transform with single source-table resolves correctly"
+          (let [strategy (:source-incremental-strategy (get-source python-resolvable-id))]
+            (is (= field-id (:checkpoint-filter-field-id strategy)))
+            (is (not (contains? strategy :checkpoint-filter-unique-key)))
+            (is (not (contains? strategy :checkpoint-filter)))))
+        (testing "Native transform strategy is stripped (can't resolve source table)"
+          (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
+
+(deftest unify-source-tables-format-test
+  (testing "v60.2026-03-03T12:00:00: convert source-tables from map to vec format"
+    (impl/test-migrations ["v60.2026-03-03T12:00:00"] [migrate!]
+      (let [user-id     (:id (new-instance-with-default :core_user))
+            db-id       (:id (new-instance-with-default :metabase_database))
+            ;; source-tables as map with int values (FE format)
+            int-source  (json/encode {:type "python" :body "x=1" :source-database db-id
+                                      :source-tables {"orders" 42 "products" 99}})
+            ;; source-tables as map with ref values (normalized format)
+            ref-source  (json/encode {:type "python" :body "x=1" :source-database db-id
+                                      :source-tables {"input" {"database_id" db-id "schema" "public"
+                                                               "table" "my_table" "table_id" 7}}})
+            ;; query transform (no source-tables) — should be untouched
+            query-source (json/encode {:type "query" :query {:database db-id}})
+            target       (json/encode {:type "table" :schema "public" :name "out"})
+            insert-transform!
+            (fn [source]
+              (t2/insert-returning-pk!
+               :transform {:name               (mt/random-name)
+                           :source             source
+                           :target             target
+                           :source_type        "python"
+                           :source_database_id db-id
+                           :created_at         :%now
+                           :updated_at         :%now}))
+            int-id   (insert-transform! int-source)
+            ref-id   (insert-transform! ref-source)
+            query-id (insert-transform! query-source)
+            ;; Also test workspace_transform
+            ws-id    (:id (t2/insert-returning-instance!
+                           :workspace {:name       "test-ws"
+                                       :creator_id user-id
+                                       :created_at :%now
+                                       :updated_at :%now}))
+            _        (t2/insert! :workspace_transform
+                                 {:ref_id       (str (random-uuid))
+                                  :workspace_id ws-id
+                                  :name         "ws-transform"
+                                  :source       int-source
+                                  :target       target
+                                  :created_at   :%now
+                                  :updated_at   :%now})
+            get-source-tables (fn [table-name pk-map]
+                                (let [where (into [:and] (map (fn [[k v]] [:= k v]) pk-map))
+                                      row   (first (t2/query {:select [:source] :from [table-name] :where where}))]
+                                  (get (json/decode (:source row)) "source-tables")))]
+        (testing "Before migration, source-tables are maps"
+          (is (map? (get-source-tables :transform {:id int-id})))
+          (is (map? (get-source-tables :transform {:id ref-id}))))
+
+        (migrate!)
+
+        (testing "After migration, int-value maps become vec of entries"
+          (let [st (get-source-tables :transform {:id int-id})]
+            (is (sequential? st))
+            (is (= 2 (count st)))
+            (is (= #{"orders" "products"} (set (map #(get % "alias") st))))
+            (is (= #{42 99} (set (map #(get % "table_id") st))))))
+
+        (testing "After migration, ref-value maps become vec of entries with alias"
+          (let [st (get-source-tables :transform {:id ref-id})]
+            (is (sequential? st))
+            (is (= "input" (get (first st) "alias")))
+            (is (= 7 (get (first st) "table_id")))))
+
+        (testing "Query transforms are untouched"
+          (is (nil? (get-source-tables :transform {:id query-id}))))
+
+        (testing "workspace_transform is also migrated"
+          (let [ws-rows (t2/query {:select [:source] :from [:workspace_transform] :where [:= :workspace_id ws-id]})
+                st      (get (json/decode (:source (first ws-rows))) "source-tables")]
+            (is (sequential? st))
+            (is (= 2 (count st)))))
+
+        (testing "Rollback converts vec back to map"
+          (migrate! :down 59)
+          (let [st (get-source-tables :transform {:id int-id})]
+            (is (map? st))
+            (is (= 42 (get st "orders")))
+            (is (= 99 (get st "products")))))))))
+
+(deftest backfill-transform-target-tables-test
+  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables and invalidate workspace caches"
+    (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
+      (let [user-id   (:id (new-instance-with-default :core_user))
+            db-id     (:id (new-instance-with-default :metabase_database))
+            ws-id     (:id (t2/insert-returning-instance!
+                            :workspace {:name       "test-ws"
+                                        :creator_id user-id
+                                        :created_at :%now
+                                        :updated_at :%now}))
+            source    (json/encode {:type "query" :query {:database db-id}})
+            ;; -- Transform with a target that has no existing metabase_table → should create provisional row --
+            _         (t2/insert-returning-pk!
+                       :transform {:name               "create-output"
+                                   :source             source
+                                   :target             (json/encode {:type "table" :schema "public" :name "new_target_table"})
+                                   :source_type        "mbql"
+                                   :source_database_id db-id
+                                   :target_db_id       db-id
+                                   :created_at         :%now
+                                   :updated_at         :%now})
+            ;; -- workspace_transform to verify analysis_version bump --
+            _         (t2/insert! :workspace_transform
+                                  {:ref_id       (str (random-uuid))
+                                   :workspace_id ws-id
+                                   :name         "ws-tx"
+                                   :source       source
+                                   :target       (json/encode {:type "table" :schema "public" :name "orders"})
+                                   :created_at   :%now
+                                   :updated_at   :%now})]
+        (testing "Before migration"
+          (is (= 1 (:graph_version (t2/select-one :workspace :id ws-id))))
+          (is (= 1 (:analysis_version (first (t2/select :workspace_transform :workspace_id ws-id))))))
+        (migrate!)
+        (testing "Provisional metabase_table created for transform target"
+          (let [provisional (first (t2/query {:select [:active :transform_target :data_source :data_authority :display_name]
+                                              :from   [:metabase_table]
+                                              :where  [:and
+                                                       [:= :db_id db-id]
+                                                       [:= :name "new_target_table"]
+                                                       [:= :schema "public"]]}))]
+            (is (some? provisional))
+            (is (false? (:active provisional)))
+            (is (true? (:transform_target provisional)))
+            (is (= "metabase-transform" (:data_source provisional)))
+            (is (= "computed" (:data_authority provisional)))
+            (is (= "New Target Table" (:display_name provisional)))))
+        (testing "Workspace caches invalidated"
+          ;; Both BackfillTransformTargetTables and BackfillTransformTargetTableId bump these
+          (is (= 3 (:graph_version (t2/select-one :workspace :id ws-id))))
+          (is (= 3 (:analysis_version (first (t2/select :workspace_transform :workspace_id ws-id))))))))))

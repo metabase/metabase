@@ -48,7 +48,7 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
         onClick={handlePullChanges}
         variant="outline"
       >
-        {t`Pull changes`}
+        {t`Pull changes now`}
       </Button>
     </Tooltip>
   );

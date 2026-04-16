@@ -5,14 +5,14 @@ import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
 import type { Database, DatabaseData } from "metabase-types/api";
 
@@ -30,7 +30,7 @@ export const DestinationDatabaseConnectionModal = ({
 }) => {
   const dispatch = useDispatch();
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl("permissions/database-routing");
 
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));
@@ -113,42 +113,44 @@ export const DestinationDatabaseConnectionModal = ({
         body: S.modalBody,
       }}
     >
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
-        <Flex
-          py="sm"
-          px="md"
-          mx="xl"
-          my="md"
-          bg="accent-gray-light"
-          align="center"
-          justify="space-between"
-          bd="1px solid border"
-          style={{ borderRadius: ".5rem" }}
-        >
-          <Text>{t`You can also add databases programmatically via the API.`}</Text>
-          <ExternalLink
-            key="link"
-            href={docsUrl}
-            style={{ display: "flex", alignItems: "center", gap: 4 }}
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+        <>
+          <Flex
+            py="sm"
+            px="md"
+            mx="xl"
+            my="md"
+            bg="background-secondary"
+            align="center"
+            justify="space-between"
+            bd="1px solid border"
+            style={{ borderRadius: ".5rem" }}
           >
-            {t`Learn more`} <Icon name="share" aria-hidden />
-          </ExternalLink>
-        </Flex>
+            <Text>{t`You can also add databases programmatically via the API.`}</Text>
+            <ExternalLink
+              key="link"
+              href={docsUrl}
+              style={{ display: "flex", alignItems: "center", gap: 4 }}
+            >
+              {t`Learn more`} <Icon name="share" aria-hidden />
+            </ExternalLink>
+          </Flex>
 
-        <DatabaseEditConnectionForm
-          database={destinationDatabase}
-          isAttachedDWH={destinationDatabase?.is_attached_dwh ?? false}
-          handleSaveDb={handleSaveDatabase}
-          onSubmitted={handleOnSubmit}
-          onCancel={handleCloseModal}
-          route={route}
-          config={{
-            name: { isSlug: true },
-            engine: { fieldState: "hidden" },
-          }}
-          autofocusFieldName="name"
-          formLocation="admin"
-        />
+          <DatabaseEditConnectionForm
+            database={destinationDatabase}
+            isAttachedDWH={destinationDatabase?.is_attached_dwh ?? false}
+            handleSaveDb={handleSaveDatabase}
+            onSubmitted={handleOnSubmit}
+            onCancel={handleCloseModal}
+            route={route}
+            config={{
+              name: { isSlug: true },
+              engine: { fieldState: "hidden" },
+            }}
+            autofocusFieldName="name"
+            formLocation="admin"
+          />
+        </>
       </LoadingAndErrorWrapper>
     </Modal>
   );

@@ -1,13 +1,22 @@
 import type { ReactNode } from "react";
 
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import type { CurrencyStyle } from "metabase/lib/formatting";
+import type { CurrencyStyle } from "metabase/utils/formatting";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
+import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
+import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
+
+export interface OidcAuthProvider {
+  type: "oidc";
+  key: string;
+  "login-prompt": string;
+  "sso-url": string;
+}
 
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
@@ -78,9 +87,29 @@ export type DatabaseProvider = {
 
 export type EngineKey = (typeof engineKeys)[number];
 
+export type ContainerStyleType = "grid" | "component";
+export type ContainerStyle = [ContainerStyleType, string];
+
+export function isContainerStyle(value: unknown): value is ContainerStyle {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    (value[0] === "grid" || value[0] === "component") &&
+    typeof value[1] === "string"
+  );
+}
+
+export interface DatabaseFieldGroup {
+  type: "group";
+  "container-style": unknown;
+  fields: EngineField[];
+}
+
+export type DatabaseFieldOrGroup = EngineField | DatabaseFieldGroup;
+
 export interface Engine {
   "driver-name": string;
-  "details-fields"?: EngineField[];
+  "details-fields"?: DatabaseFieldOrGroup[];
   source: EngineSource;
   "superseded-by": string | null;
   "extra-info": {
@@ -215,6 +244,7 @@ export type GdrivePayload = {
   error?: string;
 };
 
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -235,11 +265,9 @@ const tokenStatusFeatures = [
   "embedding-simple",
   "embedding-hub",
   "hosting",
+  "metabase-ai-managed",
   "metabase-store-managed",
-  "metabot-v3",
   "no-upsell",
-  "offer-metabase-ai",
-  "offer-metabase-ai-tiered",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -254,11 +282,16 @@ const tokenStatusFeatures = [
   "sso-ldap",
   "sso-saml",
   "sso",
+  "transforms-basic",
+  "transforms-python",
   "upload-management",
   "whitelabel",
 ] as const;
 
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
+
+export const REMOTE_SYNC_TYPES = ["read-only", "read-write"] as const;
+export type RemoteSyncType = (typeof REMOTE_SYNC_TYPES)[number];
 
 interface TokenStatusStoreUsers {
   email: string;
@@ -296,13 +329,17 @@ export const tokenFeatures = [
   "embedding_sdk",
   "embedding_simple",
   "hosting",
+  "offer-metabase-ai-managed",
+  "metabase-ai-managed",
   "official_collections",
   "sandboxes",
   "scim",
   "sso_google",
   "sso_jwt",
   "sso_ldap",
+  "sso_oidc",
   "sso_saml",
+  "sso_slack",
   "session_timeout_config",
   "whitelabel",
   "serialization",
@@ -313,9 +350,6 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "cache_preemptive",
-  "metabot_v3",
-  "offer_metabase_ai",
-  "offer_metabase_ai_tiered",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -327,11 +361,15 @@ export const tokenFeatures = [
   "remote_sync",
   "dependencies",
   "semantic_search",
-  "transforms",
   "transforms-python",
-  "data_studio",
+  "transforms-basic",
+  "library",
   "support-users",
   "tenants",
+  "workspaces",
+  "writable_connection",
+  "admin_security_center",
+  "ai_controls",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -340,6 +378,9 @@ export type TokenFeatures = Record<TokenFeature, boolean>;
 export type PasswordComplexity = {
   total?: number;
   digit?: number;
+  upper?: number;
+  lower?: number;
+  special?: number;
 };
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
@@ -415,6 +456,7 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
+  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -441,6 +483,7 @@ export type EmbeddingHomepageStatus =
 interface AdminSettings {
   "active-users-count"?: number;
   "custom-geojson-enabled": boolean;
+  "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
   "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
@@ -450,6 +493,7 @@ interface AdminSettings {
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
   "premium-embedding-token": string | null;
+  "oidc-login-providers"?: OidcAuthProvider[];
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -463,13 +507,19 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
+  "security-center-email-recipients": NotificationRecipient[] | null;
+  "security-center-slack-channel": string | null;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
-  "ee-openai-api-key"?: string;
+  "llm-openai-api-key"?: string;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-api-base-url"?: string | null;
+  "llm-openrouter-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -477,7 +527,6 @@ interface SettingsManagerSettings {
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
-  "slack-token": string | null;
   "slack-token-valid?": boolean;
 }
 
@@ -485,6 +534,8 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "ai-features-enabled?": boolean;
+  "agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
@@ -502,7 +553,7 @@ interface PublicSettings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
-  "ee-ai-features-enabled"?: boolean;
+  "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
@@ -537,7 +588,9 @@ interface PublicSettings {
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
   "ldap-group-membership-filter"?: string;
   "ldap-user-provisioning-enabled?": boolean;
+  "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
+  "mcp-enabled?": boolean;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
@@ -549,6 +602,17 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
+  "metabot-enabled?": boolean;
+  "metabot-name": string;
+  "metabot-icon": string | null;
+  "metabot-show-illustrations": boolean;
+  "metabot-limit-unit": MetabotLimitType;
+  "metabot-limit-reset-rate": MetabotLimitPeriod;
+  "metabot-quota-reached-message": string | null;
+  "metabot-chat-system-prompt": string | null;
+  "metabot-nlq-system-prompt": string | null;
+  "metabot-sql-system-prompt": string | null;
+  "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "show-google-sheets-integration": boolean;
@@ -558,6 +622,8 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "tracing-enabled": boolean;
+  "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
@@ -654,8 +720,9 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-token"?: string | null;
   "remote-sync-url"?: string | null;
   "remote-sync-branch"?: string | null;
-  "remote-sync-type"?: "read-only" | "read-write" | null;
+  "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
+  "remote-sync-transforms"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
@@ -665,9 +732,10 @@ export interface EnterpriseSettings extends Settings {
   "no-object-illustration"?: IllustrationSettingValue;
   "no-object-illustration-custom"?: string;
   "landing-page"?: string;
-  "ee-ai-features-enabled"?: boolean;
-  "ee-openai-api-key"?: string;
-  "ee-openai-model"?: string;
+  "llm-openai-api-key"?: string;
+  "llm-openai-model"?: string;
+  "llm-metabot-configured?"?: boolean | null;
+  "llm-openrouter-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -675,6 +743,7 @@ export interface EnterpriseSettings extends Settings {
   "send-new-sso-user-admin-email?"?: boolean;
   "jwt-configured"?: boolean;
   "jwt-enabled"?: boolean;
+  "jwt-enabled-and-configured"?: boolean;
   "jwt-user-provisioning-enabled?": boolean;
   "jwt-identity-provider-uri": string | null;
   "jwt-shared-secret": string | null;
@@ -684,6 +753,8 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-groups": string | null;
   "jwt-attribute-tenant": string | null;
   "jwt-group-sync": boolean | null;
+  "oidc-enabled": boolean;
+  "oidc-configured": boolean;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;
@@ -705,6 +776,7 @@ export interface EnterpriseSettings extends Settings {
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;
@@ -717,6 +789,16 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
+  "llm-metabot-provider"?: string | null;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-model": string;
+  "llm-proxy-configured?"?: boolean | null;
+  "metabot-slack-signing-secret"?: string | null;
+  "slack-connect-enabled"?: boolean | null;
+  "slack-connect-client-id"?: string | null;
+  "slack-connect-client-secret"?: string | null;
+  "mcp-apps-cors-enabled-clients": string[] | null;
+  "mcp-apps-cors-custom-origins": string | null;
   /**
    * @deprecated
    */

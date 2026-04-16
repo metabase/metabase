@@ -75,10 +75,16 @@ describe("Table editing", () => {
       TablePicker.getTable("Orders").click();
 
       cy.log("publish the table and verify it's published");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("not.exist");
       cy.findByRole("button", { name: /Publish/ }).click();
       H.modal().findByText("Create my Library").click();
       H.modal().findByText("Publish this table").click();
       cy.wait("@publishTables");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("be.visible");
       H.undoToastListContainer().within(() => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
@@ -93,6 +99,9 @@ describe("Table editing", () => {
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().findByText("Unpublish this table").click();
       cy.wait("@unpublishTables");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("not.exist");
       H.DataStudio.nav().findByLabelText("Library").click();
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
@@ -105,16 +114,24 @@ describe("Table editing", () => {
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
-    H.selectHasValue("Owner", "Unspecified").click();
+    cy.log("rename the table and verify the name is updated in the picker");
+    H.DataModel.TableSection.getNameInput()
+      .clear()
+      .type("Renamed Orders")
+      .blur();
+    cy.wait("@updateTable");
+    TablePicker.getTable("Renamed Orders").should("be.visible");
+
+    H.selectHasValue("Owner", "No owner").click();
     H.selectDropdown().contains("Bobby Tables").click();
     H.undoToastListContainer()
       .findByText("Table owner updated")
       .should("be.visible");
 
-    H.selectHasValue("Visibility type", "Bronze").click();
-    H.selectDropdown().contains("Gold").click();
+    H.selectHasValue("Visibility layer", "Internal").click();
+    H.selectDropdown().contains("Final").click();
     H.undoToastListContainer()
-      .findByText("Table visibility type updated")
+      .findByText("Table visibility layer updated")
       .should("be.visible");
 
     H.selectHasValue("Entity type", "Transaction").click();
@@ -131,10 +148,10 @@ describe("Table editing", () => {
 
     // navigate away and back
     TablePicker.getTable("Products").click();
-    TablePicker.getTable("Orders").click();
+    TablePicker.getTable("Renamed Orders").click();
 
     H.selectHasValue("Owner", "Bobby Tables");
-    H.selectHasValue("Visibility type", "Gold");
+    H.selectHasValue("Visibility layer", "Final");
     H.selectHasValue("Entity type", "Person");
     H.selectHasValue("Source", "Ingested");
   });
@@ -175,4 +192,63 @@ describe("Table editing", () => {
       });
     },
   );
+
+  describe("with remote sync enabled", () => {
+    it(
+      "should update the tree after publishing, unpublishing, and renaming a table (metabase#69554)",
+      { tags: ["@external"] },
+      () => {
+        H.restore("mysql-8");
+        H.activateToken("bleeding-edge");
+        H.setupGitSync();
+        H.configureGit("read-write");
+
+        H.DataModel.visitDataStudio();
+        TablePicker.getDatabase("QA MySQL8").click();
+        TablePicker.getTable("Orders").click();
+
+        cy.log("publish the table and verify the tree updates");
+        cy.findByRole("button", { name: /Publish/ }).click();
+        H.modal().findByText("Create my Library").click();
+        H.modal().findByText("Publish this table").click();
+        cy.wait("@publishTables");
+        TablePicker.getTable("Orders")
+          .findByTestId("table-published")
+          .should("be.visible");
+
+        cy.log("unpublish the table and verify the tree updates");
+        cy.findByRole("button", { name: /Unpublish/ }).click();
+        H.modal().findByText("Unpublish this table").click();
+        cy.wait("@unpublishTables");
+        TablePicker.getTable("Orders")
+          .findByTestId("table-published")
+          .should("not.exist");
+
+        cy.log("rename the table and verify the tree updates");
+        H.DataModel.TableSection.getNameInput()
+          .clear()
+          .type("Renamed Orders")
+          .blur();
+        cy.wait("@updateTable");
+        TablePicker.getTable("Renamed Orders").should("be.visible");
+
+        cy.log("update the owner and verify it is reflected");
+        TablePicker.getTable("Renamed Orders").should(
+          "not.contain.text",
+          "Bobby Tables",
+        );
+        H.selectHasValue("Owner", "No owner").click();
+        H.selectDropdown().contains("Bobby Tables").click();
+        cy.wait("@updateTable");
+        H.undoToastListContainer()
+          .findByText("Table owner updated")
+          .should("be.visible");
+        H.selectHasValue("Owner", "Bobby Tables");
+        TablePicker.getTable("Renamed Orders").should(
+          "contain.text",
+          "Bobby Tables",
+        );
+      },
+    );
+  });
 });

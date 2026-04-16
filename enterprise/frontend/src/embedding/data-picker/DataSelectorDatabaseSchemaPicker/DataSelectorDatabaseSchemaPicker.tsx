@@ -6,8 +6,9 @@ import {
   type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
-import { isSyncCompleted } from "metabase/lib/syncing";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Icon } from "metabase/ui";
+import { isSyncCompleted } from "metabase/utils/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 
@@ -49,17 +50,19 @@ const DataSelectorDatabaseSchemaPicker = ({
   onBack,
   hasInitialFocus,
 }: DataSelectorDatabaseSchemaPicker) => {
+  const tc = useTranslateContent();
+
   if (databases.length === 0) {
     return <DataSelectorLoading />;
   }
 
   const sections: Section[] = databases.map((database) => ({
-    name: database.is_saved_questions ? t`Saved Questions` : database.name,
+    name: database.is_saved_questions ? t`Saved Questions` : tc(database.name),
     items:
       !database.is_saved_questions && database.getSchemas().length > 1
         ? database.getSchemas().map((schema) => ({
             schema,
-            name: schema.displayName() ?? "",
+            name: tc(schema.displayName()) ?? "",
           }))
         : [],
     className: database.is_saved_questions ? CS.bgLight : undefined,

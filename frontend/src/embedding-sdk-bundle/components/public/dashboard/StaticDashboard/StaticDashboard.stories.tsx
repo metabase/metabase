@@ -142,6 +142,9 @@ export default {
       action: "onLoadWithoutCards",
     },
   },
+  args: {
+    autoRefreshInterval: 0,
+  },
 };
 
 const Template: StoryFn<StaticDashboardProps> = (args) => {

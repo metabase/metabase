@@ -4,10 +4,11 @@
    [java-time.api :as t]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
 (def ^:private default-task-history
-  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success"})
+  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success" :logs nil :run_id false})
 
 (defn- generate-tasks
   "Creates `n` task history maps with guaranteed increasing `:ended_at` times. This means that when stored and queried
@@ -496,3 +497,320 @@
           (is (= 1 (-> response :data count)))
           (is [{:duration 10000}]
               (-> response :data vec)))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Task Runs API tests                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest runs-list-perms-test
+  (testing "Only superusers can query for TaskRuns"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "task/runs")))))
+
+(deftest ^:synchronized runs-list-test
+  (t2/delete! :model/TaskRun)
+  (testing "Superusers can list TaskRuns"
+    (mt/with-temp [:model/Database db {:name "Test DB"}
+                   :model/TaskRun _run1 {:run_type    :sync
+                                         :entity_type :database
+                                         :entity_id   (:id db)
+                                         :status      :success
+                                         :started_at  (t/minus (t/zoned-date-time) (t/hours 2))
+                                         :ended_at    (t/minus (t/zoned-date-time) (t/hours 1))}
+                   :model/TaskRun run2 {:run_type    :fingerprint
+                                        :entity_type :database
+                                        :entity_id   (:id db)
+                                        :status      :started
+                                        :started_at  (t/zoned-date-time)}]
+      (let [response (mt/user-http-request :crowberto :get 200 "task/runs")]
+        (is (= 2 (:total response)))
+        (is (= 2 (count (:data response))))
+        (testing "runs are sorted by started_at desc"
+          (is (= (:id run2) (-> response :data first :id))))
+        (testing "entity_name is hydrated"
+          (is (= "Test DB" (-> response :data first :entity_name))))))))
+
+(deftest ^:synchronized runs-filter-test
+  (t2/delete! :model/TaskRun)
+  (mt/with-temp [:model/Database db1 {:name "DB1"}
+                 :model/Database db2 {:name "DB2"}
+                 :model/Dashboard dash {:name "My Dashboard"}
+                 :model/TaskRun _ {:run_type    :sync
+                                   :entity_type :database
+                                   :entity_id   (:id db1)
+                                   :status      :success
+                                   :started_at  (t/zoned-date-time)
+                                   :ended_at    (t/zoned-date-time)}
+                 :model/TaskRun _ {:run_type    :sync
+                                   :entity_type :database
+                                   :entity_id   (:id db2)
+                                   :status      :failed
+                                   :started_at  (t/zoned-date-time)
+                                   :ended_at    (t/zoned-date-time)}
+                 :model/TaskRun _ {:run_type    :subscription
+                                   :entity_type :dashboard
+                                   :entity_id   (:id dash)
+                                   :status      :success
+                                   :started_at  (t/zoned-date-time)
+                                   :ended_at    (t/zoned-date-time)}]
+    (testing "filter by run-type"
+      (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :run-type "sync"))))
+      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :run-type "subscription")))))
+    (testing "filter by entity-type"
+      (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-type "database"))))
+      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-type "dashboard")))))
+    (testing "filter by entity-id"
+      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-id (:id db1))))))
+    (testing "filter by status"
+      (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :status "success"))))
+      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :status "failed")))))
+    (testing "combined filters"
+      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs"
+                                             :run-type "sync"
+                                             :status "failed")))))))
+
+(deftest runs-get-single-test
+  (testing "non-superuser cannot access single run"
+    (mt/with-temp [:model/TaskRun run {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   1
+                                       :status      :success
+                                       :started_at  (t/zoned-date-time)}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 (format "task/runs/%d" (:id run)))))))
+
+  (testing "404 for non-existent run"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :get 404 (format "task/runs/%d" Integer/MAX_VALUE)))))
+
+  (testing "superuser can get single run with tasks"
+    (t2/delete! :model/TaskRun)
+    (t2/delete! :model/TaskHistory)
+    (mt/with-temp [:model/Database db {:name "Test DB"}
+                   :model/TaskRun run {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db)
+                                       :status      :success
+                                       :started_at  (t/zoned-date-time)
+                                       :ended_at    (t/zoned-date-time)}
+                   :model/TaskHistory th1 {:task       "task1"
+                                           :status     :success
+                                           :run_id     (:id run)
+                                           :started_at (t/minus (t/zoned-date-time) (t/seconds 2))
+                                           :ended_at   (t/minus (t/zoned-date-time) (t/seconds 1))}
+                   :model/TaskHistory _th2 {:task       "task2"
+                                            :status     :success
+                                            :run_id     (:id run)
+                                            :started_at (t/zoned-date-time)
+                                            :ended_at   (t/zoned-date-time)}]
+      (let [response (mt/user-http-request :crowberto :get 200 (format "task/runs/%d" (:id run)))]
+        (is (= (:id run) (:id response)))
+        (is (= "Test DB" (:entity_name response)))
+        (is (= 2 (count (:tasks response))))
+        (testing "tasks are sorted by started_at asc"
+          (is (= (:id th1) (-> response :tasks first :id))))))))
+
+(deftest runs-entities-perms-test
+  (testing "non-superuser cannot access runs/entities"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "task/runs/entities"
+                                 :run-type "sync"
+                                 :started-at "past30days")))))
+
+(deftest ^:synchronized runs-task-counts-test
+  (t2/delete! :model/TaskRun)
+  (t2/delete! :model/TaskHistory)
+  (testing "task counts are hydrated correctly"
+    (mt/with-temp [:model/Database db {:name "Test DB"}
+                   :model/TaskRun run {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db)
+                                       :status      :failed
+                                       :started_at  (t/zoned-date-time)
+                                       :ended_at    (t/zoned-date-time)}
+                   :model/TaskHistory _ {:task       "task1"
+                                         :status     :success
+                                         :run_id     (:id run)
+                                         :started_at (t/zoned-date-time)
+                                         :ended_at   (t/zoned-date-time)}
+                   :model/TaskHistory _ {:task       "task2"
+                                         :status     :success
+                                         :run_id     (:id run)
+                                         :started_at (t/zoned-date-time)
+                                         :ended_at   (t/zoned-date-time)}
+                   :model/TaskHistory _ {:task       "task3"
+                                         :status     :failed
+                                         :run_id     (:id run)
+                                         :started_at (t/zoned-date-time)
+                                         :ended_at   (t/zoned-date-time)}]
+      (let [response (mt/user-http-request :crowberto :get 200 "task/runs")
+            run-data (first (:data response))]
+        (is (= 3 (:task_count run-data)))
+        (is (= 2 (:success_count run-data)))
+        (is (= 1 (:failed_count run-data)))))))
+
+(deftest ^:synchronized runs-entities-test
+  (t2/delete! :model/TaskRun)
+  (testing "returns distinct entities for run type with hydrated names"
+    (mt/with-temp [:model/Database db1 {:name "DB1"}
+                   :model/Database db2 {:name "DB2"}
+                   :model/Dashboard dash {:name "My Dashboard"}
+                   ;; Multiple sync runs for same database
+                   :model/TaskRun _ {:run_type    :sync
+                                     :entity_type :database
+                                     :entity_id   (:id db1)
+                                     :status      :success
+                                     :started_at  (t/zoned-date-time)}
+                   :model/TaskRun _ {:run_type    :sync
+                                     :entity_type :database
+                                     :entity_id   (:id db1)
+                                     :status      :success
+                                     :started_at  (t/zoned-date-time)}
+                   :model/TaskRun _ {:run_type    :sync
+                                     :entity_type :database
+                                     :entity_id   (:id db2)
+                                     :status      :success
+                                     :started_at  (t/zoned-date-time)}
+                   :model/TaskRun _ {:run_type    :subscription
+                                     :entity_type :dashboard
+                                     :entity_id   (:id dash)
+                                     :status      :success
+                                     :started_at  (t/zoned-date-time)}]
+      (testing "sync entities"
+        (let [response (mt/user-http-request :crowberto :get 200 "task/runs/entities"
+                                             :run-type "sync"
+                                             :started-at "past30days~")]
+          (is (= 2 (count response)))
+          (is (every? #(= "database" (:entity_type %)) response))
+          (is (= #{"DB1" "DB2"} (set (map :entity_name response))))))
+      (testing "subscription entities"
+        (let [response (mt/user-http-request :crowberto :get 200 "task/runs/entities"
+                                             :run-type "subscription"
+                                             :started-at "past30days~")]
+          (is (= 1 (count response)))
+          (is (= "dashboard" (-> response first :entity_type)))
+          (is (= "My Dashboard" (-> response first :entity_name))))))))
+
+(deftest ^:synchronized runs-started-at-filter-test
+  (t2/delete! :model/TaskRun)
+  (testing "filtering by started-at date range"
+    (let [now (t/zoned-date-time)
+          old-date (t/minus now (t/days 10))
+          recent-date (t/minus now (t/days 2))]
+      (mt/with-temp [:model/Database db {:name "Test DB"}
+                     :model/Database db2 {:name "Test DB 2"}
+                     :model/Database db3 {:name "Test DB 3"}
+                     :model/TaskRun _ {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db3)
+                                       :status      :success
+                                       :started_at  old-date
+                                       :ended_at    old-date}
+                     :model/TaskRun _ {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db2)
+                                       :status      :success
+                                       :started_at  recent-date
+                                       :ended_at    recent-date}
+                     :model/TaskRun _ {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db)
+                                       :status      :success
+                                       :started_at  now
+                                       :ended_at    now}]
+        (testing "past7days returns only recent runs"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs" :started-at "past7days~")]
+            (is (= 2 (:total response)))))
+        (testing "past30days returns all runs"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs" :started-at "past30days~")]
+            (is (= 3 (:total response)))))
+        (testing "absolute date range filtering"
+          (let [start-date (u.date/format (t/local-date (t/minus now (t/days 3))))
+                end-date (u.date/format (t/local-date now))
+                response (mt/user-http-request :crowberto :get 200 "task/runs"
+                                               :started-at (str start-date "~" end-date))]
+            (is (= 2 (:total response)))))))))
+
+(deftest ^:synchronized runs-started-at-combined-filters-test
+  (t2/delete! :model/TaskRun)
+  (testing "combining started-at with other filters"
+    (let [now (t/zoned-date-time)
+          old-date (t/minus now (t/days 10))
+          recent-date (t/minus now (t/days 2))]
+      (mt/with-temp [:model/Database db {:name "Test DB"}
+                     :model/TaskRun _ {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db)
+                                       :status      :success
+                                       :started_at  old-date
+                                       :ended_at    old-date}
+                     :model/TaskRun _ {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db)
+                                       :status      :failed
+                                       :started_at  recent-date
+                                       :ended_at    recent-date}
+                     :model/TaskRun _ {:run_type    :fingerprint
+                                       :entity_type :database
+                                       :entity_id   (:id db)
+                                       :status      :success
+                                       :started_at  recent-date
+                                       :ended_at    recent-date}]
+        (testing "started-at combined with run-type"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs"
+                                               :started-at "past7days"
+                                               :run-type "sync")]
+            (is (= 1 (:total response)))))
+        (testing "started-at combined with status"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs"
+                                               :started-at "past7days"
+                                               :status "success")]
+            (is (= 1 (:total response)))))
+        (testing "started-at combined with multiple filters"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs"
+                                               :started-at "past7days"
+                                               :run-type "sync"
+                                               :status "failed")]
+            (is (= 1 (:total response)))))))))
+
+(deftest runs-started-at-invalid-date-test
+  (testing "invalid date string returns 400 error"
+    (is (re-matches #"Failed to parse datetime value.*"
+                    (mt/user-http-request :crowberto :get 400 "task/runs" :started-at "invalid-date")))))
+
+(deftest ^:synchronized runs-entities-started-at-filter-test
+  (t2/delete! :model/TaskRun)
+  (testing "/runs/entities with started-at filter"
+    (let [now (t/zoned-date-time)
+          old-date (t/minus now (t/days 10))
+          recent-date (t/minus now (t/days 2))]
+      (mt/with-temp [:model/Database db1 {:name "DB1"}
+                     :model/Database db2 {:name "DB2"}
+                     ;; Old run for db1
+                     :model/TaskRun _ {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db1)
+                                       :status      :success
+                                       :started_at  old-date
+                                       :ended_at    old-date}
+                     ;; Recent run for db2
+                     :model/TaskRun _ {:run_type    :sync
+                                       :entity_type :database
+                                       :entity_id   (:id db2)
+                                       :status      :success
+                                       :started_at  recent-date
+                                       :ended_at    recent-date}]
+        (testing "started-at is required"
+          (is (=? {:errors {:started-at some?}}
+                  (mt/user-http-request :crowberto :get 400 "task/runs/entities" :run-type "sync"))))
+        (testing "with past30days filter returns all entities"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs/entities"
+                                               :run-type "sync"
+                                               :started-at "past30days")]
+            (is (= 2 (count response)))))
+        (testing "with past7days filter returns only recent entities"
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs/entities"
+                                               :run-type "sync"
+                                               :started-at "past7days")]
+            (is (= 1 (count response)))
+            (is (= "DB2" (-> response first :entity_name)))))))))

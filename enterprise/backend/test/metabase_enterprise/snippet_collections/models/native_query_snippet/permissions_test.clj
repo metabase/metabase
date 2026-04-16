@@ -3,11 +3,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
 
@@ -84,3 +87,148 @@
         :has-perms-for-id?        #(mi/can-write? :model/NativeQuerySnippet (:id snippet))
         :grant-collection-perms!  #(perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         :revoke-collection-perms! #(perms/revoke-collection-permissions! (perms-group/all-users) coll))))))
+
+;;; ------------------------------------------- Remote Sync Read-Only Mode Tests -------------------------------------------
+
+(deftest remote-sync-read-only-write-perms-test
+  (testing "Snippets are NOT writable when library is synced and mode is read-only"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (is (false? (mi/can-write? snippet))
+                    "Snippet should NOT be writable in read-only mode when library is synced")))))))))
+
+(deftest remote-sync-read-only-create-perms-test
+  (testing "Snippets cannot be created when library is synced and mode is read-only"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (is (false? (mi/can-create? :model/NativeQuerySnippet {:collection_id (:id collection)}))
+                    "Snippet should NOT be creatable in read-only mode when library is synced")))))))))
+
+(deftest remote-sync-read-only-update-perms-test
+  (testing "Snippets cannot be updated when library is synced and mode is read-only"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (is (false? (mi/can-update? snippet {:name "New Name"}))
+                    "Snippet should NOT be updatable in read-only mode when library is synced")))))))))
+
+(deftest remote-sync-read-only-read-perms-still-allowed-test
+  (testing "Snippets are still readable when library is synced and mode is read-only"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (is (true? (mi/can-read? snippet))
+                    "Snippet should still be readable in read-only mode")))))))))
+
+(deftest remote-sync-read-write-mode-allows-edits-test
+  (testing "Snippets ARE writable when mode is read-write even when library is synced"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-write]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (is (true? (mi/can-write? snippet))
+                    "Snippet should be writable in read-write mode")))))))))
+
+(deftest remote-sync-library-not-synced-allows-edits-test
+  (testing "Snippets ARE writable in read-only mode when library is NOT synced"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-not-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (is (true? (mi/can-write? snippet))
+                    "Snippet should be writable when library is NOT synced")))))))))
+
+;;; ------------------------------------------ Batched Hydration Tests ------------------------------------------
+
+(deftest batched-hydrate-can-write-remote-sync-test
+  (testing "batched-hydrate :can_write respects remote-sync read-only mode"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                           :model/NativeQuerySnippet snippet1 {:name "snippet1" :content "SELECT 1" :collection_id (:id collection)}
+                           :model/NativeQuerySnippet snippet2 {:name "snippet2" :content "SELECT 2" :collection_id (:id collection)}
+                           :model/NativeQuerySnippet snippet3 {:name "snippet3" :content "SELECT 3" :collection_id (:id collection)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (let [snippets (mt/with-current-user nil
+                                 (t2/select :model/NativeQuerySnippet :id [:in [(:id snippet1) (:id snippet2) (:id snippet3)]]))
+                      hydrated (t2/hydrate snippets :can_write)]
+                  (testing "all snippets should have :can_write = false in read-only mode"
+                    (is (every? #(false? (:can_write %)) hydrated)
+                        "Snippets should NOT be writable in read-only mode when library is synced")))))))))))
+
+(deftest batched-hydrate-can-write-read-write-mode-test
+  (testing "batched-hydrate :can_write allows writes in read-write mode"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-write]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                           :model/NativeQuerySnippet snippet1 {:name "snippet1" :content "SELECT 1" :collection_id (:id collection)}
+                           :model/NativeQuerySnippet snippet2 {:name "snippet2" :content "SELECT 2" :collection_id (:id collection)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (let [snippets (mt/with-current-user nil
+                                 (t2/select :model/NativeQuerySnippet :id [:in [(:id snippet1) (:id snippet2)]]))
+                      hydrated (t2/hydrate snippets :can_write)]
+                  (testing "all snippets should have :can_write = true in read-write mode"
+                    (is (every? :can_write hydrated)
+                        "Snippets should be writable in read-write mode")))))))))))
+
+(deftest batched-hydrate-can-write-library-not-synced-test
+  (testing "batched-hydrate :can_write allows writes when library is not synced"
+    (mt/with-premium-features #{:snippet-collections}
+      (collections.tu/with-library-not-synced
+        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                           :model/NativeQuerySnippet snippet1 {:name "snippet1" :content "SELECT 1" :collection_id (:id collection)}
+                           :model/NativeQuerySnippet snippet2 {:name "snippet2" :content "SELECT 2" :collection_id (:id collection)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (mt/with-test-user :rasta
+                (let [snippets (mt/with-current-user nil
+                                 (t2/select :model/NativeQuerySnippet :id [:in [(:id snippet1) (:id snippet2)]]))
+                      hydrated (t2/hydrate snippets :can_write)]
+                  (testing "all snippets should have :can_write = true when library is not synced"
+                    (is (every? :can_write hydrated)
+                        "Snippets should be writable when library is NOT synced")))))))))))

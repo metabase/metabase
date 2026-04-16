@@ -7,12 +7,12 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
@@ -23,6 +23,7 @@ export function SettingsNav() {
   const hasWhitelabel = useHasTokenFeature("whitelabel");
   const hasSaml = useHasTokenFeature("sso_saml");
   const hasJwt = useHasTokenFeature("sso_jwt");
+  const hasOidc = useHasTokenFeature("sso_oidc");
   const hasScim = useHasTokenFeature("scim");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
@@ -47,15 +48,13 @@ export function SettingsNav() {
         <SettingsNavItem path="authentication/ldap" label="LDAP" />
         {hasSaml && <SettingsNavItem path="authentication/saml" label="SAML" />}
         {hasJwt && <SettingsNavItem path="authentication/jwt" label="JWT" />}
+        {hasOidc && <SettingsNavItem path="authentication/oidc" label="OIDC" />}
       </SettingsNavItem>
       <PLUGIN_REMOTE_SYNC.LibraryNav />
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
-      <SettingsNavItem
-        path="notifications"
-        label={t`Notification channels`}
-        icon="bell"
-      />
+      <SettingsNavItem path="slack" label={t`Slack`} icon="slack" />
+      <SettingsNavItem path="webhooks" label={t`Webhooks`} icon="webhook" />
       {!hasHosting && <UpdatesNavItem />}
       <NavDivider />
       <SettingsNavItem

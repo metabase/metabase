@@ -18,6 +18,7 @@ import { searchFilter } from "metabase/common/components/AccordionList/utils";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import { MenuItemComponent } from "metabase/documents/components/Editor/shared/MenuComponents";
 import { SuggestionPaper } from "metabase/documents/components/Editor/shared/SuggestionPaper";
+import { useMetabotName } from "metabase/metabot/hooks";
 import { Box, Group, Loader, Text } from "metabase/ui";
 import type { Database, SearchResult } from "metabase-types/api";
 
@@ -50,6 +51,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { data: dbsResponse, isLoading } = useListDatabasesQuery();
+  const metabotName = useMetabotName();
 
   const handleDbSelect = useCallback(
     (item: Database) => {
@@ -133,7 +135,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
   }));
 
   return (
-    <SuggestionPaper aria-label={t`Metabot dialog`}>
+    <SuggestionPaper aria-label={t`${metabotName} dialog`}>
       {isLoading ? (
         <Group justify="center" p="sm">
           <Loader size="sm" />
@@ -151,7 +153,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
           ))}
           {query.length > 0 && totalItems === 0 && !isLoading ? (
             <Box p="sm">
-              <Text size="md" c="text-medium" ta="center">
+              <Text size="md" c="text-secondary" ta="center">
                 {t`No results found`}
               </Text>
             </Box>
@@ -162,4 +164,5 @@ const MetabotMentionSuggestionComponent = forwardRef<
   );
 });
 
+// @deprecated only supports databases, use `MetabotMentionSuggestionNew` instead
 export const MetabotMentionSuggestion = MetabotMentionSuggestionComponent;

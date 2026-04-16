@@ -1,4 +1,4 @@
-import type { NodeLink } from "../../types";
+import type { NodeLink } from "../../../../types";
 
 export type NodeTableInfo = {
   label: string;

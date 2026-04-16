@@ -67,7 +67,11 @@
   (merge
    {:host (tx/db-test-env-var-or-throw :mysql :host "localhost")
     :port (tx/db-test-env-var-or-throw :mysql :port 3306)
-    :user (tx/db-test-env-var :mysql :user "root")}
+    :user (tx/db-test-env-var :mysql :user "root")
+    ;; MySQL 8+ uses caching_sha2_password by default, which requires RSA key exchange
+    ;; for password auth over non-SSL connections. Needed for workspace isolation tests
+    ;; which create password-authenticated users.
+    :additional-options "allowPublicKeyRetrieval=true"}
    (when-let [password (tx/db-test-env-var :mysql :password)]
      {:password password})
    (when (= context :db)
@@ -93,6 +97,19 @@
   [_driver _dbdef _tabledef]
   ;; load data all at once
   nil)
+
+(defmethod load-data/do-insert! :mysql
+  [driver conn table-identifier rows]
+  (if-not load-data/*disable-fk-checks*
+    ((get-method load-data/do-insert! :sql-jdbc/test-extensions) driver conn table-identifier rows)
+    ;; Disable FK checks during insert to allow self-referencing FK rows in the same batch
+    ;; (MySQL 9.6+ enforces FK constraints row-by-row during bulk INSERT)
+    (do
+      (jdbc/execute! {:connection conn} ["SET FOREIGN_KEY_CHECKS = 0"])
+      (try
+        ((get-method load-data/do-insert! :sql-jdbc/test-extensions) driver conn table-identifier rows)
+        (finally
+          (jdbc/execute! {:connection conn} ["SET FOREIGN_KEY_CHECKS = 1"]))))))
 
 (defmethod sql.tx/pk-sql-type :mysql [_] "INTEGER NOT NULL AUTO_INCREMENT")
 

@@ -1,0 +1,6 @@
+.collectionSyncList {
+  background-color: var(--mb-color-background-primary);
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--mb-color-border);
+  overflow: hidden;
+}

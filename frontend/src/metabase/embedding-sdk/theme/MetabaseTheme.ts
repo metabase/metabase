@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { DeepPartial } from "../types/utils";
 
@@ -27,7 +27,6 @@ export interface MetabaseTheme {
   /**
    * Font family that will be used for all text, it defaults to the instance's default font.
    **/
-  // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any string but keep autocomplete for the built-in ones
   fontFamily?: MetabaseFontFamily | (string & {});
 
   /** Base line height */

@@ -400,7 +400,7 @@ function getFieldStateAfterChange(
 // When pasting, we want to combine the values from the clipboard with the
 // existing input value, taking the current selection into account. For example,
 // if the input value is "ab<caret>c" and the user pastes "d,e,f", the
-// new values should be "abd,e,fc".
+// new values should be "abd,e,fc". | codespell:ignore
 function getParsedValuesCombinedWithFieldValue(
   fieldValue: string,
   parsedValues: string[],

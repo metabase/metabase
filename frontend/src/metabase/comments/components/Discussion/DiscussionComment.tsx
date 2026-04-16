@@ -4,10 +4,10 @@ import { useCallback } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
-import { useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
@@ -44,12 +44,13 @@ export function DiscussionComment({
   onEdit,
   onCopyLink,
 }: DiscussionCommentProps) {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const [isEditing, editingHandler] = useDisclosure(false);
   const location = useLocation();
   const hash = location.hash?.substring(1);
   const isTarget = hash === getCommentNodeId(comment);
-  const isCurrentUsersComment = currentUser.id === comment.creator?.id;
+  const isCurrentUsersComment =
+    currentUser && currentUser.id === comment.creator?.id;
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
@@ -78,7 +79,7 @@ export function DiscussionComment({
         aria-current={isTarget ? "location" : undefined}
         data-testid="discussion-comment-deleted"
       >
-        <Text size="md" c="text-disabled" fs="italic">
+        <Text size="md" c="text-tertiary" fs="italic">
           {t`This comment was deleted.`}
         </Text>
         <DiscussionActionPanel
@@ -126,7 +127,7 @@ export function DiscussionComment({
         <Tooltip label={TOOLTIP_DATE_FORMAT.format(commentDate)}>
           <Text
             size="xs"
-            c="text-medium"
+            c="text-secondary"
             lh={1.1}
             style={{ whiteSpace: "nowrap" }}
           >

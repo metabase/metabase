@@ -71,7 +71,6 @@
 (defmethod search.engine/update! :search.engine/semantic
   [_ document-reducible]
   (try
-    (log/info "Updating semantic search engine")
     (update-index! document-reducible)
     (catch Exception e
       (log/error e "Error updating semantic search engine")
@@ -80,7 +79,6 @@
 (defmethod search.engine/delete! :search.engine/semantic
   [_ model ids]
   (try
-    (log/info "Deleting from semantic search engine")
     (delete-from-index! model ids)
     (catch Exception e
       (log/error e "Error deleting from semantic search engine")
@@ -89,7 +87,7 @@
 (defmethod search.engine/init! :search.engine/semantic
   [_ opts]
   (try
-    (log/info "Initializing semantic search engine")
+    (log/debug "Initializing semantic search engine")
     (init! (search.ingestion/searchable-documents) opts)
     (catch Exception e
       (log/error e "Error initializing semantic search engine")
@@ -97,9 +95,15 @@
 
 (defmethod search.engine/reindex! :search.engine/semantic
   [_ _opts]
-  (log/info "reindex! is not supported for semantic search engine")
+  (log/debug "reindex! is not supported for semantic search engine")
   nil)
 
 (defmethod search.engine/reset-tracking! :search.engine/semantic [_]
-  (log/info "reset-tracking! is not supported for semantic search engine")
+  (log/debug "reset-tracking! is not supported for semantic search engine")
   nil)
+
+(defmethod search.engine/sync-from-restored-db! :search.engine/semantic [_]
+  ;; Semantic search index lives outside the appdb snapshot.
+  ;; For now, fall back to reindex (which is already a no-op for this engine).
+  ;; TODO: If semantic embeddings are serialized alongside snapshots in the future, optimize this.
+  (search.engine/reindex! :search.engine/semantic {}))

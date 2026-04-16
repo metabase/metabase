@@ -49,4 +49,4 @@
                :creator_id (serdes/fk :model/User)}})
 
 (defmethod serdes/storage-path "Glossary" [item _]
-  ["glossary" (:term item)])
+  [{:label "glossary"} {:label (:term item) :key (:term item)}])

@@ -1,13 +1,42 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { thaw } from "icepick";
+import type { ComponentProps } from "react";
+import { useState } from "react";
 
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
-import { createMockVisualizationSettings } from "metabase-types/api/mocks";
+import * as domUtils from "metabase/utils/dom";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import registerVisualizations from "metabase/visualizations/register";
+import Question from "metabase-lib/v1/Question";
+import type { VisualizationSettings } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  SAMPLE_DB_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createProductsCategoryDatasetColumn,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import {
   PIVOT_TABLE_MOCK_DATA,
   PivotTableTestWrapper,
 } from "./pivot-table-test-mocks";
+
+registerVisualizations();
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const { rows, cols, settings } = PIVOT_TABLE_MOCK_DATA;
 
@@ -19,8 +48,85 @@ const TEST_CASES = [
   { name: "query builder", isDashboard: false },
 ];
 
-function setup(options?: any) {
-  renderWithProviders(<PivotTableTestWrapper {...options} />);
+function setupPivotTable(
+  options?: ComponentProps<typeof PivotTableTestWrapper>,
+) {
+  return renderWithProviders(<PivotTableTestWrapper {...options} />);
+}
+
+function setupPivotSettings() {
+  const Container = () => {
+    const [question, setQuestion] = useState(
+      new Question(
+        createMockCard({
+          dataset_query: {
+            type: "query",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+                [
+                  "field",
+                  PRODUCTS.CREATED_AT,
+                  { "source-field": ORDERS.PRODUCT_ID },
+                ],
+              ],
+            },
+            database: SAMPLE_DB_ID,
+          },
+          display: "pivot",
+          visualization_settings: {},
+        }),
+        metadata,
+      ),
+    );
+
+    const onChange = (update: VisualizationSettings) => {
+      setQuestion((q) => {
+        const newQuestion = q.updateSettings(update);
+        return new Question(thaw(newQuestion.card()), metadata);
+      });
+    };
+
+    return (
+      <QuestionChartSettings
+        onChange={onChange}
+        series={[
+          {
+            card: question.card(),
+            data: createMockDatasetData({
+              rows: [],
+              cols: [
+                createOrdersCreatedAtDatasetColumn({ source: "breakout" }),
+                createProductsCategoryDatasetColumn({ source: "breakout" }),
+                createMockColumn({
+                  name: "count",
+                  display_name: "Count",
+                  field_ref: ["aggregation", 0],
+                  source: "aggregation",
+                  base_type: "type/Integer",
+                  effective_type: "type/Integer",
+                }),
+                createMockColumn({
+                  name: "pivot-grouping",
+                  display_name: "pivot-grouping",
+                  field_ref: ["expression", "pivot-grouping"],
+                  source: "breakout",
+                  base_type: "type/Integer",
+                  effective_type: "type/Integer",
+                }),
+              ],
+            }),
+          },
+        ]}
+        initial={{ section: "Data" }}
+        question={question}
+      />
+    );
+  };
+
+  renderWithProviders(<Container />);
 }
 
 describe("Visualizations > PivotTable > PivotTable", () => {
@@ -62,12 +168,12 @@ describe("Visualizations > PivotTable > PivotTable", () => {
   TEST_CASES.forEach((testCase) => {
     describe(` > ${testCase.name}`, () => {
       it("should render pivot table wrapper", async () => {
-        setup({ isDashboard: testCase.isDashboard });
+        setupPivotTable({ isDashboard: testCase.isDashboard });
         expect(await screen.findByTestId("pivot-table")).toBeInTheDocument();
       });
 
       it("should render column names", () => {
-        setup({ isDashboard: testCase.isDashboard });
+        setupPivotTable({ isDashboard: testCase.isDashboard });
 
         // all column names except 3, the pivot grouping, should be in the document
         columnIndexes.forEach((colIndex) => {
@@ -78,7 +184,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       });
 
       it("should render column values", () => {
-        setup({ isDashboard: testCase.isDashboard });
+        setupPivotTable({ isDashboard: testCase.isDashboard });
 
         rows.forEach((rowData) => {
           columnIndexes.forEach((colIndex) => {
@@ -98,7 +204,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
           },
         });
 
-        setup({
+        setupPivotTable({
           initialSettings: hiddenSettings,
           isDashboard: testCase.isDashboard,
         });
@@ -132,7 +238,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
           },
         });
 
-        setup({
+        setupPivotTable({
           initialSettings: hiddenSettings,
           isDashboard: testCase.isDashboard,
         });
@@ -161,5 +267,46 @@ describe("Visualizations > PivotTable > PivotTable", () => {
         });
       });
     });
+  });
+
+  describe("scrollbar alignment", () => {
+    it("should reduce top header width by scrollbar size when body has vertical scrollbar", () => {
+      const scrollBarSize = 15;
+      jest.spyOn(domUtils, "getScrollBarSize").mockReturnValue(scrollBarSize);
+
+      // Use a small height to force vertical scrolling (4 rows * 30px = 120px body content)
+      const { rerender } = setupPivotTable({ height: 100 });
+
+      const getTopHeaderWidth = () => {
+        const topHeader = screen.getByLabelText("pivot-table-top-header");
+        return parseInt(topHeader.style.minWidth);
+      };
+
+      const widthWithScrollbar = getTopHeaderWidth();
+
+      // Re-render with enough height that no vertical scrollbar is needed
+      rerender(<PivotTableTestWrapper height={500} />);
+
+      const widthWithoutScrollbar = getTopHeaderWidth();
+
+      expect(widthWithoutScrollbar - widthWithScrollbar).toBe(scrollBarSize);
+
+      jest.restoreAllMocks();
+    });
+  });
+});
+
+describe("Visualizations > PivotTable > Chart Settings", () => {
+  it("should allow you to update a column name", async () => {
+    setupPivotSettings();
+    await userEvent.click(
+      await screen.findByTestId("Category-settings-button"),
+    );
+    await userEvent.type(
+      await screen.findByDisplayValue("Category"),
+      " Updated",
+    );
+    await userEvent.click(await screen.findByText("Count"));
+    expect(await screen.findByText("Category Updated")).toBeInTheDocument();
   });
 });

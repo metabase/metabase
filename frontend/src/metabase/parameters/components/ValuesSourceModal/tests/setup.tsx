@@ -14,8 +14,10 @@ import {
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Card, ParameterValues, TokenFeatures } from "metabase-types/api";
@@ -27,7 +29,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import ValuesSourceModal from "../ValuesSourceModal";
 
@@ -100,6 +101,10 @@ export const setup = async ({
 
   const state = createMockState({
     currentUser,
+    entities: createMockEntitiesState({
+      databases: [createMockDatabase()],
+      questions: cards,
+    }),
     settings: mockSettings({
       "show-metabase-links": showMetabaseLinks,
       "token-features": createMockTokenFeatures(tokenFeatures),

@@ -15,13 +15,11 @@ export const EnableEmbeddedAnalyticsCard = () => {
 
   return (
     <EnableEmbeddingCard
-      embeddingType="modular embedding"
+      embeddingType="modular-embedding"
       isEnabled={isSimpleEmbeddingEnabled}
       termsAccepted={isSimpleEmbeddingTermsAccepted}
       settingsToUpdate={{
         "enable-embedding-simple": true,
-        // accept the terms for Embedded Analytics JS
-        "show-simple-embed-terms": false,
         ...(!isSimpleEmbeddingTermsAccepted && {
           "show-simple-embed-terms": false,
         }),

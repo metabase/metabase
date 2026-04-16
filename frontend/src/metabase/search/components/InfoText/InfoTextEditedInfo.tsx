@@ -3,10 +3,10 @@ import { t } from "ttag";
 import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
-import { getRelativeTime } from "metabase/lib/time-dayjs";
-import { isNotNull } from "metabase/lib/types";
 import type { WrappedResult } from "metabase/search/types";
 import { Text, Tooltip } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
+import { isNotNull } from "metabase/utils/types";
 import type { UserListResult } from "metabase-types/api";
 
 import {
@@ -16,7 +16,7 @@ import {
 
 const LoadingText = () => (
   <Text
-    color="text-1"
+    c="text-primary"
     span
     size="sm"
     truncate
@@ -25,7 +25,7 @@ const LoadingText = () => (
 );
 
 const InfoTextSeparator = (
-  <Text component="span" size="sm" mx="xs" c="text-medium">
+  <Text component="span" size="sm" mx="xs" c="text-secondary">
     •
   </Text>
 );
@@ -89,7 +89,7 @@ export const InfoTextEditedInfo = ({
       const formattedDuration = timestamp && getRelativeTime(timestamp);
       return (
         <Tooltip label={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
-          <Text component="span" size="sm" c="text-medium" truncate>
+          <Text component="span" size="sm" c="text-secondary" truncate>
             {formattedDuration}
           </Text>
         </Tooltip>

@@ -3,10 +3,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useSelector } from "metabase/lib/redux";
 import type { AuthProvider } from "metabase/plugins/types";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Divider } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { getAuthProviders } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
@@ -40,7 +40,7 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
     <AuthLayout>
       <Box
         role="heading"
-        c="text-dark"
+        c="text-primary"
         fz="1.25rem"
         fw="bold"
         lh="1.5rem"

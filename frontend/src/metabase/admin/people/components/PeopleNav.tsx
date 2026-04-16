@@ -8,9 +8,9 @@ import {
 import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export function PeopleNav() {
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
@@ -35,19 +35,19 @@ export function PeopleNav() {
           <>
             <Divider my="sm" />
             <PeopleNavItem
-              path="/admin/tenants"
+              path="/admin/people/tenants"
               data-testid="nav-item-tenants"
               label={t`Tenants`}
               icon="globe"
             />
             <PeopleNavItem
-              path="/admin/tenants/groups"
+              path="/admin/people/tenants/groups"
               data-testid="nav-item-tenant-groups"
               label={t`Tenant groups`}
               icon="group"
             />
             <PeopleNavItem
-              path="/admin/tenants/people"
+              path="/admin/people/tenants/people"
               data-testid="nav-item-external-users"
               label={t`Tenant users`}
               icon="person"

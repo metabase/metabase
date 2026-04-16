@@ -9,6 +9,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
@@ -19,11 +20,13 @@ import {
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { screen } from "__support__/ui";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { DashboardCard, TokenFeatures } from "metabase-types/api";
 import {
@@ -46,7 +49,6 @@ import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { EditableDashboardProps } from "../EditableDashboard";
 import type { SdkDashboardProps } from "../SdkDashboard";
@@ -199,6 +201,20 @@ export const setupSdkDashboard = async ({
 
   setupBookmarksEndpoints([]);
 
+  const BOBBY_TEST_COLLECTION = createMockCollection({
+    archived: false,
+    can_write: true,
+    description: null,
+    id: 1,
+    location: "/",
+    name: "Bobby Tables's Personal Collection",
+    personal_owner_id: 100,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [BOBBY_TEST_COLLECTION],
+  });
+
   const user = createMockUser({
     permissions: createMockUserPermissions({
       can_create_queries: true,
@@ -226,11 +242,13 @@ export const setupSdkDashboard = async ({
 
   renderWithSDKProviders(
     <Box h="500px">
-      <Component
-        dashboardId={dashboardId}
-        dataPickerProps={dataPickerProps}
-        {...props}
-      />
+      <SdkInternalNavigationProvider>
+        <Component
+          dashboardId={dashboardId}
+          dataPickerProps={dataPickerProps}
+          {...props}
+        />
+      </SdkInternalNavigationProvider>
     </Box>,
     {
       componentProviderProps: {

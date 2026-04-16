@@ -60,7 +60,7 @@
 ;; locally cached value is older than the one in the DB, we will flush our cache. When the cache is fetched again, it
 ;; will have the up-to-date value.
 ;;
-;; Because different machines can have out-of-sync clocks, we'll rely entirely on the application DB for caclulating
+;; Because different machines can have out-of-sync clocks, we'll rely entirely on the application DB for calculating
 ;; and comparing values of `settings-last-updated`. Because the Setting table itself only stores text values, we'll
 ;; need to cast it between TEXT and TIMESTAMP SQL types as needed.
 

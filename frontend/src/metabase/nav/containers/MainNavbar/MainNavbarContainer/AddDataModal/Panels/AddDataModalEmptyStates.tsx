@@ -3,8 +3,6 @@ import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Alert,
@@ -17,6 +15,8 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 
 import IconCSV from "./illustrations/csv.svg?component";
 
@@ -127,7 +127,7 @@ const AddDataEmptyState = ({
         <Title order={2} size="h4" mb="xs">
           {title}
         </Title>
-        <Text c="text-medium">{subtitle}</Text>
+        <Text c="text-secondary">{subtitle}</Text>
       </Box>
       {ctaLink && (
         <Button

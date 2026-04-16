@@ -8,10 +8,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.test :as mt]
@@ -395,6 +395,52 @@
                  :order-by [[:asc $id]]
                  :limit    3})))))))
 
+(mt/defdataset strings-that-need-escaping
+  [["escaping_table"
+    [{:field-name "string1", :base-type :type/Text}]
+    [["\\Backslash"]
+     ["Back\\slash"]
+     ["Backslash\\"]
+     ["_Underscore"]
+     ["Under_score"]
+     ["Underscore_"]
+     ["%ile"]
+     ["per%cent"]
+     ["100%"]
+     ["_many%\\escapes"]
+     ["more%___%esca\\pes%"]
+     ["%backslash\\%before_percent_"]
+     ["\\backslash\\_before%underscore\\"]]]])
+
+;; TODO: (Braden 2026-01-08) This set can be expanded further!
+;; - :athena, :vertica, :clickhouse, :presto all support these clauses but have issues loading the test dataset.
+;; - :mongo supports `:starts-with` etc. but is not SQL; its regex-based fuzzy matching could be upgraded.
+(doseq [driver #{:h2 :sqlserver :mysql :maria :postgres :oracle :sqlite}]
+  (defmethod driver/database-supports? [driver :test/escaping-like-metacharacters]
+    [_driver _feature _database]
+    true))
+
+(defmethod driver/database-supports? [:default :test/escaping-like-metacharacters]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel starts-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[1 "\\Backslash"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[4 "_Underscore"]
+                               [10 "_many%\\escapes"]]
+                         "%"  [[7 "%ile"]
+                               [12 "%backslash\\%before_percent_"]]}]
+        (testing (str "literal argument starts with " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:starts-with $string1 lit]
+                      :limit    3})))))))))
+
 ;;; --------------------------------------------------- ends-with ----------------------------------------------------
 
 (deftest ^:parallel ends-with-test
@@ -473,6 +519,23 @@
                  :order-by [[:asc $id]]
                  :limit 3})))))))
 
+(deftest ^:parallel ends-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[3  "Backslash\\"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[6  "Underscore_"]
+                               [12 "%backslash\\%before_percent_"]]
+                         "%"  [[9  "100%"]
+                               [11 "more%___%esca\\pes%"]]}]
+        (testing (str "literal argument ends with " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:ends-with $string1 lit]
+                      :limit    3})))))))))
+
 ;;; ---------------------------------------------------- contains ----------------------------------------------------
 
 (deftest ^:parallel contains-test
@@ -546,6 +609,39 @@
                 {:filter   [:contains $name $name]
                  :order-by [[:asc $id]]
                  :limit 3})))))))
+
+(deftest ^:parallel contains-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[1 "\\Backslash"]
+                               [2 "Back\\slash"]
+                               [3 "Backslash\\"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[4 "_Underscore"]
+                               [5 "Under_score"]
+                               [6 "Underscore_"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "%"  [[7 "%ile"]
+                               [8 "per%cent"]
+                               [9 "100%"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]}]
+        (testing (str "literal argument contains " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:contains $string1 lit]
+                      :order-by [[:asc $id]]
+                      :limit    8})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             NESTED AND/OR CLAUSES                                              |
@@ -944,10 +1040,10 @@
   (testing (str "Filtering on a specific date (DATE column) should work correctly regardless of report timezone/DB"
                 " timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
               checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
               checkins-date     (lib.metadata/field metadata-provider (mt/id :checkins :date))
@@ -983,10 +1079,10 @@
   (testing (str "Filtering on a specific date (TIMESTAMP WITH TIME ZONE column) should work correctly regardless of"
                 " report timezone/DB timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))

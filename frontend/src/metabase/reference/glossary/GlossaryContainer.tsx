@@ -7,7 +7,7 @@ import {
   useListGlossaryQuery,
   useUpdateGlossaryMutation,
 } from "metabase/api";
-import SidebarLayout from "metabase/common/components/SidebarLayout";
+import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import { Card, Group, Stack, Text } from "metabase/ui";

@@ -443,10 +443,7 @@ function applyBrushFilter({ left, right }: { left: number; right: number }) {
   H.ensureEchartsContainerHasSvg();
   cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
-  H.echartsContainer()
-    .trigger("mousedown", left, 100)
-    .trigger("mousemove", left, 100)
-    .trigger("mouseup", right, 100);
+  H.applyBrush(left, right);
 }
 
 function applyBoxFilter({

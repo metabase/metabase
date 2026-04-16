@@ -2,7 +2,7 @@ import Color from "color";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { colors } from "metabase/lib/colors";
+import { colors } from "metabase/ui/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -208,7 +208,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.button("Add comparison").should("be.disabled");
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findByTestId("comparison-list")
       .children()
       .last()

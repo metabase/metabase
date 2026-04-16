@@ -11,23 +11,25 @@
    [metabase.driver :as driver]
    [metabase.driver.oracle :as oracle]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
-   [metabase.test.data.env :as te]
+   [metabase.test.data.env :as te] ; codespell:ignore
    [metabase.test.data.interface :as tx]
    [metabase.test.data.oracle :as oracle.tx]
    [metabase.test.data.sql :as sql.tx]
@@ -156,8 +158,24 @@
                       {:name "tunnel-pass"}
                       {:name "tunnel-private-key"}
                       {:name "tunnel-private-key-passphrase"}
+                      {:name       "tunnel-known-hosts-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {"tunnel-enabled" true}}
+                      {:name       "tunnel-known-hosts-value"
+                       :type       "textFile"
+                       :visible-if {:tunnel-known-hosts-options "uploaded"
+                                    "tunnel-enabled" true}}
+                      {:name       "tunnel-known-hosts-path"
+                       :type       "string"
+                       :visible-if {:tunnel-known-hosts-options "local"
+                                    "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
+                      {:name "write-data-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -165,6 +183,8 @@
                       {:name "refingerprint"}]
             actual   (->> (driver/connection-properties :oracle)
                           (driver.u/connection-props-server->client :oracle))]
+        (is (= (count expected) (count actual))
+            (str "actual names: " (pr-str (mapv :name actual))))
         (is (= expected (mt/select-keys-sequentially expected actual)))))))
 
 (deftest ^:parallel test-ssh-connection
@@ -261,7 +281,7 @@
                    "FROM"
                    "  ("
                    "    SELECT"
-                   "      \"source\".\"s\" \"s\""
+                   "      \"__mb_source\".\"s\" \"s\""
                    "    FROM"
                    "      ("
                    "        SELECT"
@@ -269,7 +289,7 @@
                    "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
                    "        FROM"
                    "          \"public\".\"table\""
-                   "      ) \"source\""
+                   "      ) \"__mb_source\""
                    "  )"
                    "WHERE"
                    "  rownum <= 3"]]
@@ -440,7 +460,7 @@
                                   tx/*database-name-override* "test-data"
                                   ;; Only run the embedded test with the :oracle driver. For example, run it with :h2
                                   ;; results in errors because of column name formatting.
-                                  te/*test-drivers* (constantly #{:oracle})]
+                                  te/*test-drivers* (constantly #{:oracle})] ; codespell:ignore te
                           (testing " and execute a query correctly"
                             (qp-test.order-by-test/order-by-test))))))))))))
       (log/warn (u/format-color 'yellow
@@ -549,7 +569,7 @@
   (mt/test-driver :oracle
     (mt/dataset date-cols-with-datetime-values
       (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
-        (testing "Filtering by datetime retuns expected results"
+        (testing "Filtering by datetime returns expected results"
           (let [query (mt/mbql-query dates_with_time
                         {:filter [:= [:field %date_with_time {:base-type :type/DateTime}] "2024-11-05T12:12:12"]})]
             (mt/with-native-query-testing-context query
@@ -669,3 +689,74 @@
                                 (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
                                 (lib/breakout products-category))]
       (is (= 20 (count (mt/rows (qp/process-query query))))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :oracle
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            privileges  (sql-jdbc.sync/current-user-table-privileges :oracle conn-spec)]
+        (is (seq privileges) "Should return at least one table")
+        (doseq [priv privileges]
+          (is (= #{:role :schema :table :select :update :insert :delete}
+                 (set (keys priv)))
+              "Should have all required keys")
+          (is (nil? (:role priv)))
+          (is (string? (:schema priv)))
+          (is (string? (:table priv)))
+          (is (boolean? (:select priv)))
+          (is (boolean? (:update priv)))
+          (is (boolean? (:insert priv)))
+          (is (boolean? (:delete priv))))
+        (testing "Test tables should appear with at least SELECT privilege"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (seq test-tables) "ORDERS table should be found in privileges")
+            (is (every? :select test-tables))))
+        (testing "Owned tables should have full DML privileges"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (every? (fn [priv] (and (:insert priv) (:update priv) (:delete priv))) test-tables)
+                "Owner should have insert, update, and delete on owned tables")))))))
+(defn- do-with-nls-territory
+  "Execute `thunk` with all Oracle connections using the given `nls-territory` (e.g. \"ARGENTINA\").
+  Wraps `do-with-connection-with-options` to run ALTER SESSION on each connection."
+  [nls-territory thunk]
+  (let [orig-method (get-method sql-jdbc.execute/do-with-connection-with-options :oracle)]
+    (try
+      (defmethod sql-jdbc.execute/do-with-connection-with-options :oracle
+        [driver db-or-id-or-spec options f]
+        (orig-method driver db-or-id-or-spec options
+                     (fn [^java.sql.Connection conn]
+                       (.execute (.createStatement conn)
+                                 (str "ALTER SESSION SET NLS_TERRITORY = '" nls-territory "'"))
+                       (f conn))))
+      (thunk)
+      (finally
+        (defmethod sql-jdbc.execute/do-with-connection-with-options :oracle
+          [driver db-or-id-or-spec options f]
+          (orig-method driver db-or-id-or-spec options f))))))
+
+(deftest day-of-week-nls-territory-test
+  (testing "day-of-week extraction should respect NLS_TERRITORY setting (#57794)"
+    (mt/test-driver :oracle
+      (mt/dataset date-cols-with-datetime-values
+        (do-with-nls-territory
+         "ARGENTINA"
+         (fn []
+           ;; 2024-11-05 is a Tuesday.
+           ;; With start-of-week = sunday, Tuesday should be day-of-week 3.
+           ;; The bug: Oracle's TO_CHAR(date, 'D') returns day numbers relative to NLS_TERRITORY.
+           ;; With ARGENTINA (Monday=1), TO_CHAR returns 2 for Tuesday, but the driver assumes
+           ;; Sunday=1 (AMERICA convention), so it incorrectly reports Tuesday as day 2 instead of 3.
+           (mt/with-temporary-setting-values [start-of-week :sunday]
+             (let [mp    (mt/metadata-provider)
+                   base  (lib/query mp (lib.metadata/table mp (mt/id :dates_with_time)))
+                   date  (lib.tu.notebook/find-col-with-spec base (lib/filterable-columns base)
+                                                             {:is-main-group true} "Date With Time")
+                   query (-> base
+                             (lib/aggregate (lib/count))
+                             (lib.tu.notebook/add-breakout
+                              {:is-main-group true} "Date With Time"
+                              {:col-fn #(lib/with-temporal-bucket % :day-of-week)})
+                             (lib/filter (lib/= (lib/with-temporal-bucket date :day) "2024-11-05")))]
+               (mt/with-native-query-testing-context query
+                 (is (= [[3 1]]
+                        (mt/formatted-rows [int int] (qp/process-query query)))))))))))))

@@ -11,17 +11,22 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
 import type {
   Dashboard,
@@ -38,11 +43,6 @@ import {
   createMockDatasetData,
   createMockParameter,
 } from "metabase-types/api/mocks";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
@@ -374,7 +374,7 @@ export function ComponentCompatibility() {
     <Box pb="50px">
       <Tooltip
         label={
-          <Text size="sm" c="var(--mb-color-text-primary)">
+          <Text size="sm" c="text-primary">
             Label
           </Text>
         }
@@ -391,7 +391,7 @@ export function ComponentCompatibility() {
           </Card>
         </Popover.Target>
         <Popover.Dropdown>
-          <Text size="sm" c="var(--mb-color-text-primary)">
+          <Text size="sm" c="text-primary">
             Dropdown
           </Text>
         </Popover.Dropdown>
@@ -461,7 +461,7 @@ function ScrollDecorator(Story: StoryFn) {
 
 function DarkBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="#434e56" mih="100vh">
+    <Box style={{ backgroundColor: "#434e56" }} mih="100vh">
       <Story />
     </Box>
   );
@@ -469,7 +469,7 @@ function DarkBackgroundDecorator(Story: StoryFn) {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="#ddd" mih="100vh">
+    <Box style={{ backgroundColor: "#ddd" }} mih="100vh">
       <Story />
     </Box>
   );

@@ -9,7 +9,15 @@ export type RemoteSyncEntityModel =
   | "dashboard"
   | "collection"
   | "document"
-  | "snippet";
+  | "nativequerysnippet"
+  | "table"
+  | "field"
+  | "segment"
+  | "measure"
+  | "transform"
+  | "transformtag"
+  | "transformjob"
+  | "pythonlibrary";
 
 export type RemoteSyncEntityStatus =
   | "create"
@@ -21,15 +29,15 @@ export type RemoteSyncEntityStatus =
 export type RemoteSyncEntity = {
   id: number;
   name: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string | null;
   model: RemoteSyncEntityModel;
   collection_id?: number;
   display?: CardDisplayType;
-  query_type?: string;
   sync_status: RemoteSyncEntityStatus;
   authority_level?: string | null;
+  /** Parent table ID for field and segment models */
+  table_id?: number;
+  /** Parent table name for field and segment models */
+  table_name?: string;
 };
 
 export type RemoteSyncChangesResponse = {
@@ -39,6 +47,10 @@ export type RemoteSyncChangesResponse = {
 
 export type RemoteSyncHasChangesResponse = {
   is_dirty: boolean;
+};
+
+export type HasRemoteChangesResponse = {
+  has_changes: boolean;
 };
 
 export type ExportChangesRequest = {
@@ -72,6 +84,8 @@ export type RemoteSyncConfigurationSettings = Pick<
   | "remote-sync-token"
   | "remote-sync-type"
   | "remote-sync-branch"
+  | "remote-sync-auto-import"
+  | "remote-sync-transforms"
 > & {
   collections?: CollectionSyncPreferences;
 };
@@ -86,6 +100,7 @@ export type RemoteSyncTaskStatus =
   | "successful"
   | "timed-out"
   | "cancelled"
+  | "conflict"
   | "errored";
 
 export type RemoteSyncTaskType = "import" | "export" | null;
@@ -100,7 +115,14 @@ export type RemoteSyncTask = {
   last_progress_report_at: string | null;
   error_message: string | null;
   initiated_by: UserId;
+  conflicts?: string[];
 };
+
+export type RemoteSyncConflictVariant =
+  | "push" // Conflict when pushing (need to pull from remote first)
+  | "pull" // Conflict when pulling (need to sync local changes)
+  | "switch-branch" // Conflict when switching branches
+  | "setup"; // Conflict when setting up or pulling for the first time
 
 export type GetBranchesResponse = {
   items: string[];

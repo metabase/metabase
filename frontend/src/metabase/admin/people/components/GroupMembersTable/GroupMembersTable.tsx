@@ -2,16 +2,16 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { useSelector } from "metabase/lib/redux";
-import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
+import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
+import { useSelector } from "metabase/utils/redux";
+import { getFullName } from "metabase/utils/user";
 import type { Group, Member, Membership } from "metabase-types/api";
 
 import { AddMemberRow } from "../AddMemberRow";
@@ -117,8 +117,8 @@ const UserMemberRow = ({
   onMembershipUpdate,
 }: UserRowProps) => {
   // you can't remove people from Default and you can't remove the last user from Admin
-  const currentUser = useSelector(getCurrentUser);
-  const isCurrentUser = member.user_id === currentUser.id;
+  const currentUser = useSelector(getUser);
+  const isCurrentUser = member.user_id === currentUser?.id;
   const canRemove =
     !isDefaultGroup(group) &&
     !PLUGIN_TENANTS.isExternalUsersGroup(group) &&
@@ -144,7 +144,7 @@ const UserMemberRow = ({
       {canRemove ? (
         <Box component="td" ta="right">
           <UnstyledButton onClick={() => onMembershipRemove(member)}>
-            <Icon name="close" c="text-light" size={16} />
+            <Icon name="close" c="text-tertiary" size={16} />
           </UnstyledButton>
         </Box>
       ) : null}
@@ -158,13 +158,13 @@ const ApiKeyMemberRow = ({ member }: { member: Member }) => (
       <Text fw="bold">{member.first_name}</Text>
     </td>
     <td>
-      <Text fw="bold" c="text-medium">{t`API Key`}</Text>
+      <Text fw="bold" c="text-secondary">{t`API Key`}</Text>
     </td>
     <td>{/* api keys don't have real emails */}</td>
     <Box component="td" ta="right">
       <Link to="/admin/settings/authentication/api-keys">
         <Tooltip label={t`API keys`} position="left">
-          <Icon name="link" c="text-light" size={16} />
+          <Icon name="link" c="text-tertiary" size={16} />
         </Tooltip>
       </Link>
     </Box>

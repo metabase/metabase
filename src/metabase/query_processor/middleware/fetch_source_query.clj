@@ -5,8 +5,8 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -43,7 +43,7 @@
     (cons first-stage more)))
 
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
-  "Convert Card's query (`:dataset-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
+  "Convert Card's query (`:dataset-query`) to MBQL 5 as needed; splice in stage metadata and some extra keys."
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
    {card-id :id, :as card} :- ::lib.schema.metadata/card]
   (let [persisted-info (:lib/persisted-info card)
@@ -59,7 +59,9 @@
                                     ;; This is for detecting circular refs below, and is later used as part of
                                     ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
-                    card-metadata (into [] (remove :remapped-from)
+                    ;; TODO (Cam 2026-02-25) Check if attaching the metadata is even necessary anymore
+                    card-metadata (into []
+                                        (remove :remapped-from)
                                         (lib.card/card-returned-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
                                     (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
@@ -73,7 +75,7 @@
                                                        persisted-info)))]
                 (conj (vec (butlast stages)) last-stage)))
             (update-query [query]
-              (-> (lib.query/query metadata-providerable query)
+              (-> (lib/query metadata-providerable query)
                   ;; Now that cards' queries can come out of the AppDB already in MBQL 5, complete with `:lib/uuid`s,
                   ;; a card getting joined twice creates duplicate UUID errors!
                   ;; This safely re-rolls all the `:lib/uuid`s on the card's query so they won't collide.
@@ -120,8 +122,12 @@
                        (tru "Card {0}" (:source-card stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
-    (let [card         (card query (:source-card stage))
-          card-stages  (get-in card [:dataset-query :stages])
+    (let [card          (card query (:source-card stage))
+          card-stages   (get-in card [:dataset-query :stages])
+          model?        (= (:type card) :model)
+          native-model? (when model?
+                          (-> (lib.card/card->underlying-query query card)
+                              (lib/native-stage? -1)))
           ;; TODO this information WAS used
           ;; by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]] which doesn't exist anymore
           ;; -- do we still need it? -- Cam
@@ -130,7 +136,8 @@
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
                             ;; the metadata associated with Fields themselves)
                             (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model?      (= (:type card) :model))
+                                   :source-query/model? model?)
+                            (cond-> model? (assoc :source-query/native-model? native-model?))
                             (dissoc :source-card))]
       (into (vec card-stages) [stage']))))
 

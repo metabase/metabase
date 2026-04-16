@@ -6,7 +6,7 @@ on:
       - labeled
 jobs:
   on-issue-labeled:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     if: |
       contains(github.event.issue.labels.*.name, 'Type:New Feature')
@@ -19,7 +19,7 @@ jobs:
             core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
       - name: Send the issue ${{ github.event.issue.number }} to Slack
         id: slack
-        uses: slackapi/slack-github-action@v1.26.0
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
         with:
           payload: |
             {

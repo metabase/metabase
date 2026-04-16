@@ -5,13 +5,13 @@ import {
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,
 } from "metabase/api";
-import { publicDocument as getPublicDocumentUrl } from "metabase/lib/urls/documents";
 import {
   trackPublicEmbedCodeCopied,
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
 import { Box, Popover, Title } from "metabase/ui";
+import { publicDocument as getPublicDocumentUrl } from "metabase/utils/urls/documents";
 import type { Document } from "metabase-types/api";
 
 import { DocumentPublicLinkPopoverContent } from "./DocumentPublicLinkPopoverContent";
@@ -83,7 +83,11 @@ export const DocumentPublicLinkPopover = ({
           data-testid="public-link-popover-content"
           mih="10rem"
         >
-          <Title c="text-medium" order={4} mb="md">{t`Public sharing`}</Title>
+          <Title
+            c="text-secondary"
+            order={4}
+            mb="md"
+          >{t`Public sharing`}</Title>
           <DocumentPublicLinkPopoverContent
             url={url}
             loading={loading}

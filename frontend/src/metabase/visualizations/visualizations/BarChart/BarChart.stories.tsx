@@ -2,6 +2,10 @@ import type { StoryFn } from "@storybook/react";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -10,10 +14,6 @@ import {
   createMockCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { BarChart } from "./BarChart";
 
@@ -67,6 +67,9 @@ const WatermarkTemplate: StoryFn = () => (
 
 export const Default = {
   render: DefaultTemplate,
+  parameters: {
+    loki: { skip: true },
+  },
 };
 
 export const Watermark = {

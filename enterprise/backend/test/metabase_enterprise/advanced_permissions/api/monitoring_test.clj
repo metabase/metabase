@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.monitoring-test
-  "Permisisons tests for API that needs to be enforced by Application Permissions of type `:monitoring`."
+  "Permissions tests for API that needs to be enforced by Application Permissions of type `:monitoring`."
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.models.permissions :as perms]

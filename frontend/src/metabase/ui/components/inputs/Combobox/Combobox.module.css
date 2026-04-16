@@ -6,14 +6,15 @@
   font-size: 0.875rem;
   padding: 0.75rem 0.5rem;
 
-  &:hover {
+  &:hover,
+  &[data-combobox-selected="true"] {
     color: var(--mb-color-brand);
     background-color: var(--mb-color-background-hover);
   }
 }
 
 .empty {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-size: 0.875rem;
   padding: 1.5rem 0.5rem;
 }

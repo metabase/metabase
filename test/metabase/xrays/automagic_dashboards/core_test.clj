@@ -14,9 +14,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -177,7 +177,7 @@
           (is (= entity query))
           (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
 
-(defn- pmbql-segment-definition
+(defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
   (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
@@ -190,7 +190,7 @@
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
       (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
-                                             :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+                                             :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (let [{:keys [entity source]} (#'magic/->root segment)]
           (is (= entity segment))
           (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
@@ -217,7 +217,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [[table cardinality] (map vector
-                                       (t2/select :model/Table :db_id (mt/id) {:order-by [[:name :asc]]})
+                                       (t2/select :model/Table :db_id (mt/id) :active true {:order-by [[:name :asc]]})
                                        [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))))
 
@@ -562,7 +562,7 @@
     (is (= source-database-id query-db-id))
     (is (= source-table-id magic-card-table-id))
     (is (= source-card-id
-           (lib/source-card-id magic-card-query)))
+           (lib/primary-source-card-id magic-card-query)))
     (doseq [breakout (lib/breakouts magic-card-query)
             field-id (lib/all-field-ids breakout)]
       (is (contains? valid-source-ids field-id)))))
@@ -623,8 +623,8 @@
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
                             :let     [breakouts (lib/breakouts query)]
-                            id       (lib.util.match/match breakouts
-                                       [:field (_opts :guard :binning) (id :guard pos-int?)]
+                            id       (lib.util.match/match-many breakouts
+                                       [:field {:binning _} (id :guard pos-int?)]
                                        id)]
                         id)))))))))))
 
@@ -657,8 +657,8 @@
                                            :let     [query (get-in dashcard [:card :dataset_query])]
                                            :when    query
                                            :let     [breakouts (lib/breakouts query)]
-                                           id       (lib.util.match/match breakouts
-                                                      [:field (_opts :guard :temporal-unit) (id :guard pos-int?)]
+                                           id       (lib.util.match/match-many breakouts
+                                                      [:field {:temporal-unit _} (id :guard pos-int?)]
                                                       id)]
                                        id)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
@@ -771,6 +771,54 @@
               (is (false? (str/ends-with? question-dashboard-name "model")))
               (is (true? (str/ends-with? question-dashboard-name (format "\"%s\"" (:name question-card))))))))))))
 
+(deftest question-with-measure-xray-title-test
+  (testing "X-Ray dashboard should properly handle questions with measures"
+    (let [mp (lib-be/application-database-metadata-provider (mt/id))
+          venues-table (lib.metadata/table mp (mt/id :venues))
+          price-field (lib.metadata/field mp (mt/id :venues :price))
+          measure-definition (-> (lib/query mp venues-table)
+                                 (lib/aggregate (lib/sum price-field)))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition measure-definition}]
+        (let [mp' (lib-be/application-database-metadata-provider (mt/id))
+              measure-meta (lib.metadata/measure mp' measure-id)
+              query-with-measure (-> (lib/query mp' venues-table)
+                                     (lib/aggregate measure-meta))]
+          (mt/with-temp [:model/Card question-card {:table_id      (mt/id :venues)
+                                                    :dataset_query query-with-measure
+                                                    :type          :question}]
+            (let [{:keys [name dashcards]} (mt/with-test-user :rasta (magic/automagic-analysis question-card nil))
+                  all-text (str name " " (pr-str dashcards))]
+              (testing "Dashboard should not contain 'null' from failed measure name resolution"
+                (is (not (str/includes? name "null"))))
+              (testing "Dashboard content should include the measure name"
+                (is (str/includes? all-text "Total Price"))))))))))
+
+(deftest model-with-measure-xray-title-test
+  (testing "X-Ray dashboard should properly handle models with measures"
+    (let [mp (lib-be/application-database-metadata-provider (mt/id))
+          venues-table (lib.metadata/table mp (mt/id :venues))
+          price-field (lib.metadata/field mp (mt/id :venues :price))
+          measure-definition (-> (lib/query mp venues-table)
+                                 (lib/aggregate (lib/sum price-field)))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Price"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition measure-definition}]
+        (let [mp' (lib-be/application-database-metadata-provider (mt/id))
+              measure-meta (lib.metadata/measure mp' measure-id)
+              query-with-measure (-> (lib/query mp' venues-table)
+                                     (lib/aggregate measure-meta))]
+          (mt/with-temp [:model/Card model-card {:table_id      (mt/id :venues)
+                                                 :dataset_query query-with-measure
+                                                 :type          :model}]
+            (let [{:keys [name dashcards]} (mt/with-test-user :rasta (magic/automagic-analysis model-card nil))
+                  all-text (str name " " (pr-str dashcards))]
+              (testing "Dashboard should not contain 'null' from failed measure name resolution"
+                (is (not (str/includes? name "null"))))
+              (testing "Dashboard content should include the measure name"
+                (is (str/includes? all-text "Total Price"))))))))))
+
 (deftest ^:parallel model-based-automagic-dashboards-have-correct-parameter-mappings-test
   (testing "Dashcard parameter mappings have valid targets when X-raying models (#58214)"
     (mt/dataset test-data
@@ -806,7 +854,7 @@
       (mt/with-temp [:model/Segment {table-id    :table_id
                                      segment-name :name
                                      :as          segment} {:table_id   (mt/id :venues)
-                                                            :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
+                                                            :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}]
         (is (= (format "A look at %s in the %s segment"
                        (u/capitalize-en (t2/select-one-fn :name :model/Table :id table-id))
                        segment-name)

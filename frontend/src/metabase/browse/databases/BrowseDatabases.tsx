@@ -4,22 +4,18 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { getEngineLogo } from "metabase/databases/utils/engine";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { newDatabase } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Group, Stack, Text, Title } from "metabase/ui";
+import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+import { newDatabase } from "metabase/utils/urls";
 
 import { BrowseCard } from "../components/BrowseCard";
-import {
-  BrowseContainer,
-  BrowseMain,
-  BrowseSection,
-  CenteredEmptyState,
-} from "../components/BrowseContainer.styled";
+import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
 
@@ -42,10 +38,11 @@ export const BrowseDatabases = () => {
 
   if (!databases?.length && !isAdmin) {
     return (
-      <CenteredEmptyState
-        title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
+      <EmptyState
+        className={S.centeredEmptyState}
+        title={<Box mb="sm">{t`No databases here yet`}</Box>}
         illustrationElement={
-          <Box mb=".5rem">
+          <Box mb="sm">
             <img src={NoResults} />
           </Box>
         }
@@ -54,10 +51,16 @@ export const BrowseDatabases = () => {
   }
 
   return (
-    <BrowseContainer>
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+    >
       <BrowseDataHeader />
-      <BrowseMain>
-        <BrowseSection direction="column">
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%" direction="column">
           <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
@@ -68,14 +71,13 @@ export const BrowseDatabases = () => {
                   title={database.name}
                   icon="database"
                   size="lg"
-                  iconColor="accent2" // can we change this? - Yes we can
                 />
               ))}
             {isAdmin && <AddDatabaseCard />}
           </BrowseGrid>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };
 
@@ -88,7 +90,7 @@ const CardImageWrapper = ({ database }: { database: string }) => {
       className={CS.rounded}
       style={{
         boxShadow:
-          // eslint-disable-next-line no-color-literals
+          // eslint-disable-next-line metabase/no-color-literals
           "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 4px 0px rgba(0, 0, 0, 0.10)",
       }}
     >

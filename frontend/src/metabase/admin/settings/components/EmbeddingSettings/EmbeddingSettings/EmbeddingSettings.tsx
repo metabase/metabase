@@ -8,13 +8,17 @@ import {
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellDevInstances } from "metabase/admin/upsells";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
-import { isEEBuild } from "metabase/lib/utils";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import {
+  useDocsUrl,
+  useHasTokenFeature,
+  useSetting,
+} from "metabase/common/hooks";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
+  PLUGIN_IS_EE_BUILD,
 } from "metabase/plugins";
 import { Box, Group, Icon, Stack, Text } from "metabase/ui";
 
@@ -24,15 +28,19 @@ import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";
 import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSettings";
 
 function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
-  const isEE = isEEBuild();
+  const isEE = PLUGIN_IS_EE_BUILD.isEEBuild();
   const isUsingTenants = useSetting("use-tenants");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   return (
     <SettingsPageWrapper title={t`Embedding settings`}>
       {children}
 
       <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
+        items={getModularEmbeddingRelatedSettingItems({
+          isUsingTenants,
+          hasSimpleEmbedding,
+        })}
       />
 
       {isEE && <UpsellDevInstances location="embedding-page" />}
@@ -112,20 +120,15 @@ function EmbeddingSettingsEE() {
 }
 
 function EmbeddingSettingsOSS() {
-  return (
-    <SharedCombinedEmbeddingSettings
-      showCorsSettings
-      showContentTranslationSettings
-    />
-  );
+  return <SharedCombinedEmbeddingSettings showContentTranslationSettings />;
 }
 
 export const EmbeddingSettings = () => {
-  const isEE = isEEBuild();
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   return (
     <EmbeddingSettingsPageWrapper>
-      {isEE ? <EmbeddingSettingsEE /> : <EmbeddingSettingsOSS />}
+      {hasSimpleEmbedding ? <EmbeddingSettingsEE /> : <EmbeddingSettingsOSS />}
     </EmbeddingSettingsPageWrapper>
   );
 };

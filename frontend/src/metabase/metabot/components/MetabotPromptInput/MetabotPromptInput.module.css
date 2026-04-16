@@ -1,0 +1,72 @@
+.content :global(.ProseMirror) {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  padding: 0.5rem 0;
+  line-height: 1.7;
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  min-height: 1.7em;
+  max-height: 12.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  white-space: pre-wrap;
+  word-break: break-word;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mb-color-border) transparent;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.content :global(.ProseMirror p) {
+  margin: 0;
+}
+
+.content :global(.ProseMirror)::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content :global(.ProseMirror)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content :global(.ProseMirror)::-webkit-scrollbar-thumb {
+  background: var(--mb-color-border);
+  border-radius: 4px;
+}
+
+.content :global(.ProseMirror)::-webkit-scrollbar-thumb:hover {
+  background: var(--mb-color-text-tertiary);
+}
+
+.content :global(.is-empty:first-child:before) {
+  color: var(--mb-color-text-tertiary);
+  content: attr(data-placeholder);
+  height: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.content.disabled :global(.ProseMirror) {
+  opacity: 1;
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.smartLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.25rem;
+  background: var(--mb-color-background-hover);
+  border-radius: 0.25rem;
+  color: var(--mb-color-brand);
+  text-decoration: none;
+  font-weight: 500;
+  vertical-align: baseline;
+}

@@ -7,8 +7,8 @@ import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import S from "./EditUserStrategyModal.module.css";
 
@@ -91,7 +91,7 @@ export const EditUserStrategyModal = ({
       // This ensures `createTenantsRouteGuard` sees the updated setting.
       await refetch();
 
-      dispatch(push("/admin/tenants"));
+      dispatch(push("/admin/people/tenants"));
     }
   };
 
@@ -109,7 +109,7 @@ export const EditUserStrategyModal = ({
     {
       value: "single-tenant",
       title: t`Single tenant`,
-      // eslint-disable-next-line no-literal-metabase-strings -- in admin settings
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- in admin settings
       description: t`All users exist in the same world and are managed via Metabase groups. Ideal for internal company analytics, proof of concept, or simple embedding setups.`,
     },
   ];

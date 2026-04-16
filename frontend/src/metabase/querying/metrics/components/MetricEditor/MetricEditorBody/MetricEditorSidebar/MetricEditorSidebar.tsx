@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { useSelector } from "metabase/lib/redux";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Button, Icon } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export function MetricEditorSidebar() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

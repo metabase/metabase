@@ -58,6 +58,7 @@
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -67,16 +68,6 @@
   [driver :- :keyword
    s      :- :string]
   (driver/escape-alias driver s))
-
-(defmulti ^String field-reference-mlv2
-  "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
-  By default this is just the name of the field, but it can be more complicated, e.g., take
-  parent fields into account.
-
-  DEPRECATED in 0.56.0, and no longer used."
-  {:added "0.48.0", :deprecated "0.57.0, " :arglists '([driver field-inst])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
 
 (defn- escape-fn []
   {:pre [(keyword? driver/*driver*)]}
@@ -194,11 +185,11 @@
   (case (:lib/source col)
     :source/table-defaults        (:table-id col)
     (:source/joins
-     :source/implicitly-joinable) (let [join-alias (or (:metabase.lib.join/join-alias col)
+     :source/implicitly-joinable) (let [join-alias (or (:lib/join-alias col)
                                                        (throw (ex-info (format "Column with source %s is missing join alias" (:lib/source col))
                                                                        {:col col})))]
                                     (or (escaped-join-alias query stage-path join-alias)
-                                        (throw (ex-info (format "Resolved metadata is missing ::escaped-join-alias for %s" (pr-str (:metabase.lib.join/join-alias col)))
+                                        (throw (ex-info (format "Resolved metadata is missing ::escaped-join-alias for %s" (pr-str (:lib/join-alias col)))
                                                         {:col col}))))
     (:source/previous-stage
      :source/card)                ::source
@@ -210,7 +201,7 @@
   (lib/update-options
    field-ref #(-> %
                   (assoc ::source-table (source-table query path col)
-                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
+                         ::source-alias (escaped-source-alias query path (:lib/join-alias col) (:lib/source-column-alias col)))
                   (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
@@ -226,22 +217,19 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage.mbql]
-  (lib.util.match/replace stage
+  (lib.util.match/replace-lite stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
-    (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins])))
+    (_ :guard (some #{:lib/stage-metadata :joins} &parents))
     &match
 
-    :field
+    [:field & _]
     (let [col (resolve-field-ref query path &match)]
       (-> (add-source-to-field-ref query path &match col)
           (fix-field-ref-if-it-should-actually-be-an-expression-ref col)
           ;; record the column we resolved it to, so we can use this when we add desired aliases in the next pass.
           (lib/update-options assoc ::resolved col)))
 
-    :expression
-    (lib/update-options &match assoc ::source-table ::none)
-
-    :aggregation
+    [#{:expression :aggregation} & _]
     (lib/update-options &match assoc ::source-table ::none)))
 
 (mu/defn- add-desired-aliases-to-aggregations :- ::lib.schema/stage.mbql
@@ -280,9 +268,9 @@
    by-source-alias    :- [:map-of :string [:sequential ::lib.schema.metadata/column]]
    by-expression-name :- [:map-of :string ::lib.schema.metadata/column]
    stage              :- ::lib.schema/stage.mbql]
-  (lib.util.match/replace stage
+  (lib.util.match/replace-lite stage
     ;; don't recurse into the metadata or joins -- [[lib.walk]] will take care of that recursion for us.
-    (_ :guard (constantly (some (set &parents) [:lib/stage-metadata :joins ::resolved])))
+    (_ :guard (some #{:lib/stage-metadata :joins ::resolved} &parents))
     &match
 
     [:field opts _id-or-name]
@@ -389,6 +377,21 @@
                         ::source-alias source-alias
                         ::source-table source-table)))
 
+(defn- cartesian-join-condition-exception
+  "Exception thrown when a join condition contains a field ref to an 'other' field, ie. one whose `:join-alias` is not
+  the containing join clause, but which ends up getting resolved to a column from that join anyway. This can happen
+  due to the fuzzy matching of malformed field refs, which might (for example) find the `ID` column of the join when
+  the original `ID` column it was supposed to refer to has been removed from an upstream question. See #67667.
+
+  Such a join condition compares two columns from the RHS of the join, and is therefore incoherent. It might give an
+  empty result set, a full Cartesian join, or anything in between, depending on exactly what RHS column was resolved."
+  [field-ref]
+  (throw
+   (ex-info
+    (tru "Join condition refers to a column from outside this join, but it was incorrectly resolved to a column from this join.")
+    {:type qp.error-type/dangling-lhs-ref-in-join-condition
+     :ref  field-ref})))
+
 (mu/defn- add-alias-info-to-join-conditions :- ::lib.schema.join/join
   "Add alias info to refs in join `:conditions`. Join `:fields` do not need to be updated since they are only used to
   update parent stage `:fields` as appropriate (which will have already been done by now) and otherwise do not directly
@@ -399,19 +402,23 @@
   (let [parent-stage-path (lib.walk/join-parent-stage-path join-path)
         update-other-ref  (fn [field-ref]
                             (let [col (resolve-field-ref query parent-stage-path field-ref)]
+                              ;; Sanity check - reject an "other" ref resolved to also come from this join!
+                              ;; That creates a broken condition and a Cartesian join.
+                              (when (and (= (:lib/source col) :source/joins)
+                                         (= (lib/current-join-alias col) (:alias join)))
+                                (throw (cartesian-join-condition-exception field-ref)))
                               (add-source-to-field-ref query parent-stage-path field-ref col)))
         update-conditions (fn [conditions]
                             ;; the only kind of ref join conditions can have is a `:field` ref
-                            (lib.util.match/replace conditions
-                              ;; a field ref that comes from THIS join needs to get the desired alias returned
-                              ;; by the last stage of the join to use as its source alias
-                              [:field (_opts :guard #(= (:join-alias %) (:alias join))) _id-or-name]
-                              (update-ref-from-this-join query join-path join &match)
-
-                              ;; a field ref that DOES NOT come from this join should get resolved relative to
-                              ;; the parent stage.
-                              [:field (_opts :guard #(not= (:join-alias %) (:alias join))) _id-or-name]
-                              (update-other-ref &match)))]
+                            (lib.util.match/replace-lite conditions
+                              [:field opts _id-or-name]
+                              (if (= (:join-alias opts) (:alias join))
+                                ;; a field ref that comes from THIS join needs to get the desired alias returned
+                                ;; by the last stage of the join to use as its source alias
+                                (update-ref-from-this-join query join-path join &match)
+                                ;; a field ref that DOES NOT come from this join should get resolved relative to
+                                ;; the parent stage.
+                                (update-other-ref &match))))]
     (try
       (update join :conditions update-conditions)
       (catch Throwable e
@@ -543,7 +550,7 @@
      ((some-fn :source-table :source-query) query)
      (-> query
          #_{:clj-kondo/ignore [:deprecated-var]}
-         annotate.legacy-helper-fns/legacy-inner-query->mlv2-query
+         annotate.legacy-helper-fns/legacy-inner-query->mbql5-query
          (add-alias-info options)
          lib/->legacy-MBQL
          :query)

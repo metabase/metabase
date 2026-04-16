@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
   Box,
@@ -92,6 +92,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
+  const displayValue = settingDetails?.value ?? initialValue;
 
   const handleChange = (newValue: EnterpriseSettingValue) => {
     if (newValue === initialValue) {
@@ -117,7 +118,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
       ) : (
         <BasicAdminSettingInput
           name={name}
-          value={initialValue}
+          value={displayValue}
           onChange={handleChange}
           options={options}
           placeholder={placeholder}

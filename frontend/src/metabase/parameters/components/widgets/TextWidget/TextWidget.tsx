@@ -1,7 +1,7 @@
 import { Component, createRef } from "react";
 import { t } from "ttag";
 
-import { forceRedraw } from "metabase/lib/dom";
+import { forceRedraw } from "metabase/utils/dom";
 
 export type TextWidgetProps = {
   value: string | number;
@@ -46,8 +46,10 @@ export class TextWidget extends Component<TextWidgetProps, State> {
   UNSAFE_componentWillReceiveProps(nextProps: TextWidgetProps) {
     if (nextProps.value !== this.props.value) {
       this.setState({ value: nextProps.value }, () => {
-        // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
-        forceRedraw(this.inputRef.current);
+        if (this.inputRef.current) {
+          // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
+          forceRedraw(this.inputRef.current);
+        }
       });
     }
   }

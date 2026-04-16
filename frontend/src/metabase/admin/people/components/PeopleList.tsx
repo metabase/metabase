@@ -14,9 +14,9 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type {
   GroupId,
   GroupInfo,
@@ -257,7 +257,7 @@ export const PeopleList = ({
           >
             <Box my="lg">
               <Icon name="search" mb="sm" size={32} />
-              <Text c="text-light" fz="lg" fw={700}>
+              <Text c="text-tertiary" fz="lg" fw={700}>
                 {noResultsMessage}
               </Text>
             </Box>

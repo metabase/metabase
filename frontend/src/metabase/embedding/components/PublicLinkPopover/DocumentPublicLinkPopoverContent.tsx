@@ -2,7 +2,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { useSelector } from "metabase/lib/redux";
 import { getPublicEmbedHTMLWithResizer } from "metabase/public/lib/code-templates";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -17,6 +16,7 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "./DocumentPublicLinkPopoverContent.module.css";
 
@@ -45,7 +45,7 @@ export const DocumentPublicLinkPopoverContent = ({
   return (
     <Stack gap="md">
       <Box>
-        <Text size="sm" c="text-medium" mb="xs">
+        <Text size="sm" c="text-secondary" mb="xs">
           {t`Anyone can view this if you give them the link or embed it.`}
         </Text>
       </Box>
@@ -79,7 +79,7 @@ export const DocumentPublicLinkPopoverContent = ({
         <Tabs.Panel value="embed" pt="md">
           <Stack gap="sm">
             <Box>
-              <Text size="sm" c="text-medium" mb="xs">
+              <Text size="sm" c="text-secondary" mb="xs">
                 {t`Paste this code in your website or blog to embed the document. The iframe will automatically adjust to the document's height.`}
               </Text>
             </Box>

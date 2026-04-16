@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -14,7 +14,7 @@ export const AccountHeaderRoot = styled.div`
   align-items: center;
   padding-top: var(--mantine-spacing-sm);
   border-bottom: 1px solid var(--mb-color-border);
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 
   ${breakpointMinSmall} {
     padding-top: var(--mantine-spacing-md);
@@ -40,7 +40,7 @@ export const HeaderTitle = styled.h2`
 
 export const HeaderSubtitle = styled.h3`
   text-align: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const HeaderAvatar = styled(UserAvatar)`

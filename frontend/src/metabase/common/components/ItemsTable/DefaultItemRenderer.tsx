@@ -5,7 +5,7 @@ import type { OnToggleSelectedWithItem } from "metabase/collections/types";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { getIcon } from "metabase/lib/icon";
+import { getIcon } from "metabase/utils/icon";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -44,7 +44,7 @@ export const DefaultItemRenderer = ({
 
   const icon = getIcon(item);
   if (item.model === "card" || item.archived) {
-    icon.color = "text-light";
+    icon.color = "text-tertiary";
   }
 
   const handleSelectionToggled = useCallback(() => {

@@ -180,6 +180,31 @@
                                   {:total 1
                                    :archived (true? (:archived document))}))})
 
+(defn- library-stats
+  "Get metrics for Library usage."
+  []
+  (letfn [(collection-and-descendant-ids [type]
+            ;; Get collection and build location prefix for descendants (location like "<parent-location><id>/%")
+            (when-let [{:keys [id location]} (t2/select-one [:model/Collection :id :location] :type type)]
+              (let [children-location (str location id "/")
+                    descendant-ids    (t2/select-pks-set :model/Collection :location [:like (str children-location "%")])]
+                (conj (or descendant-ids #{}) id))))]
+    (let [library-data-ids    (collection-and-descendant-ids "library-data")
+          library-metrics-ids (collection-and-descendant-ids "library-metrics")]
+      {:library_data    (if (seq library-data-ids)
+                          (t2/count :model/Table
+                                    {:where [:and
+                                             [:= :is_published true]
+                                             [:in :collection_id library-data-ids]]})
+                          0)
+       :library_metrics (if (seq library-metrics-ids)
+                          (t2/count :model/Card
+                                    {:where [:and
+                                             [:= :type "metric"]
+                                             [:= :archived false]
+                                             [:in :collection_id library-metrics-ids]]})
+                          0)})))
+
 (defn- group-metrics
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
@@ -497,7 +522,8 @@
                       :system     (system-metrics)
                       :table      (table-metrics)
                       :user       (user-metrics)
-                      :document   (document-metrics)}}))
+                      :document   (document-metrics)
+                      :library    (library-stats)}}))
 
 (defn- ^:deprecated send-stats-deprecated!
   "Send stats to Metabase tracking server."
@@ -647,25 +673,35 @@
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
      :tags ["embedding"]}]))
 
+(defn- transform-metrics
+  "Returns transform usage metrics for the Snowplow stats ping."
+  []
+  (let [one-day-ago (->one-day-ago)]
+    {:transforms               (t2/count :model/Transform)
+     :transform_runs_last_24h  (t2/count :model/TransformRun
+                                         :start_time [:>= one-day-ago])}))
+
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
   (let [one-day-ago (->one-day-ago)
         total-translation-count (:total (get-translation-count))]
-    {:models                          (t2/count :model/Card :type :model :archived false)
-     :new_embedded_dashboards         (t2/count :model/Dashboard
-                                                :enable_embedding true
-                                                :archived false
-                                                :created_at [:>= one-day-ago])
-     :new_users_last_24h              (t2/count :model/User
-                                                :is_active true
-                                                :date_joined [:>= one-day-ago])
-     :pivot_tables                    (t2/count :model/Card :display :pivot :archived false)
-     :query_executions_last_24h       (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
-     :entity_id_translations_last_24h total-translation-count
-     :scim_users_last_24h             (t2/count :model/User :sso_source :scim
-                                                :is_active true
-                                                :date_joined [:>= one-day-ago])}))
+    (merge
+     {:models                          (t2/count :model/Card :type :model :archived false)
+      :new_embedded_dashboards         (t2/count :model/Dashboard
+                                                 :enable_embedding true
+                                                 :archived false
+                                                 :created_at [:>= one-day-ago])
+      :new_users_last_24h              (t2/count :model/User
+                                                 :is_active true
+                                                 :date_joined [:>= one-day-ago])
+      :pivot_tables                    (t2/count :model/Card :display :pivot :archived false)
+      :query_executions_last_24h       (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
+      :entity_id_translations_last_24h total-translation-count
+      :scim_users_last_24h             (t2/count :model/User :sso_source :scim
+                                                 :is_active true
+                                                 :date_joined [:>= one-day-ago])}
+     (transform-metrics))))
 
 (mu/defn- snowplow-metrics
   [stats metric-info :- [:map
@@ -674,7 +710,9 @@
                          [:new_users_last_24h :int]
                          [:pivot_tables :int]
                          [:query_executions_last_24h :int]
-                         [:entity_id_translations_last_24h :int]]]
+                         [:entity_id_translations_last_24h :int]
+                         [:transforms :int]
+                         [:transform_runs_last_24h :int]]]
   (mapv
    (fn [[k v tags]]
      (assert (every? string? tags) "Tags must be strings in snowplow metrics.")
@@ -695,6 +733,8 @@
     [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
     [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]
     [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
+    [:library_data                    (get-in stats [:stats :library :library_data] 0)               #{"library"}]
+    [:library_metrics                 (get-in stats [:stats :library :library_metrics] 0)            #{"library"}]
     [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
     [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
     [:models                          (:models metric-info 0)                                         #{}]
@@ -713,6 +753,8 @@
     [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
     [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
     [:tables                          (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
+    [:transform_runs_last_24h         (:transform_runs_last_24h metric-info 0)                        #{"transforms"}]
+    [:transforms                      (:transforms metric-info 0)                                     #{"transforms"}]
     [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]]))
 
 (defn- whitelabeling-in-use?
@@ -863,18 +905,6 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
-   {:name      :metabot-v3
-    :available (premium-features/enable-metabot-v3?)
-    :enabled   (premium-features/enable-metabot-v3?)}
-   {:name      :ai-entity-analysis
-    :available (premium-features/enable-ai-entity-analysis?)
-    :enabled   (premium-features/enable-ai-entity-analysis?)}
-   {:name      :ai-sql-fixer
-    :available (premium-features/enable-ai-sql-fixer?)
-    :enabled   (premium-features/enable-ai-sql-fixer?)}
-   {:name      :ai-sql-generation
-    :available (premium-features/enable-ai-sql-generation?)
-    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
@@ -892,9 +922,9 @@
    {:name      :table-data-editing
     :available (premium-features/table-data-editing?)
     :enabled   (premium-features/table-data-editing?)}
-   {:name      :transforms
-    :available (premium-features/enable-transforms?)
-    :enabled   (premium-features/enable-transforms?)}
+   {:name      :transforms-basic
+    :available (premium-features/enable-basic-transforms?)
+    :enabled   (premium-features/enable-basic-transforms?)}
    {:name      :transforms-python
     :available (premium-features/enable-python-transforms?)
     :enabled   (premium-features/enable-python-transforms?)}
@@ -903,7 +933,16 @@
     :enabled   (premium-features/enable-dependencies?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
-    :enabled   (premium-features/enable-support-users?)}])
+    :enabled   (premium-features/enable-support-users?)}
+   {:name      :workspaces
+    :available (premium-features/enable-workspaces?)
+    :enabled   (premium-features/enable-workspaces?)}
+   {:name      :writable-connection
+    :available (premium-features/enable-writable-connection?)
+    :enabled   (premium-features/enable-writable-connection?)}
+   {:name      :ai-controls
+    :available (premium-features/enable-ai-controls?)
+    :enabled   (premium-features/enable-ai-controls?)}])
 
 (defn- snowplow-features
   []

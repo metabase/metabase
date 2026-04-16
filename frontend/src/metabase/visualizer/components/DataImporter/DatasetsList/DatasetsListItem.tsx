@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Box, Button, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Ellipsified, Icon, Tooltip } from "metabase/ui";
 import type {
   Field,
   VisualizationDisplay,
@@ -35,18 +34,22 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       aria-pressed={selected}
       size="xs"
       onClick={() => {
-        selected ? onRemove?.(item) : onToggle?.(item);
+        if (selected) {
+          onRemove?.(item);
+        } else {
+          onToggle?.(item);
+        }
       }}
       leftSection={
         <Box>
-          <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
+          <Icon c="inherit" className={S.TableIcon} name="table2" mr="xs" />
           {item.notRecommended && (
             <Tooltip
               label={t`This dataset might not be fully compatible with your current selection.`}
             >
               <Icon
                 className={S.WarningIcon}
-                color="var(--mb-color-danger)"
+                c="danger"
                 name="warning_round_filled"
                 size={10}
               />

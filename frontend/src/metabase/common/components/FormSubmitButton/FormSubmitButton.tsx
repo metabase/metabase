@@ -3,7 +3,7 @@ import { forwardRef } from "react";
 import { t } from "ttag";
 
 import type { ButtonProps } from "metabase/common/components/Button";
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import type { FormStatus } from "metabase/forms";
 import { useFormSubmitButton } from "metabase/forms";
 
@@ -17,7 +17,7 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
 /**
  * @deprecated: use FormSubmitButton from "metabase/forms"
  */
-const FormSubmitButton = forwardRef(function FormSubmitButton(
+const FormSubmitButtonInner = forwardRef(function FormSubmitButton(
   { primary, success, danger, disabled, ...props }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -60,7 +60,6 @@ const getSubmitButtonTitle = (
   }
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(FormSubmitButton, {
+export const FormSubmitButton = Object.assign(FormSubmitButtonInner, {
   Button: Button.Root,
 });

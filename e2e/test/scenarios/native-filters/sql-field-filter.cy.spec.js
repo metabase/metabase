@@ -149,7 +149,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
     it("should work despite it not showing up in the widget type list", () => {
       H.createNativeQuestion(questionDetails, { visitQuestion: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 
       H.clearFilterWidget();
@@ -161,14 +161,14 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
 
       cy.findByTestId("qb-header").find(".Icon-play").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 51 rows");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Open Editor").click();
       cy.icon("variable").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter widget type")
         .parent()
         .findByTestId("filter-widget-type-select")
@@ -216,6 +216,50 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.popover().findByText("Month").click();
       SQLFilter.runQuery();
       H.tableInteractive().should("contain", "April 1, 2022");
+    });
+  });
+
+  describe("missing field", () => {
+    it("should show error message when the field mapping is missing", () => {
+      cy.log("Set up field filter");
+
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM products WHERE {{my_filter}}",
+        { allowFastSet: true },
+      );
+
+      cy.log("Test field filter");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+
+      SQLFilter.getSaveQueryButton().should("have.attr", "aria-disabled");
+      SQLFilter.getSaveQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getRunQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      cy.log("Test time grouping");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Time grouping");
+
+      SQLFilter.getSaveQueryButton().should("have.attr", "aria-disabled");
+      SQLFilter.getSaveQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getRunQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
     });
   });
 });

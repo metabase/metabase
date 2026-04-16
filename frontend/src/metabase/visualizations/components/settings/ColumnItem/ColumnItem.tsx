@@ -1,7 +1,6 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import type { AccentColorOptions } from "metabase/lib/colors/types";
 import {
   Flex,
   type FlexProps,
@@ -10,6 +9,7 @@ import {
   type IconProps,
   Text,
 } from "metabase/ui";
+import type { AccentColorOptions } from "metabase/ui/colors/types";
 
 import { ChartSettingActionIcon } from "../ChartSettingActionIcon";
 import { ChartSettingColorPicker } from "../ChartSettingColorPicker";
@@ -53,8 +53,8 @@ export const ColumnItem = ({
 }: ColumnItemProps) => (
   <Flex
     w="100%"
-    bg="bg-white"
-    c="text-medium"
+    bg="background-primary"
+    c="text-secondary"
     className={cx(
       CS.overflowHidden,
       CS.bordered,

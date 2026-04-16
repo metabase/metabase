@@ -1,1 +1,0 @@
-export { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";

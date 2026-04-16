@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import type * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,9 +10,9 @@ import type {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { isAdminGroup } from "metabase/lib/groups";
 import { Icon, Tooltip } from "metabase/ui";
-import type { GroupInfo } from "metabase-types/api";
+import { isAdminGroup } from "metabase/utils/groups";
+import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
 import Selectbox from "../GroupSelect";
@@ -32,7 +31,7 @@ type MappingRowProps = {
   selectedGroupIds: GroupIds;
   clearGroupMember: ({ id }: { id: number }) => void;
   deleteGroup: ({ id }: { id: number }) => void;
-  onChange: () => void;
+  onChange: (group: { id: GroupId }, selected: boolean) => void;
   onDeleteMapping: OnDeleteMappingType;
 };
 

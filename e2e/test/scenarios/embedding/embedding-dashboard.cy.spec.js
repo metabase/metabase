@@ -12,7 +12,7 @@ import {
   questionDetailsWithDefaults,
 } from "./shared/embedding-dashboard";
 
-const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, PEOPLE, PEOPLE_ID, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > static embedding dashboard", () => {
   beforeEach(() => {
@@ -283,6 +283,47 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.location("search").should("contain", "name=Ferne+Rosenbaum");
       // And the default should be applied giving us only 1 result
       cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
+    });
+
+    it("should not apply IsSticky class to the parameter panel before it actually becomes sticky (metabase#66742)", () => {
+      H.visitDashboard("@dashboardId");
+      H.editDashboard();
+
+      // Duplicating twice to make a scrollable dashboard
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Duplicate")
+        .click();
+
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Duplicate")
+        .click();
+
+      H.saveDashboard();
+
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+          activeTab: "parameters",
+        });
+      });
+
+      H.setEmbeddingParameter("Name", "Editable");
+
+      H.publishChanges("dashboard");
+
+      H.visitIframe();
+
+      // Scrolling duration is needed to let the time to React to update the className...
+      cy.findByTestId("embed-frame").scrollTo(0, 20, {
+        duration: 1000,
+      });
+
+      cy.findByTestId("dashboard-parameters-widget-container")
+        .invoke("attr", "class")
+        .should("not.contain", "IsSticky");
     });
 
     it("should (dis)allow setting parameters as required for a published embedding", () => {
@@ -1048,7 +1089,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     H.getIframeBody().within(() => {
       cy.findByText(questionDetails.name).should("exist");
-      cy.findByText("April 2022").should("exist");
+      cy.findByText("May 2022").should("exist");
 
       // TODO: Enable this once we fix the flakiness https://app.trunk.io/metabase/flaky-tests/test/facb35f0-6d76-5e7d-b21c-40401bbc3ff6?repo=metabase%2Fmetabase
       // (metabase#49537)
@@ -1339,6 +1380,84 @@ describe("scenarios > embedding > dashboard appearance", () => {
             .should("be.visible")
             .should("have.css", "color", "rgba(255, 255, 255, 0.95)");
         });
+      });
+    });
+  });
+
+  it("should not show raw parameter value in static-list filter dropdown when using initial-parameters", () => {
+    const staticListFilter = {
+      name: "Number",
+      slug: "number",
+      id: "static-list-id",
+      type: "number/=",
+      sectionId: "number",
+      values_source_type: "static-list",
+      values_source_config: {
+        values: [
+          ["1", "Option A"],
+          ["2", "Option B"],
+        ],
+      },
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Static list filter question",
+        query: {
+          "source-table": PEOPLE_ID,
+          expressions: { Thing: ["*", 1, 1] },
+        },
+      },
+      dashboardDetails: {
+        parameters: [staticListFilter],
+        enable_embedding: true,
+        embedding_params: {
+          [staticListFilter.slug]: "enabled",
+        },
+      },
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 24,
+            size_y: 9,
+            parameter_mappings: [
+              {
+                parameter_id: staticListFilter.id,
+                card_id,
+                target: [
+                  "dimension",
+                  ["expression", "Thing", { "base-type": "type/Integer" }],
+                  { "stage-number": 0 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: dashboard_id },
+          params: {},
+        },
+        {
+          setFilters: { [staticListFilter.slug]: "1" },
+        },
+      );
+
+      H.filterWidget().findByText("Option A").should("be.visible");
+
+      H.filterWidget().findByText("Option A").click();
+      H.popover().within(() => {
+        cy.findByText("Option A").should("exist");
+        cy.findByText("Option B").should("exist");
+        // The raw numeric value "1" should NOT appear as a separate option
+        cy.findByText("1").should("not.exist");
       });
     });
   });

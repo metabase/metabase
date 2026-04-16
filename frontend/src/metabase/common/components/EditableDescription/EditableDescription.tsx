@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import EditableText, {
+import {
+  EditableText,
   type EditableTextProps,
 } from "metabase/common/components/EditableText";
 import { Box, type BoxProps } from "metabase/ui";

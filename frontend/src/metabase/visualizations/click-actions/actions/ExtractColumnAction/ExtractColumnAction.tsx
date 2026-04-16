@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { setUIControls } from "metabase/query_builder/actions";
-import { trackColumnExtractViaPlusModal } from "metabase/query_builder/analytics";
+import { getQuestion } from "metabase/query_builder/selectors";
+import { trackColumnExtractViaPlusModal } from "metabase/querying/analytics";
 import {
   ExtractColumn,
   hasExtractions,
-} from "metabase/query_builder/components/expressions";
-import { getQuestion } from "metabase/query_builder/selectors";
+} from "metabase/querying/components/expressions";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Box, rem } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";

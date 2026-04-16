@@ -51,7 +51,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     H.editDashboard();
     H.filterWidget({ isEditing: true, name: filter.name }).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
 
     // This part reproduces metabase#13186
@@ -74,18 +74,18 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     cy.button("Add filter").click();
     cy.wait("@dashcardQuery");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
     H.tableInteractiveBody().findAllByRole("row").should("have.length", 2);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").should("not.exist");
 
     cy.reload();
     cy.wait("@dashcardQuery");
 
     cy.location("search").should("eq", "?text=Gizmo&text=Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
 
     H.editDashboard();
@@ -126,10 +126,10 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     H.setFilter("ID");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No valid fields").should("not.exist");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("ID").click();
   });

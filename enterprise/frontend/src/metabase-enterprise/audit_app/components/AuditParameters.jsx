@@ -24,6 +24,7 @@ const propTypes = {
   hasResults: PropTypes.bool,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class AuditParameters extends Component {
   constructor(props) {
     super(props);

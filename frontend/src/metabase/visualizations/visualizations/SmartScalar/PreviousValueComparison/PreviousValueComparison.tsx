@@ -1,9 +1,9 @@
 import innerText from "react-innertext";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { formatValue } from "metabase/lib/formatting/value";
-import { measureTextWidth } from "metabase/lib/measure-text";
 import { Badge, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import { formatValue } from "metabase/utils/formatting/value";
+import { measureTextWidth } from "metabase/utils/measure-text";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
@@ -74,7 +74,7 @@ export function PreviousValueComparison({
     // intentionally calling the component as a function
     // since otherwise measurements don't work as expected
     return DetailCandidate({
-      color: "var(--mb-color-text-secondary)",
+      color: "text-secondary",
       comparison,
       valueFormatted,
     });
@@ -120,14 +120,14 @@ export function PreviousValueComparison({
         className={DashboardS.fullscreenNormalText}
       >
         <VariationPercent
-          color="text-light"
+          color="text-tertiary"
           comparison={comparison}
           iconSize={ICON_SIZE}
         >
           {fittedChangeDisplay}
         </VariationPercent>
 
-        <VariationDetails color="var(--mb-color-text-secondary)">
+        <VariationDetails color="text-secondary">
           {fittedDetailDisplay}
         </VariationDetails>
 

@@ -8,7 +8,7 @@ import {
 } from "react";
 import _ from "underscore";
 
-import type { CellId, DataGridSelection } from "../types";
+import type { CellId, DataGridSelection, ScrollToDestinations } from "../types";
 import { formatCellValueForCopy } from "../utils/formatting";
 
 const noopHandlers: DataGridSelection["handlers"] = {
@@ -31,13 +31,7 @@ interface UseCellSelectionProps {
   /** Whether cell selection is enabled */
   isEnabled?: boolean;
   /** Optional function to scroll to a specific cell */
-  scrollTo?: ({
-    rowIndex,
-    columnIndex,
-  }: {
-    rowIndex?: number;
-    columnIndex?: number;
-  }) => void;
+  scrollTo?: (destinations: ScrollToDestinations) => void;
   /** Callback when selection changes */
   onChangeSelection?: (cells: CellId[]) => void;
 }
@@ -151,7 +145,7 @@ export const useCellSelection = ({
       .find((c) => c.column.id === selectedCell.columnId);
     if (previousRowCell && canSelectCell(previousRowCell)) {
       const newSelection = [getCellSelectionData(previousRowCell)];
-      scrollTo?.({ rowIndex: previousRowIndex });
+      scrollTo?.({ row: { index: previousRowIndex } });
       return newSelection;
     }
   }, [getLastSelectedCell, table, scrollTo]);
@@ -168,7 +162,7 @@ export const useCellSelection = ({
       .find((c) => c.column.id === selectedCell.columnId);
     if (nextRowCell && canSelectCell(nextRowCell)) {
       const newSelection = [getCellSelectionData(nextRowCell)];
-      scrollTo?.({ rowIndex: nextRowIndex });
+      scrollTo?.({ row: { index: nextRowIndex } });
       return newSelection;
     }
   }, [getLastSelectedCell, table, scrollTo]);
@@ -183,7 +177,7 @@ export const useCellSelection = ({
     const previousCell = selectedCell.row.getAllCells()[previousColumnIndex];
     if (previousCell && canSelectCell(previousCell)) {
       const newSelection = [getCellSelectionData(previousCell)];
-      scrollTo?.({ columnIndex: previousColumnIndex });
+      scrollTo?.({ column: { index: previousColumnIndex } });
       return newSelection;
     }
   }, [getLastSelectedCell, scrollTo]);
@@ -198,7 +192,7 @@ export const useCellSelection = ({
     const nextCell = selectedCell.row.getAllCells()[nextColumnIndex];
     if (nextCell && canSelectCell(nextCell)) {
       const newSelection = [getCellSelectionData(nextCell)];
-      scrollTo?.({ columnIndex: nextColumnIndex });
+      scrollTo?.({ column: { index: nextColumnIndex } });
       return newSelection;
     }
   }, [getLastSelectedCell, scrollTo]);
@@ -539,13 +533,18 @@ const getCellValues = (
     })
     .filter(Boolean) as string[];
 
+  // Get rows in their current sorted/visual order
+  const sortedRows = table.getRowModel().rows;
+  const sortedSelectedRows = sortedRows.filter(
+    (row) => rowGroups[row.id] !== undefined,
+  );
+
   if (columnIds.length !== headerRow.length) {
     // Couldn't retrieve all headers: copy the data only
-    return Object.keys(rowGroups)
-      .map((rowId) => {
+    return sortedSelectedRows
+      .map((row) => {
         try {
-          const row = table.getRow(rowId);
-          const selectedCells = rowGroups[rowId]!;
+          const selectedCells = rowGroups[row.id]!;
           const cellValues = extractRowCellValues(
             row,
             selectedCells,
@@ -553,7 +552,7 @@ const getCellValues = (
           );
           return cellValues.join("\t");
         } catch (error) {
-          console.warn(`Error processing row ${rowId}:`, error);
+          console.warn(`Error processing row ${row.id}:`, error);
           return "";
         }
       })
@@ -561,16 +560,15 @@ const getCellValues = (
       .join("\n");
   }
 
-  const dataRows = Object.keys(rowGroups)
-    .map((rowId) => {
+  const dataRows = sortedSelectedRows
+    .map((row) => {
       try {
-        const row = table.getRow(rowId);
         const cellByColumnId = row._getAllCellsByColumnId();
         return columnIds
           .map((columnId) => {
             if (
               cellByColumnId[columnId] &&
-              rowGroups[rowId].some((cellId) => cellId.columnId === columnId)
+              rowGroups[row.id].some((cellId) => cellId.columnId === columnId)
             ) {
               return extractCellValue(
                 row.index,
@@ -583,7 +581,7 @@ const getCellValues = (
           })
           .join("\t");
       } catch (error) {
-        console.warn(`Error processing row ${rowId}:`, error);
+        console.warn(`Error processing row ${row.id}:`, error);
         return "";
       }
     })

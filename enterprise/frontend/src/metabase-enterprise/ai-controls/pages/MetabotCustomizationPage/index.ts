@@ -1,0 +1,1 @@
+export { MetabotCustomizationPage } from "./MetabotCustomizationPage";

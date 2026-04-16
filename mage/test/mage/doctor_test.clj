@@ -24,7 +24,7 @@
     (let [tools (:tools (doctor/diagnose))]
       (is (contains? tools :git))
       (is (contains? tools :node))
-      (is (contains? tools :yarn))
+      (is (contains? tools :bun))
       (is (contains? tools :java))
       (is (contains? tools :clojure))
       (is (contains? tools :babashka))
@@ -41,7 +41,7 @@
       (is (contains? project :node-modules))
       (is (contains? project :nrepl-port))
       (is (contains? project :git-hooks))
-      (is (contains? project :yarn-lock))
+      (is (contains? project :bun-lock))
       (is (contains? project :deps-edn)))))
 
 (deftest get-git-status-returns-expected-structure
@@ -95,8 +95,8 @@
       (is (contains? hooks :configured?))
       (is (contains? hooks :path))))
 
-  (testing "yarn-lock has expected keys"
-    (let [yl (get-in (doctor/diagnose) [:project :yarn-lock])]
+  (testing "bun-lock has expected keys"
+    (let [yl (get-in (doctor/diagnose) [:project :bun-lock])]
       (is (contains? yl :exists?))))
 
   (testing "deps-edn has expected keys"

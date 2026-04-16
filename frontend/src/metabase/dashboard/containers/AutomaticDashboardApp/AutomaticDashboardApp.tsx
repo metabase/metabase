@@ -6,9 +6,9 @@ import { t } from "ttag";
 
 import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
-import ActionButton from "metabase/common/components/ActionButton";
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
+import { ActionButton } from "metabase/common/components/ActionButton";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard";
@@ -18,11 +18,13 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
+import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideModal";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, Group } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";
@@ -49,6 +51,10 @@ const AutomaticDashboardAppInner = () => {
   const invalidateCollections = () => invalidateTags(null, ["collection"]);
 
   const [savedDashboardUrl, setSavedDashboardUrl] = useState<string>();
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const fromEmbeddingSetupGuide = new URLSearchParams(
+    window.location.search,
+  ).has(RETURN_TO_SETUP_GUIDE_PARAM);
 
   useEffect(() => {
     setSavedDashboardUrl(undefined);
@@ -85,6 +91,9 @@ const AutomaticDashboardAppInner = () => {
         }),
       );
       setSavedDashboardUrl(newDashboardUrl);
+      if (fromEmbeddingSetupGuide) {
+        setShowReturnModal(true);
+      }
     }
   };
 
@@ -209,6 +218,14 @@ const AutomaticDashboardAppInner = () => {
           </Box>
         )}
       </div>
+      {fromEmbeddingSetupGuide && (
+        <ReturnToSetupGuideModal
+          opened={showReturnModal}
+          onClose={() => setShowReturnModal(false)}
+          title={t`Dashboard saved!`}
+          message={t`Your dashboard has been saved. Return to the setup guide to continue.`}
+        />
+      )}
     </div>
   );
 };

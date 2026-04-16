@@ -8,8 +8,8 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import S from "metabase/common/components/List/List.module.css";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
-import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import {
   CurrencyPicker,
   SemanticTypePicker,
@@ -173,4 +173,5 @@ Field.propTypes = {
   formField: PropTypes.object,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(Field);

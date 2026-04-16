@@ -15,16 +15,16 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
-   (metabase.driver.common.parameters ReferencedCardQuery)))
+   (metabase.driver.common.parameters ReferencedCardQuery ReferencedTableQuery)))
 
 (set! *warn-on-reflection* true)
 
@@ -594,6 +594,77 @@
         (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
           (is (= expected
                  (query->params-map (query-with-snippet :snippet-id 1, :snippet-name "Old Name")))))))))
+
+(deftest ^:parallel unnormalized-snippet-test
+  (testing "Snippet parsing should normalize snippet names when parsing"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
+                                                               :content "venues WHERE price = 4"}]
+      (let [expected {"snippet: expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
+                                                                                       :content    "venues WHERE price = 4"})}
+            query (assoc (mt/native-query {:query "SELECT * FROM {{snippet:expensive-venues}}"})
+                         :template-tags {"snippet:expensive-venues" {:type :snippet
+                                                                     :name         "expensive-venues"
+                                                                     :display-name "Expensive Venues"
+                                                                     :snippet-name "expensive-venues"
+                                                                     :snippet-id snippet-id}})]
+        (is (= expected
+               (query->params-map query)))))))
+
+(deftest ^:parallel table-tag-test
+  (testing "Table template tag produces a ReferencedTableQuery"
+    (is (instance? ReferencedTableQuery
+                   (#'params.values/value-for-tag
+                    {:name         "table-tag-test"
+                     :display-name "Table tag test"
+                     :type         :table
+                     :table-id     1}
+                    [])))
+    (is (=? {:table-id 1}
+            (value-for-tag {:name         "table-tag-test"
+                            :display-name "Table tag test"
+                            :type         :table
+                            :table-id     1}
+                           []))))
+  (testing "Table template tag with emit-alias resolves alias from name"
+    (is (=? {:table-id 1
+             :alias    "my_table"}
+            (value-for-tag {:name         "my_table"
+                            :display-name "My Table"
+                            :type         :table
+                            :table-id     1
+                            :emit-alias   true}
+                           []))))
+  (testing "Table template tag without emit-alias has nil alias"
+    (is (=? {:table-id 1
+             :alias    nil}
+            (value-for-tag {:name         "my_table"
+                            :display-name "My Table"
+                            :type         :table
+                            :table-id     1}
+                           [])))))
+
+(deftest ^:parallel table-tag-with-source-filters-test
+  (testing "Table template tag with source-filters passes them through"
+    (let [filters [{:field-id 100 :op :> :value 10}
+                   {:field-id 100 :op :<= :value 50}]]
+      (is (=? {:table-id       1
+               :source-filters filters}
+              (value-for-tag {:name           "table-tag-test"
+                              :display-name   "Table tag test"
+                              :type           :table
+                              :table-id       1
+                              :source-filters filters}
+                             [])))))
+  (testing "Table template tag with invalid source-filter op throws"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Invalid"
+         (value-for-tag {:name           "table-tag-test"
+                         :display-name   "Table tag test"
+                         :type           :table
+                         :table-id       1
+                         :source-filters [{:field-id 100 :op :LIKE :value "%foo%"}]}
+                        [])))))
 
 (deftest ^:parallel invalid-param-test
   (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"

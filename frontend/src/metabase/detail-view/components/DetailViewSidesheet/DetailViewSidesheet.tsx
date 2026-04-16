@@ -10,10 +10,10 @@ import {
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import {
   DetailsGroup,
   Header,
@@ -24,9 +24,6 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { useDispatch } from "metabase/lib/redux";
-import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
 import {
   Box,
@@ -38,6 +35,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -65,6 +63,7 @@ interface Props {
   table: Table | undefined;
   tableForeignKeys?: ForeignKey[];
   url: string | undefined;
+  onActionSuccess?: () => void;
   onClose: () => void;
   onNextClick: (() => void) | undefined;
   onPreviousClick: (() => void) | undefined;
@@ -82,6 +81,7 @@ export function DetailViewSidesheet({
   table,
   tableForeignKeys,
   url,
+  onActionSuccess,
   onClose,
   onNextClick,
   onPreviousClick,
@@ -98,7 +98,6 @@ export function DetailViewSidesheet({
     [dataset, columnsFromProp, columnSettings, rowFromProps],
   );
 
-  const dispatch = useDispatch();
   const [linkCopied, setLinkCopied] = useState(false);
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = useMemo(() => {
@@ -160,8 +159,8 @@ export function DetailViewSidesheet({
   }, [actionId, rowId]);
 
   const handleActionSuccess = useCallback(() => {
-    dispatch(runQuestionQuery());
-  }, [dispatch]);
+    onActionSuccess?.();
+  }, [onActionSuccess]);
 
   const handleDeleteSuccess = useCallback(() => {
     handleActionSuccess();
@@ -206,7 +205,7 @@ export function DetailViewSidesheet({
       }
     },
     {
-      // otherwise modals get closed ealier and isModalOpen evaluates to false in the handler
+      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
       capture: true,
     },
   );
@@ -239,7 +238,7 @@ export function DetailViewSidesheet({
                 <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
                   <Button
                     aria-label={t`Previous row`}
-                    c="text-dark"
+                    c="text-primary"
                     disabled={!onPreviousClick}
                     h={20}
                     leftSection={<Icon name="chevronup" />}
@@ -256,7 +255,7 @@ export function DetailViewSidesheet({
                 <Tooltip disabled={!onNextClick} label={t`Next row`}>
                   <Button
                     aria-label={t`Next row`}
-                    c="text-dark"
+                    c="text-primary"
                     disabled={!onNextClick}
                     h={20}
                     leftSection={<Icon name="chevrondown" />}
@@ -281,7 +280,7 @@ export function DetailViewSidesheet({
                   <Tooltip label={t`Actions`}>
                     <Button
                       aria-label={t`Actions`}
-                      c="text-dark"
+                      c="text-primary"
                       data-testid="actions-menu"
                       h={20}
                       leftSection={<Icon name="ellipsis" />}
@@ -304,7 +303,7 @@ export function DetailViewSidesheet({
                     aria-label={
                       linkCopied ? t`Copied!` : t`Copy link to this record`
                     }
-                    c="text-dark"
+                    c="text-primary"
                     h={20}
                     leftSection={<Icon name="link" />}
                     p={0}
@@ -318,7 +317,7 @@ export function DetailViewSidesheet({
                   <Box>
                     <Button
                       aria-label={t`Open in full page`}
-                      c="text-dark"
+                      c="text-primary"
                       component={Link}
                       h={20}
                       leftSection={<Icon name="expand" />}
@@ -365,12 +364,7 @@ export function DetailViewSidesheet({
             hasPk &&
             tableForeignKeys &&
             tableForeignKeys.length > 0 && (
-              <Box
-                flex="1"
-                bg="var(--mb-color-background-light)"
-                px={rem(56)}
-                py={rem(48)}
-              >
+              <Box flex="1" bg="background-secondary" px={rem(56)} py={rem(48)}>
                 <Relationships
                   rowId={rowId}
                   rowName={rowName}

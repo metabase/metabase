@@ -12,6 +12,8 @@ const propsSchema: Yup.SchemaOf<MetabotQuestionProps> = Yup.object({
   layout: Yup.mixed<"auto" | "sidebar" | "stacked">()
     .oneOf(["auto", "sidebar", "stacked"])
     .optional(),
+  isSaveEnabled: Yup.mixed().optional(),
+  targetCollection: Yup.mixed().optional(),
 });
 
 export const metabotQuestionSchema: FunctionSchema = { input: [propsSchema] };

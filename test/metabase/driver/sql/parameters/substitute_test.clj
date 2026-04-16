@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql.parameters.substitute-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -7,15 +8,18 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor :as qp]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
 (defn- optional [& args] (params/->Optional args))
@@ -25,6 +29,14 @@
   (driver/with-driver :h2
     (mt/with-metadata-provider meta/metadata-provider
       (sql.params.substitute/substitute parsed param->value))))
+
+;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
+;; TIMEZONE FIXME
+(defn- sql-parameters-engines []
+  (set (for [driver (mt/normal-drivers-with-feature :native-parameters)
+             :when  (and (isa? driver/hierarchy driver :sql)
+                         (not= driver :redshift))]
+         driver)))
 
 (deftest ^:parallel substitute-test
   (testing "normal substitution"
@@ -111,6 +123,54 @@
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from orders" nil]
                  (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))))))))
+
+(deftest ^:parallel substitute-field-filter-for-nested-field-test
+  (testing "field filter for a nested field (with parent-id) should include parent field name in identifier (#47003)"
+    (mt/test-drivers (set/intersection (sql-parameters-engines)
+                                       (mt/normal-drivers-with-feature :nested-field-columns))
+      (let [;; Use high IDs that won't collide with existing test metadata
+            parent-field-id 999901
+            nested-field-id 999902
+          ;; Create a metadata provider that has a parent struct field and a nested child field
+            metadata-provider
+            (lib.tu/merged-mock-metadata-provider
+             meta/metadata-provider
+             {:fields [{:id            parent-field-id
+                        :table-id      (meta/id :venues)
+                        :name          "result"
+                        :display-name  "Result"
+                        :base-type     :type/Dictionary
+                        :database-type "STRUCT"
+                        :parent-id     nil
+                        :nfc-path      nil}
+                       {:id            nested-field-id
+                        :table-id      (meta/id :venues)
+                        :name          "tag_name"
+                        :display-name  "Tag Name"
+                        :base-type     :type/Text
+                        :database-type "CHARACTER VARYING"
+                        :parent-id     parent-field-id
+                        :nfc-path      nil}]})
+            query          ["select * from venues where " (param "tag")]
+            field-metadata (assoc (meta/field-metadata :venues :name)
+                                  :id            nested-field-id
+                                  :name          "tag_name"
+                                  :display-name  "Tag Name"
+                                  :base-type     :type/Text
+                                  :database-type "CHARACTER VARYING"
+                                  :parent-id     parent-field-id
+                                  :nfc-path      nil)
+            field-filter   (params/map->FieldFilter
+                            {:field field-metadata
+                             :value {:type  :string/=
+                                     :value ["banana"]}})
+            [sql _args] (mt/with-metadata-provider metadata-provider
+                          (sql.params.substitute/substitute query {"tag" field-filter}))]
+        (testing "The SQL identifier should include the parent field 'result' before 'tag_name'"
+          (let [[exp-identifier] (sql.qp/format-honeysql driver/*driver*
+                                                         (h2x/identifier :field "result" "tag_name"))]
+            (is (str/includes? sql exp-identifier)
+                (str "Expected SQL to include parent field in identifier, got: " sql))))))))
 
 (def ^:private substitute-field-filter-test-2-test-cases
   (partition-all
@@ -318,16 +378,16 @@
 
 (deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
-    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: symbol_is_A")]]
       (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-              (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+              (substitute query {"snippet: symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
 
 (deftest ^:parallel substitute-recursive-native-query-snippets-test
   (testing "Recursive native query snippet substitution"
-    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:outer")]]
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: outer")]]
       (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-              (substitute query {"snippet:outer" (params/->ReferencedQuerySnippet 123 "{{snippet:symbol_is_A}}")
-                                 "snippet:symbol_is_A" (params/->ReferencedQuerySnippet 124 "symbol = 'A'")}))))))
+              (substitute query {"snippet: outer" (params/->ReferencedQuerySnippet 123 "{{snippet:symbol_is_A}}")
+                                 "snippet: symbol_is_A" (params/->ReferencedQuerySnippet 124 "symbol = 'A'")}))))))
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
@@ -832,11 +892,7 @@
                         "        month"
                         "        from"
                         "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "      ) <> extract("
-                        "        month"
-                        "        from"
-                        "          ?"
-                        "      )"
+                        "      ) <> 1"
                         "    )"
                         "    OR ("
                         "      extract("
@@ -846,7 +902,7 @@
                         "      ) IS NULL"
                         "    )"
                         "  );"]
-                :params [#t "2016-01-01"]}
+                :params []}
                (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"})
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
@@ -866,11 +922,7 @@
                         "          month"
                         "          from"
                         "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) <> extract("
-                        "          month"
-                        "          from"
-                        "            ?"
-                        "        )"
+                        "        ) <> 1"
                         "      )"
                         "      OR ("
                         "        extract("
@@ -886,11 +938,7 @@
                         "          month"
                         "          from"
                         "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) <> extract("
-                        "          month"
-                        "          from"
-                        "            ?"
-                        "        )"
+                        "        ) <> 2"
                         "      )"
                         "      OR ("
                         "        extract("
@@ -901,8 +949,7 @@
                         "      )"
                         "    )"
                         "  );"]
-                :params [#t "2016-01-01"
-                         #t "2016-02-01"]}
+                :params []}
                (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
@@ -914,14 +961,6 @@
   [table-name]
   `(let [sql# (:query (qp.compile/compile (mt/mbql-query ~table-name)))]
      (second (re-find #"(?m)FROM\s+([^\s()]+)" sql#))))
-
-;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
-;; TIMEZONE FIXME
-(defn- sql-parameters-engines []
-  (set (for [driver (mt/normal-drivers-with-feature :native-parameters)
-             :when  (and (isa? driver/hierarchy driver :sql)
-                         (not= driver :redshift))]
-         driver)))
 
 (defn- process-native [& {:as query}]
   (qp/process-query

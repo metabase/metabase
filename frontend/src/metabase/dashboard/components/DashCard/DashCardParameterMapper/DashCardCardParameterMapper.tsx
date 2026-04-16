@@ -8,14 +8,16 @@ import {
   getParameterTarget,
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
-import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
-import { connect } from "metabase/lib/redux";
+import { isNativeDashCard } from "metabase/dashboard/utils";
 import {
   type ParameterMappingOption,
   getMappingOptionByTarget,
 } from "metabase/parameters/utils/mapping-options";
+import type { State } from "metabase/redux/store";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Box, Flex, Icon, Text, Transition } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { connect } from "metabase/utils/redux";
 import { getMobileHeight } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -25,8 +27,8 @@ import type {
   DashboardCard,
   Parameter,
   ParameterTarget,
+  VirtualCard,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
 import S from "./DashCardParameterMapper.module.css";
@@ -52,15 +54,15 @@ const mapStateToProps = (
 };
 
 interface DashcardCardParameterMapperProps {
-  card: Card;
+  card: Card | VirtualCard;
   dashcard: DashboardCard;
-  editingParameter: Parameter | null | undefined;
-  target: ParameterTarget | null | undefined;
+  editingParameter?: Parameter | null | undefined;
+  target?: ParameterTarget | null | undefined;
   isMobile: boolean;
   // virtual cards will not have question
   question?: Question;
-  mappingOptions: ParameterMappingOption[];
-  isRecentlyAutoConnected: boolean;
+  mappingOptions?: ParameterMappingOption[];
+  isRecentlyAutoConnected?: boolean;
   editingParameterInlineDashcard?: DashboardCard;
   compact?: boolean;
 }
@@ -72,8 +74,8 @@ export function DashCardCardParameterMapper({
   target,
   isMobile,
   question,
-  mappingOptions,
-  isRecentlyAutoConnected,
+  mappingOptions = [],
+  isRecentlyAutoConnected = false,
   editingParameterInlineDashcard,
   compact,
 }: DashcardCardParameterMapperProps) {
@@ -166,7 +168,7 @@ export function DashCardCardParameterMapper({
                 fw="bold"
                 fz="sm"
                 lh={1}
-                color="text-light"
+                color="text-tertiary"
               >{t`Auto-connected`}</Text>
             </Flex>
           );

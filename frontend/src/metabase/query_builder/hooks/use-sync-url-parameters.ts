@@ -1,7 +1,8 @@
 import querystring from "querystring";
+
 import { useEffect, useMemo } from "react";
 
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { IS_EMBED_PREVIEW } from "metabase/utils/embed";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter } from "metabase-types/api";
 

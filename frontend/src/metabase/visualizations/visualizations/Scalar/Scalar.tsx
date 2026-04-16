@@ -3,14 +3,21 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
+import { Box, Tooltip } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
+import {
+  compactifyValue,
+  getColor,
+  getTooltipContent,
+} from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
+import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -23,7 +30,7 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
 
-import { ScalarContainer } from "./Scalar.styled";
+import { ScalarValueContainer } from "./ScalarValueContainer";
 import { scalarToBarTransform } from "./scalars-bar-transform";
 
 const PADDING = 32;
@@ -63,6 +70,9 @@ export class Scalar extends Component<
 
   static settings = {
     ...fieldSetting("scalar.field", {
+      get section() {
+        return t`Formatting`;
+      },
       get title() {
         return t`Field to show`;
       },
@@ -77,6 +87,28 @@ export class Scalar extends Component<
         },
       ]) => cols.length < 2,
     }),
+    // used by metrics viewer to set the color, overrides "scalar.segments"
+    "scalar.color": {
+      hidden: true,
+      getDefault: () => undefined,
+    },
+    "scalar.segments": {
+      get section() {
+        return t`Conditional colors`;
+      },
+      getDefault() {
+        return [];
+      },
+      widget: ChartSettingSegmentsEditor,
+      persistDefault: true,
+      getWrapperStyle: () => ({
+        marginLeft: 0,
+        marginRight: 0,
+      }),
+      getProps: () => ({
+        canRemoveAll: true,
+      }),
+    },
     ...columnSettings({
       getColumns: (
         [
@@ -94,15 +126,15 @@ export class Scalar extends Component<
     "scalar.locale": {
       // title: t`Separator style`,
       // widget: "select",
-      // props: {
+      // getProps: () => ({
       //   options: [
       //     { name: "100000.00", value: null },
       //     { name: "100,000.00", value: "en" },
       //     { name: "100 000,00", value: "fr" },
       //     { name: "100.000,00", value: "de" },
       //   ],
-      // },
-      // default: "en",
+      // }),
+      // getDefault:() => "en",
     },
     "scalar.decimals": {
       // title: t`Number of decimal places`,
@@ -174,6 +206,14 @@ export class Scalar extends Component<
       jsx: true,
     };
 
+    const segments = settings["scalar.segments"]?.filter((segment) =>
+      segmentIsValid(segment, { allowOpenEnded: true }),
+    );
+
+    const explicitColor = settings["scalar.color"];
+    const color = explicitColor ?? getColor(value, segments);
+    const tooltipContent = explicitColor ? null : getTooltipContent(segments);
+
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
       width,
@@ -206,24 +246,36 @@ export class Scalar extends Component<
 
     return (
       <ScalarWrapper>
-        <ScalarContainer
+        <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
-          data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
-          <span onClick={handleClick} ref={(scalar) => (this._scalar = scalar)}>
-            <ScalarValue
-              fontFamily={fontFamily}
-              gridSize={gridSize}
-              height={Math.max(height - PADDING * 2, 0)}
-              totalNumGridCols={totalNumGridCols}
-              value={displayValue as string}
-              width={Math.max(width - PADDING, 0)}
-            />
-          </span>
-        </ScalarContainer>
+          <Tooltip
+            label={tooltipContent}
+            position="bottom"
+            px="0.375rem"
+            py="xs"
+            disabled={!tooltipContent}
+          >
+            <Box
+              onClick={handleClick}
+              ref={(scalar) => (this._scalar = scalar)}
+            >
+              <ScalarValue
+                color={color}
+                disableHover={!!explicitColor}
+                fontFamily={fontFamily}
+                gridSize={gridSize}
+                height={Math.max(height - PADDING * 2, 0)}
+                totalNumGridCols={totalNumGridCols}
+                value={displayValue as string}
+                width={Math.max(width - PADDING, 0)}
+              />
+            </Box>
+          </Tooltip>
+        </ScalarValueContainer>
       </ScalarWrapper>
     );
   }

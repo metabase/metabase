@@ -7,12 +7,13 @@ import {
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Group, Tabs, Title } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
+import { TenantsDocsButton } from "../TenantsDocsButton";
 import { TenantsListing } from "../components/TenantsListing";
 
 import S from "./TenantsListingApp.module.css";
@@ -63,6 +64,7 @@ export const TenantsListingApp = ({
         <Title order={1}>{t`Tenants`}</Title>
 
         <Group gap="sm">
+          <TenantsDocsButton />
           <EditUserStrategySettingsButton page="tenants" />
         </Group>
       </Group>

@@ -2,7 +2,7 @@
   flex-shrink: 0;
 
   &:hover {
-    background-color: var(--mb-color-background-light);
+    background-color: var(--mb-color-background-secondary);
   }
 }
 

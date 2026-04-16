@@ -10,15 +10,16 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
-import ListSearchField from "metabase/common/components/ListSearchField";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ListSearchField } from "metabase/common/components/ListSearchField";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { TextInputProps } from "metabase/ui";
 import { Box, Icon, Text, isValidIconName } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
+import { isTouchDevice } from "metabase/utils/browser";
 
 import styles from "./AccordionListCell.module.css";
 import {
@@ -322,7 +323,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     borderBottom = true;
     content = (
       <ListSearchField
-        autoFocus
+        autoFocus={!isTouchDevice()}
         onChange={(e) => onChangeSearchText(e.target.value)}
         onResetClick={() => onChangeSearchText("")}
         value={searchText}

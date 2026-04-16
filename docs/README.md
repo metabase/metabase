@@ -87,6 +87,7 @@ Metabase's reference documentation.
 
 - [The SQL editor](./questions/native-editor/writing-sql.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
+- [Table variables](./questions/native-editor/table-variables.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [Snippets](./questions/native-editor/snippets.md)
 - [Snippet folder permissions](./permissions/snippets.md)
@@ -94,6 +95,7 @@ Metabase's reference documentation.
 #### Visualizing data
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
+- [Box plots](./questions/visualizations/box-plot.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)
@@ -148,7 +150,9 @@ Metabase's reference documentation.
 
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
-- [Setting up Metabot](./ai/settings.md)
+- [AI settings](./ai/settings.md)
+- [Agent API](./ai/agent-api.md)
+- [MCP server](./ai/mcp.md)
 
 ### Exploration and organization
 
@@ -177,6 +181,8 @@ Metabase's reference documentation.
 #### Paid SSO options
 
 - [JWT-based authentication](./people-and-groups/authenticating-with-jwt.md)
+- [OIDC-based authentication](./people-and-groups/authenticating-with-oidc.md)
+  - [OIDC with Keycloak](./people-and-groups/oidc-keycloak.md)
 - [SAML-based authentication](./people-and-groups/authenticating-with-saml.md)
   - [SAML with Auth0](./people-and-groups/saml-auth0.md)
   - [SAML with Microsoft Entra ID](./people-and-groups/saml-azure.md)
@@ -210,6 +216,7 @@ Metabase's reference documentation.
   - [SDK](./embedding/sdk/introduction.md)
 - [Full app embedding](./embedding/full-app-embedding.md)
 - [Securing embeds](./embedding/securing-embeds.md)
+- [AI agent resources](./embedding/ai-agent-resources.md)
 
 ### Configuration
 

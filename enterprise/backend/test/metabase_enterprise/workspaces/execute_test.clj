@@ -1,0 +1,390 @@
+(ns ^:mb/driver-tests metabase-enterprise.workspaces.execute-test
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.execute :as ws.execute]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
+   [metabase-enterprise.workspaces.query-processor.middleware :as ws.qp.middleware]
+   [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
+
+(ws.tu/ws-fixtures!)
+
+(deftest run-workspace-transform-no-input-test
+  (testing "Executing a workspace transform returns results and rolls back app DB records"
+    (transforms.tu/with-transform-cleanup! [output-table "ws_execute_test"]
+      (let [workspace    (ws.tu/create-ready-ws! "Execute Test Workspace")
+            db-id        (:database_id workspace)
+            body         {:name   "Test Transform"
+                          :source {:type  "query"
+                                   :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name"})}
+                          :target {:type     "table"
+                                   :database db-id
+                                   :schema   nil
+                                   :name     output-table}}
+            ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+            ;; get initialized fields
+            workspace    (t2/select-one :model/Workspace (:id workspace))
+            graph        (ws.impl/get-or-calculate-graph! workspace)
+            ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
+            before       {:xf    (t2/count :model/Transform)
+                          :xfrun (t2/count :model/TransformRun)}]
+        (testing "execution returns expected result structure"
+          (is (=? {:status     :succeeded
+                   :start_time some?
+                   :end_time   some?
+                   :table      {:name   #(str/includes? % output-table)
+                                :schema ws-schema}}
+                  (mt/with-current-user (mt/user->id :crowberto)
+                    (ws.impl/run-transform! workspace graph ws-transform))))
+          (is (=? {:last_run_at some?}
+                  (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))
+
+          (testing "The isolated_table_id gets populated"
+            (ws.impl/get-or-calculate-graph! workspace)
+            (is (=? [{:workspace_id      (:id workspace)
+                      :global_table      output-table
+                      :global_schema     nil
+                      :global_table_id   pos-int?
+                      :isolated_schema   string?
+                      :isolated_table    string?
+                      :isolated_table_id number?}]
+                    (t2/select :model/WorkspaceOutput :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
+
+        (testing "no app DB records are created (transforms-base/execute! skips TransformRun)"
+          (is (= before
+                 {:xf    (t2/count :model/Transform)
+                  :xfrun (t2/count :model/TransformRun)})))))))
+
+(deftest dry-run-workspace-transform-with-template-tags-test
+  (testing "Dry-running a workspace transform with template tags succeeds"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 []}}}]
+      (let [ref-id       (workspace-map :x1)
+            workspace    (t2/select-one :model/Workspace workspace-id)
+            ;; Update the transform source to use template tags
+            native-query (-> (lib/native-query (mt/metadata-provider)
+                                               "SELECT {{num}} as id")
+                             (lib/with-template-tags
+                               {"num" {:id           "num"
+                                       :name         "num"
+                                       :display-name "Num"
+                                       :type         :number
+                                       :default      "1"}}))
+            _            (t2/update! :model/WorkspaceTransform
+                                     {:workspace_id workspace-id :ref_id ref-id}
+                                     {:source {:type "query" :query native-query}})
+            ws-transform (t2/select-one :model/WorkspaceTransform :workspace_id workspace-id :ref_id ref-id)
+            graph        (ws.impl/get-or-calculate-graph! workspace)]
+        (is (=? {:status :succeeded
+                 :data   {:rows [[1]]}}
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (ws.impl/dry-run-transform workspace graph ws-transform))))))))
+
+(deftest dry-run-sql-workspace-transform-test
+  (testing "Dry-running a workspace transform returns rows without persisting"
+    (let [workspace    (ws.tu/create-ready-ws! "Dry-Run Test Workspace")
+          db-id        (:database_id workspace)
+          body         {:name   "Dry-Run Transform"
+                        :source {:type  "query"
+                                 :query (mt/native-query {:query "SELECT * FROM (SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world') t ORDER BY 1"})}
+                        :target {:type     "table"
+                                 :database db-id
+                                 :schema   nil
+                                 :name     "ws_dryrun_test"}}
+          ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+          graph        (ws.impl/get-or-calculate-graph! workspace)
+          before       {:xf    (t2/count :model/Transform)
+                        :xfrun (t2/count :model/TransformRun)}]
+
+      (testing "dry-run returns data nested under :data like /api/dataset"
+        (is (=? {:status :succeeded
+                 :data   {:rows [[1 "hello"] [2 "world"]]
+                          :cols [{:name #"(ID)|(id)"} {:name #"(NAME)|(name)"}]}}
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (ws.impl/dry-run-transform workspace graph ws-transform)))))
+
+      (testing "last_run_at is NOT updated in dry-run mode"
+        (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
+
+      (testing "app DB records are NOT created in dry-run mode"
+        (is (= before
+               {:xf    (t2/count :model/Transform)
+                :xfrun (t2/count :model/TransformRun)}))))))
+
+(deftest ^:mb/transforms-python-test dry-run-python-workspace-transform-test
+  (testing "Dry-running a Python workspace transform returns rows without persisting"
+    (mt/test-drivers #{:mysql :postgres}
+      (let [workspace    (ws.tu/create-ready-ws! "Python Dry-Run Test")
+            db-id        (:database_id workspace)
+            body         {:name   "Python Dry-Run Transform"
+                          :source {:type          "python"
+                                   :source-tables []
+                                   :body          (str "import pandas as pd\n"
+                                                       "\n"
+                                                       "def transform():\n"
+                                                       "    return pd.DataFrame({'id': [1, 2], 'name': ['hello', 'world']})")}
+                          :target {:type     "table"
+                                   :database db-id
+                                   :schema   nil
+                                   :name     "ws_python_dryrun_test"}}
+            ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+            graph        (ws.impl/get-or-calculate-graph! workspace)
+            before       {:xf    (t2/count :model/Transform)
+                          :xfrun (t2/count :model/TransformRun)}]
+
+        (testing "dry-run returns data with rows from Python output"
+          (is (=? {:status :succeeded
+                   :data   {:rows [[1 "hello"] [2 "world"]]
+                            :cols [{:name "id"} {:name "name"}]}}
+                  (mt/with-current-user (mt/user->id :crowberto)
+                    (ws.impl/dry-run-transform workspace graph ws-transform)))))
+
+        (testing "last_run_at is NOT updated in dry-run mode"
+          (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
+
+        (testing "app DB records are NOT created in dry-run mode"
+          (is (= before
+                 {:xf    (t2/count :model/Transform)
+                  :xfrun (t2/count :model/TransformRun)})))))))
+
+(deftest remap-python-source-test
+  (let [remap-python-source #'ws.execute/remap-python-source]
+    (testing "remaps entry via triple lookup when mapping has :id"
+      (let [table-mapping {[1 "public" "orders"] {:db-id  1
+                                                  :schema "ws_isolated_123"
+                                                  :table  "orders_isolated"
+                                                  :id     456}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "remaps entry via table_id lookup"
+      (let [table-mapping {123 {:db-id  1
+                                :schema "ws_isolated_123"
+                                :table  "orders_isolated"
+                                :id     456}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :table_id 123 :database_id 1 :schema "public"}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "remaps without table_id when mapping has nil :id"
+      (let [table-mapping {[1 "public" "orders"] {:db-id  1
+                                                  :schema "ws_isolated_123"
+                                                  :table  "orders_isolated"
+                                                  :id     nil}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "leaves source-tables unchanged when no mapping exists"
+      (let [table-mapping {}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= source (remap-python-source table-mapping source)))))
+
+    (testing "handles multiple entries with mappings"
+      (let [table-mapping {[1 "public" "orders"] {:db-id  1
+                                                  :schema "ws_isolated_123"
+                                                  :table  "orders_isolated"
+                                                  :id     456}
+                           789                    {:db-id  1
+                                                   :schema "ws_isolated_123"
+                                                   :table  "customers_isolated"
+                                                   :id     999}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}
+                                           {:alias "customers" :table_id 789 :database_id 1 :schema "public"}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}
+                {:alias "customers" :database_id 1
+                 :schema "ws_isolated_123" :table "customers_isolated" :table_id 999}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "prefers table_id lookup over triple lookup"
+      (let [table-mapping {123                    {:db-id  1
+                                                   :schema "ws_isolated_123"
+                                                   :table  "orders_by_id"
+                                                   :id     456}
+                           [1 "public" "orders"] {:db-id  1
+                                                  :schema "ws_isolated_123"
+                                                  :table  "orders_by_triple"
+                                                  :id     789}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_by_id" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "falls back to triple lookup when table_id not in mapping"
+      (let [table-mapping {[1 "public" "orders"] {:db-id  1
+                                                  :schema "ws_isolated_123"
+                                                  :table  "orders_isolated"
+                                                  :id     456}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 999}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "keeps original values when mapping has nil :id"
+      (let [table-mapping {123 {:db-id  1
+                                :schema "ws_isolated_123"
+                                :table  "orders_isolated"
+                                :id     nil}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "entry with no matching mapping is left unchanged"
+      (let [table-mapping {999 {:db-id 1 :schema "ws" :table "t" :id 456}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "public" :table "orders" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))))
+
+(defn- sql-tools-quote
+  "Quote an identifier using the same pipeline as the workspace middleware.
+   Pre-quotes with sql.u/quote-name (triggering was_quoted in the sql-tools backend),
+   then feeds through sql-tools/replace-names to get the final dialect-specific quoting
+   (e.g., brackets for SQL Server, backticks for MySQL, double quotes for ANSI)."
+  [s]
+  (let [pre-quoted (sql.u/quote-name driver/*driver* :table s)
+        result     (sql-tools/replace-names
+                    driver/*driver*
+                    "SELECT * FROM __placeholder__"
+                    {:tables {{:table "__placeholder__"} pre-quoted}}
+                    {:allow-unused? true})]
+    (second (re-find #"(?i)SELECT \* FROM (.+)" result))))
+
+(deftest workspace-sql-remapping-test
+  (let [db-id (mt/id)
+        ;; The middleware quotes replacement identifiers to preserve case for drivers like Snowflake.
+        ;; The final quoting style depends on the sql-tools backend dialect (not HoneySQL),
+        ;; so we derive it from the same pipeline the middleware uses.
+        q     sql-tools-quote]
+    (doseq [[label table-mapping input-sql expected-sql]
+            [["remaps qualified table reference to isolated table"
+              {[db-id "public" "orders"] {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
+              "SELECT * FROM public.orders"
+              (str "SELECT * FROM " (q "ws_isolated_123") "." (q "public__orders"))]
+
+             ["remaps unqualified table reference using nil-schema mapping"
+              {[db-id nil "orders"] {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
+              "SELECT * FROM orders"
+              (str "SELECT * FROM " (q "ws_isolated_123") "." (q "public__orders"))]
+
+             ["qualifies unqualified input table reference (no isolation, just adds schema)"
+              {[db-id nil "orders"] {:db-id db-id :schema "public" :table "orders" :id 123}}
+              "SELECT * FROM orders"
+              (str "SELECT * FROM " (q "public") "." (q "orders"))]
+
+             ["leaves unmapped tables unchanged"
+              {[db-id nil "other_table"] {:db-id db-id :schema "public" :table "other_table" :id 789}}
+              "SELECT * FROM orders"
+              "SELECT * FROM orders"]
+
+             ;; Note: macaw only renames tables in FROM/JOIN clauses, not table qualifiers in column references.
+             ;; The output SQL is semantically valid since orders resolves to public.orders in scope.
+             ["handles multiple tables in same query"
+              {[db-id nil "orders"]   {:db-id db-id :schema "public" :table "orders" :id 123}
+               [db-id nil "products"] {:db-id db-id :schema "public" :table "products" :id 124}}
+              "SELECT * FROM orders JOIN products ON orders.product_id = products.id"
+              (str "SELECT * FROM " (q "public") "." (q "orders")
+                   " JOIN " (q "public") "." (q "products")
+                   " ON orders.product_id = products.id")]
+
+             ["ignores numeric keys in table-mapping"
+              {123 {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
+              "SELECT * FROM orders"
+              "SELECT * FROM orders"]]]
+      (testing label
+        (let [query    {:type "query", :query (lib/native-query (mt/metadata-provider) input-sql)}
+              source   (#'ws.execute/attach-table-remapping table-mapping query)
+              compiled (qp.compile/compile (:query source))]
+          (is (= expected-sql (:query compiled))))))))
+
+(deftest workspace-mbql-remapping-throws-test
+  (testing "workspace remapping throws on MBQL queries (not yet supported)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (assoc-in [:middleware :workspace-remapping]
+                              {:tables {{:schema "public" :table "orders"}
+                                        {:schema "ws_isolated" :table "public__orders"}}}))]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Workspace remapping is currently only supported for native queries"
+                            (ws.qp.middleware/apply-workspace-remapping query))))))
+
+(deftest run-transform-marks-not-stale-on-success
+  (testing "Successful transform run marks definition_changed=false"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0]}
+                                         :properties  {:x1 {:definition_changed true :input_data_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)]
+        (testing "initially stale"
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (ws.tu/mock-run-transform! workspace-id t1-ref)
+
+        (testing "after run: definition_changed cleared"
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))))))
+
+(deftest transform-stale-lifecycle
+  (testing "Transform stale lifecycle: create -> run (not stale) -> update (stale)"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 [:t0]}
+                                         :properties  {:x1 {:definition_changed true :input_data_changed false}}}}]
+      (let [t1-ref (workspace-map :x1)]
+        (testing "sanity check that it's stale to start with"
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (testing "Run (mocked): should mark definition_changed as false"
+          (ws.tu/mock-run-transform! workspace-id t1-ref)
+          (is (= {t1-ref {:definition_changed false :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))
+
+        (testing "Update source: should mark definition_changed as true"
+          (t2/update! :model/WorkspaceTransform {:workspace_id workspace-id :ref_id t1-ref}
+                      {:source {:type "query" :query (mt/native-query {:query "SELECT 2 as id, 'world' as name"})}})
+          (is (= {t1-ref {:definition_changed true :input_data_changed false}}
+                 (ws.tu/staleness-flags workspace-id))))))))

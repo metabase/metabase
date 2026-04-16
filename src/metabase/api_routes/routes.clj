@@ -3,6 +3,7 @@
    [compojure.route :as route]
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
+   [metabase.agent-api.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
    [metabase.api.docs]
@@ -20,14 +21,22 @@
    [metabase.comments.api]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
+   [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
+   [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
+   [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
+   [metabase.mcp.api]
+   [metabase.measures.api]
+   [metabase.metabot.api]
+   [metabase.metabot.api.entity-analysis]
+   [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
@@ -51,6 +60,9 @@
    [metabase.testing-api.core]
    [metabase.tiles.api]
    [metabase.timeline.api]
+   [metabase.transforms-rest.api.transform]
+   [metabase.transforms-rest.api.transform-job]
+   [metabase.transforms-rest.api.transform-tag]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
@@ -61,6 +73,7 @@
 
 (comment metabase.actions-rest.api/keep-me
          metabase.activity-feed.api/keep-me
+         metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
@@ -71,13 +84,18 @@
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
          metabase.dashboards-rest.api/keep-me
+         metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
+         metabase.mcp.api/keep-me
+         metabase.measures.api/keep-me
+         metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
@@ -91,6 +109,9 @@
          metabase.task-history.api/keep-me
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
+         metabase.transforms-rest.api.transform/keep-me
+         metabase.transforms-rest.api.transform-job/keep-me
+         metabase.transforms-rest.api.transform-tag/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users-rest.api/keep-me
@@ -134,6 +155,8 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
+   "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
+   "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/api-key"              (+auth 'metabase.api-keys.api)
@@ -148,20 +171,27 @@
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
+   "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
-   "/eid-translation"      'metabase.eid-translation.api
+   "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
+   "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
+   "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
+   "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
+   "/measure"              (+auth 'metabase.measures.api)
+   "/metabot"              metabase.metabot.api/routes
+   "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
@@ -171,7 +201,7 @@
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
-   "/public"               (+public-exceptions 'metabase.public-sharing-rest.api)
+   "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
@@ -186,6 +216,9 @@
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
+   "/transform"            (+auth metabase.transforms-rest.api.transform/routes)
+   "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
+   "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)

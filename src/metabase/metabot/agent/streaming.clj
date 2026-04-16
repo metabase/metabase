@@ -1,0 +1,175 @@
+(ns metabase.metabot.agent.streaming
+  "Streaming helpers for the agent loop.
+  Provides utilities for creating AI-SDK data parts, including navigation,
+  and transducers for stream processing."
+  (:require
+   [buddy.core.codecs :as codecs]
+   [metabase.metabot.agent.markdown-link-buffer :as markdown-link-buffer]
+   [metabase.util.json :as json]))
+
+(set! *warn-on-reflection* true)
+
+;;; AI-SDK Data Types
+;;
+;; These match the Python AI Service's AISDKDataTypes enum
+
+(def navigate-to-type "AI-SDK data type for navigation links." "navigate_to")
+(def state-type "AI-SDK data type for state updates." "state")
+(def todo-list-type "AI-SDK data type for todo lists." "todo_list")
+(def code-edit-type "AI-SDK data type for code edits." "code_edit")
+(def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
+(def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
+(def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
+
+;;; Query URL Encoding
+
+(defn query->url-hash
+  "Convert an MBQL 4 (legacy) or MBQL 5 query to a base64-encoded URL hash.
+  Used for /question# URLs."
+  [query]
+  (-> {:dataset_query query}
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
+
+(defn query->question-url
+  "Convert a query to a /question# URL."
+  [query]
+  (str "/question#" (query->url-hash query)))
+
+;;; Data Part Constructors
+
+(defn navigate-to-part
+  "Create a NAVIGATE_TO data part for streaming.
+  The URL should be a path like '/question#...' or '/model/123'.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.NAVIGATE_TO, version=1, value=path)"
+  [url]
+  {:type :data
+   :data-type navigate-to-type
+   :data url})
+
+(defn state-part
+  "Create a STATE data part for streaming."
+  [state-map]
+  {:type :data
+   :data-type state-type
+   :data state-map})
+
+(defn todo-list-part
+  "Create a TODO_LIST data part for streaming.
+  Todos should be a vector of todo item maps with :id, :content, :status, :priority keys.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.TODO_LIST, version=1, value=todos)"
+  [todos]
+  {:type :data
+   :data-type todo-list-type
+   :version 1
+   :data todos})
+
+(defn code-edit-part
+  "Create a CODE_EDIT data part for streaming.
+  Edit-data should be a map describing the code edit operation.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.CODE_EDIT, version=1, value=edit_data)"
+  [edit-data]
+  {:type :data
+   :data-type code-edit-type
+   :version 1
+   :data edit-data})
+
+(defn transform-suggestion-part
+  "Create a TRANSFORM_SUGGESTION data part for streaming.
+  Suggestion should be a map containing the suggested transform definition.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.TRANSFORM_SUGGESTION, version=1, value=suggestion)"
+  [suggestion]
+  {:type :data
+   :data-type transform-suggestion-type
+   :version 1
+   :data suggestion})
+
+(defn adhoc-viz-part
+  "Create an ADHOC_VIZ data part for streaming.
+  Value should be a map with :query (dataset query), :link (question URL),
+  and optionally :title and :display.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.ADHOC_VIZ, version=1, value=adhoc_viz_value)"
+  [value]
+  {:type :data
+   :data-type adhoc-viz-type
+   :version 1
+   :data value})
+
+(defn static-viz-part
+  "Create a STATIC_VIZ data part for streaming.
+  Value should be a map with :entity_id (int) for the saved question or metric to render.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.STATIC_VIZ, version=1, value={\"entity_id\": entity_id})"
+  [value]
+  {:type :data
+   :data-type static-viz-type
+   :version 1
+   :data value})
+
+;;; Reaction Conversion
+
+(defn reactions->data-parts
+  "Convert tool reactions to AI-SDK data parts for streaming.
+
+  Reactions are metadata returned by tools that trigger side effects:
+  - :metabot.reaction/redirect -> navigate_to data part
+
+  Returns a vector of data parts (may be empty if no relevant reactions)."
+  [reactions]
+  (into []
+        (keep (fn [{:keys [type url]}]
+                (case type
+                  :metabot.reaction/redirect (navigate-to-part url)
+                  nil)))
+        reactions))
+
+;;; Stream Processing Transducers
+
+(def expand-reactions-xf
+  "Stateless transducer that expands :reactions from tool-output parts into data parts.
+  Passes through all parts unchanged, then appends any reaction data parts after tool-output parts."
+  (mapcat (fn [part]
+            (if (= (:type part) :tool-output)
+              (cons part (reactions->data-parts (get-in part [:result :reactions])))
+              [part]))))
+
+(def expand-data-parts-xf
+  "Stateless transducer that expands :data-parts from tool-output results.
+  Passes through all parts unchanged, then appends any data parts after tool-output parts."
+  (mapcat (fn [part]
+            (if (= (:type part) :tool-output)
+              (cons part (get-in part [:result :data-parts]))
+              [part]))))
+
+(defn post-process-xf
+  "Composed transducer for post-processing agent output.
+
+  Applies in order:
+  1. expand-data-parts-xf - Extract data-parts from tool outputs
+  2. expand-reactions-xf - Extract reactions from tool outputs as data parts
+  3. resolve-links-xf - Resolve metabase:// links in text parts
+
+  Note: expand-data-parts-xf comes first so its output appears before reactions,
+  matching the original stream-parts-to-output! behavior.
+
+  Parameters:
+  - initial-queries: Initial map of query-id to query data
+  - initial-charts: Initial map of chart-id to chart data
+  - link-registry-atom: Atom of {resolved-url original-metabase-uri}"
+  [initial-queries initial-charts link-registry-atom]
+  (comp
+   expand-data-parts-xf
+   expand-reactions-xf
+   (markdown-link-buffer/resolve-xf initial-queries initial-charts link-registry-atom)))

@@ -1,7 +1,7 @@
 import * as React from "react";
 import _ from "underscore";
 
-import ModalContent from "metabase/common/components/ModalContent";
+import { ModalContent } from "metabase/common/components/ModalContent";
 
 export const modalSizes = ["small", "medium", "wide", "tall", "fit"] as const;
 export type ModalSize = (typeof modalSizes)[number];

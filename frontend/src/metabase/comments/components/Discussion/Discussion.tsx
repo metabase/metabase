@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
@@ -11,8 +10,9 @@ import {
 import { getCommentsUrl } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type {
   Comment,
   CommentEntityType,
@@ -40,7 +40,7 @@ export const Discussion = ({
   targetType,
   enableHoverHighlight = false,
 }: DiscussionProps) => {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
   const [, setNewComment] = useState<DocumentContent>();
   const parentCommentId = comments[0].id;
@@ -52,20 +52,19 @@ export const Discussion = ({
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
 
-  const handleSubmit = async (doc: DocumentContent, html: string) => {
+  const handleSubmit = async (doc: DocumentContent) => {
     const { error } = await createComment({
       child_target_id: effectiveChildTargetId,
       target_id: targetId,
       target_type: targetType,
       content: doc,
       parent_comment_id: parentCommentId,
-      html,
     });
 
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to send comment`,
       });
     }
@@ -77,7 +76,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to delete comment`,
       });
     }
@@ -92,7 +91,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to resolve comment`,
       });
     }
@@ -107,7 +106,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to unresolve comment`,
       });
     }
@@ -125,7 +124,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to update comment`,
       });
     }
@@ -149,7 +148,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to add reaction`,
       });
     }
@@ -161,7 +160,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to remove reaction`,
       });
     }
@@ -202,7 +201,7 @@ export const Discussion = ({
             onReactionRemove={handleReactionRemove}
           />
         ))}
-        {!comments[0]?.is_resolved && (
+        {!comments[0]?.is_resolved && currentUser && (
           <Timeline.Item
             className={S.commentRoot}
             bullet={<Avatar name={currentUser.common_name} />}

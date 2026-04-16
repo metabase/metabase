@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
-   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -31,9 +30,9 @@
   :default true
   :export? true
   :getter  (fn []
-             (if-not (and config/ee-available? (:valid (premium-features/token-status)))
-               (setting/get-value-of-type :boolean :show-static-embed-terms)
-               false)))
+             (if (premium-features/hide-embed-branding?)
+               false
+               (setting/get-value-of-type :boolean :show-static-embed-terms))))
 
 (defsetting show-sdk-embed-terms
   (deferred-tru "Check if admin should see the SDK licensing terms popup")
@@ -183,7 +182,6 @@
   :type       :string
   :export?    false
   :visibility :public
-  :feature    :embedding-sdk
   :default    ""
   :encryption :no
   :audit      :getter
@@ -306,6 +304,15 @@
 
 (defsetting embedding-hub-production-embed-snippet-created
   (deferred-tru "Indicates if a production embed snippet has been created for tracking in the embedding hub")
+  :type       :boolean
+  :default    false
+  :export?    true
+  :visibility :admin
+  :can-read-from-env? false
+  :doc false)
+
+(defsetting embedding-hub-sso-auth-manual-tested
+  (deferred-tru "Indicates if the user has manually confirmed that SSO authentication is working correctly")
   :type       :boolean
   :default    false
   :export?    true

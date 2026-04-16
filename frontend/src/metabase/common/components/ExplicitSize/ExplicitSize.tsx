@@ -7,15 +7,20 @@ import type {
   MutableRefObject,
   PropsWithoutRef,
 } from "react";
-import React, { Component, createRef } from "react";
+import React, { Component, createContext, createRef } from "react";
+import { flushSync } from "react-dom";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
-import { delay } from "metabase/lib/delay";
-import resizeObserver from "metabase/lib/resize-observer";
+import { delay } from "metabase/utils/delay";
+import resizeObserver from "metabase/utils/resize-observer";
 
 const WAIT_TIME = delay(300);
+
+export const ExplicitSizeRefreshModeContext = createContext<
+  RefreshMode | undefined
+>(undefined);
 
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
@@ -23,6 +28,7 @@ const REFRESH_MODE = {
   debounceLeading: (fn: () => void) =>
     debounce(fn, WAIT_TIME, { leading: true }),
   none: (fn: () => void) => fn,
+  layout: (fn: () => void) => () => flushSync(fn),
 };
 
 export type RefreshMode = keyof typeof REFRESH_MODE;
@@ -50,7 +56,7 @@ type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
 /**
  * @deprecated HOCs are deprecated
  */
-function ExplicitSize<T>({
+export function ExplicitSize<T>({
   selector,
   wrapped = false,
   refreshMode = "throttle",
@@ -60,6 +66,8 @@ function ExplicitSize<T>({
 
     class WrappedComponent extends Component<T & InnerProps> {
       static displayName = `ExplicitSize[${displayName}]`;
+
+      static contextType = ExplicitSizeRefreshModeContext;
 
       state: ExplicitSizeState = {
         width: null,
@@ -134,13 +142,22 @@ function ExplicitSize<T>({
       }
 
       _getRefreshMode = () => {
-        if (isCypressActive || this._printMediaQuery?.matches) {
-          return "none";
-        } else if (typeof refreshMode === "function") {
-          return refreshMode(this.props);
-        } else {
-          return refreshMode;
+        if (this.context) {
+          return this.context as RefreshMode;
         }
+
+        const calculatedRefreshMode =
+          typeof refreshMode === "function"
+            ? refreshMode(this.props)
+            : refreshMode;
+        if (
+          calculatedRefreshMode !== "layout" &&
+          (isCypressActive || this._printMediaQuery?.matches)
+        ) {
+          return "none";
+        }
+
+        return calculatedRefreshMode;
       };
 
       _updateRefreshMode = () => {
@@ -273,6 +290,3 @@ function ExplicitSize<T>({
     ));
   };
 }
-
-// eslint-disable-next-line import/no-default-export
-export default ExplicitSize;

@@ -1,6 +1,7 @@
 const { H } = cy;
 import { dedent } from "ts-dedent";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -83,7 +84,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     H.getRemoveDimensionButton({ name: "User → State" }).click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User → State").should("not.exist");
   });
 
@@ -138,7 +139,7 @@ describe("scenarios > question > summarize sidebar", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("49.54");
   });
 
@@ -159,7 +160,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("318.7");
   });
 
@@ -205,7 +206,7 @@ describe("scenarios > question > summarize sidebar", () => {
       cy.findByLabelText("Temporal bucket").realHover().click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -215,22 +216,45 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    H.createQuestion(
-      {
-        name: "12625",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            ["count"],
-            ["sum", ["field", ORDERS.SUBTOTAL, null]],
-            ["sum", ["field", ORDERS.TOTAL, null]],
+    H.createTestQuery({
+      database: SAMPLE_DB_ID,
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "SUBTOTAL" }],
+            },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
           ],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-          "order-by": [["desc", ["aggregation", 1]]],
+          breakouts: [
+            {
+              type: "column",
+              name: "CREATED_AT",
+              sourceName: "ORDERS",
+              unit: "year",
+            },
+          ],
+          orderBys: [
+            {
+              direction: "desc",
+              type: "column",
+              name: "sum",
+              displayName: "Sum of Subtotal",
+            },
+          ],
         },
-      },
-      { visitQuestion: true },
-    );
+      ],
+    })
+      .then((dataset_query) => H.createCard({ name: "12625", dataset_query }))
+      .then((card) => H.visitQuestion(card.id));
 
     H.summarize();
 
@@ -270,7 +294,7 @@ describe("scenarios > question > summarize sidebar", () => {
       H.openReviewsTable();
 
       H.summarize();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Group by")
         .parent()
         .findByText("Title")

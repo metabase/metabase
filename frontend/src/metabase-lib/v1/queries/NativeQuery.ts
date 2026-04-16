@@ -1,11 +1,9 @@
 import slugg from "slugg";
-import { t } from "ttag";
 import _ from "underscore";
 
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import ValidationError from "metabase-lib/v1/ValidationError";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -24,6 +22,7 @@ import type {
 
 import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
+import Metadata from "../metadata/Metadata";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 
@@ -236,12 +235,22 @@ export default class NativeQuery {
     // template tags, and the order is determined by the key order
     const query = this._query();
     const tags = this.templateTags();
-    const oldIndex = tags.findIndex((tag) => tag.id === id);
 
-    const newTags = [...tags];
+    // NOTE: The snippet tags are part of the snippet tags map, but they do
+    // not appear in the parameter lists. To correctly reorder the parameters
+    // and keep track of indexes, we need to pluck out the snippet tags first.
+    // We then tack them on before returning the reordered tags map.
+    // The order of snippet tags is not consequential, which allows us to do this.
+    const nonSnippetTags = tags.filter((tag) => tag.type !== "snippet");
+    const snippetTags = tags.filter((tag) => tag.type === "snippet");
+
+    const oldIndex = nonSnippetTags.findIndex((tag) => tag.id === id);
+    const newTags = [...nonSnippetTags];
     newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
+
+    const newTagsWithSnippets = [...snippetTags, ...newTags];
     const newTagsMap = Object.fromEntries(
-      newTags.map((tag) => [tag.name, tag]),
+      newTagsWithSnippets.map((tag) => [tag.name, tag]),
     );
 
     return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
@@ -268,16 +277,7 @@ export default class NativeQuery {
   }
 
   variableTemplateTags(): TemplateTag[] {
-    return this.templateTags().filter((t) =>
-      [
-        "dimension",
-        "text",
-        "number",
-        "date",
-        "boolean",
-        "temporal-unit",
-      ].includes(t.type),
-    );
+    return this.templateTags().filter(Lib.isVariableTemplateTag);
   }
 
   hasVariableTemplateTags(): boolean {
@@ -295,30 +295,8 @@ export default class NativeQuery {
       .filter((cardId): cardId is number => cardId != null);
   }
 
-  private _validateTemplateTags() {
-    return this.templateTags()
-      .map((tag) => {
-        if (!tag["display-name"]) {
-          return new ValidationError(t`Missing widget label: ${tag.name}`);
-        }
-        const dimension = new TemplateTagDimension(
-          tag.name,
-          this.metadata(),
-          this,
-        );
-        if (!dimension) {
-          return new ValidationError(t`Invalid template tag: ${tag.name}`);
-        }
-
-        return dimension.validateTemplateTag();
-      })
-      .filter(
-        (maybeError): maybeError is ValidationError => maybeError != null,
-      );
-  }
-
   private _allTemplateTagsAreValid() {
-    const tagErrors = this._validateTemplateTags();
+    const tagErrors = Lib.validateTemplateTags(this._query());
     return tagErrors.length === 0;
   }
 
@@ -379,17 +357,24 @@ export default class NativeQuery {
     oldSnippet: NativeQuerySnippet,
     newSnippet: NativeQuerySnippet,
   ) {
+    // We need to update the metadata first to make sure the new snippet
+    // is correctly extracted from the query
+    let newQuery = new NativeQuery(this.question(), this.datasetQuery());
+
+    const metadata = new Metadata(this.metadata());
+    delete metadata.snippets[oldSnippet.id];
+    metadata.snippets[newSnippet.id] = newSnippet;
+    newQuery.question()._metadata = metadata;
+
     // if the snippet name has changed, we need to update it in the query
-    const newQuery =
+    newQuery =
       newSnippet.name !== oldSnippet.name
-        ? this.updateSnippetNames([newSnippet])
-        : this;
+        ? newQuery.updateSnippetNames([newSnippet])
+        : newQuery;
 
     // if the query has changed, it was already parsed; otherwise do the parsing
     // to expand snippet tags into the query tags
-    return newQuery === this
-      ? newQuery.setQueryText(newQuery.queryText())
-      : newQuery;
+    return newQuery.setQueryText(newQuery.queryText());
   }
 
   updateSnippetNames(snippets: NativeQuerySnippet[]): NativeQuery {

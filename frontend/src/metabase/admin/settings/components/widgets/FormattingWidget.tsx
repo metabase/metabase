@@ -4,14 +4,14 @@ import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
+import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
   type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/lib/formatting";
-import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
+} from "metabase/utils/formatting";
 import type { FormattingSettings } from "metabase-types/api";
 
 import { SetByEnvVar } from "./AdminSettingInput";
@@ -40,13 +40,19 @@ export function FormattingWidget() {
   const {
     value: initialValue,
     updateSetting,
-    isLoading,
     settingDetails,
   } = useAdminSetting("custom-formatting");
   const [localValue, setLocalValue] = useState<FormattingSettings | undefined>({
     ...DEFAULT_FORMATTING_SETTINGS,
     ...initialValue,
   });
+
+  useEffect(() => {
+    setLocalValue({
+      ...DEFAULT_FORMATTING_SETTINGS,
+      ...initialValue,
+    });
+  }, [initialValue]);
 
   const {
     date_style: dateStyle,
@@ -70,10 +76,6 @@ export function FormattingWidget() {
     ).map(mapNameToLabel);
     return [currencyOptions, currencyStyleOptions];
   }, [currency, currencyStyle]);
-
-  if (isLoading) {
-    return null;
-  }
 
   const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
 

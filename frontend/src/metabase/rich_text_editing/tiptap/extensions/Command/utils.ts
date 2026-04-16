@@ -1,18 +1,19 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
-
 import type { CommandSection } from "./types";
 
-export const getAllCommandSections = (): CommandSection[] => {
+export const getAllCommandSections = (
+  isMetabotEnabled: boolean,
+  metabotName: string = "Metabot",
+): CommandSection[] => {
   return [
     {
       items: [
-        ...(PLUGIN_METABOT.isEnabled()
+        ...(isMetabotEnabled
           ? ([
               {
                 icon: "metabot" as const,
-                label: t`Ask Metabot`,
+                label: t`Ask ${metabotName}`,
                 command: "metabot",
                 isAllowedAtPosition: (editor) =>
                   !editor.isActive("supportingText"),

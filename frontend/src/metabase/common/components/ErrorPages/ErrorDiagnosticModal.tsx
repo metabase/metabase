@@ -7,14 +7,14 @@ import { useSendBugReportMutation } from "metabase/api/bug-report";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { downloadObjectAsJson } from "metabase/lib/download";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
+import { downloadObjectAsJson } from "metabase/utils/download";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { BugReportModal } from "./BugReportModal";
 import { DownloadDiagnosticModal } from "./DownloadDiagnosticModal";
@@ -48,7 +48,7 @@ export const ErrorDiagnosticModal = ({
     return (
       <Modal opened onClose={onClose}>
         <Stack align="center" justify="center" mb="lg">
-          <Text w="bold" color="text-medium" mb="sm">
+          <Text w="bold" color="text-secondary" mb="sm">
             {c(
               "loading message indicating that we are gathering debugging information to aid in providing technical support",
             ).t`Gathering diagnostic information...`}
@@ -143,7 +143,7 @@ export const ErrorDiagnosticModal = ({
           <Text ta="center" size="lg" fw="bold">
             {t`Thank you for your feedback!`}
           </Text>
-          <Text ta="center" c="text-medium">
+          <Text ta="center" c="text-secondary">
             {t`Bug report submitted successfully.`}
           </Text>
           <Button mt="xl" onClick={onClose}>{t`Close`}</Button>

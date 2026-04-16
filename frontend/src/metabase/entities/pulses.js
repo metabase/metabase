@@ -6,16 +6,12 @@ import {
   useListSubscriptionsQuery,
 } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
-import { addUndo } from "metabase/redux/undo";
-
-export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
-
+} from "metabase/utils/entities";
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -23,10 +19,6 @@ export const Pulses = createEntity({
   name: "pulses",
   nameOne: "pulse",
   path: "/api/pulse",
-
-  actionTypes: {
-    UNSUBSCRIBE,
-  },
 
   rtk: {
     getUseGetQuery: () => ({
@@ -73,19 +65,6 @@ export const Pulses = createEntity({
         undo(opts, t`subscription`, archived ? t`deleted` : t`restored`),
       );
     },
-
-    unsubscribe:
-      ({ id }) =>
-      async (dispatch) => {
-        await entityCompatibleQuery(
-          id,
-          dispatch,
-          subscriptionApi.endpoints.unsubscribe,
-        );
-        dispatch(addUndo({ message: t`Successfully unsubscribed` }));
-        dispatch({ type: UNSUBSCRIBE, payload: { id } });
-        dispatch({ type: Pulses.actionTypes.INVALIDATE_LISTS_ACTION });
-      },
   },
 
   objectSelectors: {

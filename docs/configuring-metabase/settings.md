@@ -6,9 +6,11 @@ redirect_from:
 
 # General settings
 
-This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
+_Admin > Settings > General_
 
-You can configure these settings from **Settings** > **Admin Settings** > **General**.
+This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
+You can configure these settings by clicking the **grid icon** in the upper right, then going to **Admin** > **Settings** > **General**.
+
 
 ## Site name
 
@@ -18,13 +20,7 @@ How you’d like to refer to this instance of Metabase.
 
 The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable. This feature is only available for self-hosted Metabases. For customers on Metabase Cloud, check out [Custom domains](../cloud/custom-domain.md).
 
-## Custom homepage
-
-Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
-
-If you've set a dashboard as your homepage, and want to revert to the default Metabase homepage, simply turn off the **Enabled** toggle to disable the Custom Homepage feature.
-
-## Redirect to HTTPS
+### Redirect to HTTPS
 
 By default, Metabase is served over HTTP.
 
@@ -34,21 +30,27 @@ For example, say you enable HTTPS redirect for a Metabase instance at the site U
 
 > Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
 
+## Custom homepage
+
+Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
+
+To revert to the default Metabase homepage, simply toggle off Custom homepage.
+
 ## Email address for help requests
 
 This email address will be displayed in various messages throughout Metabase when users encounter a scenario where they need assistance from an admin, such as a password reset request.
 
 ## Anonymous tracking
 
-This option turns determines whether or not you allow [anonymous data about your usage of Metabase](../installation-and-operation/information-collection.md) to be sent back to us to help us improve the product. [Your database’s data is never tracked or sent](https://www.metabase.com/security).
+On self-hosted Metabases, this option determines whether or not you allow [anonymous data about your usage of Metabase](../installation-and-operation/information-collection.md) to be sent back to us to help us improve the product. [Your database’s data is never tracked or sent](https://www.metabase.com/security).
 
 ## Friendly table and field names
 
-By default, Metabase attempts to make field and table names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under **Settings** > **Admin settings** > **General**.
+By default, Metabase attempts to make field and table names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under **Admin** **> Settings** > **General**.
 
 If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
 
-To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
+To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin panel. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
 
 ## Enable X-rays
 

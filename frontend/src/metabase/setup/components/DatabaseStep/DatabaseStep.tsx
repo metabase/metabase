@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { InviteInfo } from "metabase/redux/store";
 import {
   getDatabase,
   getDatabaseEngine,
@@ -12,8 +12,8 @@ import {
   getUser,
 } from "metabase/setup";
 import { Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { DatabaseData } from "metabase-types/api";
-import type { InviteInfo } from "metabase-types/store";
 
 import {
   skipDatabase,
@@ -80,7 +80,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
       label={stepLabel}
     >
       <Text mt="sm" mb="md">
-        {c("{0} referes to the word '(optional)'")
+        {c("{0} refers to the word '(optional)'")
           .jt`Are you ready to start exploring your data? Add it below ${optional}.`}
       </Text>
 

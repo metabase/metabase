@@ -1,14 +1,14 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/ui/colors";
 
 export const FormContainer = styled.div`
   display: flex;
   gap: var(--mantine-spacing-md);
   padding: 0 1.5rem 1rem;
   transition: flex 500ms ease-in-out;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   flex-direction: column;
 `;
 

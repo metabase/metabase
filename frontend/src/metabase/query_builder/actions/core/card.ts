@@ -1,6 +1,7 @@
-import { Questions } from "metabase/entities/questions";
+import { cardApi } from "metabase/api";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import type { Card } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
 export async function loadCard(
@@ -11,28 +12,22 @@ export async function loadCard(
     cardId: string | number;
     token?: EntityToken | null;
   },
-  { dispatch, getState }: { dispatch: Dispatch; getState: GetState },
+  { dispatch }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
-    await dispatch(
-      Questions.actions.fetch(
-        { id: token ?? cardId },
-        {
-          properties: [
-            "id",
-            "dataset_query",
-            "display",
-            "visualization_settings",
-          ], // complies with Card interface
-        },
-      ),
-    );
+    const result = (await dispatch(
+      cardApi.endpoints.getCard.initiate({ id: token ?? cardId }),
+    )) as { data?: Card; error?: unknown };
 
-    const question = Questions.selectors.getObject(getState(), {
-      entityId: cardId,
-    });
+    if (result.error) {
+      throw result.error;
+    }
 
-    return question?.card();
+    if (!result.data) {
+      throw new Error("Card not found");
+    }
+
+    return result.data;
   } catch (error) {
     console.error("error loading card", error);
     throw error;

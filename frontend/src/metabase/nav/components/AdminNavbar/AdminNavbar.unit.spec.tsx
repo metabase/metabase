@@ -1,15 +1,19 @@
+import { Route } from "react-router";
+
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { AdminNavbar } from "./AdminNavbar";
 
 const setup = ({ isAdmin = false, isPaidPlan = false }) => {
+  setupBugReportingDetailsEndpoint();
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings(
@@ -19,9 +23,16 @@ const setup = ({ isAdmin = false, isPaidPlan = false }) => {
     ),
   });
 
-  return renderWithProviders(<AdminNavbar path="/admin" adminPaths={[]} />, {
-    storeInitialState: state,
-  });
+  return renderWithProviders(
+    <Route
+      path="/"
+      component={() => <AdminNavbar path="/admin" adminPaths={[]} />}
+    />,
+    {
+      storeInitialState: state,
+      withRouter: true,
+    },
+  );
 };
 
 describe("AdminNavbar", () => {

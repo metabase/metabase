@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 
 import { logout } from "../../actions";
 

@@ -8,6 +8,7 @@
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.driver.connection :as driver.conn]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema :as lib.schema]
@@ -15,11 +16,10 @@
    [metabase.model-persistence.core :as model-persistence]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.models.query :as query]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -36,21 +36,22 @@
                                                               [:dataset_query ::lib.schema/native-only-query]]
    request-parameters]
   (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
-  (try
-    (let [parameters (for [parameter (:parameters action)]
-                       (assoc parameter :value (get request-parameters (:id parameter))))
-          query (-> query
-                    (assoc :parameters parameters))]
-      (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (binding [qp.perms/*card-id* model-id]
-        (qp.writeback/execute-write-query! query)))
-    (catch Throwable e
-      (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-        (api/throw-403 e)
-        (throw (ex-info (format "Error executing Action: %s" (ex-message e))
-                        {:action     action
-                         :parameters request-parameters}
-                        e))))))
+  (driver.conn/with-write-connection
+    (try
+      (let [parameters (for [parameter (:parameters action)]
+                         (assoc parameter :value (get request-parameters (:id parameter))))
+            query      (-> query
+                           (assoc :parameters parameters))]
+        (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
+        (binding [qp.perms/*card-id* model-id]
+          (qp/execute-write-query! query)))
+      (catch Throwable e
+        (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+          (api/throw-403 e)
+          (throw (ex-info (format "Error executing Action: %s" (ex-message e))
+                          {:action     action
+                           :parameters request-parameters}
+                          e)))))))
 
 (mu/defn- implicit-action-table
   [card-id :- ::lib.schema.id/card]
@@ -158,7 +159,10 @@
                                     ;; consistent rather than random to make this easier to test
                                     :id     "metabase.actions.execution/prefetch-parameters-pk"
                                     :target [:dimension [:field (:id pk-field) nil]]
-                                    :type   :id
+                                    ;; :type/UUID derives from :type/Text, so UUIDs are handled as strings
+                                    :type   (if (isa? (:base_type pk-field) :type/Number)
+                                              :number/=
+                                              :string/=)
                                     :value  [(get simple-parameters pk-field-name)]}]))))
 
 (defn- parse-implicit-action [action-instance]

@@ -24,6 +24,7 @@
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.fix-bad-field-id-refs :as fix-bad-field-id-refs]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.middleware.measures :as measures]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
@@ -60,12 +61,14 @@
    #'qp.perms/remove-permissions-key
    #'qp.perms/remove-source-card-keys
    #'qp.perms/remove-sandboxed-table-keys
+   #'qp.perms/remove-persisted-info-native-keys
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'fetch-source-query/resolve-source-cards
    #'drop-fields-in-summaries/drop-fields-in-summaries
    #'expand-aggregations/expand-aggregations
    #'metrics/adjust
+   #'measures/adjust
    #'expand-macros/expand-macros
    #'qp.resolve-referenced/resolve-referenced-card-resources
    #'parameters/substitute-parameters
@@ -88,6 +91,8 @@
    #'qp.add-default-temporal-unit/add-default-temporal-unit
    #'qp.add-implicit-joins/add-implicit-joins
    #'resolve-joins/resolve-joins
+   ;; rerun add-implicit-clauseds to add implicit fields clauses to implicit joins #67002
+   #'qp.add-implicit-clauses/add-implicit-clauses
    #'fix-bad-field-id-refs/fix-bad-field-id-refs
    #'qp.remove-inactive-field-refs/remove-inactive-field-refs
    ;; yes, this is called a second time, because we need to handle any joins that got added
@@ -99,6 +104,7 @@
    #'optimize-temporal-filters/optimize-temporal-filters
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
+   #'qp.middleware.enterprise/apply-workspace-remapping
    #'check-features/check-features])
 
 (def ^:private ^Long slow-middleware-warning-threshold-ms

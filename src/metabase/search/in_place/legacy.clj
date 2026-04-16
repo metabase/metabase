@@ -178,11 +178,7 @@
       (seq with) (update :with (fnil into []) with)
       true       (sql.helpers/where
                   (case model
-                    "table" [:and
-                             clause
-                             [:or
-                              [:not :is_published]
-                              (search.permissions/permitted-collections-clause search-ctx :collection_id)]]
+                    "table" clause
                     "search-index" [:or
                                     [:= :search_index.model nil]
                                     [:!= :search_index.model [:inline "table"]]
@@ -200,10 +196,12 @@
                                  "collection"    :collection.id
                                  "search-index"  :search_index.collection_id
                                  :collection_id)
-        permitted-clause       [:or
-                                (when (= model "table")
-                                  [:not :is_published])
-                                (search.permissions/permitted-collections-clause search-ctx collection-id-col)]
+        permitted-clause       (if (= model "table")
+                                ;; Tables have their own permission filter (add-table-where-clauses).
+                                ;; Skip collection filtering to avoid blocking tables where the user
+                                ;; has data permissions but no collection access.
+                                 [:= [:inline 1] [:inline 1]]
+                                 (search.permissions/permitted-collections-clause search-ctx collection-id-col))
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (-> honeysql-query
         (sql.helpers/where permitted-clause)
@@ -306,6 +304,11 @@
 (defmethod searchable-columns "dataset"
   [_ search-native-query]
   (searchable-columns "card" search-native-query))
+
+(defmethod searchable-columns "measure"
+  [_ _]
+  [:name
+   :description])
 
 (defmethod searchable-columns "metric"
   [_ search-native-query]
@@ -440,6 +443,16 @@
 (defmethod columns-for-model "segment"
   [_]
   (concat default-columns table-columns [:creator_id]))
+
+(defmethod columns-for-model "measure"
+  [_]
+  [:id :name :description :archived :created_at :updated_at
+   :table_id
+   :creator_id
+   [:table.db_id       :database_id]
+   [:table.schema      :table_schema]
+   [:table.name        :table_name]
+   [:table.description :table_description]])
 
 (defmethod columns-for-model "metric"
   [_]
@@ -611,6 +624,11 @@
       (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
       (add-model-index-permissions-clause search-ctx)))
 
+(defmethod search-query-for-model "measure"
+  [model search-ctx]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/left-join [:metabase_table :table] [:= :measure.table_id :table.id])))
+
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
@@ -685,7 +703,7 @@
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
                 (mdb/format-sql (first (mdb/compile search-query))))
-    (t2/reducible-query search-query)))
+    (mdb/streaming-reducible-query search-query)))
 
 (defmethod search.engine/results
   :search.engine/in-place

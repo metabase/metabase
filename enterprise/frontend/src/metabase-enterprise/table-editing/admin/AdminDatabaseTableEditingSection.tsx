@@ -7,10 +7,11 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
-import Toggle from "metabase/common/components/Toggle";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { Box, Flex } from "metabase/ui";
+import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
+import { Toggle } from "metabase/common/components/Toggle";
+import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
+import { Alert, Box, Flex, Icon } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   Database,
   DatabaseData,
@@ -23,17 +24,19 @@ import {
   isDatabaseTableEditingEnabled,
 } from "../settings";
 
+import { trackTableEditingSettingsToggled } from "./analytics";
+
 enum DisabledReasonKey {
   MissingDriverFeature = "driver-feature-missing",
   NoWriteableTable = "permissions/no-writable-table",
   SyncInProgress = "database-metadata/sync-in-progress",
-  DatabaseEmtpy = "database-metadata/not-populated",
+  DatabaseEmpty = "database-metadata/not-populated",
 }
 
 const VISIBLE_REASONS: string[] = [
   DisabledReasonKey.NoWriteableTable,
   DisabledReasonKey.SyncInProgress,
-  DisabledReasonKey.DatabaseEmtpy,
+  DisabledReasonKey.DatabaseEmpty,
 ];
 
 export function AdminDatabaseTableEditingSection({
@@ -53,12 +56,7 @@ export function AdminDatabaseTableEditingSection({
     try {
       setError(null);
 
-      trackSimpleEvent({
-        event: "edit_data_settings_toggled",
-        event_detail: enabled ? "on" : "off",
-        target_id: database.id,
-        triggered_from: "admin-settings-databases",
-      });
+      trackTableEditingSettingsToggled(enabled, database.id);
 
       await updateDatabase({
         id: database.id,
@@ -69,9 +67,15 @@ export function AdminDatabaseTableEditingSection({
     }
   };
 
+  // Only Postgres and MySQL support table data editing
+  const allowedToEnableTableEditing =
+    database.engine &&
+    ALLOWED_ENGINES_FOR_TABLE_EDITING.includes(database.engine);
+
+  const databaseHasRouting = hasDbRoutingEnabled(database);
+
   const dataEditingSetting =
     settingsAvailable?.[DATABASE_TABLE_EDITING_SETTING];
-
   const isSettingDisabled =
     !dataEditingSetting || dataEditingSetting.enabled === false;
 
@@ -83,9 +87,15 @@ export function AdminDatabaseTableEditingSection({
   const shouldShowSection =
     !firstDisabledReason || VISIBLE_REASONS.includes(firstDisabledReason.key);
 
-  if (!dataEditingSetting || !shouldShowSection) {
+  if (
+    !dataEditingSetting ||
+    !shouldShowSection ||
+    !allowedToEnableTableEditing
+  ) {
     return null;
   }
+
+  const isEnabled = isDatabaseTableEditingEnabled(database);
 
   return (
     <DatabaseInfoSection
@@ -97,9 +107,9 @@ export function AdminDatabaseTableEditingSection({
         <Label htmlFor="table-editing-toggle">{t`Editable tables`}</Label>
         <Toggle
           id="table-editing-toggle"
-          value={isDatabaseTableEditingEnabled(database)}
+          value={isEnabled}
           onChange={handleToggle}
-          disabled={isSettingDisabled}
+          disabled={isSettingDisabled || (!isEnabled && databaseHasRouting)}
         />
       </Flex>
       <Box maw="22.5rem">
@@ -109,6 +119,12 @@ export function AdminDatabaseTableEditingSection({
             t`Your database connection will need Write permissions.`}
         </Description>
       </Box>
+
+      {databaseHasRouting && (
+        <Alert variant="light" color="info" icon={<Icon name="info" />} mb="md">
+          {t`Table editing can't be enabled when database routing is enabled.`}
+        </Alert>
+      )}
     </DatabaseInfoSection>
   );
 }

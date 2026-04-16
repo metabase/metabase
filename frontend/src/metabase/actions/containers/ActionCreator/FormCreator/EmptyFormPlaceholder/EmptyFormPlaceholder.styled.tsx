@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { lighten } from "metabase/lib/colors";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Icon } from "metabase/ui";
+import { lighten } from "metabase/ui/colors";
 
 export const EmptyFormPlaceholderWrapper = styled.div`
   display: flex;
@@ -20,7 +20,7 @@ export const ExplainerTitle = styled.h3`
 export const ExplainerText = styled.div`
   font-weight: 400;
   line-height: 1.5rem;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin: var(--mantine-spacing-sm) 0 0 0;
 `;
 
@@ -31,7 +31,7 @@ export const ExplainerList = styled.ul`
   li {
     font-weight: 400;
     line-height: 24px;
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
     margin: 0;
   }
 `;

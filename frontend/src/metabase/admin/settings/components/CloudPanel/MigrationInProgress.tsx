@@ -2,11 +2,10 @@
 import { t } from "ttag";
 
 import { useCancelCloudMigrationMutation } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import type { Plan } from "metabase/common/utils/plan";
-import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
   Box,
@@ -18,6 +17,7 @@ import {
   Progress,
   Text,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
@@ -69,7 +69,7 @@ export const MigrationInProgress = ({
       <MigrationCard>
         <Flex gap="1.5rem" align="start">
           <Flex
-            bg="brand-light"
+            bg="background-brand"
             h="64px"
             style={{ borderRadius: "50%", flex: "0 0 64px" }}
             justify="center"
@@ -89,7 +89,7 @@ export const MigrationInProgress = ({
             )}
 
             <Box mt="lg" mb="md">
-              <Text size="md" c="text-medium">
+              <Text size="md" c="text-secondary">
                 {progressMessage[migration.state]}
               </Text>
               <Progress value={migration.progress} mt=".25rem" />

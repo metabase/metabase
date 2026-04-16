@@ -7,10 +7,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { TYPE_ICONS } from "../constants";
 import type { FlatItem, TreePath } from "../types";
@@ -194,7 +194,7 @@ export function Results({
 
           return (
             <Flex
-              component={Link}
+              component={ForwardRefLink}
               key={key}
               aria-selected={isActive}
               align="center"
@@ -229,6 +229,7 @@ export function Results({
                 handleItemSelect();
               }}
               onFocus={() => onSelectedIndexChange?.(index)}
+              ref={virtual.measureElement}
             >
               <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
                 <Flex align="flex-start" gap="xs" w="100%">
@@ -237,7 +238,7 @@ export function Results({
                       <Icon
                         name="chevronright"
                         size={10}
-                        color="var(--mb-color-text-light)"
+                        c="text-tertiary"
                         className={cx(S.chevron, {
                           [S.expanded]: isExpanded,
                         })}

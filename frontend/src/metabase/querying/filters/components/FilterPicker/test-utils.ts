@@ -2,12 +2,14 @@
 import dayjs from "dayjs";
 
 import { createMockEntitiesState } from "__support__/store";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
-  createQuery as _createQuery,
+  DEFAULT_TEST_QUERY,
   columnFinder,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
@@ -21,7 +23,6 @@ import {
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 const SEGMENT_1 = createMockSegment({
   id: 1,
@@ -124,9 +125,10 @@ export const storeInitialState = createMockState({
 });
 
 export const metadata = getMetadata(storeInitialState);
+const provider = createMetadataProvider({ metadata });
 
 export function createQuery() {
-  return _createQuery({ metadata });
+  return Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 }
 
 export function createFilteredQuery(

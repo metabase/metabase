@@ -11,20 +11,20 @@ import {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
-import { color } from "metabase/lib/colors";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
-} from "metabase/query_builder/actions/core/types";
+} from "metabase/redux/query-builder";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+import { color } from "metabase/ui/colors";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  undo,
+} from "metabase/utils/entities";
 
 export const INJECT_RTK_QUERY_QUESTION_VALUE =
   "metabase/entities/questions/FETCH_ADHOC_METADATA";
@@ -164,7 +164,7 @@ export const Questions = createEntity({
 
   objectSelectors: {
     getName: (card) => card && card.name,
-    getColor: () => color("text-medium"),
+    getColor: () => color("text-secondary"),
     getCollection: (card) => card && normalizedCollection(card.collection),
   },
 

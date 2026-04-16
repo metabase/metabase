@@ -8,10 +8,9 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import {
   getApplicationName,
@@ -19,6 +18,7 @@ import {
 } from "metabase/selectors/whitelabel";
 import { PersistedModelsApi } from "metabase/services";
 import { Switch, Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
 

@@ -16,9 +16,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
@@ -685,7 +685,7 @@
                                                 [:field (meta/id :venues :price) {}]]]]]
                                  {:display-name "My Cool Aggregation"}]]}
           expand-macros (fn [mbql-query]
-                          (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->pMBQL mbql-query)))))]
+                          (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->mbql5 mbql-query)))))]
       (comment
         (testing "nested 1 level"
           (is (=? (lib.tu.macros/mbql-query nil
@@ -1131,5 +1131,5 @@
   (testing "All available aggregations are tested for filter expansion in metric"
     (is (empty? (set/difference
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
-                       :aggregation :metric :offset)
+                       :aggregation :metric :measure :offset)
                  (set (map :operator tested-aggregations)))))))

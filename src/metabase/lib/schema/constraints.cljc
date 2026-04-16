@@ -15,14 +15,14 @@
       :description
       "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
   applies to all queries"}
-     ::lib.schema.common/int-greater-than-or-equal-to-zero]
+     nat-int?]
 
     [:max-results-bare-rows
      {:optional true
       :description
       "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than
   `:max-results`."}
-     ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+     nat-int?]]
    [:fn
     {:error/message "max-results-bare-rows must be less than or equal to max-results"}
     (fn [{:keys [max-results max-results-bare-rows]}]

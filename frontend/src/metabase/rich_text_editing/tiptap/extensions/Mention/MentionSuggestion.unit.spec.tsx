@@ -8,12 +8,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import {
   createMockRecentCollectionItem,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type { MentionSuggestionProps } from "./MentionSuggestion";
 import { MentionSuggestion } from "./MentionSuggestion";
@@ -178,6 +178,27 @@ describe("MentionSuggestion", () => {
     expect(screen.getByText("Browse all")).toBeInTheDocument();
     expectOptionNotToBePresent(/Question/);
     expectOptionNotToBePresent(/Dashboard/);
+  });
+
+  it("skips model selector and shows entities when only one searchModel is provided", async () => {
+    setup({
+      query: "",
+      searchModels: ["dashboard"],
+      searchItems: [
+        createMockSearchResult({
+          name: "Orders Dashboard",
+          model: "dashboard",
+          id: 20,
+        }),
+      ],
+      recentItems: [],
+      canFilterSearchModels: true,
+      canBrowseAll: false,
+    });
+
+    // should show recent entity results directly, not the model selector
+    await expectOptionToBePresent(/Orders Dashboard/);
+    expectOptionNotToBePresent(/^Dashboard$/);
   });
 
   it("searches all models when query doesn't match any model name", async () => {

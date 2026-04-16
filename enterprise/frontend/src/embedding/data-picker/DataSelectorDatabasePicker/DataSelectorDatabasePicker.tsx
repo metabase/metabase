@@ -6,6 +6,7 @@ import {
   type Section,
 } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
@@ -40,6 +41,7 @@ const DataSelectorDatabasePicker = ({
   onBack,
   hasInitialFocus,
 }: DataSelectorDatabasePickerProps) => {
+  const tc = useTranslateContent();
   const sections = useMemo(() => {
     const sections: Section<Item>[] = [];
 
@@ -52,14 +54,14 @@ const DataSelectorDatabasePicker = ({
 
     sections.push({
       items: databases.map((database, index) => ({
-        name: database.name,
+        name: tc(database.name),
         index,
         database,
       })),
     });
 
     return sections;
-  }, [databases, onBack]);
+  }, [databases, onBack, tc]);
 
   const handleChangeSection = useCallback(
     (_section: Section<Item>, sectionIndex: number) => {

@@ -1,9 +1,9 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/lib/browser";
 import { Button, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+import { METAKEY } from "metabase/utils/browser";
 
 export const CommandPaletteTrigger = ({
   onClick,
@@ -16,7 +16,7 @@ export const CommandPaletteTrigger = ({
         tabIndex={-1}
         onClick={onClick}
         p="0.25rem"
-        bg="bg-light"
+        bg="background-secondary"
         fw={700}
         fz="8pt"
         lh="8pt"
@@ -29,7 +29,7 @@ export const CommandPaletteTrigger = ({
           root: {
             "&:active": { transform: "none" },
             "&:hover": {
-              color: color("text-dark"),
+              color: color("text-primary"),
             },
           },
         }}

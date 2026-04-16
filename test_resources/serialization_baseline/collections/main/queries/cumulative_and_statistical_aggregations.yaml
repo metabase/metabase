@@ -1,0 +1,221 @@
+name: Cumulative and Statistical Aggregations
+entity_id: x61UtCMCuBNjw0TEFQeWG
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: line
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - cum-count
+      - {}
+    - - cum-count
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - PRODUCT_ID
+    - - cum-sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - stddev
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - var
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - median
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - percentile
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+      - 0.9
+    breakout:
+    - - field
+      - temporal-unit: month
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: 'Created At: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - temporal-unit: month
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  inherited_temporal_unit: month
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  unit: month
+  visibility_type: normal
+  lib/breakout?: true
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  lib/temporal-unit: month
+- base_type: type/Integer
+  display_name: Cumulative count
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+- base_type: type/Integer
+  display_name: Cumulative count of Product ID
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 1
+  name: count_2
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count_2
+  lib/desired-column-alias: count_2
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+- base_type: type/Float
+  display_name: Cumulative sum of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 2
+  name: sum
+  source: aggregation
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
+- base_type: type/Float
+  display_name: Standard deviation of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 3
+  name: stddev
+  source: aggregation
+  lib/deduplicated-name: stddev
+  lib/desired-column-alias: stddev
+  lib/original-name: stddev
+  lib/source: source/aggregations
+  lib/source-column-alias: stddev
+- base_type: type/Float
+  display_name: Variance of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 4
+  name: var
+  source: aggregation
+  lib/deduplicated-name: var
+  lib/desired-column-alias: var
+  lib/original-name: var
+  lib/source: source/aggregations
+  lib/source-column-alias: var
+- base_type: type/Float
+  display_name: Median of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 5
+  name: median
+  source: aggregation
+  lib/deduplicated-name: median
+  lib/desired-column-alias: median
+  lib/original-name: median
+  lib/source: source/aggregations
+  lib/source-column-alias: median
+- base_type: type/Float
+  display_name: 0.9th percentile of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 6
+  name: percentile
+  source: aggregation
+  lib/deduplicated-name: percentile
+  lib/desired-column-alias: percentile
+  lib/original-name: percentile
+  lib/source: source/aggregations
+  lib/source-column-alias: percentile
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: x61UtCMCuBNjw0TEFQeWG
+  label: cumulative_and_statistical_aggregations
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

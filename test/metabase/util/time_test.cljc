@@ -1,46 +1,59 @@
 (ns metabase.util.time-test
   (:require
-   #?@(:cljs [["moment" :as moment]
-              ["moment-timezone" :as moment-tz]]
+   #?@(:cljs [["dayjs" :as dayjs]
+              ["dayjs/plugin/customParseFormat" :as dayjs-customParseFormat]
+              ["dayjs/plugin/timezone" :as dayjs-timezone]
+              ["dayjs/plugin/utc" :as dayjs-utc]
+              ;; Locale imports for locale-specific formatting/parsing tests
+              ["dayjs/locale/fr"]
+              ["dayjs/locale/de"]
+              ["dayjs/locale/es"]]
        :clj  [[java-time.api :as t]])
    [clojure.test :refer [are deftest is testing]]
    [metabase.util.time :as shared.ut]
    [metabase.util.time.impl :as internal])
   #?(:clj (:import java.util.Locale)))
 
+#?(:cljs
+   ;; Initialize dayjs plugins for tests
+   (do
+     (dayjs/extend dayjs-utc)
+     (dayjs/extend dayjs-customParseFormat)
+     (dayjs/extend dayjs-timezone)))
+
 (defn- from [time-str]
-  #?(:cljs (moment time-str)
+  #?(:cljs (dayjs time-str)
      :clj  (t/offset-date-time (t/local-date-time time-str) (t/zone-offset))))
 (defn- from-zulu [time-str]
-  #?(:cljs (moment/utc time-str)
+  #?(:cljs (.utc dayjs time-str)
      :clj  (t/offset-date-time time-str)))
 
 (defn- from-local [time-str]
-  #?(:cljs (moment time-str)
+  #?(:cljs (dayjs time-str)
      :clj  (t/local-date-time time-str)))
 
 (defn- from-local-date [time-str]
-  #?(:cljs (moment time-str)
+  #?(:cljs (dayjs time-str)
      :clj  (t/local-date time-str)))
 
 (defn- from-local-time [time-str]
-  #?(:cljs (moment time-str
-                   #js [(.. moment -HTML5_FMT -TIME_MS)
-                        (.. moment -HTML5_FMT -TIME_SECONDS)
-                        (.. moment -HTML5_FMT -TIME)])
+  #?(:cljs (dayjs time-str
+                  #js ["HH:mm:ss.SSS"
+                       "HH:mm:ss"
+                       "HH:mm"])
      :clj  (t/local-time time-str)))
 
 (defn- same?
   "True if these two datetimes are equivalent.
-  JVM objects are [[=]] but Moment.js values are not, so use the Moment.isSame method in CLJS."
+  JVM objects are [[=]] but Day.js values are not, so use the Day.js isSame method in CLJS."
   [t1 t2]
-  #?(:cljs (.isSame ^moment/Moment t1 t2)
+  #?(:cljs (.isSame ^dayjs t1 t2)
      :clj  (= t1 t2)))
 
 (defn- same-instant?
   "The same point on the timeline of the universe, adjusting to the same time zone (UTC)."
   [t1 t2]
-  #?(:cljs (.isSame ^moment/Moment t1 t2)
+  #?(:cljs (.isSame ^dayjs t1 t2)
      :clj  (= (t/instant t1) (t/instant t2))))
 
 (def test-epoch
@@ -192,7 +205,7 @@
     (is (same? (from-zulu exp-to)   to)   "end dates should be the same")))
 
 (defn- time-from [s]
-  #?(:cljs (moment s moment/HTML5_FMT.TIME_MS)
+  #?(:cljs (dayjs s #js ["HH:mm:ss.SSS" "HH:mm:ss" "HH:mm"])
      :clj  (t/local-time s)))
 
 (deftest coerce-to-time-test
@@ -213,7 +226,7 @@
       "09:26:00.000" "09:26-08:00"
       "19:26:00.000" "19:26-08:00"))
 
-  (testing "Moment and LocalTime values are simply returned"
+  (testing "Day.js and LocalTime values are simply returned"
     (let [t (time-from "09:29")]
       (is (= t (shared.ut/coerce-to-time t)))))
 
@@ -454,7 +467,7 @@
     :hour        "02:00"))
 
 (deftest ^:parallel zulu-add-datetime-test
-  #?(:cljs (moment-tz/tz.setDefault "Europe/Helsinki"))
+  #?(:cljs (.tz.setDefault dayjs "Europe/Helsinki"))
   (testing "Datetime addition in string format works (#53724)"
     (try
       (doseq [datetime-fmt ["2024-01-01T00:00:00.000Z" "2024-01-01T00:00:00Z" "2024-01-01T00:00Z"]]
@@ -470,11 +483,11 @@
           :quarter     "2024-07-01T00:00Z"
           :year        "2026-01-01T00:00Z"))
       (finally
-        #?(:cljs (moment-tz/tz.setDefault))))))
+        #?(:cljs (.tz.setDefault dayjs))))))
 
 (deftest ^:parallel zulu-add-time-test
   (testing "Time addition in string format works (#53724)"
-    #?(:cljs (moment-tz/tz.setDefault "Europe/Helsinki"))
+    #?(:cljs (.tz.setDefault dayjs "Europe/Helsinki"))
     (try
       (doseq [time-fmt ["00:00:00.000Z" "00:00:00Z" "00:00Z"]]
         (are [unit expected] (= expected
@@ -484,7 +497,7 @@
           :minute      "00:02Z"
           :hour        "02:00Z"))
       (finally
-        #?(:cljs (moment-tz/tz.setDefault))))))
+        #?(:cljs (.tz.setDefault dayjs))))))
 
 (deftest ^:parallel extract-test
   (let [t (shared.ut/local-date-time 2024 12 06 10 20 30 500)]
@@ -530,3 +543,22 @@
     "2020-04-18"              (shared.ut/local-date 2020 4 18)                   :type/Date
     "2020-04-18"              (shared.ut/local-date-time 2020 4 18 0 0 0)        :type/Date
     "2020-04-18T15:25:18.500" (shared.ut/local-date-time 2020 4 18 15 25 18 500) :type/DateTime))
+
+#?(:cljs
+   (deftest ^:parallel dayjs-utc->local-date-test
+     (testing "converts a dayjs UTC value to a JS Date preserving time values"
+       (let [utc-dayjs (.utc dayjs "2024-11-28T10:20:30.123")
+             result    (shared.ut/dayjs-utc->local-date utc-dayjs)]
+         (is (instance? js/Date result))
+         ;; The JS Date should have the same year/month/day/hour/minute/second/millisecond
+         ;; as the original UTC dayjs, but interpreted in local time
+         (is (= 2024 (.getFullYear result)))
+         (is (= 10 (.getMonth result)))  ;; JS months are 0-indexed, so November = 10
+         (is (= 28 (.getDate result)))
+         (is (= 10 (.getHours result)))
+         (is (= 20 (.getMinutes result)))
+         (is (= 30 (.getSeconds result)))
+         (is (= 123 (.getMilliseconds result)))))
+     (testing "returns nil for invalid dayjs values"
+       (is (nil? (shared.ut/dayjs-utc->local-date (dayjs "invalid-date"))))
+       (is (nil? (shared.ut/dayjs-utc->local-date nil))))))

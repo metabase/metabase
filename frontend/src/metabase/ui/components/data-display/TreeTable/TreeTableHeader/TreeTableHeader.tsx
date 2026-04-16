@@ -17,7 +17,6 @@ export function TreeTableHeader<TData extends TreeNodeData>({
   classNames,
   styles,
   isMeasured = true,
-  totalContentWidth,
   headerVariant = "pill",
 }: TreeTableHeaderProps<TData>) {
   const headerGroups = table.getHeaderGroups();
@@ -27,16 +26,14 @@ export function TreeTableHeader<TData extends TreeNodeData>({
       className={cx(S.header, classNames?.header, {
         [S.measuring]: !isMeasured,
       })}
-      pos="sticky"
-      top={0}
       style={styles?.header}
     >
       {headerGroups.map((headerGroup) => (
         <Flex
           key={headerGroup.id}
-          className={cx(S.row, classNames?.headerRow)}
+          className={cx(S.headerRow, classNames?.headerRow)}
           w="100%"
-          style={{ minWidth: totalContentWidth, ...styles?.headerRow }}
+          style={styles?.headerRow}
         >
           {showCheckboxes && (
             <Flex
@@ -53,6 +50,7 @@ export function TreeTableHeader<TData extends TreeNodeData>({
             const isFirstColumn = index === 0;
 
             const columnStyle = {
+              padding: "0.75rem",
               ...getColumnStyle(columnWidths, column.id, isFirstColumn),
               ...styles?.headerCell,
             };
@@ -67,7 +65,6 @@ export function TreeTableHeader<TData extends TreeNodeData>({
                   key={header.id}
                   className={cx(S.cell, classNames?.headerCell)}
                   align="center"
-                  p="0.75rem"
                   style={columnStyle}
                 />
               );
@@ -80,7 +77,6 @@ export function TreeTableHeader<TData extends TreeNodeData>({
                 key={header.id}
                 className={cx(S.cell, classNames?.headerCell)}
                 align="center"
-                p="0.75rem"
                 style={columnStyle}
                 role={isSortable ? "columnheader" : undefined}
                 aria-sort={

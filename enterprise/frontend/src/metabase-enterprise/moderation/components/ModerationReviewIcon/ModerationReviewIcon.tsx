@@ -1,5 +1,5 @@
-import { getRelativeTime } from "metabase/lib/time-dayjs";
 import { Icon, Text, Tooltip } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { ModerationReview, User } from "metabase-types/api";
 
 import { getIconForReview, getModeratorDisplayText } from "../../service";
@@ -20,7 +20,7 @@ const ModerationReviewIcon = ({
     <div>
       <div>{getModeratorDisplayText(moderator, currentUser)}</div>
       <Text
-        c="text-medium"
+        c="tooltip-text-secondary"
         component="time"
         dateTime={review.created_at}
         fz="var(--mantine-font-size-xs)"

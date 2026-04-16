@@ -5,10 +5,10 @@ import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { useSelector } from "metabase/utils/redux";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
@@ -90,7 +90,7 @@ export const PaletteContainer = withRouter(
               pos="absolute"
               top={26}
             >
-              <Icon c="text-dark" name="search" />
+              <Icon c="text-primary" name="search" />
             </Stack>
           </Box>
 

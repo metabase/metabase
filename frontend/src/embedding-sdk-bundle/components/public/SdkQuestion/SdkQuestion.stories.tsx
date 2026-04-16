@@ -70,12 +70,16 @@ export default {
         },
       },
     },
+    dataPicker: {
+      control: { type: "select" },
+      options: ["flat", "staged"],
+    },
   },
 };
 
 const Template: StoryFn<SdkQuestionComponentProps> = (args) => {
   return (
-    <Box bg="var(--mb-color-background)" mih="100vh">
+    <Box bg="background-primary" mih="100vh">
       <SdkQuestion {...args} />
     </Box>
   );
@@ -89,14 +93,13 @@ export const Default = {
     isSaveEnabled: true,
     targetCollection: undefined,
     title: true,
-    withResetButton: true,
   },
 };
 
 export const WithEditableSqlParametersCustomLayout = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="var(--mb-color-background)" mih="100vh">
+      <Box bg="background-primary" mih="100vh">
         <SdkQuestion {...args}>
           <SdkQuestion.Title />
           <SdkQuestion.SqlParametersList />
@@ -178,7 +181,7 @@ export const WithEditableSqlParametersCustomLayout = {
 export const EditorOnly = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="var(--mb-color-background)" mih="100vh">
+      <Box bg="background-primary" mih="100vh">
         <SdkQuestion {...args}>
           <SdkQuestion.Editor />
         </SdkQuestion>
@@ -196,7 +199,7 @@ export const EditorOnly = {
 export const CreateQuestion = {
   render(args: SdkQuestionComponentProps) {
     return (
-      <Box bg="var(--mb-color-background)" mih="100vh">
+      <Box bg="background-primary" mih="100vh">
         <SdkQuestion {...args} />
       </Box>
     );
@@ -204,5 +207,6 @@ export const CreateQuestion = {
   args: {
     questionId: "new",
     entityTypes: ["model"],
+    dataPicker: "flat",
   },
 };

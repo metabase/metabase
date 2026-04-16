@@ -15,7 +15,7 @@ export function NavbarErrorView() {
         <Text
           fw={400}
           mt="0.5rem"
-          color="text-light"
+          color="text-tertiary"
           size="lg"
         >{t`An error occurred`}</Text>
       </LoadingAndErrorContent>

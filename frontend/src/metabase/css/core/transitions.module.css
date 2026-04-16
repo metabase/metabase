@@ -3,10 +3,6 @@
     color 1s linear;
 }
 
-.transitionColor {
-  transition: color 0.3s linear;
-}
-
 .transitionThemeChange {
   transition: var(--transition-theme-change);
 }

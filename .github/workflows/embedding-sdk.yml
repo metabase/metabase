@@ -23,6 +23,10 @@ on:
         description: "Whether to run host and sample apps compatibility tests."
         required: true
         type: boolean
+      bundle-size-check:
+        description: "Whether to run bundle size check."
+        required: true
+        type: boolean
       skip:
         description: Whether to skip running tests due to one of the artifacts failing to build.
         required: true
@@ -35,7 +39,7 @@ concurrency:
 jobs:
   embedding-sdk-cli-snippets-type-check:
     if: inputs.cli-snippets-type-check && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -47,11 +51,11 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
-        run: yarn run embedding-sdk:cli-snippets:type-check
+        run: bun run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
     if: inputs.docs-snippets-type-check && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -63,11 +67,11 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
-        run: yarn run embedding-sdk:docs-snippets:type-check
+        run: bun run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
     if: inputs.documentation-validation && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -86,7 +90,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          yarn embedding-sdk:docs:generate:pure --emit none 2>&1 \
+          bun run embedding-sdk:docs:generate:pure --emit none 2>&1 \
           | tee /dev/stdout \
           | tee >( tail -n 10 \
           | sed '1s/^/output<<EOF\n/' \
@@ -98,14 +102,14 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'not included in the documentation') }}
-          message: "📝 Some exported types from `@metabase/embedding-sdk-react` reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
+          message: "📝 Some exported types from `@metabase/embedding-sdk-react` reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `bun run embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
           include-log: true
       - name: Comment on PR if 'Failed to resolve link' error happens
         uses: ./.github/actions/notify-pull-request
         with:
           remove-previous-comment: true
           add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'Failed to resolve link') }}
-          message: "📝 A typedoc `{@link <TYPE_NAME>}` annotation is found that can't be resolved.<br><br>Most likely it happens when the referenced type is not exported. Please check the CI logs to find the name of such type.<br><br>- If a referenced in `{@link}` type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, change types to prevent unexported type reference in `{@link}` annotation.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
+          message: "📝 A typedoc `{@link <TYPE_NAME>}` annotation is found that can't be resolved.<br><br>Most likely it happens when the referenced type is not exported. Please check the CI logs to find the name of such type.<br><br>- If a referenced in `{@link}` type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, change types to prevent unexported type reference in `{@link}` annotation.<br><br>You can run `bun run embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
           include-log: true
       - name: Fail Job
         if: ${{ steps.docs-generation.outcome == 'failure' }}
@@ -124,14 +128,65 @@ jobs:
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 
+  embedding-sdk-bundle-size-check:
+    if: inputs.bundle-size-check
+    continue-on-error: true
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    env:
+      BUNDLE_SIZE_THRESHOLD_PERCENT: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/sdk-bundle-size-check
+        id: compare
+        with:
+          edition: ee
+          base-ref-commit: ${{ github.event.pull_request.base.sha }}
+          threshold-percent: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
+
+      - name: Comment on PR if bundle size has increased
+        uses: ./.github/actions/notify-pull-request
+        if: success() && steps.compare.outputs.status == 'increased'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%). Please contact Embedding team."
+          include-log: false
+
+      - name: Send notification to Slack via Zapier
+        if: success() && steps.compare.outputs.status == 'increased'
+        shell: bash
+        env:
+          ZAPIER_WEBHOOK_URL: ${{ secrets.EMBEDDING_ZAPIER_WEBHOOK_URL }}
+          SIZE_CHANGE_PERCENT: ${{ steps.compare.outputs.size_change_percent }}
+          BUNDLE_SIZE_THRESHOLD_PERCENT: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          curl -s -X POST "$ZAPIER_WEBHOOK_URL" \
+            -d "⚠️ Embedding SDK bundle size increased by ${SIZE_CHANGE_PERCENT}% (threshold: ${BUNDLE_SIZE_THRESHOLD_PERCENT}%)
+
+          PR #${PR_NUMBER} ${PR_TITLE} (${PR_URL})"
+
+      - name: Comment on PR if bundle size has decreased
+        uses: ./.github/actions/notify-pull-request
+        if: success() && steps.compare.outputs.status == 'decreased'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "🎉 Embedding SDK bundle size decreased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch. Nice work!"
+          include-log: false
+
   embedding-sdk-tests-result:
     needs:
+      - embedding-sdk-bundle-size-check
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
       - embedding-sdk-component-tests
     if: always() && !cancelled()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

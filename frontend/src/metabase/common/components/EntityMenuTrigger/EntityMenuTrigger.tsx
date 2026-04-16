@@ -1,5 +1,3 @@
-import type * as React from "react";
-
 import { Tooltip } from "metabase/ui";
 
 import type { EntityMenuIconButtonProps } from "./EntityMenuTrigger.styled";
@@ -16,7 +14,7 @@ type EntityMenuTriggerProps = {
   ariaLabel?: string;
 };
 
-const EntityMenuTrigger = ({
+export const EntityMenuTrigger = ({
   icon,
   onClick,
   open,
@@ -46,6 +44,3 @@ const EntityMenuTrigger = ({
     triggerContent
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EntityMenuTrigger;
