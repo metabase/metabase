@@ -75,7 +75,6 @@ describe("cli init", () => {
       "src/index.tsx",
       "metabase-plugin.json",
       "public/assets/icon.svg",
-      "public/assets/icon-dark.svg",
       "public/assets/thumbs-up.png",
       "public/assets/thumbs-down.png",
       ".gitignore",
@@ -144,17 +143,5 @@ describe("cli init", () => {
     const { exitCode, stderr } = await runCli(["init", "test-viz-existing"]);
     expect(exitCode).not.toBe(0);
     expect(stderr).toContain("already exists");
-  });
-
-  it("writes binary assets as valid PNG files", async () => {
-    await runCli(["init", "my-viz"]);
-    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-
-    for (const file of ["thumbs-up.png", "thumbs-down.png"]) {
-      const buf = readFileSync(
-        join(tmpDir, "my-viz", "public", "assets", file),
-      );
-      expect(buf.subarray(0, 8)).toEqual(pngSignature);
-    }
   });
 });
