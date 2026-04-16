@@ -12,6 +12,13 @@
 - If you need both a selector and an action creator and the action creator doesn't exist yet, add it rather than reaching around it.
 - Name selectors after what they return, not how they compute it — `useStoreSnapshotSelector` over `useSelectorWithEqualityCheck`.
 
+## Error and loading state
+
+- Every async operation needs a visible loading state. "It's fast enough" isn't a reason to skip it — on a slow connection the UI looks broken.
+- Every async operation needs an error branch. Do not swallow errors silently; at minimum surface them to the user or log them where someone will see them.
+- Do not derive loading from data presence. A failed request produces no data but is not loading.
+- Empty state is its own UI — distinct from loading and from error. An empty list should look intentional, not like the page didn't finish rendering.
+
 ## API and data fetching
 
 - Fetch data at the component that owns it. Do not lazily trigger a fetch deep in a render path and rely on the caller to have pre-warmed the cache.
