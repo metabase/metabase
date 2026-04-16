@@ -164,17 +164,22 @@
 
 (deftest ^:sequential search-index-embedder-global-dedup-test
   (testing "global dedup picks lowest numeric model_id regardless of batch boundaries"
+    ;; Stub at fetch-batch (not fetch-by-model+id) so the real partition-all + mapcat batching
+    ;; path executes. With batch-size 1, each entity pair lands in its own SQL batch, so the
+    ;; two duplicates come back from separate partitions and must be merged by the caller.
     (let [winner-vec (float-array [1.0 0.0 0.0])
-          loser-vec  (float-array [0.0 1.0 0.0])]
+          loser-vec  (float-array [0.0 1.0 0.0])
+          batches    (atom [;; batch 1: table with model_id "10" (loser — higher id)
+                            [{:name "Orders" :model_id "10" :model "table" :embedding loser-vec}]
+                            ;; batch 2: table with model_id "2" (winner — lower id)
+                            [{:name "orders" :model_id "2"  :model "table" :embedding winner-vec}]])]
       (with-redefs [ss.embedders/try-active-index-state
                     (constantly {:pgvector :mock :table-name "t" :model nil})
-                    ss.embedders/fetch-batch-size 1 ;; force each pair into its own batch
-                    ss.embedders/fetch-by-model+id
-                    (fn [_ _ _]
-                      ;; Two rows with the same normalized name but different model_ids.
-                      ;; model_id "2" should win (lowest numeric) over "10".
-                      [{:name "Orders" :model_id "10" :model "card" :embedding loser-vec}
-                       {:name "orders" :model_id "2"  :model "card" :embedding winner-vec}])]
+                    ss.embedders/fetch-batch-size 1
+                    ss.embedders/fetch-batch
+                    (fn [_ _ _] (let [batch (first @batches)]
+                                  (swap! batches rest)
+                                  batch))]
         (let [result (semantic-search/search-index-embedder
                       [{:id 10 :name "Orders" :kind :table}
                        {:id 2  :name "orders" :kind :table}])]
@@ -183,16 +188,24 @@
               "the row with the lowest numeric model_id wins")))))
 
   (testing "cross-model duplicates: lowest model_id wins, model is secondary tie-break"
+    ;; :kind :question maps to "card" and :kind :table maps to "table" via entity-type->search-model,
+    ;; so the real (model, model_id) query contract is exercised. Both have id 5, so model_ids tie
+    ;; and the lexicographically smaller model ("card" < "table") must win.
     (let [card-vec  (float-array [1.0 0.0])
-          table-vec (float-array [0.0 1.0])]
+          table-vec (float-array [0.0 1.0])
+          batches   (atom [;; batch 1: card (from :question entity)
+                           [{:name "Revenue" :model_id "5" :model "card"  :embedding card-vec}]
+                           ;; batch 2: table (from :table entity)
+                           [{:name "revenue" :model_id "5" :model "table" :embedding table-vec}]])]
       (with-redefs [ss.embedders/try-active-index-state
                     (constantly {:pgvector :mock :table-name "t" :model nil})
-                    ss.embedders/fetch-by-model+id
-                    (fn [_ _ _]
-                      [{:name "Revenue" :model_id "5"  :model "card"  :embedding card-vec}
-                       {:name "revenue" :model_id "5"  :model "table" :embedding table-vec}])]
+                    ss.embedders/fetch-batch-size 1
+                    ss.embedders/fetch-batch
+                    (fn [_ _ _] (let [batch (first @batches)]
+                                  (swap! batches rest)
+                                  batch))]
         (let [result (semantic-search/search-index-embedder
-                      [{:id 5 :name "Revenue" :kind :model}
+                      [{:id 5 :name "Revenue" :kind :question}
                        {:id 5 :name "revenue" :kind :table}])]
           (is (= 1 (count result)))
           (is (= (seq card-vec) (seq (get result "revenue")))
