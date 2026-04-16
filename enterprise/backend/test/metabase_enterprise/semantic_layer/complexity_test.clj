@@ -132,7 +132,7 @@
                "missing" nil}
               result)))))
 
-(deftest library-empty-when-no-library-collection-test
+(deftest ^:sequential library-empty-when-no-library-collection-test
   (testing "on an instance with no Library collection, the library score is zero and universe still reports"
     (collections.tu/without-library
      (mt/with-temp [:model/Database {db-id :id} {:name "No-library Test DB"}
@@ -149,7 +149,9 @@
          (testing "universe still enumerates appdb content (our temp table + whatever else is there)"
            (is (pos? (:total universe)))))))))
 
-(deftest startup-logic-registered-test
+;; We're only reading the method table via `methods`, not calling the impure `!` fn — safe in parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(deftest ^:parallel startup-logic-registered-test
   (testing "loading the semantic-layer init namespace registers a startup-logic method"
     (is (contains? (methods startup/def-startup-logic!)
                    :metabase-enterprise.semantic-layer.init/PrintSemanticComplexityScore))))
@@ -159,7 +161,7 @@
     (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))
 
-(deftest complexity-score-library-hermetic-test
+(deftest ^:sequential complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"
     ;; The library tree gets a fixed set of tables, fields, measures, and metric cards. One extra
     ;; collection + table + card sit outside the library so the universe is a strict superset.
