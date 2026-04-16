@@ -115,7 +115,7 @@ export const ChartTypeOption = ({
           >
             <Badge
               variant="outline"
-              aria-label={t`Status: Development`}
+              aria-label={t`This is a development version of the visualization`}
             >{t`dev`}</Badge>
           </Tooltip>
         )}

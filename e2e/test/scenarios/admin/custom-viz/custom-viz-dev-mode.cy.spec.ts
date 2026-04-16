@@ -109,7 +109,9 @@ describe("development mode", () => {
     cy.findByTestId("viz-type-button").click();
     cy.findByTestId("custom-viz-plugins-toggle").click();
     cy.log("Checking if dev badge is visible");
-    cy.findByLabelText("Status: Development").should("exist");
+    cy.findByLabelText(
+      "This is a development version of the visualization",
+    ).should("exist");
     cy.findByTestId(`${CUSTOM_VIZ_DEV_PROJECT_NAME}-button`).click();
 
     // Close the picker so the viz is visible.
