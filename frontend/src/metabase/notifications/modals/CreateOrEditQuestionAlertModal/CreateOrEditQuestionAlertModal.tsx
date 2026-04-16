@@ -12,7 +12,11 @@ import {
 } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
+import {
+  alertIsValid,
+  getAlertTriggerOptions,
+  getDefaultQuestionAlertRequest,
+} from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import {
   getQuestion,
@@ -32,10 +36,6 @@ import {
   rem,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import {
-  alertIsValid,
-  getAlertTriggerOptions,
-} from "metabase/utils/notifications";
 import {
   getHasConfiguredAnyChannel,
   getHasConfiguredEmailOrSlackChannel,

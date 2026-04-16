@@ -11,7 +11,9 @@
    - `(setup export-dir schema-dir)` + `(check-one ctx entity-id)` — REPL workflow"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.checker.format.serdes :as serdes]
+   [metabase-enterprise.checker.format.concise-schema :as concise-schema]
+   [metabase-enterprise.checker.format.serdes-assets :as serdes-assets]
+   [metabase-enterprise.checker.format.serdes-schema :as serdes.schema]
    [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
@@ -713,45 +715,71 @@
           (swap! lines conj (str "  error: " (:error result))))
         (str/join "\n" @lines)))))
 
+(defn- make-schema-source
+  "Construct a schema source. `schema-format` is one of :serdes or :concise.
+   For :serdes, `schema-path` is a directory containing database subdirectories.
+   For :concise, `schema-path` is a single JSON file with the concise metadata."
+  [schema-format schema-path]
+  (case schema-format
+    :concise (concise-schema/make-source schema-path)
+    :serdes  (serdes.schema/make-database-source schema-path)
+    (throw (ex-info (str "Unknown schema format: " (pr-str schema-format)
+                         ". Must be :serdes or :concise.")
+                    {:schema-format schema-format}))))
+
 (defn- make-sources-and-index
-  "Build schema and assets sources from `schema-dir` and `export-dir`,
-   and a merged assets index (cards, dashboards, segments, etc.)."
-  [export-dir schema-dir]
-  (let [schema-source (serdes/make-database-source schema-dir)
-        assets-source (serdes/make-source export-dir)
-        index         (serdes/source-index assets-source)]
+  "Build schema and assets sources, plus the merged assets index (cards,
+   dashboards, segments, etc.). `opts` may contain `:schema-format` (defaults
+   to :serdes)."
+  [export-dir schema-path & {:keys [schema-format] :or {schema-format :serdes}}]
+  (let [schema-source (make-schema-source schema-format schema-path)
+        assets-source (serdes-assets/make-source export-dir)
+        index         (serdes-assets/source-index assets-source)]
     {:schema-source schema-source :assets-source assets-source :index index}))
 
 (defn check
   "Check entities in an export directory against database schemas.
 
    `export-dir`  — directory containing serdes-exported entities (collections/)
-   `schema-dir`  — directory containing serdes-exported database schemas
+   `schema-path` — path to schema source (directory for :serdes, file for :concise)
    `entity-ids`  — optional seq of entity-ids to check (defaults to all entities)
+   `opts`        — optional map; `:schema-format` is :serdes (default) or :concise
 
    Returns `{:results results-map}` where results-map is `{entity-id result-map}`.
    See the Results processing section above for the result-map and summary-map shapes."
-  ([export-dir schema-dir]
-   (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)]
-     {:results (check-entities schema-source assets-source index)}))
-  ([export-dir schema-dir entity-ids]
-   (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)]
-     {:results (check-entities schema-source assets-source index entity-ids)})))
+  ([export-dir schema-path]
+   (check export-dir schema-path nil nil))
+  ([export-dir schema-path entity-ids]
+   (check export-dir schema-path entity-ids nil))
+  ([export-dir schema-path entity-ids opts]
+   (let [{:keys [schema-source assets-source index]}
+         (make-sources-and-index export-dir schema-path
+                                 :schema-format (:schema-format opts :serdes))]
+     {:results (if entity-ids
+                 (check-entities schema-source assets-source index entity-ids)
+                 (check-entities schema-source assets-source index))})))
 
 (defn setup
   "Create a store and provider for REPL iteration.
    Returns {:store store :provider provider :index index}.
 
+   `opts` may contain `:schema-format` (:serdes default, or :concise).
+
    Usage:
      (def ctx (setup \"/path/to/export\" \"/path/to/schemas\"))
+     (def ctx (setup \"/path/to/export\" \"/path/to/metadata.json\" {:schema-format :concise}))
      (check-one ctx \"entity-id\")
      (check-one ctx \"entity-id\" :verbose true)"
-  [export-dir schema-dir]
-  (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)
-        store    (binding [mu.fn/*enforce* false]
-                   (store/make-store schema-source assets-source index))
-        provider (provider/make-provider store)]
-    {:store store :provider provider :index index}))
+  ([export-dir schema-path]
+   (setup export-dir schema-path nil))
+  ([export-dir schema-path opts]
+   (let [{:keys [schema-source assets-source index]}
+         (make-sources-and-index export-dir schema-path
+                                 :schema-format (:schema-format opts :serdes))
+         store    (binding [mu.fn/*enforce* false]
+                    (store/make-store schema-source assets-source index))
+         provider (provider/make-provider store)]
+     {:store store :provider provider :index index})))
 
 (defn check-one
   "Check a single entity by entity-id using a pre-built context from [[setup]].
@@ -770,7 +798,13 @@
 (comment
   ;; REPL workflow:
   (check "/Users/dan/projects/work/stats-remote-sync"
-         "/tmp/metadata/metadata/databases")
+         "/Users/dan/projects/work/exports-root/metadata/metadata/databases")
+
+  (->> (check "/Users/dan/projects/work/representations/examples/v1"
+              "/Users/dan/projects/work/yaml-checked-files-v1/exports/sqlite-based/databases")
+       (into {} (filter (fn [[_id stuff]]
+                          (letfn [(bad [x] ((some-fn :bad-refs :unresolved :native-errors) x))]
+                            (bad stuff))))))
   (setup
    "/Users/dan/projects/work/stats-remote-sync"
    "/Users/dan/projects/work/stats-remote-sync/databases")
