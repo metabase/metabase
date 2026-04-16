@@ -13,6 +13,7 @@ describe("development mode", () => {
   const projectDir = `${tmpDir}/${CUSTOM_VIZ_DEV_PROJECT_NAME}`;
   const devUrl = `http://localhost:${CUSTOM_VIZ_DEV_PORT}`;
   const pluginSrcPath = `${projectDir}/src/index.tsx`;
+  const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
   let devServerPid: number | null = null;
 
   beforeEach(() => {
@@ -49,7 +50,7 @@ describe("development mode", () => {
             ...manifest,
             metabase: {
               ...(manifest?.metabase ?? {}),
-              version: ">=1.59",
+              version: "", // empty strings means compatibility with any version
             },
           },
           null,
@@ -150,10 +151,8 @@ describe("development mode", () => {
     cy.log(
       "Saving the question and reloading to verify persistence of settings and dev URL",
     );
-    H.main().findByRole("button", { name: /Save/ }).click();
-    cy.findByRole("dialog", { name: /Save question/ }).within(() => {
-      cy.findByRole("button", { name: /Save/ }).click();
-    });
+    cy.log("handling modal");
+    H.saveQuestion(QUESTION_NAME, { shouldReplaceOriginalQuestion: true });
     // Wait for the dialog to close
     cy.findByRole("dialog", { name: /Save question/ }).should("not.exist");
     cy.reload();
