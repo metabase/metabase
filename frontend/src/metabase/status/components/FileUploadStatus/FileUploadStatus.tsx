@@ -5,11 +5,11 @@ import { useCollectionQuery, useTableQuery } from "metabase/common/hooks";
 import type { FileUpload } from "metabase/redux/store/upload";
 import { clearAllUploads, getAllUploads } from "metabase/redux/uploads";
 import { useDispatch, useSelector } from "metabase/utils/redux";
-import { isUploadAborted, isUploadInProgress } from "metabase/utils/uploads";
 import { isEmpty } from "metabase/utils/validate";
 import type { CollectionId, TableId } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
+import { isUploadAborted, isUploadInProgress } from "../../utils";
 import FileUploadStatusLarge from "../FileUploadStatusLarge";
 
 export const FileUploadStatus = () => {

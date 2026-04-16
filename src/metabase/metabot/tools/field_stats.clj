@@ -92,6 +92,6 @@
   "Return statistics and/or values for a given field of a given entity."
   [{:keys [entity-type entity-id field-id limit]}]
   (case entity-type
-    "metric"           (metric-field-stats entity-id field-id limit)
-    ("model" "report") (card-field-stats entity-id field-id limit entity-type)
-    "table"            (table-field-stats entity-id field-id limit)))
+    "metric"                      (metric-field-stats entity-id field-id limit)
+    ("model" "report" "question") (card-field-stats entity-id field-id limit entity-type)
+    "table"                       (table-field-stats entity-id field-id limit)))
