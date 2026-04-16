@@ -112,7 +112,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
       H.filterWidget().eq(1).click();
       H.popover().findByText("Quarter").click();
 
-      H.getDashboardCard().findByText("Q1 2023").should("be.visible");
+      H.getDashboardCard().findByText("Q1 2029").should("be.visible");
       H.getDashboardCard().findByTestId("legend-caption-title").click();
       cy.wait("@dataset");
 
@@ -126,7 +126,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
       // assert that temporal unit parameter was applied
       cy.findByTestId("chart-container")
-        .findByText("Q1 2023")
+        .findByText("Q1 2026")
         .should("be.visible");
     });
   });

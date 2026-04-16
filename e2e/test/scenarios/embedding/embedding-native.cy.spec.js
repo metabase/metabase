@@ -102,11 +102,11 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
-      // Created At: Q2 2023
+      // Created At: Q2 2029
       H.filterWidget().contains("Created At").click();
       H.popover().within(() => {
         cy.findByText(/20\d+/).click();
-        cy.contains("2023").click();
+        cy.contains("2029").click();
       });
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
@@ -128,7 +128,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.contains("Affiliate").should("not.exist");
 
       // Let's try to remove one filter
-      H.filterWidget({ name: "Q2 2023" }).icon("close").click();
+      H.filterWidget({ name: "Q2 2029" }).icon("close").click();
 
       // Order ID is 926 - there should be only one result after this
       H.filterWidget().contains("Order ID").click();
@@ -277,7 +277,7 @@ describe("scenarios > embedding > native questions", () => {
         H.filterWidget()
           .should("have.length", 4)
           .and("contain", "OR")
-          .and("contain", "Q2 2025");
+          .and("contain", "Q2 2031");
         // Why do we use input field in one filter widget but a simple `span` in the other one?
         cy.findByDisplayValue("Organic");
 

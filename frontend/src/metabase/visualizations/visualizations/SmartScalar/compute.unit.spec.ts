@@ -355,13 +355,13 @@ describe("SmartScalar > compute", () => {
           {
             description: "should correctly display previous quarter comparison",
             rows: [
-              ["2024-07-01T00:00:00", 100],
-              ["2024-10-01T00:00:00", 300],
+              ["2030-07-01T00:00:00", 100],
+              ["2030-10-01T00:00:00", 300],
             ],
             dateUnit: "quarter",
             expected: {
               ...getMetricProperties({
-                dateStr: "Q4 2024",
+                dateStr: "Q4 2030",
                 metricValue: 300,
               }),
               comparison: {
@@ -611,21 +611,21 @@ describe("SmartScalar > compute", () => {
           {
             description: "should handle comparisons by quarters",
             rows: [
-              ["2023-07-01T00:00:00", 100],
-              ["2024-10-01T00:00:00", 300],
+              ["2029-07-01T00:00:00", 100],
+              ["2030-10-01T00:00:00", 300],
             ],
             dateUnit: "quarter",
             periodsAgo: 5,
             expected: {
               ...getMetricProperties({
-                dateStr: "Q4 2024",
+                dateStr: "Q4 2030",
                 metricValue: 300,
               }),
               comparison: {
                 ...getComparisonProperties({
                   changeType: "increase",
                   comparisonValue: 100,
-                  dateStr: "Q3 2023",
+                  dateStr: "Q3 2029",
                   metricValue: 300,
                 }),
               },
@@ -634,14 +634,14 @@ describe("SmartScalar > compute", () => {
           {
             description: "should handle comparisons by months",
             rows: [
-              ["2022-06-01", 100],
-              ["2022-12-01", 300],
+              ["2028-06-01", 100],
+              ["2028-12-01", 300],
             ],
             dateUnit: "month",
             periodsAgo: 6,
             expected: {
               ...getMetricProperties({
-                dateStr: "Dec 2022",
+                dateStr: "Dec 2028",
                 metricValue: 300,
               }),
               comparison: {
@@ -657,14 +657,14 @@ describe("SmartScalar > compute", () => {
           {
             description: "should handle comparisons by weeks",
             rows: [
-              ["2022-11-10", 100],
-              ["2022-12-01", 300],
+              ["2028-11-10", 100],
+              ["2028-12-01", 300],
             ],
             dateUnit: "week",
             periodsAgo: 3,
             expected: {
               ...getMetricProperties({
-                dateStr: "Dec 1–7, 2022",
+                dateStr: "Dec 1–7, 2028",
                 metricValue: 300,
               }),
               comparison: {
@@ -680,14 +680,14 @@ describe("SmartScalar > compute", () => {
           {
             description: "should handle comparisons by days",
             rows: [
-              ["2022-08-31", 100],
-              ["2022-09-10", 300],
+              ["2028-08-31", 100],
+              ["2028-09-10", 300],
             ],
             dateUnit: "day",
             periodsAgo: 10,
             expected: {
               ...getMetricProperties({
-                dateStr: "Sep 10, 2022",
+                dateStr: "Sep 10, 2028",
                 metricValue: 300,
               }),
               comparison: {
@@ -703,14 +703,14 @@ describe("SmartScalar > compute", () => {
           {
             description: "should handle comparisons by hours",
             rows: [
-              ["2022-12-01T07:00", 100],
-              ["2022-12-01T10:00", 300],
+              ["2028-12-01T07:00", 100],
+              ["2028-12-01T10:00", 300],
             ],
             dateUnit: "hour",
             periodsAgo: 3,
             expected: {
               ...getMetricProperties({
-                dateStr: "Dec 1, 2022, 10:00–59 AM",
+                dateStr: "Dec 1, 2028, 10:00–59 AM",
                 metricValue: 300,
               }),
               comparison: {
@@ -726,14 +726,14 @@ describe("SmartScalar > compute", () => {
           {
             description: "should handle comparisons by minutes",
             rows: [
-              ["2022-12-01T10:15", 100],
-              ["2022-12-01T10:30", 300],
+              ["2028-12-01T10:15", 100],
+              ["2028-12-01T10:30", 300],
             ],
             dateUnit: "minute",
             periodsAgo: 15,
             expected: {
               ...getMetricProperties({
-                dateStr: "Dec 1, 2022, 10:30 AM",
+                dateStr: "Dec 1, 2028, 10:30 AM",
                 metricValue: 300,
               }),
               comparison: {
@@ -851,7 +851,7 @@ describe("SmartScalar > compute", () => {
               comparison: {
                 ...getComparisonProperties({
                   changeType: "missing",
-                  dateStr: "2020",
+                  dateStr: "2026",
                 }),
               },
             },
@@ -1293,20 +1293,20 @@ describe("SmartScalar > compute", () => {
             description:
               "should not remove year when previous quarter and current quarter are different years",
             rows: [
-              ["2023-10-01T00:00:00", 100],
-              ["2024-10-01T00:00:00", 300],
+              ["2029-10-01T00:00:00", 100],
+              ["2030-10-01T00:00:00", 300],
             ],
             dateUnit: "quarter",
             expected: {
               ...getMetricProperties({
-                dateStr: "Q4 2024",
+                dateStr: "Q4 2030",
                 metricValue: 300,
               }),
               comparison: {
                 ...getComparisonProperties({
                   changeType: "increase",
                   comparisonValue: 100,
-                  dateStr: "Q4 2023",
+                  dateStr: "Q4 2029",
                   metricValue: 300,
                 }),
               },
@@ -1316,13 +1316,13 @@ describe("SmartScalar > compute", () => {
             description:
               "should remove year when previous quarter and current quarter are within the same year",
             rows: [
-              ["2024-04-01T00:00:00", 100],
-              ["2024-10-01T00:00:00", 300],
+              ["2030-04-01T00:00:00", 100],
+              ["2030-10-01T00:00:00", 300],
             ],
             dateUnit: "quarter",
             expected: {
               ...getMetricProperties({
-                dateStr: "Q4 2024",
+                dateStr: "Q4 2030",
                 metricValue: 300,
               }),
               comparison: {
@@ -1385,20 +1385,20 @@ describe("SmartScalar > compute", () => {
             description:
               "should not remove year when previous week and current week are in different years",
             rows: [
-              ["2022-11-06", 100],
-              ["2023-11-19", 300],
+              ["2028-11-06", 100],
+              ["2029-11-19", 300],
             ],
             dateUnit: "week",
             expected: {
               ...getMetricProperties({
-                dateStr: "Nov 19–25, 2023",
+                dateStr: "Nov 19–25, 2029",
                 metricValue: 300,
               }),
               comparison: {
                 ...getComparisonProperties({
                   changeType: "increase",
                   comparisonValue: 100,
-                  dateStr: "Nov 6–12, 2022",
+                  dateStr: "Nov 6–12, 2028",
                   metricValue: 300,
                 }),
               },
@@ -1408,13 +1408,13 @@ describe("SmartScalar > compute", () => {
             description:
               "should remove year when previous week and current week are within the same year",
             rows: [
-              ["2023-11-05", 100],
-              ["2023-11-19", 300],
+              ["2029-11-05", 100],
+              ["2029-11-19", 300],
             ],
             dateUnit: "week",
             expected: {
               ...getMetricProperties({
-                dateStr: "Nov 19–25, 2023",
+                dateStr: "Nov 19–25, 2029",
                 metricValue: 300,
               }),
               comparison: {
@@ -1769,14 +1769,14 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by quarters",
               rows: [
-                ["2024-01-01T00:00:00-04:00", 100],
-                ["2024-10-01T00:00:00-04:00", 300],
+                ["2030-01-01T00:00:00-04:00", 100],
+                ["2030-10-01T00:00:00-04:00", 300],
               ],
               dateUnit: "quarter",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Q4 2024",
+                  dateStr: "Q4 2030",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -1792,14 +1792,14 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by months",
               rows: [
-                ["2023-01-01T00:00:00-04:00", 100],
-                ["2023-04-01T00:00:00-04:00", 300],
+                ["2029-01-01T00:00:00-04:00", 100],
+                ["2029-04-01T00:00:00-04:00", 300],
               ],
               dateUnit: "month",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Apr 2023",
+                  dateStr: "Apr 2029",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -1815,14 +1815,14 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by weeks",
               rows: [
-                ["2022-11-10T00:00-04:00", 100],
-                ["2022-12-01T00:00-04:00", 300],
+                ["2028-11-10T00:00-04:00", 100],
+                ["2028-12-01T00:00-04:00", 300],
               ],
               dateUnit: "week",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Dec 1–7, 2022",
+                  dateStr: "Dec 1–7, 2028",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -1838,14 +1838,14 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by days",
               rows: [
-                ["2022-12-01T00:00:00-04:00", 100],
-                ["2022-12-04T00:00:00-04:00", 300],
+                ["2028-12-01T00:00:00-04:00", 100],
+                ["2028-12-04T00:00:00-04:00", 300],
               ],
               dateUnit: "day",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Dec 4, 2022",
+                  dateStr: "Dec 4, 2028",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -1861,14 +1861,14 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by hours",
               rows: [
-                ["2022-12-01T07:00:00-04:00", 100],
-                ["2022-12-01T10:00:00-04:00", 300],
+                ["2028-12-01T07:00:00-04:00", 100],
+                ["2028-12-01T10:00:00-04:00", 300],
               ],
               dateUnit: "hour",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Dec 1, 2022, 10:00–59 AM",
+                  dateStr: "Dec 1, 2028, 10:00–59 AM",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -1884,14 +1884,14 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by minutes",
               rows: [
-                ["2022-12-01T10:15:00-04:00", 100],
-                ["2022-12-01T10:30:00-04:00", 300],
+                ["2028-12-01T10:15:00-04:00", 100],
+                ["2028-12-01T10:30:00-04:00", 300],
               ],
               dateUnit: "minute",
               periodsAgo: 15,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Dec 1, 2022, 10:30 AM",
+                  dateStr: "Dec 1, 2028, 10:30 AM",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -1933,15 +1933,15 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by quarters",
               rows: [
-                ["2023-10-01T00:00:00-05:00", 100],
-                ["2024-01-01T00:00:00-04:00", null],
-                ["2024-10-01T00:00:00-04:00", 300],
+                ["2029-10-01T00:00:00-05:00", 100],
+                ["2030-01-01T00:00:00-04:00", null],
+                ["2030-10-01T00:00:00-04:00", 300],
               ],
               dateUnit: "quarter",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Q4 2024",
+                  dateStr: "Q4 2030",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -1956,15 +1956,15 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by months",
               rows: [
-                ["2022-12-01T00:00:00-05:00", 100],
-                ["2023-01-01T00:00:00-04:00", null],
-                ["2023-04-01T00:00:00-04:00", 300],
+                ["2028-12-01T00:00:00-05:00", 100],
+                ["2029-01-01T00:00:00-04:00", null],
+                ["2029-04-01T00:00:00-04:00", 300],
               ],
               dateUnit: "month",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Apr 2023",
+                  dateStr: "Apr 2029",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -1979,15 +1979,15 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by weeks",
               rows: [
-                ["2022-11-03T00:00-05:00", 100],
-                ["2022-11-10T00:00-04:00", null],
-                ["2022-12-01T00:00-04:00", 300],
+                ["2028-11-03T00:00-05:00", 100],
+                ["2028-11-10T00:00-04:00", null],
+                ["2028-12-01T00:00-04:00", 300],
               ],
               dateUnit: "week",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Dec 1–7, 2022",
+                  dateStr: "Dec 1–7, 2028",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -2002,15 +2002,15 @@ describe("SmartScalar > compute", () => {
             {
               description: "should handle comparisons by days",
               rows: [
-                ["2022-12-01T00:00:00-05:00", 100],
-                ["2022-12-02T00:00:00-04:00", null],
-                ["2022-12-05T00:00:00-04:00", 300],
+                ["2028-12-01T00:00:00-05:00", 100],
+                ["2028-12-02T00:00:00-04:00", null],
+                ["2028-12-05T00:00:00-04:00", 300],
               ],
               dateUnit: "day",
               periodsAgo: 3,
               expected: {
                 ...getMetricProperties({
-                  dateStr: "Dec 5, 2022",
+                  dateStr: "Dec 5, 2028",
                   metricValue: 300,
                 }),
                 comparison: {
@@ -2130,8 +2130,8 @@ describe("SmartScalar > compute", () => {
 
       const cols = [countColumn, monthColumn];
       const rows = [
-        [105000, "2023-10-01T00:00:00"],
-        [210000, "2024-10-01T00:00:00"],
+        [105000, "2029-10-01T00:00:00"],
+        [210000, "2030-10-01T00:00:00"],
       ];
 
       const series = [createMockSingleSeries({}, { data: { rows, cols } })];
@@ -2214,21 +2214,21 @@ describe("SmartScalar > compute", () => {
       ];
 
       const rows = [
-        ["2023-12-31T02:12", 100],
-        ["2023-12-31T04:15", 200],
+        ["2029-12-31T02:12", 100],
+        ["2029-12-31T04:15", 200],
       ];
       const dateUnit = "hour";
       const periodsAgo = 2;
       const expected = {
         ...getMetricProperties({
-          dateStr: "December 31, 2023, 4:15 AM",
+          dateStr: "December 31, 2029, 4:15 AM",
           metricValue: 200,
         }),
         comparison: {
           ...getComparisonProperties({
             changeType: "increase",
             comparisonValue: 100,
-            dateStr: "December 31, 2023, 2:12 AM",
+            dateStr: "December 31, 2029, 2:12 AM",
             metricValue: 200,
           }),
         },

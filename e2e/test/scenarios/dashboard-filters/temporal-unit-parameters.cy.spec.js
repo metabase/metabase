@@ -270,7 +270,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
-        cy.findByText("Q2 2022").should("be.visible");
+        cy.findByText("Q2 2028").should("be.visible");
         cy.findByText(multiBreakoutQuestionDetails.name).click();
       });
       H.tableInteractive()
@@ -436,7 +436,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         // metabase#44684
         // should be "Created At: Year" and "2022" because the last parameter is "Year"
         cy.findByText("Created At: Quarter").should("be.visible");
-        cy.findByText("Q2 2022").should("be.visible");
+        cy.findByText("Q2 2028").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
       });
       H.appBar()
@@ -468,7 +468,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
-        cy.findByText("Q1 2023").should("be.visible");
+        cy.findByText("Q1 2029").should("be.visible");
         cy.findAllByTestId("legend-item").contains("Question 1").click();
       });
       H.appBar()
@@ -480,7 +480,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       backToDashboard();
 
       H.getDashboardCard().within(() => {
-        cy.findByText("Q1 2023").should("be.visible");
+        cy.findByText("Q1 2029").should("be.visible");
         cy.findAllByTestId("legend-item").contains("Question 2").click();
       });
       H.appBar()
