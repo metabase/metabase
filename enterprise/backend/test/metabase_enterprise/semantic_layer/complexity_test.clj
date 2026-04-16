@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-layer.init]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.embedders :as ss.embedders]
+   [metabase.analytics.core :as analytics]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
@@ -358,6 +359,43 @@
   (testing "active-embedding-model returns nil when the index is unreachable"
     (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
       (is (nil? (semantic-search/active-embedding-model))))))
+
+(deftest ^:sequential emit-prometheus-publishes-total-and-each-subscore-test
+  (testing "one gauge value is emitted per catalog × axis, with values matching the returned score"
+    (let [emissions (atom {})]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")
+                                                                            (entity :name "customers")])
+                                  complexity/universe-entities (constantly [(entity :name "orders")
+                                                                            (entity :name "customers")
+                                                                            (entity :name "widgets")])
+                                  analytics/set! (fn [metric labels amount]
+                                                   (swap! emissions assoc
+                                                          [metric (:catalog labels) (:axis labels)]
+                                                          amount))]
+        (let [{:keys [library universe]} (complexity/complexity-scores :embedder nil)
+              expected (into {}
+                             (for [[catalog result] {"library" library "universe" universe}
+                                   [axis value]     (cons ["total" (:total result)]
+                                                          (map (fn [[component sub]]
+                                                                 [(name component) (:score sub)])
+                                                               (:components result)))]
+                               [[:metabase-semantic-layer/complexity-score catalog axis] value]))]
+          (is (= expected @emissions)
+              "every {catalog, axis} combination is emitted with the matching score from the result"))))))
+
+(deftest ^:sequential emit-prometheus-failure-is-swallowed-test
+  (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"
+    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                complexity/universe-entities (constantly [(entity :name "orders")])
+                                analytics/set! (fn [& _] (throw (RuntimeException. "prom down")))]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :warn]]
+        (let [result (complexity/complexity-scores :embedder nil)]
+          (is (=? {:library  {:total 10 :components {:entity-count {:count 1 :score 10}}}
+                   :universe {:total 10 :components {:entity-count {:count 1 :score 10}}}}
+                  result))
+          (is (some #(re-find #"Failed to publish complexity score" (:message %))
+                    (messages))
+              "a warning about the publish failure was logged"))))))
 
 (deftest ^:sequential complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"
