@@ -7,9 +7,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
-   [metabase-enterprise.checker.semantic :as checker]
-   [metabase.classloader.core :as classloader]
-   [metabase.plugins.core :as plugins]))
+   [metabase-enterprise.checker.semantic :as checker]))
 
 (set! *warn-on-reflection* true)
 
@@ -134,8 +132,4 @@
       :else
       (do
         (validate-directory! export)
-        ;; Drivers are jar-loaded plugins; install the dynamic classloader and
-        ;; load them so query validation can resolve driver multimethods.
-        (classloader/the-classloader)
-        (plugins/load-plugins!)
         (run-checker export options)))))
