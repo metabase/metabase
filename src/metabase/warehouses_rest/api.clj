@@ -590,31 +590,31 @@
             reducible))
   (.write writer "]"))
 
-(defn- databases-metadata-response []
+(defn- write-databases-metadata!
+  [^java.io.OutputStream os]
   (let [db-filter [:and [:= :is_audit false] [:= :router_database_id nil]
                    [:in :id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
         t-filter  [:and [:= :active true] [:= :visibility_type nil]
                    [:in :id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
         f-filter  [:and [:= :active true] [:<> :visibility_type "sensitive"]
-                   [:in :table_id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]]
-    (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-                        (let [writer (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
-                          (.write writer "{\"databases\":")
-                          (write-json-array! writer
-                                             (t2/reducible-select [:model/Database :id :name :engine] {:where db-filter})
-                                             format-database-metadata)
-                          (.write writer ",\"tables\":")
-                          (write-json-array! writer
-                                             (t2/reducible-select [:model/Table :id :db_id :name :schema :description] {:where t-filter})
-                                             format-table-metadata)
-                          (.write writer ",\"fields\":")
-                          (write-json-array! writer
-                                             (t2/reducible-select [:model/Field :id :table_id :parent_id :name :description
-                                                                   :base_type :effective_type :semantic_type :coercion_strategy]
-                                                                  {:where f-filter})
-                                             format-field-metadata)
-                          (.write writer "}")
-                          (.flush writer)))))
+                   [:in :table_id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
+        writer   (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
+    (.write writer "{\"databases\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/Database :id :name :engine] {:where db-filter})
+                       format-database-metadata)
+    (.write writer ",\"tables\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/Table :id :db_id :name :schema :description] {:where t-filter})
+                       format-table-metadata)
+    (.write writer ",\"fields\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/Field :id :table_id :parent_id :name :description
+                                             :base_type :effective_type :semantic_type :coercion_strategy]
+                                            {:where f-filter})
+                       format-field-metadata)
+    (.write writer "}")
+    (.flush writer)))
 
 (mr/def ::databases-metadata-response
   [:map
@@ -645,7 +645,8 @@
   Returns a flat structure with three arrays: databases, tables, and fields.
   Response is streamed for efficiency with large schemas."
   []
-  (databases-metadata-response))
+  (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+                      (write-databases-metadata! os)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
