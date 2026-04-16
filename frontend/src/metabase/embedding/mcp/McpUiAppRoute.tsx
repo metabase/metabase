@@ -3,10 +3,10 @@ import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
-import { b64_to_utf8 } from "metabase/lib/encoding";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { Card } from "metabase-types/api";
 
 import { useMcpApp } from "./hooks/useMcpApp";
