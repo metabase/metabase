@@ -120,6 +120,34 @@
       (is (=? {:components {:synonym-pairs {:pairs 0 :score 0 :error "boom"}}}
               (#'complexity/score-catalog es embedder))))))
 
+(deftest ^:parallel synonym-pairs-not-monotonic-library-to-universe-test
+  (testing "universe synonym-pairs can drop below library when a name-shared entity flips the representative vector"
+    ;; score-synonym-pairs dedupes by normalized name and keeps one representative embedding per name.
+    ;; `search-index-embedder` picks that representative via a tie-break across every entity in scope
+    ;; (lowest model_id, then model), so the vector chosen for a given name depends on which catalog
+    ;; is being scored. Adding a universe-only entity that shares a normalized name with a library
+    ;; entity can flip the winner, dropping the universe pair count below the library's. This is why
+    ;; api_test.clj's monotonicity loop excludes :synonym-pairs.
+    (let [cust-vec    (float-array [1.0 0.0])
+          cli-vec     (float-array [0.99 0.01])   ; ≈ cust-vec → synonym pair in library
+          alt-vec     (float-array [0.0 1.0])     ; orthogonal to cust-vec → no pair in universe
+          library-es  [(entity :name "customers") (entity :name "clients")]
+          universe-es (conj library-es (entity :name "clients"))
+          ;; Catalog-aware embedder: when "clients" appears more than once across entities, a
+          ;; different representative wins (orthogonal), mimicking `search-index-embedder`'s
+          ;; per-name tie-break across all in-scope rows.
+          embedder    (fn [entities]
+                        (let [n-clients (->> entities
+                                             (filter #(= "clients" (embedders/normalize-name (:name %))))
+                                             count)]
+                          (cond-> {"customers" cust-vec}
+                            (= 1 n-clients) (assoc "clients" cli-vec)
+                            (> n-clients 1) (assoc "clients" alt-vec))))]
+      (is (=? {:components {:synonym-pairs {:pairs 1 :score 50}}}
+              (#'complexity/score-catalog library-es embedder)))
+      (is (=? {:components {:synonym-pairs {:pairs 0 :score 0}}}
+              (#'complexity/score-catalog universe-es embedder))))))
+
 (deftest ^:parallel fn-embedder-test
   (testing "normalizes names, dedupes, zips vectors by position, and omits entries with no vector"
     (let [known-vectors {"foo" (float-array [1.0 0.0])
