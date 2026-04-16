@@ -43,18 +43,28 @@
         (.compressClientRequest true)
         (.build))))
 
-;; Cache clients per effective connection details
+;; Cache clients by database ID for reliable cache identity
 (defonce ^:private clients (atom {}))
 
 (defn get-client
-  "Get or create a cached Client V2 instance for the given database."
+  "Get or create a cached Client V2 instance for the given database.
+   Uses the database :id as the cache key — connection details are mutable
+   (e.g. password rotation) so keying on a subset of them is lossy."
   ^Client [database]
-  (let [details   (driver.conn/effective-details database)
-        cache-key (select-keys details [:host :port :user :password :dbname :ssl])]
-    (or (get @clients cache-key)
-        (let [client (build-client details)]
-          (swap! clients assoc cache-key client)
-          client))))
+  (let [db-id  (:id database)
+        cached (get @clients db-id)]
+    (if cached
+      cached
+      (let [client (build-client (driver.conn/effective-details database))]
+        (swap! clients assoc db-id client)
+        client))))
+
+(defn invalidate-client!
+  "Remove a cached client for `database`, e.g. after connection details change."
+  [database]
+  (when-let [old-client (get @clients (:id database))]
+    (swap! clients dissoc (:id database))
+    (try (.close ^Client old-client) (catch Exception _))))
 
 ;;; ------------------------------------------ Parameter Substitution ------------------------------------------
 
@@ -65,17 +75,64 @@
   [param]
   (cond
     (nil? param)                       "NULL"
-    (string? param)                    (str "'" (str/replace param "'" "\\'") "'")
+    (string? param)                    (str "'" (-> param (str/replace "\\" "\\\\") (str/replace "'" "\\'")) "'")
     (instance? Boolean param)          (if param "true" "false")
     (instance? Number param)           (str param)
     (instance? LocalDate param)        (str "'" param "'")
     (instance? LocalDateTime param)    (str "'" param "'")
     (instance? OffsetDateTime param)   (str "parseDateTimeBestEffort('" param "')")
     (instance? ZonedDateTime param)    (str "parseDateTimeBestEffort('" param "')")
-    :else                              (str "'" (str/replace (str param) "'" "\\'") "'")))
+    :else                              (str "'" (-> (str param) (str/replace "\\" "\\\\") (str/replace "'" "\\'")) "'")))
+
+(defn- find-next-placeholder
+  "Find the next `?` placeholder in `sql` starting from `pos`, skipping over
+   string literals (single-quoted) and comments (-- and /* */).
+   Returns the index of the `?` or nil if none found."
+  [^String sql ^long pos]
+  (let [len (.length sql)]
+    (loop [i pos]
+      (when (< i len)
+        (let [ch (.charAt sql i)]
+          (cond
+            ;; Single-quoted string literal — skip to closing quote
+            (= ch \')
+            (recur (loop [j (inc i)]
+                     (if (>= j len)
+                       j
+                       (let [c (.charAt sql j)]
+                         (cond
+                           ;; Escaped quote '' — skip both
+                           (and (= c \') (< (inc j) len) (= (.charAt sql (inc j)) \'))
+                           (recur (+ j 2))
+                           ;; Backslash escape \' — skip both
+                           (and (= c \\) (< (inc j) len))
+                           (recur (+ j 2))
+                           ;; End of string
+                           (= c \')
+                           (inc j)
+                           :else
+                           (recur (inc j)))))))
+
+            ;; Line comment -- skip to end of line
+            (and (= ch \-) (< (inc i) len) (= (.charAt sql (inc i)) \-))
+            (recur (let [nl (str/index-of sql "\n" i)]
+                     (if nl (inc ^long nl) len)))
+
+            ;; Block comment /* */ — skip to closing */
+            (and (= ch \/) (< (inc i) len) (= (.charAt sql (inc i)) \*))
+            (recur (let [close (str/index-of sql "*/" (+ i 2))]
+                     (if close (+ ^long close 2) len)))
+
+            ;; Found a placeholder
+            (= ch \?)
+            i
+
+            :else
+            (recur (inc i))))))))
 
 (defn- substitute-params
-  "Replace positional `?` placeholders with literal values.
+  "Replace positional `?` placeholders with literal values, skipping
+   placeholders inside string literals and comments.
    ClickHouse's HTTP protocol doesn't support binary parameter binding,
    so the JDBC driver does the same substitution internally."
   ^String [^String sql params]
@@ -84,10 +141,10 @@
     (let [sb (StringBuilder.)]
       (loop [pos     0
              [p & more] params]
-        (if-let [idx (str/index-of sql "?" pos)]
-          (do (.append sb (subs sql pos idx))
+        (if-let [idx (find-next-placeholder sql pos)]
+          (do (.append sb (subs sql pos ^long idx))
               (.append sb ^String (param->sql-literal p))
-              (recur (inc idx) more))
+              (recur (inc ^long idx) more))
           (.append sb (subs sql pos))))
       (str sb))))
 
@@ -114,9 +171,16 @@
   [database sql params max-rows respond]
   (let [client (get-client database)
         sql    (substitute-params sql params)
-        ;; Append LIMIT if max-rows is set and query doesn't already have one
+        ;; Append LIMIT if max-rows is set and query doesn't already have one.
+        ;; Use .setMaxRows on the JDBC side, but for Client V2 we need to inject it.
+        ;; Strip comments and string literals before checking for LIMIT to avoid
+        ;; false positives from LIMIT appearing inside strings or comments.
         sql    (if (and max-rows (pos? ^long max-rows)
-                       (not (re-find #"(?i)\bLIMIT\s+\d" sql)))
+                       (not (re-find #"(?i)\bLIMIT\s+\d"
+                                     (-> sql
+                                         (str/replace #"'(?:[^'\\]|\\.)*'" " ")     ; strip string literals
+                                         (str/replace #"--[^\n]*" " ")              ; strip line comments
+                                         (str/replace #"/\*[\s\S]*?\*/" " ")))))    ; strip block comments
                  (str sql "\nLIMIT " max-rows)
                  sql)
         settings (doto (QuerySettings.)
