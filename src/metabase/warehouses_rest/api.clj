@@ -308,7 +308,7 @@
         where-clause (if filter-by-data-access?
                        [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
                                          (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-format-table-metadata :yes}))]]
+                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]
@@ -674,8 +674,9 @@
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
                (t2/hydrate
-                (cond-> [:tables :segments :metrics :measures]
-                  (not skip-fields?) (conj [:fields :has_field_values [:target :has_field_values]]))))
+                (if skip-fields?
+                  [:tables :segments :metrics]
+                  [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
