@@ -27,6 +27,7 @@ Reproducible builds, development environments, and container images for Metabase
 - [MicroVM Lifecycle Tests](#microvm-lifecycle-tests)
 - [Integration Tests](#integration-tests)
 - [Verification Scripts](#verification-scripts)
+- [Static Analysis](#static-analysis)
 - [Custom JRE with jlink (Future Optimization)](#custom-jre-with-jlink-future-optimization)
 - [Troubleshooting](#troubleshooting)
 
@@ -137,6 +138,12 @@ nix build .#oci-x86_64
 | `tests/verify-oci-flags.nix` | Verify JVM flags in running OCI container | — |
 | `tests/verify-oci-sizes.nix` | Compare OCI variant sizes | — |
 | `tests/verify-core-drivers.nix` | Test core-only image with mounted drivers | — |
+| `static-analysis/default.nix` | Static analysis entry point ([details](static-analysis.md)) | — |
+| `static-analysis/spotbugs.nix` | SpotBugs 4.8.6 + FindSecBugs 1.13.0 bytecode analyzer | — |
+| `static-analysis/nvd-clojure.nix` | CVE dependency scanning | — |
+| `static-analysis/kibit.nix` | Idiomatic Clojure suggestions | — |
+| `static-analysis/kondo.nix` | clj-kondo wrapper | — |
+| `static-analysis/eastwood.nix` | Eastwood wrapper | — |
 | `shell-functions/build.nix` | Build commands (mb-build, mb-repl, etc.) | — |
 | `shell-functions/clean.nix` | Clean commands (mb-clean-frontend, etc.) | — |
 | `shell-functions/database.nix` | PostgreSQL commands (pg-start, pg-stop, etc.) | — |
@@ -718,6 +725,23 @@ nix run .#verify-oci-sizes
 # Verify core-only image loads drivers from /plugins
 nix run .#verify-core-drivers
 ```
+
+## Static Analysis
+
+Nix targets for running static analysis tools against the Metabase codebase. These provide consistent, reproducible analysis without requiring tool installation — just `nix run`.
+
+| Command | Tool | What it analyzes |
+|---------|------|-----------------|
+| `nix run .#check-spotbugs` | SpotBugs 4.8.6 + FindSecBugs 1.13.0 | Bytecode (security, resource leaks, null paths) |
+| `nix run .#check-kondo` | clj-kondo 2025.10.23 | Clojure source (lint, 20+ detectors + 16 custom) |
+| `nix run .#check-eastwood` | Eastwood 1.4.3 | Clojure source (reflection, correctness) |
+| `nix run .#check-kibit` | kibit 0.1.11 | Clojure source (idiomatic rewrites) |
+| `nix run .#check-nvd` | nvd-clojure | deps.edn tree (CVE scanning) |
+| `nix run .#check-all-static` | All of the above | Sequential combined run |
+
+SpotBugs operates on the AOT-compiled uberjar, so it requires a full build first. The Clojure linters (kondo, eastwood, kibit) and the CVE scanner run directly against source/deps and are fast to execute.
+
+For detailed documentation on each tool — what it finds, suppression strategy, configuration, and expected output — see [static-analysis.md](static-analysis.md).
 
 ## Custom JRE with jlink (Future Optimization)
 

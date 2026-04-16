@@ -49,6 +49,7 @@ let
       "/e2e"
     ];
     tooling = [
+      "/config"
       "/dev"
       "/cross-version"
       "/mage"

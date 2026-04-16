@@ -106,6 +106,13 @@
           jre = packagesModule.jre;
         };
 
+        # Import static analysis
+        staticAnalysis = import ./nix/static-analysis {
+          inherit pkgs lib;
+          uberjar = derivation.uberjar;
+          src = filteredSrc;
+        };
+
         # Import tests
         tests = import ./nix/tests {
           inherit pkgs lib metabase;
@@ -191,10 +198,19 @@
         ))
         // {
 
+          # Static analysis
+          check-spotbugs = staticAnalysis.spotbugs;
+          check-nvd = staticAnalysis.nvdClojure;
+          check-kibit = staticAnalysis.kibit;
+          check-kondo = staticAnalysis.kondo;
+          check-eastwood = staticAnalysis.eastwood;
+          check-all-static = staticAnalysis.all;
+
           # Tests
           tests-health-check = tests.health-check;
           tests-api-smoke = tests.api-smoke;
           tests-db-migration = tests.db-migration;
+          tests-clickhouse-backend = tests.clickhouse-backend;
           tests-all = tests.all;
 
           # OCI lifecycle tests (per-arch)

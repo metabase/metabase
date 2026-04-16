@@ -13,6 +13,7 @@ let
   apiSmoke = import ./api-smoke.nix { inherit pkgs metabase; };
   dbMigration = import ./db-migration.nix { inherit pkgs metabase; };
   ociLifecycle = import ./oci-lifecycle.nix { inherit pkgs lib; };
+  clickhouseBackend = import ./clickhouse-backend.nix { inherit pkgs; };
 
   all = pkgs.writeShellApplication {
     name = "mb-test-all";
@@ -77,5 +78,6 @@ in
   api-smoke = apiSmoke;
   db-migration = dbMigration;
   oci-lifecycle = ociLifecycle.tests;
+  clickhouse-backend = clickhouseBackend;
   inherit all;
 }
