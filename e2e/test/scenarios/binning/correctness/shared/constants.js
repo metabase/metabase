@@ -14,8 +14,8 @@ export const TIME_OPTIONS = {
   Week: {
     selected: "by week",
     representativeValues: [
-      "April 24, 2025 – April 30, 2025",
-      "May 8, 2025 – May 14, 2025",
+      "April 27, 2025 – May 3, 2025",
+      "May 11, 2025 – May 17, 2025",
     ],
   },
   Month: {
