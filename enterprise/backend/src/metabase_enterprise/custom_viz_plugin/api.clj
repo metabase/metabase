@@ -36,7 +36,7 @@
    [:repo_url        ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:identifier      ms/NonBlankString]
-   [:status          [:enum :pending :active :error]]
+   [:status          [:enum :active :error]]
    [:enabled         :boolean]
    [:icon            {:optional true} [:maybe :string]]
    [:error_message   {:optional true} [:maybe :string]]
@@ -114,22 +114,10 @@
         _          (api/check-400
                     (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
                     (format "A custom visualization with identifier \"%s\" already exists." identifier))
-        {:keys [commit-sha parsed version-str snapshot]}
-        (cache/fetch-plugin-data! {:repo_url       repo_url
-                                   :access_token   access_token
-                                   :pinned_version pinned_version})
-        plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
-                                                          :repo_url         repo_url
-                                                          :access_token     access_token
-                                                          :display_name     (or (:name parsed) identifier)
-                                                          :identifier       identifier
-                                                          :status           :active
-                                                          :pinned_version   pinned_version
-                                                          :resolved_commit  commit-sha
-                                                          :manifest         parsed
-                                                          :icon             (:icon parsed)
-                                                          :metabase_version version-str))]
-    (cache/remember-snapshot! (:id plugin) snapshot)
+        plugin (cache/fetch-and-save! {:repo_url       repo_url
+                                       :access_token   access_token
+                                       :identifier     identifier
+                                       :pinned_version pinned_version})]
     (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
                                                             :user-id api/*current-user-id*})
     (plugin->response plugin)))
@@ -223,18 +211,16 @@
         updates         (select-keys body [:enabled :access_token :pinned_version])
         pinned-changed? (and (contains? updates :pinned_version)
                              (not= (:pinned_version updates) (:pinned_version existing)))
-        fetch-result    (when pinned-changed?
-                          (cache/fetch-plugin-data!
-                           (merge (select-keys existing [:repo_url :access_token :pinned_version])
-                                  (select-keys updates [:access_token :pinned_version]))))]
-    (cond
-      fetch-result  (cache/persist-plugin-data! existing fetch-result updates)
-      (seq updates) (t2/update! :model/CustomVizPlugin id updates))
-    (let [result (t2/select-one :model/CustomVizPlugin :id id)]
-      (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                              :previous-object existing
-                                                              :user-id         api/*current-user-id*})
-      (plugin->response result))))
+        result          (if pinned-changed?
+                          (cache/fetch-and-save! (merge existing updates)
+                                                 (select-keys updates [:enabled]))
+                          (do (when (seq updates)
+                                (t2/update! :model/CustomVizPlugin id updates))
+                              (t2/select-one :model/CustomVizPlugin :id id)))]
+    (events/publish-event! :event/custom-viz-plugin-update {:object          result
+                                                            :previous-object existing
+                                                            :user-id         api/*current-user-id*})
+    (plugin->response result)))
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the cached JS bundle for a plugin.
@@ -364,7 +350,7 @@
                      :icon             (:icon manifest)
                      :manifest         manifest
                      :metabase_version version-str}))
-      (cache/fetch-and-update! plugin))
+      (cache/fetch-and-save! plugin))
     (let [result (t2/select-one :model/CustomVizPlugin :id id)]
       (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                               :previous-object plugin
