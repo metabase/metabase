@@ -2,7 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { IconName } from "metabase/embedding-sdk/types/icon";
-import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
+import {
+  type ButtonProps,
+  Combobox,
+  Flex,
+  Icon,
+  Text,
+  useCombobox,
+} from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import visualizations from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
@@ -17,11 +24,11 @@ import { ToolbarButton } from "../util/ToolbarButton";
  * @expand
  * @category InteractiveQuestion
  */
-export interface ChartTypeDropdownProps {
+export type ChartTypeDropdownProps = {
   opened?: boolean;
   defaultOpened?: boolean;
   onOpenChange?: (opened: boolean) => void;
-}
+} & ButtonProps;
 
 /**
  * Dropdown for selecting the visualization type (bar chart, line chart, table, etc.).
@@ -72,6 +79,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
     opened,
     defaultOpened,
     onOpenChange,
+    ...buttonProps
   } = props;
 
   const combobox = useCombobox({
@@ -142,6 +150,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
           pr="md"
           rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
           className={ToolbarButtonS.PrimaryToolbarButton}
+          {...buttonProps}
           onClick={() => combobox.toggleDropdown()}
         />
       </Combobox.DropdownTarget>
