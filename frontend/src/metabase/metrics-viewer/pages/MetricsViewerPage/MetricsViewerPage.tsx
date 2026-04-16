@@ -93,8 +93,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
   );
 
   return (
-    <Stack h="100%" gap={0} className={S.root}>
-      <Box px="xl" pt="md" flex="0 0 auto">
+    <Stack px="3rem" h="100%" gap={0} className={S.root}>
+      <Box pt="md" flex="0 0 auto">
         <MetricSearchPanel
           definitions={definitions}
           formulaEntities={formulaEntities}
@@ -110,7 +110,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
       <Flex flex="1 1 auto" mih={0}>
         <Stack gap={0} flex={1} mih={0} miw={0}>
           {hasDefinitions && (
-            <Box px="lg" pt="sm" flex="0 0 auto" className={S.tabsBar}>
+            <Box pt="sm" flex="0 0 auto" className={S.tabsBar}>
               <MetricsViewerTabs
                 tabs={tabs}
                 activeTabId={activeTabId}
@@ -124,10 +124,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
               />
             </Box>
           )}
-          <Flex flex="1 1 auto" mih={0}>
+          <Flex flex="1 1 auto" mih={0} pt="lg">
             <Flex
               direction="column"
-              px="lg"
               pt="md"
               pb="lg"
               flex={1}
