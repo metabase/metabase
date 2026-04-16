@@ -159,15 +159,21 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              dashboards
+              events
               lib
               llm
               metabot
+              queries
               query-processor
               request
               server
               settings
               util}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/User}}
 
   analytics
   {:team "UX West"

@@ -20,7 +20,7 @@
    [metabase.metabot.tools.filters :as metabot-filters]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -777,7 +777,7 @@
     question-name :name}
    :- ::create-question-request]
   (let [dataset-query (-> query u/decode-base64 json/decode+kw)
-        card          (card/create-card!
+        card          (queries/create-card!
                        {:name                   question-name
                         :dataset_query          dataset-query
                         :display                (keyword (or display "table"))
