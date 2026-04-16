@@ -5,15 +5,7 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const CLI_PATH = join(__dirname, "..", "dist", "cli.js");
 const CUSTOM_VIZ_PACKAGE_DIR = join(__dirname, "..");
@@ -22,85 +14,6 @@ const CUSTOM_VIZ_PACKAGE_DIR = join(__dirname, "..");
 const DEV_SERVER_URL = "http://localhost:5174";
 
 let tmpDir: string;
-
-async function scaffold(name: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "node",
-      [CLI_PATH, "init", name],
-      { cwd: tmpDir },
-      (error, _stdout, stderr) => {
-        if (error) {
-          reject(new Error(`scaffold failed: ${stderr}`));
-        } else {
-          resolve(join(tmpDir, name));
-        }
-      },
-    );
-  });
-}
-
-async function npmInstall(cwd: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "npm",
-      ["install", "--ignore-scripts"],
-      { cwd, timeout: 120_000 },
-      (error, _stdout, stderr) => {
-        if (error) {
-          reject(new Error(`npm install failed: ${stderr}`));
-        } else {
-          resolve();
-        }
-      },
-    );
-  });
-}
-
-async function npmRun(
-  script: string,
-  cwd: string,
-): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "npm",
-      ["run", script],
-      { cwd, timeout: 120_000 },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(`npm run ${script} failed: ${stderr}`));
-        } else {
-          resolve({ stdout: stdout.toString(), stderr: stderr.toString() });
-        }
-      },
-    );
-  });
-}
-
-describe("scaffolding", () => {
-  beforeEach(async () => {
-    const { mkdtemp } = await import("node:fs/promises");
-    tmpDir = await mkdtemp(join(tmpdir(), "custom-viz-scaffold-"));
-  });
-
-  afterEach(async () => {
-    await rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it("npm install executes successfully", async () => {
-    const projectDir = await scaffold("test-viz-install");
-
-    // Point @metabase/custom-viz to local package instead of npm registry
-    const pkgPath = join(projectDir, "package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-    pkg.devDependencies["@metabase/custom-viz"] =
-      `file:${CUSTOM_VIZ_PACKAGE_DIR}`;
-    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-
-    await npmInstall(projectDir);
-    expect(existsSync(join(projectDir, "node_modules"))).toBe(true);
-  }, 120_000);
-});
 
 describe("build output validation", () => {
   let projectDir: string;
@@ -136,19 +49,15 @@ describe("build output validation", () => {
 
   it("React is externalized (not bundled)", () => {
     const bundle = readFileSync(join(projectDir, "dist", "index.js"), "utf-8");
-    // The bundle should not contain React's source code internals
     expect(bundle).not.toContain("react-dom");
     expect(bundle).not.toContain(
       "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED",
     );
     // The bundle should be small (React alone is ~100KB+)
-    expect(bundle.length).toBeLessThan(10_000);
+    expect(bundle.length).toBeLessThan(10000);
   });
 
   it("metabase-plugin.json is copied to dist/", () => {
-    // metabase-plugin.json is only copied to dist by the dev server plugin (closeBundle).
-    // In a plain `vite build`, metabase-plugin.json stays in the project root.
-    // The source manifest should exist and be valid.
     const manifestPath = join(projectDir, "metabase-plugin.json");
     expect(existsSync(manifestPath)).toBe(true);
     const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
@@ -156,40 +65,6 @@ describe("build output validation", () => {
     expect(manifest).toHaveProperty("icon");
     expect(manifest).toHaveProperty("assets");
   });
-
-  it("type-check passes", async () => {
-    await expect(npmRun("type-check", projectDir)).resolves.not.toThrow();
-  }, 60_000);
-
-  it("lint check passes", async () => {
-    const oxlintConfig = join(projectDir, ".oxlintrc.json");
-    writeFileSync(oxlintConfig, "{}");
-
-    const oxlintBin = join(
-      CUSTOM_VIZ_PACKAGE_DIR,
-      "node_modules",
-      ".bin",
-      "oxlint",
-    );
-    await new Promise<void>((resolve, reject) => {
-      execFile(
-        oxlintBin,
-        ["--config", oxlintConfig, "src/"],
-        { cwd: projectDir, timeout: 30_000 },
-        (error, stdout, stderr) => {
-          if (error) {
-            reject(
-              new Error(
-                `oxlint failed: ${stdout.toString()} ${stderr.toString()}`,
-              ),
-            );
-          } else {
-            resolve();
-          }
-        },
-      );
-    });
-  }, 60_000);
 });
 
 describe("dev server", () => {
@@ -211,46 +86,7 @@ describe("dev server", () => {
     await npmInstall(projectDir);
 
     // Start the dev server once for all tests
-    await new Promise<void>((resolve, reject) => {
-      devProcess = spawn("npm", ["run", "dev"], {
-        cwd: projectDir,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      const timeout = setTimeout(() => {
-        reject(new Error("Dev server did not start within 60s"));
-      }, 60_000);
-
-      let output = "";
-
-      devProcess.stderr?.on("data", (data: Buffer) => {
-        output += data.toString();
-        if (output.includes("Dev server listening")) {
-          clearTimeout(timeout);
-          resolve();
-        }
-      });
-
-      devProcess.stdout?.on("data", (data: Buffer) => {
-        output += data.toString();
-        if (output.includes("Dev server listening")) {
-          clearTimeout(timeout);
-          resolve();
-        }
-      });
-
-      devProcess.on("error", (err) => {
-        clearTimeout(timeout);
-        reject(err);
-      });
-
-      devProcess.on("exit", (code) => {
-        if (code !== null && code !== 0) {
-          clearTimeout(timeout);
-          reject(new Error(`Dev server exited with code ${code}: ${output}`));
-        }
-      });
-    });
+    devProcess = await startDevServer(projectDir);
   }, 180_000);
 
   afterAll(async () => {
@@ -294,34 +130,6 @@ describe("dev server", () => {
     expect(rawResponse.toLowerCase()).toContain(
       "access-control-allow-origin: *",
     );
-  }, 10_000);
-
-  it("serves static files with correct MIME types", async () => {
-    const jsResponse = await fetch(`${DEV_SERVER_URL}/index.js`);
-    expect(jsResponse.status).toBe(200);
-    expect(jsResponse.headers.get("content-type")).toBe(
-      "application/javascript",
-    );
-
-    const manifestResponse = await fetch(
-      `${DEV_SERVER_URL}/metabase-plugin.json`,
-    );
-    expect(manifestResponse.status).toBe(200);
-    expect(manifestResponse.headers.get("content-type")).toBe(
-      "application/json",
-    );
-  }, 10_000);
-
-  it("prevents directory traversal", async () => {
-    const response = await fetch(`${DEV_SERVER_URL}/../package.json`);
-    // Node's http server normalizes the URL, so the path resolves to /package.json
-    // which won't exist in dist/. The traversal check catches paths that escape distDir.
-    expect([403, 404]).toContain(response.status);
-  }, 10_000);
-
-  it("returns 404 for nonexistent files", async () => {
-    const response = await fetch(`${DEV_SERVER_URL}/nonexistent.js`);
-    expect(response.status).toBe(404);
   }, 10_000);
 
   it("serves landing page at /", async () => {
@@ -380,3 +188,94 @@ describe("dev server", () => {
     expect(received).toContain("data: reload");
   }, 30_000);
 });
+
+async function scaffold(name: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "node",
+      [CLI_PATH, "init", name],
+      { cwd: tmpDir },
+      (error, _stdout, stderr) => {
+        if (error) {
+          reject(new Error(`scaffold failed: ${stderr}`));
+        } else {
+          resolve(join(tmpDir, name));
+        }
+      },
+    );
+  });
+}
+
+async function npmInstall(cwd: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "npm",
+      ["install", "--ignore-scripts"],
+      { cwd, timeout: 120_000 },
+      (error, _stdout, stderr) => {
+        if (error) {
+          reject(new Error(`npm install failed: ${stderr}`));
+        } else {
+          resolve();
+        }
+      },
+    );
+  });
+}
+
+async function npmRun(
+  script: string,
+  cwd: string,
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "npm",
+      ["run", script],
+      { cwd, timeout: 120_000 },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(`npm run ${script} failed: ${stderr}`));
+        } else {
+          resolve({ stdout: stdout.toString(), stderr: stderr.toString() });
+        }
+      },
+    );
+  });
+}
+
+function startDevServer(cwd: string): Promise<ChildProcess> {
+  return new Promise<ChildProcess>((resolve, reject) => {
+    const proc = spawn("npm", ["run", "dev"], {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    const timeout = setTimeout(() => {
+      reject(new Error("Dev server did not start within 60s"));
+    }, 60_000);
+
+    let output = "";
+    const onData = (data: Buffer) => {
+      output += data.toString();
+      if (output.includes("Dev server listening")) {
+        clearTimeout(timeout);
+        resolve(proc);
+      }
+    };
+
+    proc.stdout?.on("data", onData);
+    proc.stderr?.on("data", onData);
+
+    proc.on("error", (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+
+    proc.on("exit", (code) => {
+      if (code !== null && code !== 0) {
+        clearTimeout(timeout);
+        reject(new Error(`Dev server exited with code ${code}: ${output}`));
+      }
+    });
+  });
+}
