@@ -21,9 +21,8 @@ import {
   SummarizeDropdown,
   Title,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
-import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
-import { MobileToolbar } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/MobileToolbar";
+import { SdkToolbar } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkToolbar";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -34,7 +33,7 @@ import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embeddi
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
-import { Box, Group, Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -163,33 +162,32 @@ const StaticQuestionInner = (
             >
               {title && <DefaultViewTitle title={title} />}
 
-              {!isMobile && (
-                <RenderIfHasContent
-                  component={ResultToolbar}
-                  data-testid="result-toolbar"
-                >
-                  {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-
-                  <RenderIfHasContent component={Group} gap="sm" ml="auto">
+              <SdkToolbar
+                isMobile={isMobile}
+                data-testid="result-toolbar"
+                left={
+                  withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />
+                }
+                mobileLeft={({ className, styles }) =>
+                  withChartTypeSelector && (
+                    <SdkQuestion.ChartTypeDropdown
+                      className={className}
+                      styles={styles}
+                    />
+                  )
+                }
+                right={
+                  <>
                     <SdkQuestion.DownloadWidgetDropdown />
                     <QuestionAlertsButton />
-                  </RenderIfHasContent>
-                </RenderIfHasContent>
-              )}
-
-              {isMobile && (
-                <RenderIfHasContent
-                  component={MobileToolbar}
-                  isEditorOpen={false}
-                  withChartTypeSelector={withChartTypeSelector}
-                  rightButton={({ className }) => (
-                    <SdkQuestion.DownloadWidgetDropdown
-                      buttonClassName={className}
-                    />
-                  )}
-                  data-testid="result-mobile-toolbar"
-                />
-              )}
+                  </>
+                }
+                mobileRight={({ className }) => (
+                  <SdkQuestion.DownloadWidgetDropdown
+                    buttonClassName={className}
+                  />
+                )}
+              />
 
               {isGuestEmbed && <SdkQuestion.SqlParametersList />}
             </RenderIfHasContent>
