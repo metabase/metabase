@@ -23,7 +23,7 @@ import {
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
-import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
+import { MobileToolbar } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/MobileToolbar";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -38,6 +38,9 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
+
+import MobileToolbarS from "../../private/SdkQuestionDefaultView/MobileToolbar.module.css";
+import SdkQuestionDefaultViewS from "../../private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
 
 import { staticQuestionSchema } from "./StaticQuestion.schema";
 
@@ -144,14 +147,14 @@ const StaticQuestionInner = (
           style={style}
         >
           <Stack
-            className={InteractiveQuestionS.Container}
+            className={SdkQuestionDefaultViewS.Container}
             w="100%"
             h="100%"
             gap="xs"
           >
             <RenderIfHasContent
               component={Stack}
-              className={InteractiveQuestionS.TopBar}
+              className={SdkQuestionDefaultViewS.TopBar}
               gap="sm"
               p="md"
               data-testid="static-question-top-bar"
@@ -159,7 +162,23 @@ const StaticQuestionInner = (
               {title && <DefaultViewTitle title={title} />}
 
               <RenderIfHasContent
+                component={MobileToolbar}
+                data-testid="result-mobile-toolbar"
+              >
+                {withChartTypeSelector && (
+                  <SdkQuestion.ChartTypeDropdown
+                    className={MobileToolbarS.MobileToolbarLeftButton}
+                  />
+                )}
+
+                <SdkQuestion.DownloadWidgetDropdown
+                  buttonClassName={MobileToolbarS.MobileToolbarRightButton}
+                />
+              </RenderIfHasContent>
+
+              <RenderIfHasContent
                 component={ResultToolbar}
+                className={MobileToolbarS.DesktopToolbar}
                 data-testid="result-toolbar"
               >
                 {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
@@ -173,8 +192,8 @@ const StaticQuestionInner = (
               {isGuestEmbed && <SdkQuestion.SqlParametersList />}
             </RenderIfHasContent>
 
-            <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
-              <Box className={InteractiveQuestionS.Content}>
+            <Box className={SdkQuestionDefaultViewS.Main} w="100%" h="100%">
+              <Box className={SdkQuestionDefaultViewS.Content}>
                 <SdkQuestion.QuestionVisualization
                   height={height}
                   width={width}

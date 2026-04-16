@@ -11,7 +11,9 @@ import { DownloadWidget } from "./DownloadWidget";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps;
+export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps & {
+  buttonClassName?: string;
+};
 
 /**
  * Provides a button that contains a dropdown that shows the `DownloadWidget`.
@@ -21,6 +23,7 @@ export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps;
  * @param props
  */
 export const DownloadWidgetDropdown = ({
+  buttonClassName,
   ...popoverProps
 }: InteractiveQuestionDownloadWidgetDropdownProps) => {
   const { withDownloads } = useSdkQuestionContext();
@@ -38,6 +41,7 @@ export const DownloadWidgetDropdown = ({
     >
       <Popover.Target>
         <SdkActionIcon
+          className={buttonClassName}
           tooltip={t`Download results`}
           icon="download"
           data-testid="question-download-widget-button"

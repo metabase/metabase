@@ -24,10 +24,8 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import {
   Box,
   Button,
-  Center,
   Divider,
   Group,
-  Icon,
   PopoverBackButton,
   Stack,
 } from "metabase/ui";
@@ -57,7 +55,9 @@ import { useSdkQuestionContext } from "../SdkQuestion/context";
 import ToolbarButtonS from "../SdkQuestion/styles/ToolbarButton.module.css";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
-import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
+import { MobileToolbar } from "./MobileToolbar";
+import MobileToolbarS from "./MobileToolbar.module.css";
+import SdkQuestionDefaultViewS from "./SdkQuestionDefaultView.module.css";
 
 export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   /**
@@ -189,12 +189,12 @@ export const SdkQuestionDefaultView = ({
     <FlexibleSizeComponent
       height={height}
       width={width}
-      className={cx(InteractiveQuestionS.Container, className)}
+      className={cx(SdkQuestionDefaultViewS.Container, className)}
       style={style}
     >
       <RenderIfHasContent
         component={Stack}
-        className={InteractiveQuestionS.TopBar}
+        className={SdkQuestionDefaultViewS.TopBar}
         gap="sm"
         p="md"
       >
@@ -215,7 +215,7 @@ export const SdkQuestionDefaultView = ({
 
         {/* Mobile toolbar — visible when container < 640px */}
         {queryResults && (
-          <Button.Group className={InteractiveQuestionS.MobileToolbar}>
+          <MobileToolbar data-testid="result-mobile-toolbar">
             {isEditorOpen ? (
               <ToolbarButton
                 isHighlighted={false}
@@ -224,43 +224,26 @@ export const SdkQuestionDefaultView = ({
                 label={t`Back to visualization`}
                 c="brand"
                 justify="start"
-                className={ToolbarButtonS.PrimaryToolbarButton}
-                w="100%"
-                h="3rem"
-                radius="lg"
-                style={{ flex: 1 }}
+                className={cx(
+                  ToolbarButtonS.PrimaryToolbarButton,
+                  MobileToolbarS.MobileToolbarLeftButton,
+                )}
                 onClick={toggleEditor}
               />
             ) : (
               withChartTypeSelector && (
                 <ChartTypeDropdown
-                  w="100%"
-                  h="3rem"
-                  radius="lg"
-                  justify="flex-start"
+                  className={MobileToolbarS.MobileToolbarLeftButton}
                 />
               )
             )}
-            <ToolbarButton
-              isHighlighted={isEditorOpen}
-              variant={isEditorOpen ? "filled" : "default"}
-              w="3rem"
-              h="3rem"
-              px="sm"
-              radius="lg"
-              ml={!isEditorOpen && !withChartTypeSelector ? "auto" : undefined}
-              label={
-                <Center>
-                  <Icon c="inherit" size={16} name="pencil_lines" />
-                </Center>
-              }
-              className={
-                isEditorOpen ? undefined : ToolbarButtonS.PrimaryToolbarButton
-              }
+
+            <EditorButton
+              className={MobileToolbarS.MobileToolbarRightButton}
+              isOpen={isEditorOpen}
               onClick={toggleEditor}
-              data-testid="notebook-button"
             />
-          </Button.Group>
+          </MobileToolbar>
         )}
 
         {/* Desktop toolbar — visible when container >= 640px */}
@@ -268,7 +251,7 @@ export const SdkQuestionDefaultView = ({
           <RenderIfHasContent
             component={ResultToolbar}
             data-testid="interactive-question-result-toolbar"
-            className={InteractiveQuestionS.DesktopToolbar}
+            className={MobileToolbarS.DesktopToolbar}
           >
             <RenderIfHasContent component={Group} gap="xs">
               {isEditorOpen ? (
@@ -331,12 +314,12 @@ export const SdkQuestionDefaultView = ({
       </RenderIfHasContent>
 
       <Box
-        className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
+        className={cx(SdkQuestionDefaultViewS.Main, "sdk-question-main")}
         p="sm"
         w="100%"
         h="100%"
       >
-        <Box className={InteractiveQuestionS.Content}>
+        <Box className={SdkQuestionDefaultViewS.Content}>
           {isEditorOpen ? (
             <Editor onApply={closeEditor} />
           ) : (
