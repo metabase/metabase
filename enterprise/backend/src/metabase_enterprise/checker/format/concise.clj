@@ -1,66 +1,78 @@
 (ns metabase-enterprise.checker.format.concise
-  "Concise JSON schema format — one file per database, everything in memory.
+  "Concise JSON schema format — single file with three flat lists, fully
+   in-memory.
 
-   Each database is a single JSON file named `<db-name>.json` containing the
-   database metadata plus all its tables and fields inline:
+   The file is a single JSON document with three flat lists keyed by integer
+   IDs. Tables reference their database via `:db_id`; fields reference their
+   table via `:table_id`:
 
-     {\"name\": \"Sample Database\",
-      \"engine\": \"h2\",
-      \"tables\": [{\"name\": \"ORDERS\",
-                   \"database_schema\": \"PUBLIC\",
-                   \"fields\": [{\"name\": \"ID\", \"base_type\": \"type/BigInteger\", ...}]}]}
+     {\"databases\": [{\"id\": 1, \"name\": \"Sample Database\", \"engine\": \"h2\"}, ...],
+      \"tables\":    [{\"id\": 3, \"db_id\": 1, \"name\": \"PRODUCTS\", \"schema\": \"PUBLIC\"}, ...],
+      \"fields\":    [{\"id\": 12, \"table_id\": 3, \"name\": \"ID\",
+                       \"base_type\": \"type/BigInteger\",
+                       \"semantic_type\": \"type/PK\",
+                       \"database_type\": \"BIGINT\"}, ...]}
 
-   This replaces the 500k-file serdes directory tree with ~40 JSON files that
-   are fast to load and keep entirely in memory."
+   At load time we build path-keyed indexes by joining `tables.db_id →
+   databases.id` and `fields.table_id → tables.id`, so the rest of the
+   checker (which speaks portable paths like `[db-name schema table]`) sees
+   the same shape it gets from any other source.
+
+   This replaces the 500k-file serdes directory tree."
   (:require
    [clojure.data.json :as json]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase-enterprise.checker.source :as source])
   (:import
    (java.io File)))
 
 (set! *warn-on-reflection* true)
 
-(defn- load-database-json
-  "Load and parse a single database JSON file. Returns the parsed map."
-  [^File f]
-  (json/read-str (slurp f) :key-fn keyword))
-
 (defn- build-model
-  "Load all database JSON files from `schema-dir` and build an in-memory model.
+  "Parse the concise metadata JSON file and build path-keyed indexes.
+
+   The on-disk shape uses integer IDs to link entities. Here we resolve those
+   IDs to their containing entity's name/path so callers can use portable
+   references throughout.
 
    Returns:
      {:databases {db-name db-data}
-      :tables    {[db schema table] table-data}
-      :fields    {[db schema table field] field-data}}"
-  [^File schema-dir]
-  (let [databases (volatile! {})
-        tables    (volatile! {})
-        fields    (volatile! {})]
-    (doseq [^File f (.listFiles schema-dir)
-            :when (and (.isFile f) (str/ends-with? (.getName f) ".json"))]
-      (let [db       (load-database-json f)
-            db-name  (:name db)
-            db-data  (dissoc db :tables)]
-        (vswap! databases assoc db-name db-data)
-        (doseq [table (:tables db)]
-          (let [schema     (:database_schema table)
-                table-name (:name table)
-                table-path [db-name schema table-name]
-                table-data (-> table
-                               (dissoc :fields :database_id :database_engine)
-                               (assoc :schema schema
-                                      :db_id db-name))]
-            (vswap! tables assoc table-path table-data)
-            (doseq [field (:fields table)]
-              (let [field-name (:name field)
-                    field-path [db-name schema table-name field-name]
-                    field-data (assoc field :table_id table-path)]
-                (vswap! fields assoc field-path field-data)))))))
-    {:databases @databases
-     :tables    @tables
-     :fields    @fields}))
+      :tables    {[db-name schema table-name] table-data}
+      :fields    {[db-name schema table-name field-name] field-data}}"
+  [^File f]
+  (let [parsed     (json/read-str (slurp f) :key-fn keyword)
+        databases  (:databases parsed)
+        tables     (:tables parsed)
+        fields     (:fields parsed)
+        ;; id-keyed lookup tables
+        db-by-id   (into {} (map (juxt :id identity)) databases)
+        tbl-by-id  (into {} (map (juxt :id identity)) tables)
+        ;; path-keyed result maps
+        db-map     (into {} (map (juxt :name identity)) databases)
+        tbl-map    (into {}
+                         (keep (fn [t]
+                                 (when-let [db (db-by-id (:db_id t))]
+                                   (let [db-name    (:name db)
+                                         schema     (:schema t)
+                                         table-name (:name t)
+                                         table-path [db-name schema table-name]]
+                                     [table-path (assoc t :db_id db-name)]))))
+                         tables)
+        field-map  (into {}
+                         (keep (fn [field]
+                                 (when-let [t (tbl-by-id (:table_id field))]
+                                   (when-let [db (db-by-id (:db_id t))]
+                                     (let [db-name    (:name db)
+                                           schema     (:schema t)
+                                           table-name (:name t)
+                                           field-name (:name field)
+                                           table-path [db-name schema table-name]
+                                           field-path [db-name schema table-name field-name]]
+                                       [field-path (assoc field :table_id table-path)])))))
+                         fields)]
+    {:databases db-map
+     :tables    tbl-map
+     :fields    field-map}))
 
 (defn- fields-by-table
   "Build a map of table-path → set of field-paths from the fields map."
@@ -98,9 +110,9 @@
     (filterv #(= (first %) db-name) (keys tables))))
 
 (defn make-source
-  "Create a SchemaSource from a directory of database JSON files.
+  "Create a SchemaSource from a single concise metadata JSON file.
    Loads everything into memory at construction time."
-  [schema-dir]
-  (let [{:keys [databases tables fields]} (build-model (io/file schema-dir))
+  [schema-file]
+  (let [{:keys [databases tables fields]} (build-model (io/file schema-file))
         fi (fields-by-table fields)]
     (->ConciseSchemaSource databases tables fields fi)))
