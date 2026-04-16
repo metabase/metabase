@@ -220,7 +220,7 @@ See [Model persistence](./model-persistence.md)
 
 ## Convert a model to a transform
 
-[Transforms](../data-studio/transforms/transforms-overview.md) are the successor to models. They create a persistent table in your database that refreshes on a schedule, instead of running the query live each time. Metabase will be gradually phasing out models in favor of transforms.
+[Transforms](../data-studio/transforms/transforms-overview.md) are the successor to models. Transforms create a persistent table in your database that refreshes on a schedule, instead of running the query live each time. Metabase will be gradually phasing out models in favor of transforms.
 
 If you're an admin, you can convert existing models to transforms one at a time. Conversion creates a transform from the model's query, runs it to produce the output table, and then updates all questions and dashboards that used the model to use the transform's table instead. The model itself becomes a saved question.
 

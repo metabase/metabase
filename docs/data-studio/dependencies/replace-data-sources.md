@@ -1,19 +1,21 @@
 ---
 title: Replace data sources
-summary: Replace a data source across all questions, models, and other content that use it—in one operation.
+summary: Admins can swap out a table, model, or question and replace it with a different one across your entire Metabase.
 ---
 
 # Replace data sources
 
 {% include plans-blockquote.html feature="Replacing data sources" %}
 
-Admins can swap out a table, model, or saved question used across your Metabase and replace it with a different one across your entire Metabase. This is useful when you want to point existing content at a new or updated table, or when you're migrating from one data source to another.
+Admins can swap out a table, model, or question and replace it with a different one across your entire Metabase.
+
+For example, let's say you created a transform that created a cleaned up version of your `orders` table, called `orders_clean`. Instead of rewriting all your questions that query the `orders` table, Admins can swap in the `order_clean` table everywhere the old `orders` table is referenced.
 
 ## How replacing data sources works
 
 - Only admins can replace data sources.
 
-- Metabase uses the [dependency graph](./graph.md) to identify all content that depends on the original data source. "Data source" here means a table, model, or saved question - anything that's used as, well, a data source for a query.
+- Metabase uses the [dependency graph](./graph.md) to identify all content that depends on the original data source. "Data source" here could be a table, model, or question queried by another entity.
 
 - Once an admin [selects a replacement source](#find-and-replace-data-sources), Metabase [checks compatibility](#compatibility-requirements) of the original data source with the replacement data source.
 
@@ -92,7 +94,7 @@ To find and replace all entities that depend on a data source:
 
 ### Running the replacement
 
-Replacement can take a long time (potentially hours) on instances with thousands of questions.
+If your Metabase has thousands of questions, replacement can take a long time (potentially hours).
 
 Metabase runs the replacement asynchronously in the background. A status indicator appears at the bottom of the screen showing progress and completion. When complete, all affected items are updated to use the new data source.
 
@@ -115,7 +117,7 @@ Items are replaced when (and only when) they are used as a query source. This in
 Metabase **will not replace** tables/models/questions in:
 
 - Snippets
-- Question- or model-based sources for dropdown filter values in SQL questions and dashboards
+- Questions or models that power dropdown filter values in SQL questions and dashboards
 - [Links](../../dashboards/introduction.md#link-cards) and [custom destinations](../../dashboards/interactive.md#custom-destinations) on dashboards;
 - Targets for [actions](../../actions/introduction.md).
 
@@ -126,11 +128,10 @@ Metabase will **not allow** you to replace data sources that are used as:
 
 ## Permissions and data source replacement
 
-Only admins can replace data sources in bulk.
 
-Metabase **will not check** whether the data sources have comparable permissions. You need to make sure that new data source has appropriate permissions _before_ initiating the replacement to avoid blocking people from seeing questions, or exposing data they're not supposed to see.
+Metabase **won't check** whether swapped data sources have comparable permissions. Admins need to make sure that new data source has appropriate permissions _before_ initiating the replacement, otherwise you could block people from viewing questions, or expose data they're not supposed to see.
 
-For example, `old_table` might be configured to have view access for all users, but `new_table` might be blocked for everyone. If you replace `old_table` with `new_table`, then people will not be able to see any data in questions that used the `old_table` before replacement, because those questions will now use the blocked `new_table`.
+For example, the Customer group might have view data access to `old_table`, but have blocked (no) access to `new_table`. If you replace `old_table` with `new_table`, then people in the Customers group won't be able to see results in questions that used to query the `old_table` and now query the blocked `new_table`.
 
 Review both data and collection permissions for old and new sources before starting replacement.
 
@@ -142,4 +143,4 @@ Because old data sources can be used both in synced and unsynced collections, we
 
 - The source and target must be on the same database. Cross-database replacement isn't supported.
 - Original and new data source have to satisfy [compatibility requirements](#compatibility-requirements).
-- All uses of the original data sources are swapped for a new data source. You can't pick and choose the content to replace data sources in.
+- All uses of the original data source is swapped for the new data source. You can't pick and choose which content to update.

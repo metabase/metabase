@@ -248,7 +248,7 @@ If you have models you'd like to migrate to transforms, Metabase can convert the
 1. Creates a new transform based on the model's query.
 2. Runs the transform to create the output table in your database.
 3. Replaces every question, dashboard, and other item that used the model with the transform's output table.
-4. Converts the model itself to a saved question.
+4. Converts the original model to a question.
 
 You must be an admin to convert models, and the model's database must [support transforms](#databases-that-support-transforms).
 

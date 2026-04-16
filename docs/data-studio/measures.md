@@ -47,11 +47,11 @@ The measure's saved aggregation will be applied behind the scenes. You can use b
 
 ![Measure in the query builder](./images/measure.png)
 
-Measures will only appear in questions that use the measure's table as the primary data source. They will not appear in questions joining the measure's table, or in questions built on other questions or models, even if those questions or models use the measure's table as a source themselves.
+Measures are only available to questions that directly query the measure's table. Measures aren't available for questions that join the measure's table, or that involve nested queries (even if those queries measure's table as a source themselves).
 
 ## Delete measures
 
-Deleting a measure will not break questions using it. The questions that use the measure will keep using the same aggregations as before.
+Deleting a measure won't break questions using it. The questions that use the deleted measure will "revert" to using the measure's (now unnamed) aggregation formula.
 
 1. Go to **Data Studio** by clicking the **grid icon** in top right of the screen and selecting **Data Studio**.
 2. In Data Studio, go to **Tables**, and select the measure's table.
