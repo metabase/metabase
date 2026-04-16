@@ -6,38 +6,40 @@ import { Box, Group } from "metabase/ui";
 
 import { RenderIfHasContent } from "../RenderIfHasContent/RenderIfHasContent";
 
-import S from "./MobileToolbar.module.css";
+import S from "./SdkToolbar.module.css";
 
-type MobileSlotProps = {
+/** Props passed to mobile render props for button styling. */
+export type MobileSlotProps = {
   className: string;
   styles: Record<string, CSSProperties>;
+};
+
+/** A slot that renders differently on desktop vs mobile. */
+export type ResponsiveSlot = {
+  desktop?: ReactNode;
+  mobile?: (props: MobileSlotProps) => ReactNode;
 };
 
 type SdkToolbarProps = {
   isMobile: boolean;
 
-  /** Primary left control (chart type selector or back button).
-   *  On desktop: rendered in the left Group.
-   *  On mobile: falls back to wrapping in LeftButton class. */
-  left?: ReactNode;
-
-  /** Mobile override for the left slot.
-   *  Render prop receiving { className, styles } for LeftButton styling. */
-  mobileLeft?: (props: MobileSlotProps) => ReactNode;
+  /** Left control (chart type selector, back button).
+   *  `desktop`: rendered in the left Group.
+   *  `mobile`: render prop receiving { className, styles } for LeftButton styling. */
+  left?: ResponsiveSlot | null;
 
   /** Extra desktop-only controls (filters, summarize, breakout). Hidden on mobile. */
   desktopExtra?: ReactNode;
 
-  /** Desktop right-aligned controls (download, alerts, editor). Hidden on mobile. */
-  right?: ReactNode;
-
-  /** Mobile right button. Render prop receiving { className, styles } for RightButton styling. */
-  mobileRight?: (props: MobileSlotProps) => ReactNode;
+  /** Right controls (editor, download, alerts).
+   *  `desktop`: rendered in a right-aligned Group.
+   *  `mobile`: render prop receiving { className } for RightButton styling. */
+  right?: ResponsiveSlot;
 
   "data-testid"?: string;
 };
 
-const mobileLeftSlotProps: MobileSlotProps = {
+const mobileLeftProps: MobileSlotProps = {
   className: S.LeftButton,
   styles: {
     inner: { width: "100%" },
@@ -45,29 +47,21 @@ const mobileLeftSlotProps: MobileSlotProps = {
   },
 };
 
-const mobileRightSlotProps: MobileSlotProps = {
+const mobileRightProps: MobileSlotProps = {
   className: S.RightButton,
   styles: {},
 };
 
 export const SdkToolbar = forwardRef<HTMLDivElement, SdkToolbarProps>(
   function SdkToolbar(
-    {
-      isMobile,
-      left,
-      mobileLeft,
-      desktopExtra,
-      right,
-      mobileRight,
-      "data-testid": dataTestId,
-    },
+    { isMobile, left, desktopExtra, right, "data-testid": dataTestId },
     ref,
   ) {
     if (isMobile) {
       return (
         <Box ref={ref} className={S.MobileToolbar} data-testid={dataTestId}>
-          {mobileLeft ? mobileLeft(mobileLeftSlotProps) : left}
-          {mobileRight?.(mobileRightSlotProps)}
+          {left?.mobile?.(mobileLeftProps)}
+          {right?.mobile?.(mobileRightProps)}
         </Box>
       );
     }
@@ -75,11 +69,11 @@ export const SdkToolbar = forwardRef<HTMLDivElement, SdkToolbarProps>(
     return (
       <ResultToolbar ref={ref} data-testid={dataTestId}>
         <RenderIfHasContent component={Group} gap="xs">
-          {left}
+          {left?.desktop}
           {desktopExtra}
         </RenderIfHasContent>
         <RenderIfHasContent component={Group} gap="sm" ml="auto">
-          {right}
+          {right?.desktop}
         </RenderIfHasContent>
       </ResultToolbar>
     );

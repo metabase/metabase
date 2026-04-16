@@ -166,27 +166,31 @@ const StaticQuestionInner = (
                 isMobile={isMobile}
                 data-testid="result-toolbar"
                 left={
-                  withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />
+                  withChartTypeSelector
+                    ? {
+                        desktop: <SdkQuestion.ChartTypeDropdown />,
+                        mobile: ({ className, styles }) => (
+                          <SdkQuestion.ChartTypeDropdown
+                            className={className}
+                            styles={styles}
+                          />
+                        ),
+                      }
+                    : null
                 }
-                mobileLeft={({ className, styles }) =>
-                  withChartTypeSelector && (
-                    <SdkQuestion.ChartTypeDropdown
-                      className={className}
-                      styles={styles}
+                right={{
+                  desktop: (
+                    <>
+                      <SdkQuestion.DownloadWidgetDropdown />
+                      <QuestionAlertsButton />
+                    </>
+                  ),
+                  mobile: ({ className }) => (
+                    <SdkQuestion.DownloadWidgetDropdown
+                      buttonClassName={className}
                     />
-                  )
-                }
-                right={
-                  <>
-                    <SdkQuestion.DownloadWidgetDropdown />
-                    <QuestionAlertsButton />
-                  </>
-                }
-                mobileRight={({ className }) => (
-                  <SdkQuestion.DownloadWidgetDropdown
-                    buttonClassName={className}
-                  />
-                )}
+                  ),
+                }}
               />
 
               {isGuestEmbed && <SdkQuestion.SqlParametersList />}
