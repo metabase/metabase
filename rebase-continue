@@ -1,3 +1,12 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "upstack",
+        "onto",
+        "master"
+      ],
+      "branch": "feat/builtin-mcp-ui"
+    }
+  ]
 }
