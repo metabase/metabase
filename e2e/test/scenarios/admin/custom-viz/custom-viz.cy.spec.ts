@@ -1381,24 +1381,30 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("viz-type-button").click();
 
       cy.log(
-        "Threshold defaults to 0 and Count(Orders) is > 0, so we should see 👍",
+        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up SVG should render (no rotation).",
       );
-      H.main().findByText("👍").should("be.visible");
+      H.main().find("svg > path").should("be.visible");
+      H.main().find("svg > path").should("not.have.attr", "transform");
 
-      cy.log("Modifying plugin source");
+      cy.log("Modifying plugin source to change the SVG fill color");
       cy.readFile(pluginSrcPath).then((src) => {
-        const updated = src.replace('"👍"', '"🥦"');
+        const updated = src.replace(
+          'fill="var(--mb-color-brand)"',
+          'fill="red"',
+        );
         if (updated === src) {
-          throw new Error(`Expected to replace 👍 in ${pluginSrcPath}`);
+          throw new Error(`Expected to replace fill in ${pluginSrcPath}`);
         }
         cy.writeFile(pluginSrcPath, updated);
       });
 
       cy.log("Checking if hot reload works");
-      H.main().findByText("🥦").should("be.visible");
+      H.main().find("svg > path").should("have.attr", "fill", "red");
 
       cy.log("Verify plugin settings affect rendering.");
-      cy.log("Set threshold higher than Count(Orders) so it flips to 👎.");
+      cy.log(
+        "Set threshold higher than Count(Orders) so it flips to thumbs-down (rotated path).",
+      );
       cy.findByTestId("viz-settings-button").click();
       cy.findByTestId("chartsettings-sidebar")
         .findByPlaceholderText("Set threshold")
@@ -1408,7 +1414,10 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("button", {
         name: /Done/,
       }).click();
-      H.main().findByText("👎").should("be.visible");
+      H.main()
+        .find("svg > path")
+        .should("have.attr", "transform")
+        .and("match", /rotate\(-180/);
 
       cy.log(
         "Saving the question and reloading to verify persistence of settings and dev URL",
@@ -1418,7 +1427,10 @@ describe("admin > custom visualizations", () => {
       // Wait for the dialog to close
       cy.findByRole("dialog", { name: /Save question/ }).should("not.exist");
       cy.reload();
-      H.main().findByText("👎").should("be.visible");
+      H.main()
+        .find("svg > path")
+        .should("have.attr", "transform")
+        .and("match", /rotate\(-180/);
     });
   });
 });
