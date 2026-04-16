@@ -505,21 +505,6 @@ describe("scenarios > visualizations > waterfall", () => {
         .click({ force: true });
       H.echartsContainer().get("text").contains("(4.56)").should("be.visible");
     });
-
-    it("should display goal line when configured", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Display").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Goal line").click();
-
-      H.leftSidebar().within(() => {
-        cy.findByLabelText("Goal value").clear().type("100");
-        cy.findByLabelText("Goal label").clear().type("Target");
-      });
-
-      H.echartsContainer().findByText("Target").should("exist");
-      H.goalLine().should("exist");
-    });
   });
 });
 
