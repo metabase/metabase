@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.remote-sync.source.git :as rs.git]
    [metabase.config.core :as config]
    [metabase.test :as mt]
@@ -165,17 +166,18 @@
 (deftest resolve-bundle-dev-url-takes-precedence-test
   (testing "resolve-bundle prefers dev URL over git when both are available"
     (mt/with-premium-features #{:custom-viz}
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/precedence"
-                                                      :identifier      "precedence"
-                                                      :display_name    "precedence"
-                                                      :status          :active
-                                                      :resolved_commit "abc123"
-                                                      :dev_bundle_url  "http://localhost:5174"}]
-        (let [dev-called? (atom false)
-              git-called? (atom false)]
-          (with-redefs [cache/fetch-dev-bundle (fn [_] (reset! dev-called? true) {:content "dev-js" :hash "d1"})
-                        cache/get-bundle      (fn [_] (reset! git-called? true) {:content "git-js" :hash "g1"})]
-            (let [result (cache/resolve-bundle {:id id})]
-              (is (true? @dev-called?) "dev bundle fetch should be called")
-              (is (false? @git-called?) "git bundle should not be called when dev URL is set")
-              (is (= "dev-js" (:content result))))))))))
+      (with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/precedence"
+                                                        :identifier      "precedence"
+                                                        :display_name    "precedence"
+                                                        :status          :active
+                                                        :resolved_commit "abc123"
+                                                        :dev_bundle_url  "http://localhost:5174"}]
+          (let [dev-called? (atom false)
+                git-called? (atom false)]
+            (with-redefs [cache/fetch-dev-bundle (fn [_] (reset! dev-called? true) {:content "dev-js" :hash "d1"})
+                          cache/get-bundle      (fn [_] (reset! git-called? true) {:content "git-js" :hash "g1"})]
+              (let [result (cache/resolve-bundle {:id id})]
+                (is (true? @dev-called?) "dev bundle fetch should be called")
+                (is (false? @git-called?) "git bundle should not be called when dev URL is set")
+                (is (= "dev-js" (:content result)))))))))))
