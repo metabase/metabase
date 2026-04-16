@@ -11,13 +11,13 @@ import {
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
 import { Link } from "metabase/common/components/Link/Link";
-import { Group, Icon } from "metabase/ui";
 import {
   canArchive,
   formatNotificationSchedule,
   formatTitle,
   getNotificationEnabledChannelsMap,
-} from "metabase/utils/notifications";
+} from "metabase/notifications/utils";
+import { Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import type { User } from "metabase-types/api";
 
