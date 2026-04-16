@@ -29,6 +29,9 @@ export function SettingsNav() {
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
   const hasCustomViz = useHasTokenFeature("custom-viz");
+  const customVizDevModeEnabled = useSetting(
+    "custom-viz-plugin-dev-mode-enabled",
+  );
   const isAdmin = useSelector(getUserIsAdmin);
 
   return (
@@ -84,11 +87,15 @@ export function SettingsNav() {
               path="custom-visualizations"
               label={t`Manage visualizations`}
             />,
-            <SettingsNavItem
-              key="dev"
-              path="custom-visualizations/development"
-              label={t`Development`}
-            />,
+            ...(customVizDevModeEnabled
+              ? [
+                  <SettingsNavItem
+                    key="dev"
+                    path="custom-visualizations/development"
+                    label={t`Development`}
+                  />,
+                ]
+              : []),
           ]}
         </SettingsNavItem>
       )}

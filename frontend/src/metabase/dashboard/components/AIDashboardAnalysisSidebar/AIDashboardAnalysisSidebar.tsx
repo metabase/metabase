@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { useDashboardContext } from "metabase/dashboard/context";
-import { getIsDashCardsLoadingComplete } from "metabase/dashboard/selectors";
+import { AIAnalysisContentWrapper } from "metabase/metabot/components/AIAnalysisContentWrapper/AIAnalysisContentWrapper";
+import { useDashCardAnalysis } from "metabase/metabot/hooks/useDashCardAnalysis";
 import { useSelector } from "metabase/utils/redux";
 
-import { useDashCardAnalysis } from "../../hooks/useDashCardAnalysis";
-import { AIAnalysisContentWrapper } from "../AIAnalysisContentWrapper/AIAnalysisContentWrapper";
+import { useDashboardContext } from "../../context";
+import { getIsDashCardsLoadingComplete } from "../../selectors";
 
 export function AIDashboardAnalysisSidebar() {
   const { sidebar, closeSidebar } = useDashboardContext();

@@ -171,6 +171,7 @@ export const createMockSettings = (
   "analytics-uuid": "eefb3320-1d3f-4686-a22a-1d30ae729525",
   "admin-email": "admin@metabase.test",
   "airgap-enabled": false,
+  "custom-viz-plugin-dev-mode-enabled": false,
   "allowed-iframe-hosts": "*",
   "anon-tracking-enabled": false,
   "application-colors": {},

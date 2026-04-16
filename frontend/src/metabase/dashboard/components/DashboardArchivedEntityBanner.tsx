@@ -1,9 +1,9 @@
-import { useDashboardContext } from "metabase/dashboard/context";
+import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Dashboards } from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/utils/redux";
 
-import { ArchivedEntityBanner } from "./ArchivedEntityBanner";
+import { useDashboardContext } from "../context";
 
 export const DashboardArchivedEntityBanner = () => {
   const {
