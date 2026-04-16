@@ -293,7 +293,7 @@ export type Entity = {
 
 type EntityRtkBridge = Record<string, any>;
 type EntitiesReducer = Reducer<
-  EntitiesState | undefined,
+  Partial<EntitiesState> | undefined,
   { type: string; payload: EntitiesState }
 >;
 
@@ -367,7 +367,7 @@ export function handleEntities(
     if (state && actionPattern.test(action.type) && entities) {
       state = mergeEntities(state, entities);
     }
-    return reducer?.(state, action) ?? state;
+    return reducer?.(state, action) ?? state ?? {};
   };
 }
 
