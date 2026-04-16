@@ -49,7 +49,7 @@
    [:re RemoteCheckedToken]
    [:re AirgapToken]])
 
-(def ^:private ^String token-check-url
+(def ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
   (let [dev-server-url          (some-> (env :metastore-dev-server-url) (str/replace #"/$" ""))
