@@ -1,4 +1,4 @@
-(ns metabase-enterprise.checker.format.concise
+(ns metabase-enterprise.checker.format.concise-schema
   "Concise JSON schema format — single file with three flat lists, fully
    in-memory.
 

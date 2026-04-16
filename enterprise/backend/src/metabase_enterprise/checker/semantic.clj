@@ -11,7 +11,7 @@
    - `(setup export-dir schema-dir)` + `(check-one ctx entity-id)` — REPL workflow"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.checker.format.concise :as concise]
+   [metabase-enterprise.checker.format.concise-schema :as concise-schema]
    [metabase-enterprise.checker.format.serdes-assets :as serdes-assets]
    [metabase-enterprise.checker.format.serdes-schema :as serdes.schema]
    [metabase-enterprise.checker.provider :as provider]
@@ -721,7 +721,7 @@
    For :concise, `schema-path` is a single JSON file with the concise metadata."
   [schema-format schema-path]
   (case schema-format
-    :concise (concise/make-source schema-path)
+    :concise (concise-schema/make-source schema-path)
     :serdes  (serdes.schema/make-database-source schema-path)
     (throw (ex-info (str "Unknown schema format: " (pr-str schema-format)
                          ". Must be :serdes or :concise.")
