@@ -57,7 +57,7 @@ export function AdvisoryList({
         <img src={AdvisoriesEmpty} />
         <Text maw={256} ta="center">
           {
-            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+            // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
             t`No known security issues that impact your Metabase version`
           }
         </Text>

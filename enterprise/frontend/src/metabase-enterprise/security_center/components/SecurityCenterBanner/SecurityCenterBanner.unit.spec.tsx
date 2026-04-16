@@ -3,7 +3,7 @@ import { Route } from "react-router";
 
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -59,6 +59,17 @@ function setup({
   });
 }
 
+async function waitForRequestsToSettle() {
+  await waitFor(() => {
+    expect(fetchMock.callHistory.done("path:/api/pulse/form_input")).toBe(true);
+  });
+  await waitFor(() => {
+    expect(fetchMock.callHistory.done("path:/api/ee/security-center")).toBe(
+      true,
+    );
+  });
+}
+
 describe("SecurityCenterBanner", () => {
   afterEach(() => {
     localStorage.removeItem(DISMISSED_KEY);
@@ -75,22 +86,21 @@ describe("SecurityCenterBanner", () => {
   it("does not render when email is configured", async () => {
     setup({ emailConfigured: true });
 
-    // Wait for API responses to settle, then assert no banner
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render when slack is configured", async () => {
     setup({ slackConfigured: true });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render for non-pro-self-hosted plans", async () => {
     setup({ isProSelfHosted: false });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
@@ -126,7 +136,7 @@ describe("SecurityCenterBanner", () => {
 
     setup();
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
