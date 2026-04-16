@@ -3,8 +3,8 @@ import { createMockDatabase } from "metabase-types/api/mocks";
 import { getEditorOptions } from "./utils";
 
 const DB_ROUTING_TOOLTIP =
-  "Transforms can't be created on databases with DB routing enabled";
-const UNSUPPORTED_DB_TOOLTIP = "This database does not support transforms";
+  "Transforms can't be enabled when database routing is enabled.";
+const UNSUPPORTED_DB_TOOLTIP = "Transforms can't be enabled on this database.";
 
 function createTransformCapableDatabase(opts = {}) {
   return createMockDatabase({
