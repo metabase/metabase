@@ -444,6 +444,11 @@
                  library)))
         (testing "universe is a strict superset of library on every axis: every count and score is higher"
           ;; Different components use different 'count' keys: :pairs for collision/synonym, :count elsewhere.
+          ;; Note: :synonym-pairs is monotonic on this fixture but not in general — score-synonym-pairs
+          ;; dedupes by normalized name and picks one embedding per name, so a universe-only entity
+          ;; sharing a normalized name with a library entity could in theory flip which vector wins and
+          ;; decrease the pair count/score. Our fixture doesn't hit that case; if this assertion ever
+          ;; flakes, that's the reason.
           (doseq [[component count-key] [[:entity-count      :count]
                                          [:name-collisions   :pairs]
                                          [:synonym-pairs     :pairs]

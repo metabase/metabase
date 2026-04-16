@@ -507,7 +507,7 @@
                                                          :state      "initial"
                                                          :creator_id (mt/user->id :rasta)}]
       (model-index/add-values! model-index)
-      (is (= "dataset" (last (into [] (map :model) (search.ingestion/searchable-documents))))))))
+      (is (= "indexed-entity" (last (into [] (map :model) (search.ingestion/searchable-documents))))))))
 
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)
