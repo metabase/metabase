@@ -449,8 +449,7 @@
                                                                         :schema   "PUBLIC"
                                                                         :name     "zombie_out"}}]
           (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
-            (is (= ()
-                   (:order (#'jobs/get-plan #{}))))))))))
+            (is (empty? (:order (#'jobs/get-plan #{}))))))))))
 
 (deftest run-transforms!-race-condition-test
   ;; Previously a race would ensure one transform run got the duplicate key error and aborted.

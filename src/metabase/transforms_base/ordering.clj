@@ -12,8 +12,8 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
@@ -63,15 +63,14 @@
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 
 (defn safe-table-dependencies
-  "Like `table-dependencies`, but logs and returns `#{}` if the computation throws. Used by the
-  scheduler and cycle detection so a single broken transform can't poison graph traversal."
-  [{:keys [id] :as transform}]
+  "Like `table-dependencies`, but returns `#{}` if the computation throws. Used by cycle
+  detection where a single broken transform must not block the whole check. Callers that need
+  to know *which* transforms failed should walk the graph themselves and capture the failure
+  ids — see `transform-ordering`."
+  [transform]
   (try
     (transforms-base.i/table-dependencies transform)
-    (catch Throwable e
-      (log/warnf e "Failed to compute table dependencies for transform %s; treating as no dependencies"
-                 (pr-str id))
-      #{})))
+    (catch Throwable _ #{})))
 
 (mu/defn- output-table-map
   [transforms]
@@ -117,43 +116,56 @@
   cross-DB dependencies (e.g. Python transforms pulling from a database different from their
   target) resolve correctly.
 
-  Per-transform `table-dependencies` failures are caught and treated as no dependencies. The
-  ordering is a best-effort scheduling hint — execution-time checks (e.g.
-  `throw-if-db-routing-enabled!`) are the source of truth for whether a transform can actually
-  run. This means a single broken transform anywhere in the system can never poison the
-  scheduler: it will simply be treated as a leaf in the closure (or skipped entirely if no
-  caller depends on it), and any actual problem with running it will surface at execution time
-  and be attributed to the transform that tried to run it.
+  Per-transform `table-dependencies` failures are caught and treated as no dependencies, with
+  the failing id captured in `:failed`. The ordering is a best-effort scheduling hint —
+  execution-time checks (e.g. `throw-if-db-routing-enabled!`) are the source of truth for
+  whether a transform can actually run. This means a single broken transform anywhere in the
+  system can never poison the scheduler: it will simply be treated as a leaf in the closure
+  (or skipped entirely if no caller depends on it), and any actual problem with running it
+  will surface at execution time and be attributed to the transform that tried to run it.
 
-  Returns a map `{transform-id -> #{transform-ids it depends on}}`, restricted to the
-  transitive closure reachable from `start-ids`. Ids in `start-ids` that don't refer to any
-  transform in `all-transforms` are silently dropped."
+  Returns a map:
+
+      {:dependencies {transform-id -> #{transform-ids it depends on}}
+       :not-found    #{ids in start-ids that don't refer to any transform in all-transforms}
+       :failed       #{ids whose table-dependencies threw}}
+
+  `:dependencies` is restricted to the transitive closure reachable from `start-ids`.
+  Diagnostics in `:not-found` and `:failed` let the caller decide how to surface them
+  (logging, metrics, error responses)."
   [start-ids all-transforms]
-  (let [all-by-id     (into {} (map (juxt :id identity)) all-transforms)
-        ;; Lookup tables built from ALL transforms — pure metadata, no QP calls.
+  (let [id->xf        (u/index-by :id all-transforms)
         output-tables (output-table-map all-transforms)
         target-refs   (target-ref-map all-transforms)
         all-ids       (into #{} (map :id) all-transforms)]
-    (loop [visited {}
-           queue   (vec start-ids)]
+    (loop [visited   {}
+           not-found #{}
+           failed    #{}
+           queue     (vec start-ids)]
       (if-let [id (first queue)]
         (cond
           (contains? visited id)
-          (recur visited (rest queue))
+          (recur visited not-found failed (rest queue))
 
-          (not (all-by-id id))
-          (recur visited (rest queue))
+          (not (id->xf id))
+          (recur visited (conj not-found id) failed (rest queue))
 
           :else
-          (let [transform    (all-by-id id)
-                raw-deps     (safe-table-dependencies transform)
-                resolved-ids (into #{}
-                                   (keep (fn [dep]
-                                           (resolve-dependency dep output-tables all-ids target-refs)))
-                                   raw-deps)]
+          (let [transform        (id->xf id)
+                [raw-deps fail?] (try
+                                   [(transforms-base.i/table-dependencies transform) false]
+                                   (catch Throwable _ [#{} true]))
+                resolved-ids     (into #{}
+                                       (keep (fn [dep]
+                                               (resolve-dependency dep output-tables all-ids target-refs)))
+                                       raw-deps)]
             (recur (assoc visited id resolved-ids)
+                   not-found
+                   (cond-> failed fail? (conj id))
                    (into (rest queue) resolved-ids))))
-        visited))))
+        {:dependencies visited
+         :not-found    not-found
+         :failed       failed}))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.

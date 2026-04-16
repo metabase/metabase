@@ -35,7 +35,7 @@
                                              :type     "query",
                                              :query    {:source-table (mt/id :orders)}})]
     (is (= {t1 #{}}
-           (ordering/transform-ordering #{t1} (t2/select :model/Transform :id t1))))))
+           (:dependencies (ordering/transform-ordering #{t1} (t2/select :model/Transform :id t1)))))))
 
 (deftest dependency-ordering-test
   (mt/with-temp [:model/Table {table :id} {:schema (default-schema-or-public)
@@ -54,7 +54,7 @@
                                                "orders_3")]
     (is (= {parent #{}
             child  #{parent}}
-           (ordering/transform-ordering #{parent child} (t2/select :model/Transform :id [:in [parent child]]))))))
+           (:dependencies (ordering/transform-ordering #{parent child} (t2/select :model/Transform :id [:in [parent child]])))))))
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
@@ -95,7 +95,7 @@
                 t2 #{}
                 t3 #{t1}
                 t4 #{t1 t2}}
-               (ordering/transform-ordering #{t1 t2 t3 t4} (t2/select :model/Transform :id [:in [t1 t2 t3 t4]]))))))
+               (:dependencies (ordering/transform-ordering #{t1 t2 t3 t4} (t2/select :model/Transform :id [:in [t1 t2 t3 t4]])))))))
     (testing "dependencies are correctly identified when some transform have been run and some haven't"
       (mt/with-temp [:model/Transform {t1 :id :as transform1} (make-transform
                                                                {:database (mt/id),
@@ -123,7 +123,7 @@
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]])))))
           (finally
             (t2/delete! :model/Table :name "checkins_transform")))))))
 
@@ -156,7 +156,7 @@
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))
 
 (deftest ^:parallel basic-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
