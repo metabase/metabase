@@ -256,6 +256,11 @@
               errors)
         errors))))
 
+(defn- has-table-template-tags?
+  "Returns true if the query has any table-type template tags."
+  [query]
+  (some #(= (:type %) :table) (lib/all-template-tags query)))
+
 (mu/defn validate-native-query
   "Compiles a (native) query and validates that the fields and tables it refers to really exist.
 
@@ -286,11 +291,6 @@
               (if (empty? errors)
                 errors
                 (fallback-enrich driver compiled errors)))))))
-
-(defn- has-table-template-tags?
-  "Returns true if the query has any table-type template tags."
-  [query]
-  (some #(= (:type %) :table) (lib/all-template-tags query)))
 
 (mu/defn native-result-metadata
   "Compiles a (native) query and calculates its result metadata.
