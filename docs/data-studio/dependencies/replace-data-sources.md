@@ -80,11 +80,9 @@ To find and replace all entities that depend on a data source:
 3. Click the card for the data source and in the info panel on the right, click the **Find and replace** icon.
    ![Find and replace](../images/find-and-replace.png)
 4. In the left sidebar, select replacement data source.
-5. If Metabase can't go ahead with replacement, you'll see error messages next to data sources, and column compatibility errors in the "Column comparison table".
+5. If Metabase can't go ahead with replacement, you'll see error messages next to data sources, and [compatibility requirements](#compatibility-requirements) errors in the "Column comparison table".
 
    ![Compatibility requirements](../images/compatibility-requirements.png)
-
-   Check out [Compatibility requirements](#compatibility-requirements).
 
 6. If the sources are compatible, you can check out the list of items that will be changed:
 
@@ -108,11 +106,11 @@ Only one replacement can run at any time.
 
 Items are replaced when (and only when) they are used as a query source. This includes:
 
-- Data sources (including in joins) in questions, models, and metrics built with the query builder;
-- Data sources for measures and segments;
-- Tables in `FROM` statements in SQL queries;
-- [Questions and models referenced from SQL questions](../../questions/native-editor/referencing-saved-questions-in-queries.md);
-- Field filters;
+- Data sources (including in joins) in questions, models, and metrics built with the query builder
+- Data sources for measures and segments
+- Tables in `FROM` statements in SQL queries
+- [Questions and models referenced from SQL questions](../../questions/native-editor/referencing-saved-questions-in-queries.md)
+- Field filters
 
 Metabase **will not replace** tables/models/questions in:
 
