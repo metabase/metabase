@@ -38,8 +38,8 @@
 
 (def ^:private synonym-similarity-threshold
   "Cosine similarity at or above which two names are flagged as synonyms.
-  Mirrors [[metabase-enterprise.semantic-search.core/max-cosine-distance]] so the aliasing signal and
-  the semantic-search cutoff are consistent."
+   Mirrors [[metabase-enterprise.semantic-search.core/max-cosine-distance]] so the aliasing signal and
+   the semantic-search cutoff are consistent."
   ;; Round to 2 decimal places in case floating point has added some epsilon.
   (* 0.01 (Math/round ^double (* 100 (- 1 semantic-search/max-cosine-distance)))))
 
@@ -61,7 +61,7 @@
 
 (defn- table-measure-names
   "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`. A
-  measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
+   measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
   [table-ids]
   (if (empty? table-ids)
     {}
@@ -74,9 +74,9 @@
 
 (defn- ->card-entity
   "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
-  v1 — the proposal's +1-per-field rule is about physical Table fields, not Card result columns —
-  so we can skip the fat `result_metadata` column entirely. Measures are a separate first-class
-  model tied to Tables, not Cards, so Cards also don't contribute to `:measure-names`."
+   v1 — the proposal's +1-per-field rule is about physical Table fields, not Card result columns —
+   so we can skip the fat `result_metadata` column entirely. Measures are a separate first-class
+   model tied to Tables, not Cards, so Cards also don't contribute to `:measure-names`."
   [{:keys [id name type]}]
   {:id            id
    :name          name
@@ -101,11 +101,11 @@
 
 (defn- collect-card-entities
   "Stream Cards matching `filter-kvs` via a reducible select over the minimum columns we need,
-  folding each row straight into an entity map. No `result_metadata` — see [[->card-entity]] — so
-  the per-row footprint is tiny regardless of how many Cards live on the instance.
+   folding each row straight into an entity map. No `result_metadata` — see [[->card-entity]] — so
+   the per-row footprint is tiny regardless of how many Cards live on the instance.
 
-  `:card_schema` is included because `:model/Card` requires it for post-select hooks even when we
-  don't otherwise use it."
+   `:card_schema` is included because `:model/Card` requires it for post-select hooks even when we
+   don't otherwise use it."
   [filter-kvs]
   (into []
         (map ->card-entity)
@@ -119,7 +119,7 @@
 
 (defn- library-entities
   "Entities in the `:library` catalog — non-archived model/metric Cards and published Tables that
-  live anywhere in the Library collection tree. Returns an empty vector when no Library exists."
+   live anywhere in the Library collection tree. Returns an empty vector when no Library exists."
   []
   (let [collection-ids (library-collection-ids)]
     (if (empty? collection-ids)
@@ -135,7 +135,7 @@
 
 (defn- universe-entities
   "Entities in the `:universe` catalog — every non-archived model/metric Card and every active
-  physical Table on this instance (excluding audit content)."
+   physical Table on this instance (excluding audit content)."
   []
   (let [card-entities (collect-card-entities [:type         [:in ["metric" "model"]]
                                               :archived     false
@@ -149,14 +149,14 @@
 
 (defn- component-score
   "Build a sub-score map: `n` under `count-key` (`:count` or `:pairs`), plus the weighted total
-  under `:score`. `weight-key` selects which weight from [[weights]]."
+   under `:score`. `weight-key` selects which weight from [[weights]]."
   [count-key weight-key n]
   {count-key n
    :score    (* n (get weights weight-key))})
 
 (defn- repeated-names
   "Count of name occurrences past the first (normalized for comparison). Single pass, no
-  intermediate frequency map. `raw-names` may contain nils — they're skipped."
+   intermediate frequency map. `raw-names` may contain nils — they're skipped."
   [raw-names]
   (second
    (reduce (fn [[seen repeats] raw-name]
@@ -188,13 +188,13 @@
         acc))))
 
 (defn- synonym-pair?
-  "True when two vectors' cosine similarity is ≥ sqrt(`threshold-sq`). Uses the squared form of
-  the inequality — `(a·b)² ≥ t² · ‖a‖² · ‖b‖²` when `a·b ≥ 0` — so we avoid the two `Math/sqrt`
-  calls a direct cosine-similarity computation would need per pair. The non-negative guard keeps
-  the squaring step sound (squaring a negative `a·b` would flip the inequality).
+  "True when two vectors' cosine similarity is ≥ sqrt(`threshold-sq`).
+   Uses the squared form of the inequality — `(a·b)² ≥ t² · ‖a‖² · ‖b‖²` when `a·b ≥ 0`, avoiding
+   two `Math/sqrt` calls a direct cosine-similarity computation would need.
+   The non-negative guard keeps it sound (squaring a negative `a·b` would flip the inequality).
 
-  `norms-product` is `‖a‖² · ‖b‖²` precomputed by the caller; folding it into one arg keeps us
-  within Clojure's 4-argument cap for primitive-typed `defn`s."
+   `norms-product` is `‖a‖² · ‖b‖²` precomputed by the caller; folding it into one arg keeps us
+   within Clojure's 4-argument cap for primitive-typed `defn`s."
   [^floats a ^floats b ^double norms-product ^double threshold-sq]
   (and (pos? norms-product)
        (let [dot-ab (dot a b)]
@@ -203,13 +203,13 @@
 
 (defn- synonym-pair-count
   "Count of vector pairs whose cosine similarity is ≥ `threshold`. Walks the upper triangle of the
-  N×N pair matrix; each vector's `‖v‖²` is precomputed once and reused across every comparison it
-  participates in.
+   N×N pair matrix; each vector's `‖v‖²` is precomputed once and reused across every comparison it
+   participates in.
 
-  TODO: this is O(N²) in the distinct-name count. Fine while the signal source is the shared
-  search-index (bounded by what the indexer has seen), but once we introduce a dedicated name-only
-  embedder this should revisit — either as a chunked `M·Mᵀ` via Neanderthal/dtype-next or as a
-  dedicated pgvector name-index doing the join in SQL."
+   TODO: this is O(N²) in the distinct-name count. Fine while the signal source is the shared
+   search-index (bounded by what the indexer has seen), but once we introduce a dedicated name-only
+   embedder this should revisit — either as a chunked `M·Mᵀ` via Neanderthal/dtype-next or as a
+   dedicated pgvector name-index doing the join in SQL."
   [embeddings threshold]
   (let [n                 (count embeddings)
         threshold-sq      (* threshold threshold)
@@ -227,8 +227,8 @@
 
 (defn- score-synonym-pairs
   "Compute the synonym sub-score for `entities` using `embedder`. Returns zero (with a warning
-  logged) if the embedder yields no vectors or throws. A nil `embedder` naturally produces an empty
-  lookup and falls through to zero."
+   logged) if the embedder yields no vectors or throws. A nil `embedder` naturally produces an empty
+   lookup and falls through to zero."
   [entities embedder]
   (try
     (let [name->vec     (or (and embedder (embedder entities)) {})
@@ -259,10 +259,8 @@
 ;;; ----------------------------------- public API ------------------------------------
 
 (defn- emit-prometheus!
-  "Publish the total and each sub-score to the
-  [[metabase.analytics.prometheus/:metabase-semantic-layer/complexity-score]] gauge, labelled by
-  `:catalog` and `:axis`. Called once per [[complexity-scores]] invocation so the gauge reflects
-  the latest known state."
+  "Publish the total and each sub-score to the corresponding gauge, labeled by `:catalog` and `:axis`.
+   Called once per [[complexity-scores]] invocation so the gauge reflects the latest known state."
   [{:keys [library universe]}]
   (doseq [[catalog result] {"library" library "universe" universe}]
     (analytics/set! :metabase-semantic-layer/complexity-score
@@ -275,17 +273,17 @@
 
 (defn complexity-scores
   "Compute the complexity score for the `:library` and `:universe` catalogs of this Metabase
-  instance. Returns a map of the shape:
+   instance. Returns a map of the shape:
 
-    {:library  {:total n :components {...}}
-     :universe {:total n :components {...}}
-     :meta     {:formula-version 1
-                :synonym-threshold 0.30
-                :embedding-model {...}}}
+     {:library  {:total n :components {...}}
+      :universe {:total n :components {...}}
+      :meta     {:formula-version 1
+                 :synonym-threshold 0.30
+                 :embedding-model {...}}}
 
-  Optional opt `:embedder` overrides the synonym-axis embedder (defaults to
-  [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
-  synonym scoring."
+   Optional opt `:embedder` overrides the synonym-axis embedder (defaults to
+   [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
+   synonym scoring."
   [& {:keys [embedder] :as opts}]
   (let [embedder (if (contains? opts :embedder)
                    embedder
