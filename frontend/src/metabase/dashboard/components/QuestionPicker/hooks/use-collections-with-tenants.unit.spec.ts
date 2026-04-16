@@ -28,8 +28,29 @@ function setup() {
     path: [],
   });
 
+  const ourAnalyticsSubCollection = createMockExpandedCollection({
+    id: 200 as CollectionId,
+    name: "Our Analytics Sub",
+    location: "/",
+    path: ["root" as CollectionId],
+  });
+
+  const ourAnalyticsNestedCollection = createMockExpandedCollection({
+    id: 201 as CollectionId,
+    name: "Nested Sub",
+    location: "/200/",
+    path: ["root" as CollectionId, 200 as CollectionId],
+  });
+
+  baseRoot.children = [ourAnalyticsSubCollection];
+  ourAnalyticsSubCollection.parent = baseRoot;
+  ourAnalyticsSubCollection.children = [ourAnalyticsNestedCollection];
+  ourAnalyticsNestedCollection.parent = ourAnalyticsSubCollection;
+
   const baseCollectionsById = {
     [ROOT_COLLECTION.id]: baseRoot,
+    [200 as CollectionId]: ourAnalyticsSubCollection,
+    [201 as CollectionId]: ourAnalyticsNestedCollection,
   } as Record<CollectionId, Collection>;
 
   const sharedRoot = createMockExpandedCollection({
@@ -86,6 +107,16 @@ describe("mergeSharedCollections", () => {
     expect(syntheticRoot.name).toBe("Shared collections");
     expect(syntheticRoot.parent.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
     expect(syntheticRoot.path).toEqual([COLLECTIONS_TOP_LEVEL_ID]);
+  });
+
+  it("should rewrite paths for Our Analytics sub-collections to include the top-level Collections node", () => {
+    const result = setup() as any;
+
+    const sub = result[200 as CollectionId];
+    expect(sub.path).toEqual([COLLECTIONS_TOP_LEVEL_ID, "root"]);
+
+    const nested = result[201 as CollectionId];
+    expect(nested.path).toEqual([COLLECTIONS_TOP_LEVEL_ID, "root", 200]);
   });
 
   it("should re-parent children and rewrite paths through the top-level and synthetic root", () => {

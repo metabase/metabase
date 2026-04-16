@@ -403,6 +403,41 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
       });
     });
 
+    it("should show 'Collections' in breadcrumb when navigating into Our Analytics sub-collections", () => {
+      setupTenantCollections().then(() => {
+        H.createCollection({ name: "Our Analytics Sub" }).then(() => {
+          H.createDashboard({ name: "Test Dashboard" }).then(
+            ({ body: dashboard }) => {
+              H.visitDashboard(dashboard.id);
+              H.editDashboard();
+              H.openQuestionsSidebar();
+
+              // Navigate to top level first
+              H.sidebar()
+                .findByTestId("breadcrumbs")
+                .findByText("Collections")
+                .click();
+
+              // Navigate into Our analytics
+              H.sidebar().findByText("Our analytics").click();
+              H.sidebar()
+                .findByTestId("breadcrumbs")
+                .should("contain", "Collections")
+                .and("contain", "Our analytics");
+
+              // Navigate into a sub-collection under Our Analytics
+              H.sidebar().findByText("Our Analytics Sub").click();
+              H.sidebar()
+                .findByTestId("breadcrumbs")
+                .should("contain", "Collections")
+                .and("contain", "Our analytics")
+                .and("contain", "Our Analytics Sub");
+            },
+          );
+        });
+      });
+    });
+
     it("should not show shared collections when tenants are disabled", () => {
       setupTenantCollections().then(() => {
         H.updateSetting("use-tenants", false);

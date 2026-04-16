@@ -160,6 +160,26 @@ export function mergeSharedCollections(
     } as ExpandedCollectionNode;
   }
 
+  // Rewrite paths for all base collections (children of Our Analytics / root)
+  // so that "Collections" appears at the top of the breadcrumb when navigating
+  // into sub-collections under Our Analytics.
+  for (const [id, collection] of Object.entries(baseCollectionsById)) {
+    if (id === String(ROOT_COLLECTION.id)) {
+      continue; // already rewritten above
+    }
+
+    const col = collection as ExpandedCollectionNode;
+    if (!col.path) {
+      continue;
+    }
+
+    mergedCollectionsById[id as CollectionId] = {
+      ...col,
+      // Rewrite path: Collections > Our Analytics > ...
+      path: [COLLECTIONS_TOP_LEVEL_ID, ...col.path],
+    } as ExpandedCollectionNode;
+  }
+
   mergedCollectionsById[SHARED_TENANT_COLLECTIONS_ROOT_ID] =
     sharedSyntheticRoot;
   mergedCollectionsById[COLLECTIONS_TOP_LEVEL_ID] = topLevel;
