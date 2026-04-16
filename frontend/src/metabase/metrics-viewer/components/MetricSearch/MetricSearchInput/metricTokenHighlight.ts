@@ -55,7 +55,7 @@ class MetricIdentity extends RangeValue {
   constructor(
     readonly sourceId: MetricSourceId,
     readonly definition: MetricDefinition | null,
-    readonly slotIndex: number,
+    readonly slotIndex: number | undefined,
   ) {
     super();
   }
