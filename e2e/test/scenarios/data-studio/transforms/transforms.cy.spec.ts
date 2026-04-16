@@ -500,7 +500,7 @@ LIMIT
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
+    it("should not be possible to create an MBQL transform from a table from an unsupported database", () => {
       visitTransformListPage();
       cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
@@ -528,11 +528,11 @@ LIMIT
       });
       H.tooltip().should(
         "contain.text",
-        "This database does not support transforms",
+        "Transforms can't be enabled on the Sample Database.",
       );
     });
 
-    it("should not be possible to create an mbql transform from metrics", () => {
+    it("should not be possible to create an MBQL transform from metrics", () => {
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (tableId) =>
           H.createQuestion({
@@ -586,7 +586,7 @@ LIMIT
       H.popover().findByRole("option", { name: "Sample Database" }).realHover();
       H.tooltip().should(
         "contain.text",
-        "This database does not support transforms",
+        "Transforms can't be enabled on the Sample Database.",
       );
     });
 
