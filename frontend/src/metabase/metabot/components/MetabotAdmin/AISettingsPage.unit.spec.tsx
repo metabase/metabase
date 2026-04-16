@@ -131,6 +131,7 @@ describe("AISettingsPage", () => {
     expect(screen.getByText("Metabot settings")).toBeInTheDocument();
     expect(screen.getByText("Enable Metabot")).toBeInTheDocument();
     expect(screen.getByText("MCP server")).toBeInTheDocument();
+    expect(screen.getByText("Agent API")).toBeInTheDocument();
 
     expect(
       screen.getByText("Enable Metabot", {
@@ -138,11 +139,15 @@ describe("AISettingsPage", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("MCP server", {
+      screen.queryByText("MCP server", {
         selector: '[aria-disabled="true"] *',
       }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Agent API")).toBeInTheDocument();
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Agent API", {
+        selector: '[aria-disabled="true"] *',
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows docs links for MCP and Agent API", async () => {
