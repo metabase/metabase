@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
@@ -9,7 +10,6 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import { ActionButton } from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -163,8 +163,10 @@ export const CreateOrEditQuestionAlertModal = ({
     useGetChannelInfoQuery();
   const { data: hookChannels } = useListChannelsQuery();
 
-  const [createNotification] = useCreateNotificationMutation();
-  const [updateNotification] = useUpdateNotificationMutation();
+  const [createNotification, { isLoading: isCreating, error: errorCreating }] =
+    useCreateNotificationMutation();
+  const [updateNotification, { isLoading: isUpdating, error: errorUpdating }] =
+    useUpdateNotificationMutation();
   const [sendUnsavedNotification, { isLoading }] =
     useSendUnsavedNotificationMutation();
 
@@ -233,8 +235,7 @@ export const CreateOrEditQuestionAlertModal = ({
           }),
         );
 
-        // need to throw to show error in ActionButton
-        throw result.error;
+        return;
       }
 
       dispatch(
@@ -304,6 +305,16 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const isValid = alertIsValid(notification, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
+  const hasError = errorCreating || errorUpdating;
+
+  const submitButtonLabel = match({
+    hasError,
+    isEditMode,
+    hasChanges,
+  })
+    .with({ hasError: P.nonNullable }, () => t`Save failed`)
+    .with({ isEditMode: true, hasChanges: true }, () => t`Save changes`)
+    .otherwise(() => t`Done`);
 
   return (
     <Modal
@@ -317,6 +328,7 @@ export const CreateOrEditQuestionAlertModal = ({
         body: {
           paddingLeft: 0,
           paddingRight: 0,
+          paddingBottom: "1.5rem",
         },
       }}
     >
@@ -416,6 +428,7 @@ export const CreateOrEditQuestionAlertModal = ({
       </Stack>
       <Flex
         justify="space-between"
+        align="center"
         px="2.5rem"
         pt="lg"
         className={CS.borderTop}
@@ -428,16 +441,18 @@ export const CreateOrEditQuestionAlertModal = ({
         >
           {isLoading ? t`Sending…` : t`Send now`}
         </Button>
-        <div>
-          <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
-          <ActionButton
-            primary
-            disabled={!isValid}
-            actionFn={onCreateOrEditAlert}
+        <Flex align="center" gap="sm">
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            variant="filled"
+            bg={hasError ? "error" : "brand"}
+            disabled={!isValid || isCreating || isUpdating}
+            loading={isCreating || isUpdating}
+            onClick={onCreateOrEditAlert}
           >
-            {isEditMode && hasChanges ? t`Save changes` : t`Done`}
-          </ActionButton>
-        </div>
+            {submitButtonLabel}
+          </Button>
+        </Flex>
       </Flex>
     </Modal>
   );

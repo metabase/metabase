@@ -1,28 +1,46 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import type { ReactNode } from "react";
+import { Component, createRef } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
-export class ExpandingContent extends Component {
-  constructor({ isInitiallyOpen }) {
-    super();
-    this.state = {
-      isOpen: isInitiallyOpen == null ? true : !!isInitiallyOpen,
-      // keep track of whether we're currently transitioning so we can set maxHeight to "none" when not
-      isTransitioning: false,
-    };
-  }
+interface ExpandingContentProps {
+  isOpen: boolean;
+  isInitiallyOpen?: boolean;
+  duration?: number;
+  animateHeight?: boolean;
+  animateOpacity?: boolean;
+  children?: ReactNode;
+}
 
+interface ExpandingContentState {
+  isOpen: boolean;
+  isTransitioning: boolean;
+}
+
+export class ExpandingContent extends Component<
+  ExpandingContentProps,
+  ExpandingContentState
+> {
   static defaultProps = {
     duration: 300,
-    opacity: true,
     animateHeight: true,
     animateOpacity: true,
   };
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  private _timer: ReturnType<typeof setTimeout> | null = null;
+  private _ref = createRef<HTMLDivElement>();
+
+  constructor(props: ExpandingContentProps) {
+    super(props);
+    this.state = {
+      isOpen: props.isInitiallyOpen == null ? true : !!props.isInitiallyOpen,
+      isTransitioning: false,
+    };
+  }
+
+  UNSAFE_componentWillReceiveProps(nextProps: ExpandingContentProps) {
     this.setOpen(nextProps.isOpen);
   }
   componentDidMount() {
@@ -32,11 +50,11 @@ export class ExpandingContent extends Component {
     this.clearTimer();
   }
 
-  setOpen(isOpen) {
-    isOpen = !!isOpen;
-    if (this.state.isOpen !== isOpen) {
+  setOpen(isOpen: boolean) {
+    const open = isOpen;
+    if (this.state.isOpen !== open) {
       this.clearTimer();
-      this.setState({ isOpen: isOpen, isTransitioning: true }, () => {
+      this.setState({ isOpen: open, isTransitioning: true }, () => {
         this._timer = setTimeout(() => {
           this.setState({ isTransitioning: false });
         }, this.props.duration);
@@ -56,13 +74,12 @@ export class ExpandingContent extends Component {
       ? `none`
       : `all ${duration}ms ease`;
     const { isOpen, isTransitioning } = this.state;
-    // get the actual content height (after the first render)
     const maxHeight = isTransitioning
-      ? (this._ref && this._ref.scrollHeight) || 0
+      ? (this._ref.current && this._ref.current.scrollHeight) || 0
       : "none";
     return (
       <div
-        ref={(ref) => (this._ref = ref)}
+        ref={this._ref}
         style={{
           transition,
           maxHeight: !animateHeight || isOpen ? maxHeight : 0,

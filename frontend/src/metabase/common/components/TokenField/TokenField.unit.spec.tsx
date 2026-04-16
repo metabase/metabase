@@ -1,26 +1,25 @@
-/* eslint-disable react/prop-types */
-
 import userEvent from "@testing-library/user-event";
 import { Component } from "react";
 
 import { act, fireEvent, render, screen, within } from "__support__/ui";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
+import type { LayoutRendererArgs, TokenFieldProps } from "./TokenField";
 import { TokenField } from "./TokenField";
 
 const DEFAULT_OPTIONS = ["Doohickey", "Gadget", "Gizmo", "Widget"];
 
-const MockValue = ({ value }) => <span>{value}</span>;
-const MockOption = ({ option }) => <span>{option}</span>;
+const MockValue = ({ value }: { value: string }) => <span>{value}</span>;
+const MockOption = ({ option }: { option: string }) => <span>{option}</span>;
 
 const DEFAULT_TOKEN_FIELD_PROPS = {
   options: [],
   value: [],
-  valueKey: (option) => option,
-  labelKey: (option) => option,
-  valueRenderer: (value) => <MockValue value={value} />,
-  optionRenderer: (option) => <MockOption option={option} />,
-  layoutRenderer: ({ valuesList, optionsList }) => (
+  valueKey: (option: string) => option,
+  labelKey: (option: string) => option,
+  valueRenderer: (value: string) => <MockValue value={value} />,
+  optionRenderer: (option: string) => <MockOption option={option} />,
+  layoutRenderer: ({ valuesList, optionsList }: LayoutRendererArgs) => (
     <div>
       {valuesList}
       {optionsList}
@@ -28,8 +27,20 @@ const DEFAULT_TOKEN_FIELD_PROPS = {
   ),
 };
 
-class TokenFieldWithStateAndDefaults extends Component {
-  constructor(props) {
+type WrapperProps = Partial<TokenFieldProps> & {
+  value?: string[];
+  onChange?: (value: string[]) => void;
+};
+
+interface WrapperState {
+  value: string[];
+}
+
+class TokenFieldWithStateAndDefaults extends Component<
+  WrapperProps,
+  WrapperState
+> {
+  constructor(props: WrapperProps) {
     super(props);
     this.state = {
       value: props.value || [],
@@ -37,13 +48,13 @@ class TokenFieldWithStateAndDefaults extends Component {
   }
   render() {
     // allow overriding everything except value and onChange which we provide
-    const { value, onChange, ...props } = this.props;
+    const { value: _value, onChange, ...props } = this.props;
     return (
       <TokenField
         {...DEFAULT_TOKEN_FIELD_PROPS}
         {...props}
         value={this.state.value}
-        onChange={(value) => {
+        onChange={(value: string[]) => {
           this.setState({ value });
           if (onChange) {
             onChange(value);
@@ -60,8 +71,8 @@ describe("TokenField", () => {
     // eslint-disable-next-line testing-library/no-node-access
     if (!global.Element.prototype.closest) {
       // eslint-disable-next-line testing-library/no-node-access
-      global.Element.prototype.closest = function (selector) {
-        let element = this;
+      global.Element.prototype.closest = function (selector: string) {
+        let element: Element | null = this;
         while (element) {
           if (element.matches(selector)) {
             return element;
@@ -74,7 +85,7 @@ describe("TokenField", () => {
   });
 
   const input = () => {
-    return screen.getByRole("textbox");
+    return screen.getByRole("textbox") as HTMLInputElement;
   };
 
   const values = () => {
@@ -85,17 +96,18 @@ describe("TokenField", () => {
     return screen.queryAllByRole("listbox")[0];
   };
 
-  const type = (str) => fireEvent.change(input(), { target: { value: str } });
+  const type = (str: string) =>
+    fireEvent.change(input(), { target: { value: str } });
 
-  const clickText = (str) => fireEvent.click(screen.getByText(str));
+  const clickText = (str: string) => fireEvent.click(screen.getByText(str));
 
-  const inputKeydown = (keyCode) =>
+  const inputKeydown = (keyCode: number) =>
     fireEvent.keyDown(input(), { keyCode: keyCode });
 
-  const assertWithinValues = (collection) =>
+  const assertWithinValues = (collection: string[]) =>
     expect(values()).toHaveTextContent(collection.join(""));
 
-  const assertWithinOptions = (collection) =>
+  const assertWithinOptions = (collection: string[]) =>
     expect(options()).toHaveTextContent(collection.join(""));
 
   it("should render with no options or values", () => {
@@ -456,17 +468,19 @@ describe("TokenField", () => {
   });
 
   describe("custom layoutRenderer", () => {
-    let layoutRenderer;
+    let layoutRenderer: jest.Mock;
 
     beforeEach(() => {
       layoutRenderer = jest
         .fn()
-        .mockImplementation(({ valuesList, optionsList }) => (
-          <div>
-            {valuesList}
-            {optionsList}
-          </div>
-        ));
+        .mockImplementation(
+          ({ valuesList, optionsList }: LayoutRendererArgs) => (
+            <div>
+              {valuesList}
+              {optionsList}
+            </div>
+          ),
+        );
     });
 
     it("should be called with isFiltered=true when filtered", () => {
