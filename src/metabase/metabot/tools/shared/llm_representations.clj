@@ -316,7 +316,7 @@
 
 (defn question->xml
   "Format question for LLM consumption."
-  [{:keys [id name description verified collection visualization display]}]
+  [{:keys [id name description verified collection visualization display fields]}]
   (render-llm-template
    :question
    {:question_id (str id)
@@ -325,7 +325,9 @@
     :question_description description
     :question_display_type (some-> display clojure.core/name)
     :question_collection_xml (when collection (collection->xml collection))
-    :question_visualization_xml (when visualization (visualization->xml visualization))}))
+    :question_visualization_xml (when visualization (visualization->xml visualization))
+    :question_fields_xml (when (seq fields)
+                           (str/join "\n" (map field->xml fields)))}))
 
 (defn- text-card->xml
   "Format a text card for LLM consumption."

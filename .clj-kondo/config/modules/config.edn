@@ -2536,6 +2536,7 @@
            request
            sample-data
            secrets
+           server
            settings
            sync
            upload
