@@ -41,12 +41,10 @@ let
       mkdir -p $out
     ''
     + lib.concatStringsSep "\n" (
-      map (
-        v: ''
-          mkdir -p $out/${v.name}
-          cp ${v.package}/share/metabase/metabase.jar $out/${v.name}/metabase.jar
-        ''
-      ) variants
+      map (v: ''
+        mkdir -p $out/${v.name}
+        cp ${v.package}/share/metabase/metabase.jar $out/${v.name}/metabase.jar
+      '') variants
     )
   );
 in
@@ -58,7 +56,7 @@ pkgs.testers.nixosTest {
     {
       virtualisation.memorySize = 4096;
       virtualisation.cores = cfg.vcpu;
-      virtualisation.diskSize = 4096;  # 4GB — variant JAR copies + plugins + ClickHouse need space
+      virtualisation.diskSize = 4096; # 4GB — variant JAR copies + plugins + ClickHouse need space
 
       services.postgresql = {
         enable = true;
@@ -102,7 +100,8 @@ pkgs.testers.nixosTest {
           WorkingDirectory = "/var/lib/metabase";
           Restart = "no";
           TimeoutStartSec = toString timeouts.metabaseStart;
-        } // lib.optionalAttrs (clickhouseDriver != null) {
+        }
+        // lib.optionalAttrs (clickhouseDriver != null) {
           ExecStartPre = "+${pkgs.writeShellScript "install-clickhouse-driver" ''
             mkdir -p /var/lib/metabase/plugins
             cp ${clickhouseDriver}/plugins/*.jar /var/lib/metabase/plugins/

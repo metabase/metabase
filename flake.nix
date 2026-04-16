@@ -167,9 +167,18 @@
           buildSystem = system;
           variants = [
             # Order matters — first is the baseline (bears warmup cost)
-            { name = "vanilla";      package = metabase; }
-            { name = "no-insights";  package = variantSkipAll; }
-            { name = "skip-dash";    package = variantSkipDashboard; }
+            {
+              name = "vanilla";
+              package = metabase;
+            }
+            {
+              name = "no-insights";
+              package = variantSkipAll;
+            }
+            {
+              name = "skip-dash";
+              package = variantSkipDashboard;
+            }
           ];
         };
 

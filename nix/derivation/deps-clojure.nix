@@ -158,7 +158,7 @@ pkgs.stdenv.mkDerivation {
   # Fixed-output derivation settings
   outputHashMode = "recursive";
   outputHashAlgo = "sha256";
-  outputHash = "sha256-2UuLqz3eC2NjJzryqGs3+geGgbnTnpOv5bdDZVwVjm8=";
+  outputHash = "sha256-UkIornBxTm06/ng7BgkfL2VEYYYFRki3bXPeKIiz8QY=";
 
   # Allow proxy env vars through for network access
   impureEnvVars = lib.fetchers.proxyImpureEnvVars;

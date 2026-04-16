@@ -77,7 +77,8 @@ pkgs.testers.nixosTest {
           Restart = "on-failure";
           RestartSec = 10;
           TimeoutStartSec = toString timeouts.metabaseStart;
-        } // lib.optionalAttrs (clickhouseDriver != null) {
+        }
+        // lib.optionalAttrs (clickhouseDriver != null) {
           ExecStartPre = "+${pkgs.writeShellScript "install-clickhouse-driver" ''
             mkdir -p /var/lib/metabase/plugins
             cp ${clickhouseDriver}/plugins/*.jar /var/lib/metabase/plugins/

@@ -39,7 +39,7 @@ pkgs.stdenv.mkDerivation {
   # Fixed-output derivation settings
   outputHashMode = "recursive";
   outputHashAlgo = "sha256";
-  outputHash = "sha256-Te3GdzaE3Jxv2JdDKs4JaU9vS1m+8ipQxCo+77ycn8w=";
+  outputHash = "sha256-tb426BMHnJQAzVd+jJeald1A4CuRKRzXGIMn/2VJrMQ=";
 
   # Disable fixup — FODs must not reference store paths (patchShebangs would add them)
   dontFixup = true;
