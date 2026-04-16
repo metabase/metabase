@@ -12,6 +12,8 @@ import { entityCompatibleQuery } from "metabase/utils/entities";
 import { createThunkAction, fetchData } from "metabase/utils/redux";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
+export * from "metabase/redux/metadata-typed";
+
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
 const deprecated = (message) => {
