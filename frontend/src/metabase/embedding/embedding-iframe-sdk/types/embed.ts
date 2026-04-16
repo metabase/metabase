@@ -242,6 +242,9 @@ export type SdkIframeEmbedBaseSettings = {
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
 
+  // Full URL of the host page embedding Metabase. Cannot be set by the user.
+  _embedReferrer?: string;
+
   pluginsConfig?: {
     // Callback to handle link clicks. Return { handled: true } to prevent default navigation.
     handleLink?: (url: string) => { handled: boolean };

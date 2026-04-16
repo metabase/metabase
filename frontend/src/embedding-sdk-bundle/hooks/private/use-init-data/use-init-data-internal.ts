@@ -18,8 +18,24 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import api from "metabase/utils/api";
+import { isWithinIframe } from "metabase/utils/iframe";
 import registerVisualizations from "metabase/visualizations/register";
+
+const reactSdkEmbedReferrerHandler = async (
+  config: OnBeforeRequestHandlerConfig,
+): Promise<OnBeforeRequestHandlerConfig | void> => ({
+  ...config,
+  options: {
+    ...config.options,
+    headers: {
+      ...config.options.headers,
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+      "X-Metabase-Embed-Referrer": window.location.href,
+    },
+  },
+});
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 const registerDashboardVisualizationsOnce = _.once(
@@ -83,6 +99,16 @@ export const useInitDataInternal = ({
       // Note: this is *package* version, it's undefined in EAJS
       version: sdkPackageVersion,
     };
+  }
+
+  // For the React SDK (not in an iframe), send the host page URL as the embed
+  // referrer on every request. The EAJS iframe registers its own handler in
+  // SdkIframeEmbedRoute.tsx using the value received via postMessage.
+  if (
+    !isWithinIframe() &&
+    !api.beforeRequestHandlers.includes(reactSdkEmbedReferrerHandler)
+  ) {
+    api.beforeRequestHandlers.push(reactSdkEmbedReferrerHandler);
   }
 
   if (!api.onResponseError) {

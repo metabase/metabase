@@ -22,9 +22,11 @@ import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
+import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { getSetting } from "metabase/selectors/settings";
 import { Stack } from "metabase/ui";
 import { createTracker } from "metabase/utils/analytics-untyped";
+import api from "metabase/utils/api";
 import { useSelector } from "metabase/utils/redux";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
@@ -40,10 +42,38 @@ import {
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
 
+let _embedReferrer: string | undefined;
+
+const embedReferrerHandler = async (
+  config: OnBeforeRequestHandlerConfig,
+): Promise<OnBeforeRequestHandlerConfig | void> => {
+  if (_embedReferrer) {
+    return {
+      ...config,
+      options: {
+        ...config.options,
+        headers: {
+          ...config.options.headers,
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+          "X-Metabase-Embed-Referrer": _embedReferrer,
+        },
+      },
+    };
+  }
+};
+
+// Register once — uses a named function ref so it can't be pushed twice
+if (!api.beforeRequestHandlers.includes(embedReferrerHandler)) {
+  api.beforeRequestHandlers.push(embedReferrerHandler);
+}
+
 const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   // Tell the SDK whether to use the existing user session or not.
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession =
     settings?.useExistingUserSession || false;
+
+  // Forward the host page URL so it's sent as X-Metabase-Embed-Referrer on API requests.
+  _embedReferrer = settings?._embedReferrer;
 };
 
 const store = getSdkStore();

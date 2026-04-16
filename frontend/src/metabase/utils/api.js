@@ -39,6 +39,9 @@ export class Api extends EventEmitter {
   sessionToken;
   onResponseError;
 
+  /** @type {import('metabase/plugins/oss/api').OnBeforeRequestHandler[]} */
+  beforeRequestHandlers = [];
+
   /**
    * @type {string|{name: string, version: string | null}}
    */
@@ -408,6 +411,8 @@ export class Api extends EventEmitter {
         ],
       );
     }
+
+    handlers.push(...this.beforeRequestHandlers);
 
     if (handlers.length) {
       for (const handler of handlers) {
