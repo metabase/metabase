@@ -3178,7 +3178,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-layer.api
            metabase-enterprise.semantic-layer.init}
-   :uses #{api
+   :uses #{analytics
+           api
            audit-app
            collections
            startup

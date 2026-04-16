@@ -315,6 +315,14 @@
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
                      {:description "Number of rows in the active appdb index table."})
+   (prometheus/gauge :metabase-semantic-layer/complexity-score
+                     {:description
+                      (str "Semantic-layer complexity score for this instance, broken down by "
+                           "catalog (library|universe) and axis (total, or one of the five "
+                           "sub-scores: entity-count, name-collisions, synonym-pairs, field-count, "
+                           "repeated-measures). Refreshed on every call to the complexity endpoint "
+                           "and at startup.")
+                      :labels [:catalog :axis]})
    (prometheus/gauge :metabase-search/semantic-index-size
                      {:description "Number of rows in the active semantic index table."})
    (prometheus/gauge :metabase-search/semantic-dlq-size

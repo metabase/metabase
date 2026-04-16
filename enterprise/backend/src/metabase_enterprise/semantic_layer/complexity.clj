@@ -17,6 +17,7 @@
   (:require
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase.analytics.core :as analytics]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.util.log :as log]
@@ -257,6 +258,21 @@
 
 ;;; ----------------------------------- public API ------------------------------------
 
+(defn- emit-prometheus!
+  "Publish the total and each sub-score to the
+  [[metabase.analytics.prometheus/:metabase-semantic-layer/complexity-score]] gauge, labelled by
+  `:catalog` and `:axis`. Called once per [[complexity-scores]] invocation so the gauge reflects
+  the latest known state."
+  [{:keys [library universe]}]
+  (doseq [[catalog result] {"library" library "universe" universe}]
+    (analytics/set! :metabase-semantic-layer/complexity-score
+                    {:catalog catalog :axis "total"}
+                    (:total result))
+    (doseq [[component sub] (:components result)]
+      (analytics/set! :metabase-semantic-layer/complexity-score
+                      {:catalog catalog :axis (name component)}
+                      (:score sub)))))
+
 (defn complexity-scores
   "Compute the complexity score for the `:library` and `:universe` catalogs of this Metabase
   instance. Returns a map of the shape:
@@ -280,17 +296,22 @@
     ;;; but each catalog is consumed by FIVE sub-score functions that each walk the collection, so making this
     ;;; reducible would re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory we
     ;;; currently will currently consume (provided we have that memory).
-    {:library  (score-catalog (library-entities) embedder)
-     :universe (score-catalog (universe-entities) embedder)
-     :meta     (cond-> {:formula-version   formula-version
-                        :synonym-threshold synonym-similarity-threshold}
-                ;; Only included when we're actually using the search-index embedder AND the index
-                ;; is reachable. For custom embedders the caller knows what model they passed.
-                 (= embedder semantic-search/search-index-embedder)
-                 (as-> m
-                       (if-let [model (semantic-search/active-embedding-model)]
-                         (assoc m :embedding-model model)
-                         m)))}))
+    (let [result {:library  (score-catalog (library-entities) embedder)
+                  :universe (score-catalog (universe-entities) embedder)
+                  :meta     (cond-> {:formula-version   formula-version
+                                     :synonym-threshold synonym-similarity-threshold}
+                              ;; Only included when we're actually using the search-index embedder AND the index
+                              ;; is reachable. For custom embedders the caller knows what model they passed.
+                              (= embedder semantic-search/search-index-embedder)
+                              (as-> m
+                                    (if-let [model (semantic-search/active-embedding-model)]
+                                      (assoc m :embedding-model model)
+                                      m)))}]
+      (try
+        (emit-prometheus! result)
+        (catch Throwable t
+          (log/warn t "Failed to publish complexity score to Prometheus")))
+      result)))
 
 (comment
   (complexity-scores))
