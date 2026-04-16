@@ -928,36 +928,26 @@ describe("admin > custom visualizations", () => {
       });
 
       it("renders the custom viz when viewed via a public link", () => {
-        cy.get("@documentId")
-          .then((documentId) => H.createPublicDocumentLink(Number(documentId)))
-          .then(({ body: { uuid } }) => {
-            cy.signOut();
-            H.interceptPluginBundle();
-            cy.visit(`/public/document/${uuid}`);
-            cy.wait("@pluginBundle");
+        H.interceptPluginBundle();
+        H.visitPublicDocument("@documentId");
+        cy.wait("@pluginBundle");
 
-            H.getDocumentCard(DOC_QUESTION_NAME)
-              .findByText("Custom viz rendered successfully")
-              .should("be.visible");
-          });
+        H.getDocumentCard(DOC_QUESTION_NAME)
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
       });
 
       it("falls back to the default visualization in a public document when the bundle fails", () => {
-        cy.get("@documentId")
-          .then((documentId) => H.createPublicDocumentLink(Number(documentId)))
-          .then(({ body: { uuid } }) => {
-            cy.signOut();
-            cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
-              statusCode: 500,
-              body: "boom",
-            }).as("failedBundle");
-            cy.visit(`/public/document/${uuid}`);
-            cy.wait("@failedBundle");
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+        H.visitPublicDocument("@documentId");
+        cy.wait("@failedBundle");
 
-            H.getDocumentCard(DOC_QUESTION_NAME)
-              .findByTestId("table-root")
-              .should("be.visible");
-          });
+        H.getDocumentCard(DOC_QUESTION_NAME)
+          .findByTestId("table-root")
+          .should("be.visible");
       });
     });
   });
