@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
 import { ChartTypeDropdown } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
@@ -17,40 +17,51 @@ type Props = {
   "data-testid"?: string;
 };
 
-export const MobileToolbar = ({
-  isEditorOpen,
-  toggleEditor,
-  withChartTypeSelector,
-  rightButton,
-  "data-testid": dataTestId,
-}: Props) => (
-  <Box className={MobileToolbarS.MobileToolbar} data-testid={dataTestId}>
-    {isEditorOpen ? (
-      <ToolbarButton
-        isHighlighted={false}
-        variant="default"
-        icon="chevronleft"
-        label={t`Back to visualization`}
-        c="brand"
-        justify="start"
-        className={cx(
-          ToolbarButtonS.PrimaryToolbarButton,
-          MobileToolbarS.LeftButton,
+export const MobileToolbar = forwardRef<HTMLDivElement, Props>(
+  function MobileToolbar(
+    {
+      isEditorOpen,
+      toggleEditor,
+      withChartTypeSelector,
+      rightButton,
+      "data-testid": dataTestId,
+    },
+    ref,
+  ) {
+    return (
+      <Box
+        ref={ref}
+        className={MobileToolbarS.MobileToolbar}
+        data-testid={dataTestId}
+      >
+        {isEditorOpen ? (
+          <ToolbarButton
+            isHighlighted={false}
+            variant="default"
+            icon="chevronleft"
+            label={t`Back to visualization`}
+            c="brand"
+            justify="start"
+            className={cx(
+              ToolbarButtonS.PrimaryToolbarButton,
+              MobileToolbarS.LeftButton,
+            )}
+            onClick={toggleEditor}
+          />
+        ) : (
+          withChartTypeSelector && (
+            <ChartTypeDropdown
+              className={MobileToolbarS.LeftButton}
+              styles={{
+                inner: { width: "100%" },
+                label: { marginRight: "auto" },
+              }}
+            />
+          )
         )}
-        onClick={toggleEditor}
-      />
-    ) : (
-      withChartTypeSelector && (
-        <ChartTypeDropdown
-          className={MobileToolbarS.LeftButton}
-          styles={{
-            inner: { width: "100%" },
-            label: { marginRight: "auto" },
-          }}
-        />
-      )
-    )}
 
-    {rightButton?.({ className: MobileToolbarS.RightButton })}
-  </Box>
+        {rightButton?.({ className: MobileToolbarS.RightButton })}
+      </Box>
+    );
+  },
 );
