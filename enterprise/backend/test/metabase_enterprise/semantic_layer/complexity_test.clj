@@ -457,4 +457,3 @@
                         component k uni-v component k lib-v))))
         (testing "universe total is strictly higher than library total"
           (is (> (:total universe) (:total library))))))))
-
