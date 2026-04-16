@@ -42,40 +42,41 @@
     :sequential (when-let [desc (-> arg-schema mc/children first :desc)]
                   {(name-arguments arg-schema) desc})))
 
-(defn- check-print-help [{:keys [options usage-fn arg-schema] :as current-task}]
-  (let [command-line-args *command-line-args*
-        summary (:summary (tools.cli/parse-opts *command-line-args* options))
-        usage-name (str "  " (:name current-task) (when-not (str/blank? summary) " [OPTIONS]"))]
-    (when (or (get (set command-line-args) "-h")
-              (get (set command-line-args) "--help"))
-      (println "Task Name:" (:name current-task))
-      (println (str "  "  (c/green (:doc current-task))))
-      (println "\nUsages:")
-      (if-not arg-schema
-        (println usage-name)
-        (let [arg-usages (name-arguments (mc/schema arg-schema))
-              argument-descriptions (desc-arguments arg-schema)]
-          (if (seq? arg-usages)
-            (doseq [arg-usage arg-usages]
-              (println (str usage-name " " arg-usage)))
-            (println (str usage-name " " arg-usages)))
-          (when (seq argument-descriptions)
-            (println "\nArguments:")
-            (doseq [[name desc] argument-descriptions]
-              (println (str "  " name ": " desc))))))
-      (when-not (str/blank? summary)
-        (println "\nOptions:")
-        (println summary))
-      (when-let [examples (:examples current-task)]
-        (println "\nExamples:")
-        (doseq [[cmd effect] examples]
-          (println "\n" cmd "\n -" (c/magenta effect))))
-      (when usage-fn
-        (println "\n"
-                 #_:clj-kondo/ignore
-                 ((eval usage-fn) current-task)))
-      #_{:clj-kondo/ignore [:discouraged-java-method]}
-      (System/exit 0))))
+(defn- check-print-help [{:keys [options usage-fn arg-schema custom-help?] :as current-task}]
+  (when-not custom-help?
+    (let [command-line-args *command-line-args*
+          summary (:summary (tools.cli/parse-opts *command-line-args* options))
+          usage-name (str "  " (:name current-task) (when-not (str/blank? summary) " [OPTIONS]"))]
+      (when (or (get (set command-line-args) "-h")
+                (get (set command-line-args) "--help"))
+        (println "Task Name:" (:name current-task))
+        (println (str "  "  (c/green (:doc current-task))))
+        (println "\nUsages:")
+        (if-not arg-schema
+          (println usage-name)
+          (let [arg-usages (name-arguments (mc/schema arg-schema))
+                argument-descriptions (desc-arguments arg-schema)]
+            (if (seq? arg-usages)
+              (doseq [arg-usage arg-usages]
+                (println (str usage-name " " arg-usage)))
+              (println (str usage-name " " arg-usages)))
+            (when (seq argument-descriptions)
+              (println "\nArguments:")
+              (doseq [[name desc] argument-descriptions]
+                (println (str "  " name ": " desc))))))
+        (when-not (str/blank? summary)
+          (println "\nOptions:")
+          (println summary))
+        (when-let [examples (:examples current-task)]
+          (println "\nExamples:")
+          (doseq [[cmd effect] examples]
+            (println "\n" cmd "\n -" (c/magenta effect))))
+        (when usage-fn
+          (println "\n"
+                   #_:clj-kondo/ignore
+                   ((eval usage-fn) current-task)))
+        #_{:clj-kondo/ignore [:discouraged-java-method]}
+        (System/exit 0)))))
 
 (defn- coerce-arguments [arg-schema current-task arguments]
   (if-not arg-schema
