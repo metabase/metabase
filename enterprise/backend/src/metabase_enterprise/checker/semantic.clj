@@ -11,7 +11,8 @@
    - `(setup export-dir schema-dir)` + `(check-one ctx entity-id)` — REPL workflow"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.checker.format.serdes :as serdes]
+   [metabase-enterprise.checker.format.serdes-assets :as serdes-assets]
+   [metabase-enterprise.checker.format.serdes-schema :as serdes.schema]
    [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
@@ -717,9 +718,9 @@
   "Build schema and assets sources from `schema-dir` and `export-dir`,
    and a merged assets index (cards, dashboards, segments, etc.)."
   [export-dir schema-dir]
-  (let [schema-source (serdes/make-database-source schema-dir)
-        assets-source (serdes/make-source export-dir)
-        index         (serdes/source-index assets-source)]
+  (let [schema-source (serdes.schema/make-database-source schema-dir)
+        assets-source (serdes-assets/make-source export-dir)
+        index         (serdes-assets/source-index assets-source)]
     {:schema-source schema-source :assets-source assets-source :index index}))
 
 (defn check
@@ -770,7 +771,13 @@
 (comment
   ;; REPL workflow:
   (check "/Users/dan/projects/work/stats-remote-sync"
-         "/tmp/metadata/metadata/databases")
+         "/Users/dan/projects/work/exports-root/metadata/metadata/databases")
+
+  (->> (check "/Users/dan/projects/work/representations/examples/v1"
+              "/Users/dan/projects/work/yaml-checked-files-v1/exports/sqlite-based/databases")
+       (into {} (filter (fn [[_id stuff]]
+                          (letfn [(bad [x] ((some-fn :bad-refs :unresolved :native-errors) x))]
+                            (bad stuff))))))
   (setup
    "/Users/dan/projects/work/stats-remote-sync"
    "/Users/dan/projects/work/stats-remote-sync/databases")

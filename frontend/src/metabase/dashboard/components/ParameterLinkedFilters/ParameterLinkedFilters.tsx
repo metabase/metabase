@@ -9,6 +9,7 @@ import {
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";
+import { usableAsLinkedFilter } from "metabase/parameters/utils/linked-filters";
 import { showAddParameterPopover } from "metabase/redux/dashboard";
 import {
   Box,
@@ -25,8 +26,6 @@ import {
 import { useDispatch } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId, ParameterId } from "metabase-types/api";
-
-import { usableAsLinkedFilter } from "../../utils/linked-filters";
 
 import S from "./ParameterLinkedFilters.module.css";
 import type { ParameterInfo } from "./types";

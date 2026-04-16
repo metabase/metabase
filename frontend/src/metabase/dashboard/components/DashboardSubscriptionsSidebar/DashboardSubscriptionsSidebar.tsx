@@ -4,15 +4,8 @@ import _ from "underscore";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Pulses } from "metabase/entities/pulses";
-import {
-  AddEditEmailSidebar,
-  AddEditSlackSidebar,
-} from "metabase/notifications/AddEditSidebar/AddEditSidebar";
-import { NewPulseSidebar } from "metabase/notifications/NewPulseSidebar";
-import { PulsesListSidebar } from "metabase/notifications/PulsesListSidebar";
 import {
   cancelEditingPulse,
   fetchPulseFormInput,
@@ -47,6 +40,14 @@ import type {
   User,
 } from "metabase-types/api";
 
+import { useDashboardContext } from "../../context";
+
+import {
+  AddEditEmailSidebar,
+  AddEditSlackSidebar,
+} from "./AddEditSidebar/AddEditSidebar";
+import { NewPulseSidebar } from "./NewPulseSidebar";
+import { PulsesListSidebar } from "./PulsesListSidebar";
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 
 const EDITING_MODES = {
