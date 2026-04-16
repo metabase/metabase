@@ -34,12 +34,17 @@
 
 (defn- prefer-new-row?
   "Return true when `new-row` should replace `prior` as the representative for a normalized name.
-  The only requirement is **determinism** — every run with the same data must pick the same winner,
-  regardless of DB row order or batch boundaries. The actual winner (lowest-id vs highest-id) is
-  unimportant because duplicate-name entities contribute the same similarity signal either way.
-  Priority chain: numeric `:mid` (parsed `model_id`) — numeric beats nil, two numerics compare
-  naturally — then the raw `model_id` string (so `\"2\"` vs `\"02\"` sorts deterministically even
-  though they parse to the same number) — then `:model` as final tie-break."
+  `search-index-embedder` keeps exactly one embedding per normalized name, so the choice of winner
+  is load-bearing: different rows carry different indexed text (name + description + other search
+  fields) and therefore different embeddings, which changes downstream similarity comparisons.
+  Priority chain (lowest wins, must be total so the result is stable across DB row order and batch
+  boundaries):
+   1. Numeric `:mid` (parsed `model_id`) — a parseable numeric id always beats a nil-parsed one;
+      two numerics compare naturally.
+   2. Raw `model_id` string — lexicographic; needed so `\"2\"` vs `\"02\"` (which parse equal) and
+      two non-numeric ids still order deterministically.
+   3. `:model` string — lexicographic final tie-break when `model_id` values are identical across
+      different model types."
   [{new-mid :mid new-model :model new-mid-str :model_id}
    {prior-mid :mid prior-model :model prior-mid-str :model_id}]
   (let [num-cmp (cond
