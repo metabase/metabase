@@ -1,4 +1,4 @@
-(ns metabase.internal-stats.metabot-test
+(ns metabase-enterprise.internal-stats.metabot-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
