@@ -1,0 +1,153 @@
+(ns metabase.driver.clickhouse-native
+  "ClickHouse Client V2 transport for query execution using RowBinary format.
+   Bypasses JDBC for the query hot path, using binary serialization with LZ4
+   compression and Apache HttpClient5 connection pooling."
+  (:require
+   [clojure.string :as str]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.util :as u]
+   [metabase.util.log :as log])
+  (:import
+   (com.clickhouse.client.api Client Client$Builder)
+   (com.clickhouse.client.api.data_formats ClickHouseBinaryFormatReader)
+   (com.clickhouse.client.api.metadata TableSchema)
+   (com.clickhouse.client.api.query QueryResponse QuerySettings)
+   (com.clickhouse.data ClickHouseColumn ClickHouseFormat)
+   (java.time LocalDate LocalDateTime OffsetDateTime ZonedDateTime)
+   (java.util.concurrent TimeUnit)))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private ^:const query-timeout-seconds 60)
+
+;;; ------------------------------------------ Client Management ------------------------------------------
+
+(defn- build-client
+  "Create a ClickHouse Client V2 instance from connection details."
+  ^Client [{:keys [host port user password dbname ssl]}]
+  (let [protocol (if ssl "https" "http")
+        host     (let [h (or host "localhost")]
+                   ;; Strip http(s):// prefix (legacy compat, same as JDBC path)
+                   (cond
+                     (str/starts-with? h "http://")  (subs h 7)
+                     (str/starts-with? h "https://") (subs h 8)
+                     :else h))
+        endpoint (str protocol "://" host ":" (or port 8123))]
+    (-> (Client$Builder.)
+        (.addEndpoint endpoint)
+        (.setUsername (or user "default"))
+        (.setPassword (or password ""))
+        (.setDefaultDatabase (or dbname "default"))
+        (.compressServerResponse true)
+        (.compressClientRequest true)
+        (.build))))
+
+;; Cache clients per effective connection details
+(defonce ^:private clients (atom {}))
+
+(defn get-client
+  "Get or create a cached Client V2 instance for the given database."
+  ^Client [database]
+  (let [details   (driver.conn/effective-details database)
+        cache-key (select-keys details [:host :port :user :password :dbname :ssl])]
+    (or (get @clients cache-key)
+        (let [client (build-client details)]
+          (swap! clients assoc cache-key client)
+          client))))
+
+;;; ------------------------------------------ Parameter Substitution ------------------------------------------
+
+(defn- param->sql-literal
+  "Convert a Java parameter value to a ClickHouse SQL literal.
+   This mirrors what the JDBC driver does internally for HTTP protocol —
+   parameters are substituted into the query string before sending."
+  [param]
+  (cond
+    (nil? param)                       "NULL"
+    (string? param)                    (str "'" (str/replace param "'" "\\'") "'")
+    (instance? Boolean param)          (if param "true" "false")
+    (instance? Number param)           (str param)
+    (instance? LocalDate param)        (str "'" param "'")
+    (instance? LocalDateTime param)    (str "'" param "'")
+    (instance? OffsetDateTime param)   (str "parseDateTimeBestEffort('" param "')")
+    (instance? ZonedDateTime param)    (str "parseDateTimeBestEffort('" param "')")
+    :else                              (str "'" (str/replace (str param) "'" "\\'") "'")))
+
+(defn- substitute-params
+  "Replace positional `?` placeholders with literal values.
+   ClickHouse's HTTP protocol doesn't support binary parameter binding,
+   so the JDBC driver does the same substitution internally."
+  ^String [^String sql params]
+  (if (empty? params)
+    sql
+    (let [sb (StringBuilder.)]
+      (loop [pos     0
+             [p & more] params]
+        (if-let [idx (str/index-of sql "?" pos)]
+          (do (.append sb (subs sql pos idx))
+              (.append sb ^String (param->sql-literal p))
+              (recur (inc idx) more))
+          (.append sb (subs sql pos))))
+      (str sb))))
+
+;;; ------------------------------------------ Column Metadata ------------------------------------------
+
+(defn- column-metadata
+  "Build Metabase-compatible column metadata from a ClickHouse TableSchema."
+  [^TableSchema schema]
+  (mapv (fn [^ClickHouseColumn col]
+          (let [orig-type (.getOriginalTypeName col)]
+            {:name          (.getColumnName col)
+             :database_type orig-type
+             :base_type     (sql-jdbc.sync/database-type->base-type
+                             :clickhouse
+                             (keyword (u/lower-case-en orig-type)))}))
+        (.getColumns schema)))
+
+;;; ------------------------------------------ Query Execution ------------------------------------------
+
+(defn execute-native-query
+  "Execute a SQL query using the Client V2 binary protocol.
+   Calls `respond` with [results-metadata reducible-rows], matching
+   the contract of `driver/execute-reducible-query`."
+  [database sql params max-rows respond]
+  (let [client (get-client database)
+        sql    (substitute-params sql params)
+        ;; Append LIMIT if max-rows is set and query doesn't already have one
+        sql    (if (and max-rows (pos? ^long max-rows)
+                       (not (re-find #"(?i)\bLIMIT\s+\d" sql)))
+                 (str sql "\nLIMIT " max-rows)
+                 sql)
+        settings (doto (QuerySettings.)
+                   (.setFormat ClickHouseFormat/RowBinaryWithNamesAndTypes))]
+    (log/debugf "ClickHouse Client V2 query: %.200s" sql)
+    (let [^QueryResponse response (.get (.query client sql settings)
+                                        query-timeout-seconds TimeUnit/SECONDS)]
+      (try
+        (let [^ClickHouseBinaryFormatReader reader (.newBinaryFormatReader client response)
+              schema          (.getSchema reader)
+              cols            (column-metadata schema)
+              col-count       (count cols)
+              ;; 1-based column indices for the reader
+              col-indices     (int-array (mapv inc (range col-count)))
+              results-metadata {:cols cols}
+              ;; Streaming reducible — rows are read on-demand from the binary reader
+              reducible-rows
+              (reify clojure.lang.IReduceInit
+                (reduce [_ f init]
+                  (loop [acc init]
+                    (if (.hasNext reader)
+                      (let [_   (.next reader)
+                            row (let [arr (object-array col-count)]
+                                  (dotimes [j col-count]
+                                    (aset arr j (.readValue reader (aget col-indices j))))
+                                  (vec arr))
+                            result (f acc row)]
+                        (if (reduced? result)
+                          @result
+                          (recur result)))
+                      acc))))]
+          (respond results-metadata reducible-rows))
+        (finally
+          (.close response))))))
