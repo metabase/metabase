@@ -813,14 +813,15 @@
                                                 :database_type "BIGINT"}
                    :model/Field    {fk-id :id} {:table_id t-id :name "order_id" :base_type :type/Integer
                                                 :database_type "BIGINT"}]
-      (testing "matched entities are updated; unmatched entities are reported"
+      (testing "matched entities are updated; missing tables/fields are created when parent exists"
         ;; Payload carries ids from "another" instance — here we reuse our own ids, but the
         ;; endpoint matches by natural key regardless of what the numeric ids are.
         (let [payload   {:databases [{:id db-id :name "import-db" :engine "h2"}
                                      {:id 9999 :name "does-not-exist" :engine "h2"}]
                          :tables    [{:id t-id :db_id db-id :name "orders" :schema "PUBLIC"
                                       :description "updated via import"}
-                                     {:id 9998 :db_id db-id :name "missing_table" :schema "PUBLIC"}]
+                                     {:id 9998 :db_id db-id :name "new_table" :schema "PUBLIC"
+                                      :description "created via import"}]
                          :fields    [{:id pk-id :table_id t-id :name "id"
                                       :base_type "type/Integer" :database_type "BIGINT"
                                       :semantic_type "type/PK"
@@ -829,18 +830,47 @@
                                       :base_type "type/Integer" :database_type "BIGINT"
                                       :semantic_type "type/FK"
                                       :fk_target_field_id pk-id}
-                                     {:id 9997 :table_id t-id :name "missing_field"
-                                      :base_type "type/Integer"}]}
+                                     {:id 9997 :table_id t-id :name "new_field"
+                                      :base_type "type/Integer" :database_type "INT"
+                                      :description "created via import"
+                                      :semantic_type "type/Quantity"}
+                                     {:id 9996 :table_id 9998 :name "new_table_field"
+                                      :base_type "type/Text" :database_type "VARCHAR"}]}
               report    (mt/user-http-request :crowberto :post 200
                                               "database/metadata/import" payload)]
           (is (=? {:databases {:matched 1 :missing [{:name "does-not-exist"}]}
-                   :tables    {:matched 1 :missing [{:name "missing_table"}]}
-                   :fields    {:matched 2 :missing [{:path ["missing_field"]}]}}
+                   :tables    {:matched 1 :created 1 :missing []}
+                   :fields    {:matched 2 :created 2 :missing []}}
                   report))
           (is (= "updated via import" (t2/select-one-fn :description :model/Table :id t-id)))
           (is (= :type/PK (t2/select-one-fn :semantic_type :model/Field :id pk-id)))
           (is (= "primary key" (t2/select-one-fn :description :model/Field :id pk-id)))
-          (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))))
+          (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))
+          (testing "new table was created under the matched database"
+            (let [new-tbl (t2/select-one :model/Table :db_id db-id :name "new_table")]
+              (is (some? new-tbl))
+              (is (= "created via import" (:description new-tbl)))
+              (is (true? (:active new-tbl)))))
+          (testing "new field was created under the existing table"
+            (let [new-fld (t2/select-one :model/Field :table_id t-id :name "new_field")]
+              (is (some? new-fld))
+              (is (= :type/Integer (:base_type new-fld)))
+              (is (= "INT" (:database_type new-fld)))
+              (is (= "created via import" (:description new-fld)))
+              (is (= :type/Quantity (:semantic_type new-fld)))))
+          (testing "new field was created under a newly-created table"
+            (let [new-tbl-id (t2/select-one-pk :model/Table :db_id db-id :name "new_table")]
+              (is (some? (t2/select-one :model/Field :table_id new-tbl-id :name "new_table_field")))))))
+
+      (testing "fields whose database is missing on the target are reported as missing"
+        (let [payload {:databases [{:id 9999 :name "does-not-exist" :engine "h2"}]
+                       :tables    [{:id 9998 :db_id 9999 :name "x" :schema "PUBLIC"}]
+                       :fields    [{:id 9997 :table_id 9998 :name "y" :base_type "type/Integer"}]}
+              report  (mt/user-http-request :crowberto :post 200
+                                            "database/metadata/import" payload)]
+          (is (=? {:tables {:matched 0 :created 0 :missing [{:name "x"}]}
+                   :fields {:matched 0 :created 0 :missing [{:path ["y"]}]}}
+                  report))))
 
       (testing "base_type and database_type are never overwritten"
         (let [payload {:databases [{:id db-id :name "import-db" :engine "h2"}]

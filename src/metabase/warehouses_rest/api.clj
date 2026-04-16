@@ -721,11 +721,20 @@
     (some? fk_target_field_id) (assoc :fk_target_field_id
                                       (incoming->target-field-id fk_target_field_id))))
 
+(defn- field-depth
+  "Depth of a field in the incoming payload, walking parent_id. Root fields have depth 0."
+  [incoming-by-id field-id]
+  (loop [depth 0, fid field-id, seen #{}]
+    (let [{:keys [parent_id]} (get incoming-by-id fid)]
+      (cond
+        (nil? parent_id)      depth
+        (contains? seen fid)  depth
+        :else                 (recur (inc depth) parent_id (conj seen fid))))))
+
 (defn- import-metadata!*
   "Core logic for POST /metadata/import. See the endpoint doc for behavior."
   [{:keys [databases tables fields]}]
-  (let [;; databases
-        db-by-key      (build-db-lookup)
+  (let [db-by-key      (build-db-lookup)
         in-db->target  (into {}
                              (keep (fn [{:keys [id name engine]}]
                                      (when-let [tid (db-by-key [name (engine-name engine)])]
@@ -733,53 +742,100 @@
                              databases)
         missing-dbs    (mapv #(select-keys % [:name :engine])
                              (remove #(in-db->target (:id %)) databases))
-        ;; tables
-        target-db-ids  (vals in-db->target)
-        tbl-by-key     (build-table-lookup target-db-ids)
-        in-tbl->target (into {}
-                             (keep (fn [{:keys [id db_id schema name]}]
-                                     (when-let [tdb (in-db->target db_id)]
-                                       (when-let [tid (tbl-by-key [tdb schema name])]
-                                         [id tid]))))
-                             tables)
-        missing-tables (mapv #(select-keys % [:db_id :schema :name])
-                             (remove #(in-tbl->target (:id %)) tables))
-        ;; fields
-        target-tbl-ids (vals in-tbl->target)
-        {:keys [path->id]} (build-target-field-pathmap target-tbl-ids)
-        incoming-by-id (into {} (map (juxt :id identity)) fields)
-        in-fld->target (into {}
-                             (keep (fn [{:keys [id table_id] :as fld}]
-                                     (when-let [ttbl (in-tbl->target table_id)]
-                                       (when-let [tid (path->id
-                                                       [ttbl (incoming-field-path incoming-by-id id)])]
-                                         [id tid]))))
-                             fields)
-        missing-fields (->> fields
-                            (remove #(in-fld->target (:id %)))
-                            (mapv (fn [fld]
-                                    {:table_id (:table_id fld)
-                                     :path     (incoming-field-path incoming-by-id (:id fld))})))]
-    ;; apply updates in a single transaction
+        incoming-by-id (m/index-by :id fields)
+        depth-of       (memoize #(field-depth incoming-by-id %))
+        state          (atom {:tables {:matched 0 :created 0 :missing []}
+                              :fields {:matched 0 :created 0 :missing []}
+                              :in-tbl->target  {}
+                              :in-fld->target  {}
+                              :created-fld-ids #{}})]
     (t2/with-transaction [_conn]
-      (doseq [{:keys [id description]} tables
-              :let [tid (in-tbl->target id)]
-              :when (and tid (some? description))]
-        (t2/update! :model/Table tid {:description description}))
-      (doseq [fld fields
-              :let [tid   (in-fld->target (:id fld))
-                    patch (field-patch fld in-fld->target)]
-              :when (and tid (seq patch))]
-        (t2/update! :model/Field tid patch)))
-    {:databases {:matched (count in-db->target)  :missing missing-dbs}
-     :tables    {:matched (count in-tbl->target) :missing missing-tables}
-     :fields    {:matched (count in-fld->target) :missing missing-fields}}))
+      ;; Tables: match by (target-db, schema, name) or create when target db exists.
+      (let [tbl-by-key (build-table-lookup (vals in-db->target))]
+        (doseq [{:keys [id db_id schema name description]} tables]
+          (if-let [target-db-id (in-db->target db_id)]
+            (if-let [existing-id (tbl-by-key [target-db-id schema name])]
+              (do
+                (when (some? description)
+                  (t2/update! :model/Table existing-id {:description description}))
+                (swap! state #(-> %
+                                  (update-in [:tables :matched] inc)
+                                  (assoc-in [:in-tbl->target id] existing-id))))
+              (let [new-id (t2/insert-returning-pk!
+                            :model/Table
+                            (cond-> {:db_id               target-db-id
+                                     :name                name
+                                     :schema              schema
+                                     :active              true
+                                     :initial_sync_status "complete"}
+                              (some? description) (assoc :description description)))]
+                (swap! state #(-> %
+                                  (update-in [:tables :created] inc)
+                                  (assoc-in [:in-tbl->target id] new-id)))))
+            (swap! state update-in [:tables :missing] conj
+                   (cond-> {:db_id db_id :name name}
+                     (some? schema) (assoc :schema schema))))))
+
+      ;; Fields: depth-first so parents are resolved before children.
+      (let [in-tbl->target (:in-tbl->target @state)
+            {:keys [path->id]} (build-target-field-pathmap (vals in-tbl->target))
+            sorted-fields  (sort-by #(depth-of (:id %)) fields)]
+        (doseq [{:keys [id table_id parent_id name description base_type
+                        database_type effective_type semantic_type coercion_strategy]}
+                sorted-fields]
+          (if-let [target-tbl (in-tbl->target table_id)]
+            (let [path       (incoming-field-path incoming-by-id id)
+                  target-fld (path->id [target-tbl path])]
+              (if target-fld
+                (swap! state #(-> %
+                                  (update-in [:fields :matched] inc)
+                                  (assoc-in [:in-fld->target id] target-fld)))
+                (let [target-parent (when parent_id
+                                      (get-in @state [:in-fld->target parent_id]))
+                      new-id        (t2/insert-returning-pk!
+                                     :model/Field
+                                     (cond-> {:table_id  target-tbl
+                                              :name      name
+                                              :base_type (or base_type :type/*)
+                                              :active    true}
+                                       target-parent         (assoc :parent_id target-parent)
+                                       (some? description)   (assoc :description description)
+                                       (some? database_type) (assoc :database_type database_type)
+                                       (some? effective_type)
+                                       (assoc :effective_type effective_type)
+                                       (some? semantic_type) (assoc :semantic_type semantic_type)
+                                       (some? coercion_strategy)
+                                       (assoc :coercion_strategy coercion_strategy)))]
+                  (swap! state #(-> %
+                                    (update-in [:fields :created] inc)
+                                    (assoc-in [:in-fld->target id] new-id)
+                                    (update :created-fld-ids conj id))))))
+            (swap! state update-in [:fields :missing] conj
+                   {:table_id table_id
+                    :path     (incoming-field-path incoming-by-id id)}))))
+
+      ;; Second pass: for matched fields, apply the full user-editable patch.
+      ;; For just-created fields, only resolve fk_target_field_id (the rest was set
+      ;; on insert) — and skip entirely if the FK target couldn't be resolved.
+      (let [{:keys [in-fld->target created-fld-ids]} @state]
+        (doseq [{:keys [id fk_target_field_id] :as fld} fields
+                :let [tid   (in-fld->target id)
+                      patch (if (contains? created-fld-ids id)
+                              (when-let [target-fk (some-> fk_target_field_id in-fld->target)]
+                                {:fk_target_field_id target-fk})
+                              (field-patch fld in-fld->target))]
+                :when (and tid (seq patch))]
+          (t2/update! :model/Field tid patch))))
+    (let [{:keys [tables fields]} @state]
+      {:databases {:matched (count in-db->target) :missing missing-dbs}
+       :tables    tables
+       :fields    fields})))
 
 (mr/def ::metadata-import-report
   [:map
    [:databases [:map [:matched :int] [:missing [:sequential :map]]]]
-   [:tables    [:map [:matched :int] [:missing [:sequential :map]]]]
-   [:fields    [:map [:matched :int] [:missing [:sequential :map]]]]])
+   [:tables    [:map [:matched :int] [:created :int] [:missing [:sequential :map]]]]
+   [:fields    [:map [:matched :int] [:created :int] [:missing [:sequential :map]]]]])
 
 (api.macros/defendpoint :post "/metadata/import"
   :- ::metadata-import-report
@@ -789,15 +845,19 @@
   `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids
   in the payload are only used to link fields to their tables within the request.
 
-  Only user-editable metadata is written: table `description`; field `description`,
-  `semantic_type`, `coercion_strategy`, `effective_type`, and `fk_target_field_id`
-  (which is re-resolved through the natural-key lookup). Database connections, sync
-  status, table/field base types, and database-native types are not modified. Keys
-  that are absent from the payload (including values that were null on export) are
-  left untouched on the target.
+  Tables and fields that don't exist on the target are created when their parent
+  (database for tables; table for fields) is present on the target. Databases are
+  not auto-created — missing databases are reported instead. Field `fk_target_field_id`
+  is re-resolved through the natural-key lookup after all fields exist.
 
-  Returns counts of matched entities per type plus a list of entities in the payload
-  that don't exist on this instance."
+  For matched entities, only user-editable metadata is written: table `description`;
+  field `description`, `semantic_type`, `coercion_strategy`, `effective_type`, and
+  `fk_target_field_id`. For newly-created fields, `base_type` and `database_type` are
+  also populated from the payload. Keys absent from the payload (including null values)
+  are left untouched on matched entities.
+
+  Returns counts of matched + created entities per type plus a list of entities in the
+  payload that could not be placed (their parent was missing on the target)."
   [_route-params
    _query-params
    body :- ::databases-metadata-response]
