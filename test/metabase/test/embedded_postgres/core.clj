@@ -10,7 +10,7 @@
       (let [{:keys [jdbc-url]} (::embedded-postgres system)]
         ...))
 
-  Typical REPL usage as the Metabase app DB:
+  Typical REPL usage:
 
     (require '[metabase.test.embedded-postgres.core :as emb-pg]
              '[integrant.core :as ig])
