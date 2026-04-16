@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import { Button } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import MobileToolbarS from "./MobileToolbar.module.css";
 
@@ -12,10 +12,7 @@ export const MobileToolbar = ({
   children,
   "data-testid": dataTestId,
 }: Props) => (
-  <Button.Group
-    className={MobileToolbarS.MobileToolbar}
-    data-testid={dataTestId}
-  >
+  <Box className={MobileToolbarS.MobileToolbar} data-testid={dataTestId}>
     {children}
-  </Button.Group>
+  </Box>
 );
