@@ -50,11 +50,19 @@
           (mt/with-premium-features #{}
             (is (nil? (llm.settings/llm-proxy-base-url))))))))
 
-  (testing "cannot be set when :metabase-ai-managed feature is not enabled"
+  (testing "can be set and read when :metabot-v3 feature is enabled"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example"]
+        (is (= "https://proxy.example" (llm.settings/llm-proxy-base-url)))
+        (testing "returns default (nil) when neither managed-ai feature is enabled, even if a value is set"
+          (mt/with-premium-features #{}
+            (is (nil? (llm.settings/llm-proxy-base-url))))))))
+
+  (testing "cannot be set when neither managed-ai feature is enabled"
     (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Setting llm-proxy-base-url is not enabled because feature :metabase-ai-managed is not available"
+           #"Setting llm-proxy-base-url is not enabled"
            (llm.settings/llm-proxy-base-url! "https://proxy.example"))))))
 
 (deftest ai-service-base-url-feature-guard-test
@@ -66,11 +74,19 @@
           (mt/with-premium-features #{}
             (is (nil? (llm.settings/ai-service-base-url))))))))
 
-  (testing "cannot be set when :metabase-ai-managed feature is not enabled"
+  (testing "can be set and read when :metabot-v3 feature is enabled"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [ai-service-base-url "https://ai-service.example"]
+        (is (= "https://ai-service.example" (llm.settings/ai-service-base-url)))
+        (testing "returns default (nil) when neither managed-ai feature is enabled, even if a value is set"
+          (mt/with-premium-features #{}
+            (is (nil? (llm.settings/ai-service-base-url))))))))
+
+  (testing "cannot be set when neither managed-ai feature is enabled"
     (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Setting ai-service-base-url is not enabled because feature :metabase-ai-managed is not available"
+           #"Setting ai-service-base-url is not enabled"
            (llm.settings/ai-service-base-url! "https://ai-service.example"))))))
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
