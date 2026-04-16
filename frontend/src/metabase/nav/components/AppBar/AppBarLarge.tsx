@@ -35,6 +35,7 @@ export interface AppBarLargeProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isMetricsViewer?: boolean;
   onToggleNavbar: () => void;
 }
 
@@ -53,6 +54,7 @@ const AppBarLarge = ({
   isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  isMetricsViewer,
   onToggleNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
@@ -67,7 +69,8 @@ const AppBarLarge = ({
         isNavBarVisible ||
         isMetabotVisible ||
         isDocumentSidebarOpen ||
-        isCommentSidebarOpen
+        isCommentSidebarOpen ||
+        isMetricsViewer
       }
     >
       <Flex align="center" miw="5rem" flex="1 1 auto">

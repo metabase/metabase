@@ -25,6 +25,7 @@ export interface AppBarProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isMetricsViewer?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }

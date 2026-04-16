@@ -113,6 +113,7 @@ export const createMockTokenFeatures = (
   etl_connections_pg: false,
   hosting: false,
   "metabase-ai-managed": false,
+  "metabot-v3": false,
   "offer-metabase-ai-managed": false,
   official_collections: false,
   sandboxes: false,
