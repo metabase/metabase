@@ -118,6 +118,20 @@
       (is (=? {:components {:synonym-pairs {:pairs 0 :score 0 :error "boom"}}}
               (#'complexity/score-catalog es embedder))))))
 
+(deftest fn-embedder-test
+  (testing "normalizes names, dedupes, zips vectors by position, and skips entries with no vector"
+    (let [known-vectors {"foo" (float-array [1.0 0.0])
+                         "bar" (float-array [0.0 1.0])}
+          embedder      (embedders/fn-embedder (partial mapv known-vectors))
+          result        (embedder [{:name "Foo"}
+                                   {:name " BAR"}
+                                   {:name " Foo  \t "}
+                                   {:name "missing\n"}])]
+      (is (=? {"foo"     (known-vectors "foo")
+               "bar"     (known-vectors "bar")
+               "missing" nil}
+              result)))))
+
 (deftest library-empty-when-no-library-collection-test
   (testing "on an instance with no Library collection, the library score is zero and universe still reports"
     (collections.tu/without-library

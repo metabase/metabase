@@ -33,7 +33,7 @@
     (nil? v) nil
     (instance? (Class/forName "[F") v) v
     :else
-    (let [s (if (string? v) v (str v))
+    (let [s    (if (string? v) v (str v))
           nums (->> (-> s
                         (str/replace "[" "")
                         (str/replace "]" "")

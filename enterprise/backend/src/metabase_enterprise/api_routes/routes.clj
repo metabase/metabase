@@ -124,6 +124,8 @@
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
+   ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.
+   ;; Endpoint is superuser-only so it's not exposed to regular users in the meantime.
    "/semantic-layer"               metabase-enterprise.semantic-layer.api/routes
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
