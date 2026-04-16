@@ -2,11 +2,13 @@ import type { Store } from "@reduxjs/toolkit";
 import { createContext } from "react";
 import {
   Provider,
+  type ReactReduxContextValue,
   // eslint-disable-next-line no-restricted-imports
   connect as _connect,
 } from "react-redux";
 
-export const MetabaseReduxContext = createContext<any>(null);
+export const MetabaseReduxContext =
+  createContext<ReactReduxContextValue | null>(null);
 
 export const MetabaseReduxProvider = ({
   children,
