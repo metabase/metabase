@@ -17,15 +17,6 @@ import { delay } from "metabase/utils/promise";
 export { combineReducers, compose } from "@reduxjs/toolkit";
 export { handleActions, createAction } from "redux-actions";
 
-// turns into id indexed map
-export const resourceListToMap = <T extends { id: string | number }>(
-  resources: T[],
-): Record<string | number, T> =>
-  resources.reduce(
-    (map, resource) => ({ ...map, [resource.id]: resource }),
-    {} as Record<string | number, T>,
-  );
-
 export type FetchDataArgs = {
   dispatch: Dispatch;
   getState: () => State;

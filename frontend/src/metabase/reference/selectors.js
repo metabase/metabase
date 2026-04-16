@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { Dashboards } from "metabase/entities/dashboards";
 import {
@@ -8,7 +9,6 @@ import {
   getShallowSegments as getSegments,
   getShallowTables as getTables,
 } from "metabase/selectors/metadata";
-import { resourceListToMap } from "metabase/utils/redux";
 
 import { idsToObjectMap } from "./utils";
 
@@ -114,5 +114,5 @@ export const getIsFormulaExpanded = (state, props) =>
 
 export const getDashboards = (state, props) => {
   const list = Dashboards.selectors.getList(state);
-  return list && resourceListToMap(list);
+  return list && _.indexBy(list, "id");
 };
