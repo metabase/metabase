@@ -1,4 +1,4 @@
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 /**
  * Resolve a CSS value that may contain var() or light-dark() into a concrete color.

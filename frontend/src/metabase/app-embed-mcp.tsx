@@ -20,7 +20,7 @@ import "sdk-iframe-embedding-ee-plugins";
 // Must be imported after EE plugins and config are set up.
 // eslint-disable-next-line import/order
 import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
-import api from "metabase/lib/api";
+import api from "metabase/utils/api";
 
 // Set session token immediately so all SDK API calls include X-Metabase-Session.
 // @ts-expect-error -- this is ONLY set in the MCP Apps route
