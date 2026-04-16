@@ -1,13 +1,13 @@
 import { c, t } from "ttag";
 
-import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { Anchor, Flex, Icon, Text } from "metabase/ui";
 
 import S from "./UpgradeBanner.module.css";
 
 const UPGRADE_DOCS_URL =
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This component only renders inside the admin-only Security Center page.
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This component only renders inside the admin-only Security Center page.
   "https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase";
 
 interface UpgradeBannerProps {

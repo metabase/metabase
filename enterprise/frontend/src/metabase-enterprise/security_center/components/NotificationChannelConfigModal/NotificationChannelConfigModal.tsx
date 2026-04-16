@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useSendTestNotificationMutation } from "metabase/api/security-center";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { Button, Flex, Group, Icon, Modal, Stack } from "metabase/ui";
 
 import { useNotificationConfig } from "../../hooks/use-notification-config";
