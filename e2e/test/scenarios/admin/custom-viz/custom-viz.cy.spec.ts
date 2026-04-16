@@ -3,6 +3,7 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/utils/types";
 import type { CustomVizPlugin, Parameter } from "metabase-types/api";
 
 const { H } = cy;
@@ -481,8 +482,6 @@ describe("admin > custom visualizations", () => {
           { wrapId: true, idAlias: "recoveryCardId", visitQuestion: true },
         );
 
-        cy.wait("@bundleUnavailable");
-
         cy.findByTestId("visualization-root")
           .findByTestId("table-root")
           .should("be.visible");
@@ -495,9 +494,7 @@ describe("admin > custom visualizations", () => {
           "bundleRestored",
         );
 
-        cy.findByTestId("main-logo-link").click();
-        cy.go("back");
-        cy.wait("@bundleRestored");
+        cy.reload();
 
         H.main()
           .findByText("Custom viz rendered successfully")
@@ -632,7 +629,7 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("enable-public-sharing", true);
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitPublicDashboard(Number(dashcard.dashboard_id));
+        H.visitPublicDashboard(checkNotNull(dashcard.dashboard_id));
       });
 
       H.getDashboardCard().findByTestId("table-root").should("be.visible");
