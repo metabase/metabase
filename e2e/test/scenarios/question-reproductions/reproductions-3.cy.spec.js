@@ -1140,7 +1140,7 @@ describe("issue 31960", () => {
       H.cartesianChartCircle().eq(dotIndex).realHover();
     });
     H.assertEChartsTooltip({
-      header: "July 10–16, 2025",
+      header: "July 13–19, 2025", // expect this to break when we shift years in the Sample Database
       rows: [
         { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
       ],
