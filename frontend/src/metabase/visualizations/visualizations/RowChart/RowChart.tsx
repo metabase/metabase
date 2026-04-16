@@ -219,7 +219,13 @@ const RowChartVisualization = ({
 
   const handleSelectSeries = (event: React.MouseEvent, seriesIndex: number) => {
     const clickData = {
-      ...getLegendClickData(seriesIndex, series, settings, chartColumns),
+      ...getLegendClickData(
+        seriesIndex,
+        series,
+        settings,
+        chartColumns,
+        groupedData,
+      ),
       element: event.currentTarget,
     };
 

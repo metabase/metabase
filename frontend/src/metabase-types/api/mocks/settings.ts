@@ -113,6 +113,7 @@ export const createMockTokenFeatures = (
   etl_connections_pg: false,
   hosting: false,
   "metabase-ai-managed": false,
+  "metabot-v3": false,
   "offer-metabase-ai-managed": false,
   official_collections: false,
   sandboxes: false,
@@ -148,6 +149,7 @@ export const createMockTokenFeatures = (
   tenants: false,
   workspaces: false,
   writable_connection: false,
+  admin_security_center: false,
   ...opts,
 });
 
@@ -385,6 +387,8 @@ export const createMockSettings = (
   "slack-app-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",
+  "security-center-email-recipients": null,
+  "security-center-slack-channel": null,
   "store-url": "https://store.staging.metabase.com",
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),

@@ -15,7 +15,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest properties-token-features-test
-  (mt/with-premium-features #{:advanced-permissions
+  (mt/with-premium-features #{:admin-security-center
+                              :advanced-permissions
                               :attached-dwh
                               :audit-app
                               :cache-granular-controls
@@ -36,6 +37,7 @@
                               :embedding-hub
                               :hosting
                               :metabase-ai-managed
+                              :metabot-v3
                               :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
@@ -63,7 +65,8 @@
                               :cloud-custom-smtp
                               :workspaces
                               :writable-connection}
-    (is (= {:advanced_permissions           true
+    (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud)
+            :advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
             :cache_granular_controls        true
@@ -83,6 +86,7 @@
             :embedding_simple               true
             :hosting                        true
             :metabase-ai-managed            true
+            :metabot-v3                     true
             :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true
@@ -115,6 +119,11 @@
             :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
 
+(deftest security-center-token-feature-test
+  (testing "admin_security_center is true for self-hosted with the feature flag"
+    (mt/with-premium-features #{:admin-security-center}
+      (is (true? (:admin_security_center
+                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 ;;; ---------------------------------------- server-side session timeout tests -----------------------------------------
 
 (deftest session-timeout-enforces-last-active-at-test
