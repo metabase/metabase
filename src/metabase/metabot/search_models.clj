@@ -1,37 +1,24 @@
 (ns metabase.metabot.search-models
-  "Shared mapping between Metabot entity-type names and the `model` strings stored in the search index
-  (e.g., Metabot's \"model\" corresponds to search's \"dataset\").
-
-  Centralised here so every caller — search tooling, semantic-layer analysis, and future AI features —
-  uses the same translation instead of redefining it locally.
-
-  Must stay in sync with the search spec: the right-hand values here should all be members of
-  `metabase.search.spec/search-models`.
-  A test in `metabase.metabot.search-models-test` asserts this."
+  "Maps Metabot entity-type names to the `model` strings used by the search index."
   (:require
    [metabase.util :as u]))
 
-(def search-model-mappings
-  "Metabot entity-type strings that differ from the search-engine `model` string.
-  Entities whose Metabot name matches the search name exactly (e.g., `table`, `metric`) are absent
-  from this map."
+(def ^:private entity->search
+  "Entity-type strings whose Metabot name differs from the search `model` string. Unchanged names are omitted."
   {"model"    "dataset"
    "question" "card"})
 
-(def ^:private search-model->entity-type-mapping
-  (u/for-map [[k v] search-model-mappings] [v k]))
+(def ^:private search->entity
+  (u/for-map [[k v] entity->search] [v k]))
 
 (defn entity-type->search-model
-  "Translate a Metabot entity-type (string like \"model\" or keyword like `:model`) to the search-engine
-  `model` string stored in the pgvector index.
-  Types that match between the two conventions (`table`, `metric`, `dashboard`, …) are returned
-  unchanged."
+  "Metabot entity-type (string or keyword) → search `model` string.
+   Unknown types yield themselves, even if they're not actual entity types."
   [entity-type]
   (let [s (if (keyword? entity-type) (name entity-type) (str entity-type))]
-    (get search-model-mappings s s)))
+    (get entity->search s s)))
 
 (defn search-model->entity-type
-  "Inverse of [[entity-type->search-model]]: translate a search-engine `model` string back to the
-  Metabot entity-type string."
+  "Inverse of [[entity-type->search-model]]."
   [search-model]
-  (get search-model->entity-type-mapping search-model search-model))
+  (get search->entity search-model search-model))

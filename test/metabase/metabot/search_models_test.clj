@@ -6,7 +6,7 @@
    [metabase.search.spec :as search.spec]))
 
 (deftest ^:parallel mappings-stay-in-sync-with-search-spec-test
-  (let [mappings      sm/search-model-mappings
+  (let [mappings      @#'sm/entity->search
         metabot-names (set (keys mappings))
         search-models (set search.spec/search-models)]
     (testing "translated values are valid search-model names"
