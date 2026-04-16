@@ -555,3 +555,46 @@
           dupes  (filter #(= :duplicate-column (:type %)) errors)]
       (is (= [{:type :duplicate-column :name "TOTAL"}] dupes)
           (str "Expected one :duplicate-column error, got: " (pr-str dupes))))))
+
+;;; ===========================================================================
+;;; Derived-table / CTE column resolution
+;;;
+;;; Columns defined in inline derived tables (subqueries in FROM) or by
+;;; window functions in CTEs must resolve correctly when the outer SELECT
+;;; aliases them to a different name. A mutation bug in sql_tools.py's
+;;; _find_returned_fields caused the source column's alias to be overwritten
+;;; with the outer alias, breaking resolution for later references to the
+;;; same column.
+;;; ===========================================================================
+
+(deftest ^:parallel derived-table-column-with-alias-test
+  (testing "column from derived table resolves when aliased to a different name"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (validates? mp driver 4 #{})
+      (testing "simple derived table"
+        (is (empty? (deps.native-validation/validate-native-query driver
+                                                                  (fake-query mp "SELECT datum AS b FROM (SELECT 1 AS datum) DQ")))))
+      (testing "multiple references to derived-table column with different aliases"
+        (is (empty? (deps.native-validation/validate-native-query driver
+                                                                  (fake-query mp "SELECT datum AS b, datum - 1 AS d FROM (SELECT 1 AS datum) DQ")))))
+      (testing "derived table from GENERATE_SERIES with expressions"
+        (is (empty? (deps.native-validation/validate-native-query driver
+                                                                  (fake-query mp
+                                                                              "SELECT TO_CHAR(datum, 'yyyymmdd') AS a, datum AS b, datum + 1 AS c
+                         FROM (SELECT SEQUENCE.DAY AS datum
+                               FROM GENERATE_SERIES(0, 100) AS SEQUENCE (DAY)
+                               GROUP BY SEQUENCE.DAY) DQ"))))))))
+
+(deftest ^:parallel cte-window-function-column-test
+  (testing "column defined by window function in CTE resolves in outer query"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (empty? (deps.native-validation/validate-native-query driver
+                                                                (fake-query mp
+                                                                            "WITH ranked AS (
+                         SELECT ID, TOTAL,
+                                LAG(TOTAL) OVER (ORDER BY ID) AS prev_total
+                         FROM ORDERS)
+                       SELECT prev_total AS source, TOTAL AS target
+                       FROM ranked")))))))
