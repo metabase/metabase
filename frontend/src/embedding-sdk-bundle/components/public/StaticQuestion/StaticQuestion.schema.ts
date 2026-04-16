@@ -10,8 +10,9 @@ const propsSchema: Yup.SchemaOf<StaticQuestionProps> = Yup.object({
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
   hiddenParameters: Yup.mixed().optional(),
-  questionId: Yup.mixed().when("token", {
-    is: (token: unknown) => token !== undefined,
+  questionId: Yup.mixed().when(["token", "query"], {
+    is: (token: unknown, query: unknown) =>
+      token !== undefined || query !== undefined,
     then: (schema) => schema.optional(),
     otherwise: (schema) => schema.required(),
   }),

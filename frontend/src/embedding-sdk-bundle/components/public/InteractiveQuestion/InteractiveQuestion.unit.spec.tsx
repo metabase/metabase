@@ -6,7 +6,9 @@ import {
 } from "__support__/enterprise";
 import {
   findRequests,
+  setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
+  setupCardDataset,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -31,6 +33,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
@@ -38,6 +41,7 @@ import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { reinitialize } from "metabase/plugins";
 import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
+import { utf8_to_b64url } from "metabase/utils/encoding";
 import type { CardId, CollectionType, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -636,5 +640,51 @@ describe('questionId: "new"', () => {
     ).not.toBeInTheDocument();
     expect(withinPopover.getByText("Raw Data")).toBeVisible();
     expect(withinPopover.getByText("Models")).toBeVisible();
+  });
+});
+
+describe("InteractiveQuestion — query prop", () => {
+  const QUERY_PROP = utf8_to_b64url(
+    JSON.stringify({
+      database: TEST_DB_ID,
+      type: "query",
+      query: { "source-table": TEST_TABLE_ID },
+    }),
+  );
+
+  async function setup() {
+    const { state } = setupSdkState();
+
+    setupNotificationChannelsEndpoints({ email: { configured: false } } as any);
+    setupAdhocQueryMetadataEndpoint(
+      createMockCardQueryMetadata({ databases: [TEST_DB] }),
+    );
+    setupCardDataset({ dataset: TEST_DATASET });
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: 1 })],
+    });
+
+    renderWithSDKProviders(<InteractiveQuestion query={QUERY_PROP} />, {
+      componentProviderProps: { authConfig: createMockSdkConfig() },
+      storeInitialState: state,
+    });
+
+    await waitForLoaderToBeRemoved();
+  }
+
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("should render a visualization when given a valid query base64 string", async () => {
+    await setup();
+    expect(screen.getByTestId("query-visualization-root")).toBeVisible();
+  });
+
+  it("should reject schema if none of questionId, token, or query is provided", () => {
+    const { validateParameters } = validateFunctionSchema(
+      InteractiveQuestion.schema,
+    );
+    expect(validateParameters([{}]).success).toBe(false);
   });
 });

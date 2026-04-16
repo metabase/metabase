@@ -31,7 +31,12 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
   })
     .optional()
     .noUnknown(),
-  questionId: Yup.mixed().required(),
+  questionId: Yup.mixed().when(["token", "query"], {
+    is: (token: unknown, query: unknown) =>
+      token !== undefined || query !== undefined,
+    then: (schema) => schema.optional(),
+    otherwise: (schema) => schema.required(),
+  }),
   token: Yup.mixed().optional(),
   query: Yup.mixed().optional(),
   style: Yup.mixed().optional(),

@@ -1,4 +1,5 @@
 import {
+  deserializeCardFromQuery,
   deserializeCardFromUrl,
   serializeCardForUrl,
 } from "metabase/utils/card";
@@ -8,10 +9,21 @@ import {
   utf8_to_b64,
   utf8_to_b64url,
 } from "metabase/utils/encoding";
+import type { Card, UnsavedCard } from "metabase-types/api";
 
 const CARD_ID = 31;
 
 // TODO Atte Keinänen 8/5/17: Create a reusable version `getCard` for reducing test code duplication
+interface GetCardOpts {
+  newCard?: boolean;
+  hasOriginalCard?: boolean;
+  isNative?: boolean;
+  database?: number;
+  display?: string;
+  queryFields?: Record<string, unknown>;
+  table?: number;
+}
+
 const getCard = ({
   newCard = false,
   hasOriginalCard = false,
@@ -20,7 +32,7 @@ const getCard = ({
   display = "table",
   queryFields = {},
   table = undefined,
-}) => {
+}: GetCardOpts = {}): Card | UnsavedCard => {
   const savedCardFields = {
     name: "Example Saved Question",
     description: "For satisfying your craving for information",
@@ -51,7 +63,7 @@ const getCard = ({
     },
     ...(newCard ? {} : savedCardFields),
     ...(hasOriginalCard ? { original_card_id: CARD_ID } : {}),
-  };
+  } as Card | UnsavedCard;
 };
 
 describe("lib/card", () => {
@@ -90,6 +102,48 @@ describe("lib/card", () => {
         "original_card_id",
         CARD_ID,
       );
+    });
+  });
+
+  describe("deserializeCardFromQuery", () => {
+    const MBQL_QUERY = {
+      database: 1,
+      type: "query",
+      query: { "source-table": 2 },
+    };
+    const RAW_B64 = utf8_to_b64url(JSON.stringify(MBQL_QUERY));
+    const WRAPPED_B64 = utf8_to_b64url(
+      JSON.stringify({ dataset_query: MBQL_QUERY }),
+    );
+
+    it("should wrap a raw pMBQL query in { dataset_query: ... }", () => {
+      expect(deserializeCardFromQuery(RAW_B64)).toEqual({
+        dataset_query: MBQL_QUERY,
+      });
+    });
+
+    it("should strip /question# prefix and wrap the payload", () => {
+      expect(deserializeCardFromQuery(`/question#${RAW_B64}`)).toEqual({
+        dataset_query: MBQL_QUERY,
+      });
+    });
+
+    it("should strip question# prefix (no leading slash) and wrap the payload", () => {
+      expect(deserializeCardFromQuery(`question#${RAW_B64}`)).toEqual({
+        dataset_query: MBQL_QUERY,
+      });
+    });
+
+    it("should strip # prefix and wrap the payload", () => {
+      expect(deserializeCardFromQuery(`#${RAW_B64}`)).toEqual({
+        dataset_query: MBQL_QUERY,
+      });
+    });
+
+    it("should return a payload already containing dataset_query as-is", () => {
+      expect(deserializeCardFromQuery(WRAPPED_B64)).toEqual({
+        dataset_query: MBQL_QUERY,
+      });
     });
   });
 });
