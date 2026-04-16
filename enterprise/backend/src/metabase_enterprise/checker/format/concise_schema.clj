@@ -20,9 +20,9 @@
 
    This replaces the 500k-file serdes directory tree."
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
-   [metabase-enterprise.checker.source :as source])
+   [metabase-enterprise.checker.source :as source]
+   [metabase.util.json :as json])
   (:import
    (java.io File)))
 
@@ -40,7 +40,7 @@
       :tables    {[db-name schema table-name] table-data}
       :fields    {[db-name schema table-name field-name] field-data}}"
   [^File f]
-  (let [parsed     (json/parse-string (slurp f) true)
+  (let [parsed     (json/decode (io/input-stream f) true)
         databases  (:databases parsed)
         tables     (:tables parsed)
         fields     (:fields parsed)
