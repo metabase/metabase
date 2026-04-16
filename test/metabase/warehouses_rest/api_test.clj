@@ -755,19 +755,25 @@
                    :model/Table    {t-id :id}     {:db_id db-id :name "my_table" :schema "PUBLIC"
                                                    :description "A test table"}
                    :model/Field    {f1-id :id}    {:table_id t-id :name "id" :base_type :type/Integer
-                                                   :database_type "BIGINT"}
+                                                   :database_type "BIGINT"
+                                                   :semantic_type :type/PK}
                    :model/Field    {f2-id :id}    {:table_id t-id :name "created_at" :base_type :type/Text
                                                    :database_type "TIMESTAMP"
                                                    :effective_type :type/DateTime
                                                    :semantic_type :type/Name
                                                    :coercion_strategy :Coercion/ISO8601->DateTime
-                                                   :description "The creation time"}]
+                                                   :description "The creation time"}
+                   :model/Field    {f3-id :id}    {:table_id t-id :name "parent_id" :base_type :type/Integer
+                                                   :database_type "BIGINT"
+                                                   :semantic_type :type/FK
+                                                   :fk_target_field_id f1-id}]
       (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
         (is (=? {:id db-id :name "test-db" :engine "h2"}
                 (m/find-first (comp #{db-id} :id) databases)))
         (is (=? {:id t-id :db_id db-id :name "my_table" :schema "PUBLIC" :description "A test table"}
                 (m/find-first (comp #{t-id} :id) tables)))
-        (is (=? {:id f1-id :table_id t-id :name "id" :base_type "type/Integer" :database_type "BIGINT"}
+        (is (=? {:id f1-id :table_id t-id :name "id" :base_type "type/Integer" :database_type "BIGINT"
+                 :semantic_type "type/PK"}
                 (m/find-first (comp #{f1-id} :id) fields)))
         (is (=? {:id                f2-id
                  :table_id          t-id
@@ -778,7 +784,15 @@
                  :semantic_type     "type/Name"
                  :coercion_strategy "Coercion/ISO8601->DateTime"
                  :description       "The creation time"}
-                (m/find-first (comp #{f2-id} :id) fields)))))))
+                (m/find-first (comp #{f2-id} :id) fields)))
+        (is (=? {:id                 f3-id
+                 :table_id           t-id
+                 :name               "parent_id"
+                 :base_type          "type/Integer"
+                 :database_type      "BIGINT"
+                 :semantic_type      "type/FK"
+                 :fk_target_field_id f1-id}
+                (m/find-first (comp #{f3-id} :id) fields)))))))
 
 (deftest databases-metadata-no-perms-test
   (testing "GET /api/database/metadata — user without data perms sees nothing"
