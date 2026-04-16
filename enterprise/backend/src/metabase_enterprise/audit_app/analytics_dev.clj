@@ -14,8 +14,8 @@
    [clojure.walk :as walk]
    [metabase-enterprise.audit-app.audit :as audit-ee]
    [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
+   [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.core :as serialization]
-   [metabase-enterprise.serialization.v2.storage.files :as v2.storage.files]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.models.serialization :as serdes]
@@ -205,10 +205,11 @@
         temp-path (.toFile temp-dir)]
     (log/info "Exporting dev collection" collection-id "to" temp-path)
     (try
-      (let [opts   {:targets (serialization/make-targets-of-type "Collection" [collection-id])
-                    :no-settings true :no-transforms true}
-            writer (v2.storage.files/file-writer (.getPath temp-path))
-            report (serdes/with-cache (serialization/store! (serialization/extract opts) writer))]
+      (let [report (serialization.cmd/v2-dump-internal!
+                    (.getPath temp-path)
+                    {:collection-ids [collection-id]
+                     :no-settings    true
+                     :no-transforms  true})]
         (log/info "Export complete:" (count (:seen report)) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (:errors report)))

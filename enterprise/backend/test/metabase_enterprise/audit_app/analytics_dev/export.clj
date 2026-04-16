@@ -9,11 +9,9 @@
   from synced schemas or re-computed result metadata."
   (:require
    [metabase-enterprise.audit-app.analytics-dev :as analytics-dev]
-   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.data-source :as mdb.data-source]
-   [metabase.audit-app.settings :as audit-settings]
-   [metabase.query-processor :as qp]
+   [metabase.audit-app.core :as audit]
+   [metabase.query-processor.core :as qp]
    [metabase.sync.core :as sync]
    [metabase.test.embedded-postgres.core :as emb-pg]
    [metabase.util.log :as log]
@@ -34,10 +32,13 @@
    :is_active    true})
 
 (defn- fresh-app-db
-  [jdbc-url]
-  (mdb.connection/application-db
+  [port]
+  (mdb/application-db
    :postgres
-   (mdb.data-source/raw-connection-string->DataSource jdbc-url)
+   (mdb/broken-out-details->DataSource :postgres {:host "localhost"
+                                                  :port port
+                                                  :db   "postgres"
+                                                  :user "postgres"})
    :create-pool? true))
 
 (defn- seed-superuser! []
@@ -45,7 +46,7 @@
       (t2/insert-returning-instance! :model/User seed-user)))
 
 (defn- run-export! [target-dir]
-  (audit-settings/analytics-dev-mode! true)
+  (audit/analytics-dev-mode! true)
   (let [user (seed-superuser!)]
     (with-redefs [sync/sync-database! (fn [& _args]
                                         (throw (ex-info "Sync invocation during analytics-dev export"
@@ -69,7 +70,7 @@
   ([target-dir]
    (log/info "Analytics-dev export starting; target-dir=" target-dir)
    (emb-pg/with-system [system {::emb-pg/db-server {}}]
-     (let [{::emb-pg/keys [jdbc-url]} (::emb-pg/db-server system)]
-       (binding [mdb.connection/*application-db* (fresh-app-db jdbc-url)]
+     (let [{::emb-pg/keys [port]} (::emb-pg/db-server system)]
+       (mdb/with-application-db (fresh-app-db port)
          (mdb/setup-db! :create-sample-content? false)
          (run-export! target-dir))))))
