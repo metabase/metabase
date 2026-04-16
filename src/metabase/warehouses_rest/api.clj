@@ -566,11 +566,12 @@
 
 (defn- format-field-metadata
   "Formats a Field record for the /metadata endpoint response. Includes effective_type only when it differs from base_type."
-  [{:keys [id table_id parent_id name description base_type effective_type semantic_type coercion_strategy]}]
+  [{:keys [id table_id parent_id name description base_type database_type effective_type semantic_type coercion_strategy]}]
   (m/assoc-some {:id id :table_id table_id :name name}
                 :parent_id parent_id
                 :description description
                 :base_type base_type
+                :database_type database_type
                 :effective_type (when (and effective_type (not= base_type effective_type)) effective_type)
                 :semantic_type semantic_type
                 :coercion_strategy coercion_strategy))
@@ -614,7 +615,7 @@
     (.write writer ",\"fields\":")
     (write-json-array! writer
                        (t2/reducible-select [:model/Field :id :table_id :parent_id :name :description
-                                             :base_type :effective_type :semantic_type :coercion_strategy]
+                                             :base_type :database_type :effective_type :semantic_type :coercion_strategy]
                                             {:where f-filter})
                        format-field-metadata)
     (.write writer "}")
@@ -639,6 +640,7 @@
                           [:parent_id {:optional true} ::lib.schema.id/field]
                           [:description {:optional true} :string]
                           [:base_type :string]
+                          [:database_type {:optional true} :string]
                           [:effective_type {:optional true} :string]
                           [:semantic_type {:optional true} :string]
                           [:coercion_strategy {:optional true} :string]]]]])
