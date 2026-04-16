@@ -24,7 +24,7 @@ describe("development mode", () => {
   before(() => {
     cy.exec(`mkdir -p ${tmpDir}`);
     cy.log("Build the SDK so we can use the repo-local CLI");
-    cy.exec(`cd "${sdkDir}" && bun run build`, {
+    cy.exec(`cd "${sdkDir}" && bun install && bun run build`, {
       timeout: TIMEOUT,
     });
 
