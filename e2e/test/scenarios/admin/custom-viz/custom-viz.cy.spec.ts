@@ -3,6 +3,7 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/utils/types";
 import type { CustomVizPlugin, Parameter } from "metabase-types/api";
 
 const { H } = cy;
@@ -457,6 +458,68 @@ describe("admin > custom visualizations", () => {
           .findByText(/"demo-viz" visualization is currently unavailable/)
           .should("be.visible");
       });
+
+      it("falls back to the default viz when the bundle endpoint fails, then recovers on revisit", () => {
+        const bundleMatcher = {
+          method: "GET",
+          pathname: "/api/ee/custom-viz-plugin/*/bundle",
+        };
+
+        cy.intercept(bundleMatcher, {
+          statusCode: 503,
+          body: { error: "Bundle not available" },
+        }).as("bundleUnavailable");
+
+        H.createQuestion(
+          {
+            name: "Custom Viz — Bundle Recovery",
+            query: {
+              "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+              aggregation: [["count"]],
+            },
+            display: H.CUSTOM_VIZ_DISPLAY,
+          },
+          { wrapId: true, idAlias: "recoveryCardId", visitQuestion: true },
+        );
+
+        cy.findByTestId("visualization-root")
+          .findByTestId("table-root")
+          .should("be.visible");
+
+        H.undoToastList()
+          .findByText(/visualization is currently unavailable/i)
+          .should("be.visible");
+
+        cy.intercept(bundleMatcher, (req) => req.continue()).as(
+          "bundleRestored",
+        );
+
+        cy.reload();
+
+        H.main()
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
+      });
+    });
+
+    it("falls back to the default viz on a public question (metabase#GDGT-2234)", () => {
+      H.updateSetting("enable-public-sharing", true);
+
+      H.createQuestion(
+        {
+          name: "Public Custom Viz Fallback",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "publicQuestionId" },
+      );
+
+      cy.get<number>("@publicQuestionId").then(H.visitPublicQuestion);
+
+      cy.findByTestId("table-root").should("be.visible");
     });
 
     it("calls onClick when the viz fires a click", () => {
@@ -562,17 +625,14 @@ describe("admin > custom visualizations", () => {
         .should("be.visible");
     });
 
-    // TODO: public dashboard support for custom viz. Tracked by GDGT-2234 subtask.
-    it.skip("renders a custom viz question on a public dashboard", () => {
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    it("falls back to the default viz on a public dashboard (metabase#GDGT-2234)", () => {
+      H.updateSetting("enable-public-sharing", true);
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitPublicDashboard(dashcard.dashboard_id);
+        H.visitPublicDashboard(checkNotNull(dashcard.dashboard_id));
       });
 
-      H.getDashboardCard()
-        .findByText("Custom viz rendered successfully")
-        .should("be.visible");
+      H.getDashboardCard().findByTestId("table-root").should("be.visible");
     });
 
     it("exports the dashboard as a PDF", () => {
