@@ -3179,6 +3179,7 @@
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.init}
+   :friends #{enterprise/semantic-layer}
    :uses #{activity-feed
            analytics
            api
@@ -3195,6 +3196,16 @@
            tracing
            util}
    :model-imports #{:model/Card :model/Collection :model/ModelIndex}}
+
+  enterprise/semantic-layer
+  {:team "Metabot"
+   :api  #{metabase-enterprise.semantic-layer.complexity}
+   :uses #{audit-app
+           collections
+           metabot
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/Card :model/Collection :model/Field :model/Measure :model/Table}}
 
   enterprise/serialization
   {:team "Graphy"
