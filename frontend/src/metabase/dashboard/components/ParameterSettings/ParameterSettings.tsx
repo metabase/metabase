@@ -7,11 +7,11 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { resetParameterMapping } from "metabase/dashboard/actions";
-import {
-  getDashboardParameterSections,
-  getDefaultOptionForParameterSectionMap,
-} from "metabase/parameters/utils/dashboard-options";
+import { ParameterValueWidget } from "metabase/parameters/components/ParameterValueWidget";
+import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
+import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
+import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
+import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   Box,
@@ -41,14 +41,14 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 
-import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
-import { ParameterValueWidget } from "../ParameterValueWidget";
-import { RequiredParamToggle } from "../RequiredParamToggle";
-import { ValuesSourceSettings } from "../ValuesSourceSettings";
+import { resetParameterMapping } from "../../actions";
+import {
+  getDashboardParameterSections,
+  getDefaultOptionForParameterSectionMap,
+} from "../../utils/dashboard-options";
 
 import { MoveParameterMenu } from "./MoveParameterMenu";
 import S from "./ParameterSettings.module.css";
-import { TemporalUnitSettings } from "./TemporalUnitSettings";
 
 export interface ParameterSettingsProps {
   parameter: Parameter;

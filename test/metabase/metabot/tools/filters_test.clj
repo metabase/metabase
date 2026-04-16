@@ -238,7 +238,8 @@
                               :filters []
                               :group-by []}))))
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [model-details (-> (metabot.tools.entity-details/get-table-details {:model-id model-id})
+      (let [model-details (-> (metabot.tools.entity-details/get-table-details {:entity-type :model
+                                                                               :entity-id model-id})
                               :structured-output)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
@@ -656,7 +657,8 @@
                                              :description "Test model for orders"
                                              :type :model}]
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [model-details (-> (metabot.tools.entity-details/get-table-details {:model-id model-id})
+      (let [model-details (-> (metabot.tools.entity-details/get-table-details {:entity-type :model
+                                                                               :entity-id model-id})
                               :structured-output)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
