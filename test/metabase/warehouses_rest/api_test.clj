@@ -780,6 +780,16 @@
                  :description       "The creation time"}
                 (m/find-first (comp #{f2-id} :id) fields)))))))
 
+(deftest databases-metadata-no-perms-test
+  (testing "GET /api/database/metadata — user without data perms sees nothing"
+    (mt/with-temp [:model/Database {db-id :id} {:name "test-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "my_table" :schema "PUBLIC"}
+                   :model/Field    _           {:table_id t-id :name "id" :base_type :type/Integer
+                                                :database_type "BIGINT"}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= {:databases [] :tables [] :fields []}
+               (mt/user-http-request :rasta :get 202 "database/metadata")))))))
+
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (db-details) :details :write_data_details :router_user_attribute)
