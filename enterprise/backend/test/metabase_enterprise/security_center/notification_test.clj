@@ -29,6 +29,7 @@
           :updated_at        #t "2026-03-24T00:00:00Z"}
          overrides))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro ^:private with-send-redef
   "Redef send-notification!, email-configured?, and publish-event! to intercept notification sends."
   [send-fn & body]
