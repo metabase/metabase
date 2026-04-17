@@ -22,11 +22,12 @@
   [message-id]
   (str/replace message-id #"\{\s*(\d+)\s*\}" "\\${ $1 }"))
 
-(defn- ->translations-map [messages]
+(defn- ->translations-map [messages drop-msgids]
   {"" (into {}
             (comp
              ;; filter out i18n messages that aren't used on the FE client
              (filter frontend-message?)
+             (remove (fn [{:keys [id]}] (contains? drop-msgids id)))
              i18n/print-message-count-xform
              (map (fn [message]
                     [(->ttag-reference (:id message))
@@ -38,14 +39,14 @@
 
 (defn- ->i18n-map
   "Convert the contents of a `.po` file to map format used in the frontend client."
-  [po-contents]
+  [po-contents drop-msgids]
   {:charset      "utf-8"
    :headers      (into {} (for [[k v] (:headers po-contents)]
                             [(str/lower-case k) v]))
-   :translations (->translations-map (:messages po-contents))})
+   :translations (->translations-map (:messages po-contents) drop-msgids)})
 
-(defn- i18n-map [locale]
-  (->i18n-map (i18n/po-contents locale)))
+(defn- i18n-map [locale drop-msgids]
+  (->i18n-map (i18n/po-contents locale) drop-msgids))
 
 (def target-directory
   "Target directory for frontend i18n resources."
@@ -55,8 +56,9 @@
   (u/filename target-directory (format "%s.json" (str/replace locale #"-" "_"))))
 
 (defn create-artifact-for-locale!
-  "Create an artifact with translated strings for `locale` for frontend (JS) usage."
-  [locale]
+  "Create an artifact with translated strings for `locale` for frontend (JS) usage. `drop-msgids`
+  is a set of English source strings to exclude (their translations had violations)."
+  [locale drop-msgids]
   (let [target-file (target-filename locale)]
     (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
       (u/create-directory-unless-exists! target-directory)
@@ -64,5 +66,5 @@
       (u/step "Write JSON"
         (with-open [os (FileOutputStream. (io/file target-file))
                     w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-          (json/generate-stream (i18n-map locale) w)))
+          (json/generate-stream (i18n-map locale drop-msgids) w)))
       (u/assert-file-exists target-file))))
