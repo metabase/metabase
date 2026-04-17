@@ -9,8 +9,11 @@ const SIDEBAR_HIDDEN_PATHS = new Set([
   "/admin/embedding/setup-guide/sso",
 ]);
 
+// routes in this array won't render the embedding sidebar
 const SIDEBAR_HIDDEN_PATH_PREFIXES = ["/admin/embedding/themes/"];
-const FULL_WIDTH_PATH_PREFIXES = ["/admin/embedding/themes/"];
+
+// routes in this array will take the full width _of the main content area_
+const FULL_CONTENT_WIDTH_PATH_PREFIXES = ["/admin/embedding/themes/"];
 
 export const AdminEmbeddingApp = ({
   location,
@@ -25,7 +28,7 @@ export const AdminEmbeddingApp = ({
       location.pathname.startsWith(prefix),
     );
 
-  const isFullWidth = FULL_WIDTH_PATH_PREFIXES.some((prefix) =>
+  const isFullWidth = FULL_CONTENT_WIDTH_PATH_PREFIXES.some((prefix) =>
     location.pathname.startsWith(prefix),
   );
 
