@@ -16,6 +16,7 @@
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
+   [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -39,21 +40,13 @@
   scorer's `library-collection` + `descendant-ids` pair instead of relying on each descendant
   carrying a library-flavoured `:type`, which only holds for the two seed children."
   [collections]
-  (if-let [{root-id :id} (some #(when (= collections/library-collection-type (:type %)) %)
-                               collections)]
+  (if-let [{root-id :id} (u/seek #(= collections/library-collection-type (:type %)) collections)]
     (let [prefix (str "/" root-id "/")]
       (into #{root-id}
             (keep (fn [{:keys [id location]}]
                     (when (and location (str/starts-with? location prefix)) id)))
             collections))
     #{}))
-
-(defn- by-table-id
-  "Group a seq of rows keyed by `:table_id` into `{table-id [row ...]}`."
-  [rows]
-  (reduce (fn [acc row] (update acc (:table_id row) (fnil conj []) row))
-          {}
-          rows))
 
 (defn- ->table-entity [fields-by-table measures-by-table {:keys [id name] :as _table}]
   {:id            id
@@ -83,8 +76,8 @@
         cards             (read-section dir "cards"       kw)
         measures          (read-section dir "measures"    kw)
         embeddings        (read-section dir "embeddings"  str-keyed)
-        fields-by-table   (by-table-id fields)
-        meas-by-table     (by-table-id measures)
+        fields-by-table   (group-by :table_id fields)
+        meas-by-table     (group-by :table_id measures)
         lib-coll-ids      (library-collection-ids collections)
         ;; Audit-db filtering only mirrors the live `:universe` path. The live `library-entities`
         ;; doesn't exclude audit content, so neither do we — Library scope is collection-driven.
