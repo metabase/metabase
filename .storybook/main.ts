@@ -20,7 +20,14 @@ const stories = process.env.STORYBOOK_STORIES_FILTER
 
 const config: StorybookConfig = {
   stories,
-  staticDirs: ["../resources/frontend_client", "./msw-public"],
+  staticDirs: [
+    "../resources/frontend_client",
+    "./msw-public",
+    {
+      from: "../frontend/test/__support__/custom-viz-fixtures/calendar-heatmap",
+      to: "/custom-viz-fixtures/calendar-heatmap",
+    },
+  ],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-essentials",
