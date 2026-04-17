@@ -5,8 +5,7 @@
   24)
 
 (def default-card-size
-  "Fallback card size used when a visualization type has no entry in `card-size-defaults`
-  (e.g. custom viz plugins). Exposed to the FE via `DEFAULT_CARD_SIZE_JSON`."
+  "Fallback card size used when a visualization type has no entry in `card-size-defaults`"
   {:width 4 :height 4})
 
 (def card-size-defaults
