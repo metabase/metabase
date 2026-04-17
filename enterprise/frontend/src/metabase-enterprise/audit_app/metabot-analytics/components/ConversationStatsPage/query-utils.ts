@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
@@ -100,11 +101,19 @@ export function applyUsageStatsAggregation(
  */
 export function getChartTitle(
   metric: UsageStatsMetric,
-  dimension: "day" | "user" | "group" | "profile" | "source" | "ip_address",
+  dimension:
+    | "day"
+    | "hour"
+    | "user"
+    | "group"
+    | "profile"
+    | "source"
+    | "ip_address",
 ): string {
   const titles = {
     conversations: {
       day: t`Conversations by day`,
+      hour: t`Conversations by hour`,
       user: t`Users with most conversations`,
       group: t`Groups with most conversations`,
       profile: t`Conversations by profile`,
@@ -113,6 +122,7 @@ export function getChartTitle(
     },
     messages: {
       day: t`Messages by day`,
+      hour: t`Messages by hour`,
       user: t`Users with most messages`,
       group: t`Groups with most messages`,
       profile: t`Messages by profile`,
@@ -121,6 +131,7 @@ export function getChartTitle(
     },
     tokens: {
       day: t`Tokens by day`,
+      hour: t`Tokens by hour`,
       user: t`Users with most tokens`,
       group: t`Groups with most tokens`,
       profile: t`Tokens by profile`,
@@ -129,6 +140,22 @@ export function getChartTitle(
     },
   };
   return titles[metric][dimension];
+}
+
+export function isSingleDayFilter(dateFilter: DateFilterValue): boolean {
+  if (dateFilter.type === "relative") {
+    return dateFilter.unit === "day" && Math.abs(dateFilter.value) <= 1;
+  }
+  if (dateFilter.type === "specific" && !dateFilter.hasTime) {
+    const { operator, values } = dateFilter;
+    if (operator === "=") {
+      return true;
+    }
+    if (operator === "between") {
+      return dayjs(values[0]).isSame(values[1], "day");
+    }
+  }
+  return false;
 }
 
 /**

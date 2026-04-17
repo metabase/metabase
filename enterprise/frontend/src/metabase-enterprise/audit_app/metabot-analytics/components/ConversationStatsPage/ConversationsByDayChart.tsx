@@ -17,6 +17,7 @@ import {
   applyUsageStatsAggregation,
   findColumn,
   getChartTitle,
+  isSingleDayFilter,
 } from "./query-utils";
 
 type Props = {
@@ -36,6 +37,8 @@ export function ConversationsByDayChart({
 }: Props) {
   const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
 
+  const bucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
+
   const query = useMemo(() => {
     if (!provider || !table) {
       return null;
@@ -49,18 +52,18 @@ export function ConversationsByDayChart({
     const createdAtCol = findColumn(q, "created_at", Lib.breakoutableColumns);
     if (createdAtCol) {
       const buckets = Lib.availableTemporalBuckets(q, 0, createdAtCol);
-      const dayBucket = buckets.find((bucket) => {
+      const matchedBucket = buckets.find((bucket) => {
         const info = Lib.displayInfo(q, 0, bucket);
-        return info.shortName === "day";
+        return info.shortName === bucketName;
       });
-      const bucketed = dayBucket
-        ? Lib.withTemporalBucket(createdAtCol, dayBucket)
+      const bucketed = matchedBucket
+        ? Lib.withTemporalBucket(createdAtCol, matchedBucket)
         : createdAtCol;
       q = Lib.breakout(q, 0, bucketed);
     }
 
     return q;
-  }, [provider, table, dateFilter, metric]);
+  }, [provider, table, dateFilter, metric, bucketName]);
 
   const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
 
@@ -76,11 +79,12 @@ export function ConversationsByDayChart({
       {
         card: createMockCard({
           dataset_query: jsQuery as any,
-          display: "line",
+          display: "area",
           visualization_settings: {
             "graph.x_axis.scale": "timeseries",
             "graph.x_axis.title_text": "",
             "graph.y_axis.title_text": "",
+            "line.interpolate": "cardinal",
           },
         }),
         data: data.data,
@@ -95,7 +99,7 @@ export function ConversationsByDayChart({
   return (
     <Card withBorder shadow="none" p="md" h={350}>
       <Text fw="bold" mb="sm">
-        {getChartTitle(metric, "day")}
+        {getChartTitle(metric, bucketName)}
       </Text>
       <Visualization
         rawSeries={rawSeries}
