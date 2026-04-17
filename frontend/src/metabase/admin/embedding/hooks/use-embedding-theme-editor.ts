@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import { isEqual } from "underscore";
 
 import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
 import {
@@ -63,7 +64,7 @@ export function useEmbeddingThemeEditor(themeId: number) {
   );
 
   const isDirty = useMemo(
-    () => JSON.stringify(serverThemeState) !== JSON.stringify(currentTheme),
+    () => !isEqual(serverThemeState, currentTheme),
     [serverThemeState, currentTheme],
   );
 
@@ -81,7 +82,7 @@ export function useEmbeddingThemeEditor(themeId: number) {
           ...prev,
           settings: {
             ...prev.settings,
-            colors: { ...prev.settings.colors, [key]: value },
+            colors: { ...prev.settings.colors, [key]: value.toLowerCase() },
           },
         };
       });
@@ -95,7 +96,7 @@ export function useEmbeddingThemeEditor(themeId: number) {
         return prev;
       }
       const charts = [...(prev.settings.colors?.charts ?? [])];
-      charts[index] = value;
+      charts[index] = value.toLowerCase();
       return {
         ...prev,
         settings: {
@@ -159,10 +160,7 @@ export function useEmbeddingThemeEditor(themeId: number) {
       }
     }
 
-    return (
-      JSON.stringify(colors.charts ?? []) !==
-      JSON.stringify(defaultColors.charts ?? [])
-    );
+    return !isEqual(colors.charts ?? [], defaultColors.charts ?? []);
   }, [currentTheme, defaultThemeSettings]);
 
   const resetAdditionalColors = useCallback(() => {

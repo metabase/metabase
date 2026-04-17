@@ -75,7 +75,7 @@ describe("useEmbeddingThemeEditor", () => {
       result.current.setColor("brand", "#FF0000");
     });
 
-    expect(result.current.currentTheme?.settings.colors?.brand).toBe("#FF0000");
+    expect(result.current.currentTheme?.settings.colors?.brand).toBe("#ff0000");
     expect(result.current.isDirty).toBe(true);
   });
 
