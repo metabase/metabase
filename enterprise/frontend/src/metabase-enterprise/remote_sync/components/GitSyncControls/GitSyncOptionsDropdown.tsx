@@ -1,6 +1,15 @@
 import { t } from "ttag";
 
-import { Box, Combobox, Group, Icon, Loader, Text, Tooltip } from "metabase/ui";
+import {
+  Badge,
+  Box,
+  Combobox,
+  Group,
+  Icon,
+  Loader,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 
 export interface GitSyncOptionsDropdownProps {
   isPullDisabled: boolean;
@@ -74,21 +83,28 @@ export const GitSyncOptionsDropdown = ({
           </Combobox.Option>
         </Tooltip>
 
-        <Combobox.Option
-          disabled={isSwitchBranchDisabled}
-          onClick={onSwitchBranchClick}
-          py="sm"
-          value="switch-branch"
-        >
-          <Group gap="md" wrap="nowrap">
-            <Icon name="git_branch" size={12} />
-            <Text>
-              {isSwitchBranchDisabled
-                ? t`Branch is set by an environment variable`
-                : t`Switch branch`}
-            </Text>
-          </Group>
-        </Combobox.Option>
+        {isSwitchBranchDisabled ? (
+          <Badge
+            color="text-primary"
+            bg="background-secondary"
+            size="md"
+            fz="12px"
+            py="md"
+            style={{ textTransform: "none" }}
+            bdrs="sm"
+          >{t`Branch set by an environment variable`}</Badge>
+        ) : (
+          <Combobox.Option
+            onClick={onSwitchBranchClick}
+            py="sm"
+            value="switch-branch"
+          >
+            <Group gap="md" wrap="nowrap">
+              <Icon name="git_branch" size={12} />
+              <Text>{t`Switch branch`}</Text>
+            </Group>
+          </Combobox.Option>
+        )}
       </Combobox.Options>
     </Combobox.Dropdown>
   );
