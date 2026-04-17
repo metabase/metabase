@@ -103,7 +103,7 @@ export const useInitDataInternal = ({
     };
   }
 
-  // For the React SDK (not in an iframe), send the host page URL as the embed
+  // For the React SDK, send the host page URL as the embed
   // referrer on every request. The EAJS iframe registers its own handler in
   // SdkIframeEmbedRoute.tsx using the value received via postMessage.
   if (
