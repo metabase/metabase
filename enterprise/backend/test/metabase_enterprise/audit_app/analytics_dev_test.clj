@@ -1,7 +1,7 @@
 (ns metabase-enterprise.audit-app.analytics-dev-test
   (:require
    [clojure.set :as set]
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.audit-app.analytics-dev :as analytics-dev]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.app-db.core :as mdb]
@@ -229,5 +229,3 @@
                           extra-in-sync (set/difference synced-fields expected-fields)]
                       (is (empty? missing-from-sync))
                       (is (empty? extra-in-sync)))))))))))))
-
-
