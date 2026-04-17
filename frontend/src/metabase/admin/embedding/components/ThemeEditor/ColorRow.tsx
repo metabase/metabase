@@ -1,5 +1,5 @@
 import { ColorPicker } from "metabase/common/components/ColorPicker";
-import { Flex, Text } from "metabase/ui";
+import { Box, Flex, Text } from "metabase/ui";
 
 interface ColorRowProps {
   label: string;
@@ -9,9 +9,13 @@ interface ColorRowProps {
 
 export function ColorRow({ label, value, onChange }: ColorRowProps) {
   return (
-    <Flex align="center" justify="space-between">
-      <Text fz="sm">{label}</Text>
-      <ColorPicker value={value} onChange={onChange} />
+    <Flex align="center" gap="sm">
+      <Text fz="sm" flex={1}>
+        {label}
+      </Text>
+      <Box w={160}>
+        <ColorPicker value={value} onChange={onChange} />
+      </Box>
     </Flex>
   );
 }
