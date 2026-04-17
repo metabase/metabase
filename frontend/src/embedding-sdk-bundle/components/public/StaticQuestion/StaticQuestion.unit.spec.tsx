@@ -566,9 +566,11 @@ async function findModal() {
 describe("StaticQuestion — query prop", () => {
   const QUERY_PROP = utf8_to_b64url(
     JSON.stringify({
-      database: TEST_DB_ID,
-      type: "query",
-      query: { "source-table": TEST_TABLE_ID },
+      dataset_query: {
+        database: TEST_DB_ID,
+        type: "query",
+        query: { "source-table": TEST_TABLE_ID },
+      },
     }),
   );
 
@@ -579,7 +581,15 @@ describe("StaticQuestion — query prop", () => {
     setupAdhocQueryMetadataEndpoint(
       createMockCardQueryMetadata({ databases: [TEST_DB] }),
     );
-    setupCardDataset({ dataset: TEST_DATASET });
+    // Needs >1 row so Question.maybeResetDisplay doesn't force scalar.
+    setupCardDataset({
+      dataset: createMockDataset({
+        data: createMockDatasetData({
+          cols: [TEST_COLUMN],
+          rows: [["Test Row"], ["Test Row 2"]],
+        }),
+      }),
+    });
     setupCollectionByIdEndpoint({
       collections: [createMockCollection({ id: 1 })],
     });
@@ -606,7 +616,7 @@ describe("StaticQuestion — query prop", () => {
       ),
     ).toBeVisible();
     expect(
-      within(screen.getByRole("gridcell")).getByText("Test Row"),
+      within(screen.getAllByRole("gridcell")[0]).getByText("Test Row"),
     ).toBeVisible();
   });
 });

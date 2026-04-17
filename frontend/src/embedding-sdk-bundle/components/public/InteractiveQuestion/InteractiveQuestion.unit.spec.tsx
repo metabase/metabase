@@ -648,9 +648,11 @@ describe('questionId: "new"', () => {
 describe("InteractiveQuestion — query prop", () => {
   const QUERY_PROP = utf8_to_b64url(
     JSON.stringify({
-      database: TEST_DB_ID,
-      type: "query",
-      query: { "source-table": TEST_TABLE_ID },
+      dataset_query: {
+        database: TEST_DB_ID,
+        type: "query",
+        query: { "source-table": TEST_TABLE_ID },
+      },
     }),
   );
 
@@ -661,7 +663,15 @@ describe("InteractiveQuestion — query prop", () => {
     setupAdhocQueryMetadataEndpoint(
       createMockCardQueryMetadata({ databases: [TEST_DB] }),
     );
-    setupCardDataset({ dataset: TEST_DATASET });
+    // Needs >1 row so Question.maybeResetDisplay doesn't force scalar.
+    setupCardDataset({
+      dataset: createMockDataset({
+        data: createMockDatasetData({
+          cols: [TEST_COLUMN],
+          rows: [["Test Row"], ["Test Row 2"]],
+        }),
+      }),
+    });
     setupCollectionByIdEndpoint({
       collections: [createMockCollection({ id: 1 })],
     });
@@ -685,13 +695,14 @@ describe("InteractiveQuestion — query prop", () => {
     await setup();
 
     expect(screen.getByTestId("query-visualization-root")).toBeVisible();
+    // screen.debug(undefined, Infinity);
     expect(
       within(screen.getByTestId("table-root")).getByText(
         TEST_COLUMN.display_name,
       ),
     ).toBeVisible();
     expect(
-      within(screen.getByRole("gridcell")).getByText("Test Row"),
+      within(screen.getAllByRole("gridcell")[0]).getByText("Test Row"),
     ).toBeVisible();
   });
 });
