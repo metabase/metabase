@@ -4,7 +4,7 @@ databaseChangeLog:
   - logicalFilePath: migrations/061_update_migrations.yaml
 
   - changeSet:
-      id: v61.2026-04-13T00:00:00
+      id: v61.2026-04-01T09:00:00
       author: tyler
       comment: Add ip_address to metabot_conversation for web-originated conversations
       changes:
