@@ -20,6 +20,7 @@ export const GRID_COLUMNS = {
   mobile: 1,
 };
 
+/** @type {{ width: number, height: number }} */
 export const DEFAULT_CARD_SIZE = DEFAULT_CARD_SIZE_JSON;
 
 export const MIN_ROW_HEIGHT = 40;
