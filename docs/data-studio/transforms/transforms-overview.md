@@ -22,12 +22,6 @@ You'll write a query or a Python script in Metabase, a transform will run this q
 - Each execution of a transform is a **run**. A run replaces the target table with fresh results. You can review the history of runs to monitor their success or failure.
 - You can **inspect** a transform to analyze its data flow, join behavior, and column distributions. See [Transform inspector](transform-inspector.md).
 
-## You don't need transforms to use Metabase
-
-Metabase connects directly to your existing databases and runs queries against them in real time. You don't need to move or copy data anywhere.
-
-You can use transforms to pre-compute something expensive (like complex aggregations), join tables together, or otherwise take your raw tables and transform them into new tables that are easier to query. Think of transforms as an optimization tool, not a required ingestion layer for Metabase.
-
 ## Databases that support transforms
 
 Currently, Metabase can create transforms on the following databases:
