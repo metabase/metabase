@@ -108,7 +108,7 @@ export function deserializeCardFromQuery(query: string): Card {
     return decoded as Card;
   }
 
-  return { dataset_query: decoded } as unknown as Card;
+  return { dataset_query: decoded } as Card;
 }
 
 export function deserializeCard(serializedCard: string) {
