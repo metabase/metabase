@@ -623,7 +623,30 @@
                        {:description "Number of frontend analytics events dropped before being POSTed to the backend, because the client-side buffer was full."})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
-                        :labels [:format]})])
+                        :labels [:format]})
+
+   ;; experiment metrics
+   (prometheus/counter :experiment/runs-total
+                       {:description "Number of experiment candidate runs."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/matches-total
+                       {:description "Number of experiment runs where control and candidate matched."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/mismatches-total
+                       {:description "Number of experiment runs where control and candidate differed."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/errors-total
+                       {:description "Number of experiment runs where the candidate threw."
+                        :labels [:experiment]})
+   (prometheus/histogram :experiment/control-duration-ms
+                         {:description "Duration in milliseconds of experiment control code path."
+                          :labels [:experiment]})
+   (prometheus/histogram :experiment/candidate-duration-ms
+                         {:description "Duration in milliseconds of experiment candidate code path."
+                          :labels [:experiment]})
+   (prometheus/histogram :experiment/candidate-error-duration-ms
+                         {:description "Duration in milliseconds of experiment candidate code path when it threw."
+                          :labels [:experiment]})])
 
 (defn- quartz-collectors
   []
