@@ -285,16 +285,16 @@
    [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
    synonym scoring."
   [& {:keys [embedder] :as opts}]
+  ;;; NOTE: we fully materialize a vector off all entities, along with one of those in the library, rather than
+  ;;; returning reducibles. For very large instances that holds a non-trivial slim-entity list in memory
+  ;;; (name, kind, field-count, measure-names — no fat columns like `result_metadata`),
+  ;;; but each catalog is consumed by FIVE sub-score functions that each walk the collection, so making this
+  ;;; reducible would re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory we
+  ;;; currently will currently consume (provided we have that memory).
   (let [embedder (if (contains? opts :embedder)
                    embedder
-                   semantic-search/search-index-embedder)]
-    ;;; NOTE: we fully materialize a vector off all entities, along with one of those in the library, rather than
-    ;;; returning reducibles. For very large instances that holds a non-trivial slim-entity list in memory
-    ;;; (name, kind, field-count, measure-names — no fat columns like `result_metadata`),
-    ;;; but each catalog is consumed by FIVE sub-score functions that each walk the collection, so making this
-    ;;; reducible would re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory we
-    ;;; currently will currently consume (provided we have that memory).
-    (let [result {:library  (score-catalog (library-entities) embedder)
+                   semantic-search/search-index-embedder)
+        result   {:library  (score-catalog (library-entities) embedder)
                   :universe (score-catalog (universe-entities) embedder)
                   :meta     (cond-> {:formula-version   formula-version
                                      :synonym-threshold synonym-similarity-threshold}
@@ -305,11 +305,11 @@
                                     (if-let [model (semantic-search/active-embedding-model)]
                                       (assoc m :embedding-model model)
                                       m)))}]
-      (try
-        (emit-prometheus! result)
-        (catch Throwable t
-          (log/warn t "Failed to publish complexity score to Prometheus")))
-      result)))
+    (try
+      (emit-prometheus! result)
+      (catch Throwable t
+        (log/warn t "Failed to publish complexity score to Prometheus")))
+    result))
 
 (comment
   (complexity-scores))
