@@ -11,18 +11,18 @@
          (let [{:keys [score reason]} (dim/type-penalty {:semantic-type sem-type} nil)]
            (and (= 0.0 score) (re-find (re-pattern reason-substr) reason)))
       :type/PK                "primary key"
-      :type/FK                "foreign key"
       :type/SerializedJSON    "serialized JSON"
       :type/UpdatedTimestamp  "updated timestamp"
       :type/DeletionTimestamp "deletion timestamp"))
 
-  (testing "non-penalized types score 1.0"
+  (testing "non-penalized types score 1.0 (including FK — x-ray templates use FK columns)"
     (are [sem-type]
          (= 1.0 (:score (dim/type-penalty {:semantic-type sem-type} nil)))
       :type/Category
       :type/Name
       :type/CreationTimestamp
       :type/Number
+      :type/FK
       nil))
 
   (testing "nil semantic type scores 1.0"
@@ -38,13 +38,13 @@
   (testing "constant field (1 distinct) scores 0.0"
     (is (= 0.0 (:score (dim/cardinality {:fingerprint {:global {:distinct-count 1}}} nil)))))
 
-  (testing "low cardinality scores high"
+  (testing "low cardinality (10 = top of ramp to sweet spot) scores high"
     (let [score (:score (dim/cardinality {:fingerprint {:global {:distinct-count 10}}} nil))]
-      (is (> score 0.8))))
+      (is (>= score 0.8))))
 
-  (testing "moderate cardinality still scores well"
+  (testing "moderate cardinality (50 = past sweet spot, declining) scores moderately"
     (let [score (:score (dim/cardinality {:fingerprint {:global {:distinct-count 50}}} nil))]
-      (is (> score 0.8))))
+      (is (>= score 0.7))))
 
   (testing "high cardinality scores lower"
     (let [score (:score (dim/cardinality {:fingerprint {:global {:distinct-count 5000}}} nil))]
@@ -76,6 +76,37 @@
   (testing "context is ignored"
     (is (= (:score (dim/nullness {:fingerprint {:global {:nil% 0.3}}} nil))
            (:score (dim/nullness {:fingerprint {:global {:nil% 0.3}}} {:intent :x}))))))
+
+;;; -------------------------------------------------- measure-type-suitability --------------------------------------------------
+
+(deftest ^:parallel measure-type-suitability-test
+  (testing "PK and FK are strongly penalized as measures — aggregating row IDs is meaningless"
+    (is (<= (:score (dim/measure-type-suitability {:base-type :type/Integer :semantic-type :type/PK} nil)) 0.1))
+    (is (<= (:score (dim/measure-type-suitability {:base-type :type/Integer :semantic-type :type/FK} nil)) 0.1)))
+
+  (testing "numeric types score 1.0"
+    (is (= 1.0 (:score (dim/measure-type-suitability {:base-type :type/Integer} nil))))
+    (is (= 1.0 (:score (dim/measure-type-suitability {:base-type :type/Float} nil))))
+    (is (= 1.0 (:score (dim/measure-type-suitability {:base-type :type/Decimal} nil)))))
+
+  (testing "effective-type wins over base-type"
+    (is (= 1.0 (:score (dim/measure-type-suitability
+                        {:base-type :type/Text :effective-type :type/Integer}
+                        nil)))))
+
+  (testing "boolean scores ~0.6 (COUNT and SUM 0/1 work)"
+    (let [s (:score (dim/measure-type-suitability {:base-type :type/Boolean} nil))]
+      (is (> s 0.5))
+      (is (< s 0.8))))
+
+  (testing "text scores low (only COUNT/COUNT DISTINCT)"
+    (is (< (:score (dim/measure-type-suitability {:base-type :type/Text} nil)) 0.5)))
+
+  (testing "temporal scores low (only MIN/MAX)"
+    (is (< (:score (dim/measure-type-suitability {:base-type :type/DateTime} nil)) 0.4)))
+
+  (testing "unknown types score 0.1"
+    (is (= 0.1 (:score (dim/measure-type-suitability {:base-type :type/*} nil))))))
 
 ;;; -------------------------------------------------- type-bonus --------------------------------------------------
 
@@ -201,6 +232,20 @@
                          nil))]
       (is (>= score 0.7))))
 
+  (testing "high email percentage scores low (PII safety net for missed classifier)"
+    (let [result (dim/text-structure
+                  {:fingerprint {:type {:type/Text {:percent-email 0.95}}}}
+                  nil)]
+      (is (<= (:score result) 0.2))
+      (is (re-find #"email" (:reason result)))))
+
+  (testing "high state percentage is flagged (suggests map viz, not breakout)"
+    (let [result (dim/text-structure
+                  {:fingerprint {:type {:type/Text {:percent-state 0.95}}}}
+                  nil)]
+      (is (<= (:score result) 0.4))
+      (is (re-find #"state" (:reason result)))))
+
   (testing "non-text field returns 0.5"
     (is (= 0.5 (:score (dim/text-structure {} nil)))))
 
@@ -211,3 +256,102 @@
            (:score (dim/text-structure
                     {:fingerprint {:type {:type/Text {:percent-json 0.5}}}}
                     {}))))))
+
+;;; -------------------------------------------------- distribution-shape --------------------------------------------------
+
+(deftest ^:parallel distribution-shape-test
+  (testing "no distribution data returns 0.5"
+    (is (= 0.5 (:score (dim/distribution-shape {} nil))))
+    (is (= 0.5 (:score (dim/distribution-shape
+                        {:fingerprint {:type {:type/Number {:avg 10 :sd 2}}}}
+                        nil)))))
+
+  (testing "symmetric low-dominance distribution scores high"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Number {:skewness 0.1 :mode-fraction 0.1}}}}
+                         nil))]
+      (is (>= score 0.9))))
+
+  (testing "heavy skew penalizes score"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Number {:skewness 3.0 :mode-fraction 0.1}}}}
+                         nil))]
+      (is (<= score 0.5))))
+
+  (testing "high mode-dominance scores very low"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Text {:mode-fraction 0.97}}}}
+                         nil))]
+      (is (<= score 0.1))))
+
+  (testing "80% dominance scores low but not critical"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Text {:mode-fraction 0.85}}}}
+                         nil))]
+      (is (>= score 0.15))
+      (is (<= score 0.3))))
+
+  (testing "combined signals: worst-of-two wins"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Number {:skewness 0.1 :mode-fraction 0.95}}}}
+                         nil))]
+      (is (<= score 0.1))))
+
+  (testing "works on text fields via type/Text fingerprint"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Text {:mode-fraction 0.3}}}}
+                         nil))]
+      (is (>= score 0.9))))
+
+  (testing "context is ignored"
+    (is (= (:score (dim/distribution-shape
+                    {:fingerprint {:type {:type/Text {:mode-fraction 0.5}}}}
+                    nil))
+           (:score (dim/distribution-shape
+                    {:fingerprint {:type {:type/Text {:mode-fraction 0.5}}}}
+                    {:intent :x})))))
+
+  (testing "extreme excess kurtosis penalizes score"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Number {:excess-kurtosis 20.0}}}}
+                         nil))]
+      (is (<= score 0.2))))
+
+  (testing "near-normal kurtosis scores high"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Number {:excess-kurtosis 0.2}}}}
+                         nil))]
+      (is (>= score 0.9))))
+
+  (testing "high top-3-fraction penalizes score"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Text {:mode-fraction 0.4 :top-3-fraction 0.995}}}}
+                         nil))]
+      (is (<= score 0.15))))
+
+  (testing "high zero-fraction (numeric) penalizes score"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/Number {:zero-fraction 0.96}}}}
+                         nil))]
+      (is (<= score 0.1))))
+
+  (testing "temporal mode-fraction penalizes dumping-ground timestamps"
+    (let [score (:score (dim/distribution-shape
+                         {:fingerprint {:type {:type/DateTime {:mode-fraction 0.95}}}}
+                         nil))]
+      (is (<= score 0.1)))))
+
+;;; -------------------------------------------------- text-structure blank% --------------------------------------------------
+
+(deftest ^:parallel text-structure-blank-test
+  (testing "mostly-blank text scores very low"
+    (let [score (:score (dim/text-structure
+                         {:fingerprint {:type {:type/Text {:blank% 0.9}}}}
+                         nil))]
+      (is (<= score 0.15))))
+
+  (testing "low blank% doesn't trigger the penalty"
+    (let [score (:score (dim/text-structure
+                         {:fingerprint {:type {:type/Text {:blank% 0.1 :average-length 10}}}}
+                         nil))]
+      (is (>= score 0.7)))))

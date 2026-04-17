@@ -25,15 +25,41 @@
       (is (= 1 (count (get-in result ["GenericNumber" :matches]))))
       (is (= "AMOUNT" (-> result (get "GenericNumber") :matches first :name)))))
 
-  (testing "FK fields are filtered out"
+  (testing "FK fields are kept — x-ray templates break out by the referenced entity"
     (let [dims {"GenericNumber" {:field_type [:type/Number]
                                  :score 60
                                  :matches [{:id 3 :name "USER_ID" :base_type :type/Integer
                                             :semantic_type :type/FK
                                             :fingerprint {:global {:distinct-count 5000 :nil% 0.0}}}]}}
           result (#'interesting/score-and-filter-matches dims)]
-      (testing "dimension entry is removed when all matches are filtered"
-        (is (empty? result)))))
+      (is (= 1 (count (get-in result ["GenericNumber" :matches]))))
+      (is (= "USER_ID" (-> result (get "GenericNumber") :matches first :name)))))
+
+  (testing "Dimensions fall back to exactly one match when every candidate fails the threshold"
+    ;; Three candidates, all hitting hard-zero clamps via different scorers:
+    ;;   - CONSTANT_COL: distinct-count 1 (cardinality hard-zero)
+    ;;   - PK_COL:       :type/PK (type-penalty hard-zero)
+    ;;   - ZERO_VAR_COL: zero standard deviation (numeric-variance hard-zero)
+    ;; None clear the 0.2 threshold, yet the dimension should still be preserved
+    ;; with exactly one fallback match (whichever has the highest raw composite score).
+    (let [dims {"GenericNumber"
+                {:field_type [:type/Number]
+                 :score 60
+                 :matches [{:id 5 :name "CONSTANT_COL" :base_type :type/Integer
+                            :fingerprint {:global {:distinct-count 1 :nil% 0.0}}}
+                           {:id 6 :name "PK_COL" :base_type :type/Integer
+                            :semantic_type :type/PK
+                            :fingerprint {:global {:distinct-count 5000 :nil% 0.0}}}
+                           {:id 7 :name "ZERO_VAR_COL" :base_type :type/Integer
+                            :fingerprint {:global {:distinct-count 3 :nil% 0.0}
+                                          :type   {:type/Number {:sd 0 :avg 10 :min 10 :max 10}}}}]}}
+          result (#'interesting/score-and-filter-matches dims)]
+      (testing "dimension is preserved rather than dropped"
+        (is (some? (get result "GenericNumber"))))
+      (testing "exactly one match is kept (not all three, not zero)"
+        (is (= 1 (count (get-in result ["GenericNumber" :matches])))))
+      (testing "the kept match carries an :interestingness-score annotation"
+        (is (some? (-> result (get "GenericNumber") :matches first :interestingness-score))))))
 
   (testing "Good fields survive with interestingness-score annotation"
     (let [dims {"Timestamp" {:field_type [:type/DateTime]

@@ -22,12 +22,17 @@
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
   [:map
    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:min {:optional true} [:maybe number?]]
-   [:max {:optional true} [:maybe number?]]
-   [:avg {:optional true} [:maybe number?]]
-   [:q1  {:optional true} [:maybe number?]]
-   [:q3  {:optional true} [:maybe number?]]
-   [:sd  {:optional true} [:maybe number?]]])
+   [:min             {:optional true} [:maybe number?]]
+   [:max             {:optional true} [:maybe number?]]
+   [:avg             {:optional true} [:maybe number?]]
+   [:q1              {:optional true} [:maybe number?]]
+   [:q3              {:optional true} [:maybe number?]]
+   [:sd              {:optional true} [:maybe number?]]
+   [:skewness        {:optional true} [:maybe number?]]
+   [:excess-kurtosis {:optional true} [:maybe number?]]
+   [:mode-fraction   {:optional true} [:maybe [:ref ::percent]]]
+   [:top-3-fraction  {:optional true} [:maybe [:ref ::percent]]]
+   [:zero-fraction   {:optional true} [:maybe [:ref ::percent]]]])
 
 (mr/def ::fingerprint.text
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
@@ -37,14 +42,24 @@
    [:percent-url    {:optional true} [:maybe [:ref ::percent]]]
    [:percent-email  {:optional true} [:maybe [:ref ::percent]]]
    [:percent-state  {:optional true} [:maybe [:ref ::percent]]]
-   [:average-length {:optional true} [:maybe number?]]])
+   [:average-length {:optional true} [:maybe number?]]
+   [:min-length     {:optional true} [:maybe number?]]
+   [:max-length     {:optional true} [:maybe number?]]
+   [:mode-fraction  {:optional true} [:maybe [:ref ::percent]]]
+   [:top-3-fraction {:optional true} [:maybe [:ref ::percent]]]
+   [:blank%         {:optional true} [:maybe [:ref ::percent]]]])
 
 (mr/def ::fingerprint.temporal
   "Schema for fingerprint information for Fields deriving from `:type/Temporal`."
   [:map
    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:earliest {:optional true} [:maybe :string]]
-   [:latest   {:optional true} [:maybe :string]]])
+   [:earliest             {:optional true} [:maybe :string]]
+   [:latest               {:optional true} [:maybe :string]]
+   [:skewness             {:optional true} [:maybe number?]]
+   [:mode-fraction        {:optional true} [:maybe [:ref ::percent]]]
+   [:top-3-fraction       {:optional true} [:maybe [:ref ::percent]]]
+   [:weekday-distribution {:optional true} [:maybe [:sequential [:ref ::percent]]]]
+   [:hour-distribution    {:optional true} [:maybe [:sequential [:ref ::percent]]]]])
 
 (mr/def ::fingerprint.type-specific
   "Schema for type-specific fingerprint information."

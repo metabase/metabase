@@ -21,6 +21,8 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
+   [metabase.interestingness.core :as interestingness.core]
+   [metabase.interestingness.scorers.card :as scorers.card]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,6 +31,7 @@
    [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
@@ -171,6 +174,27 @@
               (merge (bindings identifier) opts)))
        (every? valid-breakout-dimension?)))
 
+(def ^:private ^:const card-trim-threshold
+  "Cards whose trim-score falls to or below this value are filtered out before card
+   materialization. With `trim-card-weights` (two single-field scorers at 0.5 each and
+   hard-zero clamping to ≤0.1), any card with a truly degenerate dim or measure lands
+   here; cards with only soft penalties or clean signals stay well above."
+  0.15)
+
+(defn- pass-trim?
+  "Decide whether a card passes the first-pass trim. Logs (at debug) when a card is
+   dropped, along with the worst sub-scorer's reason."
+  [card-name trim-result]
+  (if (> (:score trim-result) card-trim-threshold)
+    true
+    (let [worst-reason (or (some-> (:scores trim-result) vals (->> (sort-by :score)) first :reason)
+                           "no per-scorer detail")]
+      (log/debugf "X-ray trim: dropping card %s (score=%.2f) — %s"
+                  card-name
+                  (:score trim-result)
+                  worst-reason)
+      false)))
+
 (mu/defn grounded-metrics->dashcards :- [:sequential
                                          [:merge
                                           ::ads/combined-metric
@@ -222,7 +246,14 @@
                                                          (mapcat (comp :xrays/aggregations :metric-definition))
                                                          all-satisfied-metrics)
                 bound-metric-dimension-name->field (apply merge (map :dimension-name->field all-satisfied-metrics))
-                all-names->field (into dimension-name->field bound-metric-dimension-name->field)
+                dim-fields                         (vec (vals dimension-name->field))
+                measure-fields                     (vec (vals bound-metric-dimension-name->field))
+                trim-result                        (interestingness.core/score-card
+                                                    interestingness.core/trim-card-weights
+                                                    {:dimensions dim-fields
+                                                     :measures   measure-fields})]
+          :when (pass-trim? card-name trim-result)
+          :let [all-names->field (into dimension-name->field bound-metric-dimension-name->field)
                 card             (-> card-template
                                      (visualization/expand-visualization
                                       (vals dimension-name->field)
@@ -230,9 +261,17 @@
                                      (instantiate-metadata base-context
                                                            {}
                                                            all-names->field))
+                card-input       {:dimensions    dim-fields
+                                  :measures      measure-fields
+                                  :aggregation   (some-> final-aggregate first first keyword)
+                                  :visualization (some-> card :display keyword)}
+                outlier-score    (:score (scorers.card/outlier-dominated-breakout card-input nil))
+                viz-score        (:score (scorers.card/visualization-fit card-input nil))
+                interest-mult    (* outlier-score viz-score)
                 score-components (list* (:card-score card)
                                         (:metric-score grounded-metric)
-                                        dim-score)]]
+                                        dim-score)
+                base-total       (/ (apply + score-components) (count score-components))]]
       (merge
        card
        (-> grounded-metric
@@ -240,7 +279,7 @@
             :id            (gensym)
             :affinity-name card-name
             :card-score    card-score
-            :total-score   (long (/ (apply + score-components) (count score-components)))
+            :total-score   (Math/round (double (* base-total interest-mult)))
             ;; Update dimension-name->field to include named contributions from both metrics and dimensions
             :dimension-name->field all-names->field
             :score-components      score-components)

@@ -426,22 +426,28 @@
 
 (defn- score-and-filter-matches
   "Score each field in `:matches` using the interestingness engine.
-   Filters out fields below the threshold and annotates surviving fields
-   with `:interestingness-score`. Removes dimension entries with no surviving matches."
+   Annotates fields with `:interestingness-score` and keeps those at or above
+   the threshold. If no match survives the threshold, falls back to keeping the
+   single highest-scoring match so the dimension is never dropped entirely —
+   templates still need *something* bound, and graceful degradation is
+   preferable to silently eliminating whole card families."
   [dims]
   (into {}
         (keep (fn [[dim-name dim-def]]
-                (let [scored-matches
-                      (->> (:matches dim-def)
-                           (keep (fn [field]
-                                   (let [{:keys [score]} (interestingness/score-raw-field
-                                                          interestingness/xray-dimension-weights
-                                                          field)]
-                                     (when (>= score interestingness-threshold)
-                                       (assoc field :interestingness-score score)))))
-                           vec)]
-                  (when (seq scored-matches)
-                    [dim-name (assoc dim-def :matches scored-matches)]))))
+                (let [scored    (->> (:matches dim-def)
+                                     (map (fn [field]
+                                            (let [{:keys [score]} (interestingness/score-raw-field
+                                                                   interestingness/xray-dimension-weights
+                                                                   field)]
+                                              (assoc field :interestingness-score score))))
+                                     vec)
+                      above     (filterv #(>= (:interestingness-score %) interestingness-threshold) scored)
+                      kept      (if (seq above)
+                                  above
+                                  (when (seq scored)
+                                    [(apply max-key :interestingness-score scored)]))]
+                  (when (seq kept)
+                    [dim-name (assoc dim-def :matches kept)]))))
         dims))
 
 (mu/defn identify :- ::ads/grounded-values

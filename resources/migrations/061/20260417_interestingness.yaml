@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: v61.int3r2
+      author: nvoxland
+      comment: Add dimension interestingness score to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: dimension_interestingness
+                  type: double precision
+                  remarks: Interestingness score (0.0-1.0) for this field used as a dimension
+                  constraints:
+                    nullable: true

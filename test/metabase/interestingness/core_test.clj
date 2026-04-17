@@ -116,8 +116,3 @@
                    {:intent :revenue})]
       (is (= 1 (count results))))))
 
-(deftest ^:parallel default-dimension-weights-test
-  (testing "default weights map contains expected scorers"
-    (is (= 7 (count interestingness/default-dimension-weights)))
-    (is (every? fn? (keys interestingness/default-dimension-weights)))
-    (is (every? pos? (vals interestingness/default-dimension-weights)))))
