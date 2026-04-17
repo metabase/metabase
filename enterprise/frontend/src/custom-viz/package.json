@@ -29,6 +29,8 @@
     "format:check": "prettier --check .",
     "lint": "oxlint src/",
     "release": "bun run build && np",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -38,9 +40,11 @@
     "@types/node": "^25.5.0",
     "@types/react": "^18.3.3",
     "np": "^11.0.2",
+    "oxlint": "^1.59.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "vite": "^8.0.3",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.3"
   }
 }

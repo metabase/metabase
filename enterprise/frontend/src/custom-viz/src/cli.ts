@@ -36,7 +36,8 @@ program
   .description("Scaffold a new custom visualization")
   .argument("<name>", "Name of the custom visualization")
   .action(async (rawName: string) => {
-    const name = rawName.trim().replace(/\s+/g, "-").toLowerCase();
+    const displayName = rawName.trim();
+    const name = displayName.replace(/\s+/g, "-").toLowerCase();
 
     if (!name || !/^[a-z0-9@][a-z0-9._\-/]*$/.test(name)) {
       console.error(
@@ -62,7 +63,10 @@ program
       writeFile(join(name, "package-lock.json"), generatePackageLockJson(name)),
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
-      writeFile(join(name, "src", "index.tsx"), generateIndexTsx(name)),
+      writeFile(
+        join(name, "src", "index.tsx"),
+        generateIndexTsx(name, displayName),
+      ),
       writeFile(join(name, "metabase-plugin.json"), generateManifest(name)),
       writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
       writeFile(

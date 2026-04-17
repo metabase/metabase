@@ -1,0 +1,36 @@
+name: Custom Viz
+
+on:
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-custom-viz
+  cancel-in-progress: true
+
+jobs:
+  custom-viz-tests:
+    if: ${{ !inputs.skip }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: enterprise/frontend/src/custom-viz
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Type-check
+        run: bun run type-check
+      - name: Lint
+        run: bun run lint
+      - name: Build CLI
+        run: bun run build
+      - name: Run tests
+        run: bun run test

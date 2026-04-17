@@ -14,10 +14,15 @@ import tsconfigTemplate from "./templates/tsconfig.json?raw";
 import viteConfigTemplate from "./templates/vite.config.ts?raw";
 
 const NAME_PLACEHOLDER = "__CUSTOM_VIZ_NAME__";
+const DISPLAY_NAME_PLACEHOLDER = "__CUSTOM_VIZ_DISPLAY_NAME__";
 const VERSION_PLACEHOLDER = "__CUSTOM_VIZ_VERSION__";
 
 function replaceName(template: string, name: string): string {
   return template.split(NAME_PLACEHOLDER).join(name);
+}
+
+function replaceDisplayName(template: string, displayName: string): string {
+  return template.split(DISPLAY_NAME_PLACEHOLDER).join(displayName);
 }
 
 function replaceImportPath(template: string): string {
@@ -45,8 +50,11 @@ export function generateTsConfig(): string {
   return tsconfigTemplate;
 }
 
-export function generateIndexTsx(name: string): string {
-  return replaceName(replaceImportPath(indexTsxTemplate), name);
+export function generateIndexTsx(name: string, displayName: string): string {
+  return replaceDisplayName(
+    replaceName(replaceImportPath(indexTsxTemplate), name),
+    displayName,
+  );
 }
 
 export function generateManifest(name: string): string {
