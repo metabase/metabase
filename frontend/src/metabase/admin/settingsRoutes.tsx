@@ -1,3 +1,4 @@
+import type { Store } from "@reduxjs/toolkit";
 import { IndexRedirect, IndexRoute, Route } from "react-router";
 
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
