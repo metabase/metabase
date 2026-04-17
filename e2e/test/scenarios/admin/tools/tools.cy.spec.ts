@@ -273,6 +273,7 @@ describe("scenarios > admin > tools > logs", () => {
   };
   const log2 = {
     ...log1,
+    process_uuid: "9da436dc-d79c-42f9-89e3-322c22cd0cd3",
     timestamp: "2024-01-10T21:21:58.598Z",
     level: "ERROR",
   };
@@ -295,7 +296,7 @@ describe("scenarios > admin > tools > logs", () => {
       "equal",
       [
         `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log1.timestamp)} DEBUG metabase.server.middleware.log message`,
-        `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
+        `[9da436dc-d79c-42f9-89e3-322c22cd0cd3] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
       ].join("\n"),
     );
   });
@@ -305,7 +306,7 @@ describe("scenarios > admin > tools > logs", () => {
     cy.button(/Download/).click();
     cy.readFile("cypress/downloads/logs.txt").should(
       "equal",
-      `[e7774ef2-42ab-43de-89f7-d6de9fdc624f] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
+      `[9da436dc-d79c-42f9-89e3-322c22cd0cd3] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
     );
   });
 
