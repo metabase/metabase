@@ -48,6 +48,7 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
+  PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -260,6 +261,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => {
           </Route>
         </Route>
         {PLUGIN_METABOT.getAdminRoutes()}
+
+        {PLUGIN_SECURITY_CENTER.isEnabled && (
+          <Route
+            path="security-center"
+            component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
+          />
+        )}
+
         <Route path="tools" component={createAdminRouteGuard("tools")}>
           <Route title={t`Tools`} component={ToolsApp}>
             <IndexRedirect to="help" />

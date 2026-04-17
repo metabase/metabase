@@ -25,6 +25,16 @@ const channelApi = Api.injectEndpoints({
         },
       }),
     }),
+    testSlackChannel: builder.mutation<Record<string, never>, string>({
+      query: (channel) => ({
+        method: "POST",
+        url: "/api/channel/test",
+        body: {
+          type: "channel/slack",
+          details: { channel },
+        },
+      }),
+    }),
     createChannel: builder.mutation<
       NotificationChannel[],
       Omit<NotificationChannel, "created_at" | "updated_at" | "active" | "id">
@@ -69,5 +79,6 @@ export const {
   useCreateChannelMutation,
   useDeleteChannelMutation,
   useTestChannelMutation,
+  useTestSlackChannelMutation,
   endpoints: { listChannels },
 } = channelApi;
