@@ -118,7 +118,7 @@ export function ConversationsTable({
                   {convo.total_tokens.toLocaleString()}
                 </Box>
                 <Box component="td" ta="right">
-                  0
+                  {convo.query_count}
                 </Box>
                 <Box component="td" ta="right">
                   {convo.search_count}

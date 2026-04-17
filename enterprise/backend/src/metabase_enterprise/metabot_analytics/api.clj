@@ -30,6 +30,7 @@
    [:last_message_at         [:maybe ms/TemporalInstant]]
    [:model                   [:maybe :string]]
    [:search_count            ms/IntGreaterThanOrEqualToZero]
+   [:query_count             ms/IntGreaterThanOrEqualToZero]
    [:ip_address              [:maybe :string]]
    [:user                    [:maybe :map]]])
 
@@ -76,6 +77,7 @@
    [:chat_messages   [:sequential :map]]
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]
+   [:query_count     ms/IntGreaterThanOrEqualToZero]
    [:ip_address      [:maybe :string]]])
 
 (def ^:private ListConversationsResponse

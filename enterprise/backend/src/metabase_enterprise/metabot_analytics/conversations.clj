@@ -73,13 +73,15 @@
    :last_message_at         (:last_message_at row)
    :model                   (:model row)
    :search_count            (:search_count row 0)
+   :query_count             (:query_count row 0)
    :ip_address              (:ip_address row)
    :user                    (trim-user (:user row))})
 
-(defn- hydrate-search-counts
+(defn- hydrate-tool-counts
   "Batch-load `metabot_message` data for a page of conversations and attach
-   `:search_count` to each row. One query per page regardless of row count —
-   messages are grouped in-memory by `:conversation_id`."
+   `:search_count` and `:query_count` to each row. One query per page
+   regardless of row count — messages are grouped in-memory by
+   `:conversation_id` and both counts are computed from the same fetch."
   [rows]
   (let [conversation-ids (map :id rows)
         messages-by-conv (when (seq conversation-ids)
@@ -88,10 +90,11 @@
                                            {:where [:= :deleted_at nil]})
                                 (group-by :conversation_id)))]
     (map (fn [row]
-           (assoc row :search_count
-                  (analytics.queries/count-tool-invocations
-                   (get messages-by-conv (:id row) [])
-                   "search")))
+           (let [msgs (get messages-by-conv (:id row) [])]
+             (assoc row
+                    :search_count (analytics.queries/count-tool-invocations msgs "search")
+                    :query_count  (analytics.queries/count-tool-invocations
+                                   msgs analytics.queries/new-query-tool-names))))
          rows)))
 
 (defn list-conversations
@@ -114,7 +117,7 @@
                                             :offset   offset)
                                where (assoc :where where)))]
     {:data   (->> (t2/hydrate rows :user)
-                  hydrate-search-counts
+                  hydrate-tool-counts
                   (map row->summary))
      :total  total
      :limit  limit
@@ -150,4 +153,6 @@
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
        :queries         (analytics.queries/messages->generated-queries messages)
        :search_count    (analytics.queries/count-tool-invocations messages "search")
+       :query_count     (analytics.queries/count-tool-invocations
+                         messages analytics.queries/new-query-tool-names)
        :ip_address      (:ip_address conversation)})))

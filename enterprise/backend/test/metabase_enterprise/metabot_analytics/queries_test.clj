@@ -288,4 +288,15 @@
       ;; Slackbot-shaped blocks lack `:type` and are intentionally skipped.
       [{:id 1 :data [{:role "assistant"
                       :_type "TOOL_CALL"
-                      :tool_calls [{:id "slack-1" :name "search"}]}]}])))
+                      :tool_calls [{:id "slack-1" :name "search"}]}]}]))
+  (testing "accepts a set of tool names; a block counts if its :function is in the set"
+    ;; new-query-tool-names matches create_sql_query and construct_notebook_query,
+    ;; but not edit_sql_query / replace_sql_query.
+    (is (= 3 (analytics.queries/count-tool-invocations
+              [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "a"}
+                             {:type "tool-input" :function "edit_sql_query" :id "b"}        ; excluded
+                             {:type "tool-input" :function "construct_notebook_query" :id "c"}]}
+               {:id 2 :data [{:type "tool-input" :function "replace_sql_query" :id "d"}     ; excluded
+                             {:type "tool-input" :function "create_sql_query" :id "e"}
+                             {:type "tool-input" :function "search" :id "f"}]}]             ; excluded
+              analytics.queries/new-query-tool-names)))))

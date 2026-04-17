@@ -403,6 +403,101 @@
             (is (= expected (:search_count response))
                 (format "expected search_count=%d for %s" expected convo))))))))
 
+(defn- query-tool-input-block
+  [call-id tool-name]
+  {:type "tool-input" :id call-id :function tool-name :arguments {}})
+
+(defn- query-tool-output-block
+  [call-id]
+  {:type "tool-output" :id call-id :result {:output "ok"}})
+
+(defn- with-query-count-fixture!
+  "Seed conversations that exercise `:query_count` (create_sql_query and
+   construct_notebook_query). Edit/replace tools and unrelated tools are
+   included to verify they are excluded from the count."
+  [thunk]
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-query-count@metabase.com"
+                                                   :first_name "Query"
+                                                   :last_name  "Counter"}]
+      (let [convo-none  (str (random-uuid))
+            convo-mixed (str (random-uuid))
+            convo-edits (str (random-uuid))
+            mar-1       (offset-date-time "2026-03-10T00:00:00Z")
+            mar-2       (offset-date-time "2026-03-11T00:00:00Z")
+            mar-3       (offset-date-time "2026-03-12T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id convo-none
+                                 :user-id         test-user-id
+                                 :created-at      mar-1
+                                 :summary         "no query tools"})
+          (insert-conversation! {:conversation-id convo-mixed
+                                 :user-id         test-user-id
+                                 :created-at      mar-2
+                                 :summary         "one create + one notebook across messages"})
+          (insert-conversation! {:conversation-id convo-edits
+                                 :user-id         test-user-id
+                                 :created-at      mar-3
+                                 :summary         "only edit/replace — should not count"})
+          ;; convo-none: only a search, no new-query tools.
+          (insert-message! {:conversation-id convo-none
+                            :created-at      mar-1
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    5
+                            :data            [(search-input-block "call-s")
+                                              (search-output-block "call-s")]})
+          ;; convo-mixed: one create_sql_query in msg 1, one construct_notebook_query
+          ;; in msg 2 alongside an excluded edit_sql_query.
+          (insert-message! {:conversation-id convo-mixed
+                            :created-at      mar-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [(query-tool-input-block "call-a" "create_sql_query")
+                                              (query-tool-output-block "call-a")]})
+          (insert-message! {:conversation-id convo-mixed
+                            :created-at      mar-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [(query-tool-input-block "call-b" "edit_sql_query")
+                                              (query-tool-output-block "call-b")
+                                              (query-tool-input-block "call-c" "construct_notebook_query")
+                                              (query-tool-output-block "call-c")]})
+          ;; convo-edits: only edit + replace — both excluded from :query_count.
+          (insert-message! {:conversation-id convo-edits
+                            :created-at      mar-3
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    4
+                            :data            [(query-tool-input-block "call-e" "edit_sql_query")
+                                              (query-tool-output-block "call-e")
+                                              (query-tool-input-block "call-r" "replace_sql_query")
+                                              (query-tool-output-block "call-r")]})
+          (thunk {:test-user-id test-user-id
+                  :convo-none   convo-none
+                  :convo-mixed  convo-mixed
+                  :convo-edits  convo-edits})
+          (finally
+            (delete-conversations! [convo-none convo-mixed convo-edits])))))))
+
+(deftest query-count-test
+  (with-query-count-fixture!
+    (fn [{:keys [test-user-id convo-none convo-mixed convo-edits]}]
+      (testing "list endpoint: counts create_sql_query + construct_notebook_query, excludes edit/replace"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+              by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
+          (is (= {convo-none 0, convo-mixed 2, convo-edits 0}
+                 (update-vals by-id :query_count)))))
+      (testing "detail endpoint surfaces the same counts"
+        (doseq [[convo expected] [[convo-none 0] [convo-mixed 2] [convo-edits 0]]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" convo))]
+            (is (= expected (:query_count response))
+                (format "expected query_count=%d for %s" expected convo))))))))
+
 (deftest get-conversation-detail-slack-permalink-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id returns a Slack permalink when metadata is present"
