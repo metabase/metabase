@@ -691,6 +691,52 @@
                         :ok           "  Status: OK"))
     (str/join "\n" @lines)))
 
+(defn- issue-line
+  "Render a single issue as `  - <type>: <detail>`. Skips refs that are nil
+   and uses the first non-empty detail field."
+  [{:keys [type path entity-id name message]}]
+  (let [type-name (clojure.core/name type)
+        type-label (-> type-name
+                       (str/replace #"-" " "))
+        detail (or (some->> path (str/join "."))
+                   entity-id
+                   name
+                   message)]
+    (str "  - "
+         (case type
+           :duplicate-column      (str "duplicate column: " name)
+           :missing-column        (str "missing column: " name)
+           :missing-table-alias   (str "missing table alias: " name)
+           :syntax-error          "syntax error"
+           :validation-exception-error (str "validation error: " message)
+           ;; unresolved-ref types — prefix with "unresolved"
+           (:database :table :field :card :snippet :transform :segment
+                      :measure :dashboard :collection :document)
+           (str "unresolved " type-name ": " detail)
+           ;; structural checks (e.g. :dashcard-grid, :container-conflict)
+           (str type-label ": " (or detail ""))))))
+
+(defn format-fail
+  "Format a single failed entity result as a human-readable block.
+   Returns nil for :ok results.
+
+   FAIL <kind> \"<name>\" [<entity-id>]
+     - issue 1
+     - issue 2
+     ..."
+  [[entity-id result]]
+  (let [status (result-status result)]
+    (when (not= :ok status)
+      (let [kind-label (if-let [kind (:kind result)] (clojure.core/name kind) "card")
+            issues    (concat (:unresolved result)
+                              (:bad-refs result)
+                              (:native-errors result)
+                              (when-let [err (:error result)]
+                                [{:type :error :message err}]))
+            header    (str "FAIL " kind-label " \"" (:name result) "\" [" entity-id "]")
+            body      (map issue-line issues)]
+        (str/join "\n" (cons header body))))))
+
 (defn format-error
   "Format a single card error concisely for LLM consumption.
    Returns nil for :ok results. Only includes actionable error information."

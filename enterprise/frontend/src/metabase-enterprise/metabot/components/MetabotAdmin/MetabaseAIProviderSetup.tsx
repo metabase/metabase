@@ -29,6 +29,8 @@ import { useGetMetabotUsageQuery } from "../../../api";
 import {
   METABASE_MANAGED_AI_FEATURE,
   METABASE_MANAGED_AI_TERMS_URL,
+  METABOT_V3_FEATURE,
+  OFFER_METABASE_MANAGED_AI_FEATURE,
 } from "../../constants";
 import { formatMetabaseCost } from "../../format";
 import {
@@ -40,10 +42,15 @@ import { usePurchaseMetabaseManagedAi } from "../../usePurchaseMetabaseManagedAi
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
 export function MetabaseAIProviderSetup() {
-  const llmProxyConfigured = useSetting("llm-proxy-configured?");
+  const offerMetabaseManagedAi = !!hasPremiumFeature(
+    OFFER_METABASE_MANAGED_AI_FEATURE,
+  );
   const hasMetabaseManagedAiProviderFeature = !!hasPremiumFeature(
     METABASE_MANAGED_AI_FEATURE,
   );
+  const hasDeprecatedMetabaseAiProvider =
+    !!hasPremiumFeature(METABOT_V3_FEATURE);
+
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
   const isConfigured = useSetting("llm-metabot-configured?");
@@ -58,7 +65,9 @@ export function MetabaseAIProviderSetup() {
   const {
     pricing: metabaseManagedAiPricing,
     isLoading: isLoadingMetabaseManagedAiPricing,
-  } = useMetabaseManagedAiPricing(!!llmProxyConfigured);
+  } = useMetabaseManagedAiPricing(
+    !hasDeprecatedMetabaseAiProvider || hasMetabaseManagedAiProviderFeature,
+  );
 
   const metabaseManagedAiPurchase = usePurchaseMetabaseManagedAi();
 
@@ -80,15 +89,17 @@ export function MetabaseAIProviderSetup() {
   const onConnect = match({
     hasAcceptedTerms,
     hasMetabaseManagedAiProviderFeature,
+    hasDeprecatedMetabaseAiProvider,
     isConfigured,
     isStoreUser,
   })
+    .with({ isConfigured: true }, () => null)
+    .with({ hasMetabaseManagedAiProviderFeature: true }, () => handleConnect)
+    .with({ hasDeprecatedMetabaseAiProvider: true }, () => handleConnect)
     .with(
       { hasMetabaseManagedAiProviderFeature: false, hasAcceptedTerms: false },
       () => null,
     )
-    .with({ isConfigured: true }, () => null)
-    .with({ hasMetabaseManagedAiProviderFeature: true }, () => handleConnect)
     .with({ isStoreUser: false }, () => null)
     .otherwise(() => handleMetabasePurchase);
 
@@ -114,6 +125,11 @@ export function MetabaseAIProviderSetup() {
         <MetabaseManagedProviderCard
           isLoadingPricing={isLoadingMetabaseManagedAiPricing}
           pricing={metabaseManagedAiPricing}
+          hasDeprecatedMetabaseAiProvider={hasDeprecatedMetabaseAiProvider}
+          hasMetabaseManagedAiProviderFeature={
+            hasMetabaseManagedAiProviderFeature
+          }
+          offerMetabaseManagedAi={offerMetabaseManagedAi}
         />
       ) : (
         <>
@@ -137,9 +153,24 @@ export function MetabaseAIProviderSetup() {
           </Stack>
 
           {match({
+            hasDeprecatedMetabaseAiProvider,
             hasMetabaseManagedAiProviderFeature,
+            offerMetabaseManagedAi,
             isStoreUser,
           })
+            .with(
+              {
+                hasDeprecatedMetabaseAiProvider: true,
+                hasMetabaseManagedAiProviderFeature: false,
+                offerMetabaseManagedAi: true,
+              },
+              () => (
+                <Text>
+                  {t`You're on legacy tiered AI pricing today. On your next billing cycle, you'll switch to metered AI pricing.`}
+                </Text>
+              ),
+            )
+            .with({ hasDeprecatedMetabaseAiProvider: true }, () => null)
             .with({ hasMetabaseManagedAiProviderFeature: true }, () => null)
             .with({ isStoreUser: false }, () => (
               <Text fw="bold">
@@ -196,36 +227,51 @@ export function MetabaseAIProviderSetup() {
 function MetabaseManagedProviderCard({
   isLoadingPricing,
   pricing,
+  hasDeprecatedMetabaseAiProvider,
+  hasMetabaseManagedAiProviderFeature,
+  offerMetabaseManagedAi,
 }: {
   isLoadingPricing: boolean;
   pricing: MetabaseManagedAiPricing | null;
+  hasDeprecatedMetabaseAiProvider: boolean;
+  hasMetabaseManagedAiProviderFeature: boolean;
+  offerMetabaseManagedAi: boolean;
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
   const totalCost = getMetabaseUsageCost(metabotUsage?.tokens, pricing);
 
   return (
     <Stack gap="md">
-      <Text c="text-secondary" lh="1">{t`Current billing cycle`}</Text>
+      {!hasMetabaseManagedAiProviderFeature &&
+        hasDeprecatedMetabaseAiProvider &&
+        offerMetabaseManagedAi && (
+          <Text c="text-secondary">
+            {t`You're on legacy tiered AI pricing today. On your next billing cycle, you'll switch to metered AI pricing. If you'd like to switch to a third-party AI provider and use their API, click Disconnect.`}
+          </Text>
+        )}
 
-      <MetabaseUsageRow
-        label={t`Total tokens`}
-        value={formatNumber(metabotUsage?.tokens ?? 0)}
-      />
-
-      {isLoadingPricing ? (
-        <Flex align="center" justify="space-between" gap="md">
-          <Skeleton h="1rem" w="7rem" />
-          <Box flex={1} h={1} bg="border" />
-          <Skeleton h="1rem" w="8rem" />
-        </Flex>
-      ) : pricing ? (
-        <MetabasePricingRow pricing={pricing} />
-      ) : null}
-
-      <MetabaseUsageRow
-        label={t`Total cost`}
-        value={formatMetabaseCost(totalCost)}
-      />
+      {hasMetabaseManagedAiProviderFeature && (
+        <>
+          <Text c="text-secondary" lh="1">{t`Current billing cycle`}</Text>
+          <MetabaseUsageRow
+            label={t`Total tokens`}
+            value={formatNumber(metabotUsage?.tokens ?? 0)}
+          />
+          {isLoadingPricing ? (
+            <Flex align="center" justify="space-between" gap="md">
+              <Skeleton h="1rem" w="7rem" />
+              <Box flex={1} h={1} bg="border" />
+              <Skeleton h="1rem" w="8rem" />
+            </Flex>
+          ) : pricing ? (
+            <MetabasePricingRow pricing={pricing} />
+          ) : null}
+          <MetabaseUsageRow
+            label={t`Total cost`}
+            value={formatMetabaseCost(totalCost)}
+          />
+        </>
+      )}
     </Stack>
   );
 }
