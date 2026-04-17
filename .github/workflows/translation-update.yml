@@ -75,6 +75,7 @@ jobs:
           git push -u origin $BRANCH_NAME
 
       - name: Upload i18n violations report
+        id: upload-violations
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -118,22 +119,27 @@ jobs:
         if: ${{ steps.create_pr.outputs.pr_number && hashFiles('target/i18n-violations.csv') != '' }}
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ARTIFACT_URL: ${{ steps.upload-violations.outputs.artifact-url }}
         run: | # sh
           PR_NUMBER=${{ steps.create_pr.outputs.pr_number }}
-          TOTAL=$(($(wc -l < target/i18n-violations.csv) - 1))
-          if [ "$TOTAL" -le 0 ]; then
+          SUMMARY=$(awk -F',' 'NR>1 {gsub(/"/, "", $2); n=split($2,a,"+"); for(i=1;i<=n;i++) counts[a[i]]++} END {for (t in counts) printf "- **%s**: %d\n", t, counts[t]}' target/i18n-violations.csv)
+          if [ -z "$SUMMARY" ]; then
             echo "No violations to report."
             exit 0
           fi
-          SUMMARY=$(awk -F',' 'NR>1 {gsub(/"/, "", $2); n=split($2,a,"+"); for(i=1;i<=n;i++) counts[a[i]]++} END {for (t in counts) printf "- **%s**: %d\n", t, counts[t]}' target/i18n-violations.csv)
+          if [ -n "$ARTIFACT_URL" ]; then
+            REPORT_LINK="[Full report]($ARTIFACT_URL) (downloads the \`i18n-violations\` artifact)"
+          else
+            REPORT_LINK="Full report: download the \`i18n-violations\` artifact from this workflow run."
+          fi
           gh pr comment "$PR_NUMBER" --body "$(cat <<EOF
           ### Translation violations filtered from this update
 
-          $TOTAL translated string(s) were dropped from the build because they fail \`java.text.MessageFormat\` validation. They will fall back to English at runtime until corrected in Crowdin.
+          Translated strings that failed validation were dropped from the build. They fall back to English at runtime until corrected in Crowdin.
 
           $SUMMARY
 
-          Full report: download the \`i18n-violations\` artifact from this workflow run.
+          $REPORT_LINK
           EOF
           )"
 
