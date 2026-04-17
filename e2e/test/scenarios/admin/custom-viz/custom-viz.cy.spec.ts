@@ -113,6 +113,10 @@ describe("admin > custom visualizations", () => {
       H.getAddVisualizationLink().click();
 
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+      cy.log(
+        "It should not be possible to add the plugin until the user understands the risks",
+      );
+      cy.findByRole("button", { name: /Save/ }).should("be.disabled");
       cy.findByLabelText(/I understand/).click();
       H.interceptPluginCreate();
       cy.findByRole("button", { name: /Save/ }).click();
@@ -1433,6 +1437,13 @@ describe("admin > custom visualizations", () => {
         .find(pluginPath)
         .should("have.attr", "transform")
         .and("match", /rotate\(-180/);
+
+      cy.log(
+        "When the dev server is stopped, the visualization should revert to the default",
+      );
+      cy.task("stopCustomVizDevServer", devServerPid);
+      cy.reload();
+      H.main().findByText("18,760").should("be.visible");
     });
   });
 });
