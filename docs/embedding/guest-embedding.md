@@ -252,7 +252,7 @@ Things to keep in mind if you need to make changes to your locked parameters.
 
 Once you publish a question or dashboard with a locked parameter, you _must_ include the name of the locked parameter in the `params` object when you sign the JWT. If you leave the parameter out, Metabase will refuse the request and log: `You must specify a value for :parameter in the JWT`.
 
-### To turn off a locked parameter, pass an empty array as its value
+### Pass an empty array to turn off a locked parameter
 
 If you don't want the locked filter to apply for a given token, pass an empty array, `[]`, as the value for the parameter in the JWT:
 
