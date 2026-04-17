@@ -1,0 +1,3 @@
+[{"id":1,"db_id":1,"name":"customers","active":true,"is_published":true,"collection_id":2},
+ {"id":2,"db_id":1,"name":"orders","active":true,"is_published":true,"collection_id":2},
+ {"id":3,"db_id":1,"name":"products","active":true,"is_published":true,"collection_id":2}]

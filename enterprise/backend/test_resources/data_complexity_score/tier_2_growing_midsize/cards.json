@@ -1,0 +1,7 @@
+[{"id":1,"database_id":1,"type":"metric","name":"Revenue","archived":false,"collection_id":3},
+ {"id":2,"database_id":1,"type":"metric","name":"Revenue","archived":false,"collection_id":3},
+ {"id":3,"database_id":1,"type":"metric","name":"ARR","archived":false,"collection_id":3},
+ {"id":4,"database_id":1,"type":"model","name":"Pipeline","archived":false,"collection_id":3},
+ {"id":5,"database_id":1,"type":"model","name":"Customer Health","archived":false,"collection_id":3},
+ {"id":6,"database_id":2,"type":"model","name":"Revenue","archived":false,"collection_id":4},
+ {"id":7,"database_id":2,"type":"model","name":"Funnel","archived":false,"collection_id":4}]
