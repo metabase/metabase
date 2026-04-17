@@ -956,4 +956,4 @@ serdes/meta:
                 (is (not (t2/exists? :model/TransformTag :id local-tag-id))
                     "Local transform tag should be deleted after import since it wasn't on remote")
                 (is (t2/exists? :model/TransformTag :entity_id remote-tag-entity-id)
-                    "Remote transform tag should be imported"))))))))
+                    "Remote transform tag should be imported")))))))))
