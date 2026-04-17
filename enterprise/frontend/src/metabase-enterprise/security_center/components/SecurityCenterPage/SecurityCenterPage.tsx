@@ -145,11 +145,7 @@ export function SecurityCenterPage() {
               <Button
                 variant="subtle"
                 leftSection={
-                  isSyncInProgress ? (
-                    <Loader size="1rem" />
-                  ) : (
-                    <Icon name="sync" />
-                  )
+                  isSyncInProgress ? <Loader size="xs" /> : <Icon name="sync" />
                 }
                 onClick={handleSync}
                 disabled={isSyncInProgress}
