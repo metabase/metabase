@@ -155,7 +155,7 @@ describe("SettingsNav", () => {
     });
     await userEvent.click(customVizNavItem);
 
-    expect(screen.getByText("Manage visualizations")).toBeInTheDocument();
+    expect(screen.queryByText("Manage visualizations")).not.toBeInTheDocument();
     expect(screen.queryByText("Development")).not.toBeInTheDocument();
   });
 });

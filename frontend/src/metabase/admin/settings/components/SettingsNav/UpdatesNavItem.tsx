@@ -6,7 +6,7 @@ import { Indicator } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 import { newVersionAvailable } from "metabase/utils/version";
 
-import { SettingsNavItem } from "./SettingsNav";
+import { SettingsNavItem } from "./SettingsNavItem";
 
 export function UpdatesNavItem() {
   const { data: versionInfo } = useGetVersionInfoQuery();
