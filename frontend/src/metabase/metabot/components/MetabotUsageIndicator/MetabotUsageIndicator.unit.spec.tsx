@@ -2,12 +2,12 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { MetabotUsage } from "metabase-types/api";
 import {
   createMockMetabotUsage,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotUsageIndicator } from "./MetabotUsageIndicator";
 

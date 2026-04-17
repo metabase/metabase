@@ -8,8 +8,8 @@ import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
-import { listTag } from "metabase/api/tags";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import { listTag } from "metabase/api/tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";

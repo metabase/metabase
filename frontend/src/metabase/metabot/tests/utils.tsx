@@ -129,7 +129,15 @@ export const lastReqBody = async (
   agentSpy: ReturnType<typeof mockAgentEndpoint>,
 ) => {
   await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-  return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
+  const matchingCall = agentSpy.mock.calls
+    .reverse()
+    .find(([url]) => typeof url === "string" && url.includes("/api/metabot"));
+  const body = matchingCall?.[1]?.body;
+
+  if (!body) {
+    return undefined;
+  }
+  return JSON.parse(body.toString());
 };
 
 // Common mock response fixtures
