@@ -600,7 +600,7 @@ describe("admin > custom visualizations", () => {
     });
 
     it("falls back to the default viz on an embedded question", () => {
-      cy.get<number>("@questionId").then((questionId) => {
+      cy.get<CardId>("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
         });
@@ -1165,6 +1165,18 @@ describe("admin > custom visualizations", () => {
       });
       cy.get("@documentId").then((documentId) => {
         cy.request("POST", `/api/bookmark/document/${documentId}`);
+      });
+    });
+
+    it("renders the custom-viz icon in the entity picker data-source modal", () => {
+      H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Our analytics").click();
+        H.entityPickerModalItem(1, ICON_QUESTION_NAME)
+          .find(PLUGIN_ICON_SELECTOR)
+          .should("exist");
       });
     });
 
