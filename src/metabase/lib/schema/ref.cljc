@@ -207,6 +207,7 @@
             ;; doesn't return something that matches.
             :error/message "Invalid :field clause ID or name: must be a string or integer"}
     [:dispatch-type/integer ::field.id]
+    [:dispatch-type/sequential ::field.id]
     [:dispatch-type/string ::field.literal]]])
 
 (lib.hierarchy/derive :field ::ref)

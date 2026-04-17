@@ -546,6 +546,22 @@
      :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"
      :type         ":type is not allowed in MBQL 5, use :lib/type instead."})])
 
+(defn- remove-lib-uuid [options]
+  (update options 2 (fn [m] (vec (remove #{[:lib/uuid ::common/uuid]} m)))))
+
+(mr/def ::external-query
+  "Schema for \"External MBQL\" 5 query."
+  [:schema {:registry {::id/database :string
+                       ::id/card :string
+                       ::id/segment :string
+                       ::id/measure :string
+                       ::id/snippet :string
+                       ::id/schema [:or nil? :string]
+                       ::id/table [:cat ::id/database ::id/schema :string]
+                       ::id/field [:cat ::id/database ::id/schema :string :string]
+                       ::common/options (remove-lib-uuid (mr/schema ::common/options))}}
+   [:ref ::query]])
+
 (defn native-only-query?
   "Whether MBQL 5 `query` only has a single native stage (and is thus pure-native). This is the equivalent of the old
   `:type :native` queries in MBQL <= 4."
