@@ -298,6 +298,23 @@
      :field-id    field-id
      :limit       (or (request/limit) default-field-values-limit)})))
 
+(defn- coerce-query-list
+  "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably
+   Codex) serialize array args through a string layer, so a caller that intended to
+   send `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`. Accept either shape:
+   an array is returned as-is; a string that parses as a JSON array is unwrapped;
+   any other string is treated as a single-element query."
+  [v]
+  (cond
+    (nil? v)        nil
+    (sequential? v) v
+    (string? v)     (or (try
+                          (let [parsed (json/decode+kw v)]
+                            (when (sequential? parsed) parsed))
+                          (catch Exception _ nil))
+                        [v])
+    :else           v))
+
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables and metrics.
 
@@ -316,13 +333,13 @@
    :- [:map
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
-        [:maybe [:sequential ms/NonBlankString]]]
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
        [:semantic_queries {:optional true
                            :tool/description "Natural-language search queries as an array of strings, for example [\"how much revenue did we make\"]."}
-        [:maybe [:sequential ms/NonBlankString]]]]]
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]]]
   (let [results (metabot-search/search
-                 {:term-queries     (or term-queries [])
-                  :semantic-queries (or semantic-queries [])
+                 {:term-queries     (or (coerce-query-list term-queries) [])
+                  :semantic-queries (or (coerce-query-list semantic-queries) [])
                   :entity-types     ["table" "metric"]
                   :limit            (or (request/limit) 50)})]
     {:data        results

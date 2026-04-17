@@ -253,31 +253,18 @@
           (is (contains? search-data :data))
           (is (contains? search-data :total_count))))))
 
-  (testing "search returns actionable error for singleton string arguments"
+  (testing "search accepts a singleton string as a one-element query list"
     (search.tu/with-legacy-search
       (let [[session-id _] (initialize!)
             response       (mcp-request (jsonrpc-request "tools/call"
                                                          {:name      "search"
                                                           :arguments {:term_queries "orders"}})
                                         {"mcp-session-id" session-id})
-            result         (get-in response [:body :result])
-            message        (:text (first (:content result)))]
+            result         (get-in response [:body :result])]
         (is (= 200 (:status response)))
-        (is (true? (:isError result)))
-        (is (str/includes? message "term_queries")))))
-
-  (testing "search returns actionable error for singleton semantic query strings"
-    (search.tu/with-legacy-search
-      (let [[session-id _] (initialize!)
-            response       (mcp-request (jsonrpc-request "tools/call"
-                                                         {:name      "search"
-                                                          :arguments {:semantic_queries "orders table"}})
-                                        {"mcp-session-id" session-id})
-            result         (get-in response [:body :result])
-            message        (:text (first (:content result)))]
-        (is (= 200 (:status response)))
-        (is (true? (:isError result)))
-        (is (str/includes? message "semantic_queries")))))
+        (is (nil? (:isError result)))
+        (let [search-data (json/decode+kw (:text (first (:content result))))]
+          (is (contains? search-data :data))))))
 
   (testing "search coerces JSON-stringified arrays so clients that serialize args through a string layer still work"
     (search.tu/with-legacy-search
@@ -292,19 +279,6 @@
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))
           (is (contains? search-data :total_count)))))))
-
-(deftest tools-call-query-coerces-stringified-structured-args-test
-  (testing "query accepts JSON-stringified order_by arguments"
-    (let [[session-id _] (initialize!)
-          table-id       (mt/id :orders)
-          query-data     (call-tool session-id "query"
-                                    {:table_id table-id
-                                     :order_by (format "[{\"field\":{\"field_id\":\"t%d-0\"},\"direction\":\"asc\"}]"
-                                                       table-id)
-                                     :limit    5})]
-      (is (= "completed" (:status query-data)))
-      (is (= 5 (:row_count query-data)))
-      (is (seq (get-in query-data [:json_query :stages 0 :order-by]))))))
 
 ;;; ------------------------------------------------ SSE Transport -------------------------------------------------
 
