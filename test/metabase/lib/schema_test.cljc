@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   #?@(:clj ([clj-yaml.core :as yaml]))
    [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols]
@@ -10,8 +9,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as mp]))
+   [metabase.util.malli.registry :as mr]))
 
 (comment
   metabase.lib.metadata.protocols/keep-me ; so `:metabase.lib.metadata.protocols/metadata-provider` gets loaded
@@ -365,53 +363,56 @@
          (me/humanize (mr/explain ::lib.schema/query
                                   {:lib/type :mbql/query, :database 2378, :stages [{:lib/type :mbql.stage/mbql}]})))))
 
-(def times #{:year-of-era :quarter-of-year :month-of-year :week-of-year-iso :unix-seconds
-             :week-of-year-us :week-of-year-instance :day-of-month :day-of-week :iso :us
-             :day-of-week-iso :hour-of-day :minute-of-hour :second-of-minute :day :instance})
+;; these two queries are taken from the representations repository
+(def basic-external-query
+  {:lib/type :mbql/query
+   :database "Sample Database"
+   :stages [{:lib/type :mbql.stage/mbql
+             :source-table ["Sample Database" "PUBLIC" "ORDERS"]
+             :aggregation [[:sum {} [:field {:base-type :type/Float}
+                                     ["Sample Database" "PUBLIC" "ORDERS" "TOTAL"]]]]}]})
 
-;; maybe there's a way to get lib.normalize to do this, and it gets most field
-;; references, but it misses fields inside expressions like :concat/:substring.
-;; normalize is meant to convert from frontend requests, and we're converting
-;; from yaml on disk, so maybe it's better to make our own thing vs trying to
-;; wedge it into lib.normalize.
-(defn normalize [schema]
-  (lib.normalize/normalize
-   (mp/prewalk (fn [x]
-                 ;; ("field" {} ("Sample Database" "PUBLIC" "PRODUCTS" "TITLE"))
-                 ;; ->
-                 ;; [:field {} ["Sample Database" "PUBLIC" "PRODUCTS" "TITLE"]]
-                 (cond (and (seq? x) (string? (first x)) (map? (second x)))
-                       (into [(keyword (first x))] (rest x))
-                       (and (string? x) (re-find #"^type/" x)) (keyword x)
-                       (and (string? x) (times (keyword x))) (times (keyword x))
-                       (seq? x) (vec x)
-                       :else x))
-               schema)))
-
-(def sample-external-query
+(def native-external-query
   {:lib/type :mbql/query
    :database "Sample Database"
    :stages
-   [{:lib/type :mbql.stage/mbql
-     :source-table ["Sample Database" "PUBLIC" "ORDERS"]
-     :aggregation
-     [[:sum {} [:field {:base-type :type/Float}
-                ["Sample Database" "PUBLIC" "ORDERS" "TOTAL"]]]]}]})
+   [{:lib/type :mbql.stage/native
+     :native "SELECT *
+                FROM ORDERS
+               WHERE TOTAL > {{min_total}}
+                 AND CREATED_AT > {{after_date}}
+                 AND USER_ID = {{user_id}}
+                 AND {{is_active}}"
+     :template-tags {"min_total" {:type :number
+                                  :name "min_total"
+                                  :id "aa000001-0000-0000-0000-000000000001"
+                                  :display-name "Minimum Total"
+                                  :default 50
+                                  :required true
+                                  :sectionid "number"}
+                     "after_date" {:type :date
+                                   :name "after_date"
+                                   :id "aa000002-0000-0000-0000-000000000002"
+                                   :display-name "After Date"
+                                   :default "2024-01-01"
+                                   :sectionid "date"}
+                     "user_id" {:type :text
+                                :name "user_id"
+                                :id "aa000003-0000-0000-0000-000000000003"
+                                :display-name "User ID"
+                                :default "1"}
+                     "is_active" {:type :boolean
+                                  :name "is_active"
+                                  :id "aa000004-0000-0000-0000-000000000004"
+                                  :display-name "Is Active"
+                                  :default true
+                                  :sectionid "boolean"}}}]})
 
-#?(:clj
-   (deftest ^:parallel external-test
-     (testing "basic example query validates"
-       ;; this one is not valid according to the internal schema because it
-       ;; uses a string tuple for the field instead of an integer.
-       (is (mr/explain ::lib.schema/query sample-external-query))
-       (is (not (me/humanize (mr/explain ::lib.schema/external-query
-                                         sample-external-query)))))
-     (testing "representation example queries validate"
-       (let [examples-dir "../representations/examples/v1/collections/main/queries"]
-         ;; skip these tests when you don't have a representations checkout
-         (when (.exists (java.io.File. examples-dir))
-           (doseq [f (.listFiles (java.io.File. examples-dir))]
-             (let [query (normalize
-                          (:dataset_query (yaml/parse-string (slurp f))))]
-               (is (not (me/humanize (mr/explain ::lib.schema/external-query query)))
-                   (str f)))))))))
+(deftest ^:parallel external-test
+  ;; this one is not valid according to the internal schema because it
+  ;; uses a string tuple for the field instead of an integer.
+  (is (mr/explain ::lib.schema/query basic-external-query))
+  (is (not (me/humanize (mr/explain ::lib.schema/external-query
+                                    basic-external-query))))
+  (is (not (me/humanize (mr/explain ::lib.schema/external-query
+                                    native-external-query)))))
