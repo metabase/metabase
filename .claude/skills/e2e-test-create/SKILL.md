@@ -22,7 +22,27 @@ You are writing Cypress E2E tests for the **Metabase** codebase.
 Before generating ANY test code, you MUST analyze React component source code
 to understand DOM structure, selectors, and user flows.
 
-@./../_shared/testing-patterns.md
+## Use existing helpers — don't roll your own
+
+Before inventing a helper or mock factory, check if one exists:
+
+- **Queries:** `H.createTestQuery` — prefer over ad-hoc MBQL construction.
+- **Location / router:** `createMockLocation`.
+- **Datasets and responses:** `createMockDataset` and siblings in `frontend/src/metabase-types/api/mocks/`.
+- **E2E API helpers:** all API-level helpers must live in `e2e/support/helpers/api/`. Do not inline `cy.request` against raw endpoints inside a spec.
+- **E2E scoped helpers:** access via `const { H } = cy;` — not direct imports.
+
+If you need a new helper, add it to the shared location rather than writing a local one.
+
+## Test real behavior, not shape
+
+- A "unit test" that asserts the shape of a returned object without exercising the logic has little value. Test the behavior the code is responsible for.
+
+## Cypress specifics
+
+- **`Cypress.env` is deprecated.** Do not introduce new usages.
+- Use existing `cy.intercept` helpers from `e2e/support/helpers/api/` instead of hand-writing intercepts in the spec. If an intercept helper is missing, add one.
+- Match the patterns of the closest existing spec in the same `e2e/test/scenarios/<area>/` folder.
 
 ## Phase 0 — Research
 
