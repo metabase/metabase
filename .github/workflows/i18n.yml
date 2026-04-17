@@ -49,6 +49,14 @@ jobs:
       run: ./bin/i18n/update-translation-template
     - name: Verify i18n translations (.po files)
       run: ./bin/i18n/build-translation-resources
+    - name: Upload i18n violations report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: i18n-violations
+        path: target/i18n-violations.*
+        if-no-files-found: warn
+        retention-days: 14
     - name: Validate translated MessageFormat patterns
       run: >-
         clojure -X:dev:test
