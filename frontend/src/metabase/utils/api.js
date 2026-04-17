@@ -69,16 +69,8 @@ export class Api extends EventEmitter {
       headers["X-Metabase-Session"] = self.sessionToken;
     }
 
-    if (isWithinIframe() && !self.requestClient) {
+    if (isWithinIframe() && !isEmbeddingSdk()) {
       headers["X-Metabase-Embedded"] = "true";
-      /**
-       * We counted static embed preview query executions which led to wrong embedding stats (EMB-930)
-       * This header is only used for analytics and for checking if we want to disable some features in the
-       * embedding iframe (only for Documents at the time of this comment)
-       */
-      if (!IFRAMED_IN_SELF) {
-        headers["X-Metabase-Client"] = "embedding-iframe";
-      }
     }
 
     if (self.requestClient) {
