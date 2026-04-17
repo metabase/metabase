@@ -126,6 +126,43 @@
       (slack/post-chat-message! channel-id nil [{:blocks block-chunk}]))))
 
 ;; ------------------------------------------------------------------------------------------------;;
+;;                                    System Event Notifications                                   ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
+  [_channel-type {:keys [payload]} {:keys [recipients]}]
+  (let [{:keys [event_topic event_info custom]} payload
+        blocks (case event_topic
+                 :event/security-advisory-match
+                 (let [{:keys [title description severity]} (:object event_info)
+                       severity-emoji (case severity
+                                        :critical ":red_circle:"
+                                        :high     ":large_orange_circle:"
+                                        :medium   ":large_yellow_circle:"
+                                        :low      ":large_blue_circle:")]
+                   [{:type "header"
+                     :text {:type  "plain_text"
+                            :text  (truncate (str severity-emoji " Security Advisory: " title) header-text-limit)
+                            :emoji true}}
+                    {:type "section"
+                     :text {:type "mrkdwn"
+                            :text (truncate (escape-mkdwn description) block-text-length-limit)}}
+                    {:type "section"
+                     :fields [{:type "mrkdwn" :text (str "*Severity:* " (:severity_label custom))}
+                              {:type "mrkdwn" :text (str "*Status:* " (:status_label custom))}]}
+                    {:type "actions"
+                     :elements [{:type "button"
+                                 :text {:type "plain_text" :text "View in Security Center"}
+                                 :url  (:security_center_url custom)}]}])
+                 ;; fallback for other system events: simple text block
+                 [{:type "section"
+                   :text {:type "mrkdwn"
+                          :text (truncate (str "System event: " (name event_topic)) block-text-length-limit)}}])]
+    (doall (for [channel (keep notification-recipient->channel recipients)]
+             {:channel channel
+              :blocks  blocks}))))
+
+;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;
 ;; ------------------------------------------------------------------------------------------------;;
 

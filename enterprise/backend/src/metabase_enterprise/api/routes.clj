@@ -23,6 +23,8 @@
    [metabase-enterprise.query-reference-validation.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
+   [metabase-enterprise.security-center.api]
+   [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
    [metabase-enterprise.upload-management.api]
@@ -46,6 +48,7 @@
    :metabot-v3                 (deferred-tru "MetaBot")
    :query-reference-validation (deferred-tru "Query Reference Validation")
    :scim                       (deferred-tru "SCIM configuration")
+   :admin-security-center      (deferred-tru "Security Center")
    :serialization              (deferred-tru "Serialization")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")})
@@ -86,6 +89,7 @@
    "/metabot-tools"              metabase-enterprise.metabot-v3.tools.api/routes
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
+   "/security-center"            (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                      (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/upload-management"          (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})

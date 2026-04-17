@@ -729,6 +729,26 @@ export const PLUGIN_METABOT = {
   SearchButton: SearchButton,
 };
 
+type SecurityCenterNavItemProps = {
+  currentPath: string;
+};
+
+type SecurityCenterPlugin = {
+  isEnabled: boolean;
+  SecurityCenterPage: ComponentType;
+  SecurityCenterBanner: ComponentType;
+  SecurityCenterNavItem: ComponentType<SecurityCenterNavItemProps>;
+  SecurityCenterMobileNavItem: ComponentType<SecurityCenterNavItemProps>;
+};
+
+export const PLUGIN_SECURITY_CENTER: SecurityCenterPlugin = {
+  isEnabled: false,
+  SecurityCenterPage: PluginPlaceholder,
+  SecurityCenterBanner: PluginPlaceholder,
+  SecurityCenterNavItem: PluginPlaceholder,
+  SecurityCenterMobileNavItem: PluginPlaceholder,
+};
+
 type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,

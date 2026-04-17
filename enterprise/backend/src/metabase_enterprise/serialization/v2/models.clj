@@ -87,6 +87,7 @@
    "Revision"
    "SearchIndexMetadata"
    "Secret"
+   "SecurityAdvisory"
    "Session"
    "TaskHistory"
    "User"

@@ -166,6 +166,10 @@ export type EmbeddingSetupClickEvent = ValidateEvent<{
   triggered_from: EmbeddingSetupStepKey;
 }>;
 
+export type SecurityCenterPageViewedEvent = ValidateEvent<{
+  event: "security_center_page_viewed";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -186,4 +190,5 @@ export type SimpleEvent =
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
   | EmbeddingSetupStepSeenEvent
-  | EmbeddingSetupClickEvent;
+  | EmbeddingSetupClickEvent
+  | SecurityCenterPageViewedEvent;

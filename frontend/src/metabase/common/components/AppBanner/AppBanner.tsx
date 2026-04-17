@@ -7,6 +7,7 @@ import { DevModeBanner } from "metabase/nav/components/DevModeBanner";
 import { PaymentBanner } from "metabase/nav/components/PaymentBanner/PaymentBanner";
 import { ReadOnlyBanner } from "metabase/nav/components/ReadOnlyBanner";
 import { TrialBanner } from "metabase/nav/components/TrialBanner";
+import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getIsHosted } from "metabase/setup/selectors";
 
@@ -66,6 +67,11 @@ export const AppBanner = () => {
 
   if (shouldRenderPaymentBanner) {
     return <PaymentBanner tokenStatus={tokenStatus} />;
+  }
+
+  if (PLUGIN_SECURITY_CENTER.isEnabled) {
+    const { SecurityCenterBanner } = PLUGIN_SECURITY_CENTER;
+    return <SecurityCenterBanner />;
   }
 
   if (isDevMode) {

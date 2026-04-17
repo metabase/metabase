@@ -8,6 +8,7 @@ import LogoIcon from "metabase/common/components/LogoIcon";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Button, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
@@ -88,6 +89,13 @@ export const AdminNavbar = ({
               currentPath={currentPath}
             />
           ))}
+          {/* Security Center is rendered outside adminPaths because it
+              needs a live query to show an active-advisories badge */}
+          {PLUGIN_SECURITY_CENTER.isEnabled && (
+            <PLUGIN_SECURITY_CENTER.SecurityCenterNavItem
+              currentPath={currentPath}
+            />
+          )}
         </AdminNavbarItems>
 
         {!isPaidPlan && <StoreLink />}
@@ -135,6 +143,13 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
               {name}
             </AdminNavLink>
           ))}
+          {/* Security Center is rendered outside adminPaths because it
+              needs a live query to show an active-advisories badge */}
+          {PLUGIN_SECURITY_CENTER.isEnabled && (
+            <PLUGIN_SECURITY_CENTER.SecurityCenterMobileNavItem
+              currentPath={currentPath}
+            />
+          )}
           <AdminExitLink to="/">{t`Exit admin`}</AdminExitLink>
         </AdminMobileNavBarItems>
       )}

@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
-import type { FlexProps, IconName } from "metabase/ui";
+import type { FlexProps, GroupProps, IconName } from "metabase/ui";
 import { Flex, Group, Icon } from "metabase/ui";
 
 interface BaseBannerProps extends FlexProps {
   icon?: IconName;
   body: ReactNode;
+  contentGroupProps?: GroupProps;
 }
 
 type BannerProps =
@@ -19,6 +20,7 @@ export const Banner = ({
   closable,
   onClose,
   bg,
+  contentGroupProps,
   ...flexProps
 }: BannerProps) => {
   return (
@@ -32,8 +34,8 @@ export const Banner = ({
       pr="md"
       {...flexProps}
     >
-      <Group gap="xs">
-        {icon && <Icon name={icon} w={36} />}
+      <Group gap="xs" {...contentGroupProps}>
+        {icon && <Icon name={icon} w={36} c={iconColor} />}
         {body}
       </Group>
       {closable && (

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
 
 export interface FormattingSettings {
@@ -262,6 +263,7 @@ export const tokenFeatures = [
   "ai_entity_analysis",
   "database_routing",
   "development_mode",
+  "admin_security_center",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -375,6 +377,8 @@ interface AdminSettings {
   "show-sdk-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "security-center-email-recipients": NotificationRecipient[] | null;
+  "security-center-slack-channel": string | null;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
 }

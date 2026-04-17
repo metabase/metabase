@@ -23,13 +23,15 @@
   assert-has-feature
   assert-has-any-features
   ee-feature-error
+  is-trial?
   has-any-features?
   has-feature?
   log-enabled?
   max-users-allowed
   plan-alias
   TokenStatus
-  clear-cache!]
+  clear-cache!
+  token-check-url]
 
  (metabase.premium-features.settings
   active-users-count
@@ -75,6 +77,7 @@
   is-hosted?
   offer-metabase-ai?
   premium-embedding-token
+  security-center-enabled?
   site-uuid-for-premium-features-token-checks
   token-features
   token-status))

@@ -12043,6 +12043,188 @@ databaseChangeLog:
             target:  STDOUT
       rollback:
 
+  - changeSet:
+      id: v55.2026-03-30T00:00:00
+      author: bronsa
+      comment: Create security_advisory table for Security Center
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: security_advisory
+      changes:
+        - createTable:
+            tableName: security_advisory
+            remarks: Stores security advisories fetched from the advisory feed
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Auto-incrementing primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: advisory_id
+                  type: varchar(255)
+                  remarks: Unique advisory identifier (e.g. SC-2026-001)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: severity
+                  type: varchar(32)
+                  remarks: "Severity level: critical, high, medium, or low"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+                  remarks: Human-readable advisory title
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Short summary of the advisory
+                  constraints:
+                    nullable: false
+              - column:
+                  name: advisory_url
+                  type: varchar(2048)
+                  remarks: Link to the full advisory
+                  constraints:
+                    nullable: true
+              - column:
+                  name: remediation
+                  type: ${text.type}
+                  remarks: Remediation instructions
+                  constraints:
+                    nullable: false
+              - column:
+                  name: affected_versions
+                  type: ${text.type}
+                  remarks: "JSON array of {min, fixed} version ranges"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: matching_query
+                  type: ${text.type}
+                  remarks: JSON HoneySQL query keyed by dialect (null = affects all instances)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: published_at
+                  type: ${timestamp_type}
+                  remarks: When the advisory was published
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fetched_at
+                  type: ${timestamp_type}
+                  remarks: When Metabase fetched this advisory
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: match_status
+                  type: varchar(32)
+                  remarks: "Status: active, resolved, not_affected, or error"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_evaluated_at
+                  type: ${timestamp_type}
+                  remarks: Last time the matching query was evaluated
+                  constraints:
+                    nullable: true
+              - column:
+                  name: acknowledged_by
+                  type: int
+                  remarks: FK to core_user.id — admin who acknowledged the advisory
+                  constraints:
+                    nullable: true
+              - column:
+                  name: acknowledged_at
+                  type: ${timestamp_type}
+                  remarks: When the advisory was acknowledged
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_notified_at
+                  type: ${timestamp_type}
+                  remarks: When the last notification was sent for this advisory
+                  constraints:
+                    nullable: true
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the advisory was last updated upstream (used as sync cursor)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2026-03-30T00:00:01
+      author: bronsa
+      comment: Add unique constraint on security_advisory.advisory_id
+      changes:
+        - addUniqueConstraint:
+            tableName: security_advisory
+            constraintName: uq_security_advisory_advisory_id
+            columnNames: advisory_id
+
+  - changeSet:
+      id: v55.2026-03-30T00:00:02
+      author: bronsa
+      comment: Add index on security_advisory.acknowledged_by FK
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_security_advisory_acknowledged_by
+      changes:
+        - createIndex:
+            tableName: security_advisory
+            indexName: idx_security_advisory_acknowledged_by
+            columns:
+              - column:
+                  name: acknowledged_by
+
+  - changeSet:
+      id: v55.2026-03-30T00:00:03
+      author: bronsa
+      comment: Add FK on security_advisory.acknowledged_by
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_security_advisory_acknowledged_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: security_advisory
+            baseColumnNames: acknowledged_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_security_advisory_acknowledged_by
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v55.2026-03-30T00:00:04
+      author: bronsa
+      comment: Add index on security_advisory.match_status
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_security_advisory_match_status
+      changes:
+        - createIndex:
+            tableName: security_advisory
+            indexName: idx_security_advisory_match_status
+            columns:
+              - column:
+                  name: match_status
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
