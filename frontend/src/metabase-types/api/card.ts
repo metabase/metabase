@@ -12,6 +12,7 @@ import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
   DashCardId,
   Dashboard,
+  DashboardCardSize,
   DashboardId,
   DashboardTabId,
 } from "./dashboard";
@@ -429,7 +430,7 @@ export interface CreateCardRequest {
   collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
-  size?: { width: number; height: number };
+  size?: DashboardCardSize;
 }
 
 export interface CreateCardFromCsvRequest {

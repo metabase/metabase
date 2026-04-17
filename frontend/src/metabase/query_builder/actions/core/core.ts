@@ -382,7 +382,7 @@ async function reduxCreateQuestion(
     Questions.actions.create({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
-      ...(size && { size }),
+      ...(size && { size_x: size.width, size_y: size.height }),
     }),
   );
   return question.setCard(Questions.HACK_getObjectFromAction(action));

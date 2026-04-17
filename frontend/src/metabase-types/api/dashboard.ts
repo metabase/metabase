@@ -133,6 +133,15 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
+export type DashboardCardPosition = Pick<
+  DashboardCardLayoutAttrs,
+  "col" | "row"
+>;
+export type DashboardCardSize = Pick<
+  DashboardCardLayoutAttrs,
+  "size_x" | "size_y"
+>;
+
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;

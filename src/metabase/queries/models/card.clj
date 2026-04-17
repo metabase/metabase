@@ -878,9 +878,9 @@
             cards-on-first-tab (or (when first-tab
                                      (:cards first-tab))
                                    dashcards)
-            new-spot (if-let [{:keys [width height]} size]
+            new-spot (if-let [{:keys [size_x size_y]} size]
                        (autoplace/get-position-for-new-dashcard
-                        cards-on-first-tab width height autoplace/default-grid-width)
+                        cards-on-first-tab size_x size_y autoplace/default-grid-width)
                        (autoplace/get-position-for-new-dashcard
                         cards-on-first-tab (:display card)))]
         (t2/insert! :model/DashboardCard (assoc new-spot

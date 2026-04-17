@@ -4100,7 +4100,7 @@
       (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card"
                                                (assoc (card-with-name-and-query)
                                                       :dashboard_id dash-id
-                                                      :size {:width 8 :height 5})))
+                                                      :size {:size_x 8 :size_y 5})))
             dashcard (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)]
         (is (= 8 (:size_x dashcard)))
         (is (= 5 (:size_y dashcard)))))
@@ -4108,7 +4108,7 @@
       (let [card (mt/user-http-request :crowberto :post 200 "card"
                                        (assoc (card-with-name-and-query)
                                               :dashboard_id dash-id
-                                              :size {:width 3 :height 3}))]
+                                              :size {:size_x 3 :size_y 3}))]
         (is (not (contains? card :size)))))))
 
 (deftest dashboard-internal-card-updates
