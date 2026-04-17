@@ -54,11 +54,15 @@
         driver            (:engine (lib.metadata/database metadata-provider))
         query             (lib/query metadata-provider query)
         output-fields     (returned-columns driver query)
+        ;; Group by the user-visible column name (the alias when present),
+        ;; not the underlying column's `:name` — otherwise `t1.name AS a` and
+        ;; `t2.name AS b` look like duplicates because both have `:name "name"`.
+        output-name       #(or (:lib/desired-column-alias %) (:name %))
         duplicated-fields (->> output-fields
-                               (group-by :name)
+                               (group-by output-name)
                                vals
                                (keep #(when (> (count %) 1)
-                                        (lib/duplicate-column-error (-> % first :name))))
+                                        (lib/duplicate-column-error (output-name (first %)))))
                                seq)]
     (cond-> (check-query driver query)
       duplicated-fields (into duplicated-fields))))

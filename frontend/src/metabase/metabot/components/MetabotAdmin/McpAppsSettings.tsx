@@ -8,6 +8,8 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { Box, Flex, Stack, Switch, Text, TextInput } from "metabase/ui";
 
+import { McpServerUrlSection } from "./MCPServerUrlSection";
+
 const getMcpClients = () =>
   [
     {
@@ -65,15 +67,14 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
         )}`
       }
     >
-      {isEnabled ? (
+      {isEnabled && (
         <Stack gap="lg">
           <CommonMcpClientsSection />
 
           <CustomMcpOriginsSection />
         </Stack>
-      ) : (
-        <></>
       )}
+      <McpServerUrlSection />
     </SettingsSection>
   );
 };

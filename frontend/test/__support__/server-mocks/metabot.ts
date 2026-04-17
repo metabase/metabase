@@ -167,6 +167,7 @@ type SetupMetabaseManagedAiEndpointsOptions = {
     updated_at: string | null;
   } | null;
   purchaseCloudAddOnResponse?: number | { status: number; body: unknown };
+  removeCloudAddOnResponse?: number | { status: number; body: unknown };
 };
 
 export function setupMetabaseManagedAiEndpoints({
@@ -174,6 +175,7 @@ export function setupMetabaseManagedAiEndpoints({
   metabasePricePerUnit = 3.75,
   metabotUsageQuota = null,
   purchaseCloudAddOnResponse = 200,
+  removeCloudAddOnResponse = 200,
 }: SetupMetabaseManagedAiEndpointsOptions = {}) {
   fetchMock.get("path:/api/ee/metabot/usage", {
     tokens: metabotUsageQuota?.tokens ?? null,
@@ -210,6 +212,11 @@ export function setupMetabaseManagedAiEndpoints({
   fetchMock.post(
     `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
     purchaseCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
   );
 }
 
