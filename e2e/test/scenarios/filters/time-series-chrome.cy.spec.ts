@@ -181,7 +181,7 @@ describe("time-series chrome filter widget", () => {
         );
 
         // Toggle off
-        cy.findByText("Include this quarter").click();
+        cy.findByLabelText("Include this quarter").click();
       });
 
       cy.log("Change the direction");
