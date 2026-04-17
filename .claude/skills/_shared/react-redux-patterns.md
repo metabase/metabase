@@ -24,5 +24,4 @@
 - Fetch data at the component that owns it. Do not lazily trigger a fetch deep in a render path and rely on the caller to have pre-warmed the cache.
 - When a piece of metadata is required for a query, assure its presence where the query is created — not implicitly down one of the usage paths.
 - Prefer RTK Query conventions over ad-hoc `fetch` or thunks for new endpoints.
-- In Cypress, use the existing intercept helpers in `e2e/support/helpers/api/` instead of inlining `cy.intercept` with raw URLs.
 - Wrap RTK mutation trigger functions in `useCallback` when you pass them to memoized children or effect dep arrays.
