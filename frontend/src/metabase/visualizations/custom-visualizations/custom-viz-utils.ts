@@ -1,5 +1,6 @@
 import type { OptionsType } from "metabase/utils/formatting/types";
 import { formatValue as internalFormatValue } from "metabase/utils/formatting/value";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
@@ -24,7 +25,9 @@ export function getPluginAssetUrl(
   if (!assetPath) {
     return undefined;
   }
-  return `/api/ee/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
+  return getSubpathSafeUrl(
+    `/api/ee/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`,
+  );
 }
 
 export function getCustomPluginIdentifier(
