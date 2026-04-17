@@ -110,8 +110,8 @@
         "inquirer-toggle": "^1.0.1",
         "js-cookie": "^2.1.2",
         "js-yaml": "^4.1.1",
-        "json5": "2.2.2",
-        "jspdf": "^4.2.0",
+        "json5": "^2.2.2",
+        "jspdf": "^4.2.1",
         "kbar": "0.1.0-beta.45",
         "leaflet": "^1.2.0",
         "leaflet-draw": "^0.4.9",
@@ -416,16 +416,13 @@
     "cross-spawn": "^7.0.5",
     "d3-color": "^3.1.0",
     "debug": "^4.3.4",
-    "diff": "^5.2.2",
     "dompurify": "^3.3.2",
     "elliptic": "^6.6.1",
     "follow-redirects": "^1.15.5",
-    "json5": "2.2.2",
     "lodash": "^4.18.1",
     "lodash-es": "^4.18.1",
     "markdown-it": "^14.1.1",
     "mdast-util-to-hast": "^13.2.1",
-    "nth-check": "2.0.1",
     "on-headers": "^1.1.0",
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
@@ -3628,7 +3625,7 @@
 
     "json-to-pretty-yaml": ["json-to-pretty-yaml@1.2.2", "", { "dependencies": { "remedial": "^1.0.7", "remove-trailing-spaces": "^1.0.6" } }, "sha512-rvm6hunfCcqegwYaG5T4yKJWxc9FXFgBVrcTZ4XfSVRwa5HA/Xs+vB/Eo9treYYHCeNM0nrSUr82V/M31Urc7A=="],
 
-    "json5": ["json5@2.2.2", "", { "bin": { "json5": "lib/cli.js" } }, "sha512-46Tk9JiOL2z7ytNQWFLpj99RZkVgeHf87yGQKsIkaPz1qSH9UczKH1rO7K3wgRselo0tYMUNfecYpm/p1vC7tQ=="],
+    "json5": ["json5@2.2.3", "", { "bin": { "json5": "lib/cli.js" } }, "sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg=="],
 
     "jsonfile": ["jsonfile@6.1.0", "", { "dependencies": { "universalify": "^2.0.0" }, "optionalDependencies": { "graceful-fs": "^4.1.6" } }, "sha512-5dgndWOriYSm5cnYaJNhalLNDKOqFwyDB/rr1E9ZsGciGvKPs8R2xYGCacuf3z6K1YKDz182fd+fY3cn3pMqXQ=="],
 
