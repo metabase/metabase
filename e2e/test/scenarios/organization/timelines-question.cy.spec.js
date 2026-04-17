@@ -472,13 +472,25 @@ describe("scenarios > organization > timelines > question", () => {
       );
     });
 
+    // TODO @nemanjaglumac 2026-04-17: Simplify or potentially remove this repro altogether!
+    // It is hacky and it is fragile because it relies on the MAX date in the ORDERS table
+    // so all timestamps need to be carefully hard coded relative to it.
+    // I've added comments that hopefully make this easier for the next person to understand.
+    // Additionally, one granularity bucket would sufficiently reproduce the issue.
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
         events: [
-          { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
-          { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
-          { name: "Last quarter", timestamp: "2026-05-10T12:00:00Z" },
-          { name: "Last year", timestamp: "2026-09-10T12:00:00Z" },
+          // All events are AFTER the ORDERS max (~Apr 19, 2029) but within
+          // the last bucket of their respective granularity. The bug (#23336)
+          // was that events in the last period's extended range were filtered out.
+          // Last week bucket is Apr 13-19 (Sun-Sat): Apr 20 is next week
+          { name: "Last week", timestamp: "2029-04-20T12:00:00Z" },
+          // Last month bucket is April: Apr 27 is still in April
+          { name: "Last month", timestamp: "2029-04-27T12:00:00Z" },
+          // Last quarter bucket is Q2: May 10 is still in Q2
+          { name: "Last quarter", timestamp: "2029-05-10T12:00:00Z" },
+          // Last year bucket is 2029: Sep 10 is still in 2029
+          { name: "Last year", timestamp: "2029-09-10T12:00:00Z" },
         ],
       });
 
