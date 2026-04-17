@@ -354,7 +354,31 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
   });
 
   describe("dashboard edit question picker sidebar", () => {
-    it("should allow admins to browse shared collections with correct breadcrumbs and add questions", () => {
+    it("should not show shared collections when tenants are disabled", () => {
+      setupTenantCollections().then(() => {
+        H.updateSetting("use-tenants", false);
+
+        H.createDashboard({
+          name: "Test Dashboard",
+        }).then(({ body: dashboard }) => {
+          H.visitDashboard(dashboard.id);
+          H.editDashboard();
+          H.openQuestionsSidebar();
+
+          H.sidebar().findByText(TENANT_ROOT_NAME).should("not.exist");
+
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("contain", "Our analytics");
+
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("not.contain", "Collections");
+        });
+      });
+    });
+
+    it("should allow admins to browse shared collections via breadcrumbs and add questions", () => {
       setupTenantCollections().then(({ tenantCollectionId }) => {
         H.createQuestion({
           name: "Tenant Orders Question",
@@ -369,18 +393,20 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
           H.editDashboard();
           H.openQuestionsSidebar();
 
-          // The breadcrumb should show "Collections" as the top level
-          // since shared collections exist
+          cy.log(
+            "breadcrumb should show 'Collections' as the top level as shared collections exist",
+          );
           H.sidebar()
             .findByTestId("breadcrumbs")
             .should("contain", "Collections")
             .and("contain", "Our analytics");
 
-          // Navigate to the top level to see both namespaces
+          cy.log("navigate to the top level to see both namespaces");
           H.sidebar()
             .findByTestId("breadcrumbs")
             .findByText("Collections")
             .click();
+
           H.sidebar().findByText("Our analytics").should("be.visible");
           H.sidebar().findByText(TENANT_ROOT_NAME).should("be.visible");
 
@@ -412,21 +438,23 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
               H.editDashboard();
               H.openQuestionsSidebar();
 
-              // Navigate to top level first
+              cy.log("navigate to top level");
               H.sidebar()
                 .findByTestId("breadcrumbs")
                 .findByText("Collections")
                 .click();
 
-              // Navigate into Our analytics
+              cy.log("navigate into Our Analytics");
               H.sidebar().findByText("Our analytics").click();
+
               H.sidebar()
                 .findByTestId("breadcrumbs")
                 .should("contain", "Collections")
                 .and("contain", "Our analytics");
 
-              // Navigate into a sub-collection under Our Analytics
+              cy.log("navigate into a sub-collection under our analytics");
               H.sidebar().findByText("Our Analytics Sub").click();
+
               H.sidebar()
                 .findByTestId("breadcrumbs")
                 .should("contain", "Collections")
@@ -434,22 +462,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
                 .and("contain", "Our Analytics Sub");
             },
           );
-        });
-      });
-    });
-
-    it("should not show shared collections when tenants are disabled", () => {
-      setupTenantCollections().then(() => {
-        H.updateSetting("use-tenants", false);
-
-        H.createDashboard({
-          name: "Test Dashboard",
-        }).then(({ body: dashboard }) => {
-          H.visitDashboard(dashboard.id);
-          H.editDashboard();
-          H.openQuestionsSidebar();
-
-          H.sidebar().findByText(TENANT_ROOT_NAME).should("not.exist");
         });
       });
     });
