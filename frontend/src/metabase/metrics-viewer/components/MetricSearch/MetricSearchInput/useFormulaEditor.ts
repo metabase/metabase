@@ -381,14 +381,6 @@ export function useFormulaEditor({
         : replaceFrom;
       const metricTo = metricFrom + metricName.length;
 
-      const existingIdentities = readMetricIdentities(view);
-      const nextSlotIndex =
-        existingIdentities.length > 0
-          ? Math.max(...existingIdentities.map((i) => i.slotIndex)) + 1
-          : 0;
-
-      const definition = definitionsRef.current[sourceId]?.definition ?? null;
-
       // Dispatch through the view (not setEditText) — the value-prop sync
       // in @uiw/react-codemirror does a full doc replacement that destroys
       // all RangeSet-tracked identities.
@@ -399,8 +391,7 @@ export function useFormulaEditor({
           from: metricFrom,
           to: metricTo,
           sourceId,
-          definition,
-          slotIndex: nextSlotIndex,
+          definition: null,
         }),
       });
 

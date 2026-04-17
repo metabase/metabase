@@ -46,14 +46,18 @@ export const CopyButton = ({
   );
 
   return (
-    <div className={className} style={style} data-testid="copy-button">
+    <div
+      className={className}
+      data-testid="copy-button"
+      onClick={onCopyValue}
+      onKeyDown={copyOnEnter}
+      style={style}
+    >
       <Tooltip
         label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
         opened={clipboard.copied}
       >
-        <span onClick={onCopyValue} onKeyDown={copyOnEnter}>
-          {target}
-        </span>
+        <span>{target}</span>
       </Tooltip>
     </div>
   );

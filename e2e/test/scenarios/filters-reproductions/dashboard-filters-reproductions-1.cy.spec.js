@@ -218,11 +218,11 @@ describe("issue 12720, issue 47172", () => {
     cy.findAllByTestId("dashcard-container").contains(title).click();
 
     cy.location("search").should("contain", dashboardFilter.default);
-    H.filterWidget().contains("After January 1, 2026");
+    H.filterWidget().contains("After January 1, 2029");
   }
-  // After January 1st, 2026
+  // After January 1st, 2029
   const dashboardFilter = {
-    default: "2026-01-01~",
+    default: "2029-01-01~",
     id: "d3b78b27",
     name: "Date Filter",
     slug: "date_filter",
@@ -585,7 +585,7 @@ describe("issue 16663", () => {
     id: "f8ae0c97",
     type: "date/quarter-year",
     sectionId: "date",
-    default: "Q1-2023",
+    default: "Q1-2026",
   };
 
   const dashboardDetails = { parameters: [FILTER] };
@@ -853,10 +853,10 @@ describe("issue 17775", () => {
   it("should be able to apply dashboard filter to a custom column (metabase#17775)", () => {
     H.filterWidget().click();
 
-    setQuarterAndYear({ quarter: "Q1", year: "2023" });
+    setQuarterAndYear({ quarter: "Q1", year: "2026" });
 
     cy.findAllByText("44.43").should("have.length", 2);
-    cy.findAllByText("March 26, 2023, 8:45 AM").should("have.length", 2);
+    cy.findAllByText("March 26, 2026, 8:45 AM").should("have.length", 2);
   });
 });
 
