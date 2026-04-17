@@ -16,7 +16,7 @@ frontend/test/          # Jest unit tests
 
 - **Framework**: React 18 with TypeScript
 - **State**: Redux Toolkit
-- **Styling**: CSS Modules (preferred) > Emotion styled-components
+- **Styling**: Mantine style props (preferred) > CSS Modules
 - **UI**: `metabase/ui` components built with Mantine v8
 - **Build**: Rspack (primary), Webpack (legacy)
 - **Testing**: Jest + React Testing Library, Cypress
@@ -30,7 +30,7 @@ frontend/test/          # Jest unit tests
 
 ### Styling
 
-ALWAYS prefer Mantine style props (`p`, `m`, `w`, `h`, `c`, `bg`, `position`, `shadow`), then CSS modules. DO NOT suggest styled components, they are deprecated.
+ALWAYS prefer Mantine style props (`p`, `m`, `w`, `h`, `c`, `bg`, `position`, `shadow` etc.), then CSS modules. DO NOT suggest styled components, they are deprecated.
 
 - Use design tokens, not raw values. `var(--default-border-radius)` beats a hardcoded `4px`; a theme color key beats a hex literal.
 - Do not reach into Mantine's internal CSS variables. If a token is missing, add it to the theme.
@@ -54,7 +54,6 @@ All PRs should include tests. Prefer Unit tests over E2E tests.
 All user-facing strings MUST be localized using the ttag library. Localized strings should be complete phrases, do not concatenate a few separately localized strings. You should add context to strings where the meaning of the string might not be obvious in isolation: e.g. "Home" might have different words in some languages depending on whether you're talking about a dwelling or the landing page for a website.
 
 - Use `` t`...` `` for plain strings and `jt` for JSX interpolation. No bare English strings in JSX, error messages, or toast content.
-- When you add a string, cover the missing-translation branch in tests if the code has one.
 
 ### Scripts
 

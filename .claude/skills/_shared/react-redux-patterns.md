@@ -16,7 +16,6 @@
 
 - Every async operation needs a visible loading state. "It's fast enough" isn't a reason to skip it — on a slow connection the UI looks broken.
 - Every async operation needs an error branch. Do not swallow errors silently; at minimum surface them to the user or log them where someone will see them.
-- Do not derive loading from data presence. A failed request produces no data but is not loading.
 - Empty state is its own UI — distinct from loading and from error. An empty list should look intentional, not like the page didn't finish rendering.
 
 ## API and data fetching
