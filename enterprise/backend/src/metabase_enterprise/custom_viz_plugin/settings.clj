@@ -5,7 +5,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting custom-viz-plugin-dev-mode-enabled
-  (deferred-tru "Whether custom visualization plugin dev mode is enabled. When false, the dev endpoints (POST /dev, PUT /:id/dev-url, GET /:id/dev-sse) are disabled.")
+  (deferred-tru "Whether custom visualization plugin dev mode is enabled. When false, the dev endpoints are disabled.")
   :type       :boolean
   :visibility :public
   :setter     :none
