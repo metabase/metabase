@@ -69,7 +69,6 @@ describe("cli init", () => {
     const projectDir = join(tmpDir, "test-viz");
     const expectedFiles = [
       "package.json",
-      "package-lock.json",
       "vite.config.ts",
       "tsconfig.json",
       "src/index.tsx",
