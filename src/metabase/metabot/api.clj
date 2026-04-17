@@ -27,7 +27,7 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
-   [metabase.request.util :as request.util]
+   [metabase.request.core :as request]
    [metabase.server.streaming-response :as sr]
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
@@ -299,10 +299,10 @@
                      [:charts {:optional true} [:map-of :string :any]]
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
             [:debug {:optional true} [:maybe :boolean]]]
-   request]
+   req]
   (metabot.context/log body :llm.log/fe->be)
   (let [body* (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)]
-    (streaming-request body* (request.util/ip-address request))))
+    (streaming-request body* (request/ip-address req))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
