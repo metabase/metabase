@@ -67,21 +67,28 @@ function getModelDescription(provider: MetabotProvider | undefined) {
 
 const MetabotSetupContext = createContext<{
   connectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
+  disconnectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
   isLoading: boolean;
   isConnectButtonEnabled: boolean;
   setIsConnectButtonEnabled: (enabled: boolean) => void;
 }>({
   isLoading: false,
   connectHandlerRef: null,
+  disconnectHandlerRef: null,
   isConnectButtonEnabled: false,
   setIsConnectButtonEnabled: () => {},
 });
 
 export function useMetabotSetupContext(
   onConnect: (() => Promise<void>) | null,
+  onDisconnect: (() => Promise<void>) | null = null,
 ) {
-  const { connectHandlerRef, isLoading, setIsConnectButtonEnabled } =
-    useContext(MetabotSetupContext);
+  const {
+    connectHandlerRef,
+    disconnectHandlerRef,
+    isLoading,
+    setIsConnectButtonEnabled,
+  } = useContext(MetabotSetupContext);
 
   useEffect(() => {
     if (!connectHandlerRef) {
@@ -96,6 +103,18 @@ export function useMetabotSetupContext(
       connectHandlerRef.current = null;
     };
   }, [connectHandlerRef, onConnect, setIsConnectButtonEnabled]);
+
+  useEffect(() => {
+    if (!disconnectHandlerRef) {
+      return;
+    }
+
+    disconnectHandlerRef.current = onDisconnect;
+
+    return () => {
+      disconnectHandlerRef.current = null;
+    };
+  }, [disconnectHandlerRef, onDisconnect]);
 
   return { isLoading };
 }
@@ -130,6 +149,7 @@ export function MetabotSetup({ id }: { id?: string }) {
   }, [connectedProvider]);
 
   const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
+  const disconnectHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
@@ -139,6 +159,12 @@ export function MetabotSetup({ id }: { id?: string }) {
 
   const handleDisconnect = useCallback(async () => {
     if (!connectedProvider) {
+      return;
+    }
+
+    try {
+      await disconnectHandlerRef.current?.();
+    } catch {
       return;
     }
 
@@ -182,7 +208,13 @@ export function MetabotSetup({ id }: { id?: string }) {
         toastColor: "error",
       });
     }
-  }, [connectedProvider, providerApiKeyDetails, updateSettings, sendToast]);
+  }, [
+    connectedProvider,
+    disconnectHandlerRef,
+    providerApiKeyDetails,
+    updateSettings,
+    sendToast,
+  ]);
 
   const providerOptions = useMemo(() => {
     const options = Object.values(getProviderOptions(offerMetabaseAiManaged));
@@ -195,6 +227,7 @@ export function MetabotSetup({ id }: { id?: string }) {
   const connectHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const handleConnect = async () => {
     if (!connectHandlerRef.current) {
       return;
@@ -207,13 +240,15 @@ export function MetabotSetup({ id }: { id?: string }) {
     }
   };
 
-  const isLoading = isConnecting || updateSettingsResult.isLoading;
+  const isLoading =
+    isConnecting || isDisconnecting || updateSettingsResult.isLoading;
   const [isConnectButtonEnabled, setIsConnectButtonEnabled] = useState(false);
 
   return (
     <MetabotSetupContext.Provider
       value={{
         connectHandlerRef,
+        disconnectHandlerRef,
         isLoading,
         setIsConnectButtonEnabled,
         isConnectButtonEnabled,
@@ -294,7 +329,14 @@ export function MetabotSetup({ id }: { id?: string }) {
                 c="danger"
                 loading={isLoading}
                 disabled={isLoading}
-                onClick={handleDisconnect}
+                onClick={async () => {
+                  setIsDisconnecting(true);
+                  try {
+                    await handleDisconnect();
+                  } finally {
+                    setIsDisconnecting(false);
+                  }
+                }}
               >
                 {t`Disconnect`}
               </Button>
