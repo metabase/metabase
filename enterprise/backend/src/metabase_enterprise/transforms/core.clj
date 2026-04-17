@@ -21,8 +21,13 @@
         python?   (premium-features/has-feature? :transforms-python)]
     (case (keyword source-type)
       (:native :mbql) (cond
+                        ;; These transforms are metered differently based on plan and addons status:
+                        ;; - the advanced transforms addon adds the writable-connection feature, which
+                        ;;   augments what they can do and meters them as advanced
                         (and basic? writable?) "transform-advanced"
+                        ;; - hosted instances with basic transforms get these metered as basic
                         (and basic? hosted?)   "transform-basic"
+                        ;; - self-hosted customers without the advanced add-on aren't metered for these at all
                         :else                  nil)
       :python         (when python? "transform-advanced")
       nil)))
