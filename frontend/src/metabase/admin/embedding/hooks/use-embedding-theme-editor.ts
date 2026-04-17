@@ -68,83 +68,67 @@ export function useEmbeddingThemeEditor(themeId: number) {
     [serverThemeState, currentTheme],
   );
 
+  const updateSettings = useCallback(
+    (updater: (settings: MetabaseTheme) => Partial<MetabaseTheme>) => {
+      setCurrentTheme((prev) =>
+        prev
+          ? {
+              ...prev,
+              settings: { ...prev.settings, ...updater(prev.settings) },
+            }
+          : prev,
+      );
+    },
+    [],
+  );
+
   const setName = useCallback((name: string) => {
     setCurrentTheme((prev) => (prev ? { ...prev, name } : prev));
   }, []);
 
   const setColor = useCallback(
     (key: Exclude<MetabaseColor, "charts">, value: string) => {
-      setCurrentTheme((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        return {
-          ...prev,
-          settings: {
-            ...prev.settings,
-            colors: { ...prev.settings.colors, [key]: value.toLowerCase() },
-          },
-        };
-      });
+      updateSettings((s) => ({
+        colors: { ...s.colors, [key]: value.toLowerCase() },
+      }));
     },
-    [],
+    [updateSettings],
   );
 
-  const setChartColor = useCallback((index: number, value: string) => {
-    setCurrentTheme((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const charts = [...(prev.settings.colors?.charts ?? [])];
-      charts[index] = value.toLowerCase();
-      return {
-        ...prev,
-        settings: {
-          ...prev.settings,
-          colors: { ...prev.settings.colors, charts },
-        },
-      };
-    });
-  }, []);
+  const setChartColor = useCallback(
+    (index: number, value: string) => {
+      updateSettings((s) => {
+        const charts = [...(s.colors?.charts ?? [])];
+        charts[index] = value.toLowerCase();
+        return { colors: { ...s.colors, charts } };
+      });
+    },
+    [updateSettings],
+  );
 
-  const setFontFamily = useCallback((family: string) => {
-    setCurrentTheme((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      return {
-        ...prev,
-        settings: { ...prev.settings, fontFamily: family },
-      };
-    });
-  }, []);
+  const setFontFamily = useCallback(
+    (family: string) => {
+      updateSettings(() => ({ fontFamily: family }));
+    },
+    [updateSettings],
+  );
 
-  const setFontSize = useCallback((size: string) => {
-    setCurrentTheme((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      return {
-        ...prev,
-        settings: { ...prev.settings, fontSize: size },
-      };
-    });
-  }, []);
+  const setFontSize = useCallback(
+    (size: string) => {
+      updateSettings(() => ({ fontSize: size }));
+    },
+    [updateSettings],
+  );
 
-  const setLineHeight = useCallback((lineHeight: string) => {
-    setCurrentTheme((prev) => {
-      if (!prev) {
-        return prev;
-      }
+  const setLineHeight = useCallback(
+    (lineHeight: string) => {
       const value = lineHeight
         ? parseFloat(lineHeight) || lineHeight
         : undefined;
-      return {
-        ...prev,
-        settings: { ...prev.settings, lineHeight: value },
-      };
-    });
-  }, []);
+      updateSettings(() => ({ lineHeight: value }));
+    },
+    [updateSettings],
+  );
 
   const hasAdditionalColorChanges = useMemo(() => {
     if (!currentTheme) {
@@ -164,13 +148,9 @@ export function useEmbeddingThemeEditor(themeId: number) {
   }, [currentTheme, defaultThemeSettings]);
 
   const resetAdditionalColors = useCallback(() => {
-    setCurrentTheme((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
+    updateSettings((s) => {
       const defaultColors = defaultThemeSettings.colors ?? {};
-      const updatedColors = { ...prev.settings.colors };
+      const updatedColors = { ...s.colors };
 
       for (const key of ADDITIONAL_COLOR_KEYS) {
         updatedColors[key] = (defaultColors[key] as string) ?? "";
@@ -178,12 +158,9 @@ export function useEmbeddingThemeEditor(themeId: number) {
 
       updatedColors.charts = defaultColors.charts ?? [];
 
-      return {
-        ...prev,
-        settings: { ...prev.settings, colors: updatedColors },
-      };
+      return { colors: updatedColors };
     });
-  }, [defaultThemeSettings]);
+  }, [updateSettings, defaultThemeSettings]);
 
   const handleSave = useCallback(async () => {
     if (!currentTheme) {
