@@ -281,6 +281,10 @@ export type MetabotEvent =
   | MetabotFixQueryClickedEvent
   | MetabotExplainChartClickedEvent;
 
+export type SecurityCenterPageViewedEvent = ValidateEvent<{
+  event: "security_center_page_viewed";
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -313,4 +317,5 @@ export type SimpleEvent =
   | EmbedWizardEvent
   | ConnectionStringParsedSuccessEvent
   | ConnectionStringParsedFailedEvent
-  | MetabotEvent;
+  | MetabotEvent
+  | SecurityCenterPageViewedEvent;

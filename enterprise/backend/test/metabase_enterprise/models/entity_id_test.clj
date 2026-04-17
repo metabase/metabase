@@ -88,6 +88,7 @@
     :model/ViewLog
     :model/GroupTableAccessPolicy
     :model/ConnectionImpersonation
+    :model/SecurityAdvisory
     :model/CloudMigration})
 
 (deftest ^:parallel comprehensive-entity-id-test

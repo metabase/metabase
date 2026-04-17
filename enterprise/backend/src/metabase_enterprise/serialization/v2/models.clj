@@ -89,6 +89,7 @@
    "Revision"
    "SearchIndexMetadata"
    "Secret"
+   "SecurityAdvisory"
    "SemanticSearchTokenTracking"
    "Session"
    "TaskHistory"
