@@ -3,21 +3,10 @@
 
   Malli already has built-in functionality for this. Why not use it directly?
 
-  First off because the Malli schema describes an internal form of MBQL which
-  needs some tweaks before it can be used outside this codebase; see the
-  metabase.models.serialization/export-mbql function. The main differences are:
-  * internal uses :lib/uuid property, external should remove this.
-  * internal uses integers for IDs, external should use strings or string tuples
-    * database/card/segment/measure/snippet: string
-    * table - [db-name, schema, table-name]
-    * field - [db-name, schema, table-name, ...field-names]
-
+  We're working around a few bugs in Malli's own JSON schema compiler.
   It sometimes emits branching nodes like :allOf, :anyOf, :oneOf with either
   one or zero children, which doesn't make any sense. These should be
   collapsed down. Empty conditions should be removed from these as well.
-
-  We're also just working around a few straight up bugs in Malli's own JSON
-  schema compiler.
 
   Our malli schema for what constitutes a valid JSON schema is a little stricter
   about what the keys have to look like; for instance types must always be
@@ -43,16 +32,13 @@
       schema)))
 
 (defn- update-properties [properties]
-  (let [properties (dissoc properties :lib/uuid)]
-    (zipmap (map u/qualified-name (keys properties))
-            (vals properties))))
+  (zipmap (map u/qualified-name (keys properties))
+          (vals properties)))
 
 (defn- update-required [required]
-  (if (map? required)
-    (dissoc required :lib/uuid)
-    (->> required
-         (remove #{:lib/uuid})
-         (map u/qualified-name))))
+  (if (sequential? required)
+    (map u/qualified-name required)
+    required))
 
 (defn- walk [node]
   (if (map? node)
@@ -63,31 +49,6 @@
         (collapse-branches :oneOf)
         (m/update-existing :properties update-properties))
     node))
-
-(defn- replace-int-type [schema new-type]
-  (dissoc (merge schema new-type) :minimum))
-
-(defn- update-ids
-  "internal MBQL uses pos-int for a bunch of IDs which need to be string/string-tuple."
-  [definitions]
-  (-> definitions
-      (update "metabase.lib.schema.id.table" replace-int-type
-              {:type "array"
-               :prefixItems [{:type "string"} ; db name
-                             {:anyOf [{:type "string"} {:type "null"}]} ; schema
-                             {:type "string"}] ; table name
-               :items false})
-      (update "metabase.lib.schema.id.field" replace-int-type
-              {:type "array"
-               :prefixItems [{:type "string"} ; db name
-                             {:anyOf [{:type "string"} {:type "null"}]} ; schema
-                             {:type "string"}] ; table name
-               :items {:type "string"}})
-      (update "metabase.lib.schema.id.database" replace-int-type {:type "string"})
-      (update "metabase.lib.schema.id.card" replace-int-type {:type "string"})
-      (update "metabase.lib.schema.id.segment" replace-int-type {:type "string"})
-      (update "metabase.lib.schema.id.measure" replace-int-type {:type "string"})
-      (update "metabase.lib.schema.id.snippet" replace-int-type {:type "string"})))
 
 ;; due to a bug in malli, :cat schemas get compiled to an empty schema. this
 ;; wouldn't normally cause false negatives (just false positives) but there are
@@ -110,11 +71,10 @@
   ;; all over the place so it would be hard to swap them all with our new
   ;; "externalized" field-id schema. if we turn it into json-schema then there's
   ;; only one place that those swaps need to happen.
-  (let [schema (-> (mjs/transform ::schema/query)
+  (let [schema (-> (mjs/transform ::schema/external-query)
                    ;; many of the updates are done below in `walk` if they need
                    ;; to work at any nesting level, but definitions are top-level
                    ;; and can be adjusted immediately.
-                   (update :definitions update-ids)
                    (update :definitions remove-one-of-cat)
                    ;; this one breaks because the first oneOf branch is supposed to be for
                    ;; UUIDs and the second branch falls back to any non-blank string, but a
