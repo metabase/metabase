@@ -58,7 +58,7 @@ import { createMockNotification } from "metabase-types/api/mocks/notification";
 
 import {
   InteractiveQuestion,
-  _InteractiveQuestionInternal,
+  InteractiveQuestionInternal,
 } from "./InteractiveQuestion";
 
 const TEST_DB_ID = 1;
@@ -676,13 +676,10 @@ describe("InteractiveQuestion — query prop", () => {
       collections: [createMockCollection({ id: 1 })],
     });
 
-    renderWithSDKProviders(
-      <_InteractiveQuestionInternal query={QUERY_PROP} />,
-      {
-        componentProviderProps: { authConfig: createMockSdkConfig() },
-        storeInitialState: state,
-      },
-    );
+    renderWithSDKProviders(<InteractiveQuestionInternal query={QUERY_PROP} />, {
+      componentProviderProps: { authConfig: createMockSdkConfig() },
+      storeInitialState: state,
+    });
 
     await waitForLoaderToBeRemoved();
   }

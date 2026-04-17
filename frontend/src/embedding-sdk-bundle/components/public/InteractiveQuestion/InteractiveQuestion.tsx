@@ -157,9 +157,9 @@ export const InteractiveQuestion = Object.assign(
 
 /**
  * Same runtime component as {@link InteractiveQuestion}, typed to accept the
- * internal `query` prop. For use in internal tests only.
+ * internal `query` prop. This component is intended for internal use only.
  */
-export const _InteractiveQuestionInternal = Object.assign(
+export const InteractiveQuestionInternal = Object.assign(
   _InteractiveQuestionWrapped as FC<InteractiveQuestionInternalProps>,
   subComponents,
   { schema: interactiveQuestionSchema },

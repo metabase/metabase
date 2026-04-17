@@ -46,7 +46,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockNotification } from "metabase-types/api/mocks/notification";
 
-import { StaticQuestion, _StaticQuestionInternal } from "./StaticQuestion";
+import { StaticQuestion, StaticQuestionInternal } from "./StaticQuestion";
 
 const TEST_DB_ID = 1;
 const TEST_DB = createMockDatabase({ id: TEST_DB_ID });
@@ -594,7 +594,7 @@ describe("StaticQuestion — query prop", () => {
       collections: [createMockCollection({ id: 1 })],
     });
 
-    renderWithSDKProviders(<_StaticQuestionInternal query={QUERY_PROP} />, {
+    renderWithSDKProviders(<StaticQuestionInternal query={QUERY_PROP} />, {
       componentProviderProps: { authConfig: createMockSdkConfig() },
       storeInitialState: state,
     });

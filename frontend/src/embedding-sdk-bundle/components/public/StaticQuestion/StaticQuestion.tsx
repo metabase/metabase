@@ -245,9 +245,9 @@ export const StaticQuestion = Object.assign(
 
 /**
  * Same runtime component as {@link StaticQuestion}, typed to accept the
- * internal `query` prop. For use in internal tests only.
+ * internal `query` prop. This component is intended for internal use only.
  */
-export const _StaticQuestionInternal = Object.assign(
+export const StaticQuestionInternal = Object.assign(
   _StaticQuestionWrapped as FC<StaticQuestionInternalProps>,
   subComponents,
   { schema: staticQuestionSchema },
