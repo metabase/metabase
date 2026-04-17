@@ -233,19 +233,19 @@
 (defn endpoint->tool-definition
   "Convert a single endpoint info + prefix to a tool definition map."
   [prefix {:keys [form]}]
-  (let [method        (:method form)
-        route-path    (get-in form [:route :path])
-        tool-md       (get-in form [:metadata :tool])
-        tool-name     (:name tool-md)
-        _             (assert (string? tool-name) "Tool :name must be a string")
-        description   (or (:description tool-md)
-                          (:docstr form))
-        full-path     (str prefix (route-path->endpoint-path route-path))
-        input-schema  (merge-input-schemas form)
-        resp-schema   (response-schema->json-schema (:response-schema form))
-        annotations   (infer-annotations method (:annotations tool-md))
-        task-support  (:task-support tool-md)
-        scope         (get-in form [:metadata :scope])]
+  (let [method       (:method form)
+        route-path   (get-in form [:route :path])
+        tool-md      (get-in form [:metadata :tool])
+        tool-name    (:name tool-md)
+        _            (assert (string? tool-name) "Tool :name must be a string")
+        description  (or (:description tool-md)
+                         (:docstr form))
+        full-path    (str prefix (route-path->endpoint-path route-path))
+        input-schema (merge-input-schemas form)
+        resp-schema  (response-schema->json-schema (:response-schema form))
+        annotations  (infer-annotations method (:annotations tool-md))
+        task-support (:task-support tool-md)
+        scope        (get-in form [:metadata :scope])]
     (cond-> {:name        tool-name
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
