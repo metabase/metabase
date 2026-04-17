@@ -429,6 +429,7 @@ export interface CreateCardRequest {
   collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
+  size?: { width: number; height: number };
 }
 
 export interface CreateCardFromCsvRequest {

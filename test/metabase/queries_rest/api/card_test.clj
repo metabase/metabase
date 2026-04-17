@@ -4095,7 +4095,21 @@
     (testing "We can't create a dashboard internal card with a non-null :collection_position"
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id
-                                                               :collection_position 5)))))
+                                                               :collection_position 5)))
+    (testing "An explicit :size overrides the display-type default when autoplacing"
+      (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card"
+                                               (assoc (card-with-name-and-query)
+                                                      :dashboard_id dash-id
+                                                      :size {:width 8 :height 5})))
+            dashcard (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)]
+        (is (= 8 (:size_x dashcard)))
+        (is (= 5 (:size_y dashcard)))))
+    (testing ":size is not persisted on the Card itself"
+      (let [card (mt/user-http-request :crowberto :post 200 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :dashboard_id dash-id
+                                              :size {:width 3 :height 3}))]
+        (is (not (contains? card :size)))))))
 
 (deftest dashboard-internal-card-updates
   (mt/with-temp [:model/Collection {coll-id :id} {}
