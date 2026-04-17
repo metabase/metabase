@@ -168,20 +168,22 @@ export function mergeSharedCollections(
       continue; // already rewritten above
     }
 
-    const col = collection as ExpandedCollectionNode;
-    if (!col.path) {
+    const collectionNode = collection as ExpandedCollectionNode;
+
+    if (!collectionNode.path) {
       continue;
     }
 
     mergedCollectionsById[id as CollectionId] = {
-      ...col,
+      ...collectionNode,
       // Rewrite path: Collections > Our Analytics > ...
-      path: [COLLECTIONS_TOP_LEVEL_ID, ...col.path],
+      path: [COLLECTIONS_TOP_LEVEL_ID, ...collectionNode.path],
     } as ExpandedCollectionNode;
   }
 
   mergedCollectionsById[SHARED_TENANT_COLLECTIONS_ROOT_ID] =
     sharedSyntheticRoot;
+
   mergedCollectionsById[COLLECTIONS_TOP_LEVEL_ID] = topLevel;
 
   return mergedCollectionsById;
