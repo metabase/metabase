@@ -17,10 +17,12 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import {
+  EMBEDDING_SDK_CONFIG,
+  isEmbeddingEajs,
+} from "metabase/embedding-sdk/config";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import api from "metabase/utils/api";
-import { isWithinIframe } from "metabase/utils/iframe";
 import registerVisualizations from "metabase/visualizations/register";
 
 const reactSdkEmbedReferrerHandler = async (
@@ -105,7 +107,7 @@ export const useInitDataInternal = ({
   // referrer on every request. The EAJS iframe registers its own handler in
   // SdkIframeEmbedRoute.tsx using the value received via postMessage.
   if (
-    !isWithinIframe() &&
+    !isEmbeddingEajs() &&
     !api.beforeRequestHandlers.includes(reactSdkEmbedReferrerHandler)
   ) {
     api.beforeRequestHandlers.push(reactSdkEmbedReferrerHandler);
