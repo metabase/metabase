@@ -8838,7 +8838,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "transform-inspector", "slackbot" ]
+        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -12974,6 +12974,13 @@
             "details" : {
               "type" : "object",
               "properties" : {
+                "channel_id" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
                 "value" : { }
               },
               "required" : [ "value" ],
@@ -14090,6 +14097,96 @@
           },
           "required" : [ "enabled" ]
         }
+      },
+      "metabase.warehouses-rest.api.databases-metadata-response" : {
+        "type" : "object",
+        "properties" : {
+          "databases" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "engine" : {
+                  "type" : "string"
+                },
+                "id" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                },
+                "name" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "id", "name", "engine" ]
+            }
+          },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "base_type" : {
+                  "type" : "string"
+                },
+                "id" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                },
+                "coercion_strategy" : {
+                  "type" : "string"
+                },
+                "name" : {
+                  "type" : "string"
+                },
+                "semantic_type" : {
+                  "type" : "string"
+                },
+                "table_id" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+                },
+                "effective_type" : {
+                  "type" : "string"
+                },
+                "parent_id" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                },
+                "database_type" : {
+                  "type" : "string"
+                },
+                "description" : {
+                  "type" : "string"
+                },
+                "fk_target_field_id" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                }
+              },
+              "required" : [ "id", "table_id", "name", "base_type" ]
+            }
+          },
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "db_id" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                },
+                "description" : {
+                  "type" : "string"
+                },
+                "id" : {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+                },
+                "name" : {
+                  "type" : "string"
+                },
+                "schema" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "id", "db_id", "name" ]
+            }
+          }
+        },
+        "required" : [ "databases", "tables", "fields" ]
       },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
@@ -21173,6 +21270,33 @@
         "tags" : [ "/api/database" ]
       }
     },
+    "/api/database/metadata" : {
+      "get" : {
+        "operationId" : "get-api-database-metadata",
+        "summary" : "GET /api/database/metadata",
+        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.databases-metadata-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/database" ]
+      }
+    },
     "/api/database/sample_database" : {
       "post" : {
         "operationId" : "post-api-database-sample_database",
@@ -27918,6 +28042,95 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
+      }
+    },
+    "/api/ee/security-center/acknowledge" : {
+      "post" : {
+        "operationId" : "post-api-ee-security-center-acknowledge",
+        "summary" : "POST /api/ee/security-center/acknowledge",
+        "description" : "Acknowledge multiple security advisories. Skips already-acknowledged advisories.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "acknowledged_at" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "format" : "date-time"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "acknowledged_by" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "common_name" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            },
+                            "email" : {
+                              "description" : "value must be a valid email address.",
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "common_name", "email" ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "advisory_id" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                      },
+                      "match_status" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                      }
+                    },
+                    "required" : [ "advisory_id", "match_status", "acknowledged_by", "acknowledged_at" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "advisory_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  }
+                },
+                "required" : [ "advisory_ids" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/security-center" ]
