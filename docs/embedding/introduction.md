@@ -44,7 +44,7 @@ With SSO, Metabase can know who's viewing what, which unlocks a lot of power. Yo
 
 **When to use SSO**: You want to offer multi-tenant, self-service analytics, or you want to include the query builder, AI chat, drill-through, or a collection browser.
 
-If you're building a SaaS product and embedding analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
+If you're building a SaaS product with embedded analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
 
 ### Guest embedding
 
