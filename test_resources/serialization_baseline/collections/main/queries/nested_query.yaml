@@ -37,7 +37,6 @@ dataset_query:
       - {}
       - - field
         - base-type: type/Integer
-          lib/uuid: 95bea6bf-64d4-4603-b47d-437d22bf6cab
         - count
       - 5
     limit: 20
@@ -46,7 +45,6 @@ dataset_query:
       - {}
       - - field
         - base-type: type/Float
-          lib/uuid: 4726a0dd-12b3-4721-8941-c2ec9510dac1
         - sum
     lib/type: mbql.stage/mbql
   lib/type: mbql/query

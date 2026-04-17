@@ -14,7 +14,6 @@ dataset_query:
       - {}
       - - field
         - base-type: type/Integer
-          lib/uuid: d32f8053-f5b8-4e94-8768-32eb7b5a576f
         - count
       - 100
     order-by:
@@ -22,7 +21,6 @@ dataset_query:
       - {}
       - - field
         - base-type: type/Integer
-          lib/uuid: c7c318b1-34bb-488a-bc9a-8e8ccd476336
         - count
     source-card: h5F2EjHsRd73Dqqh8sAtd
     lib/type: mbql.stage/mbql
