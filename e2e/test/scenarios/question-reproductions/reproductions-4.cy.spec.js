@@ -1281,7 +1281,7 @@ describe("issue 12679", () => {
       cy.findByText("Sum of Total").should("exist");
     });
     cy.findByTestId("question-row-count")
-      .findByText("Showing 174 rows")
+      .findByText("Showing 175 rows")
       .should("exist");
   });
 });
