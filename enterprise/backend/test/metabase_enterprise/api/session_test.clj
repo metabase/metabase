@@ -7,7 +7,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest properties-token-features-test
-  (mt/with-premium-features #{:advanced-permissions
+  (mt/with-premium-features #{:admin-security-center
+                              :advanced-permissions
                               :attached-dwh
                               :audit-app
                               :cache-granular-controls
@@ -55,7 +56,8 @@
                               :collection-cleanup
                               :database-routing
                               :cloud-custom-smtp}
-    (is (= {:advanced_permissions           true
+    (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud)
+            :advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
             :cache_granular_controls        true
@@ -106,3 +108,9 @@
             :etl_connections_pg             false
             :dependencies                   false}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
+
+(deftest security-center-token-feature-test
+  (testing "admin_security_center is true for self-hosted with the feature flag"
+    (mt/with-premium-features #{:admin-security-center}
+      (is (true? (:admin_security_center
+                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))))

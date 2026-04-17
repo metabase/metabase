@@ -25,6 +25,8 @@ export type {
 export { createQuestionAndAddToDashboard } from "./createQuestionAndAddToDashboard";
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
 export { createReaction } from "./createReaction";
+export { seedSecurityAdvisories } from "./seedSecurityAdvisories";
+export type { SecurityAdvisorySpec } from "./seedSecurityAdvisories";
 export { createSnippet } from "./createSnippet";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
