@@ -599,6 +599,21 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("table-root").should("be.visible");
     });
 
+    it("falls back to the default viz on an embedded question", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+        });
+
+        H.visitEmbeddedPage({
+          resource: { question: questionId },
+          params: {},
+        });
+      });
+
+      cy.findByTestId("table-root").should("be.visible");
+    });
+
     it("calls onClick when the viz fires a click", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
@@ -707,6 +722,23 @@ describe("admin > custom visualizations", () => {
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
         H.visitPublicDashboard(Number(checkNotNull(dashcard.dashboard_id)));
+      });
+
+      H.getDashboardCard().findByTestId("table-root").should("be.visible");
+    });
+
+    it("falls back to the default viz on an embedded dashboard", () => {
+      createCustomVizDashboard().then(({ body: dashcard }) => {
+        const dashboardId = Number(checkNotNull(dashcard.dashboard_id));
+
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          enable_embedding: true,
+        });
+
+        H.visitEmbeddedPage({
+          resource: { dashboard: dashboardId },
+          params: {},
+        });
       });
 
       H.getDashboardCard().findByTestId("table-root").should("be.visible");
