@@ -149,11 +149,6 @@ const _InteractiveQuestionWrapped = withPublicComponentWrapper(
   { supportsGuestEmbed: false },
 );
 
-/**
- * Public-facing component — TypeScript contract excludes the internal `query`
- * prop. Runtime still accepts it (the schema passes it through), but it is
- * not part of the SDK's public API.
- */
 export const InteractiveQuestion = Object.assign(
   _InteractiveQuestionWrapped as FC<InteractiveQuestionProps>,
   subComponents,
@@ -162,8 +157,7 @@ export const InteractiveQuestion = Object.assign(
 
 /**
  * Same runtime component as {@link InteractiveQuestion}, typed to accept the
- * internal `query` prop. For use by the `useMetabot` hook and internal tests
- * only. Not re-exported from the public SDK package entry point.
+ * internal `query` prop. For use in internal tests only.
  */
 export const _InteractiveQuestionInternal = Object.assign(
   _InteractiveQuestionWrapped as FC<InteractiveQuestionInternalProps>,

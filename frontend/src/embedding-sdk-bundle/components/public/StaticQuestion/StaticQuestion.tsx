@@ -102,10 +102,7 @@ export type StaticQuestionComponents = {
 const StaticQuestionInner = (
   props: StaticQuestionInternalProps,
 ): JSX.Element | null => {
-  // `query` is an internal prop consumed by the `useMetabot` hook. The
-  // normalization hook is typed against the public props; cast around it so its
-  // public contract stays narrow.
-  const query = (props as { query?: string }).query;
+  const query = props.query;
 
   // Normalize props for Guest Embed usage (e.g. enforce withDownloads in OSS).
   const normalizedProps =
@@ -240,11 +237,6 @@ const _StaticQuestionWrapped = withPublicComponentWrapper(StaticQuestionInner, {
   supportsGuestEmbed: true,
 });
 
-/**
- * Public-facing component — TypeScript contract excludes the internal `query`
- * prop. Runtime still accepts it (the schema passes it through), but it is
- * not part of the SDK's public API.
- */
 export const StaticQuestion = Object.assign(
   _StaticQuestionWrapped as FC<StaticQuestionProps>,
   subComponents,
@@ -253,8 +245,7 @@ export const StaticQuestion = Object.assign(
 
 /**
  * Same runtime component as {@link StaticQuestion}, typed to accept the
- * internal `query` prop. For use by the `useMetabot` hook and internal tests
- * only. Not re-exported from the public SDK package entry point.
+ * internal `query` prop. For use in internal tests only.
  */
 export const _StaticQuestionInternal = Object.assign(
   _StaticQuestionWrapped as FC<StaticQuestionInternalProps>,

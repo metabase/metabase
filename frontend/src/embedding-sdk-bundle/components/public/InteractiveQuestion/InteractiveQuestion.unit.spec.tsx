@@ -33,7 +33,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
@@ -117,7 +116,7 @@ const setup = async ({
 }: SetupOpts = {}) => {
   setupNotificationChannelsEndpoints({
     email: { configured: isEmailSetup },
-  } as any);
+  });
 
   const user = createMockUser({
     id: USER_ID,
@@ -658,7 +657,7 @@ describe("InteractiveQuestion — query prop", () => {
   async function setup() {
     const { state } = setupSdkState();
 
-    setupNotificationChannelsEndpoints({ email: { configured: false } } as any);
+    setupNotificationChannelsEndpoints({ email: { configured: false } });
     setupAdhocQueryMetadataEndpoint(
       createMockCardQueryMetadata({ databases: [TEST_DB] }),
     );
@@ -684,13 +683,15 @@ describe("InteractiveQuestion — query prop", () => {
 
   it("should render a visualization when given a valid query base64 string", async () => {
     await setup();
-    expect(screen.getByTestId("query-visualization-root")).toBeVisible();
-  });
 
-  it("should reject schema if none of questionId, token, or query is provided", () => {
-    const { validateParameters } = validateFunctionSchema(
-      InteractiveQuestion.schema,
-    );
-    expect(validateParameters([{}]).success).toBe(false);
+    expect(screen.getByTestId("query-visualization-root")).toBeVisible();
+    expect(
+      within(screen.getByTestId("table-root")).getByText(
+        TEST_COLUMN.display_name,
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getByRole("gridcell")).getByText("Test Row"),
+    ).toBeVisible();
   });
 });

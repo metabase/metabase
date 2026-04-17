@@ -91,24 +91,12 @@ export function deserializeCardFromUrl(serialized: string): Card {
 }
 
 /**
- * Converts a base64-encoded query string into a Card suitable for `deserializedCard`.
- *
- * Accepts:
- * - Raw base64 from `/api/agent/v1/construct-query`
- * - A Metabot `navigate_to` path like `/question#<base64>` (prefix is stripped)
+ * Converts a Metabot `navigate_to` path like `/question#<base64>` into a
+ * Card suitable for `deserializedCard`.
  */
 export function deserializeCardFromQuery(query: string): Card {
-  // Strip /question# or question# or # prefix, then decode as URL-safe base64
-  const base64 = query.replace(/^\/question#|^question#|^#/, "");
-  const decoded = JSON.parse(b64url_to_utf8(base64));
-
-  // Embedding Metabot wraps the query: { dataset_query: ... }
-  // API returns the raw query directly.
-  if (decoded.dataset_query) {
-    return decoded as Card;
-  }
-
-  return { dataset_query: decoded } as Card;
+  const base64 = query.replace(/^\/question#/, "");
+  return JSON.parse(b64url_to_utf8(base64));
 }
 
 export function deserializeCard(serializedCard: string) {

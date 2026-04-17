@@ -26,7 +26,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
@@ -599,13 +598,15 @@ describe("StaticQuestion — query prop", () => {
 
   it("should render a visualization when given a valid query base64 string", async () => {
     await setup();
-    expect(screen.getByTestId("query-visualization-root")).toBeVisible();
-  });
 
-  it("should reject schema if none of questionId, token, or query is provided", () => {
-    const { validateParameters } = validateFunctionSchema(
-      StaticQuestion.schema,
-    );
-    expect(validateParameters([{}]).success).toBe(false);
+    expect(screen.getByTestId("query-visualization-root")).toBeVisible();
+    expect(
+      within(screen.getByTestId("table-root")).getByText(
+        TEST_COLUMN.display_name,
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getByRole("gridcell")).getByText("Test Row"),
+    ).toBeVisible();
   });
 });

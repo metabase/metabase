@@ -13,7 +13,6 @@ import type { Card, UnsavedCard } from "metabase-types/api";
 
 const CARD_ID = 31;
 
-// TODO Atte Keinänen 8/5/17: Create a reusable version `getCard` for reducing test code duplication
 interface GetCardOpts {
   newCard?: boolean;
   hasOriginalCard?: boolean;
@@ -24,6 +23,7 @@ interface GetCardOpts {
   table?: number;
 }
 
+// TODO Atte Keinänen 8/5/17: Create a reusable version `getCard` for reducing test code duplication
 const getCard = ({
   newCard = false,
   hasOriginalCard = false,
@@ -111,39 +111,17 @@ describe("lib/card", () => {
       type: "query",
       query: { "source-table": 2 },
     };
-    const RAW_B64 = utf8_to_b64url(JSON.stringify(MBQL_QUERY));
-    const WRAPPED_B64 = utf8_to_b64url(
-      JSON.stringify({ dataset_query: MBQL_QUERY }),
-    );
+    const CARD_PAYLOAD = {
+      dataset_query: MBQL_QUERY,
+      display: "bar",
+      visualization_settings: {},
+    };
+    const WRAPPED_B64 = utf8_to_b64url(JSON.stringify(CARD_PAYLOAD));
 
-    it("should wrap a raw pMBQL query in { dataset_query: ... }", () => {
-      expect(deserializeCardFromQuery(RAW_B64)).toEqual({
-        dataset_query: MBQL_QUERY,
-      });
-    });
-
-    it("should strip /question# prefix and wrap the payload", () => {
-      expect(deserializeCardFromQuery(`/question#${RAW_B64}`)).toEqual({
-        dataset_query: MBQL_QUERY,
-      });
-    });
-
-    it("should strip question# prefix (no leading slash) and wrap the payload", () => {
-      expect(deserializeCardFromQuery(`question#${RAW_B64}`)).toEqual({
-        dataset_query: MBQL_QUERY,
-      });
-    });
-
-    it("should strip # prefix and wrap the payload", () => {
-      expect(deserializeCardFromQuery(`#${RAW_B64}`)).toEqual({
-        dataset_query: MBQL_QUERY,
-      });
-    });
-
-    it("should return a payload already containing dataset_query as-is", () => {
-      expect(deserializeCardFromQuery(WRAPPED_B64)).toEqual({
-        dataset_query: MBQL_QUERY,
-      });
+    it("should strip /question# prefix and decode the payload", () => {
+      expect(deserializeCardFromQuery(`/question#${WRAPPED_B64}`)).toEqual(
+        CARD_PAYLOAD,
+      );
     });
   });
 });
