@@ -20,7 +20,7 @@ const DATE_CASES = [
   },
   {
     option: "Day of week",
-    value: "Tuesday",
+    value: "Friday",
     example: "Monday, Tuesday",
   },
   {
@@ -243,7 +243,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       extractColumnAndCheck({
         column: "Created At",
         option: "Wochentag",
-        value: "Dienstag",
+        value: "Freitag",
         extraction: "Auszug Tag, Monat…",
       });
     });
@@ -414,7 +414,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     extractColumnAndCheck({
       column: "Created At",
       option: "Year",
-      value: "2,025",
+      value: "2,028",
       extraction: "Extract day, month…",
     });
 
