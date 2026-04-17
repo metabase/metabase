@@ -621,7 +621,7 @@
                        (t2/reducible-select [:model/Table :t.id :t.db_id :t.name :t.schema :t.description]
                                             {:from  [[:metabase_table :t]]
                                              :join  [[:metabase_database :d] [:= :t.db_id :d.id]]
-                                             :where [:and t-filter db-filter]})
+                                             :where [:and db-filter t-filter]})
                        format-table-metadata)
     (.write writer ",\"fields\":")
     (write-json-array! writer
@@ -631,7 +631,7 @@
                                             {:from  [[:metabase_field :f]]
                                              :join  [[:metabase_table :t]    [:= :f.table_id :t.id]
                                                      [:metabase_database :d] [:= :t.db_id :d.id]]
-                                             :where [:and f-filter t-filter db-filter]})
+                                             :where [:and db-filter t-filter f-filter]})
                        format-field-metadata)
     (.write writer "}")
     (.flush writer)))
