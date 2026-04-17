@@ -164,19 +164,11 @@ const StaticQuestionInner = (
 
               <SdkToolbar
                 isMobile={isMobile}
-                data-testid="result-toolbar"
-                left={(mobile) =>
-                  withChartTypeSelector && (
-                    <SdkQuestion.ChartTypeDropdown
-                      className={mobile?.className}
-                      styles={mobile?.styles}
-                    />
-                  )
-                }
-                right={(mobile) =>
-                  mobile ? (
+                withChartTypeSelector={withChartTypeSelector}
+                right={({ isMobile, className }) =>
+                  isMobile ? (
                     <SdkQuestion.DownloadWidgetDropdown
-                      buttonClassName={mobile.className}
+                      buttonClassName={className}
                     />
                   ) : (
                     <>
@@ -185,6 +177,7 @@ const StaticQuestionInner = (
                     </>
                   )
                 }
+                data-testid="result-toolbar"
               />
 
               {isGuestEmbed && <SdkQuestion.SqlParametersList />}
