@@ -74,6 +74,15 @@ jobs:
           git commit -a -m "Update translations $Date" --allow-empty --no-verify
           git push -u origin $BRANCH_NAME
 
+      - name: Upload i18n violations report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i18n-violations
+          path: target/i18n-violations.*
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Crowdin upload
         uses: crowdin/github-action@ce33ce793a5cbc401d9cd748716e03fc90c001f1 # v2
         id: crowdin-upload
@@ -104,6 +113,29 @@ jobs:
           PR_NUMBER=${URL##*/}
 
           echo "::set-output name=pr_number::$PR_NUMBER"
+
+      - name: Comment violations summary on PR
+        if: ${{ steps.create_pr.outputs.pr_number && hashFiles('target/i18n-violations.csv') != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: | # sh
+          PR_NUMBER=${{ steps.create_pr.outputs.pr_number }}
+          TOTAL=$(($(wc -l < target/i18n-violations.csv) - 1))
+          if [ "$TOTAL" -le 0 ]; then
+            echo "No violations to report."
+            exit 0
+          fi
+          SUMMARY=$(awk -F',' 'NR>1 {gsub(/"/, "", $2); n=split($2,a,"+"); for(i=1;i<=n;i++) counts[a[i]]++} END {for (t in counts) printf "- **%s**: %d\n", t, counts[t]}' target/i18n-violations.csv)
+          gh pr comment "$PR_NUMBER" --body "$(cat <<EOF
+          ### Translation violations filtered from this update
+
+          $TOTAL translated string(s) were dropped from the build because they fail \`java.text.MessageFormat\` validation. They will fall back to English at runtime until corrected in Crowdin.
+
+          $SUMMARY
+
+          Full report: download the \`i18n-violations\` artifact from this workflow run.
+          EOF
+          )"
 
       - name: Auto approve PR
         uses: juliangruber/approve-pull-request-action@f83b836abaed1b3ab639ae61f9117c52ae405f65 # v1
