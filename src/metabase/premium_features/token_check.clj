@@ -129,6 +129,14 @@
    :transform-rolling-advanced-runs        0
    :transform-rolling-usage-date (today)})
 
+(defenterprise transform-metered-as
+  "Return the meter bucket a new transform run of the given source-type counts toward,
+   based on the instance's current premium features. Returns nil when the run is not metered
+   (including all OSS runs, since premium features are never present there)."
+  metabase-enterprise.transforms.core
+  [_source-type]
+  nil)
+
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "
   []
