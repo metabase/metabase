@@ -198,7 +198,7 @@ const openExpressionRename = (pillIndex: number) => {
     .eq(pillIndex)
     .click();
 
-  H.popover().findByRole("menuitem", { name: "pencil icon Rename" }).click();
+  H.popover().findByRole("menuitem", { name: "rename icon Rename" }).click();
 };
 
 /**
@@ -758,7 +758,7 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Expression pill menu only offers Rename, no breakout options");
       H.MetricsViewer.searchBarPills().eq(1).click();
       H.popover().within(() => {
-        cy.findByRole("menuitem", { name: "pencil icon Rename" }).should(
+        cy.findByRole("menuitem", { name: "rename icon Rename" }).should(
           "exist",
         );
         cy.findByText(/Break out/).should("not.exist");
