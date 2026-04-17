@@ -1,10 +1,19 @@
 (ns metabase-enterprise.semantic-layer.complexity
   "Computes a complexity score for the semantic layer of this Metabase instance.
 
-  Two catalogs are scored independently:
+  Three catalogs are scored:
 
     :library  — the curated subset (Cards of type :model and :metric)
     :universe — everything (library entities + all active physical tables)
+    :metabot  — what the internal Metabot can actually surface. Identical to :universe unless the
+                caller passes `:metabot-scope {:verified-only? <bool> :collection-id <nil|Long>}`
+                describing how the internal Metabot filters retrieval — restricting Cards to a
+                `collection_id` subtree, to verified-moderation Cards, or both. When the scope is
+                empty we reuse the universe score verbatim so we don't pay for a redundant pass.
+                Tables pass through unfiltered (no table-level verification concept, and Metabot
+                doesn't scope Tables by `collection_id` either). The caller owns the decision —
+                this namespace does not read settings, premium-feature gates, or Metabot rows
+                directly.
 
   The score and its sub-scores are intentionally additive and close to the original back-of-envelope
   proposal so v1 output is easy to reason about.
@@ -145,6 +154,57 @@
                                  :db_id  [:not= audit/audit-db-id])]
     (into card-entities (assemble-table-entities tables))))
 
+(defn- metabot-collection-scope-ids
+  "Set of collection IDs the internal Metabot can see — its `collection_id` plus descendants.
+   nil when no collection scope is configured (Metabot retrieves from everywhere). If the
+   collection row can't be loaded (stale/invalid id) we still return a singleton set with the
+   raw id so the catalog matches `metabot-metrics-and-models-query`, which filters on the raw
+   `collection_id` and returns an empty result rather than dropping the filter."
+  [collection-id]
+  (when collection-id
+    (into #{collection-id}
+          (when-let [root (t2/select-one :model/Collection :id collection-id)]
+            (collections/descendant-ids root)))))
+
+(defn- metabot-card-entities
+  "Cards the internal Metabot would actually surface — metric/model, non-archived, non-audit,
+   optionally restricted to a `collection_id` subtree and/or to verified-moderation Cards. Mirrors
+   the filters in `metabase.metabot.tools.util/metabot-metrics-and-models-query` (skipping the
+   per-user visible-collection clause — the complexity score is a global signal) so the
+   `:metabot` catalog agrees with what Metabot would actually retrieve."
+  [{:keys [verified-only? collection-id]}]
+  (let [collection-ids (metabot-collection-scope-ids collection-id)
+        where          (cond-> [:and
+                                [:in :report_card.type [:inline ["metric" "model"]]]
+                                [:= :report_card.archived false]
+                                [:not= :report_card.database_id audit/audit-db-id]]
+                         collection-ids (conj [:in :report_card.collection_id collection-ids])
+                         verified-only? (conj [:= :mr.status [:inline "verified"]]))
+        query          (cond-> {:select [:report_card.id :report_card.name :report_card.type :report_card.card_schema]
+                                :from   [[:report_card]]
+                                :where  where}
+                         verified-only? (assoc :left-join
+                                               [[:moderation_review :mr]
+                                                [:and
+                                                 [:= :mr.moderated_item_id :report_card.id]
+                                                 [:= :mr.moderated_item_type [:inline "card"]]
+                                                 [:= :mr.most_recent true]]]))]
+    (into []
+          (map ->card-entity)
+          (t2/reducible-select :model/Card query))))
+
+(defn- metabot-entities
+  "Entities in the `:metabot` catalog when any Metabot retrieval scope is in effect —
+   verified-moderation filtering, a `collection_id` subtree, or both. Cards are filtered to match
+   Metabot's retrieval; Tables pass through unfiltered because Metabot doesn't scope Tables by
+   `collection_id` and there's no table-level verification concept."
+  [scope]
+  (let [card-entities (metabot-card-entities scope)
+        tables        (t2/select [:model/Table :id :name]
+                                 :active true
+                                 :db_id  [:not= audit/audit-db-id])]
+    (into card-entities (assemble-table-entities tables))))
+
 ;;; ------------------------------------- scoring -------------------------------------
 
 (defn- component-score
@@ -261,8 +321,8 @@
 (defn- emit-prometheus!
   "Publish the total and each sub-score to the corresponding gauge, labeled by `:catalog` and `:axis`.
    Called once per [[complexity-scores]] invocation so the gauge reflects the latest known state."
-  [{:keys [library universe]}]
-  (doseq [[catalog result] {"library" library "universe" universe}]
+  [{:keys [library universe metabot]}]
+  (doseq [[catalog result] {"library" library "universe" universe "metabot" metabot}]
     (analytics/set! :metabase-semantic-layer/complexity-score
                     {:catalog catalog :axis "total"}
                     (:total result))
@@ -271,40 +331,74 @@
                       {:catalog catalog :axis (name component)}
                       (:score sub)))))
 
+(defn score-from-entities
+  "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
+   access, no Prometheus emission — suitable for callers that have already loaded their entities
+   from another source (e.g., a representation file).
+
+   Options:
+     `:embedding-model-meta` — `{:provider ... :model-name ...}` map embedded into the response's
+        `:meta`, or nil to omit the key. Callers that know what embedding model they used should
+        pass it so benchmark consumers can pin to it.
+     `:metabot-entities` — when non-nil, scored separately as the `:metabot` catalog. When nil
+        (default), `:metabot` reuses the `:universe` score so the response shape is stable without
+        paying for a redundant pass."
+  [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities]}]
+  (let [universe-score (score-catalog universe-entities embedder)]
+    {:library  (score-catalog library-entities embedder)
+     :universe universe-score
+     :metabot  (if metabot-entities
+                 (score-catalog metabot-entities embedder)
+                 universe-score)
+     :meta     (cond-> {:formula-version   formula-version
+                        :synonym-threshold synonym-similarity-threshold}
+                 embedding-model-meta (assoc :embedding-model embedding-model-meta))}))
+
+(defn- metabot-scope-applies?
+  "True when the supplied `:metabot-scope` actually narrows retrieval vs. `:universe`. Used to
+   decide whether we need a separate `:metabot` pass or can cheaply reuse `:universe`."
+  [{:keys [verified-only? collection-id]}]
+  (or (boolean verified-only?) (some? collection-id)))
+
 (defn complexity-scores
-  "Compute the complexity score for the `:library` and `:universe` catalogs of this Metabase
-   instance. Returns a map of the shape:
+  "Compute the complexity score for the `:library`, `:universe`, and `:metabot` catalogs of this
+   Metabase instance. Returns a map of the shape:
 
      {:library  {:total n :components {...}}
       :universe {:total n :components {...}}
+      :metabot  {:total n :components {...}}
       :meta     {:formula-version 1
                  :synonym-threshold 0.30
                  :embedding-model {...}}}
 
-   Optional opt `:embedder` overrides the synonym-axis embedder (defaults to
-   [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
-   synonym scoring."
-  [& {:keys [embedder] :as opts}]
+   Options:
+     `:embedder` — overrides the synonym-axis embedder (defaults to
+        [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
+        synonym scoring.
+     `:metabot-scope` — a `{:verified-only? <bool> :collection-id <nil|Long>}` map describing how
+        the internal Metabot filters retrieval. When either key is active, `:metabot` is scored
+        against Cards matching the scope (Tables pass through); when neither is active (or the
+        option is omitted), `:metabot` reuses the `:universe` score. The caller owns this decision
+        (premium-feature gate + Metabot row lookup) so this namespace stays free of
+        settings/feature/Metabot-row reads."
+  [& {:keys [embedder metabot-scope] :as opts}]
   ;;; NOTE: we fully materialize a vector off all entities, along with one of those in the library, rather than
   ;;; returning reducibles. For very large instances that holds a non-trivial slim-entity list in memory
   ;;; (name, kind, field-count, measure-names — no fat columns like `result_metadata`),
   ;;; but each catalog is consumed by FIVE sub-score functions that each walk the collection, so making this
-  ;;; reducible would re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory we
-  ;;; currently will currently consume (provided we have that memory).
-  (let [embedder (if (contains? opts :embedder)
-                   embedder
-                   semantic-search/search-index-embedder)
-        result   {:library  (score-catalog (library-entities) embedder)
-                  :universe (score-catalog (universe-entities) embedder)
-                  :meta     (cond-> {:formula-version   formula-version
-                                     :synonym-threshold synonym-similarity-threshold}
-                              ;; Only included when we're actually using the search-index embedder AND the index
-                              ;; is reachable. For custom embedders the caller knows what model they passed.
-                              (= embedder semantic-search/search-index-embedder)
-                              (as-> m
-                                    (if-let [model (semantic-search/active-embedding-model)]
-                                      (assoc m :embedding-model model)
-                                      m)))}]
+  ;;; reducible would re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory
+  ;;; we currently will currently consume (provided we have that memory).
+  (let [embedder   (if (contains? opts :embedder)
+                     embedder
+                     semantic-search/search-index-embedder)
+        model-meta (when (= embedder semantic-search/search-index-embedder)
+                     (semantic-search/active-embedding-model))
+        result     (score-from-entities (library-entities)
+                                        (universe-entities)
+                                        embedder
+                                        {:embedding-model-meta model-meta
+                                         :metabot-entities     (when (metabot-scope-applies? metabot-scope)
+                                                                 (metabot-entities metabot-scope))})]
     (try
       (emit-prometheus! result)
       (catch Throwable t

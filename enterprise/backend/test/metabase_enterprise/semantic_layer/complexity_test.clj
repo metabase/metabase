@@ -10,7 +10,8 @@
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def ^:private test-entity-ids (atom 0))
 
@@ -120,33 +121,67 @@
       (is (=? {:components {:synonym-pairs {:pairs 0 :score 0 :error "boom"}}}
               (#'complexity/score-catalog es embedder))))))
 
-(deftest ^:parallel synonym-pairs-not-monotonic-library-to-universe-test
-  (testing "universe synonym-pairs can drop below library when a name-shared entity flips the representative vector"
-    ;; score-synonym-pairs dedupes by normalized name and keeps one representative embedding per name.
-    ;; `search-index-embedder` picks that representative via a tie-break across every entity in scope
-    ;; (lowest model_id, then model), so the vector chosen for a given name depends on which catalog
-    ;; is being scored. Adding a universe-only entity that shares a normalized name with a library
-    ;; entity can flip the winner, dropping the universe pair count below the library's. This is why
-    ;; api_test.clj's monotonicity loop excludes :synonym-pairs.
-    (let [cust-vec    (float-array [1.0 0.0])
-          cli-vec     (float-array [0.99 0.01])   ; ≈ cust-vec → synonym pair in library
-          alt-vec     (float-array [0.0 1.0])     ; orthogonal to cust-vec → no pair in universe
-          library-es  [(entity :name "customers") (entity :name "clients")]
-          universe-es (conj library-es (entity :name "clients"))
-          ;; Catalog-aware embedder: when "clients" appears more than once across entities, a
-          ;; different representative wins (orthogonal), mimicking `search-index-embedder`'s
-          ;; per-name tie-break across all in-scope rows.
-          embedder    (fn [entities]
-                        (let [n-clients (->> entities
-                                             (filter #(= "clients" (embedders/normalize-name (:name %))))
-                                             count)]
-                          (cond-> {"customers" cust-vec}
-                            (= 1 n-clients) (assoc "clients" cli-vec)
-                            (> n-clients 1) (assoc "clients" alt-vec))))]
-      (is (=? {:components {:synonym-pairs {:pairs 1 :score 50}}}
-              (#'complexity/score-catalog library-es embedder)))
-      (is (=? {:components {:synonym-pairs {:pairs 0 :score 0}}}
-              (#'complexity/score-catalog universe-es embedder))))))
+(deftest ^:sequential complexity-scores-metabot-scope-opt-test
+  (testing ":verified-only? true routes the :metabot catalog through metabot-entities"
+    (let [captured-scope (atom nil)]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
+                                  complexity/universe-entities (constantly [(entity :name "orders")
+                                                                            (entity :name "widgets")])
+                                  complexity/metabot-entities  (fn [scope]
+                                                                 (reset! captured-scope scope)
+                                                                 [(entity :name "orders")])]
+        (let [{:keys [universe metabot]} (complexity/complexity-scores
+                                          :embedder nil
+                                          :metabot-scope {:verified-only? true :collection-id nil})]
+          (is (= {:verified-only? true :collection-id nil} @captured-scope)
+              "metabot-entities was invoked with the caller's scope")
+          (is (= 1 (get-in metabot  [:components :entity-count :count])))
+          (is (= 2 (get-in universe [:components :entity-count :count])))))))
+  (testing ":collection-id alone also routes through metabot-entities (no verified flag required)"
+    (let [captured-scope (atom nil)]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
+                                  complexity/universe-entities (constantly [(entity :name "orders")
+                                                                            (entity :name "widgets")])
+                                  complexity/metabot-entities  (fn [scope]
+                                                                 (reset! captured-scope scope)
+                                                                 [(entity :name "orders")])]
+        (let [{:keys [metabot]} (complexity/complexity-scores
+                                 :embedder nil
+                                 :metabot-scope {:verified-only? false :collection-id 42})]
+          (is (= {:verified-only? false :collection-id 42} @captured-scope))
+          (is (= 1 (get-in metabot [:components :entity-count :count])))))))
+  (testing "empty scope (or no :metabot-scope opt) reuses the :universe score without recomputing"
+    (doseq [scope [nil {} {:verified-only? false :collection-id nil}]]
+      (let [metabot-called? (atom false)]
+        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
+                                    complexity/universe-entities (constantly [(entity :name "orders")])
+                                    complexity/metabot-entities  (fn [_scope]
+                                                                   (reset! metabot-called? true)
+                                                                   [])]
+          (let [{:keys [universe metabot]} (complexity/complexity-scores
+                                            :embedder nil
+                                            :metabot-scope scope)]
+            (is (not @metabot-called?)
+                (format "metabot-entities was not invoked for scope=%s" (pr-str scope)))
+            (is (identical? universe metabot))))))))
+
+(deftest ^:sequential metabot-collection-scope-ids-test
+  (testing "nil collection-id returns nil (no Metabot collection scope configured)"
+    (is (nil? (#'complexity/metabot-collection-scope-ids nil))))
+  (testing "valid collection-id returns the id plus its descendants"
+    (mt/with-temp [:model/Collection {parent :id} {:name "Scope parent" :location "/"}
+                   :model/Collection {child  :id} {:name "Scope child"  :location (format "/%d/" parent)}]
+      (is (= #{parent child}
+             (#'complexity/metabot-collection-scope-ids parent)))))
+  (testing "invalid/deleted collection-id still returns a singleton set with the raw id"
+    ;; The live `metabot-metrics-and-models-query` filters on the raw `collection_id` even when
+    ;; the collection row is missing (stale Metabot scope value). If we dropped the filter here,
+    ;; the :metabot catalog would overcount and drift back toward :universe.
+    (let [ghost-id Integer/MAX_VALUE]
+      (is (nil? (t2/select-one :model/Collection :id ghost-id))
+          "pre-check: the phantom id isn't actually a real collection")
+      (is (= #{ghost-id}
+             (#'complexity/metabot-collection-scope-ids ghost-id))))))
 
 (deftest ^:parallel fn-embedder-test
   (testing "normalizes names, dedupes, zips vectors by position, and omits entries with no vector"
@@ -389,26 +424,33 @@
       (is (nil? (semantic-search/active-embedding-model))))))
 
 (deftest ^:sequential emit-prometheus-publishes-total-and-each-subscore-test
-  (testing "one gauge value is emitted per catalog × axis, with values matching the returned score"
-    (let [emissions (atom {})]
+  (testing "exactly one gauge value is emitted per catalog × axis, with values matching the returned score"
+    ;; Capture every emission as a tuple (not a map by label-triple) so a regression that emits the
+    ;; same {catalog, axis} twice — even with the same amount — fails on call-count instead of
+    ;; silently overwriting the prior entry.
+    (let [emissions (atom [])]
       (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")
                                                                             (entity :name "customers")])
                                   complexity/universe-entities (constantly [(entity :name "orders")
                                                                             (entity :name "customers")
                                                                             (entity :name "widgets")])
                                   analytics/set! (fn [metric labels amount]
-                                                   (swap! emissions assoc
-                                                          [metric (:catalog labels) (:axis labels)]
-                                                          amount))]
-        (let [{:keys [library universe]} (complexity/complexity-scores :embedder nil)
-              expected (into {}
-                             (for [[catalog result] {"library" library "universe" universe}
+                                                   (swap! emissions conj [metric labels amount]))]
+        (let [{:keys [library universe metabot]} (complexity/complexity-scores :embedder nil)
+              expected (into #{}
+                             (for [[catalog result] {"library" library
+                                                     "universe" universe
+                                                     "metabot" metabot}
                                    [axis value]     (cons ["total" (:total result)]
                                                           (map (fn [[component sub]]
                                                                  [(name component) (:score sub)])
                                                                (:components result)))]
-                               [[:metabase-semantic-layer/complexity-score catalog axis] value]))]
-          (is (= expected @emissions)
+                               [:metabase-semantic-layer/complexity-score
+                                {:catalog catalog :axis axis}
+                                value]))]
+          (is (= (count expected) (count @emissions))
+              "every {catalog, axis} is emitted exactly once — no duplicates")
+          (is (= expected (set @emissions))
               "every {catalog, axis} combination is emitted with the matching score from the result"))))))
 
 (deftest ^:sequential emit-prometheus-failure-is-swallowed-test

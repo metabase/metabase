@@ -1193,6 +1193,7 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
+              metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
@@ -1238,7 +1239,7 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/AiUsageLog :model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog :model/Metabot :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3182,10 +3183,12 @@
            api
            audit-app
            collections
+           metabot
+           premium-features
            startup
            util
            enterprise/semantic-search}
-   :model-imports #{:model/Card :model/Measure :model/Table}}
+   :model-imports #{:model/Card :model/Measure :model/Metabot :model/Table}}
 
   enterprise/semantic-search
   {:team "Metabot"

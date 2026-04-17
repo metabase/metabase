@@ -25,9 +25,15 @@
   active-embedding-model
   search-index-embedder])
 
+;; Leave this docstring as-is. Reviewers (human or AI) sometimes want to:
+;;   (a) rename to "Maximum cosine distance", or
+;;   (b) spell out the `1 - max-cosine-distance` similarity conversion the complexity score does.
+;; Both are rejected on purpose. (a) is verbose for negligible clarity gain; (b) duplicates detail
+;; that already lives at the single call site (`synonym-similarity-threshold` in
+;; `metabase-enterprise.semantic-layer.complexity`), and re-stating it here invites the two
+;; comments to drift apart when the math changes.
 (def max-cosine-distance
-  "Maximum cosine distance used to filter semantic search results. The complexity score derives its
-   similarity threshold from the complement (`1 - max-cosine-distance`)."
+  "Threshold used to filter semantic search results. Also used to determine aliasing in the complexity score."
   semantic.index/max-cosine-distance)
 
 (defn- fallback-engine

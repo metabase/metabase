@@ -4,7 +4,10 @@
    [metabase-enterprise.semantic-layer.complexity :as complexity]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]))
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.premium-features.core :as premium-features]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,18 +50,34 @@
   [:map
    [:library  Catalog]
    [:universe Catalog]
+   [:metabot  Catalog]
    [:meta
     [:map
      [:formula-version   pos-int?]
      [:synonym-threshold number?]
      [:embedding-model {:optional true} EmbeddingModelMeta]]]])
 
+(defn- internal-metabot-scope
+  "Resolve the internal Metabot's retrieval scope — the pair of filters
+   `metabase.metabot.tools.util/metabot-metrics-and-models-query` applies when Metabot looks up
+   metric/model Cards. Returned as `{:verified-only? <bool> :collection-id <nil|Long>}` so the
+   complexity scorer can keep the `:metabot` catalog in lock-step with what Metabot actually
+   retrieves. Kept here (not in `complexity`) so the scoring namespace stays free of
+   settings/feature-flag/Metabot-row reads."
+  []
+  (let [metabot (t2/select-one :model/Metabot
+                               :entity_id (get-in metabot.config/metabot-config
+                                                  [metabot.config/internal-metabot-id :entity-id]))]
+    {:verified-only? (and (premium-features/has-feature? :content-verification)
+                          (boolean (:use_verified_content metabot)))
+     :collection-id  (:collection_id metabot)}))
+
 (api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
   "Return the current semantic-layer complexity score for this instance.
   Superuser-only, and quite expensive."
   [_route _query _body]
   (api/check-superuser)
-  (complexity/complexity-scores))
+  (complexity/complexity-scores :metabot-scope (internal-metabot-scope)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/semantic-layer` routes."
