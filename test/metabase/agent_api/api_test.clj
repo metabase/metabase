@@ -376,7 +376,7 @@
                   (:measures table))))))))
 
 (deftest combined-query-test
-  (testing "Returns results for a table query"
+  (testing "Returns results for a table query that fits in a single page"
     (let [table-id (mt/id :orders)
           field-id (visible-field-id table-id "ID")
           response (mt/user-http-request :rasta :post 202 "agent/v2/query"
@@ -385,27 +385,29 @@
                                                        ["limit" 5]]})]
       (is (=? {:status             "completed"
                :row_count          5
-               :continuation_token string?
+               :continuation_token nil?
                :data               {:cols sequential?
                                     :rows (fn [rows] (= 5 (count rows)))}}
               response))))
 
-  (testing "Continuation token returns next page of results"
-    (let [table-id (mt/id :orders)
-          field-id (visible-field-id table-id "ID")
-          page1    (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["order-by" ["field" field-id]]
-                                                       ["limit" 5]]})
-          page2    (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                         {:continuation_token (:continuation_token page1)})]
-      (is (=? {:row_count          5
+  (testing "Continuation token returns next page of results when the total limit exceeds the page size"
+    (let [table-id   (mt/id :orders)
+          field-id   (visible-field-id table-id "ID")
+          page-size  200
+          total-rows 250
+          page1      (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                           {:source     {:type "table" :id table-id}
+                                            :operations [["order-by" ["field" field-id]]
+                                                         ["limit" total-rows]]})
+          page2      (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                           {:continuation_token (:continuation_token page1)})]
+      (is (=? {:row_count          page-size
                :continuation_token string?
-               :data               {:rows (fn [rows] (= 5 (count rows)))}}
+               :data               {:rows (fn [rows] (= page-size (count rows)))}}
               page1))
-      (is (=? {:row_count          5
-               :continuation_token string?
-               :data               {:rows (fn [rows] (= 5 (count rows)))}}
+      (is (=? {:row_count          (- total-rows page-size)
+               :continuation_token nil?
+               :data               {:rows (fn [rows] (= (- total-rows page-size) (count rows)))}}
               page2))
       (is (not= (get-in page1 [:data :rows])
                 (get-in page2 [:data :rows]))
@@ -418,7 +420,7 @@
                                   {:source     {:type "table" :id (mt/id :orders)}
                                    :operations [["aggregate" ["count"]]]}))))
 
-  (testing "Constraint cap limits results to 200 rows"
+  (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"

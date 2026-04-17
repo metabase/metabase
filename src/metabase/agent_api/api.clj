@@ -10,6 +10,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
@@ -367,19 +368,29 @@
   rejected here."
   #{"table" "card" "dataset" "metric"})
 
-(defn- evaluate-program-for-execution
-  "Resolve a program's source entity, evaluate the program via agent-lib, and return a
-  plain MBQL 5 query map. The JSON round-trip strips lib metadata so the query can be
-  serialized into a continuation token."
+(defn- evaluate-program-to-live-query
+  "Resolve a program's source entity, evaluate the program via agent-lib, and return
+  the live lib query (with lib metadata attached)."
   [program]
   (let [source-type (get-in program [:source :type])]
     (api/check (contains? allowed-program-source-types source-type)
                [400 (str "top-level program source must be one of: "
                          (str/join ", " (sort allowed-program-source-types)))]))
   (let [source-entity (metabot-construct/program-source->source-entity (:source program))
-        result        (metabot-construct/execute-program source-entity nil program)
-        pmbql         (get-in result [:structured-output :query])]
-    (json/decode+kw (json/encode pmbql))))
+        result        (metabot-construct/execute-program source-entity nil program)]
+    (get-in result [:structured-output :query])))
+
+(defn- strip-query-for-serialization
+  "JSON round-trip a lib query to strip lib metadata, yielding a plain MBQL 5 map
+  that can be serialized into a continuation token and passed to the QP."
+  [query]
+  (json/decode+kw (json/encode query)))
+
+(defn- evaluate-program-for-execution
+  "Evaluate a program and return a stripped MBQL 5 query map suitable for serialization
+  and QP execution (see [[strip-query-for-serialization]])."
+  [program]
+  (strip-query-for-serialization (evaluate-program-to-live-query program)))
 
 (api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
   "Construct an MBQL query from a structured agent-lib program.
@@ -421,16 +432,16 @@
   (-> token u/decode-base64 json/decode+kw))
 
 (defn- extract-total-limit
-  "Pull the user's :limit from an evaluated MBQL 5 query's last stage and return
-   {:query <stripped-query> :total-limit <int>}. The :limit is removed from the
-   stage because it is enforced via pagination in the application layer, and capped
-   at the combined query endpoint's hard maximum."
-  [query-map]
-  (let [stages      (:stages query-map)
-        last-idx    (dec (count stages))
-        user-limit  (get-in stages [last-idx :limit])
+  "Pull the user's :limit off a live lib query's last stage and return
+   {:query <stripped-limitless-query> :total-limit <int>}. The :limit is removed
+   because it is enforced via pagination in the application layer, and capped at
+   the combined query endpoint's hard maximum. The returned :query is run through
+   [[strip-query-for-serialization]] so downstream code and continuation tokens
+   see a consistent plain-map form."
+  [live-query]
+  (let [user-limit  (lib/current-limit live-query)
         total-limit (min (or user-limit default-query-row-limit) max-total-row-limit)]
-    {:query       (update-in query-map [:stages last-idx] dissoc :limit)
+    {:query       (strip-query-for-serialization (lib/limit live-query nil))
      :total-limit total-limit}))
 
 (defn- remaining-page-rows
@@ -440,7 +451,10 @@
   (max 0 (min page-size (- total-limit (* (dec page) page-size)))))
 
 (defn- apply-page-to-query
-  "Apply :page clause to the last stage of a MBQL 5 query map."
+  "Set `:page` on the last stage of a serialized MBQL 5 query map. Operates on the
+  stripped (post-[[strip-query-for-serialization]]) form because the continuation-token
+  path only has that shape available — rehydrating to a live lib query here would
+  require a metadata provider we don't currently plumb through the token."
   [query-map page items]
   (let [stages   (:stages query-map)
         last-idx (dec (count stages))]
@@ -492,7 +506,7 @@
         (if-let [token (:continuation_token body)]
           (let [{:keys [query pagination]} (decode-continuation-token token)]
             {:query query :total-limit (:limit pagination) :page (:page pagination)})
-          (let [{:keys [query total-limit]} (extract-total-limit (evaluate-program-for-execution body))]
+          (let [{:keys [query total-limit]} (extract-total-limit (evaluate-program-to-live-query body))]
             {:query query :total-limit total-limit :page 1}))
         items           (remaining-page-rows total-limit page)
         mbql5-with-page (apply-page-to-query query page items)]

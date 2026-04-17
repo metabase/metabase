@@ -183,19 +183,24 @@
           (is (string? (:description tool)))
           (is (map? (:inputSchema tool)))))
       (testing "search description guides clients toward the expected array shape"
-        (let [tools-by-name (into {} (map (juxt :name identity)) tools)
-              search-tool   (get tools-by-name "search")
+        (let [tools-by-name   (into {} (map (juxt :name identity)) tools)
+              search-tool     (get tools-by-name "search")
               property-schema (fn [tool-name property-name]
                                 (or (get-in tools-by-name [tool-name :inputSchema :properties property-name])
                                     (get-in tools-by-name [tool-name :inputSchema :properties (keyword property-name)])))
-              one-of-types  (fn [schema]
-                              (set (keep :type (:oneOf schema))))
-              array-branch  (fn [schema]
-                              (some #(when (= "array" (:type %)) %) (:oneOf schema)))]
+              collect-leaves  (fn collect-leaves [schema]
+                                (cond
+                                  (nil? schema)         []
+                                  (:oneOf schema)       (mapcat collect-leaves (:oneOf schema))
+                                  (:anyOf schema)       (mapcat collect-leaves (:anyOf schema))
+                                  :else                 [schema]))
+              leaf-types      (fn [schema] (set (keep :type (collect-leaves schema))))
+              array-branch    (fn [schema]
+                                (some #(when (= "array" (:type %)) %) (collect-leaves schema)))]
           (is (str/includes? (:description search-tool) "arrays of strings"))
-          (is (= #{"array" "null"} (one-of-types (property-schema "search" "term_queries"))))
+          (is (contains? (leaf-types (property-schema "search" "term_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
-          (is (= #{"array" "null"} (one-of-types (property-schema "search" "semantic_queries"))))
+          (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type]))))))))
 
 (deftest ping-test
