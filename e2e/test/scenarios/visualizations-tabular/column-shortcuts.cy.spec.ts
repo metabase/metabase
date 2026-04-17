@@ -21,7 +21,7 @@ const DATE_CASES = [
   },
   {
     option: "Day of week",
-    value: "Tuesday",
+    value: "Friday",
     example: "Monday, Tuesday",
     expressions: ["day-name", "get-day-of-week"],
   },
