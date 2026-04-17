@@ -113,6 +113,10 @@ describe("admin > custom visualizations", () => {
       H.getAddVisualizationLink().click();
 
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+      cy.log(
+        "It should not be possible to add the plugin until the user understands the risks",
+      );
+      cy.findByRole("button", { name: /Save/ }).should("be.disabled");
       cy.findByLabelText(/I understand/).click();
       H.interceptPluginCreate();
       cy.findByRole("button", { name: /Save/ }).click();
@@ -595,6 +599,21 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("table-root").should("be.visible");
     });
 
+    it("falls back to the default viz on an embedded question", () => {
+      cy.get<CardId>("@questionId").then((questionId) => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+        });
+
+        H.visitEmbeddedPage({
+          resource: { question: questionId },
+          params: {},
+        });
+      });
+
+      cy.findByTestId("table-root").should("be.visible");
+    });
+
     it("calls onClick when the viz fires a click", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
@@ -703,6 +722,23 @@ describe("admin > custom visualizations", () => {
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
         H.visitPublicDashboard(Number(checkNotNull(dashcard.dashboard_id)));
+      });
+
+      H.getDashboardCard().findByTestId("table-root").should("be.visible");
+    });
+
+    it("falls back to the default viz on an embedded dashboard", () => {
+      createCustomVizDashboard().then(({ body: dashcard }) => {
+        const dashboardId = Number(checkNotNull(dashcard.dashboard_id));
+
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          enable_embedding: true,
+        });
+
+        H.visitEmbeddedPage({
+          resource: { dashboard: dashboardId },
+          params: {},
+        });
       });
 
       H.getDashboardCard().findByTestId("table-root").should("be.visible");
@@ -1132,6 +1168,18 @@ describe("admin > custom visualizations", () => {
       });
     });
 
+    it("renders the custom-viz icon in the entity picker data-source modal", () => {
+      H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Our analytics").click();
+        H.entityPickerModalItem(1, ICON_QUESTION_NAME)
+          .find(PLUGIN_ICON_SELECTOR)
+          .should("exist");
+      });
+    });
+
     it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
       // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
       // Call this before any nav-sidebar interaction so we open it only when
@@ -1433,6 +1481,13 @@ describe("admin > custom visualizations", () => {
         .find(pluginPath)
         .should("have.attr", "transform")
         .and("match", /rotate\(-180/);
+
+      cy.log(
+        "When the dev server is stopped, the visualization should revert to the default",
+      );
+      cy.task("stopCustomVizDevServer", devServerPid);
+      cy.reload();
+      H.main().findByText("18,760").should("be.visible");
     });
   });
 });
