@@ -3188,7 +3188,7 @@
            startup
            util
            enterprise/semantic-search}
-   :model-imports #{:model/Card :model/Measure :model/Metabot :model/Table}}
+   :model-imports #{:model/Card :model/Collection :model/Measure :model/Metabot :model/Table}}
 
   enterprise/semantic-search
   {:team "Metabot"
