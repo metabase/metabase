@@ -67,6 +67,14 @@
         (swap! local-snapshots assoc id snapshot)
         snapshot))))
 
+(defn purge-plugin-cache!
+  "Evict all cached state for a deleted plugin: the in-memory snapshot and the
+   on-disk bare git repository (which may contain auth credentials in its config)."
+  [{:keys [id repo_url access_token]}]
+  (swap! local-snapshots dissoc id)
+  (when-not (str/starts-with? (str repo_url) "dev://")
+    (rs.git/purge-cached-repo! repo_url access_token)))
+
 ;;; ------------------------------------------------ Paths ------------------------------------------------
 
 (def ^:private ^:const bundle-rel-path "index.js")

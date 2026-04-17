@@ -441,6 +441,13 @@
   (swap! jgit dissoc (.getPath repo-path))
   (FileUtils/deleteDirectory repo-path))
 
+(defn purge-cached-repo!
+  "Purges a cached git repository from memory and disk given the remote URL and token.
+   Intended for cleanup when a plugin is deleted."
+  [^String remote-url ^String token]
+  (let [path (repo-path {:remote-url remote-url :token token})]
+    (clear-cached-repo! path)))
+
 (defn- get-jgit [^File path {:keys [remote-url token] :as args}]
   (if-let [obj (get @jgit (.getPath path))]
     obj
