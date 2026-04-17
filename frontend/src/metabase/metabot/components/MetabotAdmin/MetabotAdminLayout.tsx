@@ -5,10 +5,12 @@ import { MetabotNavPane } from "./MetabotNavPane";
 
 export const MetabotAdminLayout = ({
   children,
+  fullWidth,
 }: {
   children: React.ReactNode;
+  fullWidth?: boolean;
 }) => (
-  <AdminSettingsLayout sidebar={<MetabotNavPane />}>
+  <AdminSettingsLayout sidebar={<MetabotNavPane />} fullWidth={fullWidth}>
     <ErrorBoundary>{children}</ErrorBoundary>
   </AdminSettingsLayout>
 );

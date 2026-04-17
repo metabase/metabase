@@ -4,7 +4,11 @@ import { AdminNavItem } from "metabase/admin/components/AdminNav";
 import { useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 
-export function AiControlsNavItems() {
+export function getAiControlsNavItems() {
+  return <AiControlsNavItems />;
+}
+
+function AiControlsNavItems() {
   const isConfigured = useSetting("llm-metabot-configured?");
   const areAiFeaturesEnabled = useSetting("ai-features-enabled?");
 

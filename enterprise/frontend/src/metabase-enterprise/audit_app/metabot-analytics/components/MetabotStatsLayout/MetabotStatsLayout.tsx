@@ -1,6 +1,4 @@
-import ErrorBoundary from "metabase/ErrorBoundary";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { MetabotNavPane } from "metabase/metabot/components/MetabotAdmin/MetabotNavPane";
+import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { Box } from "metabase/ui";
 
 export const MetabotStatsLayout = ({
@@ -8,9 +6,9 @@ export const MetabotStatsLayout = ({
 }: {
   children: React.ReactNode;
 }) => (
-  <AdminSettingsLayout sidebar={<MetabotNavPane />} fullWidth>
+  <MetabotAdminLayout fullWidth>
     <Box py="lg" px="xl" maw="100rem">
-      <ErrorBoundary>{children}</ErrorBoundary>
+      {children}
     </Box>
-  </AdminSettingsLayout>
+  </MetabotAdminLayout>
 );
