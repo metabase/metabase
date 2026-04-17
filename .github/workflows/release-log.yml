@@ -67,15 +67,25 @@ jobs:
             const majorVersion = getMajorVersionFromRef(ref);
 
             console.log({ ref, majorVersion });
+
+            // latest-* tags don't carry a numeric version; skip version-specific steps
+            if (!majorVersion || isNaN(Number(majorVersion))) {
+              console.log(`Skipping version-specific steps for non-versioned ref: ${ref}`);
+              core.exportVariable('VERSION', '');
+              return;
+            }
+
             core.exportVariable('VERSION', majorVersion);
 
       - name: generate release Log
+        if: ${{ env.VERSION != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
       - name: generate release channel log
         run: cd release && tsx ./src/release-channel-log.ts > channels.html
       - name: upload release log to the web
+        if: ${{ env.VERSION != '' }}
         run: |
           aws s3 cp \
           release/v$VERSION.html \
@@ -87,7 +97,15 @@ jobs:
           s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/channels.html
 
       - name: Create cloudfront invalidation
+        if: ${{ env.VERSION != '' }}
         run: |
           aws cloudfront create-invalidation \
           --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
           --paths "/release-log/v$VERSION.html" "/release-log/channels.html"
+
+      - name: Create cloudfront invalidation (channels only)
+        if: ${{ env.VERSION == '' }}
+        run: |
+          aws cloudfront create-invalidation \
+          --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
+          --paths "/release-log/channels.html"
