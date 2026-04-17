@@ -656,7 +656,7 @@
   (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
                       (write-databases-metadata! os)))
 
-;;; ----------------------------------------- POST /api/database/metadata/import -----------------------------------
+;;; ----------------------------------------- POST /api/database/metadata -----------------------------------------
 
 (defn- engine-name
   "Normalize engine (stored as string or keyword) to a string for lookup."
@@ -670,8 +670,8 @@
         (map (juxt (juxt :name (comp engine-name :engine)) :id))
         (t2/select [:model/Database :id :name :engine])))
 
-(defn- build-table-lookup
-  "Map of [target-db-id schema table-name] -> target table id, for tables in given dbs."
+(defn- build-target-table-lookup
+  "{[target-db-id schema table-name] -> target-table-id} for every active table in the given dbs."
   [target-db-ids]
   (if (empty? target-db-ids)
     {}
@@ -681,151 +681,177 @@
                      :db_id [:in target-db-ids] :active true))))
 
 (defn- build-target-field-pathmap
-  "For fields in the given target tables, return:
-    - by-id: map of target-field-id -> {:id :table_id :parent_id :name}
-    - path->id: map of [target-table-id [name1 name2 ... leaf-name]] -> target-field-id"
+  "{[target-table-id [name1 ... leaf]] -> target-field-id} for every active field under
+  the given target tables. Paths are produced by walking `parent_id` on the target side."
   [target-table-ids]
-  (let [rows   (if (empty? target-table-ids)
-                 []
-                 (t2/select [:model/Field :id :table_id :parent_id :name]
-                            :table_id [:in target-table-ids] :active true))
-        by-id  (into {} (map (juxt :id identity)) rows)
-        path   (fn walk [field]
-                 (if-let [pid (:parent_id field)]
-                   (conj (walk (get by-id pid)) (:name field))
-                   [(:name field)]))]
-    {:by-id    by-id
-     :path->id (into {}
-                     (map (fn [{:keys [id table_id] :as field}]
-                            [[table_id (path field)] id]))
-                     rows)}))
+  (if (empty? target-table-ids)
+    {}
+    (let [rows  (t2/select [:model/Field :id :table_id :parent_id :name]
+                           :table_id [:in target-table-ids] :active true)
+          by-id (into {} (map (juxt :id identity)) rows)
+          path  (fn path [field]
+                  (if-some [pid (:parent_id field)]
+                    (conj (path (get by-id pid)) (:name field))
+                    [(:name field)]))]
+      (into {}
+            (map (fn [{:keys [id table_id] :as field}]
+                   [[table_id (path field)] id]))
+            rows))))
 
 (defn- incoming-field-path
-  "Resolve the [name1 name2 ... leaf] path of an incoming field by walking parent_id."
+  "[name1 ... leaf] path of an incoming field, walking parent_id in the payload."
   [incoming-by-id field-id]
-  (when-let [{:keys [name parent_id]} (get incoming-by-id field-id)]
+  (when-some [{:keys [name parent_id]} (get incoming-by-id field-id)]
     (if parent_id
       (conj (incoming-field-path incoming-by-id parent_id) name)
       [name])))
 
-(defn- field-patch
-  "Build a patch map from an incoming field, including fk_target_field_id resolved via lookup.
-  Only keys with non-nil incoming values are included (nil in input = not specified)."
-  [{:keys [description semantic_type coercion_strategy effective_type fk_target_field_id]}
-   incoming->target-field-id]
-  (cond-> {}
-    (some? description)        (assoc :description description)
-    (some? semantic_type)      (assoc :semantic_type semantic_type)
-    (some? coercion_strategy)  (assoc :coercion_strategy coercion_strategy)
-    (some? effective_type)     (assoc :effective_type effective_type)
-    (some? fk_target_field_id) (assoc :fk_target_field_id
-                                      (incoming->target-field-id fk_target_field_id))))
+(defn- new-table-row
+  [target-db-id {:keys [schema name description]}]
+  (cond-> {:db_id               target-db-id
+           :name                name
+           :schema              schema
+           :active              true
+           :initial_sync_status "complete"}
+    (some? description) (assoc :description description)))
 
-(defn- field-depth
-  "Depth of a field in the incoming payload, walking parent_id. Root fields have depth 0."
-  [incoming-by-id field-id]
-  (loop [depth 0, fid field-id, seen #{}]
-    (let [{:keys [parent_id]} (get incoming-by-id fid)]
-      (cond
-        (nil? parent_id)      depth
-        (contains? seen fid)  depth
-        :else                 (recur (inc depth) parent_id (conj seen fid))))))
+(defn- new-field-row
+  "Row for inserting a new field. parent_id and fk_target_field_id are intentionally
+  omitted — they're set in the references pass after every field exists."
+  [target-tbl-id
+   {:keys [name base_type description database_type effective_type semantic_type coercion_strategy]}]
+  (cond-> {:table_id  target-tbl-id
+           :name      name
+           :base_type (or base_type :type/*)
+           :active    true}
+    (some? description)       (assoc :description description)
+    (some? database_type)     (assoc :database_type database_type)
+    (some? effective_type)    (assoc :effective_type effective_type)
+    (some? semantic_type)     (assoc :semantic_type semantic_type)
+    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
+
+(defn- matched-field-patch
+  "Writable keys for a matched field — excludes parent_id (never re-parent matched rows)
+  and fk_target_field_id (handled in the references pass)."
+  [{:keys [description semantic_type coercion_strategy effective_type]}]
+  (cond-> {}
+    (some? description)       (assoc :description description)
+    (some? semantic_type)     (assoc :semantic_type semantic_type)
+    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)
+    (some? effective_type)    (assoc :effective_type effective_type)))
+
+(defn- import-tables!
+  "Phase 1. Match by (target-db, schema, name) against a full lookup of the target's
+  active tables; UPDATE matched rows' description, bulk INSERT the rest."
+  [state tables in-db->target]
+  (let [target-lookup (build-target-table-lookup (vals in-db->target))
+        to-insert     (volatile! [])]
+    (doseq [{:keys [id db_id schema name description] :as tbl} tables]
+      (let [target-db-id (in-db->target db_id)
+            existing-id  (when target-db-id (target-lookup [target-db-id schema name]))]
+        (cond
+          (nil? target-db-id)
+          (swap! state update-in [:tables :missing] conj
+                 (cond-> {:db_id db_id :name name}
+                   (some? schema) (assoc :schema schema)))
+
+          existing-id
+          (do
+            (when (some? description)
+              (t2/update! :model/Table existing-id {:description description}))
+            (swap! state #(-> %
+                              (update-in [:tables :matched] inc)
+                              (assoc-in [:in-tbl->target id] existing-id))))
+
+          :else
+          (vswap! to-insert conj [id (new-table-row target-db-id tbl)]))))
+    (when-some [rows (seq @to-insert)]
+      (let [new-ids (t2/insert-returning-pks! :model/Table (mapv second rows))]
+        (swap! state (fn [s]
+                       (reduce (fn [s [[incoming-id _] new-id]]
+                                 (-> s
+                                     (update-in [:tables :created] inc)
+                                     (assoc-in [:in-tbl->target incoming-id] new-id)))
+                               s
+                               (map vector rows new-ids))))))))
+
+(defn- import-fields!
+  "Phase 2. Match incoming fields against the target by full (table, parent-path, name)
+  using `build-target-field-pathmap`; UPDATE matched rows with editable metadata (minus
+  parent_id / fk_target_field_id), bulk INSERT the rest with parent_id left NULL."
+  [state fields incoming-by-id in-tbl->target]
+  (let [path-lookup (build-target-field-pathmap (vals in-tbl->target))
+        to-insert   (volatile! [])]
+    (doseq [{:keys [id table_id] :as fld} fields]
+      (let [target-tbl  (in-tbl->target table_id)
+            path        (when target-tbl (incoming-field-path incoming-by-id id))
+            existing-id (when target-tbl (path-lookup [target-tbl path]))]
+        (cond
+          (nil? target-tbl)
+          (swap! state update-in [:fields :missing] conj
+                 {:table_id table_id
+                  :path     (incoming-field-path incoming-by-id id)})
+
+          existing-id
+          (let [patch (matched-field-patch fld)]
+            (when (seq patch)
+              (t2/update! :model/Field existing-id patch))
+            (swap! state #(-> %
+                              (update-in [:fields :matched] inc)
+                              (assoc-in [:in-fld->target id] existing-id))))
+
+          :else
+          (vswap! to-insert conj [id (new-field-row target-tbl fld)]))))
+    (when-some [rows (seq @to-insert)]
+      (let [new-ids (t2/insert-returning-pks! :model/Field (mapv second rows))]
+        (swap! state (fn [s]
+                       (reduce (fn [s [[incoming-id _] new-id]]
+                                 (-> s
+                                     (update-in [:fields :created] inc)
+                                     (assoc-in [:in-fld->target incoming-id] new-id)
+                                     (update :created-fld-ids conj incoming-id)))
+                               s
+                               (map vector rows new-ids))))))))
+
+(defn- resolve-field-references!
+  "Phase 3. Link parent_id and fk_target_field_id now that every resolvable field has a
+  target id. parent_id is only set on rows we just created — matched rows keep their
+  existing parent so we never restructure a nested field in place. fk_target_field_id is
+  user-editable and is updated for both matched and created rows."
+  [fields in-fld->target created-fld-ids]
+  (doseq [{:keys [id parent_id fk_target_field_id]} fields]
+    (let [tid   (in-fld->target id)
+          patch (cond-> {}
+                  (and (contains? created-fld-ids id) (some? parent_id))
+                  (assoc :parent_id (in-fld->target parent_id))
+
+                  (some? fk_target_field_id)
+                  (assoc :fk_target_field_id (in-fld->target fk_target_field_id)))]
+      (when (and tid (seq patch))
+        (t2/update! :model/Field tid patch)))))
 
 (defn- import-metadata!*
-  "Core logic for POST /metadata/import. See the endpoint doc for behavior."
+  "Core logic for POST /metadata. See the endpoint doc for behavior."
   [{:keys [databases tables fields]}]
   (let [db-by-key      (build-db-lookup)
         in-db->target  (into {}
                              (keep (fn [{:keys [id name engine]}]
-                                     (when-let [tid (db-by-key [name (engine-name engine)])]
+                                     (when-some [tid (db-by-key [name (engine-name engine)])]
                                        [id tid])))
                              databases)
         missing-dbs    (mapv #(select-keys % [:name :engine])
                              (remove #(in-db->target (:id %)) databases))
         incoming-by-id (m/index-by :id fields)
-        depth-of       (memoize #(field-depth incoming-by-id %))
-        state          (atom {:tables {:matched 0 :created 0 :missing []}
-                              :fields {:matched 0 :created 0 :missing []}
+        state          (atom {:tables          {:matched 0 :created 0 :missing []}
+                              :fields          {:matched 0 :created 0 :missing []}
                               :in-tbl->target  {}
                               :in-fld->target  {}
                               :created-fld-ids #{}})]
     (t2/with-transaction [_conn]
-      ;; Tables: match by (target-db, schema, name) or create when target db exists.
-      (let [tbl-by-key (build-table-lookup (vals in-db->target))]
-        (doseq [{:keys [id db_id schema name description]} tables]
-          (if-let [target-db-id (in-db->target db_id)]
-            (if-let [existing-id (tbl-by-key [target-db-id schema name])]
-              (do
-                (when (some? description)
-                  (t2/update! :model/Table existing-id {:description description}))
-                (swap! state #(-> %
-                                  (update-in [:tables :matched] inc)
-                                  (assoc-in [:in-tbl->target id] existing-id))))
-              (let [new-id (t2/insert-returning-pk!
-                            :model/Table
-                            (cond-> {:db_id               target-db-id
-                                     :name                name
-                                     :schema              schema
-                                     :active              true
-                                     :initial_sync_status "complete"}
-                              (some? description) (assoc :description description)))]
-                (swap! state #(-> %
-                                  (update-in [:tables :created] inc)
-                                  (assoc-in [:in-tbl->target id] new-id)))))
-            (swap! state update-in [:tables :missing] conj
-                   (cond-> {:db_id db_id :name name}
-                     (some? schema) (assoc :schema schema))))))
-
-      ;; Fields: depth-first so parents are resolved before children.
-      (let [in-tbl->target (:in-tbl->target @state)
-            {:keys [path->id]} (build-target-field-pathmap (vals in-tbl->target))
-            sorted-fields  (sort-by #(depth-of (:id %)) fields)]
-        (doseq [{:keys [id table_id parent_id name description base_type
-                        database_type effective_type semantic_type coercion_strategy]}
-                sorted-fields]
-          (if-let [target-tbl (in-tbl->target table_id)]
-            (let [path       (incoming-field-path incoming-by-id id)
-                  target-fld (path->id [target-tbl path])]
-              (if target-fld
-                (swap! state #(-> %
-                                  (update-in [:fields :matched] inc)
-                                  (assoc-in [:in-fld->target id] target-fld)))
-                (let [target-parent (when parent_id
-                                      (get-in @state [:in-fld->target parent_id]))
-                      new-id        (t2/insert-returning-pk!
-                                     :model/Field
-                                     (cond-> {:table_id  target-tbl
-                                              :name      name
-                                              :base_type (or base_type :type/*)
-                                              :active    true}
-                                       target-parent         (assoc :parent_id target-parent)
-                                       (some? description)   (assoc :description description)
-                                       (some? database_type) (assoc :database_type database_type)
-                                       (some? effective_type)
-                                       (assoc :effective_type effective_type)
-                                       (some? semantic_type) (assoc :semantic_type semantic_type)
-                                       (some? coercion_strategy)
-                                       (assoc :coercion_strategy coercion_strategy)))]
-                  (swap! state #(-> %
-                                    (update-in [:fields :created] inc)
-                                    (assoc-in [:in-fld->target id] new-id)
-                                    (update :created-fld-ids conj id))))))
-            (swap! state update-in [:fields :missing] conj
-                   {:table_id table_id
-                    :path     (incoming-field-path incoming-by-id id)}))))
-
-      ;; Second pass: for matched fields, apply the full user-editable patch.
-      ;; For just-created fields, only resolve fk_target_field_id (the rest was set
-      ;; on insert) — and skip entirely if the FK target couldn't be resolved.
+      (import-tables! state tables in-db->target)
+      (import-fields! state fields incoming-by-id (:in-tbl->target @state))
       (let [{:keys [in-fld->target created-fld-ids]} @state]
-        (doseq [{:keys [id fk_target_field_id] :as fld} fields
-                :let [tid   (in-fld->target id)
-                      patch (if (contains? created-fld-ids id)
-                              (when-let [target-fk (some-> fk_target_field_id in-fld->target)]
-                                {:fk_target_field_id target-fk})
-                              (field-patch fld in-fld->target))]
-                :when (and tid (seq patch))]
-          (t2/update! :model/Field tid patch))))
+        (resolve-field-references! fields in-fld->target created-fld-ids)))
     (let [{:keys [tables fields]} @state]
       {:databases {:matched (count in-db->target) :missing missing-dbs}
        :tables    tables
@@ -837,7 +863,7 @@
    [:tables    [:map [:matched :int] [:created :int] [:missing [:sequential :map]]]]
    [:fields    [:map [:matched :int] [:created :int] [:missing [:sequential :map]]]]])
 
-(api.macros/defendpoint :post "/metadata/import"
+(api.macros/defendpoint :post "/metadata"
   :- ::metadata-import-report
   "Import database/table/field metadata previously exported from `GET /api/database/metadata`.
 
