@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -416,12 +417,14 @@
 (defn reducible-sync-tables
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id & {:keys [schema-names table-names]}]
-  (eduction (map t2.realize/realize)
-            (t2/reducible-select :model/Table
-                                 :db_id (u/the-id database-or-id)
-                                 {:where [:and sync-tables-clause
-                                          (when (seq schema-names) [:in :schema schema-names])
-                                          (when (seq table-names) [:in :name table-names])]})))
+  (mdb/streaming-reducible
+   (fn [conn]
+     (eduction (map t2.realize/realize)
+               (t2/reducible-select :conn conn :model/Table
+                                    :db_id (u/the-id database-or-id)
+                                    {:where [:and sync-tables-clause
+                                             (when (seq schema-names) [:in :schema schema-names])
+                                             (when (seq table-names) [:in :name table-names])]})))))
 
 (defn sync-tables-count
   "The count of all tables that should be synced for `database-or-id`."
@@ -432,17 +435,19 @@
   "A reducible collection of all the Tables that should go through the sync processes for `database-or-id`, in the
    order they should be refingerprinted (by earliest last_analyzed timestamp)."
   [database-or-id]
-  (eduction (map t2.realize/realize)
-            (t2/reducible-select :model/Table
-                                 {:select    [:t.*]
-                                  :from      [[(t2/table-name :model/Table) :t]]
-                                  :left-join [[{:select   [:table_id
-                                                           [[:min :last_analyzed] :earliest_last_analyzed]]
-                                                :from     [(t2/table-name :model/Field)]
-                                                :group-by [:table_id]} :sub]
-                                              [:= :t.id :sub.table_id]]
-                                  :where     [:and sync-tables-clause [:= :t.db_id (u/the-id database-or-id)]]
-                                  :order-by  [[:sub.earliest_last_analyzed :asc]]})))
+  (mdb/streaming-reducible
+   (fn [conn]
+     (eduction (map t2.realize/realize)
+               (t2/reducible-select :conn conn :model/Table
+                                    {:select    [:t.*]
+                                     :from      [[(t2/table-name :model/Table) :t]]
+                                     :left-join [[{:select   [:table_id
+                                                              [[:min :last_analyzed] :earliest_last_analyzed]]
+                                                   :from     [(t2/table-name :model/Field)]
+                                                   :group-by [:table_id]} :sub]
+                                                 [:= :t.id :sub.table_id]]
+                                     :where     [:and sync-tables-clause [:= :t.db_id (u/the-id database-or-id)]]
+                                     :order-by  [[:sub.earliest_last_analyzed :asc]]})))))
 
 (defn sync-schemas
   "Returns all the Schemas that have their metadata sync'd for `database-or-id`.

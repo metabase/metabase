@@ -295,7 +295,11 @@ function setupWithRealHook({
         {
           name: "channel",
           displayName: "Post to",
-          options: ["#general", "#security", "#alerts"],
+          options: [
+            { displayName: "#general", id: "C001" },
+            { displayName: "#security", id: "C002" },
+            { displayName: "#alerts", id: "C003" },
+          ],
           required: true,
         },
       ],

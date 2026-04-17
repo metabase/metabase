@@ -22,6 +22,10 @@ export function exploreMetric(metricId: number): string {
   return `${METRICS_VIEWER_ROOT}?metricId=${metricId}`;
 }
 
+export function exploreMeasure(measureId: number): string {
+  return `${METRICS_VIEWER_ROOT}?measureId=${measureId}`;
+}
+
 export interface ExploreMetricDimensionOptions {
   metricId: number;
   dimensionId: string;

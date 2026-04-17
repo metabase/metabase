@@ -97,7 +97,6 @@ export function MetricSearchInput({
     onFormulaEntitiesChange,
     selectedMetrics,
     definitions,
-    metricNames,
     metricNamesRef,
     handleAddMetric: metricHandlers.handleAddMetric,
     handleRemoveMetric: metricHandlers.handleRemoveMetric,

@@ -352,7 +352,8 @@
     [:notification-recipient/raw-value
      [:map
       [:details                               [:map {:closed true}
-                                               [:value :any]]]
+                                               [:value :any]
+                                               [:channel_id {:optional true} [:maybe :string]]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]
     [:notification-recipient/template

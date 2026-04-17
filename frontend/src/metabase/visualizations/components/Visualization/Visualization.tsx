@@ -31,6 +31,7 @@ import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
+import { memoizeClass } from "metabase/utils/memoize";
 import { connect } from "metabase/utils/redux";
 import {
   extractRemappings,
@@ -68,7 +69,6 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
-import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
   Card,
   CardId,
