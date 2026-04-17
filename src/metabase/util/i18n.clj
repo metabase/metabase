@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.i18n.validation :as i18n.validation]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [net.cgrand.macrovich :as macros]
@@ -132,26 +133,26 @@
    (every? string? (rest str-form))))
 
 (defn- validate-number-of-args
-  "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
+  "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro
+  expansion. Delegates the actual checks to `metabase.util.i18n.validation` so the same primitives
+  cover macro call-site validation, build-time `.po` scanning, and the regression test on built
+  `.edn` artifacts."
   [format-string-or-str args]
-  (let [format-string              (cond
-                                     (string? format-string-or-str) format-string-or-str
-                                     (valid-str-form? format-string-or-str) (apply str (rest format-string-or-str))
-                                     :else (assert false "The first arg to (deferred-)trs/tru must be a String or a valid `str` form with String arguments!"))
-        message-format             (MessageFormat. format-string)
-        ;; number of {n} placeholders in format string including any you may have skipped. e.g. "{0} {2}" -> 3
-        expected-num-args-by-index (count (.getFormatsByArgumentIndex message-format))
-        ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
-        expected-num-args          (count (.getFormats message-format))
-        actual-num-args            (count args)]
-    (assert (= expected-num-args expected-num-args-by-index)
-            (format "(deferred-)trs/tru with format string %s is missing some {} placeholders. Expected %s. Did you skip any?"
-                    (pr-str (.toPattern message-format))
-                    (str/join ", " (map (partial format "{%d}") (range expected-num-args-by-index)))))
-    (assert (= expected-num-args actual-num-args)
-            (str (format "(deferred-)trs/tru with format string %s expects %d args, got %d."
-                         (pr-str (.toPattern message-format)) expected-num-args actual-num-args)
-                 " Did you forget to escape a single quote?"))))
+  (let [format-string (cond
+                        (string? format-string-or-str) format-string-or-str
+                        (valid-str-form? format-string-or-str) (apply str (rest format-string-or-str))
+                        :else (assert false "The first arg to (deferred-)trs/tru must be a String or a valid `str` form with String arguments!"))]
+    (assert (not (i18n.validation/skipped-arg-index? format-string))
+            (let [by-index (count (.getFormatsByArgumentIndex (MessageFormat. format-string)))]
+              (format "(deferred-)trs/tru with format string %s is missing some {} placeholders. Expected %s. Did you skip any?"
+                      (pr-str format-string)
+                      (str/join ", " (map (partial format "{%d}") (range by-index))))))
+    (when-let [{:keys [actual-arg-count expected-arg-counts]}
+               (i18n.validation/arg-count-mismatch format-string (count args))]
+      (assert false
+              (str (format "(deferred-)trs/tru with format string %s expects %d args, got %d."
+                           (pr-str format-string) (first expected-arg-counts) actual-arg-count)
+                   " Did you forget to escape a single quote?")))))
 
 (defmacro deferred-tru
   "Similar to `tru` but creates a `UserLocalizedString` instance so that conversion to the correct locale can be delayed
