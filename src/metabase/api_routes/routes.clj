@@ -25,11 +25,11 @@
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
+   [metabase.flargs.core :as flargs]
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
-   [metabase.joke-of-the-day.api]
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
@@ -48,7 +48,6 @@
    [metabase.pulse.api]
    [metabase.queries-rest.api]
    [metabase.query-processor.api]
-   [metabase.release-flags.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
@@ -153,8 +152,15 @@
 ;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+(flargs/defflarg joke-of-the-day-routes
+  "Route map entries contributed by :flarg/joke-of-the-day. Empty when flarg is off."
+  :flarg/joke-of-the-day
+  metabase.flarg.joke-of-the-day.routes
+  []
+  {})
+
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
-(def ^:private route-map
+(def ^:private base-route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                metabase.agent-api.api/routes
@@ -186,7 +192,6 @@
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
-   "/joke-of-the-day"      'metabase.joke-of-the-day.api
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
@@ -206,7 +211,6 @@
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
-   "/release-flags"        (+auth 'metabase.release-flags.api)
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
@@ -228,6 +232,11 @@
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
+
+(def ^:private route-map
+  "The full route map, composed from the base map plus any flarg-contributed entries."
+  (merge base-route-map
+         (joke-of-the-day-routes)))
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

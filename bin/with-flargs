@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Wrap a command with flarg activation from the repo-root `.release-flags` file.
+#
+# The `.release-flags` file is the source of truth for which flargs are enabled for a build.
+# Its presence on master is blocked by a merge-gate test; it lives transiently on PR branches
+# during feature development. See FLARG.md § Configuration.
+#
+# What this wrapper does:
+#
+#   1. If `.release-flags` is absent, exec the passed command unmodified (the master-clean path).
+#   2. If present, parse it as an EDN set of `:flarg/<name>` keywords.
+#   3. For each keyword:
+#        - export RF_<UPPERCASE_UNDERSCORE>=true (the runtime activation env var read by
+#          `metabase.flargs.init/activate!`)
+#        - append `-A:flarg/<name>` to the command-line args (inserted after the first
+#          `clojure` / `clj` token so the alias joins the rest of the alias chain)
+#   4. exec the modified command.
+#
+# The RF_* env var name and the `:flarg/<name>` alias are the INVERSE of the translation in
+# `metabase.flargs.init/env-key->flarg-keyword`:
+#
+#     :flarg/joke-of-the-day  <->  RF_JOKE_OF_THE_DAY  <->  -A:flarg/joke-of-the-day
+#
+# Usage:
+#
+#     bin/with-flargs clojure -X:dev:ee:ee-dev:test ...
+#     bin/with-flargs ./bin/test-agent :only '[metabase.foo-test]'
+#     bin/with-flargs env   # debug: see which RF_* vars would be exported
+#
+# If `.release-flags` contains `#{:flarg/joke-of-the-day}`, the first example becomes
+# equivalent to:
+#
+#     RF_JOKE_OF_THE_DAY=true clojure -X:dev:ee:ee-dev:test:flarg/joke-of-the-day ...
+#
+# macOS bash 3.2-compatible (no mapfile, no read -d, no associative arrays).
+
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+  echo "Usage: bin/with-flargs <command> [args...]" >&2
+  echo "  Reads .release-flags (if present) and propagates it to the command as RF_* env vars" >&2
+  echo "  and -A:flarg/* aliases. If the file is absent, passes the command through unchanged." >&2
+  exit 2
+fi
+
+RELEASE_FLAGS_FILE=".release-flags"
+
+if [[ ! -f "$RELEASE_FLAGS_FILE" ]]; then
+  # No flargs configured - pass through untouched. This is the master-clean path.
+  exec "$@"
+fi
+
+# Extract :flarg/<name> keywords from the EDN set. The file is whitespace + comments + a single
+# `#{ ... }` literal; we don't parse EDN here, we just pluck keyword forms. Comments (`;` to
+# end-of-line) are stripped first. `grep -oE` extracts each match; we then trim the `:flarg/`
+# prefix and dedupe via `sort -u`. `|| true` keeps us alive when the file has no matches (an
+# empty `#{}` set is valid) — grep exits non-zero on no match under `set -e`.
+FLARG_NAMES=$(
+  sed 's/;.*$//' "$RELEASE_FLAGS_FILE" \
+    | { grep -oE ':flarg/[A-Za-z0-9_-]+' || true; } \
+    | sed 's|^:flarg/||' \
+    | sort -u
+)
+
+if [[ -z "$FLARG_NAMES" ]]; then
+  # File exists but declares no flargs (e.g. `#{}` or just comments). Still a pass-through.
+  exec "$@"
+fi
+
+# Build the alias chain `:flarg/a:flarg/b:...` (no leading colon — it follows the `-A` flag).
+# Export RF_<UPPERCASE_UNDERSCORE>=true for each. `:flarg/foo-bar` -> `RF_FOO_BAR`.
+ALIAS_ARG=""
+while IFS= read -r name; do
+  [[ -z "$name" ]] && continue
+  env_name="RF_$(printf '%s' "$name" | tr 'a-z-' 'A-Z_')"
+  export "$env_name=true"
+  ALIAS_ARG="${ALIAS_ARG}:flarg/${name}"
+done <<< "$FLARG_NAMES"
+
+# Inject `-A<alias-chain>` right after the first `clojure` / `clj` token in argv. For any other
+# command (e.g. `bin/test-agent`, `env`), we don't inject — scripts that compose their own
+# clojure invocation internally should pick up the RF_* env vars and handle aliases themselves
+# (e.g. `bin/test-agent` appends its own alias chain).
+#
+# Detection rule: the first arg whose basename is `clojure` or `clj`.
+INJECTED=0
+REWRITTEN=()
+for arg in "$@"; do
+  REWRITTEN+=("$arg")
+  if [[ "$INJECTED" -eq 0 ]]; then
+    base=$(basename -- "$arg")
+    if [[ "$base" == "clojure" || "$base" == "clj" ]]; then
+      REWRITTEN+=("-A${ALIAS_ARG}")
+      INJECTED=1
+    fi
+  fi
+done
+
+exec "${REWRITTEN[@]}"

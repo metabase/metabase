@@ -933,6 +933,15 @@
                     :model/Table
                     :model/User}}
 
+  flargs
+  ;; The defflarg macro, registry, dispatcher, and the env-var-driven startup activation. Consumed
+  ;; by main-tree seams (routes, core.init) and by flarg-side code.
+  {:team "DevEx"
+   :api  #{metabase.flargs.core
+           metabase.flargs.init}
+   :uses #{classloader
+           util}}
+
   formatter
   {:team "UX West"
    :api  #{metabase.formatter.core}
@@ -1008,13 +1017,6 @@
                     :model/MetabotMessage
                     :model/QueryExecution
                     :model/User}}
-
-  joke-of-the-day
-  {:team "UX West"
-   :api  #{metabase.joke-of-the-day.api}
-   :uses #{api
-           release-flags
-           util}}
 
   legacy-mbql
   {:team "Querying Platform"
@@ -1754,15 +1756,6 @@
                     :model/QueryExecution
                     :model/Table}}
 
-  release-flags
-  {:team "UX West"
-   :api  #{metabase.release-flags.api
-           metabase.release-flags.core
-           metabase.release-flags.init}
-   :uses #{api
-           task
-           util}}
-
   remote-sync
   {:team "UX West"
    :api  #{metabase.remote-sync.core
@@ -1906,7 +1899,6 @@
            oauth-server
            premium-features
            query-processor
-           release-flags
            request
            session
            settings
@@ -2577,6 +2569,18 @@
                     :model/Segment
                     :model/Table}}
 
+  flarg/joke-of-the-day
+  {:team "UX West"
+   :api  #{}
+   :uses #{api
+           flargs
+           util}}
+
+  flarg/test-flarg
+  {:team "DevEx"
+   :api  #{}
+   :uses #{flargs}}
+
   enterprise/action-v2
   {:team "Gadget"
    :api  #{metabase-enterprise.action-v2.api
@@ -2961,7 +2965,6 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
-
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
@@ -2978,7 +2981,6 @@
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
-
 
   enterprise/permission-debug
   {:team "UX West"

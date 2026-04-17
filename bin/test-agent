@@ -43,4 +43,4 @@ clean_output() {
   | sed $'s/\033[\[(][0-9;]*[A-Za-z]//g; s/\033[^[]*//g'
 }
 
-exec clojure -X"${ALIASES}" "${args[@]}" 2>&1 | clean_output
+exec "$(dirname "$0")/with-flargs" clojure -X"${ALIASES}" "${args[@]}" 2>&1 | clean_output

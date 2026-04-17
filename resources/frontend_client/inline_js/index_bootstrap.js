@@ -1,6 +1,5 @@
 (function() {
   window.MetabaseBootstrap        = JSON.parse(document.getElementById("_metabaseBootstrap").textContent);
-  window.MetabaseReleaseFlags     = JSON.parse(document.getElementById("_metabaseReleaseFlags").textContent);
   window.MetabaseUserLocalization = JSON.parse(document.getElementById("_metabaseUserLocalization").textContent);
   window.MetabaseSiteLocalization = JSON.parse(document.getElementById("_metabaseSiteLocalization").textContent);
   window.MetabaseUserColorScheme = JSON.parse(document.getElementById("_metabaseUserColorScheme").textContent);

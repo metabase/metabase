@@ -1,10 +1,7 @@
-(ns metabase.joke-of-the-day.jokes-test
+(ns metabase.flarg.joke-of-the-day.jokes-test
   (:require
    [clojure.test :refer :all]
-   [metabase.joke-of-the-day.jokes :as jokes]
-   [metabase.release-flags.guard :as guard]))
-
-(use-fixtures :once (guard/bypass-guard-fixture :joke-of-the-day))
+   [metabase.flarg.joke-of-the-day.jokes :as jokes]))
 
 (deftest jokes-test
   (testing "jokes returns a non-empty collection"

@@ -60,7 +60,7 @@
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
-                                            {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
+  {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/encore                       {:mvn/version "3.158.0"}            ; Utilities library (used by Nippy)
   com.taoensso/nippy                        {:mvn/version "3.6.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
@@ -421,6 +421,21 @@
 
   :oss-dev
   {}
+
+  ;; ---------------------------------------- flarg aliases ----------------------------------------
+  ;; See FLARG.md. Each :flarg/<name> alias adds exactly one flarg's paths to the classpath. Paths
+  ;; are entirely disjoint from the base classpath - a flarg never shadows main-tree code. Off by
+  ;; default; enable per-build via deps alias (local) or the .release-flags file (CI/PR Envs).
+  ;;
+  :flarg/joke-of-the-day
+  {:extra-paths ["release-flags/joke-of-the-day/src"
+                 "release-flags/joke-of-the-day/test"]}
+
+  ;; :flarg/test-flarg is the test flarg used by metabase.flargs.integration-test to prove the
+  ;; defflarg machinery works under real classpath isolation. It stays in master permanently as
+  ;; the load-bearing end-to-end test of the design.
+  :flarg/test-flarg
+  {:extra-paths ["release-flags/test-flarg/src"]}
 
   ;; Generate BE documentation with
   ;; clojure -M:marginalia

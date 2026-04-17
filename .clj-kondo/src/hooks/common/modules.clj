@@ -15,8 +15,9 @@
 (defn module
   "E.g.
 
-    (module 'metabase.qp.middleware.wow) => 'qp
-    (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
+    (module 'metabase.qp.middleware.wow)           => 'qp
+    (module 'metabase-enterprise.whatever.core)    => 'enterprise/whatever
+    (module 'metabase.flarg.joke-of-the-day.api)   => 'flarg/joke-of-the-day"
   [ns-symb]
   {:pre [(simple-symbol? ns-symb)]}
   ;; treat something like `metabase.driver-test` (for a module that hasn't fully been updated to use `.core`
@@ -27,6 +28,9 @@
     (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
                  second
                  (symbol "enterprise"))
+        (some->> (re-find #"^metabase\.flarg\.([^.]+)" (str ns-symb))
+                 second
+                 (symbol "flarg"))
         (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
                 second
                 symbol))))

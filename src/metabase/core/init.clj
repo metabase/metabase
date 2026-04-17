@@ -30,6 +30,7 @@
    [metabase.eid-translation.init]
    [metabase.embedding.init]
    [metabase.events.init]
+   [metabase.flargs.init :as flargs.init]
    [metabase.geojson.init]
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
@@ -50,7 +51,6 @@
    [metabase.pulse.init]
    [metabase.queries.init]
    [metabase.query-processor.init]
-   [metabase.release-flags.init]
    [metabase.remote-sync.init]
    [metabase.request.init]
    [metabase.revisions.init]
@@ -80,6 +80,21 @@
    [metabase.view-log.init]
    [metabase.warehouses.init]
    [metabase.xrays.init]))
+
+;; Activate flargs BEFORE any EE init code runs and before anything user-facing happens. By the
+;; time control reaches this form, the module-level `:require`s above have already loaded their
+;; side-effectful init namespaces (classloader, logger, drivers, multimethods, etc.), so the
+;; shared classloader is ready and log output can be produced. Loading a flarg init ns causes its
+;; `defflarg` forms to register impls against `metabase.flargs.core/registry`; registrations
+;; purely update atoms, so later dispatcher calls will see them regardless of ordering between
+;; siblings. The ONE ordering constraint we care about — impls registered before any seam fn is
+;; invoked — is satisfied because `metabase.core.core/init!*` (which actually calls the
+;; application startup flow) runs strictly AFTER this namespace has finished loading.
+;;
+;; If RF_* env vars are misconfigured (flarg requested but not on the classpath), `activate!`
+;; throws — per FLARG-PROGRESS.md §Decisions (Approach A), that's the desired loud failure.
+(when-not *compile-files*
+  (flargs.init/activate!))
 
 ;; load EE init code on system launch if it exists.
 (when (and (not *compile-files*)

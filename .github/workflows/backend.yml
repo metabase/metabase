@@ -122,7 +122,13 @@ jobs:
 
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
+        # `bin/with-flargs` reads `.release-flags` (if present) and propagates it into the command
+        # as RF_* env vars + `-A:flarg/*` alias args. On master the file is absent (enforced by the
+        # merge-gate test in `metabase.flargs.release-flags-gate-test`) so this is a pass-through;
+        # on a PR branch with `.release-flags` committed, the flargs it names are activated for
+        # this test run. See FLARG.md § How `.release-flags` interacts with CI.
         run: >-
+          bin/with-flargs
           clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
           :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           ${{ matrix.job.test-args }}

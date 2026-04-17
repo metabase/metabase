@@ -43,20 +43,34 @@
   (for [file (.listFiles (io/file (str (.getAbsolutePath (project-root-directory)) "/modules/drivers")))]
     (io/file file "src")))
 
+(mu/defn- release-flags-source-roots :- [:sequential (ms/InstanceOfClass java.io.File)]
+  []
+  (let [root (io/file (str (.getAbsolutePath (project-root-directory)) "/release-flags"))]
+    (if (.exists root)
+      (for [file (.listFiles root)]
+        (io/file file "src"))
+      [])))
+
 (mu/defn- find-source-files :- [:sequential (ms/InstanceOfClass java.io.File)]
   []
   (mapcat ns.find/find-sources-in-dir
-          (list* (source-root) (enterprise-source-root) (drivers-source-roots))))
+          (concat [(source-root) (enterprise-source-root)]
+                  (drivers-source-roots)
+                  (release-flags-source-roots))))
 
 (mu/defn- module :- [:maybe symbol?]
   "E.g.
 
-    (module 'metabase.qp.middleware.wow) => 'qp
-    (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
+    (module 'metabase.qp.middleware.wow)           => 'qp
+    (module 'metabase-enterprise.whatever.core)    => 'enterprise/whatever
+    (module 'metabase.flarg.joke-of-the-day.api)   => 'flarg/joke-of-the-day"
   [ns-symb :- simple-symbol?]
   (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
                second
                (symbol "enterprise"))
+      (some->> (re-find #"^metabase\.flarg\.([^.]+)" (str ns-symb))
+               second
+               (symbol "flarg"))
       (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
               second
               symbol)))

@@ -42,7 +42,6 @@
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
-    :model/ReleaseFlag
     :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/ReplacementRun
