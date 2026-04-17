@@ -18,6 +18,8 @@ import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metab
 
 const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
   "metabase-ai-managed";
+const METABASE_TIERED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
+  "metabase-ai-tiered";
 const METABASE_MANAGED_AI_UNIT_MULTIPLIER = 1_000_000;
 
 export function setupMetabotsEndpoints(
@@ -216,6 +218,11 @@ export function setupMetabaseManagedAiEndpoints({
 
   fetchMock.delete(
     `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_TIERED_AI_PRODUCT_TYPE}`,
     removeCloudAddOnResponse,
   );
 }
