@@ -40,28 +40,31 @@ export function useEmbeddingThemeEditor(themeId: number) {
   const [sendToast] = useToast();
   const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
 
-  const [pristineTheme, setPristineTheme] = useState<ThemeEditorState | null>(
-    null,
-  );
   const [currentTheme, setCurrentTheme] = useState<ThemeEditorState | null>(
     null,
   );
 
   // Initialize state when server data arrives
   useEffect(() => {
-    if (serverTheme && !pristineTheme) {
-      const state: ThemeEditorState = {
+    if (serverTheme && !currentTheme) {
+      setCurrentTheme({
         name: serverTheme.name,
         settings: serverTheme.settings,
-      };
-      setPristineTheme(state);
-      setCurrentTheme(state);
+      });
     }
-  }, [serverTheme, pristineTheme]);
+  }, [serverTheme, currentTheme]);
+
+  const serverThemeState = useMemo(
+    () =>
+      serverTheme
+        ? { name: serverTheme.name, settings: serverTheme.settings }
+        : null,
+    [serverTheme],
+  );
 
   const isDirty = useMemo(
-    () => JSON.stringify(pristineTheme) !== JSON.stringify(currentTheme),
-    [pristineTheme, currentTheme],
+    () => JSON.stringify(serverThemeState) !== JSON.stringify(currentTheme),
+    [serverThemeState, currentTheme],
   );
 
   const setName = useCallback((name: string) => {
@@ -194,7 +197,6 @@ export function useEmbeddingThemeEditor(themeId: number) {
         name: currentTheme.name,
         settings: currentTheme.settings,
       }).unwrap();
-      setPristineTheme(currentTheme);
       sendToast({ message: t`Theme saved`, icon: "check" });
     } catch (error) {
       console.error("Failed to save theme:", error);
@@ -203,13 +205,12 @@ export function useEmbeddingThemeEditor(themeId: number) {
   }, [currentTheme, themeId, updateTheme, sendToast]);
 
   const handleDiscard = useCallback(() => {
-    setCurrentTheme(pristineTheme);
-  }, [pristineTheme]);
+    setCurrentTheme(serverThemeState);
+  }, [serverThemeState]);
 
   return {
     isLoading,
     isNotFound: isError,
-    pristineTheme,
     currentTheme,
     isDirty,
     setName,
