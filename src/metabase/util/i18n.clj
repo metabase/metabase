@@ -151,7 +151,7 @@
                (i18n.validation/arg-count-mismatch format-string (count args))]
       (assert false
               (str (format "(deferred-)trs/tru with format string %s expects %d args, got %d."
-                           (pr-str format-string) (first expected-arg-counts) actual-arg-count)
+                           (pr-str format-string) actual-arg-count (first expected-arg-counts))
                    " Did you forget to escape a single quote?")))))
 
 (defmacro deferred-tru
