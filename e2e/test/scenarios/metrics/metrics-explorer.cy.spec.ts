@@ -1597,6 +1597,38 @@ describe("scenarios > metrics > explorer", () => {
     });
   });
 
+  describe("Dimension filters", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+    });
+
+    it("should not show 'No compatible dimensions' after deleting and retyping an expression with metrics in a different order (UXW-3748)", () => {
+      cy.log("Create expression: Count of orders + Count of products");
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of products" },
+      ]);
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
+
+      cy.log(
+        "Re-enter the formula editor, delete the whole expression, retype with metrics in the opposite order",
+      );
+      H.MetricsViewer.searchInput().clear();
+      addMetricMath([
+        { metricName: "Count of products" },
+        "+",
+        { metricName: "Count of orders" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Expression should run without 'No compatible dimensions' error");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
+    });
+  });
+
   describe("metric math", () => {
     beforeEach(() => {
       interceptDatasetQuery();

@@ -1000,7 +1000,7 @@ export type MetricIdentityEntry = {
   from: number;
   to: number;
   definition: MetricDefinition | null;
-  slotIndex: number;
+  slotIndex?: number;
 };
 
 export function stripDefinitionProjections(
@@ -1032,7 +1032,7 @@ export function applyTrackedDefinitions(
 ): ApplyTrackedDefinitionsResult {
   const identityByPosition = new Map<
     string,
-    { definition: MetricDefinition | null; slotIndex: number }
+    { definition: MetricDefinition | null; slotIndex: number | undefined }
   >();
   for (const identity of trackedIdentities) {
     identityByPosition.set(getPositionKey(identity.from, identity.to), {
@@ -1060,13 +1060,12 @@ export function applyTrackedDefinitions(
       const newSlotIndex = newSlotCounter++;
       const key = getPositionKey(visit.positioned.from, visit.positioned.to);
       const tracked = identityByPosition.get(key);
-
-      if (tracked) {
-        slotMapping.set(tracked.slotIndex, newSlotIndex);
-      }
-
       if (!tracked) {
         return;
+      }
+
+      if (tracked.slotIndex != null) {
+        slotMapping.set(tracked.slotIndex, newSlotIndex);
       }
 
       if (visit.kind === "standalone") {

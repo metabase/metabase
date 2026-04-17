@@ -1115,7 +1115,8 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init
-           metabase.llm.settings}
+           metabase.llm.settings
+           metabase.llm.startup}
    :uses #{analytics
            api
            driver
@@ -1123,6 +1124,7 @@
            lib-be
            metabot
            models
+           premium-features
            request
            settings
            sql-tools
@@ -2546,6 +2548,7 @@
            request
            sample-data
            secrets
+           server
            settings
            sync
            upload
@@ -2762,8 +2765,10 @@
   {:team "Graphy"
    ;; todo: add ability to prevent usage (transitive even) of app db
    :api  #{}
-   :uses #{lib
+   :uses #{classloader
+           lib
            models
+           plugins
            query-processor
            sql-tools
            util
