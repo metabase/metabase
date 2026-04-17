@@ -18,8 +18,9 @@
   [^File root]
   (let [root-path (.toPath root)]
     (into {}
-          (comp (filter (fn [^File f] (.isFile f)))
-                (filter (fn [^File f] (str/ends-with? (.getName f) ".yaml")))
+          (comp (filter (fn [^File f]
+                          (and (.isFile f)
+                               (str/ends-with? (.getName f) ".yaml"))))
                 (map (fn [^File f]
                        [(str (.relativize root-path (.toPath f))) f])))
           (file-seq root))))

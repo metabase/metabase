@@ -30,13 +30,13 @@
    :is_active    true})
 
 (defn- fresh-app-db
-  [port]
+  [{::emb-pg/keys [host port db-name user]}]
   (mdb/application-db
    :postgres
-   (mdb/broken-out-details->DataSource :postgres {:host "localhost"
+   (mdb/broken-out-details->DataSource :postgres {:host host
                                                   :port port
-                                                  :db   "postgres"
-                                                  :user "postgres"})
+                                                  :db   db-name
+                                                  :user user})
    :create-pool? true))
 
 (defn- seed-superuser! []
@@ -63,7 +63,7 @@
   ([target-dir]
    (log/info "Analytics-dev export starting; target-dir=" target-dir)
    (emb-pg/with-system [system {::emb-pg/db-server {}}]
-     (let [{::emb-pg/keys [port]} (::emb-pg/db-server system)]
-       (mdb/with-application-db (fresh-app-db port)
+     (let [db-server (::emb-pg/db-server system)]
+       (mdb/with-application-db (fresh-app-db db-server)
          (mdb/setup-db! :create-sample-content? false)
          (run-export! target-dir))))))
