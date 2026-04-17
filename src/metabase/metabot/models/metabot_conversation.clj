@@ -1,5 +1,6 @@
 (ns metabase.metabot.models.metabot-conversation
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,6 +14,14 @@
 
 (t2/deftransforms :model/MetabotConversation
   {:state mi/transform-json})
+
+(defmethod mi/can-read? :model/MetabotConversation
+  ([instance]
+   (or api/*is-superuser?*
+       (= (:user_id instance) api/*current-user-id*)))
+  ([_model pk]
+   (when-let [conversation (t2/select-one :model/MetabotConversation :id pk)]
+     (mi/can-read? conversation))))
 
 (methodical/defmethod t2/batched-hydrate [:model/MetabotConversation :user]
   "Batch-hydrate `:user` (id/email/name only) onto a seq of MetabotConversation instances by `:user_id`."

@@ -27,6 +27,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as sr]
@@ -45,11 +46,11 @@
 
 (defn- check-conversation-owner!
   "Throw a 403 if a `MetabotConversation` with `conversation-id` already exists and
-  was not created by the current user. New conversations (no row yet) are allowed
-  so the first store-messages! call can claim them for the current user."
+  the current user cannot read it. New conversations (no row yet) are allowed so
+  the first store-messages! call can claim them for the current user."
   [conversation-id]
-  (when-let [owner-id (t2/select-one-fn :user_id :model/MetabotConversation :id conversation-id)]
-    (api/check-403 (= owner-id api/*current-user-id*))))
+  (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+    (api/check-403 (mi/can-read? conversation))))
 
 (defn- store-aiservice-messages!
   "Store messages that are going from ai-service"
