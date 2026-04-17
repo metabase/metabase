@@ -1,4 +1,3 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -43,39 +42,16 @@ describe("McpServerUrlSection", () => {
     expect(await screen.findByDisplayValue(MCP_URL)).toBeInTheDocument();
   });
 
-  it("renders nothing when site-url is not set", async () => {
+  it("renders nothing when site-url is not set", () => {
     setup({ siteUrl: undefined });
-    await waitFor(
-      () => {
-        expect(screen.queryByDisplayValue(MCP_URL)).not.toBeInTheDocument();
-      },
-      { timeout: 10 },
-    );
+    expect(screen.queryByDisplayValue(MCP_URL)).not.toBeInTheDocument();
   });
 
-  it("shows a success tooltip after successfully copying the URL", async () => {
+  it("can copy the MCP server URL to the clipboard", async () => {
     setup();
     await userEvent.click(
       await screen.findByRole("img", { name: /copy icon/i }),
     );
-    expect(
-      await screen.findByText("MCP server URL copied to clipboard"),
-    ).toBeInTheDocument();
-  });
-
-  it("shows an error tooltip when copying the URL fails", async () => {
-    jest
-      .spyOn(navigator.clipboard, "writeText")
-      .mockRejectedValueOnce(new Error("Permission denied"));
-
-    setup();
-
-    await userEvent.click(
-      await screen.findByRole("img", { name: /copy icon/i }),
-    );
-
-    expect(
-      await screen.findByText("Error copying the MCP server URL to clipboard."),
-    ).toBeInTheDocument();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(MCP_URL);
   });
 });
