@@ -177,10 +177,10 @@ export type Entity = {
           [key: string]: unknown;
         }
     >;
-    create?: (...args: any[]) => Promise<any>;
-    get?: (...args: any[]) => Promise<any>;
-    update?: (...args: any[]) => Promise<any>;
-    delete?: (...args: any[]) => Promise<any>;
+    create: (...args: any[]) => Promise<any>;
+    get: (...args: any[]) => Promise<any>;
+    update: (...args: any[]) => Promise<any>;
+    delete: (...args: any[]) => Promise<any>;
   };
 
   // Action type constants. The values are strings at runtime, but consumers use them
@@ -398,10 +398,6 @@ export function createEntity(def: EntityDef): Entity {
     entity.schema = new schema.Entity(entity.name);
   }
 
-  // API
-  if (!entity.api) {
-    entity.api = {};
-  }
   if (entity.path) {
     const path = entity.path;
     const defaultApi: Entity["api"] = {

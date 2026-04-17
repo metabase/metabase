@@ -4,15 +4,15 @@ import type {
 } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import { Groups } from "metabase/entities/groups";
-import type { GroupInfo } from "metabase-types/api";
+import type { GroupInfo, GroupListQuery } from "metabase-types/api";
 
 /**
  * @deprecated use "metabase/api" instead
  */
 export const useGroupListQuery = (
-  props: UseEntityListQueryProps<Record<string, never>> = {},
+  props: UseEntityListQueryProps<GroupListQuery> = {},
 ): UseEntityListQueryResult<GroupInfo> => {
-  return useEntityListQuery<GroupInfo, Record<string, never>>(props, {
+  return useEntityListQuery<GroupInfo, GroupListQuery>(props, {
     fetchList: Groups.actions.fetchList,
     getList: Groups.selectors.getList,
     getLoading: Groups.selectors.getLoading,

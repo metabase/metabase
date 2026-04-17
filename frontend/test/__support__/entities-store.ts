@@ -10,19 +10,13 @@ import {
 import type { State } from "metabase/redux/store";
 
 /**
- * Map of slice name to its reducer. Reducer state types are unconstrained so that
- * RTK Query reducers (which use `CombinedState`) and standard slice reducers can both
- * be passed here.
- */
-
-type ReducersMap = Record<string, Reducer<any, any, any>>;
-
-/**
- * Build a configured Redux store for tests. The returned store's state is typed as `State`
- * so that selectors and dispatched actions work without further casting in tests.
+ * Build a configured Redux store for tests.
+ *
+ * Typings in this file are consciously loose to support regular and thunk actions
+ * of different kinds throughout the codebase, including bizarre assertions in unit tests.
  */
 export function getStore(
-  reducers: ReducersMap = {},
+  reducers: Record<string, Reducer<any, any, any>> = {},
   initialState: Partial<State> = {},
   middleware: Middleware[] = [],
 ) {
