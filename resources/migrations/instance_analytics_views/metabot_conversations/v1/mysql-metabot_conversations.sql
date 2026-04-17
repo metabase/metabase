@@ -28,7 +28,7 @@ SELECT
      ORDER BY pg.name
      LIMIT 1)                                                         AS group_name,
     ''                                                                AS source,
-    ''                                                                AS ip_address
+    c.ip_address                                                      AS ip_address
 FROM metabot_conversation c
 LEFT JOIN core_user u
     ON u.id = c.user_id

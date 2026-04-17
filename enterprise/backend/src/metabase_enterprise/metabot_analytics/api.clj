@@ -29,6 +29,9 @@
    [:total_tokens            ms/IntGreaterThanOrEqualToZero]
    [:last_message_at         [:maybe ms/TemporalInstant]]
    [:model                   [:maybe :string]]
+   [:search_count            ms/IntGreaterThanOrEqualToZero]
+   [:query_count             ms/IntGreaterThanOrEqualToZero]
+   [:ip_address              [:maybe :string]]
    [:user                    [:maybe :map]]])
 
 (def ^:private SortColumn
@@ -72,7 +75,10 @@
    [:model           [:maybe :string]]
    [:slack_permalink [:maybe :string]]
    [:chat_messages   [:sequential :map]]
-   [:queries         [:sequential GeneratedQuery]]])
+   [:queries         [:sequential GeneratedQuery]]
+   [:search_count    ms/IntGreaterThanOrEqualToZero]
+   [:query_count     ms/IntGreaterThanOrEqualToZero]
+   [:ip_address      [:maybe :string]]])
 
 (def ^:private ListConversationsResponse
   "Response schema for `GET /conversations`."

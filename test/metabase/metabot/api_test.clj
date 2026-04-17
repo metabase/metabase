@@ -159,7 +159,7 @@
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
                             metabot.context/create-context           identity
-                            api/store-native-parts!                  (fn [_conv-id _prof-id parts]
+                            api/store-native-parts!                  (fn [_conv-id _prof-id _ip parts]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -589,7 +589,7 @@
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
           (#'api/store-native-parts!
-           conv-id "internal"
+           conv-id "internal" nil
            [{:type :start :id "msg-1"}
             {:type :text :text "Hello"}
             ;; SSE usage parts carry bare model names (from provider API response)
@@ -616,7 +616,7 @@
              (:usage msg))))))
 
 (deftest strip-tool-output-bloat-test
-  (testing "strips transient keys from tool-output results, keeping only :output"
+  (testing "drops transient keys and structured-output fields outside the persisted subset"
     (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
            (#'api/strip-tool-output-bloat
             {:type   :tool-output
@@ -625,10 +625,42 @@
                       :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
                       :structured-output {:result-type :search :data [{:id 1}]}
                       :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+  (testing "keeps the query-related subset of :structured-output for analytics extraction"
+    (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
+      (is (= {:type   :tool-output
+              :id     "call-sql"
+              :result {:output            "<result>...</result>"
+                       :structured-output {:query-id      "qid-1"
+                                           :query-content "SELECT 1"
+                                           :query         query-map
+                                           :database      1}}}
+             (#'api/strip-tool-output-bloat
+              {:type   :tool-output
+               :id     "call-sql"
+               :result {:output            "<result>...</result>"
+                        :structured-output {:query-id      "qid-1"
+                                            :query-content "SELECT 1"
+                                            :query         query-map
+                                            :database      1
+                                            :resources     [{:field_values [1 2 3]}]
+                                            :reactions     [:noop]}
+                        :data-parts        [{:type :data}]}})))))
+  (testing "preserves the snake-case :structured_output alias when present"
+    (is (= {:type   :tool-output
+            :id     "call-snake"
+            :result {:output            "<result>...</result>"
+                     :structured_output {:query-id "qid-2" :query-content "SELECT 2"}}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-snake"
+             :result {:output            "<result>...</result>"
+                      :structured_output {:query-id      "qid-2"
+                                          :query-content "SELECT 2"
+                                          :extra-bloat   [1 2 3]}}}))))
   (testing "leaves non-tool-output parts untouched"
     (let [text-part {:type :text :text "hello"}]
       (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
-  (testing "handles result with no :output key"
+  (testing "handles result with no :output key and no query-related structured-output"
     (is (= {:type :tool-output :id "call-2" :result {}}
            (#'api/strip-tool-output-bloat
             {:type   :tool-output
@@ -724,9 +756,39 @@
                                 :history         []
                                 :conversation_id (str (random-uuid))
                                 :state           {}
-                                :debug           false})
+                                :debug           false}
+                               nil)
         (testing "metabot-id is included in the arguments"
           (is (some? (:metabot-id @captured-args))
               "metabot-id should not be nil")
           (is (= test-metabot-id (:metabot-id @captured-args))
               "metabot-id should match the input metabot_id"))))))
+
+(deftest streaming-request-ip-address-test
+  (mt/with-model-cleanup [:model/MetabotMessage
+                          [:model/MetabotConversation :created_at]]
+    (let [request-body (fn [conversation-id]
+                         {:metabot_id      metabot.config/embedded-metabot-id
+                          :profile_id      nil
+                          :message         "hi"
+                          :context         {}
+                          :history         []
+                          :conversation_id conversation-id
+                          :state           {}
+                          :debug           false})
+          ip-for       (fn [conversation-id]
+                         (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))]
+      (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                    api/native-agent-streaming-request    (constantly nil)]
+        (mt/with-test-user :rasta
+          (testing "first writer wins: initial call captures the IP, later calls do not overwrite it"
+            (let [conversation-id (str (random-uuid))]
+              (api/streaming-request (request-body conversation-id) "1.2.3.4")
+              (is (= "1.2.3.4" (ip-for conversation-id)))
+              (api/streaming-request (request-body conversation-id) "5.6.7.8")
+              (is (= "1.2.3.4" (ip-for conversation-id)))))
+          (testing "null IP on pre-feature rows is backfilled on next call"
+            (let [conversation-id (str (random-uuid))]
+              (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :rasta)})
+              (api/streaming-request (request-body conversation-id) "9.9.9.9")
+              (is (= "9.9.9.9" (ip-for conversation-id))))))))))

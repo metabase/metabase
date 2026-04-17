@@ -118,12 +118,12 @@ export function ConversationsTable({
                   {convo.total_tokens.toLocaleString()}
                 </Box>
                 <Box component="td" ta="right">
-                  0
+                  {convo.query_count}
                 </Box>
                 <Box component="td" ta="right">
-                  0
+                  {convo.search_count}
                 </Box>
-                <td>0.0.0.0</td>
+                <td>{convo.ip_address ?? "—"}</td>
               </tr>
             ))}
           </>

@@ -27,6 +27,7 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
+   [metabase.request.core :as request]
    [metabase.server.streaming-response :as sr]
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
@@ -43,7 +44,7 @@
 
 (defn- store-aiservice-messages!
   "Store messages that are going from ai-service"
-  [conversation-id profile-id messages]
+  [conversation-id profile-id ip-address messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -54,8 +55,10 @@
                      vec)
         ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (constantly (cond-> {:user_id    api/*current-user-id*}
-                                            state (assoc :state state))))
+                              (fn [existing]
+                                (cond-> {:user_id api/*current-user-id*}
+                                  state                         (assoc :state state)
+                                  (nil? (:ip_address existing)) (assoc :ip_address ip-address))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
@@ -89,14 +92,34 @@
    {}
    parts))
 
+(def ^:private persisted-structured-output-keys
+  "Subset of `:structured-output` that must survive persistence so
+  `metabase-enterprise.metabot-analytics.queries` can surface generated
+  queries on the admin detail page."
+  [:query-id :query-content :query :database])
+
+(defn- trim-structured-output [structured]
+  (when (map? structured)
+    (not-empty (select-keys structured persisted-structured-output-keys))))
+
 (defn- strip-tool-output-bloat
-  "For :tool-output parts, keep only :output in the result map.
-  Both LLM adapters only read (get-in part [:result :output]) when replaying history.
-  Everything else (:structured-output, :resources, :data-parts, :reactions, etc.)
-  is transient runtime data consumed during streaming and can be very large."
+  "For :tool-output parts, keep `:output` and a trimmed `:structured-output` in
+  the result map. Both LLM adapters only read `(get-in part [:result :output])`
+  when replaying history, so `:output` is all they need. The analytics extractor,
+  however, reads a small subset of `:structured-output` off persisted messages
+  (see `persisted-structured-output-keys`), so we keep those four keys and drop
+  everything else (`:resources`, `:data-parts`, `:reactions`, …) — that's where
+  the bulk of the bloat lives."
   [{:keys [type] :as part}]
-  (cond-> part
-    (= :tool-output type) (update :result select-keys [:output])))
+  (if (= :tool-output type)
+    (update part :result
+            (fn [r]
+              (cond-> (select-keys r [:output])
+                (trim-structured-output (:structured-output r))
+                (assoc :structured-output (trim-structured-output (:structured-output r)))
+                (trim-structured-output (:structured_output r))
+                (assoc :structured_output (trim-structured-output (:structured_output r))))))
+    part))
 
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
@@ -105,7 +128,7 @@
   avoiding the intermediate 'aisdk messages' format.
 
   Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
-  [conversation-id profile-id parts]
+  [conversation-id profile-id ip-address parts]
   (let [state-part (u/seek #(and (= :data (:type %))
                                  (= "state" (:data-type %)))
                            parts)
@@ -122,8 +145,10 @@
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                                  (constantly {:user_id api/*current-user-id*
-                                               :state   (:data state-part)})))
+                                  (fn [existing]
+                                    (cond-> {:user_id api/*current-user-id*
+                                             :state   (:data state-part)}
+                                      (nil? (:ip_address existing)) (assoc :ip_address ip-address)))))
       (t2/insert! :model/MetabotMessage
                   {:conversation_id conversation-id
                    :data            content
@@ -184,7 +209,7 @@
 
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration."
-  [{:keys [metabot-id profile-id message context history conversation-id state debug?]}]
+  [{:keys [metabot-id profile-id message context history conversation-id state debug? ip-address]}]
   (let [enriched-context (metabot.context/create-context context)
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
@@ -207,18 +232,18 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (store-native-parts! conversation-id profile-id ip-address (into [] (combine-text-parts-xf) @parts-atom))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]}]
+  [{:keys [metabot_id profile_id message context history conversation_id state debug]} ip-address]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
-    (store-aiservice-messages! conversation_id profile-id [message])
+    (store-aiservice-messages! conversation_id profile-id ip-address [message])
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
@@ -229,7 +254,8 @@
       :history         history
       :conversation-id conversation_id
       :state           state
-      :debug?          debug?})))
+      :debug?          debug?
+      :ip-address      ip-address})))
 
 (defn- legacy->modern-query
   [query]
@@ -272,10 +298,11 @@
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
-            [:debug {:optional true} [:maybe :boolean]]]]
+            [:debug {:optional true} [:maybe :boolean]]]
+   req]
   (metabot.context/log body :llm.log/fe->be)
   (let [body* (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)]
-    (streaming-request body*)))
+    (streaming-request body* (request/ip-address req))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

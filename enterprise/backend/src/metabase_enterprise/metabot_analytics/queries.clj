@@ -124,3 +124,27 @@
   filtered out."
   [messages]
   (into [] (mapcat message->generated-queries) messages))
+
+(def new-query-tool-names
+  "Tools that construct a fresh query. Excludes `edit_sql_query` and
+   `replace_sql_query`, which refine an existing query rather than create
+   a new one."
+  #{"create_sql_query" "construct_notebook_query"})
+
+(defn- tool-input-block? [block tool-names]
+  (and (= "tool-input" (:type block))
+       (if (set? tool-names)
+         (contains? tool-names (:function block))
+         (= tool-names (:function block)))))
+
+(defn count-tool-invocations
+  "Count `tool-input` blocks across a seq of `MetabotMessage` instances.
+   `tool-names` may be a single tool-name string or a set of tool-name
+   strings — a block counts if its `:function` matches."
+  [messages tool-names]
+  (transduce
+   (comp (mapcat :data)
+         (filter #(tool-input-block? % tool-names)))
+   (completing (fn [acc _] (inc acc)))
+   0
+   messages))

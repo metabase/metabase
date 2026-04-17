@@ -1,6 +1,6 @@
 (ns metabase-enterprise.metabot-analytics.queries-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]))
 
 (set! *warn-on-reflection* true)
@@ -264,3 +264,39 @@
   (is (= [] (analytics.queries/messages->generated-queries [])))
   (is (= [] (analytics.queries/messages->generated-queries [{:id 1 :data nil}])))
   (is (= [] (analytics.queries/messages->generated-queries [{:id 1 :data []}]))))
+
+;;; ------------------------- count-tool-invocations -------------------------
+
+(deftest count-tool-invocations-test
+  (testing "sums matching tool-input blocks across messages, including errored calls"
+    ;; Mix within-message and across-messages, plus an errored and an unrelated tool.
+    (is (= 4 (analytics.queries/count-tool-invocations
+              [{:id 1 :data [{:type "tool-input" :function "search" :id "a"}
+                             {:type "tool-output" :id "a" :error "boom"}        ; errored still counts
+                             {:type "tool-input" :function "search" :id "b"}]}
+               {:id 2 :data [{:type "tool-input" :function "create_sql_query" :id "c"} ; ignored tool
+                             {:type "tool-input" :function "search" :id "d"}
+                             {:type "tool-input" :function "search" :id "e"}]}]
+              "search"))))
+  (testing "returns 0 for inputs that contain no matching tool-input blocks"
+    (are [messages] (zero? (analytics.queries/count-tool-invocations messages "search"))
+      []
+      [{:id 1 :data nil}]
+      [{:id 1 :data []}]
+      [{:id 1 :data [{:type "text" :text "hi"}]}]
+      [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "x"}]}]
+      ;; Slackbot-shaped blocks lack `:type` and are intentionally skipped.
+      [{:id 1 :data [{:role "assistant"
+                      :_type "TOOL_CALL"
+                      :tool_calls [{:id "slack-1" :name "search"}]}]}]))
+  (testing "accepts a set of tool names; a block counts if its :function is in the set"
+    ;; new-query-tool-names matches create_sql_query and construct_notebook_query,
+    ;; but not edit_sql_query / replace_sql_query.
+    (is (= 3 (analytics.queries/count-tool-invocations
+              [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "a"}
+                             {:type "tool-input" :function "edit_sql_query" :id "b"}        ; excluded
+                             {:type "tool-input" :function "construct_notebook_query" :id "c"}]}
+               {:id 2 :data [{:type "tool-input" :function "replace_sql_query" :id "d"}     ; excluded
+                             {:type "tool-input" :function "create_sql_query" :id "e"}
+                             {:type "tool-input" :function "search" :id "f"}]}]             ; excluded
+              analytics.queries/new-query-tool-names)))))

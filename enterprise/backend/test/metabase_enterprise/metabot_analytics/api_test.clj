@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- insert-conversation!
-  [{:keys [conversation-id user-id created-at summary state slack-team-id slack-channel-id slack-thread-ts]}]
+  [{:keys [conversation-id user-id created-at summary state slack-team-id slack-channel-id slack-thread-ts ip-address]}]
   (t2/insert! :model/MetabotConversation
               (cond-> {:id      conversation-id
                        :user_id user-id}
@@ -17,7 +17,8 @@
                 state (assoc :state state)
                 slack-team-id (assoc :slack_team_id slack-team-id)
                 slack-channel-id (assoc :slack_channel_id slack-channel-id)
-                slack-thread-ts (assoc :slack_thread_ts slack-thread-ts))))
+                slack-thread-ts (assoc :slack_thread_ts slack-thread-ts)
+                ip-address (assoc :ip_address ip-address))))
 
 (defn- insert-message!
   [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at]}]
@@ -305,6 +306,198 @@
           (finally
             (delete-conversations! [conversation-id])))))))
 
+(defn- search-input-block
+  [call-id]
+  {:type "tool-input" :id call-id :function "search" :arguments {:q "foo"}})
+
+(defn- search-output-block
+  [call-id]
+  {:type "tool-output" :id call-id :result {:output "<result>...</result>"}})
+
+(defn- with-search-count-fixture!
+  "Seed conversations with varying numbers of search tool-input blocks so we
+   can assert both list and detail `:search_count` behavior without perturbing
+   the existing list fixture."
+  [thunk]
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-search-count@metabase.com"
+                                                   :first_name "Search"
+                                                   :last_name  "Counter"}]
+      (let [convo-none    (str (random-uuid))
+            convo-two     (str (random-uuid))
+            convo-errored (str (random-uuid))
+            jan-1         (offset-date-time "2026-02-01T00:00:00Z")
+            jan-2         (offset-date-time "2026-02-02T00:00:00Z")
+            jan-3         (offset-date-time "2026-02-03T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id convo-none
+                                 :user-id         test-user-id
+                                 :created-at      jan-1
+                                 :summary         "no searches"})
+          (insert-conversation! {:conversation-id convo-two
+                                 :user-id         test-user-id
+                                 :created-at      jan-2
+                                 :summary         "two searches across two messages"})
+          (insert-conversation! {:conversation-id convo-errored
+                                 :user-id         test-user-id
+                                 :created-at      jan-3
+                                 :summary         "one errored search still counts"})
+          ;; convo-none: only text, no search calls.
+          (insert-message! {:conversation-id convo-none
+                            :created-at      jan-1
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    5
+                            :data            [{:type "text" :text "no tools here"}]})
+          ;; convo-two: one search in msg 1, one search in msg 2 (plus an unrelated tool).
+          (insert-message! {:conversation-id convo-two
+                            :created-at      jan-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [(search-input-block "call-a")
+                                              (search-output-block "call-a")]})
+          (insert-message! {:conversation-id convo-two
+                            :created-at      jan-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [{:type "tool-input" :id "call-x" :function "analyze_chart" :arguments {}}
+                                              (search-input-block "call-b")
+                                              (search-output-block "call-b")]})
+          ;; convo-errored: a single search whose tool-output is marked errored — should still count.
+          (insert-message! {:conversation-id convo-errored
+                            :created-at      jan-3
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    4
+                            :data            [(search-input-block "call-err")
+                                              {:type "tool-output" :id "call-err" :error "boom"}]})
+          (thunk {:test-user-id  test-user-id
+                  :convo-none    convo-none
+                  :convo-two     convo-two
+                  :convo-errored convo-errored})
+          (finally
+            (delete-conversations! [convo-none convo-two convo-errored])))))))
+
+(deftest search-count-test
+  (with-search-count-fixture!
+    (fn [{:keys [test-user-id convo-none convo-two convo-errored]}]
+      (testing "list endpoint surfaces per-conversation search counts (errored calls still count)"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+              by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
+          (is (= {convo-none 0, convo-two 2, convo-errored 1}
+                 (update-vals by-id :search_count)))))
+      (testing "pagination scopes the hydration batch to the page"
+        ;; Default sort is created_at desc: [convo-errored convo-two convo-none].
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s&limit=1&offset=1"
+                                                     test-user-id))]
+          (is (= [convo-two] (map :conversation_id (:data response))))
+          (is (= 2 (:search_count (first (:data response)))))))
+      (testing "detail endpoint surfaces the same counts"
+        (doseq [[convo expected] [[convo-none 0] [convo-two 2] [convo-errored 1]]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" convo))]
+            (is (= expected (:search_count response))
+                (format "expected search_count=%d for %s" expected convo))))))))
+
+(defn- query-tool-input-block
+  [call-id tool-name]
+  {:type "tool-input" :id call-id :function tool-name :arguments {}})
+
+(defn- query-tool-output-block
+  [call-id]
+  {:type "tool-output" :id call-id :result {:output "ok"}})
+
+(defn- with-query-count-fixture!
+  "Seed conversations that exercise `:query_count` (create_sql_query and
+   construct_notebook_query). Edit/replace tools and unrelated tools are
+   included to verify they are excluded from the count."
+  [thunk]
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-query-count@metabase.com"
+                                                   :first_name "Query"
+                                                   :last_name  "Counter"}]
+      (let [convo-none  (str (random-uuid))
+            convo-mixed (str (random-uuid))
+            convo-edits (str (random-uuid))
+            mar-1       (offset-date-time "2026-03-10T00:00:00Z")
+            mar-2       (offset-date-time "2026-03-11T00:00:00Z")
+            mar-3       (offset-date-time "2026-03-12T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id convo-none
+                                 :user-id         test-user-id
+                                 :created-at      mar-1
+                                 :summary         "no query tools"})
+          (insert-conversation! {:conversation-id convo-mixed
+                                 :user-id         test-user-id
+                                 :created-at      mar-2
+                                 :summary         "one create + one notebook across messages"})
+          (insert-conversation! {:conversation-id convo-edits
+                                 :user-id         test-user-id
+                                 :created-at      mar-3
+                                 :summary         "only edit/replace — should not count"})
+          ;; convo-none: only a search, no new-query tools.
+          (insert-message! {:conversation-id convo-none
+                            :created-at      mar-1
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    5
+                            :data            [(search-input-block "call-s")
+                                              (search-output-block "call-s")]})
+          ;; convo-mixed: one create_sql_query in msg 1, one construct_notebook_query
+          ;; in msg 2 alongside an excluded edit_sql_query.
+          (insert-message! {:conversation-id convo-mixed
+                            :created-at      mar-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [(query-tool-input-block "call-a" "create_sql_query")
+                                              (query-tool-output-block "call-a")]})
+          (insert-message! {:conversation-id convo-mixed
+                            :created-at      mar-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [(query-tool-input-block "call-b" "edit_sql_query")
+                                              (query-tool-output-block "call-b")
+                                              (query-tool-input-block "call-c" "construct_notebook_query")
+                                              (query-tool-output-block "call-c")]})
+          ;; convo-edits: only edit + replace — both excluded from :query_count.
+          (insert-message! {:conversation-id convo-edits
+                            :created-at      mar-3
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    4
+                            :data            [(query-tool-input-block "call-e" "edit_sql_query")
+                                              (query-tool-output-block "call-e")
+                                              (query-tool-input-block "call-r" "replace_sql_query")
+                                              (query-tool-output-block "call-r")]})
+          (thunk {:test-user-id test-user-id
+                  :convo-none   convo-none
+                  :convo-mixed  convo-mixed
+                  :convo-edits  convo-edits})
+          (finally
+            (delete-conversations! [convo-none convo-mixed convo-edits])))))))
+
+(deftest query-count-test
+  (with-query-count-fixture!
+    (fn [{:keys [test-user-id convo-none convo-mixed convo-edits]}]
+      (testing "list endpoint: counts create_sql_query + construct_notebook_query, excludes edit/replace"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+              by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
+          (is (= {convo-none 0, convo-mixed 2, convo-edits 0}
+                 (update-vals by-id :query_count)))))
+      (testing "detail endpoint surfaces the same counts"
+        (doseq [[convo expected] [[convo-none 0] [convo-mixed 2] [convo-edits 0]]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" convo))]
+            (is (= expected (:query_count response))
+                (format "expected query_count=%d for %s" expected convo))))))))
+
 (deftest get-conversation-detail-slack-permalink-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id returns a Slack permalink when metadata is present"
@@ -327,3 +520,64 @@
               (is (= permalink (:slack_permalink response)))))
           (finally
             (delete-conversations! [conversation-id])))))))
+
+(defn- with-ip-address-fixture!
+  "Seed conversations with varying IP-address state so we can assert both list
+   and detail `:ip_address` behavior without perturbing the list fixture."
+  [thunk]
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-ip@metabase.com"
+                                                   :first_name "IP"
+                                                   :last_name  "Tester"}]
+      (let [convo-web   (str (random-uuid))
+            convo-slack (str (random-uuid))
+            convo-null  (str (random-uuid))
+            jan-1       (offset-date-time "2026-03-01T00:00:00Z")
+            jan-2       (offset-date-time "2026-03-02T00:00:00Z")
+            jan-3       (offset-date-time "2026-03-03T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id convo-web
+                                 :user-id         test-user-id
+                                 :created-at      jan-1
+                                 :summary         "web conversation"
+                                 :ip-address      "1.2.3.4"})
+          (insert-conversation! {:conversation-id convo-slack
+                                 :user-id         test-user-id
+                                 :created-at      jan-2
+                                 :summary         "slack conversation"
+                                 :slack-team-id   "T123"
+                                 :slack-channel-id "C123"
+                                 :slack-thread-ts  "1712785577.123456"})
+          (insert-conversation! {:conversation-id convo-null
+                                 :user-id         test-user-id
+                                 :created-at      jan-3
+                                 :summary         "legacy conversation with no ip"})
+          (thunk {:test-user-id test-user-id
+                  :convo-web    convo-web
+                  :convo-slack  convo-slack
+                  :convo-null   convo-null})
+          (finally
+            (delete-conversations! [convo-web convo-slack convo-null])))))))
+
+(deftest ip-address-test
+  (with-ip-address-fixture!
+    (fn [{:keys [test-user-id convo-web convo-slack convo-null]}]
+      (testing "list endpoint surfaces IP for web conversations, nil for Slack/legacy"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id))
+              by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
+          (is (= {convo-web "1.2.3.4", convo-slack nil, convo-null nil}
+                 (update-vals by-id :ip_address)))))
+      (testing "pagination preserves ip_address for rows on page 2"
+        ;; Default sort is created_at desc: [convo-null convo-slack convo-web].
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "ee/metabot-analytics/conversations?user-id=%s&limit=1&offset=1"
+                                                     test-user-id))]
+          (is (= [convo-slack] (map :conversation_id (:data response))))
+          (is (nil? (:ip_address (first (:data response)))))))
+      (testing "detail endpoint surfaces the same values"
+        (doseq [[convo expected] [[convo-web "1.2.3.4"] [convo-slack nil] [convo-null nil]]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" convo))]
+            (is (= expected (:ip_address response))
+                (format "expected ip_address=%s for %s" (pr-str expected) convo))))))))
