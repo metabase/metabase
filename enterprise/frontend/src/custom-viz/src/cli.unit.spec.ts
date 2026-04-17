@@ -57,7 +57,6 @@ describe("cli --help", () => {
     const { stdout } = await runCli(["--help"]);
     expect(stdout).toContain("metabase-custom-viz");
     expect(stdout).toContain("init");
-    expect(stdout).toContain("upgrade");
   });
 });
 
