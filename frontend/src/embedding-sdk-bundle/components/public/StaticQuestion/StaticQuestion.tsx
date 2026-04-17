@@ -134,7 +134,7 @@ const StaticQuestionInner = (
 
   return (
     <SdkQuestion
-      questionId={questionId ?? null}
+      questionId={questionId}
       token={token}
       deserializedCard={deserializedCard}
       getClickActionMode={getClickActionMode}

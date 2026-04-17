@@ -92,7 +92,6 @@ export type InteractiveQuestionComponents = {
 
 function InteractiveQuestionInner({
   query,
-  questionId,
   ...rest
 }: InteractiveQuestionProps) {
   const deserializedCard = useMemo(
@@ -100,13 +99,7 @@ function InteractiveQuestionInner({
     [query],
   );
 
-  return (
-    <SdkQuestion
-      {...rest}
-      questionId={questionId ?? null}
-      deserializedCard={deserializedCard}
-    />
-  );
+  return <SdkQuestion {...rest} deserializedCard={deserializedCard} />;
 }
 
 export const _InteractiveQuestion = InteractiveQuestionInner;
