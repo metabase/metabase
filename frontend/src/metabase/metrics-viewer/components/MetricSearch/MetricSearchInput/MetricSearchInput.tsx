@@ -81,6 +81,7 @@ export function MetricSearchInput({
     pendingFocusRef,
     handleInputFocus,
     handleInputBlur,
+    handleEditExpression,
     handleChange,
     handleSelect,
     handleRemoveItem,
@@ -187,6 +188,7 @@ export function MetricSearchInput({
                         onFormulaEntitiesChange(updated);
                       }}
                       onRemove={() => handleRemoveItem(entryIndex)}
+                      onEdit={() => handleEditExpression(entryIndex)}
                     />
                   </span>
                 );

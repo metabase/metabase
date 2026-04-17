@@ -173,7 +173,7 @@ export function MetricPill({
             </Flex>
           </Pill>
         </Popover.Target>
-        <Popover.Dropdown p={0}>
+        <Popover.Dropdown p={0} mt="-0.15rem">
           <MetricSearchDropdown
             selectedMetricIds={selectedMetricIds}
             selectedMeasureIds={selectedMeasureIds}
@@ -205,7 +205,7 @@ export function MetricPill({
             className={S.menuTarget}
           />
         </Menu.Target>
-        <Menu.Dropdown>
+        <Menu.Dropdown mt="-0.15rem">
           <Menu.Item
             leftSection={<Icon name="sync" />}
             onClick={handleOpenReplace}
@@ -268,7 +268,7 @@ export function MetricPill({
               className={S.menuTarget}
             />
           </Popover.Target>
-          <Popover.Dropdown p={0}>
+          <Popover.Dropdown p={0} mt="-0.15rem">
             <BreakoutDimensionPicker
               definition={definition}
               currentBreakoutDimension={breakoutDimension}

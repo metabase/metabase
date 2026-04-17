@@ -28,10 +28,12 @@ function setup({
   expressionEntry = buildEntry(),
   onNameChange = jest.fn(),
   onRemove = jest.fn(),
+  onEdit = jest.fn(),
 }: {
   expressionEntry?: ExpressionDefinitionEntry;
   onNameChange?: jest.Mock;
   onRemove?: jest.Mock;
+  onEdit?: jest.Mock;
 } = {}) {
   const metricNames: MetricNameMap = {
     "metric:1": "A",
@@ -43,9 +45,10 @@ function setup({
       metricNames={metricNames}
       onNameChange={onNameChange}
       onRemove={onRemove}
+      onEdit={onEdit}
     />,
   );
-  return { onNameChange, onRemove };
+  return { onNameChange, onRemove, onEdit };
 }
 
 describe("MetricExpressionPill action menu", () => {
@@ -54,6 +57,7 @@ describe("MetricExpressionPill action menu", () => {
 
     await userEvent.click(screen.getByTestId("metrics-viewer-search-pill"));
 
+    expect(await screen.findByText("Edit")).toBeInTheDocument();
     expect(await screen.findByText("Rename")).toBeInTheDocument();
   });
 
@@ -68,5 +72,14 @@ describe("MetricExpressionPill action menu", () => {
     ).toBeInTheDocument();
     // The textarea inside EditableText should be focused after Rename.
     expect(await screen.findByRole("textbox")).toHaveFocus();
+  });
+
+  it('should call onEdit if "Edit" menu item is clicked', async () => {
+    const { onEdit } = setup();
+
+    await userEvent.click(screen.getByTestId("metrics-viewer-search-pill"));
+    await userEvent.click(await screen.findByText("Edit"));
+
+    expect(onEdit).toHaveBeenCalledTimes(1);
   });
 });

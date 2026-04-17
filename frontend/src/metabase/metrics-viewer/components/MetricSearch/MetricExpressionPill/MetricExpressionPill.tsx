@@ -21,6 +21,7 @@ type MetricExpressionPillProps = {
   colors?: string[];
   onNameChange: (name: string) => void;
   onRemove: () => void;
+  onEdit: () => void;
 };
 
 export function MetricExpressionPill({
@@ -29,6 +30,7 @@ export function MetricExpressionPill({
   colors,
   onNameChange,
   onRemove,
+  onEdit,
 }: MetricExpressionPillProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [menuOpened, setMenuOpened] = useState(false);
@@ -59,6 +61,11 @@ export function MetricExpressionPill({
     setMenuOpened(false);
     setIsEditing(true);
   }, []);
+
+  const handleEdit = useCallback(() => {
+    setMenuOpened(false);
+    onEdit?.();
+  }, [onEdit]);
 
   const handleBlur = useCallback(() => {
     if (isEditing) {
@@ -148,8 +155,11 @@ export function MetricExpressionPill({
           </Flex>
         </Pill>
       </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item leftSection={<Icon name="pencil" />} onClick={handleRename}>
+      <Menu.Dropdown mt="-0.15rem">
+        <Menu.Item leftSection={<Icon name="pencil" />} onClick={handleEdit}>
+          {t`Edit`}
+        </Menu.Item>
+        <Menu.Item leftSection={<Icon name="rename" />} onClick={handleRename}>
           {t`Rename`}
         </Menu.Item>
       </Menu.Dropdown>
