@@ -2,10 +2,9 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 /* eslint-disable no-console */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createInterface } from "node:readline";
 
 import { Command } from "commander";
 
@@ -19,7 +18,6 @@ import {
   generatePackageJson,
   generatePackageLockJson,
   generateTsConfig,
-  generateUpgradePackageJson,
   generateViteConfig,
   readBinaryTemplate,
 } from "./templates";
@@ -107,110 +105,5 @@ program
       "  3. Changes will hot-reload automatically in your Metabase instance",
     );
   });
-
-program
-  .command("upgrade")
-  .description(
-    "Upgrade an existing custom visualization to the latest template version",
-  )
-  .action(async () => {
-    const projectDir = process.cwd();
-    const pkgPath = join(projectDir, "package.json");
-
-    if (!existsSync(pkgPath)) {
-      console.error(
-        "Error: No package.json found. Run this command from the root of a custom visualization project.",
-      );
-      process.exit(1);
-    }
-
-    let pkg: {
-      name?: string;
-      devDependencies?: Record<string, string>;
-    };
-    try {
-      pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-    } catch {
-      console.error("Error: Could not parse package.json.");
-      process.exit(1);
-    }
-
-    const currentVersion = pkg.devDependencies?.["@metabase/custom-viz"];
-    if (!currentVersion) {
-      console.error(
-        "Error: @metabase/custom-viz not found in devDependencies. Is this a custom visualization project?",
-      );
-      process.exit(1);
-    }
-
-    if (currentVersion === version) {
-      console.log(`Already up to date (v${version}). No changes needed.`);
-      return;
-    }
-
-    console.log(
-      `Upgrading from @metabase/custom-viz ${currentVersion} → ${version}\n`,
-    );
-
-    console.log("The following changes will be made:\n");
-    console.log(
-      "  vite.config.ts   — Replace with the latest build configuration",
-    );
-    console.log(
-      "  tsconfig.json    — Replace with the latest TypeScript configuration",
-    );
-    console.log("  .gitignore       — Replace with the latest gitignore rules");
-    console.log(
-      "  package.json     — Update devDependencies and scripts to latest versions",
-    );
-    console.log();
-    console.log(
-      "Your source code (src/), assets (public/), and metabase-plugin.json will NOT be modified.\n",
-    );
-
-    const confirmed = await confirm("Proceed with upgrade?");
-    if (!confirmed) {
-      console.log("Upgrade cancelled.");
-      return;
-    }
-
-    console.log();
-
-    const updated: string[] = [];
-
-    // Update infrastructure files that are template-owned
-    await writeFile(join(projectDir, "vite.config.ts"), generateViteConfig());
-    updated.push("vite.config.ts");
-
-    await writeFile(join(projectDir, "tsconfig.json"), generateTsConfig());
-    updated.push("tsconfig.json");
-
-    await writeFile(join(projectDir, ".gitignore"), generateGitignore());
-    updated.push(".gitignore");
-
-    // Update package.json: merge devDependencies from template, preserve user additions
-    const existingPkgJson = readFileSync(pkgPath, "utf-8");
-    const updatedPkgJson = generateUpgradePackageJson(existingPkgJson);
-    await writeFile(pkgPath, updatedPkgJson);
-    updated.push("package.json");
-
-    console.log("Updated files:");
-    for (const file of updated) {
-      console.log(`  ${file}`);
-    }
-    console.log();
-    console.log("Next steps:");
-    console.log("  npm install     # Install updated dependencies");
-  });
-
-function confirm(question: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(`${question} (y/N) `, (answer) => {
-      rl.close();
-      resolve(answer.trim().toLowerCase() === "y");
-    });
-  });
-}
 
 program.parse();

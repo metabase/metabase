@@ -79,33 +79,3 @@ export function readBinaryTemplate(filename: string): Buffer {
 export function generateGitignore(): string {
   return gitignoreTemplate;
 }
-
-/**
- * Upgrade an existing project's package.json by merging the latest template
- * devDependencies and scripts while preserving the user's name, version,
- * and any extra fields they may have added.
- */
-export function generateUpgradePackageJson(existingJson: string): string {
-  const existing = JSON.parse(existingJson);
-  const template = JSON.parse(
-    packageJsonTemplate
-      .split(NAME_PLACEHOLDER)
-      .join("__placeholder__")
-      .split(VERSION_PLACEHOLDER)
-      .join(version),
-  );
-
-  // Merge devDependencies: template values win, but keep user additions
-  existing.devDependencies = {
-    ...existing.devDependencies,
-    ...template.devDependencies,
-  };
-
-  // Merge scripts: template values win, but keep user additions
-  existing.scripts = {
-    ...existing.scripts,
-    ...template.scripts,
-  };
-
-  return JSON.stringify(existing, null, 2) + "\n";
-}
