@@ -15,6 +15,7 @@ import { getSetting } from "metabase/selectors/settings";
 import {
   Anchor,
   Box,
+  Button,
   Card,
   Flex,
   Icon,
@@ -27,6 +28,7 @@ import {
 import { useSelector } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
+import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { useGetMetabotConversationQuery } from "../../api";
@@ -184,10 +186,36 @@ function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 }
 
 function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
+  const metadata = useSelector(getMetadata);
+
+  const runUrl = useMemo(() => {
+    if (query.database_id == null || !query.sql) {
+      return null;
+    }
+    const datasetQuery: DatasetQuery = {
+      type: "native",
+      database: query.database_id,
+      native: { query: query.sql, "template-tags": {} },
+    };
+    const question = new Question(
+      {
+        name: null,
+        display: "table",
+        visualization_settings: {},
+        dataset_query: datasetQuery,
+      },
+      metadata,
+    ).setType("question");
+    return ML_getUrl(question);
+  }, [metadata, query.database_id, query.sql]);
+
   return (
     <Card withBorder shadow="none" p="md">
       <Stack gap="sm">
-        <Text size="lg" fw={700}>{t`SQL query`}</Text>
+        <Flex justify="space-between" align="center" gap="sm">
+          <Text size="lg" fw={700}>{t`SQL query`}</Text>
+          {runUrl && <RunButton url={runUrl} />}
+        </Flex>
         <CodeEditor value={query.sql ?? ""} language="sql" readOnly />
         {query.tables.length > 0 && (
           <Text size="sm" c="text-secondary">
@@ -197,6 +225,21 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
         )}
       </Stack>
     </Card>
+  );
+}
+
+function RunButton({ url }: { url: string }) {
+  return (
+    <Button
+      component="a"
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      variant="filled"
+      leftSection={<Icon name="play_outlined" aria-hidden />}
+    >
+      {t`Run`}
+    </Button>
   );
 }
 
@@ -250,6 +293,7 @@ function NotebookGeneratedQueryCard({ mbql }: { mbql: DatasetQuery }) {
   }
 
   const title = question.generateQueryDescription() || t`Notebook query`;
+  const runUrl = ML_getUrl(question);
 
   return (
     <Card
@@ -260,9 +304,12 @@ function NotebookGeneratedQueryCard({ mbql }: { mbql: DatasetQuery }) {
       style={{ overflowX: "auto" }}
     >
       <Stack gap="md">
-        <Text size="lg" fw={700}>
-          {title}
-        </Text>
+        <Flex justify="space-between" align="center" gap="sm">
+          <Text size="lg" fw={700}>
+            {title}
+          </Text>
+          <RunButton url={runUrl} />
+        </Flex>
         <Box mx={{ base: "-md", sm: "-xl" }} my={{ base: "-md", sm: "-xl" }}>
           <Notebook
             question={question}
