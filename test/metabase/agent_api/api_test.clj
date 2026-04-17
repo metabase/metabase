@@ -454,8 +454,9 @@
 
 (deftest create-question-test
   (testing "Creates a saved question from a constructed query"
-    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                               {:table_id (mt/id :orders) :limit 10})
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:source     {:type "table" :id (mt/id :orders)}
+                                                :operations [["limit" 10]]})
           create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
                                                {:name  "Agent Test Question"
                                                 :query (:query construct-resp)})]
@@ -470,8 +471,9 @@
 
   (testing "Creates a question with optional fields"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
-      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
-                                                 {:table_id (mt/id :orders) :limit 10})
+      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                 {:source     {:type "table" :id (mt/id :orders)}
+                                                  :operations [["limit" 10]]})
             create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
                                                  {:name          "Agent Question With Options"
                                                   :query         (:query construct-resp)
