@@ -1,0 +1,10 @@
+.PreviewContainer {
+  box-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.1);
+  border-radius: var(--mb-radius-md, 8px);
+  overflow: hidden;
+}
+
+.PreviewContainer > * {
+  /* makes the metabase-dashboard element full height */
+  height: 100%;
+}
