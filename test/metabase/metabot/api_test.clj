@@ -616,7 +616,7 @@
              (:usage msg))))))
 
 (deftest strip-tool-output-bloat-test
-  (testing "strips transient keys from tool-output results, keeping only :output"
+  (testing "drops transient keys and structured-output fields outside the persisted subset"
     (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
            (#'api/strip-tool-output-bloat
             {:type   :tool-output
@@ -625,10 +625,42 @@
                       :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
                       :structured-output {:result-type :search :data [{:id 1}]}
                       :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+  (testing "keeps the query-related subset of :structured-output for analytics extraction"
+    (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
+      (is (= {:type   :tool-output
+              :id     "call-sql"
+              :result {:output            "<result>...</result>"
+                       :structured-output {:query-id      "qid-1"
+                                           :query-content "SELECT 1"
+                                           :query         query-map
+                                           :database      1}}}
+             (#'api/strip-tool-output-bloat
+              {:type   :tool-output
+               :id     "call-sql"
+               :result {:output            "<result>...</result>"
+                        :structured-output {:query-id      "qid-1"
+                                            :query-content "SELECT 1"
+                                            :query         query-map
+                                            :database      1
+                                            :resources     [{:field_values [1 2 3]}]
+                                            :reactions     [:noop]}
+                        :data-parts        [{:type :data}]}})))))
+  (testing "preserves the snake-case :structured_output alias when present"
+    (is (= {:type   :tool-output
+            :id     "call-snake"
+            :result {:output            "<result>...</result>"
+                     :structured_output {:query-id "qid-2" :query-content "SELECT 2"}}}
+           (#'api/strip-tool-output-bloat
+            {:type   :tool-output
+             :id     "call-snake"
+             :result {:output            "<result>...</result>"
+                      :structured_output {:query-id      "qid-2"
+                                          :query-content "SELECT 2"
+                                          :extra-bloat   [1 2 3]}}}))))
   (testing "leaves non-tool-output parts untouched"
     (let [text-part {:type :text :text "hello"}]
       (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
-  (testing "handles result with no :output key"
+  (testing "handles result with no :output key and no query-related structured-output"
     (is (= {:type :tool-output :id "call-2" :result {}}
            (#'api/strip-tool-output-bloat
             {:type   :tool-output

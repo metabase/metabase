@@ -92,14 +92,34 @@
    {}
    parts))
 
+(def ^:private persisted-structured-output-keys
+  "Subset of `:structured-output` that must survive persistence so
+  `metabase-enterprise.metabot-analytics.queries` can surface generated
+  queries on the admin detail page."
+  [:query-id :query-content :query :database])
+
+(defn- trim-structured-output [structured]
+  (when (map? structured)
+    (not-empty (select-keys structured persisted-structured-output-keys))))
+
 (defn- strip-tool-output-bloat
-  "For :tool-output parts, keep only :output in the result map.
-  Both LLM adapters only read (get-in part [:result :output]) when replaying history.
-  Everything else (:structured-output, :resources, :data-parts, :reactions, etc.)
-  is transient runtime data consumed during streaming and can be very large."
+  "For :tool-output parts, keep `:output` and a trimmed `:structured-output` in
+  the result map. Both LLM adapters only read `(get-in part [:result :output])`
+  when replaying history, so `:output` is all they need. The analytics extractor,
+  however, reads a small subset of `:structured-output` off persisted messages
+  (see `persisted-structured-output-keys`), so we keep those four keys and drop
+  everything else (`:resources`, `:data-parts`, `:reactions`, …) — that's where
+  the bulk of the bloat lives."
   [{:keys [type] :as part}]
-  (cond-> part
-    (= :tool-output type) (update :result select-keys [:output])))
+  (if (= :tool-output type)
+    (update part :result
+            (fn [r]
+              (cond-> (select-keys r [:output])
+                (trim-structured-output (:structured-output r))
+                (assoc :structured-output (trim-structured-output (:structured-output r)))
+                (trim-structured-output (:structured_output r))
+                (assoc :structured_output (trim-structured-output (:structured_output r))))))
+    part))
 
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
