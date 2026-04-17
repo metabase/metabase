@@ -224,8 +224,8 @@ describe(
 
         cy.wait("@updateTheme").then((interception) => {
           const { settings } = interception.request.body;
-          expect(settings.colors?.border).to.eq("#FF5733");
-          expect(settings.colors?.filter).to.eq("#2D2D30");
+          expect(settings.colors?.border).to.eq("#ff5733");
+          expect(settings.colors?.filter).to.eq("#2d2d30");
         });
 
         H.undoToast().findByText("Theme saved").should("exist");
