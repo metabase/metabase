@@ -175,3 +175,4 @@ CLAUDE.local.md
 /resources/python-sources/.lock
 __pycache__/
 .mcp.json
+.claude/worktrees
