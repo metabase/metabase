@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { WHITELABEL_CHART_COLOR_NAMES } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
 import { ColorPicker } from "metabase/common/components/ColorPicker";
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
@@ -68,7 +69,7 @@ const MORE_COLORS: {
   { key: "shadow", label: () => t`Shadow` },
 ];
 
-const CHART_COLOR_COUNT = 8;
+const CHART_COLOR_COUNT = WHITELABEL_CHART_COLOR_NAMES.length;
 
 interface EditorPanelProps {
   editor: EmbeddingThemeEditorResult;
