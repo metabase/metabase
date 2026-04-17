@@ -14,11 +14,7 @@ export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
   const isEmbeddingReady = isSimpleEmbeddingEnabled && isTermsAccepted;
 
   return (
-    <Flex
-      direction="column"
-      flex={1}
-      style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
-    >
+    <Flex direction="column" flex={1} bg="background-secondary">
       <Box p="xl" pb="sm">
         <Text fw={700} fz="xl">{t`Theme preview`}</Text>
       </Box>
