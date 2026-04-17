@@ -117,9 +117,6 @@ describe(
           cy.log("font fields should be visible");
           cy.findByLabelText("Font").should("be.visible");
           cy.findByLabelText("Base font size").should("be.visible");
-          cy.findByLabelText("Line height")
-            .scrollIntoView()
-            .should("be.visible");
         });
 
         cy.log("select a font family");
@@ -130,9 +127,6 @@ describe(
           cy.log("set base font size");
           cy.findByLabelText("Base font size").type("16");
 
-          cy.log("set line height");
-          cy.findByLabelText("Line height").type("2");
-
           cy.log("save the theme");
           cy.findByRole("button", { name: /Save theme/ }).click();
         });
@@ -141,7 +135,6 @@ describe(
           const { settings } = interception.request.body;
           expect(settings.fontFamily).to.eq("Lato");
           expect(settings.fontSize).to.eq("16px");
-          expect(settings.lineHeight).to.eq(2);
         });
 
         H.undoToast().findByText("Theme saved").should("exist");

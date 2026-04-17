@@ -219,11 +219,6 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
                   </Text>
                 }
               />
-              <TextInput
-                label={t`Line height`}
-                value={String(currentTheme.settings.lineHeight ?? "")}
-                onChange={(e) => editor.setLineHeight(e.currentTarget.value)}
-              />
             </Stack>
           </Card>
         </Stack>

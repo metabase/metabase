@@ -120,16 +120,6 @@ export function useEmbeddingThemeEditor(themeId: number) {
     [updateSettings],
   );
 
-  const setLineHeight = useCallback(
-    (lineHeight: string) => {
-      const value = lineHeight
-        ? parseFloat(lineHeight) || lineHeight
-        : undefined;
-      updateSettings(() => ({ lineHeight: value }));
-    },
-    [updateSettings],
-  );
-
   const hasAdditionalColorChanges = useMemo(() => {
     if (!currentTheme) {
       return false;
@@ -195,7 +185,6 @@ export function useEmbeddingThemeEditor(themeId: number) {
     resetAdditionalColors,
     setFontFamily,
     setFontSize,
-    setLineHeight,
     handleSave,
     handleDiscard,
   };
