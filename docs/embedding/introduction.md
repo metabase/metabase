@@ -86,11 +86,11 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 \*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan for any embedding type.
 
-### Should you use Modular embedding or the SDK?
+### Should you use the Modular embedding SDK?
 
 If your app uses React, you can go with the modular embedding SDK, but you don't need to.
 
-The modular embeds that you can set up in the in-app wizard are built on top of the Modular embedding SDK. Using the SDK just gives you slightly more customization (see the table above), but your app has to use React. You can always start with modular embedding, then move to the modular embedding SDK if you really need that extra customization. Both support SSO and Guest embeds.
+The modular embeds that you can set up in the in-app wizard are built on top of the Modular embedding SDK. Using the SDK just gives you slightly more customization (see the table above), but your app has to use React. You can always start with modular embedding, then move to the SDK if you really need that extra customization. Both support SSO and Guest embeds.
 
 ## Resources for AI agents
 
