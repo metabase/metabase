@@ -33,7 +33,7 @@ import { UpdatesSettingsPage } from "./settings/components/SettingsPages/Updates
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
 
-export const getSettingsRoutes = (store: { getState: () => State }) => {
+export const getSettingsRoutes = (store: Store<State>) => {
   const devModeEnabled = getSetting(
     store.getState(),
     "custom-viz-plugin-dev-mode-enabled",
