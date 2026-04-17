@@ -12,6 +12,7 @@ import { useToast } from "metabase/common/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { useColorScheme } from "metabase/ui";
 import type { IconData } from "metabase/utils/icon";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
@@ -89,7 +90,9 @@ function useCustomVizDevReload(
       return;
     }
 
-    const sseUrl = `/api/ee/custom-viz-plugin/${plugin.id}/dev-sse`;
+    const sseUrl = getSubpathSafeUrl(
+      `/api/ee/custom-viz-plugin/${plugin.id}/dev-sse`,
+    );
 
     const eventSource = new EventSource(sseUrl);
 
@@ -257,7 +260,10 @@ export async function loadCustomVizPlugin(
   ensureVizApi();
 
   try {
-    const bundleUrl = new URL(plugin.bundle_url, window.location.origin);
+    const bundleUrl = new URL(
+      getSubpathSafeUrl(plugin.bundle_url),
+      window.location.origin,
+    );
     if (cacheBustSuffix) {
       bundleUrl.searchParams.set("t", Date.now().toString());
     } else if (plugin.resolved_commit) {
