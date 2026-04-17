@@ -42,6 +42,16 @@ function visitThemeEditor(themeId: number) {
   cy.wait("@getTheme");
 }
 
+function changeColor(label: string, value: string) {
+  H.main().within(() => {
+    cy.findByText(label).parent().parent().click();
+  });
+
+  H.popover().should("be.visible").find("input").clear().type(value);
+
+  cy.realPress("Escape");
+}
+
 describe(
   "scenarios > embedding > themes > theme editor",
   { tags: "@EE" },
@@ -142,17 +152,46 @@ describe(
     });
 
     describe("main colors", () => {
-      it("shows the main color swatches", () => {
-        createThemeViaApi("Color test").then((theme) => {
+      it("shows, edits, saves, and reverts main colors", () => {
+        cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");
+
+        createThemeViaApi("Main colors").then((theme) => {
           visitThemeEditor(theme.id);
         });
 
+        cy.log("main color swatches should be visible");
         H.main().within(() => {
           cy.findByText("Main colors").should("be.visible");
           cy.findByText("Brand").should("be.visible");
           cy.findByText("Background").should("be.visible");
           cy.findByText("Primary text").should("be.visible");
         });
+
+        cy.log("change the brand color");
+        changeColor("Brand", "FF0000");
+
+        cy.log("revert button should appear after changing a main color");
+        H.main()
+          .findByLabelText("Revert to default main colors")
+          .should("be.visible");
+
+        cy.log("save the theme with the changed brand color");
+        cy.findByRole("button", { name: /Save theme/ }).click();
+
+        cy.wait("@updateTheme").then((interception) => {
+          const { settings } = interception.request.body;
+          expect(settings.colors?.brand).to.eq("#ff0000");
+        });
+
+        H.undoToast().findByText("Theme saved").should("exist");
+
+        cy.log("click revert to reset main colors back to defaults");
+        H.main().findByLabelText("Revert to default main colors").click();
+
+        cy.log("revert button should disappear after resetting");
+        H.main()
+          .findByLabelText("Revert to default main colors")
+          .should("not.exist");
       });
     });
 
@@ -176,7 +215,7 @@ describe(
           cy.findByText("Chart colors").should("exist");
 
           cy.log("collapse additional colors");
-          cy.findByText("Hide additional colors").click();
+          cy.findByText("Show fewer colors").click();
           cy.findByText("Secondary text").should("not.be.visible");
         });
       });
@@ -192,13 +231,17 @@ describe(
           cy.log(
             "revert button should be visible since the API theme has non-default additional colors",
           );
-          cy.findByLabelText("Revert to default colors").should("be.visible");
+          cy.findByLabelText("Revert to default additional colors").should(
+            "be.visible",
+          );
 
           cy.log("click revert to reset additional colors to defaults");
-          cy.findByLabelText("Revert to default colors").click();
+          cy.findByLabelText("Revert to default additional colors").click();
 
           cy.log("revert button should disappear after resetting");
-          cy.findByLabelText("Revert to default colors").should("not.exist");
+          cy.findByLabelText("Revert to default additional colors").should(
+            "not.exist",
+          );
         });
       });
 
@@ -211,16 +254,16 @@ describe(
 
         H.main().within(() => {
           cy.findByText("Show more colors").click();
-
-          cy.log("edit the border color via its inline input");
-          cy.findByText("Border").parent().find("input").clear().type("FF5733");
-
-          cy.log("edit the filter color via its inline input");
-          cy.findByText("Filter").parent().find("input").clear().type("2D2D30");
-
-          cy.log("save the theme");
-          cy.findByRole("button", { name: /Save theme/ }).click();
         });
+
+        cy.log("edit the border color via its inline input");
+        changeColor("Border", "FF5733");
+
+        cy.log("edit the filter color via its inline input");
+        changeColor("Filter", "2D2D30");
+
+        cy.log("save the theme");
+        cy.findByRole("button", { name: /Save theme/ }).click();
 
         cy.wait("@updateTheme").then((interception) => {
           const { settings } = interception.request.body;

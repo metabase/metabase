@@ -78,7 +78,7 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
                   variant="subtle"
                   pt="5"
                   size="compact-sm"
-                  aria-label={t`Revert to default colors`}
+                  aria-label={t`Revert to default main colors`}
                   onClick={editor.resetMainColors}
                 >
                   <Icon name="revert" size={16} />
@@ -116,7 +116,7 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
                 <Button
                   variant="subtle"
                   size="compact-sm"
-                  aria-label={t`Revert to default colors`}
+                  aria-label={t`Revert to default additional colors`}
                   onClick={editor.resetAdditionalColors}
                 >
                   <Icon name="revert" size={16} />
