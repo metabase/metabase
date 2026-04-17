@@ -8,6 +8,7 @@ import type {
 } from "metabase/embedding-sdk/theme";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { getColors } from "metabase/ui/colors/colors";
+import { ACCENT_COUNT } from "metabase/ui/colors/palette";
 import type { ColorName } from "metabase/ui/colors/types";
 
 /**
@@ -44,16 +45,10 @@ const SDK_COLORS_TO_PERSIST = [
  * so we do not need the `-light` or `-dark` variants,
  * even though the SDK supports them.
  */
-export const WHITELABEL_CHART_COLOR_NAMES = [
-  "accent0",
-  "accent1",
-  "accent2",
-  "accent3",
-  "accent4",
-  "accent5",
-  "accent6",
-  "accent7",
-] as const satisfies ColorName[];
+export const WHITELABEL_CHART_COLOR_NAMES = Array.from(
+  { length: ACCENT_COUNT },
+  (_, i) => `accent${i}` as ColorName,
+);
 
 /**
  * Returns a default embedding theme with colors mapped from the instance's

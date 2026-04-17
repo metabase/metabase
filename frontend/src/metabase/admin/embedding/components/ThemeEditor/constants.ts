@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { WHITELABEL_CHART_COLOR_NAMES } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
+import { ACCENT_COUNT } from "metabase/ui/colors/palette";
 
 export const FONT_FAMILY_OPTIONS: { value: string; label: string }[] = [
   { value: "Roboto", label: "Roboto" },
@@ -49,4 +49,4 @@ export const MORE_COLORS: {
   { key: "shadow", label: () => t`Shadow` },
 ];
 
-export const CHART_COLOR_COUNT = WHITELABEL_CHART_COLOR_NAMES.length;
+export const CHART_COLOR_COUNT = ACCENT_COUNT;
