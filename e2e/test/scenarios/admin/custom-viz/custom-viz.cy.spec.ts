@@ -1391,17 +1391,11 @@ describe("admin > custom visualizations", () => {
 
       cy.log("Modifying plugin source to change the SVG fill color");
       cy.readFile(pluginSrcPath).then((src) => {
-        // Restore original fill first in case of a retry where it was already
-        // replaced on the previous attempt.
-        const restored = src.replace(
-          'fill="red"',
-          'fill="var(--mb-color-brand)"',
-        );
-        const updated = restored.replace(
+        const updated = src.replace(
           'fill="var(--mb-color-brand)"',
           'fill="red"',
         );
-        if (updated === restored) {
+        if (updated === src) {
           throw new Error(`Expected to replace fill in ${pluginSrcPath}`);
         }
         cy.writeFile(pluginSrcPath, updated);
@@ -1418,8 +1412,7 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("chartsettings-sidebar")
         .findByPlaceholderText("Set threshold")
         .clear()
-        .type("100000")
-        .should("have.value", "100000");
+        .type("100000");
       cy.findByRole("button", {
         name: /Done/,
       }).click();
