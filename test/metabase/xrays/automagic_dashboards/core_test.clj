@@ -218,26 +218,8 @@
     (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [[table cardinality] (map vector
                                        (t2/select :model/Table :db_id (mt/id) :active true {:order-by [[:name :asc]]})
-                                       [2 8 11 11 15 16 5 6])]
+                                       [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))))
-
-(deftest ^:parallel xray-dashboard-has-filters-test
-  (testing "X-ray dashboards should include filter parameters for tables with filterable dimensions"
-    (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-rollback-only-transaction
-        (doseq [table-kw [:orders :products :people]]
-          (testing (str "Table: " (name table-kw))
-            (doseq [show-opt [{:show :all} nil]]
-              (testing (str " with opts " (pr-str show-opt))
-                (let [table     (t2/select-one :model/Table :id (mt/id table-kw))
-                      dashboard (magic/automagic-analysis table show-opt)]
-                  (testing "Dashboard should have at least one filter parameter"
-                    (is (seq (:parameters dashboard))))
-                  (testing "Filter parameters should have required keys"
-                    (doseq [param (:parameters dashboard)]
-                      (is (string? (:name param)))
-                      (is (string? (:slug param)))
-                      (is (string? (:type param))))))))))))))
 
 (deftest ^:parallel automagic-analysis-test-2
   (mt/with-test-user :rasta
@@ -253,7 +235,7 @@
     (automagic-dashboards.test/with-rollback-only-transaction
       (-> (t2/select-one :model/Table :id (mt/id :venues))
           (assoc :display_name "%Venues")
-          (test-automagic-analysis 6)))))
+          (test-automagic-analysis 7)))))
 
 ;; Cardinality of cards genned from fields is much more labile than anything else
 ;; Not just with respect to drivers, but all sorts of other stuff that makes it chaotic
@@ -309,7 +291,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (t2/select-one :model/Card :id card-id) 6))))))
+          (test-automagic-analysis (t2/select-one :model/Card :id card-id) 7))))))
 
 (deftest query-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -324,7 +306,7 @@
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-rollback-only-transaction
-          (test-automagic-analysis (t2/select-one :model/Card :id card-id) 12))))))
+          (test-automagic-analysis (t2/select-one :model/Card :id card-id) 17))))))
 
 (deftest native-query-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -365,7 +347,7 @@
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-rollback-only-transaction
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (t2/select-one :model/Card :id card-id) 6)))))))
+            (test-automagic-analysis (t2/select-one :model/Card :id card-id) 7)))))))
 
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -392,7 +374,7 @@
           (mt/with-test-user :rasta
             (automagic-dashboards.test/with-rollback-only-transaction
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-              (test-automagic-analysis (t2/select-one :model/Card :id card-id) 2))))))))
+              (test-automagic-analysis (t2/select-one :model/Card :id card-id) 6))))))))
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
@@ -744,7 +726,7 @@
               ;; - Count
               ;; - Distinct count
               ;; - Null values
-              (is (= 1 (->> dashboard :dashcards (filter :card) count)))
+              (is (= 4 (->> dashboard :dashcards (filter :card) count)))
               (ensure-dashboard-sourcing card dashboard)
               ;; This ensures we don't get :filter on queries derived from a model
               (is (empty?
@@ -943,7 +925,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (t2/select-one :model/Card :id card-id) 12))))))
+          (test-automagic-analysis (t2/select-one :model/Card :id card-id) 17))))))
 
 (deftest figure-out-table-id-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -971,7 +953,7 @@
         (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> (t2/select-one :model/Card :id card-id)
-              (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 6)))))))
+              (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 (deftest cell-query-is-applied-test
   (testing "Ensure that the cell query is applied to every card in the resulting dashboard"
@@ -991,6 +973,7 @@
               (let [dashcards (:dashcards (magic/automagic-analysis entity {:cell-query cell-query :show :all}))]
                 (is (= ["# Summary"
                         "Total Venues"
+                        "Distinct Category ID"
                         "# Where these Venues are"
                         "Venues by coordinates"
                         "# How these Venues are distributed"
@@ -1002,6 +985,8 @@
                                                           lib/filters)
                                                  dashcards)]
                   (is (=? [[[:> {} [:field {:base-type :type/Integer} (mt/id :venues :price)] 10]
+                            [:= {} [:field {} (mt/id :venues :category_id)] 2]]
+                           [[:> {} [:field {:base-type :type/Integer} (mt/id :venues :price)] 10]
                             [:= {} [:field {} (mt/id :venues :category_id)] 2]]
                            [[:> {} [:field {:base-type :type/Integer} (mt/id :venues :price)] 10]
                             [:= {} [:field {} (mt/id :venues :category_id)] 2]]
@@ -1022,7 +1007,7 @@
         (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> (t2/select-one :model/Card :id card-id)
-              (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 6)))))))
+              (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 (deftest ^:parallel adhoc-filter-test
   (mt/with-test-user :rasta
@@ -1031,7 +1016,7 @@
                                                                       :source-table (mt/id :venues)}
                                                               :type :query
                                                               :database (mt/id)})]
-        (test-automagic-analysis q 6)))))
+        (test-automagic-analysis q 7)))))
 
 (deftest ^:parallel adhoc-count-test
   (mt/with-test-user :rasta
@@ -1041,7 +1026,7 @@
                                                                       :source-table (mt/id :venues)}
                                                               :type :query
                                                               :database (mt/id)})]
-        (test-automagic-analysis q 12)))))
+        (test-automagic-analysis q 17)))))
 
 (deftest ^:parallel adhoc-fk-breakout-test
   (mt/with-test-user :rasta
@@ -1060,7 +1045,7 @@
                                                                       :source-table (mt/id :venues)}
                                                               :type :query
                                                               :database (mt/id)})]
-        (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 6)))))
+        (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))
 
 (deftest ^:parallel join-splicing-test
   (mt/with-test-user :rasta
@@ -1638,10 +1623,17 @@
           (testing "Questions based on native queries produce a dashboard"
             (is (= "A closer look at the metrics and dimensions used in this saved question."
                    description))
-            ;; With interestingness scoring, a LIMIT 1 source query produces constant-value fields
-            ;; (distinct-count=1), which are filtered out. The dashboard still generates but with
-            ;; minimal cards (just section headers, no breakout cards).
-            (is (seq dashcards)))
+            (is (set/subset?
+                 #{{:group-name "## The number of 15655 over time", :card-name nil}
+                   {:group-name nil, :card-name "Over time"}
+                   {:group-name nil, :card-name "Number of 15655 per day of the week"}
+                   {:group-name "## How this metric is distributed across different categories", :card-name nil}
+                   {:group-name nil, :card-name "Number of 15655 per NAME over time"}
+                   {:group-name nil, :card-name "Number of 15655 per CITY over time"}}
+                 (set (map (fn [dashcard]
+                             {:group-name (get-in dashcard [:visualization_settings :text])
+                              :card-name  (get-in dashcard [:card :name])})
+                           dashcards)))))
           (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
                 {comparison-description :description
                  comparison-dashcards   :dashcards
@@ -1655,9 +1647,25 @@
                      transient_name))
               (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                      comparison-description))
-              ;; With constant-value fields filtered out, comparison cards are limited to Count comparisons
-              (is (some (fn [dashcard] (= "Count" (get-in dashcard [:card :name])))
-                        comparison-dashcards)))))))))
+              (is (= [{:group-name nil, :card-name "Number of 15655 per SOURCE"}
+                      {:group-name nil, :card-name "Number of 15655 per SOURCE"}
+                      {:group-name nil, :card-name "Number of 15655 per CITY"}
+                      {:group-name nil, :card-name "Number of 15655 per CITY"}
+                      {:group-name nil, :card-name "Number of 15655 per NAME"}
+                      {:group-name nil, :card-name "Number of 15655 per NAME"}
+                      {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
+                      {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
+                      {:group-name nil, :card-name "Number of 15655 per CITY over time"}
+                      {:group-name nil, :card-name "Number of 15655 per CITY over time"}]
+                     (->> comparison-dashcards
+                          (take 10)
+                          (map (fn [dashcard]
+                                 {:group-name (get-in dashcard [:visualization_settings :text])
+                                  :card-name  (get-in dashcard [:card :name])})))))
+              (mapv (fn [dashcard]
+                      {:group-name (get-in dashcard [:visualization_settings :text])
+                       :card-name  (get-in dashcard [:card :name])})
+                    comparison-dashcards))))))))
 
 ;;; this is a fixed version of the test above that correctly generates the second card so that it matches the equivalent
 ;;; Cypress test spec.
@@ -1699,12 +1707,21 @@
                      (:dashcards (magic/automagic-analysis card {:cell-query cell-query})))))))))
 
 (deftest ^:parallel source-fields-are-populated-for-aggregations-38618-test
-  (testing "FK fields like Product ID are filtered out by interestingness scoring (#38618)"
+  (testing "X-ray aggregates (metrics) with source fields in external tables should properly fill in `:source-field` (#38618)"
     (mt/dataset test-data
-      (let [dashcards (->> (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :reviews)) {:show :all})
-                           :dashcards)]
-        (testing "Distinct Product ID card should not appear (FK fields are scored as uninteresting)"
-          (is (empty? (filter (fn [dashcard]
-                                (= "Distinct Product ID"
-                                   (get-in dashcard [:card :name])))
-                              dashcards))))))))
+      (let [dashcard  (->> (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :reviews)) {:show :all})
+                           :dashcards
+                           (filter (fn [dashcard]
+                                     (= "Distinct Product ID"
+                                        (get-in dashcard [:card :name]))))
+                           first)
+            aggregate (-> dashcard
+                          (get-in [:card :dataset_query])
+                          lib/aggregations)]
+        (testing "Fields requiring a join should have :source-field populated in the aggregate."
+          (is (=? [[:distinct {}
+                    [:field
+                     ;; This should be present vs. nil (value before issue)
+                     {:source-field (mt/id :reviews :product_id)}
+                     (mt/id :products :id)]]]
+                  aggregate)))))))

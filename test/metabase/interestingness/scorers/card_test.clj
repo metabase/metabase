@@ -189,31 +189,37 @@
 
 ;;; -------------------------------------------------- score-card composition --------------------------------------------------
 
+(def ^:private flatness-weights
+  "Ad-hoc weight profile combining the two single-field flatness scorers — used to
+   exercise `score-card` composition and hard-zero clamping in tests."
+  {card/measure-flatness   0.5
+   card/dimension-flatness 0.5})
+
 (deftest ^:parallel score-card-test
   (testing "healthy card scores 1.0"
     (let [result (interestingness/score-card
-                  interestingness/trim-card-weights
+                  flatness-weights
                   {:dimensions [(text-field "region" {:mode-fraction 0.15} :distinct-count 12)]
                    :measures   [(numeric-field "revenue" {:sd 200 :avg 1000 :mode-fraction 0.05 :zero-fraction 0.0})]})]
       (is (= 1.0 (:score result)))))
 
   (testing "card with degenerate dim is clamped to at most 0.1"
     (let [result (interestingness/score-card
-                  interestingness/trim-card-weights
+                  flatness-weights
                   {:dimensions [(text-field "status" {:mode-fraction 0.97} :distinct-count 5)]
                    :measures   [(numeric-field "revenue" {:sd 200 :avg 1000 :zero-fraction 0.05})]})]
       (is (<= (:score result) 0.1))))
 
   (testing "card with degenerate measure is clamped to at most 0.1"
     (let [result (interestingness/score-card
-                  interestingness/trim-card-weights
+                  flatness-weights
                   {:dimensions [(text-field "region" {:mode-fraction 0.15} :distinct-count 12)]
                    :measures   [(numeric-field "counter" {:sd 0 :avg 0 :zero-fraction 0.99})]})]
       (is (<= (:score result) 0.1))))
 
   (testing "scores map includes each scorer's breakdown"
     (let [result (interestingness/score-card
-                  interestingness/trim-card-weights
+                  flatness-weights
                   {:dimensions [(text-field "region" {:mode-fraction 0.15} :distinct-count 12)]
                    :measures   [(numeric-field "revenue" {:sd 200 :avg 1000})]})]
       (is (= 2 (count (:scores result))))

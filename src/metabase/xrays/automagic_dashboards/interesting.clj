@@ -43,7 +43,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.interestingness.core :as interestingness]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -419,37 +418,6 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
-(def ^:private ^:const interestingness-threshold
-  "Minimum interestingness score for a field to be kept as a dimension match.
-   Set low (0.2) to catch only obvious noise (PKs, FKs, constants, mostly-null)."
-  0.2)
-
-(defn- score-and-filter-matches
-  "Score each field in `:matches` using the interestingness engine.
-   Annotates fields with `:interestingness-score` and keeps those at or above
-   the threshold. If no match survives the threshold, falls back to keeping the
-   single highest-scoring match so the dimension is never dropped entirely —
-   templates still need *something* bound, and graceful degradation is
-   preferable to silently eliminating whole card families."
-  [dims]
-  (into {}
-        (keep (fn [[dim-name dim-def]]
-                (let [scored    (->> (:matches dim-def)
-                                     (map (fn [field]
-                                            (let [{:keys [score]} (interestingness/score-raw-field
-                                                                   interestingness/xray-dimension-weights
-                                                                   field)]
-                                              (assoc field :interestingness-score score))))
-                                     vec)
-                      above     (filterv #(>= (:interestingness-score %) interestingness-threshold) scored)
-                      kept      (if (seq above)
-                                  above
-                                  (when (seq scored)
-                                    [(apply max-key :interestingness-score scored)]))]
-                  (when (seq kept)
-                    [dim-name (assoc dim-def :matches kept)]))))
-        dims))
-
 (mu/defn identify :- ::ads/grounded-values
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied.
@@ -461,15 +429,13 @@
                               [:dimension-specs [:maybe [:sequential ::ads/dimension-template]]]
                               [:metric-specs    [:maybe [:sequential ::ads/metric-template]]]
                               [:filter-specs    [:maybe [:sequential ::ads/filter-template]]]]]
-  (let [all-dims  (->> (find-dimensions context dimension-specs)
+  (let [dims      (->> (find-dimensions context dimension-specs)
                        (add-field-self-reference context))
-        dims      (score-and-filter-matches all-dims)
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)
                       (grounded-metrics dims))
         set-score (fn [score metrics]
                     (map #(assoc % :metric-score score) metrics))]
     {:dimensions dims
-     :filter-dimensions all-dims
      :metrics    (concat (set-score 50 metrics)
                          (let [entity (-> context :root :entity)]
                            ;; metric x-rays talk about "this" in the template

@@ -1,46 +1,62 @@
 (ns metabase.xrays.automagic-dashboards.filters
   (:require
-   [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
-(def ^:private ^:const filter-interestingness-cutoff
-  "Minimum interestingness score for a field to be considered as a dashboard filter."
-  0.3)
+(defn- temporal?
+  "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
+  [{base-type :base_type, effective-type :effective_type, unit :unit}]
+  ;; Excluding :year because it's (currently) both an extraction and truncation unit.
+  ;; For the purposes of this check, :year is an interesting :unit which yields a time interval, not just a number.
+  (and (not ((disj u.date/extract-units :year) unit))
+       (isa? (or effective-type base-type) :type/Temporal)))
 
-(defn- score-field
-  "Score a field using the x-ray filter weights. Returns the field with `:interestingness` assoc'd."
-  [field]
-  (let [{:keys [score]} (interestingness/score-raw-field
-                          interestingness/xray-filter-weights field)]
-    (assoc field :interestingness score)))
+(defn- interestingness
+  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [fingerprint]}]
+  (cond-> 0
+    (some-> fingerprint :global :distinct-count (< 10)) inc
+    (some-> fingerprint :global :distinct-count (> 20)) dec
+    ((descendants :type/Category) semantic-type)        inc
+    (isa? (or effective-type base-type) :type/Temporal) inc
+    ((descendants :type/Temporal) semantic-type)        inc
+    (isa? semantic-type :type/CreationTimestamp)        inc
+    (#{:type/State :type/Country} semantic-type)        inc))
 
-(defn- rank-by-interestingness
-  "Score all fields and sort by interestingness descending. No cutoff — returns all fields ranked."
+(defn- interleave-all
+  [& colls]
+  (lazy-seq
+   (when (seq colls)
+     (concat (map first colls) (apply interleave-all (keep (comp seq rest) colls))))))
+
+(defn- sort-by-interestingness
   [fields]
   (->> fields
-       (map score-field)
-       (sort-by :interestingness >)))
+       (map #(assoc % :interestingness (interestingness %)))
+       (sort-by :interestingness >)
+       (partition-by :interestingness)
+       (mapcat (fn [fields]
+                 (->> fields
+                      (group-by (juxt :base_type :semantic_type))
+                      vals
+                      (apply interleave-all))))))
 
 (defn interesting-fields
-  "Pick out interesting fields and sort them by interestingness.
-   Uses the interestingness engine to score and filter, replacing the previous
-   manual type-check approach."
+  "Pick out interesting fields and sort them by interestingness."
   [fields]
   (->> fields
-       (keep (fn [field]
-               (let [{:keys [score]} (interestingness/score-raw-field
-                                       interestingness/xray-filter-weights field)]
-                 (when (>= score filter-interestingness-cutoff)
-                   (assoc field :interestingness score)))))
-       (sort-by :interestingness >)))
+       (filter (fn [{:keys [base_type effective_type semantic_type] :as field}]
+                 (or (temporal? field)
+                     (isa? (or effective_type base_type) :type/Boolean)
+                     (isa? semantic_type :type/Category))))
+       sort-by-interestingness))
 
 (defn- build-fk-map
   [fks field]
@@ -74,30 +90,32 @@
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
 (defn- filter-type-info
-  "Return parameter type and section id for a given field.
-   Falls back to base_type when effective_type is nil (no coercion strategy)."
-  [{:keys [effective_type base_type semantic_type] :as _field}]
-  (let [etype (or effective_type base_type)]
-    (cond
-      (or (isa? etype :type/Date) (isa? etype :type/DateTime))
-      {:type "date/all-options"
-       :sectionId "date"}
+  "Return parameter type and section id for a given field."
+  [{:keys [effective_type semantic_type] :as _field}]
+  (cond
+    (or (isa? effective_type :type/Date) (isa? effective_type :type/DateTime))
+    {:type "date/all-options"
+     :sectionId "date"}
 
-      (or (isa? etype :type/Text) (isa? etype :type/TextLike))
-      {:type "string/="
-       :sectionId (if (isa? semantic_type :type/Address) "location" "string")}
+    (or (isa? effective_type :type/Text) (isa? effective_type :type/TextLike))
+    {:type "string/="
+     :sectionId (if (isa? semantic_type :type/Address) "location" "string")}
 
-      (isa? etype :type/Number)
-      (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK))
-        {:type "id"
-         :sectionId "id"}
-        {:type "number/="
-         :sectionId "number"})
+    (isa? effective_type :type/Number)
+    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK))
+      {:type "id"
+       :sectionId "id"}
+      {:type "number/="
+       :sectionId "number"})
 
-      ;; TODO this needs to be `boolean/=` once we introduce boolean parameters in #57435
-      (isa? etype :type/Boolean)
-      {:type "string/="
-       :sectionId "string"})))
+    ;; TODO this needs to be `boolean/=` once we introduce boolean parameters in #57435
+    (isa? effective_type :type/Boolean)
+    {:type "string/="
+     :sectionId "string"}))
+
+(def ^:private ^{:arglists '([dimensions])} remove-unqualified
+  (partial remove (fn [{:keys [fingerprint]}]
+                    (some-> fingerprint :global :distinct-count (< 2)))))
 
 (mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
@@ -111,7 +129,8 @@
                                              :fk_target_field_id [:not= nil]
                                              :table_id [:in table-ids])))]
     (->> dimensions
-         rank-by-interestingness
+         remove-unqualified
+         sort-by-interestingness
          (take max-filters)
          (reduce
           (fn [dashboard candidate]

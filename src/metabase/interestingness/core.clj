@@ -19,7 +19,6 @@
     0.75-1.0    High value for exploration"
   (:require
    [clojure.set :as set]
-   [metabase.interestingness.scorers.card :as scorers.card]
    [metabase.interestingness.scorers.dimension :as scorers.dimension]))
 
 ;; Planned context keys (not yet implemented):
@@ -159,33 +158,6 @@
    scorers.dimension/distribution-shape        0.15
    scorers.dimension/nullness                  0.15})
 
-;;; -------------------------------------------------- X-Ray Weight Profiles --------------------------------------------------
-
-(def xray-dimension-weights
-  "Weight profile for x-ray dimension matching. Emphasizes type-penalty and cardinality
-   to aggressively filter structural noise (PKs, FKs, audit fields, constants)."
-  {scorers.dimension/type-penalty       0.38
-   scorers.dimension/cardinality        0.22
-   scorers.dimension/nullness           0.15
-   scorers.dimension/type-bonus         0.05
-   scorers.dimension/numeric-variance   0.05
-   scorers.dimension/temporal-range     0.05
-   scorers.dimension/text-structure     0.05
-   scorers.dimension/distribution-shape 0.05})
-
-(def xray-filter-weights
-  "Weight profile for x-ray filter/parameter selection. Heavily emphasizes type-bonus
-   to preserve the original behavior where temporal fields are the top filter candidates,
-   followed by category and geographic fields."
-  {scorers.dimension/type-penalty       0.15
-   scorers.dimension/cardinality        0.10
-   scorers.dimension/nullness           0.05
-   scorers.dimension/type-bonus         0.60
-   scorers.dimension/numeric-variance   0.00
-   scorers.dimension/temporal-range     0.05
-   scorers.dimension/text-structure     0.02
-   scorers.dimension/distribution-shape 0.03})
-
 (def metrics-viewer-weights
   "Weight profile for metrics viewer dimension picker. Only type-based scorers are
    included since dimension metadata doesn't carry fingerprint data."
@@ -210,11 +182,3 @@
    (score-entity scorer-weight-map card nil :card))
   ([scorer-weight-map card context]
    (score-entity scorer-weight-map card context :card)))
-
-(def trim-card-weights
-  "Weight profile for first-pass card trimming in host pipelines (e.g. x-rays). Uses
-   only single-field scorers — measure-flatness and dimension-flatness — because they
-   return hard-zero for truly degenerate single-field conditions. Pair-level and
-   visualization-fit signals are too soft/uncertain to justify hard-filtering a card."
-  {scorers.card/measure-flatness   0.5
-   scorers.card/dimension-flatness 0.5})

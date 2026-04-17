@@ -34,19 +34,11 @@
              (lib/normalize [:= [:field 3 nil] 42]))))))
 
 (deftest ^:parallel interesting-fields-test
-  (testing "Should filter out PKs/FKs and return interesting fields sorted by score"
-    (let [fields [{:name "ID" :base_type :type/Integer :semantic_type :type/PK
-                   :fingerprint {:global {:distinct-count 1000 :nil% 0.0}}}
-                  {:name "CATEGORY" :base_type :type/Text :semantic_type :type/Category
-                   :fingerprint {:global {:distinct-count 5 :nil% 0.0}}}
-                  {:name "BOOLEAN" :base_type :type/Boolean :semantic_type nil
-                   :fingerprint {:global {:distinct-count 2 :nil% 0.0}}}
-                  {:name "DATE" :base_type :type/Date :semantic_type nil
-                   :fingerprint {:global {:distinct-count 365 :nil% 0.0}
-                                 :type {:type/DateTime {:earliest "2020-01-01" :latest "2024-01-01"}}}}]
-          result (filters/interesting-fields fields)]
-      (testing "PK is excluded"
-        (is (not (some #(= "ID" (:name %)) result))))
-      (testing "Category, Boolean, and Date fields are included"
-        (is (= #{"CATEGORY" "BOOLEAN" "DATE"}
-               (set (map :name result))))))))
+  (testing "Should return only :type/Temporal and :type/Boolean fields, or fields with the :type/Category semantic type"
+    (is (=? ["DATE" "CATEGORY" "BOOLEAN"]
+            (->> [{:name "ID" :base_type :type/Integer :semantic_type :type/PK}
+                  {:name "CATEGORY", :base_type :type/Text, :semantic_type :type/Category}
+                  {:name "BOOLEAN", :base_type :type/Boolean, :semantic_type nil}
+                  {:name "DATE" :base_type :type/Date :semantic_type nil}]
+                 filters/interesting-fields
+                 (map :name))))))
