@@ -11,8 +11,6 @@ import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
 // Side-effect import: provides the `#popover-event-target { position: fixed }`
 // rule that ChartTooltip relies on to anchor near the hovered cell.
-// In the full app this CSS is pulled in transitively; a minimal story tree
-// like this one wouldn't otherwise load it.
 import "metabase/common/components/Popover/Popover.module.css";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
@@ -38,6 +36,7 @@ import {
   HEATMAP_COLS,
   HEATMAP_DISPLAY,
   HEATMAP_ROWS,
+  HEATMAP_SNAPSHOT_DELAY_MS,
   useHeatmapPlugin,
 } from "./calendar-heatmap-fixtures";
 
@@ -115,7 +114,7 @@ const Template: StoryFn<{ theme: DisplayTheme }> = ({ theme }) => {
     if (!ready) {
       return;
     }
-    const id = setTimeout(asyncCallback, 1200);
+    const id = setTimeout(asyncCallback, HEATMAP_SNAPSHOT_DELAY_MS);
     return () => clearTimeout(id);
   }, [ready, asyncCallback]);
 

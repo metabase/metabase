@@ -32,6 +32,7 @@ import {
   HEATMAP_COLS,
   HEATMAP_DISPLAY,
   HEATMAP_ROWS,
+  HEATMAP_SNAPSHOT_DELAY_MS,
   useHeatmapPlugin,
 } from "./calendar-heatmap-fixtures";
 
@@ -78,7 +79,7 @@ const Template: StoryFn<{ theme: DisplayTheme }> = ({ theme }) => {
     if (!ready) {
       return;
     }
-    const id = setTimeout(asyncCallback, 1200);
+    const id = setTimeout(asyncCallback, HEATMAP_SNAPSHOT_DELAY_MS);
     return () => clearTimeout(id);
   }, [ready, asyncCallback]);
 

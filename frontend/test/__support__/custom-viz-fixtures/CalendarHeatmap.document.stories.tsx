@@ -31,6 +31,7 @@ import {
   HEATMAP_COLS,
   HEATMAP_DISPLAY,
   HEATMAP_ROWS,
+  HEATMAP_SNAPSHOT_DELAY_MS,
   useHeatmapPlugin,
 } from "./calendar-heatmap-fixtures";
 
@@ -101,13 +102,15 @@ const Template: StoryFn<{ theme: "light" | "dark" }> = ({ theme }) => {
     if (!ready) {
       return;
     }
-    const id = setTimeout(asyncCallback, 1500);
+    const id = setTimeout(asyncCallback, HEATMAP_SNAPSHOT_DELAY_MS);
     return () => clearTimeout(id);
   }, [ready, asyncCallback]);
 
   return (
     <DocumentProviders theme={theme}>
-      {ready ? <Editor initialContent={DOCUMENT_CONTENT} editable={false} /> : null}
+      {ready ? (
+        <Editor initialContent={DOCUMENT_CONTENT} editable={false} />
+      ) : null}
     </DocumentProviders>
   );
 };

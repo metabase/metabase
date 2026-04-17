@@ -7,7 +7,6 @@ import type {
 import React from "react";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useColorScheme } from "metabase/ui";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import { getCustomPluginIdentifier } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
@@ -116,13 +115,6 @@ export async function registerCustomVizPluginForStorybook(
   } else {
     registerVisualization(Component);
   }
-
-  // Also populate the static-viz registry that `StaticVisualization` reads
-  // from when the display type starts with "custom:". Without this, static
-  // rendering (PDF / email / SVG export) falls through to null. In
-  // production this is set by the enterprise `initializePlugin()` path,
-  // which Storybook doesn't run.
-  PLUGIN_CUSTOM_VIZ.customVizRegistry.set(identifier, vizDef as never);
 
   return identifier;
 }
