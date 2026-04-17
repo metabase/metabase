@@ -357,6 +357,25 @@ export function createPublicDocumentLink(documentId) {
 }
 
 /**
+ * Create a public link for a document, sign out, and visit it as anonymous.
+ * Accepts a numeric id or a Cypress alias string (e.g. "@documentId").
+ */
+export function visitPublicDocument(documentIdOrAlias) {
+  if (typeof documentIdOrAlias === "number") {
+    visitPublicDocumentById(documentIdOrAlias);
+    return;
+  }
+  cy.get(documentIdOrAlias).then((id) => visitPublicDocumentById(Number(id)));
+}
+
+function visitPublicDocumentById(documentId) {
+  createPublicDocumentLink(documentId).then(({ body: { uuid } }) => {
+    cy.signOut();
+    cy.visit(`/public/document/${uuid}`);
+  });
+}
+
+/**
  * @param {Object} options
  * @param {string} options.url
  * @param {Partial<import("metabase/redux/store").InteractiveEmbeddingOptions>} options.qs

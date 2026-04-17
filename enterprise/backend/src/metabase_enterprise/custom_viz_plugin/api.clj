@@ -194,6 +194,7 @@
   (api/check-superuser)
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
     (t2/delete! :model/CustomVizPlugin :id id)
+    (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
                                                             :user-id api/*current-user-id*})
     nil))
