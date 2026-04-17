@@ -4,13 +4,42 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/utils/types";
-import type { CustomVizPlugin, Parameter } from "metabase-types/api";
+import type {
+  CardId,
+  CustomVizPlugin,
+  DocumentContent,
+  Parameter,
+} from "metabase-types/api";
 
 const { H } = cy;
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const AGGREGATED_VALUE = "18760";
 const AGGREGATED_VALUE_FORMATTED = "18,760";
+
+function buildDocumentWithCustomVizCard(cardId: CardId): DocumentContent {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { _id: "1" },
+        content: [{ type: "text", text: "Custom viz embedded below:" }],
+      },
+      {
+        type: "resizeNode",
+        attrs: { height: 400, minHeight: 280 },
+        content: [
+          {
+            type: "cardEmbed",
+            attrs: { id: cardId, name: null, _id: "2" },
+          },
+        ],
+      },
+      { type: "paragraph", attrs: { _id: "3" } },
+    ],
+  };
+}
 
 describe("admin > custom visualizations", () => {
   beforeEach(() => {
@@ -673,7 +702,7 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("enable-public-sharing", true);
 
       createCustomVizDashboard().then(({ body: dashcard }) => {
-        H.visitPublicDashboard(checkNotNull(dashcard.dashboard_id));
+        H.visitPublicDashboard(Number(checkNotNull(dashcard.dashboard_id)));
       });
 
       H.getDashboardCard().findByTestId("table-root").should("be.visible");
@@ -742,7 +771,7 @@ describe("admin > custom visualizations", () => {
           createCustomVizDashboard().then(({ body: dashcard }) => {
             H.addOrUpdateDashboardCard({
               dashboard_id: dashcard.dashboard_id,
-              card_id: dashcard.card_id,
+              card_id: checkNotNull(dashcard.card_id),
               card: {
                 id: dashcard.id,
                 visualization_settings: {
@@ -783,7 +812,7 @@ describe("admin > custom visualizations", () => {
           createCustomVizDashboard().then(({ body: dashcard }) => {
             H.addOrUpdateDashboardCard({
               dashboard_id: dashcard.dashboard_id,
-              card_id: dashcard.card_id,
+              card_id: checkNotNull(dashcard.card_id),
               card: {
                 id: dashcard.id,
                 visualization_settings: {
@@ -812,7 +841,7 @@ describe("admin > custom visualizations", () => {
         createCustomVizDashboard().then(({ body: dashcard }) => {
           H.addOrUpdateDashboardCard({
             dashboard_id: dashcard.dashboard_id,
-            card_id: dashcard.card_id,
+            card_id: checkNotNull(dashcard.card_id),
             card: {
               id: dashcard.id,
               visualization_settings: {
@@ -827,7 +856,7 @@ describe("admin > custom visualizations", () => {
           H.visitDashboard(dashcard.dashboard_id);
         });
 
-        H.onNextAnchorClick((anchor) => {
+        H.onNextAnchorClick((anchor: HTMLAnchorElement) => {
           expect(anchor).to.have.attr(
             "href",
             "https://metabase.test/custom-viz",
@@ -853,7 +882,7 @@ describe("admin > custom visualizations", () => {
         }).then(({ body: dashcard }) => {
           H.addOrUpdateDashboardCard({
             dashboard_id: dashcard.dashboard_id,
-            card_id: dashcard.card_id,
+            card_id: checkNotNull(dashcard.card_id),
             card: {
               id: dashcard.id,
               visualization_settings: {
@@ -885,6 +914,355 @@ describe("admin > custom visualizations", () => {
           `${parameter.slug}=${AGGREGATED_VALUE}`,
         );
       });
+    });
+  });
+
+  describe("using a plugin — documents", () => {
+    const DOC_QUESTION_NAME = "Custom Viz Doc Question";
+
+    before(() => {
+      H.setupCustomVizRepo();
+    });
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
+
+      H.createQuestion(
+        {
+          name: DOC_QUESTION_NAME,
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "questionId" },
+      );
+
+      // Query the card once so it appears in the /chart command's recent list.
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("POST", `/api/card/${cardId}/query`);
+      });
+    });
+
+    describe("regular documents", () => {
+      beforeEach(() => {
+        cy.get<CardId>("@questionId").then((cardId) => {
+          H.createDocument({
+            name: "Doc with Custom Viz",
+            document: buildDocumentWithCustomVizCard(cardId),
+            collection_id: null,
+            idAlias: "documentId",
+          });
+        });
+      });
+
+      it("renders the custom viz when the document is opened", () => {
+        H.interceptPluginBundle();
+        H.visitDocument("@documentId");
+        cy.wait("@pluginBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
+          cy.findByText("Custom viz rendered successfully").should(
+            "be.visible",
+          );
+          cy.findByText(/Value: \d+/).should("be.visible");
+        });
+      });
+
+      it("falls back to the default visualization when the plugin bundle fails to load", () => {
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+
+        H.visitDocument("@documentId");
+        cy.wait("@failedBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
+          cy.findByText("Custom viz rendered successfully").should("not.exist");
+          cy.findByTestId("table-root").should("be.visible");
+        });
+      });
+    });
+
+    describe("inserting via / command", () => {
+      beforeEach(() => {
+        H.createDocument({
+          name: "Empty Doc",
+          document: {
+            type: "doc",
+            content: [{ type: "paragraph", attrs: { _id: "1" } }],
+          },
+          collection_id: null,
+          idAlias: "documentId",
+        });
+      });
+
+      it("renders the custom viz when added via the /chart command", () => {
+        H.interceptPluginBundle();
+        H.visitDocument("@documentId");
+
+        H.documentContent().click();
+        H.addToDocument("/", false);
+        H.commandSuggestionItem("Chart").click();
+        H.commandSuggestionDialog().findByText(DOC_QUESTION_NAME).click();
+
+        cy.wait("@pluginBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME)
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
+      });
+    });
+
+    describe("public sharing", () => {
+      beforeEach(() => {
+        H.updateSetting("enable-public-sharing", true);
+
+        cy.get<CardId>("@questionId").then((cardId) => {
+          H.createDocument({
+            name: "Public Doc with Custom Viz",
+            document: buildDocumentWithCustomVizCard(cardId),
+            collection_id: null,
+            idAlias: "documentId",
+          });
+        });
+      });
+
+      it("renders the custom viz when viewed via a public link", () => {
+        H.interceptPluginBundle();
+        H.visitPublicDocument("@documentId");
+        cy.wait("@pluginBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME)
+          .findByText("Custom viz rendered successfully")
+          .should("be.visible");
+      });
+
+      it("falls back to the default visualization in a public document when the bundle fails", () => {
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+        H.visitPublicDocument("@documentId");
+        cy.wait("@failedBundle");
+
+        H.getDocumentCard(DOC_QUESTION_NAME)
+          .findByTestId("table-root")
+          .should("be.visible");
+      });
+    });
+  });
+
+  describe("icon rendering across the app", () => {
+    const ICON_QUESTION_NAME = "Custom Viz Icon Test";
+    const UNPINNED_QUESTION_NAME = "Custom Viz Icon Test — List";
+    const DASHBOARD_NAME = "Custom Viz Icon Dashboard";
+    const DOC_NAME = "Custom Viz Icon Document";
+    // EntityIcon renders as a CSS-masked span whose `mask-image: url(...)`
+    // points at /api/ee/custom-viz-plugin/:id/asset?path=icon.svg. Matching on
+    // that URL fragment is the most stable signal that the plugin icon is
+    // actually rendered — some consumers pass `alt` (accessible name) while
+    // others render the icon as decorative/aria-hidden.
+    const PLUGIN_ICON_SELECTOR = 'span[style*="custom-viz-plugin"]';
+
+    before(() => {
+      H.setupCustomVizRepo();
+    });
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
+
+      // Main question: pinned with preview hidden so the pinned card shows
+      // the plugin icon instead of the rendered viz. Also bookmarked, queried
+      // (for recents), and embedded in a document below.
+      H.createQuestion(
+        {
+          name: ICON_QUESTION_NAME,
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { wrapId: true, idAlias: "questionId" },
+      );
+
+      cy.get<CardId>("@questionId").then((cardId) => {
+        cy.request("PUT", `/api/card/${cardId}`, {
+          collection_position: 1,
+          collection_preview: false,
+        });
+        cy.request("POST", `/api/card/${cardId}/query`);
+        cy.request("POST", `/api/bookmark/card/${cardId}`);
+      });
+
+      // Secondary unpinned question — used to assert the icon on a regular
+      // (non-pinned) collection list row.
+      H.createQuestion({
+        name: UNPINNED_QUESTION_NAME,
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: H.CUSTOM_VIZ_DISPLAY,
+      });
+
+      H.createDashboard(
+        { name: DASHBOARD_NAME },
+        { wrapId: true, idAlias: "dashboardId" },
+      );
+      cy.get<number>("@dashboardId").then((dashboardId) => {
+        cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
+      });
+
+      cy.get<CardId>("@questionId").then((cardId) => {
+        H.createDocument({
+          name: DOC_NAME,
+          document: buildDocumentWithCustomVizCard(cardId),
+          collection_id: null,
+          idAlias: "documentId",
+        });
+      });
+      cy.get("@documentId").then((documentId) => {
+        cy.request("POST", `/api/bookmark/document/${documentId}`);
+      });
+    });
+
+    it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
+      // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
+      // Call this before any nav-sidebar interaction so we open it only when
+      // it's actually hidden — `H.openNavigationSidebar` toggles, so calling
+      // it unconditionally would close an already-open sidebar.
+      const ensureNavigationSidebarOpen = () => {
+        cy.get("body").then(($body) => {
+          const visible = $body.find(
+            '[data-testid="main-navbar-root"]:visible',
+          ).length;
+          if (!visible) {
+            H.openNavigationSidebar();
+          }
+        });
+      };
+
+      H.interceptPluginBundle();
+
+      cy.visit("/collection/root");
+
+      cy.log("Navigation sidebar bookmark");
+      H.navigationSidebar()
+        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      cy.log("Unpinned collection list row");
+      cy.findByRole("row", { name: new RegExp(UNPINNED_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      cy.log("Pinned section (collection_preview: false → icon, not viz)");
+      H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
+
+      cy.log("Navigate → question editor by clicking the pinned card title");
+      H.getPinnedSection().findByText(ICON_QUESTION_NAME).click();
+      cy.wait("@pluginBundle");
+
+      cy.log("Chart type sidebar on the question editor");
+      H.openVizTypeSidebar();
+      H.vizTypeSidebar()
+        .findByRole("img", { name: "demo-viz" })
+        .should("be.visible");
+      H.openVizTypeSidebar();
+
+      cy.log("Command palette option row");
+      H.commandPaletteSearch(ICON_QUESTION_NAME, false);
+      H.commandPalette()
+        .findAllByRole("option", { name: new RegExp(ICON_QUESTION_NAME) })
+        .first()
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("be.visible");
+
+      cy.log(
+        'Search results page — reached by clicking "View and filter all …"',
+      );
+      H.commandPalette()
+        .findByText(/View and filter all .* results/)
+        .click();
+      cy.findAllByTestId("search-result-item")
+        .filter(`:contains(${ICON_QUESTION_NAME})`)
+        .first()
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      cy.log('Navigate → home via the nav-sidebar "Home" link');
+      ensureNavigationSidebarOpen();
+      H.navigationSidebar().findByText("Home").click();
+
+      cy.log("Home recently-viewed section");
+      H.main()
+        .findByText("Pick up where you left off")
+        .parent()
+        .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      cy.log("Navigate → dashboard via bookmark link in the nav sidebar");
+      ensureNavigationSidebarOpen();
+      H.navigationSidebar()
+        .findByRole("link", { name: new RegExp(DASHBOARD_NAME) })
+        .click();
+
+      cy.log("Dashboard add-questions sidesheet");
+      H.editDashboard();
+      H.openQuestionsSidebar();
+      cy.findByTestId("add-card-sidebar")
+        .findByRole("menuitem", { name: ICON_QUESTION_NAME })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
+
+      // Exit edit mode so the next click-to-navigate isn't blocked by an
+      // unsaved-changes prompt.
+      cy.findByRole("button", { name: /Cancel/i }).click();
+
+      cy.log("Navigate → document via bookmark link");
+      ensureNavigationSidebarOpen();
+      H.navigationSidebar()
+        .findByRole("link", { name: new RegExp(DOC_NAME) })
+        .click();
+
+      cy.log("Document mention dialog (@ suggestions)");
+      // By the time we reach this step the plugin list has already been
+      // fetched for the embedded card, so no need to wait on it again.
+      // Click into the intro paragraph — clicking blindly on document-content
+      // may land on the embedded card.
+      H.documentContent().findByText("Custom viz embedded below:").click();
+      cy.realPress("End");
+      cy.realType(" @");
+      H.documentMentionDialog().should("be.visible");
+      cy.realType("Custom");
+      // Both the pinned and the unpinned questions appear — assert the icon
+      // renders on every matching option.
+      H.documentMentionDialog()
+        .findAllByRole("option", { name: new RegExp(ICON_QUESTION_NAME) })
+        .should("have.length.at.least", 2)
+        .each(($option) => {
+          cy.wrap($option).find(PLUGIN_ICON_SELECTOR).should("exist");
+        });
+      cy.realPress("Escape");
+
+      cy.log('Document "Visualize as" panel on the embedded card');
+      H.openDocumentCardMenu(ICON_QUESTION_NAME);
+      H.popover().findByText("Edit Visualization").click();
+      H.getDocumentSidebar()
+        .findByRole("button", { name: /demo-viz/i })
+        .click();
+      cy.findByRole("menu")
+        .findByRole("menuitem", { name: /demo-viz/i })
+        .find(PLUGIN_ICON_SELECTOR)
+        .should("exist");
     });
   });
 
@@ -1004,34 +1382,44 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("viz-type-button").click();
 
       cy.log(
-        "Threshold defaults to 0 and Count(Orders) is > 0, so we should see 👍",
+        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up SVG should render.",
       );
-      H.main().findByText("👍").should("be.visible");
+      // Use the plugin's unique viewBox to avoid matching UI icon SVGs.
+      const pluginPath = 'svg[viewBox="0 0 17 16"] > path';
+      H.main().find(pluginPath).should("be.visible");
+      H.main().find(pluginPath).should("not.have.attr", "transform");
 
-      cy.log("Modifying plugin source");
+      cy.log("Modifying plugin source to change the SVG fill color");
       cy.readFile(pluginSrcPath).then((src) => {
-        const updated = src.replace('"👍"', '"🥦"');
+        const updated = src.replace(
+          'fill="var(--mb-color-brand)"',
+          'fill="red"',
+        );
         if (updated === src) {
-          throw new Error(`Expected to replace 👍 in ${pluginSrcPath}`);
+          throw new Error(`Expected to replace fill in ${pluginSrcPath}`);
         }
         cy.writeFile(pluginSrcPath, updated);
       });
 
       cy.log("Checking if hot reload works");
-      H.main().findByText("🥦").should("be.visible");
+      H.main().find(pluginPath).should("have.attr", "fill", "red");
 
       cy.log("Verify plugin settings affect rendering.");
-      cy.log("Set threshold higher than Count(Orders) so it flips to 👎.");
+      cy.log(
+        "Set threshold higher than Count(Orders) so it flips to thumbs-down (rotated path).",
+      );
       cy.findByTestId("viz-settings-button").click();
       cy.findByTestId("chartsettings-sidebar")
         .findByPlaceholderText("Set threshold")
         .clear()
-        .type("100000")
-        .should("have.value", "100000");
+        .type("100000");
       cy.findByRole("button", {
         name: /Done/,
       }).click();
-      H.main().findByText("👎").should("be.visible");
+      H.main()
+        .find(pluginPath)
+        .should("have.attr", "transform")
+        .and("match", /rotate\(-180/);
 
       cy.log(
         "Saving the question and reloading to verify persistence of settings and dev URL",
@@ -1041,7 +1429,10 @@ describe("admin > custom visualizations", () => {
       // Wait for the dialog to close
       cy.findByRole("dialog", { name: /Save question/ }).should("not.exist");
       cy.reload();
-      H.main().findByText("👎").should("be.visible");
+      H.main()
+        .find(pluginPath)
+        .should("have.attr", "transform")
+        .and("match", /rotate\(-180/);
     });
   });
 });
