@@ -44,13 +44,38 @@ describe("metabot > errors", () => {
 
   it("should keep the prompt for locked requests so it can be retried", async () => {
     setup();
-    fetchMock.post(`path:/api/metabot/agent-streaming`, 402);
+    fetchMock.post(`path:/api/metabot/agent-streaming`, {
+      status: 402,
+      body: {
+        message: "You've used all of your included AI service tokens.",
+        "error-code": "metabase-ai-managed-locked",
+      },
+    });
 
     await enterChatMessage("Who is your favorite?");
 
     await assertConversation([
       ["user", "Who is your favorite?"],
       ["agent", METABOT_ERR_MSG.locked],
+    ]);
+    expect(await input()).toHaveTextContent("Who is your favorite?");
+  });
+
+  it("should not show the managed-provider lockout for unrelated 402 errors", async () => {
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, {
+      status: 402,
+      body: {
+        message: "A different billing problem happened",
+        "error-code": "billing-problem",
+      },
+    });
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", /A different billing problem happened/],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
