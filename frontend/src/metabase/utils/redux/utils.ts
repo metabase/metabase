@@ -1,4 +1,3 @@
-import { compose } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import _ from "underscore";
 
@@ -10,7 +9,6 @@ import {
   setRequestUnloaded,
 } from "metabase/redux/requests";
 import type { Dispatch, State } from "metabase/redux/store";
-import { delay } from "metabase/utils/promise";
 
 export type FetchDataArgs = {
   dispatch: Dispatch;
@@ -170,104 +168,4 @@ export function withRequestState<TArgs extends unknown[]>(
         throw error;
       }
     };
-}
-
-/**
- * Decorator that returns cached data if appropriate, otherwise calls the composed thunk.
- * Also tracks request state using withRequestState
- */
-export function withCachedDataAndRequestState<TArgs extends unknown[]>(
-  getExistingStatePath: (...args: TArgs) => string[],
-  getRequestStatePath: (...args: TArgs) => string[],
-  getQueryKey?: (...args: TArgs) => string | undefined,
-) {
-  return compose(
-    withCachedData(getExistingStatePath, getRequestStatePath, getQueryKey),
-    withRequestState(getRequestStatePath, getQueryKey),
-  );
-}
-
-type CachedRequestState = {
-  loading?: boolean;
-  loaded?: boolean;
-  queryKey?: string;
-  error?: { status?: number };
-  queryPromise?: Promise<unknown>;
-};
-
-type CachedOptions = {
-  useCachedForbiddenError?: boolean;
-  reload?: boolean | (() => void);
-  properties?: string[];
-};
-
-// NOTE: this should be used together with withRequestState, probably via withCachedDataAndRequestState
-function withCachedData<TArgs extends unknown[]>(
-  getExistingStatePath: (...args: TArgs) => string[],
-  getRequestStatePath: (...args: TArgs) => string[],
-  getQueryKey?: (...args: TArgs) => string | undefined,
-) {
-  // thunk decorator:
-  return (thunkCreator: ThunkCreator<TArgs>) =>
-    // thunk creator:
-    (...args: TArgs) =>
-      // thunk:
-      async function thunk(
-        dispatch: Dispatch,
-        getState: () => State,
-      ): Promise<unknown> {
-        const options = (args[args.length - 1] as CachedOptions) || {};
-        const { useCachedForbiddenError, reload, properties } = options;
-
-        const existingStatePath = getExistingStatePath(...args);
-        const requestStatePath = ["requests", ...getRequestStatePath(...args)];
-        const newQueryKey = getQueryKey && getQueryKey(...args);
-        const existingData = getIn(getState(), existingStatePath);
-        const { loading, loaded, queryKey, error } =
-          (getIn(getState(), requestStatePath) as CachedRequestState) || {};
-
-        // Avoid requesting data with permanently forbidden access
-        if (useCachedForbiddenError && error?.status === 403) {
-          throw error;
-        }
-
-        const hasRequestedProperties =
-          properties &&
-          existingData &&
-          _.all(properties, (p: string) => existingData[p] !== undefined);
-
-        // return existing data if
-        if (
-          // we don't want to reload
-          // the check is a workaround for EntityListLoader passing reload function to children
-          reload !== true &&
-          // reload if the query used to load an entity has changed even if it's already loaded
-          newQueryKey === queryKey
-        ) {
-          // and we have a non-error request state or have a list of properties that all exist on the object
-          if (loaded || hasRequestedProperties) {
-            return existingData;
-          } else if (loading) {
-            const requestState = getIn(getState(), requestStatePath) as
-              | CachedRequestState
-              | undefined;
-            const queryPromise = requestState?.queryPromise;
-
-            if (queryPromise) {
-              // wait for current loading request to be resolved
-              await queryPromise;
-
-              // need to wait for next tick to allow loaded request data to be processed and avoid loops
-              await delay(0);
-
-              // retry this function after waited request gets resolved
-              return thunk(dispatch, getState);
-            }
-
-            return existingData;
-          }
-        }
-
-        return thunkCreator(...args)(dispatch, getState);
-      };
 }
