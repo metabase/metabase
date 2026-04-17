@@ -14,6 +14,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
@@ -41,6 +42,14 @@
    (java.io OutputStream)))
 
 (set! *warn-on-reflection* true)
+
+(defn- check-conversation-owner!
+  "Throw a 403 if a `MetabotConversation` with `conversation-id` already exists and
+  was not created by the current user. New conversations (no row yet) are allowed
+  so the first store-messages! call can claim them for the current user."
+  [conversation-id]
+  (when-let [owner-id (t2/select-one-fn :user_id :model/MetabotConversation :id conversation-id)]
+    (api/check-403 (= owner-id api/*current-user-id*))))
 
 (defn- store-aiservice-messages!
   "Store messages that are going from ai-service"
@@ -243,6 +252,7 @@
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
+    (check-conversation-owner! conversation_id)
     (store-aiservice-messages! conversation_id profile-id ip-address [message])
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
@@ -507,9 +517,10 @@
   "`/api/metabot` routes."
   (handlers/routes
    (handlers/route-map-handler
-    {"/metabot"      metabase.metabot.api.metabot/routes
-     "/permissions"  metabase.metabot.api.permissions/routes
-     "/document"     metabase.metabot.api.document/routes
+    {"/metabot"       metabase.metabot.api.metabot/routes
+     "/conversations" metabase.metabot.api.conversations/routes
+     "/permissions"   metabase.metabot.api.permissions/routes
+     "/document"      metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"    metabase.slackbot.api/routes})
+     "/slack"         metabase.slackbot.api/routes})
    (api.macros/ns-handler *ns* +auth)))
