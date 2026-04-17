@@ -1,0 +1,5 @@
+{"customers":       [1,0,0,0,0],
+ "orders":          [0,1,0,0,0],
+ "products":        [0,0,1,0,0],
+ "active customers":[0,0,0,1,0],
+ "monthly revenue": [0,0,0,0,1]}

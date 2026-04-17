@@ -1,0 +1,12 @@
+[{"id":1,"table_id":2,"name":"revenue","archived":false},
+ {"id":2,"table_id":4,"name":"revenue","archived":false},
+ {"id":3,"table_id":6,"name":"revenue","archived":false},
+ {"id":4,"table_id":29,"name":"revenue","archived":false},
+ {"id":5,"table_id":4,"name":"total","archived":false},
+ {"id":6,"table_id":5,"name":"total","archived":false},
+ {"id":7,"table_id":18,"name":"total","archived":false},
+ {"id":8,"table_id":6,"name":"mrr","archived":false},
+ {"id":9,"table_id":30,"name":"mrr","archived":false},
+ {"id":10,"table_id":2,"name":"count","archived":false},
+ {"id":11,"table_id":10,"name":"count","archived":false},
+ {"id":12,"table_id":8,"name":"count","archived":false}]

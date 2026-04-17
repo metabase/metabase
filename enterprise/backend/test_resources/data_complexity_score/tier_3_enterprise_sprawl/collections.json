@@ -1,0 +1,6 @@
+[{"id":1,"type":"library","name":"Library","location":"/"},
+ {"id":2,"type":"library-data","name":"Data","location":"/1/"},
+ {"id":3,"type":"library-metrics","name":"Metrics","location":"/1/"},
+ {"id":4,"type":null,"name":"Legacy CRM","location":"/"},
+ {"id":5,"type":null,"name":"Data Warehouse","location":"/"},
+ {"id":6,"type":null,"name":"Internal Tools","location":"/"}]
