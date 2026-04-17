@@ -16,7 +16,15 @@ describe("text templates", () => {
   });
 
   it("generateIndexTsx contains SDK import", () => {
-    expect(generateIndexTsx("my-viz")).toContain("@metabase/custom-viz");
+    expect(generateIndexTsx("my-viz", "My Viz")).toContain(
+      'from "@metabase/custom-viz"',
+    );
+  });
+
+  it("generateIndexTsx substitutes id and display name separately", () => {
+    const source = generateIndexTsx("my-viz", "My Viz");
+    expect(source).toContain('id: "my-viz"');
+    expect(source).toContain('getName: () => "My Viz"');
   });
 
   it("generateManifest substitutes name", () => {

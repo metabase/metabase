@@ -23,14 +23,14 @@
   ],
   "scripts": {
     "build": "vite build && cp -r src/templates dist/templates",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "check:package-versions": "bun run scripts/check-package-versions.ts",
     "dev": "vite build --watch",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "oxlint src/",
     "release": "bun run build && np",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

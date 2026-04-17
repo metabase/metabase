@@ -2,7 +2,7 @@ import type { ChildProcess } from "node:child_process";
 import { execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { tmpdir as osTmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -20,7 +20,7 @@ describe("build output validation", () => {
 
   beforeAll(async () => {
     const { mkdtemp } = await import("node:fs/promises");
-    tmpDir = await mkdtemp(join(tmpdir(), "custom-viz-build-"));
+    tmpDir = await mkdtemp(join(osTmpdir(), "custom-viz-build-"));
     projectDir = await scaffold("test-viz-build");
 
     // Point to local package
@@ -73,7 +73,7 @@ describe("dev server", () => {
 
   beforeAll(async () => {
     const { mkdtemp } = await import("node:fs/promises");
-    tmpDir = await mkdtemp(join(tmpdir(), "custom-viz-dev-"));
+    tmpDir = await mkdtemp(join(osTmpdir(), "custom-viz-dev-"));
     projectDir = await scaffold("test-viz-dev");
 
     // Point to local package
@@ -138,7 +138,7 @@ describe("dev server", () => {
     expect(response.headers.get("content-type")).toBe("text/html");
 
     const html = await response.text();
-    expect(html).toContain("</html>");
+    expect(html).toContain("Custom Visualization Dev Server");
   }, 10_000);
 
   it("broadcasts SSE reload event on asset change", async () => {
@@ -207,6 +207,9 @@ async function scaffold(name: string): Promise<string> {
 }
 
 async function npmInstall(cwd: string): Promise<void> {
+  // We use `npm install` rather than `npm ci` because the test overrides
+  // @metabase/custom-viz to a local file path after scaffolding, so the
+  // lockfile no longer matches package.json.
   return new Promise((resolve, reject) => {
     execFile(
       "npm",

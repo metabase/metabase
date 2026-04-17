@@ -37,8 +37,8 @@ let tmpDir: string;
 
 beforeEach(async () => {
   const { mkdtemp } = await import("node:fs/promises");
-  const { tmpdir } = await import("node:os");
-  tmpDir = await mkdtemp(join(tmpdir(), "custom-viz-test-"));
+  const { tmpdir: osTmpdir } = await import("node:os");
+  tmpDir = await mkdtemp(join(osTmpdir(), "custom-viz-test-"));
 });
 
 afterEach(async () => {
@@ -117,7 +117,7 @@ describe("cli init", () => {
       join(tmpDir, "my-viz", "src", "index.tsx"),
       "utf-8",
     );
-    expect(indexTsx).toContain("@metabase/custom-viz");
+    expect(indexTsx).toContain('from "@metabase/custom-viz"');
     expect(indexTsx).not.toContain('from "../"');
   });
 
@@ -130,6 +130,16 @@ describe("cli init", () => {
       readFileSync(join(projectDir, "package.json"), "utf-8"),
     );
     expect(pkg.name).toBe("my-custom-viz");
+  });
+
+  it("uses normalized id and human-friendly display name in index.tsx", async () => {
+    await runCli(["init", "My Custom Viz"]);
+    const indexTsx = readFileSync(
+      join(tmpDir, "my-custom-viz", "src", "index.tsx"),
+      "utf-8",
+    );
+    expect(indexTsx).toContain('id: "my-custom-viz"');
+    expect(indexTsx).toContain('getName: () => "My Custom Viz"');
   });
 
   it("exits with error for invalid name", async () => {
