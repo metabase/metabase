@@ -1,0 +1,8 @@
+[
+  {"id": 100, "table_id": 10, "name": "id",    "active": true},
+  {"id": 101, "table_id": 10, "name": "total", "active": true},
+  {"id": 102, "table_id": 11, "name": "id",    "active": true},
+
+  {"id": 200, "table_id": 20, "name": "audit_id", "active": true},
+  {"id": 201, "table_id": 20, "name": "audit_ts", "active": true}
+]
