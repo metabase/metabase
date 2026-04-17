@@ -60,9 +60,9 @@ import {
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
-import EmbedFrameS from "metabase/embed/components/EmbedFrame/EmbedFrame.module.css";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
