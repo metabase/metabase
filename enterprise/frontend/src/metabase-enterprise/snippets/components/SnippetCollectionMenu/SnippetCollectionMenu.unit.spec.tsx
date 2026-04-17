@@ -1,8 +1,8 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks/state";
 import type { Collection, EnterpriseSettings } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks/state";
 
 import { SnippetCollectionMenu } from "./SnippetCollectionMenu";
 

@@ -93,7 +93,7 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     H.CustomExpressionEditor.type(
-      "between([Created At: Month], '2025-01-01', '2025-08-01')",
+      "between([Created At: Month], '2022-01-01', '2022-08-01')",
     ).blur();
     cy.button("Done").click();
 
@@ -146,7 +146,7 @@ describe("scenarios > visualizations > waterfall", () => {
         cy.findByText("Sum of Total").should("not.exist");
 
         // x-axis labels (some)
-        ["2025", "2026", "2029", "Total"].forEach((label) => {
+        ["2022", "2023", "2026", "Total"].forEach((label) => {
           cy.findByText(label).should("exist");
         });
 
@@ -175,7 +175,7 @@ describe("scenarios > visualizations > waterfall", () => {
         cy.findByText("Count").should("not.exist");
 
         // x-axis labels (some)
-        ["2025", "2026", "2029", "Total"].forEach((label) => {
+        ["2022", "2023", "2026", "Total"].forEach((label) => {
           cy.findByText(label).should("exist");
         });
 
@@ -379,7 +379,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     getFirstWaterfallSegment().realHover();
     H.assertEChartsTooltip({
-      header: "2025",
+      header: "2022",
       rows: [{ name: "Count", value: "744", color: INCREASE_COLOR }],
     });
     H.assertEChartsTooltipNotContain(["Sum of Total"]);
@@ -394,7 +394,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     getFirstWaterfallSegment().realHover();
     H.assertEChartsTooltip({
-      header: "2025",
+      header: "2022",
       rows: [
         { name: "Count", value: "744", color: INCREASE_COLOR },
         { name: "Sum of Total", value: "42,156.87" },
@@ -424,34 +424,6 @@ describe("scenarios > visualizations > waterfall", () => {
       header: "Total",
       rows: [{ name: "Count", value: "18,760", color: totalBarColor }],
     });
-  });
-
-  it("should display goal line when configured", () => {
-    H.visitQuestionAdhoc({
-      display: "waterfall",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-      },
-    });
-
-    H.openVizSettingsSidebar();
-
-    H.leftSidebar().contains("Display").click();
-
-    H.leftSidebar().within(() => {
-      cy.findByText("Goal line").click();
-      cy.findByLabelText("Goal value").clear().type("11000");
-      cy.findByLabelText("Goal label").clear().type("Target");
-    });
-
-    H.echartsContainer().findByText("Target").should("exist");
-    H.goalLine().should("exist");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {

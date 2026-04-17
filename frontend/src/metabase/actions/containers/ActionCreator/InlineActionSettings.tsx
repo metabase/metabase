@@ -10,7 +10,6 @@ import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Actions } from "metabase/entities/actions/actions";
-import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Switch, Tooltip } from "metabase/ui";
@@ -21,6 +20,7 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { isActionPublic, isSavedAction } from "../../utils";
 

@@ -1,4 +1,4 @@
-import type { ExportFormat } from "metabase/common/types/export";
+import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { trackSchemaEvent } from "metabase/utils/analytics";
 
 import type {
@@ -129,7 +129,7 @@ export const trackPublicLinkCopied = ({
   format = null,
 }: {
   artifact: EmbedResourceType;
-  format?: ExportFormat | "html" | null;
+  format?: ExportFormatType | "html";
 }): void => {
   trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_copied",

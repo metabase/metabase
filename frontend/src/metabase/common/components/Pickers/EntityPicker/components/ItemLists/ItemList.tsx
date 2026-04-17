@@ -13,7 +13,6 @@ import {
   Icon,
   NavLink,
   type NavLinkProps,
-  Tooltip,
 } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 
@@ -103,7 +102,6 @@ export function ItemList({
           isTenantUser,
         });
         const isDisabled = isDisabledItem(item);
-        const tooltip = options.getItemTooltip?.(item);
 
         return (
           <Box
@@ -111,55 +109,43 @@ export function ItemList({
             key={`${item.model}-${item.id}`}
             {...containerProps}
           >
-            <Tooltip label={tooltip} disabled={!tooltip} position="right">
-              <NavLink
-                w={"auto"}
-                disabled={isDisabled}
-                style={
-                  isDisabled && tooltip ? { pointerEvents: "all" } : undefined
-                }
-                rightSection={
-                  isFolderItem(item) ? (
-                    <Icon name="chevronright" size={10} />
-                  ) : null
-                }
-                mb={0}
-                label={
-                  <Flex align="center">
-                    {tc(item.name)}{" "}
-                    <PLUGIN_MODERATION.ModerationStatusIcon
-                      status={
-                        "moderated_status" in item && item.moderated_status
-                      }
-                      filled
-                      size={14}
-                      ml="0.5rem"
-                    />
-                  </Flex>
-                }
-                active={isSelected}
-                leftSection={<Icon {...icon} />}
-                onClick={(e: React.MouseEvent) => {
-                  e.preventDefault(); // prevent form submission
-                  e.stopPropagation(); // prevent parent onClick
+            <NavLink
+              w={"auto"}
+              disabled={isDisabled}
+              rightSection={
+                isFolderItem(item) ? (
+                  <Icon name="chevronright" size={10} />
+                ) : null
+              }
+              mb={0}
+              label={
+                <Flex align="center">
+                  {tc(item.name)}{" "}
+                  <PLUGIN_MODERATION.ModerationStatusIcon
+                    status={"moderated_status" in item && item.moderated_status}
+                    filled
+                    size={14}
+                    ml="0.5rem"
+                  />
+                </Flex>
+              }
+              active={isSelected}
+              leftSection={<Icon {...icon} />}
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault(); // prevent form submission
+                e.stopPropagation(); // prevent parent onClick
+                setPath((prevPath) => [
+                  ...prevPath.slice(0, pathIndex + 1),
+                  item,
+                ]);
 
-                  if (isDisabled) {
-                    return;
-                  }
-
-                  setPath((prevPath) => [
-                    ...prevPath.slice(0, pathIndex + 1),
-                    item,
-                  ]);
-
-                  if (!options?.hasConfirmButtons && isSelectableItem(item)) {
-                    onChange(item);
-                  }
-                }}
-                variant={isCurrentLevel ? "default" : "mb-light"}
-                {...navLinkProps?.(isSelected)}
-              />
-            </Tooltip>
+                if (!options?.hasConfirmButtons && isSelectableItem(item)) {
+                  onChange(item);
+                }
+              }}
+              variant={isCurrentLevel ? "default" : "mb-light"}
+              {...navLinkProps?.(isSelected)}
+            />
           </Box>
         );
       })}

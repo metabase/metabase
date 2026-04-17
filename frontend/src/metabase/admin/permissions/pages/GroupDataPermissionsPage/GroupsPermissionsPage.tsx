@@ -6,11 +6,11 @@ import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import { connect, useDispatch, useSelector } from "metabase/utils/redux";
 import type { GroupId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import {
   PermissionsEditor,

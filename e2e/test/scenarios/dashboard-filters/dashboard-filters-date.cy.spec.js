@@ -63,7 +63,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     DateFilter.setMonthAndYear({
       month: "Nov",
-      year: "2025",
+      year: "2022",
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // Make sure we can override the default value
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 2025").click();
+    cy.findByText("November 2022").click();
     H.popover().contains("Jun").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("33.9");
@@ -108,21 +108,21 @@ describe("scenarios > dashboard > filters > date", () => {
     H.sidebar().findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "Nov",
-      year: "2026",
+      year: "2023",
     });
 
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
     H.saveDashboard();
 
     // Updates the filter value
-    H.filterWidget().should("contain.text", "November 2026").click();
+    H.filterWidget().should("contain.text", "November 2023").click();
     H.popover().findByText("Dec").click();
-    H.filterWidget().findByText("December 2026");
+    H.filterWidget().findByText("December 2023");
     H.ensureDashboardCardHasText("76.83");
 
     // Resets the value back by clicking widget icon
     H.resetFilterWidgetToDefault();
-    H.filterWidget().findByText("November 2026");
+    H.filterWidget().findByText("November 2023");
     H.ensureDashboardCardHasText("27.74");
   });
 

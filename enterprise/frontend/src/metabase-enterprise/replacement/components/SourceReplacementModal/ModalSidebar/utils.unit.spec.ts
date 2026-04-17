@@ -33,16 +33,6 @@ describe("getSourceError", () => {
         "The original table can't be referenced by a foreign key by another table.",
     },
     {
-      name: "checkInfo has affects-gtap-policies error",
-      checkInfo: createMockCheckReplaceSourceInfo({
-        success: false,
-        errors: ["affects-gtap-policies"],
-      }),
-      dependentsCount: 5,
-      expected:
-        "This table has row or column security policies that block this replacement.",
-    },
-    {
       name: "checkInfo has no source-level errors",
       checkInfo: createMockCheckReplaceSourceInfo({
         success: false,

@@ -7,7 +7,6 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { NewModals } from "metabase/new/components/NewModals/NewModals";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {
   createMockCollection,
@@ -15,6 +14,7 @@ import {
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { NewItemMenu } from "./NewItemMenu";
 

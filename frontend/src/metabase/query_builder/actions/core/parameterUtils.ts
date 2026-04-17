@@ -1,6 +1,5 @@
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { setErrorPage } from "metabase/redux/app";
-import type { Dispatch } from "metabase/redux/store";
 import { DashboardApi } from "metabase/services";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
@@ -10,6 +9,7 @@ import {
   cardParametersAreEquivalent,
 } from "metabase-lib/v1/queries/utils/card";
 import type { Card, Parameter } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 type BlankQueryOptions = {
   db?: string;

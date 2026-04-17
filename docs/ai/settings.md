@@ -69,15 +69,7 @@ Toggle [Metabot](./metabot.md) on or off for your Metabase. Metabot is enabled b
 
 When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden. Currently, Metabot is available to everyone who uses your Metabase. There's no way to scope Metabot usage per person.
 
-Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md).
-
-### Enable MCP server
-
-Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
-
-### Enable Agent API
-
-Use the **Agent API** toggle to turn external access to the [Agent API](./agent-api.md) on or off.
+Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md). To turn off the MCP server and Agent API, you'll need to disconnect from the provider in **Admin > AI > Connection settings**.
 
 ### Embedded Metabot
 

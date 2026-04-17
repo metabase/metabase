@@ -20,10 +20,6 @@ import {
   reset,
 } from "metabase/redux/dashboard";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/redux/query-builder";
-import type {
-  DashboardSidebarName,
-  StoreDashboard,
-} from "metabase/redux/store/dashboard";
 import { handleActions } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -35,6 +31,10 @@ import type {
   ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
+import type {
+  DashboardSidebarName,
+  StoreDashboard,
+} from "metabase-types/store/dashboard";
 
 import {
   CLOSE_SIDEBAR,

@@ -55,7 +55,7 @@ describe("scenarios > data studio > measures > queries", () => {
           breakout("Created At");
         },
       });
-      verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
+      verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
     });
 
     it("should create a measure with a column from an implicit join", () => {
@@ -86,7 +86,7 @@ describe("scenarios > data studio > measures > queries", () => {
           breakout("Created At");
         },
       });
-      verifyRowValues([["April 2025"], ["May 2025", "49.54"]]);
+      verifyRowValues([["April 2022"], ["May 2022", "49.54"]]);
     });
 
     it("should create a measure with a custom aggregation expression", () => {
@@ -342,7 +342,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
+      verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
     });
   });
 
@@ -367,8 +367,8 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     verifyRowValues([
-      ["January 2029", "52,249.59"],
-      ["January 2028", "51,634.16"],
+      ["January 2026", "52,249.59"],
+      ["January 2025", "51,634.16"],
     ]);
   });
 
@@ -399,9 +399,9 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     verifyRowValues([
-      ["August 2026", "16"],
-      ["April 2029", "16"],
-      ["May 2025", "17"],
+      ["August 2023", "16"],
+      ["April 2026", "16"],
+      ["May 2022", "17"],
     ]);
   });
 
@@ -471,7 +471,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      verifyRowValues([["April 2025", "52.76", "8685"]]);
+      verifyRowValues([["April 2022", "52.76", "8685"]]);
     });
   });
 
@@ -505,7 +505,7 @@ describe("scenarios > data studio > measures > queries", () => {
       },
     });
 
-    verifyRowValues([["April 2025", "52.76", "5", "1"]]);
+    verifyRowValues([["April 2022", "52.76", "5", "1"]]);
   });
 
   describe("measure refs", () => {

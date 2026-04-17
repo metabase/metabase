@@ -5,7 +5,6 @@ import { setupAuditInfoEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Tabs } from "metabase/ui";
 import {
   createMockCollection,
@@ -14,6 +13,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { InsightsTabOrLink } from "../InsightsTabOrLink";
 

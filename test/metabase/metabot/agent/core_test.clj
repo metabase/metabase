@@ -4,7 +4,6 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.api :as api]
@@ -203,10 +202,8 @@
 
 (deftest extract-charts-test
   (testing "extracts charts from tool output parts"
-    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          chart-data {:chart-id "c-456"
+    (let [chart-data {:chart-id "c-456"
                       :query-id "q-123"
-                      :query query
                       :chart-type :bar}
           parts [{:type :tool-output
                   :id "t1"
@@ -214,9 +211,21 @@
                   :result {:structured-output chart-data}}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-charts memory parts)]
-      (is (= {:chart_id "c-456"
-              :queries [query]
-              :visualization_settings {:chart_type :bar}} (get-in (memory/get-state updated) [:charts "c-456"])))))
+      (is (= chart-data (get-in (memory/get-state updated) [:charts "c-456"])))))
+
+  (testing "stores charts even when query details are included"
+    (let [query-data {:chart-id "c-789"
+                      :query-id "q-789"
+                      :query {:database 1}
+                      :result-columns []}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "query_model"
+                  :result {:structured-output query-data}}]
+          memory {:state {:queries {} :charts {}}}
+          updated (#'agent/extract-charts memory parts)]
+      (is (= query-data (get-in (memory/get-state updated) [:charts "c-789"])))))
+
   (testing "ignores parts without chart-id"
     (let [parts [{:type :tool-output
                   :id "t1"
@@ -278,15 +287,18 @@
                                :keyword_queries  ["orders"]
                                :entity_types     ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
-             ;; Iteration 2: Construct a simple query via agent-lib program
+             ;; Iteration 2: Construct a simple raw query (no fields/aggregations = select all)
                  [{:type :start :id "msg-2"}
                   {:type      :tool-input
                    :id        "call-construct-1"
                    :function  "construct_notebook_query"
                    :arguments {:reasoning     "User wants to see orders"
-                               :source_entity {:type "table" :id orders-table-id}
-                               :program       {:source     {:type "table" :id orders-table-id}
-                                               :operations [["limit" 10]]}
+                               :query         {:query_type "raw"
+                                               :source     {:table_id orders-table-id}
+                                               :filters    []
+                                               :fields     []
+                                               :order_by   []
+                                               :limit      10}
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
              ;; Iteration 3: Final text response

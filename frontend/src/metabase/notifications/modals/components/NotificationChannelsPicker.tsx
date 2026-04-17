@@ -8,9 +8,9 @@ import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
 } from "metabase/notifications/modals/components/NotificationChannelsAddMenu";
-import { getNotificationHandlersGroupedByTypes } from "metabase/notifications/utils";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
+import { getNotificationHandlersGroupedByTypes } from "metabase/utils/notifications";
 import { useSelector } from "metabase/utils/redux";
 import type {
   ChannelApiResponse,

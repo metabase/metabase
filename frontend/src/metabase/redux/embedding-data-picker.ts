@@ -10,7 +10,7 @@ import type {
   EmbeddingDataPicker,
   EmbeddingDataPickerState,
   EmbeddingEntityType,
-} from "metabase/redux/store/embedding-data-picker";
+} from "metabase-types/store/embedding-data-picker";
 
 export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
   "model",

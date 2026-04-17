@@ -284,7 +284,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         drillCellText: "3,976",
         menuItems: ["Time", "Products", "Created At"],
         filterText: "Products → Category is Doohickey",
-        resultText: "July 31, 2025",
+        resultText: "July 31, 2022",
       });
     });
 
@@ -294,7 +294,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         drillCellText: "3,976",
         menuItems: ["Time", "Products", "Created At"],
         filterText: "Products → Category is Doohickey",
-        resultText: "July 31, 2025",
+        resultText: "July 31, 2022",
       });
     });
   });

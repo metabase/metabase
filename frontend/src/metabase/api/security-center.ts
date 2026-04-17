@@ -1,8 +1,6 @@
 import { Api } from "metabase/api";
 import type {
-  AcknowledgeAdvisoriesResponse,
   AcknowledgeAdvisoryResponse,
-  AdvisoryId,
   ListAdvisoriesResponse,
 } from "metabase-types/api";
 
@@ -20,17 +18,6 @@ export const securityCenterApi = Api.injectEndpoints({
       query: (advisoryId) => ({
         method: "POST",
         url: `/api/ee/security-center/${advisoryId}/acknowledge`,
-      }),
-      invalidatesTags: [listTag("security-advisory")],
-    }),
-    acknowledgeAdvisories: builder.mutation<
-      AcknowledgeAdvisoriesResponse,
-      AdvisoryId[]
-    >({
-      query: (advisoryIds) => ({
-        method: "POST",
-        url: "/api/ee/security-center/acknowledge",
-        body: { advisory_ids: advisoryIds },
       }),
       invalidatesTags: [listTag("security-advisory")],
     }),
@@ -53,7 +40,6 @@ export const securityCenterApi = Api.injectEndpoints({
 export const {
   useListSecurityAdvisoriesQuery,
   useAcknowledgeAdvisoryMutation,
-  useAcknowledgeAdvisoriesMutation,
   useSyncSecurityAdvisoriesMutation,
   useSendTestNotificationMutation,
 } = securityCenterApi;

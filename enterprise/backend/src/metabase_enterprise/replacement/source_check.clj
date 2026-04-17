@@ -13,16 +13,6 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- has-gtap-policies? :- :boolean
-  "Returns true if any sandbox (GTAP) policy references `table-id`, either directly
-  via `sandbox.table_id` or indirectly via a scoping card whose `table_id` matches."
-  [table-id :- ::lib.schema.id/table]
-  (or (t2/exists? :model/Sandbox :table_id table-id)
-      (let [sandbox-card-ids (t2/select-fn-set :card_id :model/Sandbox :card_id [:not= nil])]
-        (boolean
-         (when (seq sandbox-card-ids)
-           (t2/exists? :model/Card :id [:in sandbox-card-ids] :table_id table-id))))))
-
 (mu/defn- has-incoming-fks? :- :boolean
   "Returns true if any active field has a FK pointing to a field in `table-id`."
   [table-id :- ::lib.schema.id/table]
@@ -74,13 +64,11 @@
           has-missing?    (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
           has-col-errors? (seq (mapcat :errors mappings))
           implicit-joins? (and (= old-type :table) (has-incoming-fks? old-id))
-          gtap?           (and (= old-type :table) (has-gtap-policies? old-id))
-          success?        (not (or db-mismatch? cycle? has-missing? has-col-errors? implicit-joins? gtap?))
+          success?        (not (or db-mismatch? cycle? has-missing? has-col-errors? implicit-joins?))
           reported-errors (cond-> []
                             db-mismatch?    (conj :database-mismatch)
                             cycle?          (conj :cycle-detected)
-                            implicit-joins? (conj :incompatible-implicit-joins)
-                            gtap?           (conj :affects-gtap-policies))]
+                            implicit-joins? (conj :incompatible-implicit-joins))]
       (cond-> {:success success?}
         (seq reported-errors) (assoc :errors reported-errors)
         (seq mappings)        (assoc :column_mappings mappings)))))

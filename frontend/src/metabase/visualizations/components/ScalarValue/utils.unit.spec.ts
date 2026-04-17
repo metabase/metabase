@@ -1,5 +1,5 @@
-import type { FontStyle } from "metabase/utils/measure-text";
 import * as measureText from "metabase/utils/measure-text";
+import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
 import { findSize } from "./utils";
 

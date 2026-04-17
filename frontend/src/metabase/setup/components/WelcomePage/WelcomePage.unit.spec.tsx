@@ -2,7 +2,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "metabase-types/store/mocks";
 
 import { WelcomePage } from "./WelcomePage";
 

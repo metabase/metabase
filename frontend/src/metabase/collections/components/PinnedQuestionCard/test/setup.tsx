@@ -7,7 +7,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { createMockState } from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
 import type { CollectionItem } from "metabase-types/api";
 import {
@@ -18,6 +17,7 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import PinnedQuestionCard from "../PinnedQuestionCard";
 

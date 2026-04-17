@@ -91,7 +91,6 @@
   can-read-setting?
   current-user-readable-visibilities
   custom-disabled-reasons!
-  db-stored-value
   default-value
   defsetting
   disabled-for-db-reasons

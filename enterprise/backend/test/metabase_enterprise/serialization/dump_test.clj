@@ -17,6 +17,18 @@
 (def example-card
   {:source_card_id         "skoPT2xiuEcUV8vFkHE6S",
    :table_id               ["Internal Metabase Database" "public" "v_alerts"],
+   :result_metadata        '({:semantic_type            :type/Quantity,
+                              :lib/deduplicated-name    "count",
+                              :lib/original-name        "count",
+                              :name                     "count",
+                              :lib/source               :source/aggregations,
+                              :lib/source-column-alias  "count",
+                              :source                   :aggregation,
+                              :field_ref                [:aggregation 0],
+                              :effective_type           :type/Integer,
+                              :lib/desired-column-alias "count",
+                              :display_name             "Count",
+                              :base_type                :type/Integer}),
    :card_schema            23,
    :database_id            "Internal Metabase Database",
    :collection_id          "vG58R8k-QddHWA7_47umn",
@@ -124,6 +136,21 @@ dataset_query:
     source-card: skoPT2xiuEcUV8vFkHE6S
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
+result_metadata:
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
 visualization_settings:
   column_settings: null
   table.cell_column: recipient_external

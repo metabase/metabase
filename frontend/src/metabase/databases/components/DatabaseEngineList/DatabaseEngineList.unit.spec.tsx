@@ -5,12 +5,12 @@ import {
   ELEVATED_ENGINES,
   MAX_INITIAL_ENGINES_SHOWN,
 } from "metabase/databases/constants";
+import type { Engine } from "metabase-types/api";
+import { createMockEngine } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
-import type { Engine } from "metabase-types/api";
-import { createMockEngine } from "metabase-types/api/mocks";
+} from "metabase-types/store/mocks";
 
 import { DatabaseEngineList } from "./DatabaseEngineList";
 

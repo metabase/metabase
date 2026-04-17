@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupUpdateAIControlsTenantLimitEndpoint } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type {
   MetabotLimitPeriod,
   MetabotLimitType,
@@ -87,13 +87,13 @@ describe("TenantLimitsTab", () => {
   it("populates inputs from existing tenant limits", () => {
     setup({
       tenantLimits: [
-        { tenant_id: 1, max_usage: 1 },
-        { tenant_id: 2, max_usage: 10 },
+        { tenant_id: 1, max_usage: 200 },
+        { tenant_id: 2, max_usage: 75 },
       ],
     });
 
-    expect(screen.getByDisplayValue("1 million")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("10 million")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("200")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("75")).toBeInTheDocument();
   });
 
   it("shows 'Unlimited' placeholder when instance limit is null", () => {
@@ -138,28 +138,11 @@ describe("TenantLimitsTab", () => {
   it("updates input value when user types", async () => {
     setup();
 
-    const acmeInput = screen.getByRole("textbox", {
+    const acmeInput = screen.getByRole("spinbutton", {
       name: /Acme Corp/,
     });
     await userEvent.type(acmeInput, "300");
 
-    expect(acmeInput).toHaveValue("300 million");
-  });
-
-  it("shows error when value exceeds the instance limit", async () => {
-    setup({ instanceLimit: 100 });
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    const tenantInput = screen.getByLabelText(
-      /Max total monthly tokens for Acme Corp/,
-    );
-    await userEvent.type(tenantInput, "200");
-
-    await waitFor(() => {
-      const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent(
-        /Can't be higher than the instance limit/,
-      );
-    });
+    expect(acmeInput).toHaveValue(300);
   });
 });

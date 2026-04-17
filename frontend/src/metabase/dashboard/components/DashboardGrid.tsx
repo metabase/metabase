@@ -19,7 +19,6 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, type FlexProps } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
@@ -46,6 +45,7 @@ import type {
   DashboardTabId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {

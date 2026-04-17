@@ -405,7 +405,7 @@ describe("issue 18502", () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 2025");
+    cy.findByText("April 2022");
   });
 });
 

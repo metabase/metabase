@@ -391,34 +391,3 @@
                      (get-in response [:headers "Content-Disposition"])
                      (str expected-slug "_"))
                     (str "Expected filename to contain: " expected-slug))))))))))
-
-(deftest combined-parameters-and-template-tags-preserves-parameter-order-test
-  (testing "combined-parameters-and-template-tags should preserve the order of card.parameters (#62079)"
-    ;; Use enough parameters (9) so that Clojure switches to PersistentHashMap.
-    ;; PersistentArrayMap (used for <= 8 entries) preserves insertion order, but PersistentHashMap (>= 9) does not.
-    (let [tag-names  ["zeta" "alpha" "mu" "beta" "omega" "gamma" "theta" "delta" "epsilon"]
-          name->id   #(str "_" (u/upper-case-en %) "_")
-          tags       (into {} (map (fn [n]
-                                     [n {:id           (name->id n)
-                                         :name         n
-                                         :display-name (str n " param")
-                                         :type         :text}]))
-                           tag-names)
-          params     (mapv (fn [n]
-                             {:id     (name->id n)
-                              :type   :string/=
-                              :slug   n
-                              :name   (str n " param")
-                              :target [:variable [:template-tag n]]})
-                           tag-names)
-          placeholders (str/join " AND " (map #(str % " = {{" % "}}") tag-names))
-          query      (str "SELECT * FROM t WHERE " placeholders)]
-      (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:template-tags tags
-                                                                  :query         query}}
-                                       :parameters    params}]
-        (let [result (qp.card/combined-parameters-and-template-tags card)]
-          (is (= (mapv name->id tag-names)
-                 (mapv :id result))
-              "Parameters should be returned in the same order as card.parameters"))))))

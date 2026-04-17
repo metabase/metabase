@@ -1,4 +1,4 @@
-import type { Download } from "metabase/redux/store";
+import type { Download } from "metabase-types/store";
 
 export const isCompleted = (download: Download) =>
   download.status === "complete";

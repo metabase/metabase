@@ -7,7 +7,6 @@ import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Actions } from "metabase/entities/actions";
 import { Databases } from "metabase/entities/databases";
-import type { Dispatch, State } from "metabase/redux/store";
 import { connect } from "metabase/utils/redux";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Urls from "metabase/utils/urls";
@@ -19,6 +18,7 @@ import {
 } from "metabase-lib/v1/actions/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card, WritebackAction } from "metabase-types/api";
+import type { Dispatch, State } from "metabase-types/store";
 
 import {
   EmptyStateActionContainer,

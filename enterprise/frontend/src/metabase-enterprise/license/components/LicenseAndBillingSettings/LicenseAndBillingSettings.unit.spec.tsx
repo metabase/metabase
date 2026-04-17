@@ -9,7 +9,6 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type {
   BillingInfo,
   BillingInfoLineItem,
@@ -19,6 +18,7 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { getBillingInfoId } from "../BillingInfo/utils";
 

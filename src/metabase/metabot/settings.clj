@@ -19,8 +19,6 @@
   :type       :boolean
   :visibility :public
   :default    true
-  :getter     #(and (llm.settings/ai-features-enabled?)
-                    (setting/get-value-of-type :boolean :metabot-enabled?))
   :export?    true
   :doc        false)
 
@@ -89,8 +87,6 @@
   :type       :boolean
   :visibility :public
   :default    true
-  :getter     #(and (llm.settings/ai-features-enabled?)
-                    (setting/get-value-of-type :boolean :embedded-metabot-enabled?))
   :export?    true
   :doc        false)
 
@@ -103,14 +99,6 @@
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
   #{"anthropic" "openai" "openrouter"})
-
-(def default-llm-metabot-provider
-  "Default provider/model used for Metabot when no explicit model is selected."
-  "anthropic/claude-sonnet-4-6")
-
-(def default-metabase-llm-metabot-provider
-  "Managed-provider version of [[default-llm-metabot-provider]]."
-  (str provider-util/metabase-provider-prefix "/" default-llm-metabot-provider))
 
 (defn- validate-metabot-provider!
   "Validate that `value` has the format `provider/model` with a supported provider prefix.
@@ -150,7 +138,7 @@
   (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
   :type             :string
   :encryption       :no
-  :default          default-llm-metabot-provider
+  :default          "anthropic/claude-sonnet-4-6"
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider

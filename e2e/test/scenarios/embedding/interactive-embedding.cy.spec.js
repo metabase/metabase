@@ -336,7 +336,7 @@ describe("scenarios > embedding > full app", () => {
 
     /**
      * @param {object} option
-     * @param {import("metabase/redux/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
      */
     function startNewEmbeddingQuestion({ searchParameters } = {}) {
       H.visitFullAppEmbeddingUrl({
@@ -820,7 +820,7 @@ describe("scenarios > embedding > full app", () => {
      *
      * @param {object} option
      * @param {boolean} [option.isMultiStageDataPicker]
-     * @param {import("metabase/redux/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
      */
     function startNewEmbeddingQuestion({
       isMultiStageDataPicker = false,

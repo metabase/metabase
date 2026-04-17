@@ -211,14 +211,14 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       });
 
       it("when there's a default value, enabling required sets it as a parameter value", () => {
-        setDefaultDate("2026", "11", "01");
+        setDefaultDate("2023", "11", "01");
         H.filterWidget().icon("close").click();
         SQLFilter.toggleRequired();
-        H.filterWidget().should("contain.text", "November 1, 2026");
+        H.filterWidget().should("contain.text", "November 1, 2023");
       });
 
       it("when there's a default value and template tag is required, can reset it back", () => {
-        setDefaultDate("2026", "11", "01");
+        setDefaultDate("2023", "11", "01");
         SQLFilter.toggleRequired();
         H.filterWidget().click();
         H.popover().within(() => {
@@ -226,7 +226,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           cy.findByText("Update filter").click();
         });
         H.filterWidget().icon("revert").click();
-        H.filterWidget().should("contain.text", "November 1, 2026");
+        H.filterWidget().should("contain.text", "November 1, 2023");
       });
     });
   });

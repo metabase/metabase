@@ -10,10 +10,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -24,6 +20,10 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import {
+  createMockSetupState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { BrowseMetrics } from "../BrowseMetrics";
 import { createMockMetricResult, createMockRecentMetric } from "../test-utils";

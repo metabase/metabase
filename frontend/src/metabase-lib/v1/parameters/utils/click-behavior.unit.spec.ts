@@ -87,7 +87,7 @@ const emptyData = {
   userAttribute: {},
 };
 
-describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
+describe("metabase/utils/click-behavior", () => {
   describe("getDataFromClicked", () => {
     it("should pull out column values from data", () => {
       const column = createMockColumn({ name: "price" });

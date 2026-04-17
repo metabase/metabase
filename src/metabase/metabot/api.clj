@@ -4,7 +4,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -31,7 +30,6 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -89,15 +87,6 @@
    {}
    parts))
 
-(defn- strip-tool-output-bloat
-  "For :tool-output parts, keep only :output in the result map.
-  Both LLM adapters only read (get-in part [:result :output]) when replaying history.
-  Everything else (:structured-output, :resources, :data-parts, :reactions, etc.)
-  is transient runtime data consumed during streaming and can be very large."
-  [{:keys [type] :as part}]
-  (cond-> part
-    (= :tool-output type) (update :result select-keys [:output])))
-
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
 
@@ -115,10 +104,7 @@
         ;; :data is like `:navigate_to`
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
-                        (mapv strip-tool-output-bloat))]
-    (prometheus/observe! :metabase-metabot/message-persist-bytes
-                         {:profile-id (or profile-id "unknown")}
-                         (u/string-byte-count (json/encode content)))
+                        vec)]
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
@@ -316,6 +302,9 @@
    [:model {:optional true} [:maybe :string]]
    [:api-key {:optional true} [:maybe :string]]])
 
+(def ^:private metabase-default-model
+  "anthropic/claude-sonnet-4-6")
+
 (defn- provider-api-key-setting-key
   [provider]
   (case provider
@@ -334,7 +323,7 @@
   [provider model]
   (cond
     (nil? model) nil
-    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabot.settings/default-llm-metabot-provider
+    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabase-default-model
     :else (non-blank-string model)))
 
 (def ^:private invalid-api-key-statuses
@@ -442,13 +431,20 @@
   []
   (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
 
-(defn- throw-api-key-error!
-  [response]
-  (when-let [api-key-error (:api-key-error response)]
-    (throw (ex-info api-key-error
-                    {:status-code 400
-                     :api-error true})))
-  response)
+(defn- api-error->status-code
+  [error]
+  (or (:status (ex-data error))
+      (:status-code (ex-data error))
+      400))
+
+(defn- verify-api-key!
+  [provider api-key]
+  (when-let [trimmed-api-key (non-blank-string api-key)]
+    (when-let [api-key-error (:api-key-error (provider-models-response provider trimmed-api-key))]
+      (throw (ex-info api-key-error
+                      {:status-code 400
+                       :api-error true}))))
+  nil)
 
 (api.macros/defendpoint :get "/settings"
   :- metabot-settings-response-schema
@@ -467,14 +463,20 @@
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
   (let [{:keys [provider model api-key]} body
-        model (effective-provider-model provider model)
-        response (-> (settings-response provider api-key)
-                     throw-api-key-error!)]
+        model (effective-provider-model provider model)]
+    (verify-api-key! provider api-key)
     (when (contains? body :api-key)
       (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
     (when model
       (setting/set! :llm-metabot-provider (str provider "/" model)))
-    (assoc response :value (metabot.settings/llm-metabot-provider))))
+    (try
+      (settings-response provider)
+      (catch clojure.lang.ExceptionInfo e
+        (if (:api-error (ex-data e))
+          (throw (ex-info (.getMessage e)
+                          (assoc (ex-data e) :status-code (api-error->status-code e))
+                          e))
+          (throw e))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."

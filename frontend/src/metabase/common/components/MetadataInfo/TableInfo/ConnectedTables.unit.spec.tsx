@@ -1,6 +1,5 @@
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type { Table } from "metabase-types/api";
@@ -9,6 +8,7 @@ import {
   createMockForeignKey,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { ConnectedTables } from "./ConnectedTables";
 

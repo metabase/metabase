@@ -1,7 +1,7 @@
 import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 
 import { act, renderHookWithProviders } from "__support__/ui";
-import type { State } from "metabase/redux/store";
+import type { State } from "metabase-types/store";
 
 import { useMetabotAgentsManager } from "../hooks";
 import { type MetabotAgentId, getMessages, submitInput } from "../state";

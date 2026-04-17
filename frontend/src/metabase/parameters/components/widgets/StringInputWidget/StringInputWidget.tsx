@@ -1,10 +1,9 @@
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { t } from "ttag";
 
-import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deserializeStringParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { Box, TextInput } from "metabase/ui";
+import { Box, MultiAutocomplete, TextInput } from "metabase/ui";
 import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 
@@ -69,7 +68,7 @@ export function StringInputWidget({
       {label && <WidgetLabel>{label}</WidgetLabel>}
       <Box m="sm">
         {isMultiSelect ? (
-          <MultiAutocompleteWithTranslation
+          <MultiAutocomplete
             value={unsavedValue}
             placeholder={placeholder}
             autoFocus={autoFocus}

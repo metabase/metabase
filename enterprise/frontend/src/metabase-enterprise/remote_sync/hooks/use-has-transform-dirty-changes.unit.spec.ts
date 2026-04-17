@@ -7,7 +7,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
@@ -18,6 +17,7 @@ import {
   createMockTransformsCollection,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { useHasTransformDirtyChanges } from "./use-has-transform-dirty-changes";
 

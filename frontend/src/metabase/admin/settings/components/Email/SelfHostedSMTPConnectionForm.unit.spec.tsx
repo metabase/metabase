@@ -7,10 +7,6 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettingKey,
   SettingDefinition,
@@ -19,6 +15,10 @@ import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { SelfHostedSMTPConnectionForm } from "./SelfHostedSMTPConnectionForm";
 

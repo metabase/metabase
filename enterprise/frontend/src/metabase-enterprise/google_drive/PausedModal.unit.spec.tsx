@@ -1,11 +1,11 @@
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockDatabase,
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { FileUploadErrorModal } from "./PausedModal";
 

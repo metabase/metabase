@@ -17,7 +17,6 @@ export function SettingsSection({
   titleProps,
   description,
   children,
-  id,
   stackProps,
   ...boxProps
 }: {
@@ -25,11 +24,10 @@ export function SettingsSection({
   titleProps?: TitleProps;
   description?: React.ReactNode;
   children?: React.ReactNode;
-  id?: string;
   stackProps?: StackProps;
 } & BoxProps) {
   return (
-    <Box id={id} {...boxProps}>
+    <Box {...boxProps}>
       {children && (
         <Stack gap="lg" className={S.SettingsSection} {...stackProps}>
           {(title || description) && (

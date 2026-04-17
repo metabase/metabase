@@ -1,6 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 
-import type { State } from "metabase/redux/store";
 import type {
   Card,
   CardId,
@@ -10,6 +9,7 @@ import type {
   DashboardId,
   Document,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 /**
  * Invalidation strategies for remote sync model mutations.

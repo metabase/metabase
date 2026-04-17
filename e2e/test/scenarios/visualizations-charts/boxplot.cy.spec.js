@@ -38,7 +38,7 @@ describe("scenarios > visualizations > boxplot", () => {
   it("should render boxplot and update chart on display settings changes", () => {
     H.visitQuestionAdhoc(singleSeriesQuestion);
 
-    // 5 Boxes: 2025-2029
+    // 5 Boxes: 2022-2026
     H.BoxPlot.getBoxes().should("have.length", 5);
 
     // By default: Tukey whiskers, outliers shown, mean shown
@@ -113,7 +113,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Hover over a box element from the left side to avoid mean marker overlap
     H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
     H.assertEChartsTooltip({
-      header: "2025",
+      header: "2022",
       rows: [
         { name: "Upper whisker", value: "84" },
         { name: "Q3 (75th percentile)", value: "59" },
@@ -127,7 +127,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Hover over the outlier point
     H.BoxPlot.getPoints().first().trigger("mousemove");
     H.assertEChartsTooltip({
-      header: "2029 (outlier)",
+      header: "2026 (outlier)",
       rows: [
         { name: "Count", value: "189" },
         { name: "Total: 50 bins", value: "70 – 75" },
@@ -193,7 +193,7 @@ describe("scenarios > visualizations > boxplot", () => {
     });
 
     H.echartsContainer().should("be.visible");
-    // Verify boxplot renders in dashboard context (5 boxes: 2025-2029)
+    // Verify boxplot renders in dashboard context (5 boxes: 2022-2026)
     H.BoxPlot.getBoxes().should("have.length", 5);
     H.BoxPlot.getMeanMarkers().should("have.length", 5);
 
@@ -206,7 +206,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Should navigate to filtered table view with dimension filter applied
     cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At: Year is Jan 1 – Dec 31, 2025",
+      "Created At: Year is Jan 1 – Dec 31, 2022",
     );
 
     // Verify we're viewing a table with results
@@ -228,7 +228,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Should filter to specific dimension and show table
     cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At: Year is Jan 1 – Dec 31, 2029",
+      "Created At: Year is Jan 1 – Dec 31, 2026",
     );
 
     // Verify we're viewing a table with results
@@ -304,7 +304,7 @@ describe("scenarios > visualizations > boxplot", () => {
       // Hover over a box and verify tooltip shows breakout value
       H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
       H.assertEChartsTooltip({
-        header: "2025",
+        header: "2022",
         rows: [
           { name: "Product → Category", value: "Gadget" },
           { name: "Upper whisker", value: "25" },
@@ -339,7 +339,7 @@ describe("scenarios > visualizations > boxplot", () => {
       cy.findAllByTestId("filter-pill").should("have.length", 2);
       cy.findAllByTestId("filter-pill")
         .eq(0)
-        .should("have.text", "Created At: Year is Jan 1 – Dec 31, 2025");
+        .should("have.text", "Created At: Year is Jan 1 – Dec 31, 2022");
       cy.findAllByTestId("filter-pill")
         .eq(1)
         .should("have.text", "Product → Category is Doohickey");
@@ -372,7 +372,7 @@ describe("scenarios > visualizations > boxplot", () => {
       // Hover over a box from the first metric and verify tooltip
       H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
       H.assertEChartsTooltip({
-        header: "2025",
+        header: "2022",
         rows: [
           { name: "Upper whisker", value: "84" },
           { name: "Q3 (75th percentile)", value: "59" },
@@ -405,7 +405,7 @@ describe("scenarios > visualizations > boxplot", () => {
 
       cy.findByTestId("filter-pill").should(
         "have.text",
-        "Created At: Year is Jan 1 – Dec 31, 2025",
+        "Created At: Year is Jan 1 – Dec 31, 2022",
       );
 
       H.tableInteractiveBody().should("exist");
@@ -455,7 +455,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Verify formatted tooltip with all currency values
     H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
     H.assertEChartsTooltip({
-      header: "2025",
+      header: "2022",
       rows: [
         { name: "Upper whisker", value: "$53.93" },
         { name: "Q3 (75th percentile)", value: "$53.93" },

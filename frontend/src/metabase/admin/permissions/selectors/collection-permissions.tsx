@@ -16,11 +16,6 @@ import {
 import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
-import type {
-  CollectionTreeItem,
-  ExpandedCollection,
-  State,
-} from "metabase/redux/store";
 import {
   getGroupNameLocalized,
   getGroupSortOrder,
@@ -35,6 +30,11 @@ import type {
   CollectionPermissions,
   Group as GroupType,
 } from "metabase-types/api";
+import type {
+  CollectionTreeItem,
+  ExpandedCollection,
+  State,
+} from "metabase-types/store";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { Messages } from "../constants/messages";

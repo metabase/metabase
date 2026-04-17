@@ -13,11 +13,6 @@ import {
 import { Api } from "metabase/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { commonReducers } from "metabase/reducers-common";
-import type { State } from "metabase/redux/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { MetabaseReduxProvider } from "metabase/utils/redux";
@@ -26,6 +21,11 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type { RawSeries } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import type { State } from "metabase-types/store";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import * as data from "./stories-data";
 

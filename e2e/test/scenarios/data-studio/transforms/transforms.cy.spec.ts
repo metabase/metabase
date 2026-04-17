@@ -500,7 +500,7 @@ LIMIT
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should not be possible to create an MBQL transform from a table from an unsupported database", () => {
+    it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
       visitTransformListPage();
       cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
@@ -520,19 +520,10 @@ LIMIT
         cy.findAllByTestId("picker-item")
           .contains(/Writable Postgres/)
           .should("not.have.attr", "data-disabled");
-
-        cy.log("Should show a tooltip explaining why the database is disabled");
-        cy.findAllByTestId("picker-item")
-          .contains("Sample Database")
-          .realHover();
       });
-      H.tooltip().should(
-        "contain.text",
-        "Transforms can't be enabled on the Sample Database.",
-      );
     });
 
-    it("should not be possible to create an MBQL transform from metrics", () => {
+    it("should not be possible to create an mbql transform from metrics", () => {
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (tableId) =>
           H.createQuestion({
@@ -581,13 +572,6 @@ LIMIT
 
       cy.log("Clicking the disabled item does not close the popover");
       H.popover().should("be.visible");
-
-      cy.log("Should show a tooltip explaining why the database is disabled");
-      H.popover().findByRole("option", { name: "Sample Database" }).realHover();
-      H.tooltip().should(
-        "contain.text",
-        "Transforms can't be enabled on the Sample Database.",
-      );
     });
 
     it("not show the 'Show details' buttons in ID columns (metabase#64473)", () => {

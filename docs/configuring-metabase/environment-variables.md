@@ -905,6 +905,16 @@ Is JWT authentication enabled?
 When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.
 
+### `MB_JWT_ENABLED_AND_CONFIGURED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `jwt-enabled-and-configured`
+
+Is JWT authentication configured and enabled?
+
 ### `MB_JWT_GROUP_MAPPINGS`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.

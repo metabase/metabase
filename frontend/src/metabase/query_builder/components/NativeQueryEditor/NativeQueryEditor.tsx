@@ -63,7 +63,6 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   className?: string;
   closeSnippetModal?: () => void;
   databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
   editorContext?: "question" | "action";
   extraButton?: ReactNode;
   handleResize?: () => void;
@@ -126,7 +125,6 @@ export const NativeQueryEditor = forwardRef<
     className,
     closeSnippetModal,
     databaseIsDisabled,
-    databaseDisabledTooltip,
     editorContext,
     extensions,
     handleResize: handleResizeFromProps,
@@ -324,7 +322,6 @@ export const NativeQueryEditor = forwardRef<
           setDatasetQuery={setDatasetQuery}
           onFormatQuery={handleFormatQuery}
           databaseIsDisabled={databaseIsDisabled}
-          databaseDisabledTooltip={databaseDisabledTooltip}
           readOnly={readOnly}
         >
           {topBarInnerContent}

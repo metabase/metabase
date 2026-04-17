@@ -54,7 +54,6 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => void;
   databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
 }
 
 export const NativeQueryEditorTopBar = forwardRef<
@@ -92,7 +91,6 @@ export const NativeQueryEditorTopBar = forwardRef<
     hasParametersList = true,
     setDatasetQuery,
     databaseIsDisabled,
-    databaseDisabledTooltip,
   } = props;
 
   const dispatch = useDispatch();
@@ -140,7 +138,6 @@ export const NativeQueryEditorTopBar = forwardRef<
           setTableId={setTableId}
           editorContext={editorContext}
           databaseIsDisabled={databaseIsDisabled}
-          databaseDisabledTooltip={databaseDisabledTooltip}
         />
       )}
       {hasParametersList && setParameterValue && (

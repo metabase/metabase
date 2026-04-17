@@ -14,10 +14,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
@@ -29,6 +25,10 @@ import {
   createProductsTable,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { ObjectDetail } from "./ObjectDetail";
 

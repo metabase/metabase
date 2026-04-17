@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.native-validation-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
    [metabase.driver.sql :as driver.sql]
@@ -517,95 +516,3 @@
                                                {:source-entity-type :card
                                                 :source-entity-id 1234})})
                (deps.native-validation/validate-native-query driver query)))))))
-
-;;; ===========================================================================
-;;; Transform duplicate-column detection
-;;;
-;;; The :transform check in deps.analysis groups output fields by their
-;;; user-visible name (the alias when present), not the underlying column's
-;;; :name. Otherwise `t1.name AS user_name` and `t2.name AS venue_name` would
-;;; look like duplicates because both columns have :name "name".
-;;; ===========================================================================
-
-(defn- mp-with-transform [native-sql]
-  (let [query     (lib/->legacy-MBQL (lib/native-query meta/metadata-provider native-sql))
-        transform {:id     1
-                   :name   "tx"
-                   :source {:type :query :query query}
-                   :target {:type :table :schema "public" :name "out"}}]
-    (lib.tu/mock-metadata-provider meta/metadata-provider {:transforms [transform]})))
-
-(deftest ^:parallel transform-aliased-name-columns-not-duplicate-test
-  (testing "two `xxx.name` columns aliased to distinct names are NOT flagged as duplicates"
-    (let [mp     (mp-with-transform
-                  "SELECT u.NAME AS user_name, v.NAME AS venue_name
-                   FROM CHECKINS c
-                   JOIN USERS u ON c.USER_ID = u.ID
-                   JOIN VENUES v ON c.VENUE_ID = v.ID")
-          errors (deps.analysis/check-entity mp :transform 1)
-          dupes  (filter #(= :duplicate-column (:type %)) errors)]
-      (is (empty? dupes)
-          (str "Expected no :duplicate-column errors, got: " (pr-str dupes))))))
-
-(deftest ^:parallel transform-real-duplicate-still-flagged-test
-  (testing "a genuine output-name collision IS still flagged"
-    (let [mp     (mp-with-transform
-                  "SELECT TOTAL, SUBTOTAL AS total FROM ORDERS")
-          errors (deps.analysis/check-entity mp :transform 1)
-          dupes  (filter #(= :duplicate-column (:type %)) errors)]
-      (is (= [{:type :duplicate-column :name "TOTAL"}] dupes)
-          (str "Expected one :duplicate-column error, got: " (pr-str dupes))))))
-
-;;; ===========================================================================
-;;; Derived-table / CTE column resolution
-;;;
-;;; Columns defined in inline derived tables (subqueries in FROM) or by
-;;; window functions in CTEs must resolve correctly when the outer SELECT
-;;; aliases them to a different name. A mutation bug in sql_tools.py's
-;;; _find_returned_fields caused the source column's alias to be overwritten
-;;; with the outer alias, breaking resolution for later references to the
-;;; same column.
-;;; ===========================================================================
-
-(deftest ^:parallel derived-table-column-with-alias-test
-  (testing "column from derived table resolves when aliased to a different name"
-    (let [mp     (deps.tu/default-metadata-provider)
-          driver (:engine (lib.metadata/database mp))]
-      (validates? mp driver 4 #{})
-      (testing "simple derived table"
-        (is (empty? (deps.native-validation/validate-native-query driver
-                                                                  (fake-query mp "SELECT datum AS b FROM (SELECT 1 AS datum) DQ")))))
-      (testing "multiple references to derived-table column with different aliases"
-        (is (empty? (deps.native-validation/validate-native-query driver
-                                                                  (fake-query mp "SELECT datum AS b, datum - 1 AS d FROM (SELECT 1 AS datum) DQ")))))
-      (testing "derived table from GENERATE_SERIES with expressions"
-        (is (empty? (deps.native-validation/validate-native-query driver
-                                                                  (fake-query mp
-                                                                              "SELECT TO_CHAR(datum, 'yyyymmdd') AS a, datum AS b, datum + 1 AS c
-                         FROM (SELECT SEQUENCE.DAY AS datum
-                               FROM GENERATE_SERIES(0, 100) AS SEQUENCE (DAY)
-                               GROUP BY SEQUENCE.DAY) DQ"))))))))
-
-(deftest ^:parallel cte-window-function-column-test
-  (testing "column defined by window function in CTE resolves in outer query"
-    (let [mp     (deps.tu/default-metadata-provider)
-          driver (:engine (lib.metadata/database mp))]
-      (is (empty? (deps.native-validation/validate-native-query driver
-                                                                (fake-query mp
-                                                                            "WITH ranked AS (
-                         SELECT ID, TOTAL,
-                                LAG(TOTAL) OVER (ORDER BY ID) AS prev_total
-                         FROM ORDERS)
-                       SELECT prev_total AS source, TOTAL AS target
-                       FROM ranked")))))))
-
-(deftest ^:parallel table-template-tag-skipped-test
-  (testing "queries with table-type template tags are skipped (table is dynamic)"
-    (let [mp     (deps.tu/default-metadata-provider)
-          driver (:engine (lib.metadata/database mp))
-          query  (-> (lib/native-query mp "SELECT * FROM {{my_table}}")
-                     (lib/with-template-tags {"my_table" {:type         :table
-                                                          :name         "my_table"
-                                                          :display-name "My Table"
-                                                          :table-id     1}}))]
-      (is (empty? (deps.native-validation/validate-native-query driver query))))))

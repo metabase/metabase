@@ -12,13 +12,13 @@ import {
   createMockModelResult,
   createMockRecentModel,
 } from "metabase/browse/models/test-utils";
-import { createMockSetupState } from "metabase/redux/store/mocks";
 import type { RecentCollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockSetupState } from "metabase-types/store/mocks";
 
 const setup = (modelCount: number, recentModelCount = 5) => {
   const databases = [createMockDatabase()];

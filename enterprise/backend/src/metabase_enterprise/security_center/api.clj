@@ -85,16 +85,6 @@
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 
-(api.macros/defendpoint :post "/acknowledge" :- [:sequential AcknowledgeResponse]
-  "Acknowledge multiple security advisories. Skips already-acknowledged advisories."
-  [_route-params
-   _query-params
-   {:keys [advisory_ids]} :- [:map [:advisory_ids [:sequential ms/NonBlankString]]]]
-  (api/check-superuser)
-  (api/check (seq advisory_ids) [400 "advisory_ids must be a non-empty array"])
-  (mapv acknowledge-response
-        (security-advisory/acknowledge-many! advisory_ids api/*current-user-id*)))
-
 (defonce ^:private ^ExecutorService sync-executor
   (ThreadPoolExecutor. 1 1 0 TimeUnit/MILLISECONDS
                        (SynchronousQueue.) (ThreadPoolExecutor$AbortPolicy.)))

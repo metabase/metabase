@@ -1,5 +1,5 @@
 import type { Card, CardId } from "./card";
-import type { Channel, SlackChannelId } from "./notification-channels";
+import type { Channel } from "./notification-channels";
 import type { PaginationRequest } from "./pagination";
 import type { ScheduleDisplayType } from "./settings";
 import type { UserId, UserInfo } from "./user";
@@ -50,7 +50,6 @@ export type NotificationRecipientRawValue = {
   type: "notification-recipient/raw-value";
   details: {
     value: string;
-    channel_id?: SlackChannelId;
   };
 
   id?: number;

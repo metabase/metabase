@@ -9,9 +9,9 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenStatus } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 // Tests fail without this mock, even with jest.useFakeTimers()
 // Probably same/similar issue https://github.com/jestjs/jest/issues/3465

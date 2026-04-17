@@ -13,7 +13,6 @@ import {
   type ParameterMappingOption,
   getMappingOptionByTarget,
 } from "metabase/parameters/utils/mapping-options";
-import type { State } from "metabase/redux/store";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Box, Flex, Icon, Text, Transition } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
@@ -29,6 +28,7 @@ import type {
   ParameterTarget,
   VirtualCard,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
 import S from "./DashCardParameterMapper.module.css";

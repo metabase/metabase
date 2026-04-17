@@ -1,4 +1,4 @@
-import { c, msgid, t } from "ttag";
+import { t } from "ttag";
 
 import type { SegmentedControlItem } from "metabase/ui";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
@@ -10,8 +10,8 @@ export const MAX_LIMIT_INPUT = 999999999;
  * Sanitizes the input value for a usage limit.
  * Return an integer value or null if the input is empty.
  */
-export const sanitizeUsageLimitValue = (inputValue: string | number) => {
-  let sanitizedStrValue = String(inputValue).trim();
+export const sanitizeUsageLimitValue = (inputValue: string) => {
+  let sanitizedStrValue = inputValue.trim();
 
   if (sanitizedStrValue !== "") {
     sanitizedStrValue = Math.min(
@@ -105,22 +105,4 @@ export function getQuotaMessageInputDescription(
   limitPeriod: MetabotLimitPeriod = "monthly",
 ) {
   return messageDescriptionMap[limitPeriod];
-}
-
-export function getMaxUsageInputSuffix(
-  limitType: MetabotLimitType,
-  value?: number | null,
-) {
-  if (limitType === "tokens" && !!value) {
-    return (
-      " " +
-      c("suffix after a numeral, e.g. '10 million'").ngettext(
-        msgid`million`,
-        `million`,
-        value,
-      )
-    );
-  }
-
-  return undefined;
 }

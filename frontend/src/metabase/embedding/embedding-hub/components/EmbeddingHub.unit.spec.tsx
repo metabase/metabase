@@ -17,13 +17,13 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 jest.mock("react-router-redux", () => ({
   push: jest.fn(() => ({

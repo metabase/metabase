@@ -8,12 +8,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { Palette } from "./Palette";
 

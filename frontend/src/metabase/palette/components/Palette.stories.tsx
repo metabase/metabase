@@ -12,8 +12,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
 import { commonReducers } from "metabase/reducers-common";
-import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Center } from "metabase/ui";
 import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
@@ -21,6 +19,8 @@ import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { PaletteContainer } from "./Palette";
 import { recents, search } from "./test_data.json";

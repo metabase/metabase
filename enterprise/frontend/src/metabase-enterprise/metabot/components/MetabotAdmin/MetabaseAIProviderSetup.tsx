@@ -1,15 +1,14 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
-import { useMetabotSetupContext } from "metabase/metabot/components/MetabotAdmin/MetabotSetup";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import {
   Anchor,
   Box,
+  Button,
   Checkbox,
   Flex,
   Group,
@@ -29,8 +28,6 @@ import { useGetMetabotUsageQuery } from "../../../api";
 import {
   METABASE_MANAGED_AI_FEATURE,
   METABASE_MANAGED_AI_TERMS_URL,
-  METABOT_V3_FEATURE,
-  OFFER_METABASE_MANAGED_AI_FEATURE,
 } from "../../constants";
 import { formatMetabaseCost } from "../../format";
 import {
@@ -41,40 +38,41 @@ import { usePurchaseMetabaseManagedAi } from "../../usePurchaseMetabaseManagedAi
 
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
-export function MetabaseAIProviderSetup() {
-  const offerMetabaseManagedAi = !!hasPremiumFeature(
-    OFFER_METABASE_MANAGED_AI_FEATURE,
-  );
+type MetabaseAIProviderSetupProps = {
+  isMetabaseProviderConnected: boolean;
+  isSavingMetabaseConnection: boolean;
+  onConnect: () => Promise<void>;
+};
+
+export function MetabaseAIProviderSetup({
+  isMetabaseProviderConnected,
+  isSavingMetabaseConnection,
+  onConnect,
+}: MetabaseAIProviderSetupProps) {
+  const llmProxyConfigured = useSetting("llm-proxy-configured?");
   const hasMetabaseManagedAiProviderFeature = !!hasPremiumFeature(
     METABASE_MANAGED_AI_FEATURE,
   );
-  const hasDeprecatedMetabaseAiProvider =
-    !!hasPremiumFeature(METABOT_V3_FEATURE);
-
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
-
-  const isConfigured = useSetting("llm-metabot-configured?");
-
-  const [updateMetabotSettings, updateMetabotSettingsResult] =
-    useUpdateMetabotSettingsMutation();
-
-  const handleConnect = useCallback(async () => {
-    await updateMetabotSettings({ provider: "metabase", model: "" }).unwrap();
-  }, [updateMetabotSettings]);
 
   const {
     pricing: metabaseManagedAiPricing,
     isLoading: isLoadingMetabaseManagedAiPricing,
-  } = useMetabaseManagedAiPricing(
-    !hasDeprecatedMetabaseAiProvider || hasMetabaseManagedAiProviderFeature,
-  );
+  } = useMetabaseManagedAiPricing(!!llmProxyConfigured);
 
   const metabaseManagedAiPurchase = usePurchaseMetabaseManagedAi();
 
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSettingUpModalOpen, setIsSettingUpModalOpen] = useState(false);
 
-  const handleMetabasePurchase = useCallback(async () => {
+  const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
+    ? getErrorMessage(
+        metabaseManagedAiPurchase.error,
+        t`Unable to connect to this AI provider.`,
+      )
+    : undefined;
+
+  const handleMetabasePurchase = async () => {
     setIsSettingUpModalOpen(true);
 
     try {
@@ -84,52 +82,14 @@ export function MetabaseAIProviderSetup() {
     } catch {
       setIsSettingUpModalOpen(false);
     }
-  }, [hasAcceptedTerms, metabaseManagedAiPurchase]);
-
-  const onConnect = match({
-    hasAcceptedTerms,
-    hasMetabaseManagedAiProviderFeature,
-    hasDeprecatedMetabaseAiProvider,
-    isConfigured,
-    isStoreUser,
-  })
-    .with({ isConfigured: true }, () => null)
-    .with({ hasMetabaseManagedAiProviderFeature: true }, () => handleConnect)
-    .with({ hasDeprecatedMetabaseAiProvider: true }, () => handleConnect)
-    .with(
-      { hasMetabaseManagedAiProviderFeature: false, hasAcceptedTerms: false },
-      () => null,
-    )
-    .with({ isStoreUser: false }, () => null)
-    .otherwise(() => handleMetabasePurchase);
-
-  const { isLoading } = useMetabotSetupContext(onConnect);
-
-  const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
-    ? getErrorMessage(
-        metabaseManagedAiPurchase.error,
-        t`Unable to connect to this AI provider.`,
-      )
-    : undefined;
-
-  const updateMetabotSettingsError = updateMetabotSettingsResult.error
-    ? getErrorMessage(
-        updateMetabotSettingsResult.error,
-        t`Unable to connect to this AI provider.`,
-      )
-    : undefined;
+  };
 
   return (
     <>
-      {isConfigured ? (
+      {isMetabaseProviderConnected ? (
         <MetabaseManagedProviderCard
           isLoadingPricing={isLoadingMetabaseManagedAiPricing}
           pricing={metabaseManagedAiPricing}
-          hasDeprecatedMetabaseAiProvider={hasDeprecatedMetabaseAiProvider}
-          hasMetabaseManagedAiProviderFeature={
-            hasMetabaseManagedAiProviderFeature
-          }
-          offerMetabaseManagedAi={offerMetabaseManagedAi}
         />
       ) : (
         <>
@@ -153,25 +113,15 @@ export function MetabaseAIProviderSetup() {
           </Stack>
 
           {match({
-            hasDeprecatedMetabaseAiProvider,
             hasMetabaseManagedAiProviderFeature,
-            offerMetabaseManagedAi,
             isStoreUser,
           })
-            .with(
-              {
-                hasDeprecatedMetabaseAiProvider: true,
-                hasMetabaseManagedAiProviderFeature: false,
-                offerMetabaseManagedAi: true,
-              },
-              () => (
-                <Text>
-                  {t`You're on legacy tiered AI pricing today. On your next billing cycle, you'll switch to metered AI pricing.`}
-                </Text>
-              ),
-            )
-            .with({ hasDeprecatedMetabaseAiProvider: true }, () => null)
-            .with({ hasMetabaseManagedAiProviderFeature: true }, () => null)
+            .with({ hasMetabaseManagedAiProviderFeature: true }, () => (
+              <Button
+                loading={isSavingMetabaseConnection}
+                onClick={onConnect}
+              >{t`Connect`}</Button>
+            ))
             .with({ isStoreUser: false }, () => (
               <Text fw="bold">
                 {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
@@ -179,23 +129,31 @@ export function MetabaseAIProviderSetup() {
               </Text>
             ))
             .otherwise(() => (
-              <Checkbox
-                checked={hasAcceptedTerms}
-                disabled={isLoading}
-                onChange={(event) =>
-                  setHasAcceptedTerms(event.currentTarget.checked)
-                }
-                // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
-                label={jt`I agree with the Metabase AI Service ${(
-                  <Anchor
-                    key="metabase-ai-terms-link"
-                    href={METABASE_MANAGED_AI_TERMS_URL}
-                    target="_blank"
-                  >
-                    {t`Terms of Service`}
-                  </Anchor>
-                )}`}
-              />
+              <Stack gap="sm">
+                <Checkbox
+                  checked={hasAcceptedTerms}
+                  onChange={(event) =>
+                    setHasAcceptedTerms(event.currentTarget.checked)
+                  }
+                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
+                  label={jt`I agree with the Metabase AI add-on ${(
+                    <Anchor
+                      key="metabase-ai-terms-link"
+                      href={METABASE_MANAGED_AI_TERMS_URL}
+                      target="_blank"
+                    >
+                      {t`Terms of Service`}
+                    </Anchor>
+                  )}`}
+                />
+                <Button
+                  disabled={!hasAcceptedTerms}
+                  loading={
+                    metabaseManagedAiPurchase.isLoading || isSettingUpModalOpen
+                  }
+                  onClick={handleMetabasePurchase}
+                >{t`Connect`}</Button>
+              </Stack>
             ))}
         </>
       )}
@@ -206,17 +164,11 @@ export function MetabaseAIProviderSetup() {
         </Text>
       )}
 
-      {updateMetabotSettingsError && (
-        <Text size="sm" c="error">
-          {updateMetabotSettingsError}
-        </Text>
-      )}
-
       <MetabotSettingUpModal
         isSavingConfiguration={
-          isSettingUpModalOpen && updateMetabotSettingsResult.isLoading
+          isSettingUpModalOpen && isSavingMetabaseConnection
         }
-        onActivated={handleConnect}
+        onActivated={onConnect}
         opened={isSettingUpModalOpen}
         onClose={() => setIsSettingUpModalOpen(false)}
       />
@@ -227,51 +179,45 @@ export function MetabaseAIProviderSetup() {
 function MetabaseManagedProviderCard({
   isLoadingPricing,
   pricing,
-  hasDeprecatedMetabaseAiProvider,
-  hasMetabaseManagedAiProviderFeature,
-  offerMetabaseManagedAi,
 }: {
   isLoadingPricing: boolean;
   pricing: MetabaseManagedAiPricing | null;
-  hasDeprecatedMetabaseAiProvider: boolean;
-  hasMetabaseManagedAiProviderFeature: boolean;
-  offerMetabaseManagedAi: boolean;
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
   const totalCost = getMetabaseUsageCost(metabotUsage?.tokens, pricing);
 
   return (
-    <Stack gap="md">
-      {!hasMetabaseManagedAiProviderFeature &&
-        hasDeprecatedMetabaseAiProvider &&
-        offerMetabaseManagedAi && (
-          <Text c="text-secondary">
-            {t`You're on legacy tiered AI pricing today. On your next billing cycle, you'll switch to metered AI pricing. If you'd like to switch to a third-party AI provider and use their API, click Disconnect.`}
-          </Text>
-        )}
+    <Stack gap="lg">
+      <Group align="flex-start" gap="md" wrap="nowrap">
+        <Title order={4}>{
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
+          t`Connected to Metabase AI service`
+        }</Title>
+      </Group>
 
-      {hasMetabaseManagedAiProviderFeature && (
-        <>
-          <Text c="text-secondary" lh="1">{t`Current billing cycle`}</Text>
-          <MetabaseUsageRow
-            label={t`Total tokens`}
-            value={formatNumber(metabotUsage?.tokens ?? 0)}
-          />
-          {isLoadingPricing ? (
-            <Flex align="center" justify="space-between" gap="md">
-              <Skeleton h="1rem" w="7rem" />
-              <Box flex={1} h={1} bg="border" />
-              <Skeleton h="1rem" w="8rem" />
-            </Flex>
-          ) : pricing ? (
-            <MetabasePricingRow pricing={pricing} />
-          ) : null}
-          <MetabaseUsageRow
-            label={t`Total cost`}
-            value={formatMetabaseCost(totalCost)}
-          />
-        </>
-      )}
+      <Stack gap="md">
+        <Text c="text-secondary" lh="1">{t`Current billing cycle`}</Text>
+
+        <MetabaseUsageRow
+          label={t`Total tokens`}
+          value={formatNumber(metabotUsage?.tokens ?? 0)}
+        />
+
+        {isLoadingPricing ? (
+          <Flex align="center" justify="space-between" gap="md">
+            <Skeleton h="1rem" w="7rem" />
+            <Box flex={1} h={1} bg="border" />
+            <Skeleton h="1rem" w="8rem" />
+          </Flex>
+        ) : pricing ? (
+          <MetabasePricingRow pricing={pricing} />
+        ) : null}
+
+        <MetabaseUsageRow
+          label={t`Total cost`}
+          value={formatMetabaseCost(totalCost)}
+        />
+      </Stack>
     </Stack>
   );
 }

@@ -1,7 +1,7 @@
-import type { State } from "metabase/redux/store";
 import { getUser } from "metabase/selectors/user";
 import { connect } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
+import type { State } from "metabase-types/store";
 
 import { updateUser } from "../../actions";
 import UserProfileForm from "../../components/UserProfileForm";

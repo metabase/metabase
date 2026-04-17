@@ -1,8 +1,4 @@
 import { createMockEntitiesState } from "__support__/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -17,6 +13,10 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 function setup() {
   const sampleDatabase = createSampleDatabase();

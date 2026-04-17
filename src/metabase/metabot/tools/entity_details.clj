@@ -130,22 +130,32 @@
          visible-cols (when query-needed?
                         (->> (lib/visible-columns base-query)
                              (map #(metabot.tools.u/add-table-reference base-query %))))
+         col->index (when query-needed?
+                      (into {} (map-indexed (fn [i col] [col i])) visible-cols))
+         col-index (when query-needed?
+                     #(-> % (dissoc :operators :field-values) col->index))
          default-temporal-breakout (when with-default-temporal-breakout?
                                      (->> breakouts
                                           (map #(lib/find-matching-column % visible-cols))
-                                          (m/find-first lib.types.isa/temporal?)))]
+                                          (m/find-first lib.types.isa/temporal?)))
+         field-id-prefix (metabot.tools.u/card-field-id-prefix id)]
      (cond-> {:id id
               :type :metric
               :name (:name card)
               :description (:description card)
-              :default_time_dimension_field_id (some-> default-temporal-breakout
-                                                       (->> (metabot.tools.u/->result-column metric-query))
-                                                       :field_id)
+              :default_time_dimension_field_id (when default-temporal-breakout
+                                                 (-> (metabot.tools.u/->result-column
+                                                      metric-query
+                                                      default-temporal-breakout
+                                                      (col-index default-temporal-breakout)
+                                                      field-id-prefix)
+                                                     :field_id))
               :verified (verified-review? id "card")}
        with-queryable-dimensions?
        (assoc :queryable-dimensions (into []
                                           (comp (map #(metabot.tools.u/add-table-reference base-query %))
-                                                (map #(metabot.tools.u/->result-column metric-query %)))
+                                                (map #(metabot.tools.u/->result-column
+                                                       metric-query % (col-index %) field-id-prefix)))
                                           (->> (lib/filterable-columns base-query)
                                                field-values-fn)))
 
@@ -193,11 +203,13 @@
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        field-values-fn
                        (map #(metabot.tools.u/add-table-reference table-query %))))
+           field-id-prefix (when (or with-fields? with-related-tables?)
+                             (metabot.tools.u/table-field-id-prefix id))
            related-tables (when with-related-tables?
-                            (related-tables table-query with-fields? field-values-fn))]
+                            (related-tables table-query field-id-prefix with-fields? field-values-fn))]
        (-> {:id id
             :type :table
-            :fields (mapv #(metabot.tools.u/->result-column table-query %) cols)
+            :fields (into [] (map-indexed #(metabot.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
             :name (:name base)
             ;; :display_name should be (lib/display-name table-query), but we want to avoid creating the query if possible
             :display_name (some->> (:name base)
@@ -220,21 +232,38 @@
 (defn related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
    Creates separate entries for each FK path when the same table is reachable through multiple foreign keys."
-  [query with-fields? field-values-fn]
-  (let [all-main-cols (lib/visible-columns query)
-        fk-cols       (filter :fk-field-id all-main-cols)
-        grouped-fks   (group-by (juxt :table-id :fk-field-id) fk-cols)]
+  [query main-field-id-prefix with-fields? field-values-fn]
+  (let [all-main-cols    (lib/visible-columns query)
+        ;; Map [table-id fk-field-id field-name] -> index in the main query
+        contextual-index (into {}
+                               (keep-indexed
+                                (fn [idx {:keys [fk-field-id table-id name]}]
+                                  (when fk-field-id
+                                    {[table-id fk-field-id name] idx})))
+                               all-main-cols)
+        fk-cols          (filter :fk-field-id all-main-cols)
+        ;; { [table-id fk-field-id] [fk-col ...] }
+        grouped-fks      (group-by (juxt :table-id :fk-field-id) fk-cols)]
     (when (seq grouped-fks)
       (mapv
        (fn [[[table-id fk-field-id] _]]
          (let [base-details   (table-details table-id
-                                             {:with-fields?         with-fields?
-                                              :field-values-fn      field-values-fn
-                                              :with-related-tables? false
-                                              :with-metrics?        false})
+                                             {:with-fields?          with-fields?
+                                              :field-values-fn       field-values-fn
+                                              :with-related-tables?  false
+                                              :with-metrics?         false})
                base-table-col (lib.metadata/field query fk-field-id)
-               fk-field-name  (:name base-table-col)]
-           (assoc base-details :related_by fk-field-name)))
+               fk-field-name  (:name base-table-col)
+               updated-fields
+               (when with-fields?
+                 (->> (:fields base-details)
+                      (keep
+                       (fn [{:keys [name] :as field}]
+                         (when-let [idx (get contextual-index [table-id fk-field-id name])]
+                           (assoc field :field_id (str main-field-id-prefix idx)))))))]
+           (-> (cond-> base-details
+                 updated-fields (assoc :fields updated-fields))
+               (assoc :related_by fk-field-name))))
        grouped-fks))))
 
 (defn- card-details
@@ -269,11 +298,12 @@
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
+         field-id-prefix (metabot.tools.u/card-field-id-prefix id)
          related-tables (when with-related-tables?
-                          (related-tables card-query with-fields? field-values-fn))]
+                          (related-tables card-query field-id-prefix with-fields? field-values-fn))]
      (-> {:id id
           :type card-type
-          :fields (mapv #(metabot.tools.u/->result-column card-query %) returned-fields)
+          :fields (into [] (map-indexed #(metabot.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
@@ -325,47 +355,38 @@
                     {:metabot_id metabot-id, :status-code 400}))))
 
 (defn get-table-details
-  "Get information about the table, question or model with .
+  "Get information about the table or model with ID `table-id`.
   `table-id` is string either encoding an integer that is the ID of a table
   or a string containing the prefix card__ and the ID of a model (card) as suffix.
   Alternatively, `table-id` can be an integer ID of a table.
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
-  [{:keys [entity-type entity-id] :as arguments}]
+  [{:keys [model-id table-id] :as arguments}]
   (try
     (lib-be/with-metadata-provider-cache
       (let [options (cond-> arguments
                       (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
             details (cond
-                      (= :model entity-type)
-                      (let [card (card-details entity-id (assoc options :only-model true))]
+                      (int? model-id)
+                      (let [card (card-details model-id (assoc options :only-model true))]
                         (if (= :model (:type card))
                           card
-                          (throw (ex-info (format "ID %s is not a valid model id, it's a question" entity-id)
+                          (throw (ex-info (format "ID %s is not a valid model id, it's a question" model-id)
                                           {:agent-error? true :status-code 400}))))
 
-                      (= :question entity-type)
-                      (let [card (card-details entity-id options)]
-                        (if (= :question (:type card))
-                          card
-                          (throw (ex-info (format "ID %s is not a valid question id, it's a %s" entity-id (:type card))
-                                          {:agent-error? true :status-code 400}))))
+                      (int? table-id)
+                      (table-details table-id options)
 
-                      (and (= :table entity-type)
-                           (int? entity-id))
-                      (table-details entity-id options)
-
-                      (and (= :table entity-type)
-                           (string? entity-id))
-                      (if-let [[_ card-id] (re-matches #"card__(\d+)" entity-id)]
+                      (string? table-id)
+                      (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                         (card-details (parse-long card-id) options)
-                        (if (re-matches #"\d+" entity-id)
-                          (table-details (parse-long entity-id) options)
+                        (if (re-matches #"\d+" table-id)
+                          (table-details (parse-long table-id) options)
                           (throw (ex-info "Invalid table_id format"
                                           {:agent-error? true :status-code 400}))))
 
                       :else
-                      (throw (ex-info "Invalid arguments: must provide valid entity-type and entity-id"
+                      (throw (ex-info "Invalid arguments: must provide table_id or model_id"
                                       {:agent-error? true :status-code 400})))]
         {:structured-output (assoc details :result-type :entity)}))
     (catch Exception e
@@ -433,6 +454,7 @@
 (defn- execute-query
   [query-id query-input]
   (let [normalized-query (lib-be/normalize-query query-input)
+        field-id-prefix (metabot.tools.u/query-field-id-prefix query-id)
         database-id (:database normalized-query)
         _ (api/read-check :model/Database database-id)
         mp (lib-be/application-database-metadata-provider database-id)
@@ -441,7 +463,9 @@
     {:type :query
      :query-id query-id
      :query normalized-query
-     :result-columns (mapv #(metabot.tools.u/->result-column query %) returned-cols)}))
+     :result-columns (into []
+                           (map-indexed #(metabot.tools.u/->result-column query %2 %1 field-id-prefix))
+                           returned-cols)}))
 
 (defn get-query-details
   "Get the details of a query (supports both MBQL v4 and v5)."

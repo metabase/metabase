@@ -1,4 +1,4 @@
-import type { State } from "metabase/redux/store";
+import type { State } from "metabase-types/store";
 
 export const getDeletes = (state: State) => state.admin.databases.deletes;
 

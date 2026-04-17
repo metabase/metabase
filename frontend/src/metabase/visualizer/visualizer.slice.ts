@@ -9,14 +9,6 @@ import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import type { Dispatch, GetState } from "metabase/redux/store";
-import type {
-  DraggedColumn,
-  DraggedItem,
-  VisualizerState,
-  VisualizerVizDefinitionWithColumns,
-  VisualizerVizDefinitionWithColumnsAndFallbacks,
-} from "metabase/redux/store/visualizer";
 import { clone } from "metabase/utils/clone";
 import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { isCartesianChart } from "metabase/visualizations";
@@ -31,6 +23,14 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
+import type {
+  DraggedColumn,
+  DraggedItem,
+  VisualizerState,
+  VisualizerVizDefinitionWithColumns,
+  VisualizerVizDefinitionWithColumnsAndFallbacks,
+} from "metabase-types/store/visualizer";
 
 import {
   getCurrentVisualizerState,

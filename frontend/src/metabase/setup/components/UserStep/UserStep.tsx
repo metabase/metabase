@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import type { UserInfo } from "metabase/redux/store";
 import { useDispatch, useSelector } from "metabase/utils/redux";
+import type { UserInfo } from "metabase-types/store";
 
 import { submitUser } from "../../actions";
 import { getIsHosted, getUser } from "../../selectors";

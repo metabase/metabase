@@ -53,17 +53,7 @@
     (mt/with-temporary-setting-values [metabot-enabled? false embedded-metabot-enabled? true]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metabot is not enabled"
                             (metabot.config/check-metabot-enabled! metabot.config/internal-metabot-id)))
-      (is (metabot.config/check-metabot-enabled! metabot.config/embedded-metabot-id))))
-  (testing "global AI disable blocks all Metabot instances"
-    (mt/with-temporary-raw-setting-values [:ai-features-enabled?      "false"
-                                           :metabot-enabled?          "true"
-                                           :embedded-metabot-enabled? "true"]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"AI features are not enabled"
-                            (metabot.config/check-metabot-enabled!)))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"AI features are not enabled"
-                            (metabot.config/check-metabot-enabled! metabot.config/internal-metabot-id)))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"AI features are not enabled"
-                            (metabot.config/check-metabot-enabled! metabot.config/embedded-metabot-id))))))
+      (is (metabot.config/check-metabot-enabled! metabot.config/embedded-metabot-id)))))
 
 (deftest integrated-resolution-test
   (testing "combination of metabot-id and profile-id precedence resolution"

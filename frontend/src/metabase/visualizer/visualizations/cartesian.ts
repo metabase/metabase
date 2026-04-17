@@ -2,7 +2,6 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
-import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
@@ -35,6 +34,7 @@ import type {
   VisualizerDataSourceId,
   XAxisScale,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 

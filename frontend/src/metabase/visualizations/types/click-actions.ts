@@ -1,6 +1,5 @@
 import type React from "react";
 
-import type { Dispatch, GetState } from "metabase/redux/store";
 import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -9,6 +8,7 @@ import type {
   ClickObject,
 } from "metabase-lib/v1/queries/drills/types";
 import type { Card, Series, VisualizationSettings } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export type ClickActionModeGetter = (data: {
   question: Question;

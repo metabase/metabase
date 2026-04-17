@@ -3,11 +3,11 @@ import _ from "underscore";
 
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
-import type { State } from "metabase/redux/store";
 import { getUser } from "metabase/selectors/user";
 import { connect } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import type { Revision, RevisionId, Segment, User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { RevisionHistory } from "../components/revisions/RevisionHistory";
 import { fetchSegmentRevisions } from "../datamodel";

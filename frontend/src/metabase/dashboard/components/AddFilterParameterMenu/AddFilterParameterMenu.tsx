@@ -1,15 +1,14 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
-import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { Icon, Menu, type MenuProps, Text } from "metabase/ui";
-
 import {
   type ParameterSection,
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
-} from "../../utils/dashboard-options";
+} from "metabase/parameters/utils/dashboard-options";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
+import { Icon, Menu, type MenuProps, Text } from "metabase/ui";
 
 interface AddFilterParameterMenuProps extends MenuProps {
   children: ReactNode; // trigger content

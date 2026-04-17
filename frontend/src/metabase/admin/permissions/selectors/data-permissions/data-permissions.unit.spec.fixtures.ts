@@ -1,5 +1,5 @@
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockGroup } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { DataPermission, DataPermissionValue } from "../../types";
 

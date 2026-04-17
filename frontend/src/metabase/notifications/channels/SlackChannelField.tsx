@@ -3,10 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import {
-  findChannelId,
-  getDisplayNames,
-} from "metabase/notifications/channels/utils";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
@@ -21,10 +17,7 @@ const ALLOWED_PREFIXES = [CHANNEL_PREFIX, USER_PREFIX];
 interface SlackChannelFieldProps {
   channel: Channel;
   channelSpec: ChannelSpec;
-  onChannelPropertyChange: (
-    key: string,
-    value: Record<string, string | boolean>,
-  ) => void;
+  onChannelPropertyChange: any;
 }
 
 export const SlackChannelField = ({
@@ -38,19 +31,13 @@ export const SlackChannelField = ({
   const channelField = channelSpec.fields?.find(
     (field) => field.name === CHANNEL_FIELD_NAME,
   );
-  const slackOptions = channelField?.options ?? [];
-  const displayNames = getDisplayNames(slackOptions);
   const value = String(channel?.details?.[CHANNEL_FIELD_NAME] ?? "");
 
-  const updateChannel = (value: string) => {
-    const { channel_id: _, ...restDetails } = channel.details ?? {};
-    const newChannelId = findChannelId(slackOptions, value);
+  const updateChannel = (value: string) =>
     onChannelPropertyChange("details", {
-      ...restDetails,
+      ...channel.details,
       [CHANNEL_FIELD_NAME]: value,
-      ...(newChannelId && { channel_id: newChannelId }),
     });
-  };
 
   const handleChange = (value: string) => {
     updateChannel(value);
@@ -68,7 +55,8 @@ export const SlackChannelField = ({
       updateChannel(fullChannelName);
     }
 
-    const isPrivate = value.trim().length > 0 && !displayNames.includes(value);
+    const isPrivate =
+      value.trim().length > 0 && !channelField?.options?.includes(value);
 
     setHasPrivateChannelWarning(isPrivate);
   };
@@ -81,7 +69,7 @@ export const SlackChannelField = ({
         {channelField?.displayName}
       </span>
       <Autocomplete
-        data={displayNames}
+        data={channelField?.options || []}
         value={value}
         placeholder={t`Pick a user or channel...`}
         limit={300}

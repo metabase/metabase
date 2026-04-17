@@ -7,12 +7,12 @@ import {
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
   createMockDatabase,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseModelFeaturesSection } from "./DatabaseModelFeaturesSection";
 

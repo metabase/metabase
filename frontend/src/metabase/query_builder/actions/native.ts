@@ -3,7 +3,6 @@ import { createAction } from "redux-actions";
 import { Questions } from "metabase/entities/questions";
 import { setUIControls } from "metabase/redux/query-builder";
 import { updateUserSetting } from "metabase/redux/settings";
-import type { Dispatch, GetState } from "metabase/redux/store";
 import { createThunkAction } from "metabase/utils/redux";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -13,6 +12,7 @@ import type {
   ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   getDataReferenceStack,

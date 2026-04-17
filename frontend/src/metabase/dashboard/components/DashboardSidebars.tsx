@@ -1,14 +1,14 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { AIDashboardAnalysisSidebar } from "metabase/metabot/components/AIDashboardAnalysisSidebar/AIDashboardAnalysisSidebar";
+import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
+import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 
-import { AIDashboardAnalysisSidebar } from "./AIDashboardAnalysisSidebar/AIDashboardAnalysisSidebar";
 import { ActionSidebar } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
-import DashboardSubscriptionsSidebar from "./DashboardSubscriptionsSidebar";
-import { ParameterSidebar } from "./ParameterSidebar";
 
 export function DashboardSidebars() {
   const { isFullscreen, sidebar } = useDashboardContext();

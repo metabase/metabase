@@ -228,7 +228,7 @@ describe("scenarios > question > native", () => {
         H.runNativeQuery();
         cy.findByTestId("query-visualization-root").should(
           "contain",
-          "January 1, 2025",
+          "January 1, 2022",
         );
       });
 
@@ -288,7 +288,7 @@ describe("scenarios > question > native", () => {
         );
         cy.findByTestId("visualization-root").should(
           "contain",
-          "January 1, 2025",
+          "January 1, 2022",
         );
 
         cy.get("@q2").then((questionId) => {
@@ -310,7 +310,7 @@ describe("scenarios > question > native", () => {
 
         cy.findByTestId("visualization-root").should(
           "contain",
-          "January 1, 2025",
+          "January 1, 2022",
         );
       });
 
@@ -391,8 +391,8 @@ describe("scenarios > question > native", () => {
         });
 
         cy.findByTestId("visualization-root")
-          .should("contain", "January 1, 2025")
-          .should("contain", "January 1, 2026");
+          .should("contain", "January 1, 2022")
+          .should("contain", "January 1, 2023");
       });
 
       it("should handle time grouping in optional clause without default value", () => {
@@ -428,7 +428,7 @@ describe("scenarios > question > native", () => {
         });
 
         cy.findByTestId("query-visualization-root")
-          .should("not.contain", "October 7, 2026, 1:34 AM")
+          .should("not.contain", "October 7, 2023, 1:34 AM")
           .should("not.contain", "UNIT");
       });
 

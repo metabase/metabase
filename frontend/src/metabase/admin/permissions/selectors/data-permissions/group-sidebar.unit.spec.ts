@@ -1,7 +1,7 @@
 import { assocIn } from "icepick";
 
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
+import type { State } from "metabase-types/store";
 
 import { DataPermission, DataPermissionValue } from "../../types";
 

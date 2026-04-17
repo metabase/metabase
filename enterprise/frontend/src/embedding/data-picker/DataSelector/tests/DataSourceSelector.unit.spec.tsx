@@ -9,14 +9,14 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Database, SearchModel, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { DataSourceSelector } from "../DataSelector";
 

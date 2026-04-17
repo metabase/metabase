@@ -1,13 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
-import type { InviteInfo, Locale, State, UserInfo } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import type {
   DatabaseData,
   LocaleData,
   TokenFeature,
 } from "metabase-types/api";
+import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
 import type { SetupStep } from "./types";
 

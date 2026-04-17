@@ -4,11 +4,11 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers/api";
+import type { CardId } from "metabase-types/api";
 import type {
   VisualizerDataSourceId,
   VisualizerDataSourceNameReference,
-} from "metabase/redux/store/visualizer";
-import type { CardId } from "metabase-types/api";
+} from "metabase-types/store/visualizer";
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;

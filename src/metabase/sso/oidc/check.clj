@@ -4,8 +4,8 @@
    Validates OIDC provider configuration by probing the discovery document
    and testing client credentials against the token endpoint."
   (:require
+   [clj-http.client :as http]
    [metabase.sso.oidc.discovery :as discovery]
-   [metabase.sso.oidc.http :as oidc.http]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -46,11 +46,15 @@
    When `:verified` is false, the IdP did not confirm the credentials but didn't reject them either."
   [token-endpoint client-id client-secret]
   (try
-    (let [response (oidc.http/oidc-post token-endpoint
-                                        {:form-params {:grant_type    "client_credentials"
-                                                       :client_id     client-id
-                                                       :client_secret client-secret}
-                                         :coerce :always})
+    (let [response (http/post token-endpoint
+                              {:form-params {:grant_type    "client_credentials"
+                                             :client_id     client-id
+                                             :client_secret client-secret}
+                               :as :json
+                               :coerce :always
+                               :throw-exceptions false
+                               :conn-timeout 5000
+                               :socket-timeout 5000})
           status   (:status response)
           body     (:body response)
           error-code  (or (:error body)

@@ -1,10 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-} from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Parameter, VisualizationSettings } from "metabase-types/api";
 import {
@@ -12,6 +8,10 @@ import {
   createMockIFrameDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+} from "metabase-types/store/mocks";
 
 import { IFrameViz, type IFrameVizProps } from "./IFrameViz";
 

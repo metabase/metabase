@@ -313,10 +313,6 @@
   "Should we allow users to use workspaces?"
   :workspaces)
 
-(define-premium-feature enable-metabot-v3?
-  "Should we allow users to use the Metabase-managed tiered AI provider?"
-  :metabot-v3)
-
 (define-premium-feature ^{:added "0.60.0"} enable-metabase-ai-managed?
   "Should we allow users to use the Metabase-managed AI provider?"
   :metabase-ai-managed)
@@ -360,7 +356,6 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :metabot-v3                     (enable-metabot-v3?)
    :metabase-ai-managed            (enable-metabase-ai-managed?)
    :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)

@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import {
   createMockCategoryColumn,
   createMockColumn,
@@ -9,6 +8,7 @@ import {
   createMockNumericColumn,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import {
   copyColumn,

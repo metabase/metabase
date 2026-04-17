@@ -9,7 +9,6 @@ import { setupListNotificationEndpoints } from "__support__/server-mocks/notific
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
-import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -23,6 +22,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { QuestionMoreActionsMenu } from "../QuestionMoreActionsMenu";
 

@@ -6,10 +6,6 @@
   transition: border-color 150ms ease;
 }
 
-.container:hover {
-  border: 1px solid var(--mb-color-brand);
-}
-
 .container:focus-within {
   border-color: var(--mb-color-brand);
 }

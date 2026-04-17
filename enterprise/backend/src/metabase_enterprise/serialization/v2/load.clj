@@ -63,25 +63,11 @@
                       (throw e)))))]
         (reduce loader ctx deps)))))
 
-(defn- safe-local-id
-  "Looks up the local primary key for `path`, swallowing any exception from the DB lookup.
-
-  [[path-error-data]] is called from catch blocks inside the outer load transaction. When the original
-  failure was a SQL error it will have poisoned the transaction, so any subsequent query (including
-  [[serdes/load-find-local]]) will throw `current transaction is aborted, commands ignored until end of
-  transaction block` and shadow the real cause. We prefer losing `:local-id` over losing the exception chain."
-  [path]
-  (try
-    (when-let [entity (serdes/load-find-local path)]
-      ((t2/select-pks-fn entity) entity))
-    (catch Exception e
-      (log/debugf e "Could not look up local id for %s while building load error data" (serdes/log-path-str path))
-      nil)))
-
 (defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
     {:path       (mapv (partial into {}) path)
-     :local-id   (safe-local-id path)
+     :local-id   (when-let [entity (serdes/load-find-local path)]
+                   ((t2/select-pks-fn entity) entity))
      :deps-chain expanding
      :model      last-model
      :table      (some->> last-model (keyword "model") t2/table-name)

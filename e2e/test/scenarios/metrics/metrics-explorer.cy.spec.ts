@@ -412,6 +412,7 @@ describe("scenarios > metrics > explorer", () => {
       cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
+      cy.wait("@getMetric");
       cy.wait("@dataset");
     });
 
@@ -421,7 +422,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Created At" }).should("be.visible");
         const currentYear = new Date().getFullYear();
-        for (let year = 2025; year <= currentYear; year++) {
+        for (let year = 2022; year <= currentYear; year++) {
           cy.findByText(String(year)).should("be.visible");
         }
       });
@@ -492,19 +493,13 @@ describe("scenarios > metrics > explorer", () => {
         "Expand formula editor and create expression with second metric instance",
       );
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(", Count of orders");
-      H.MetricsViewer.searchResults().findByText("Count of orders").click();
-      cy.wait("@getMetric");
-
-      H.MetricsViewer.searchInput().type(" + Count of products");
-
+      H.MetricsViewer.searchInput()
+        .clear()
+        .type("Count of orders, Count of orders + Count of products");
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
       H.MetricsViewer.searchInput().type(", Count of orders");
-      H.MetricsViewer.searchResults().findByText("Count of orders").click();
-      cy.wait("@getMetric");
-
       cy.findByTestId("run-expression-button").click();
 
       cy.wait("@dataset");
@@ -639,8 +634,8 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Set up: two instances of Count of orders with an expression");
       cy.findByTestId("metrics-formula-input").click();
 
-      addMetric("Count of orders");
-      cy.wait("@dataset");
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      cy.findByTestId("run-expression-button").click();
 
       H.MetricsViewer.searchBarPills().should("have.length", 2);
 
@@ -732,12 +727,9 @@ describe("scenarios > metrics > explorer", () => {
     it("should show an expression dimension pill with per-metric accordion", () => {
       cy.log("Create expression: Count of orders + Count of products");
       cy.findByTestId("metrics-formula-input").click();
-
-      H.MetricsViewer.searchInput().type(", Count of orders");
-      H.MetricsViewer.searchResults().findByText("Count of orders").click();
-      cy.wait("@getMetric");
-
-      H.MetricsViewer.searchInput().type(" + Count of products");
+      H.MetricsViewer.searchInput().type(
+        ", Count of orders + Count of products",
+      );
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
@@ -799,10 +791,8 @@ describe("scenarios > metrics > explorer", () => {
       cy.log(
         "Create expression with only expression entity: Count of orders + Count of products",
       );
-
-      cy.findByTestId("metrics-formula-input").click();
-
-      H.MetricsViewer.searchInput().type(" + Count of products");
+      H.MetricsViewer.searchInput().clear();
+      H.MetricsViewer.searchInput().type("Count of orders + Count of products");
       H.MetricsViewer.searchResults().findByText("Count of products").click();
       cy.wait("@getMetric");
 
@@ -1426,10 +1416,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 7, 2027");
+          .type("February 7, 2024");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("July 7, 2027");
+          .type("July 7, 2024");
         cy.button("Add filter").click();
       });
 
@@ -1445,7 +1435,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("January 1, 2027");
+          .type("January 1, 2024");
         cy.button("Update filter").click();
       });
 
@@ -1495,10 +1485,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 1, 2027");
+          .type("February 1, 2024");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("February 7, 2027");
+          .type("February 7, 2024");
         cy.button("Add filter").click();
       });
 
@@ -1580,7 +1570,7 @@ describe("scenarios > metrics > explorer", () => {
         .should("exist");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
-        10,
+        12,
       );
     });
 
@@ -1594,38 +1584,6 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText(/October/).should("be.visible");
         cy.findByText(/November/).should("be.visible");
       });
-    });
-  });
-
-  describe("Dimension filters", () => {
-    beforeEach(() => {
-      interceptDatasetQuery();
-      H.MetricsViewer.goToViewer();
-    });
-
-    it("should not show 'No compatible dimensions' after deleting and retyping an expression with metrics in a different order (UXW-3748)", () => {
-      cy.log("Create expression: Count of orders + Count of products");
-      addMetricMath([
-        { metricName: "Count of orders" },
-        "+",
-        { metricName: "Count of products" },
-      ]);
-      cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("be.visible");
-
-      cy.log(
-        "Re-enter the formula editor, delete the whole expression, retype with metrics in the opposite order",
-      );
-      H.MetricsViewer.searchInput().clear();
-      addMetricMath([
-        { metricName: "Count of products" },
-        "+",
-        { metricName: "Count of orders" },
-      ]);
-      cy.wait("@dataset");
-
-      cy.log("Expression should run without 'No compatible dimensions' error");
-      H.MetricsViewer.getMetricVisualization().should("be.visible");
     });
   });
 
@@ -1715,60 +1673,6 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("{end} + 0", { delay: 100 });
       H.MetricsViewer.runButton().click();
       assertMetricMath();
-    });
-
-    it("should handle metrics with numeric names in expressions", () => {
-      const NUMERIC_METRIC_NAME = "123";
-      H.createQuestion({
-        name: NUMERIC_METRIC_NAME,
-        type: "metric",
-        description: "A metric with a numeric name",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      });
-
-      cy.log("Add numeric metric '123' as standalone");
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(`, ${NUMERIC_METRIC_NAME}`);
-      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
-      H.MetricsViewer.runButton().click();
-      cy.wait("@dataset");
-
-      cy.log("Sum metric '123' with itself — both selected from dropdown");
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(`+ ${NUMERIC_METRIC_NAME}`);
-      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
-      H.MetricsViewer.runButton().click();
-      cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("exist");
-
-      cy.log(
-        "Append literal number 123 — typed without selecting from dropdown",
-      );
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type("+ 123");
-      H.MetricsViewer.runButton().click();
-      cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("exist");
-
-      cy.log("Append metric '123' as standalone — selected from dropdown");
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(`, ${NUMERIC_METRIC_NAME}`);
-      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
-      H.MetricsViewer.runButton().click();
-      cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("exist");
-
-      cy.log("Verify final pill layout");
-      H.MetricsViewer.searchBarPills().should("have.length", 3);
-      H.MetricsViewer.searchBarPills()
-        .eq(0)
-        .should("contain", "Count of orders");
-      H.MetricsViewer.searchBarPills().eq(1).should("contain", "123 + 123");
-      H.MetricsViewer.searchBarPills().eq(2).should("contain", "123");
     });
   });
 });

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import type { AdminPath } from "metabase/redux/store";
 import type { CacheableModel } from "metabase-types/api";
+import type { AdminPath } from "metabase-types/store";
 
 import { PerformanceTabId, type StrategyData } from "../types";
 import { getStrategyValidationSchema, isValidStrategyName } from "../utils";

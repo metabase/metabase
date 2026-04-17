@@ -19,8 +19,6 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import type { StoreDashcard } from "metabase/redux/store";
-import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
@@ -41,6 +39,8 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { StoreDashcard } from "metabase-types/store";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";

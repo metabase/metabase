@@ -24,26 +24,6 @@
     (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz`\n\n"
       (thunk))))
 
-(deftest channel-recipients-includes-channel-id-test
-  (testing "Slack channel-recipients includes channel_id when present in pulse_channel details"
-    (is (= [{:type    :notification-recipient/raw-value
-             :details {:value "#my-channel" :channel_id "C0ABC123"}}]
-           (#'pulse.send/channel-recipients
-            {:channel_type "slack"
-             :details      {:channel "#my-channel" :channel_id "C0ABC123"}}))))
-  (testing "Slack channel-recipients omits channel_id when absent from pulse_channel details"
-    (is (= [{:type    :notification-recipient/raw-value
-             :details {:value "#my-channel"}}]
-           (#'pulse.send/channel-recipients
-            {:channel_type "slack"
-             :details      {:channel "#my-channel"}}))))
-  (testing "Email recipients are unaffected"
-    (is (= [{:type    :notification-recipient/raw-value
-             :details {:value "test@example.com"}}]
-           (#'pulse.send/channel-recipients
-            {:channel_type "email"
-             :recipients   [{:email "test@example.com"}]})))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+

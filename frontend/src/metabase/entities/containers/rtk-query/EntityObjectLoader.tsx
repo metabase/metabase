@@ -13,8 +13,8 @@ import {
   setRequestLoaded,
   setRequestLoading,
 } from "metabase/redux/requests";
-import type { Dispatch } from "metabase/redux/store";
 import { useDispatch, useSelector } from "metabase/utils/redux";
+import type { Dispatch } from "metabase-types/store";
 
 import type {
   EntityDefinition,

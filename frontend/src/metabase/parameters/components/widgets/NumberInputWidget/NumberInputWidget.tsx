@@ -2,7 +2,6 @@ import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { NumericInput } from "metabase/common/components/NumericInput";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
@@ -11,7 +10,7 @@ import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { Box, type ComboboxItem } from "metabase/ui";
+import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
 import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -103,7 +102,7 @@ export function NumberInputWidget({
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" || options.length > 0 ? (
         <TokenFieldWrapper>
-          <MultiAutocompleteWithTranslation
+          <MultiAutocomplete
             value={filteredUnsavedArrayValue.map((value) => value?.toString())}
             data={options}
             placeholder={placeholder}

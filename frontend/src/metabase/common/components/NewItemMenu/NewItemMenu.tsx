@@ -3,7 +3,6 @@ import _ from "underscore";
 
 import { Databases } from "metabase/entities/databases";
 import { closeNavbar } from "metabase/redux/app";
-import type { State } from "metabase/redux/store";
 import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,
@@ -11,6 +10,7 @@ import {
 } from "metabase/selectors/user";
 import { connect } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { State } from "metabase-types/store";
 
 import { NewItemMenuView } from "./NewItemMenuView";
 

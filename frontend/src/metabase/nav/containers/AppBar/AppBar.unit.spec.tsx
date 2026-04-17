@@ -11,10 +11,16 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
+import type { Card } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDashboard,
+} from "metabase-types/api/mocks";
 import type {
   DashboardState,
   InteractiveEmbeddingOptions,
-} from "metabase/redux/store";
+} from "metabase-types/store";
 import {
   createMockAppState,
   createMockDashboardState,
@@ -22,13 +28,7 @@ import {
   createMockEmbedState,
   createMockQueryBuilderState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
-import type { Card } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockDashboard,
-} from "metabase-types/api/mocks";
+} from "metabase-types/store/mocks";
 
 import AppBar from "./AppBar";
 

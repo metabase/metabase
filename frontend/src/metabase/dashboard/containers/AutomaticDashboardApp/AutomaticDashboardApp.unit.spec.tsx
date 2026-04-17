@@ -12,12 +12,12 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { AutomaticDashboardApp } from "./AutomaticDashboardApp";
 

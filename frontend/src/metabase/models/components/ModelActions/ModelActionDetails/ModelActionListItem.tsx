@@ -87,13 +87,11 @@ function ModelActionListItem({
         icon: canEdit ? "pencil" : "eye",
         link: actionUrl,
       },
-      canArchive
-        ? {
-            title: t`Archive`,
-            icon: "archive",
-            action: handleArchive,
-          }
-        : null,
+      canArchive && {
+        title: t`Archive`,
+        icon: "archive",
+        action: handleArchive,
+      },
     ],
     [actionUrl, canEdit, canArchive, handleArchive],
   );

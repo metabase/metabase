@@ -4,13 +4,13 @@ import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { Dashboard } from "metabase-types/api";
 import type {
   AdminPathKey,
   DraftDashboardSubscription,
   State,
-} from "metabase/redux/store";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard } from "metabase-types/api";
+} from "metabase-types/store";
 
 // Types
 export type IllustrationValue = {

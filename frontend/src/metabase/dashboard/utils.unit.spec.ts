@@ -15,7 +15,6 @@ import {
   setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
-import { createMockLocation } from "metabase/redux/store/mocks";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
@@ -32,6 +31,7 @@ import {
   createMockTextDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
+import { createMockLocation } from "metabase-types/store/mocks";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,

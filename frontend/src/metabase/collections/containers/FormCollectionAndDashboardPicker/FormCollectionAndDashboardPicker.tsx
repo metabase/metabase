@@ -159,9 +159,6 @@ export function FormCollectionAndDashboardPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
-  const canCreateDashboards =
-    collectionPickerModalProps?.models?.includes("dashboard") ?? false;
-
   const options = useMemo<EntityPickerOptions>(
     () => ({
       hasPersonalCollections: filterPersonalCollections !== "exclude",
@@ -172,18 +169,12 @@ export function FormCollectionAndDashboardPicker({
       hasConfirmButtons: true,
       namespaces: type === "snippet-collections" ? ["snippets"] : undefined,
       canCreateCollections: showCreateNewCollectionOption,
-      canCreateDashboards,
       confirmButtonText: (item) =>
         item?.model === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
     }),
-    [
-      filterPersonalCollections,
-      type,
-      showCreateNewCollectionOption,
-      canCreateDashboards,
-    ],
+    [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
 
   const [fetchDashboard] = useLazyGetDashboardQuery();

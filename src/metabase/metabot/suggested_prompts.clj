@@ -11,10 +11,8 @@
 (set! *warn-on-reflection* true)
 
 (defn- column-input
-  [{:keys [base_type effective_type] :as answer-source-column}]
-  (some-> answer-source-column
-          (select-keys [:name :description :table-reference])
-          (assoc :type (or effective_type base_type))))
+  [answer-source-column]
+  (some-> answer-source-column (select-keys [:name :type :description :table-reference])))
 
 (defn- metric-input
   [{:keys [queryable-dimensions default-time-dimension-field-id] :as answer-source-metric}]

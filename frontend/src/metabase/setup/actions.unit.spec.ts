@@ -1,6 +1,6 @@
 import { userApi } from "metabase/api";
-import type { InviteInfo, State } from "metabase/redux/store";
 import type { DispatchFn } from "metabase/utils/redux";
+import type { InviteInfo, State } from "metabase-types/store";
 
 import { submitUserInvite } from "./actions";
 

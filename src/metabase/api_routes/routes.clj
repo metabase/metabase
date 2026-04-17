@@ -155,7 +155,7 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
-   "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
+   "/agent"                metabase.agent-api.api/routes
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
@@ -188,7 +188,7 @@
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
-   "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
+   "/mcp"                  metabase.mcp.api/handler
    "/measure"              (+auth 'metabase.measures.api)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)

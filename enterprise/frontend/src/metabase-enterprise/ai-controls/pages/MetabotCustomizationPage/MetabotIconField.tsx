@@ -151,7 +151,7 @@ export function MetabotIconField() {
           </Text>
           <Group gap="lg">
             <Text fz="md" c="text-secondary">
-              {t`Show Metabot illustrations in chat sidebar and AI exploration page`}
+              {t`Show Metabot illustrations in chat sidebar and natural language query page`}
             </Text>
             <Switch
               aria-label={t`Show Metabot illustrations`}

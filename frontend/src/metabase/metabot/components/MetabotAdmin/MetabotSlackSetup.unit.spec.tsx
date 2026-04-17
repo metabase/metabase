@@ -12,13 +12,13 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SlackAppInfo } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
   createMockSlackAppInfo,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotSlackSetup } from "./MetabotSlackSetup";
 

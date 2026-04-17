@@ -7,7 +7,6 @@ import { Snippets } from "metabase/entities/snippets";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
-import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as CardLib from "metabase/utils/card";
 import { checkNotNull } from "metabase/utils/types";
@@ -40,6 +39,7 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import * as querying from "../querying";
 

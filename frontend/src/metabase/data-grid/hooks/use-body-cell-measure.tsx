@@ -2,7 +2,7 @@ import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 
-import { getPortalRootElement } from "metabase/common/utils/portal";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 

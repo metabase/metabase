@@ -131,14 +131,10 @@
                   :last_evaluated_at (mi/now)}))))
 
 (defn evaluate-all-advisories!
-  "Re-evaluate all non-acknowledged advisories, plus any acknowledged advisories
-   that are still active or in error state."
+  "Re-evaluate all non-acknowledged advisories."
   []
   (let [instance-version (parse-version (:tag config/mb-version-info))
-        advisories       (t2/select :model/SecurityAdvisory
-                                    {:where [:or
-                                             [:= :acknowledged_at nil]
-                                             [:in :match_status ["active" "error"]]]})]
+        advisories       (t2/select :model/SecurityAdvisory :acknowledged_at nil)]
     (doseq [advisory advisories]
       (try
         (evaluate-advisory! advisory instance-version)

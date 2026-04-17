@@ -12,12 +12,12 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { UserProvisioning } from "./UserProvisioning";
 

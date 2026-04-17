@@ -7,7 +7,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
   createMockCollection,
@@ -16,6 +15,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { useHasLibraryDirtyChanges } from "./use-has-library-dirty-changes";
 

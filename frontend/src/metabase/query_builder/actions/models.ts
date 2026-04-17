@@ -2,12 +2,12 @@ import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
+import { addUndo } from "metabase/redux/undo";
 import type {
   DatasetEditorTab,
   Dispatch,
   GetState,
-} from "metabase/redux/store";
-import { addUndo } from "metabase/redux/undo";
+} from "metabase-types/store";
 
 import { getQuestion } from "../selectors";
 

@@ -4,9 +4,9 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionId } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { useGetDefaultCollectionId } from "./use-get-default-collection-id";
 

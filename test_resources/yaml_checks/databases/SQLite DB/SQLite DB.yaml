@@ -1,7 +1,0 @@
-name: SQLite DB
-engine: sqlite
-created_at: '2026-01-01T00:00:00.000000Z'
-settings: null
-serdes/meta:
-- id: SQLite DB
-  model: Database

@@ -5,7 +5,7 @@ import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, NumberInput, Stack, Text } from "metabase/ui";
+import { Box, Stack, Text, TextInput } from "metabase/ui";
 import { isDefaultGroup } from "metabase/utils/groups";
 import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
@@ -20,7 +20,6 @@ import {
   getDescription,
   getErrorMessage,
   getGroupLimitAriaLabel,
-  getMaxUsageInputSuffix,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -105,16 +104,10 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
   const placeholder =
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
-  const handleChange = (group: GroupInfo, inputValue: string | number) => {
+  const handleChange = (group: GroupInfo, inputValue: string) => {
     const maxUsage = sanitizeUsageLimitValue(inputValue);
     setLocalLimitsMap((prev) => ({ ...prev, [group.id]: maxUsage }));
-
-    const isOverInstanceLimit =
-      maxUsage != null && instanceLimit != null && maxUsage > instanceLimit;
-
-    if (!isOverInstanceLimit) {
-      debouncedSaveGroupLimit(group, maxUsage);
-    }
+    debouncedSaveGroupLimit(group, maxUsage);
   };
 
   return (
@@ -139,51 +132,34 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
               </thead>
               <tbody>
                 {groups.map((group) => {
-                  const inputValue = String(localLimitsMap?.[group.id] ?? "");
-                  const maxUsage = sanitizeUsageLimitValue(inputValue);
-                  const isOverInstanceLimit =
-                    maxUsage != null &&
-                    instanceLimit != null &&
-                    maxUsage > instanceLimit;
                   const showAllUsersOverrideTooltip =
-                    isAllUsersGroupOverridingLimit(group) &&
-                    !!allUsersGroup &&
-                    !isOverInstanceLimit;
+                    isAllUsersGroupOverridingLimit(group) && !!allUsersGroup;
 
                   return (
                     <tr key={group.id} className={S.BodyRow}>
                       <td className={S.BodyCell}>{group.name}</td>
                       <td className={S.BodyCell}>
                         <div className={S.InputWrapper}>
-                          <NumberInput
+                          <TextInput
                             placeholder={placeholder}
-                            value={inputValue}
-                            onChange={(value) => handleChange(group, value)}
+                            value={localLimitsMap?.[group.id] ?? ""}
+                            onChange={(e) =>
+                              handleChange(group, e.target.value)
+                            }
                             classNames={{ input: S.LimitInput }}
-                            suffix={getMaxUsageInputSuffix(
-                              limitType,
-                              localLimitsMap?.[group.id],
-                            )}
-                            min={0}
-                            decimalScale={0}
+                            type="number"
+                            min={1}
                             aria-label={getGroupLimitAriaLabel(
                               limitType,
                               group.name,
                             )}
-                            error={
-                              isOverInstanceLimit
-                                ? t`Can't be higher than the instance limit`
-                                : undefined
-                            }
-                            rightSection={
-                              showAllUsersOverrideTooltip ? (
-                                <AllUsersHigherAccessTooltipIcon
-                                  groupName={allUsersGroup.name}
-                                  variant="group-limits"
-                                />
-                              ) : undefined
-                            }
                           />
+                          {showAllUsersOverrideTooltip && (
+                            <AllUsersHigherAccessTooltipIcon
+                              groupName={allUsersGroup.name}
+                              variant="group-limits"
+                            />
+                          )}
                         </div>
                       </td>
                     </tr>

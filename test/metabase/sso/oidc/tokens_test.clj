@@ -343,27 +343,37 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
 ;;; ================================================== SSRF Protection Tests ==================================================
 
 (deftest get-jwks-ssrf-protection-test
-  (testing "Respects oidc-allowed-networks if set — blocked requests return nil (no HTTP request made)"
+  (testing "Respects oidc-allowed-networks if set"
     (mt/with-temporary-setting-values [oidc-allowed-networks :external-only]
       (testing "Rejects internal addresses (localhost)"
         (oidc.tokens/clear-jwks-cache!)
-        (is (nil? (oidc.tokens/get-jwks "http://localhost/jwks"))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid JWKS URI: address not allowed by network restrictions"
+                              (oidc.tokens/get-jwks "http://localhost/jwks"))))
 
       (testing "Rejects internal addresses (127.0.0.1)"
         (oidc.tokens/clear-jwks-cache!)
-        (is (nil? (oidc.tokens/get-jwks "http://127.0.0.1/jwks"))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid JWKS URI: address not allowed by network restrictions"
+                              (oidc.tokens/get-jwks "http://127.0.0.1/jwks"))))
 
       (testing "Rejects cloud metadata endpoint"
         (oidc.tokens/clear-jwks-cache!)
-        (is (nil? (oidc.tokens/get-jwks "http://169.254.169.254/jwks"))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid JWKS URI: address not allowed by network restrictions"
+                              (oidc.tokens/get-jwks "http://169.254.169.254/jwks"))))
 
       (testing "Rejects private network addresses (192.168.x.x)"
         (oidc.tokens/clear-jwks-cache!)
-        (is (nil? (oidc.tokens/get-jwks "http://192.168.1.1/jwks"))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid JWKS URI: address not allowed by network restrictions"
+                              (oidc.tokens/get-jwks "http://192.168.1.1/jwks"))))
 
       (testing "Rejects private network addresses (10.x.x.x)"
         (oidc.tokens/clear-jwks-cache!)
-        (is (nil? (oidc.tokens/get-jwks "http://10.0.0.1/jwks")))))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid JWKS URI: address not allowed by network restrictions"
+                              (oidc.tokens/get-jwks "http://10.0.0.1/jwks")))))))
 
 ;;; ================================================== Algorithm Support Tests ==================================================
 

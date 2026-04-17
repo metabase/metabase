@@ -112,7 +112,8 @@
          (mapv (fn [{:keys [id name schema description]}]
                  (let [table-query (lib/query mp (lib.metadata/table mp id))
                        cols (->> (lib/visible-columns table-query)
-                                 (map #(metabot.tools.u/add-table-reference table-query %)))]
+                                 (map #(metabot.tools.u/add-table-reference table-query %)))
+                       field-id-prefix (metabot.tools.u/table-field-id-prefix id)]
                    {:id id
                     :type :table
                     :name name
@@ -121,7 +122,7 @@
                     :database_engine engine
                     :database_schema schema
                     :description description
-                    :fields (mapv #(metabot.tools.u/->result-column table-query %) cols)
+                    :fields (into [] (map-indexed #(metabot.tools.u/->result-column table-query %2 %1 field-id-prefix) cols))
                     :metrics []}))
                all-tables))))))
 

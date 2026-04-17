@@ -1,4 +1,4 @@
-import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
+import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 /**
  * Ensures that the column is removed from the state if it is not used in any settings.

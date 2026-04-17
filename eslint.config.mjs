@@ -22,12 +22,7 @@ import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
-import boundaries from "eslint-plugin-boundaries";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
-import {
-  elements as boundaryElements,
-  enforcedRules as boundaryRules,
-} from "./frontend/lint/module-boundaries.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -274,34 +269,6 @@ const configs = [
       ],
 
       ...i18nextPlugin.configs["flat/recommended"].rules,
-    },
-  },
-  {
-    files: [
-      "frontend/src/**/*.{js,jsx,ts,tsx}",
-      "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
-    ],
-    plugins: {
-      boundaries,
-    },
-    settings: {
-      "boundaries/elements": boundaryElements,
-      "boundaries/ignore": [
-        "**/*.unit.spec.*",
-        "**/e2e/**",
-        "*.stories.*",
-        "test/**",
-      ],
-    },
-    rules: {
-      "boundaries/element-types": [
-        "error",
-        {
-          default: "disallow",
-          rules: boundaryRules,
-          message: "${file.type} cannot import from ${dependency.type}",
-        },
-      ],
     },
   },
   {

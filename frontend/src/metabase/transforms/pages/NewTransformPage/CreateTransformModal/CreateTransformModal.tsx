@@ -102,11 +102,6 @@ export function CreateTransformModal({
     [validationSchemaExtension, defaultSchema],
   );
 
-  const validationContext = useMemo(
-    () => ({ supportsSchemas: Boolean(supportsSchemas) }),
-    [supportsSchemas],
-  );
-
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -124,7 +119,6 @@ export function CreateTransformModal({
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}
-        validationContext={validationContext}
         onSubmit={handleSubmit || defaultHandleSubmit}
         validateOnMount={validateOnMount}
       >

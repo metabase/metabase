@@ -1,26 +1,14 @@
 import { t } from "ttag";
 
-import {
-  Anchor,
-  Badge,
-  Box,
-  Button,
-  Card,
-  Group,
-  Icon,
-  List,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from "metabase/ui";
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { Anchor, Badge, Card, Group, Stack, Text, Title } from "metabase/ui";
 import type {
   Advisory,
   AdvisoryId,
   AdvisorySeverity,
 } from "metabase-types/api";
 
-import { isAcknowledged } from "../../utils";
+import { isAcknowledged, isAffected } from "../../utils";
 
 import S from "./AdvisoryCard.module.css";
 
@@ -31,101 +19,105 @@ const SEVERITY_CLASS: Record<AdvisorySeverity, string> = {
   low: S.severityLow,
 };
 
+function formatVersionRange(advisory: Advisory): string {
+  return advisory.affected_versions
+    .map((v) => `${v.min} – ${v.fixed}`)
+    .join(", ");
+}
+
 interface AdvisoryCardProps {
   advisory: Advisory;
-  isAffecting: boolean;
   onAcknowledge?: (advisoryId: AdvisoryId) => void;
 }
 
-export function AdvisoryCard({
-  advisory,
-  isAffecting,
-  onAcknowledge,
-}: AdvisoryCardProps) {
+export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
+  const affected = isAffected(advisory);
   const acknowledged = isAcknowledged(advisory);
+  const isSmallScreen = useIsSmallScreen();
+
+  const badges = (
+    <>
+      <Badge className={SEVERITY_CLASS[advisory.severity]}>
+        {advisory.severity}
+      </Badge>
+      <Badge
+        variant="outline"
+        className={affected ? S.statusAffected : S.statusNotAffected}
+        data-testid="affected-status"
+      >
+        {affected ? t`Affected` : t`Not affected`}
+      </Badge>
+      {acknowledged && (
+        <Badge color="brand" variant="light" data-testid="acknowledged-badge">
+          {t`Dismissed`}
+        </Badge>
+      )}
+    </>
+  );
+
+  const acknowledgeButton = !acknowledged && onAcknowledge && (
+    <Anchor
+      component="button"
+      size="sm"
+      onClick={() => onAcknowledge(advisory.advisory_id)}
+      data-testid="acknowledge-button"
+    >
+      {t`Dismiss`}
+    </Anchor>
+  );
 
   return (
-    <Card p="xl" withBorder data-testid="advisory-card">
-      <Stack gap="md">
-        <Group gap="sm" justify="space-between" align="flex-start">
-          <Badge
-            className={
-              isAffecting
-                ? SEVERITY_CLASS[advisory.severity]
-                : S.severityNeutral
-            }
-          >
-            {advisory.severity}
-          </Badge>
-          {!isAffecting && (
-            <Group gap="xs" align="center">
-              <Text size="sm" c="success" fw={500}>
-                {t`Your instance is not affected`}
-              </Text>
-              <Icon name="check_filled" c="success" size={20} />
+    <Card
+      p="lg"
+      withBorder
+      className={affected ? S.affectedCard : undefined}
+      data-testid="advisory-card"
+      mih={184}
+    >
+      <Stack gap="sm">
+        {isSmallScreen && (
+          <Group gap="sm" justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="wrap">
+              {badges}
             </Group>
-          )}
-        </Group>
-
-        <Title order={4}>{advisory.title}</Title>
-
-        <Text c="text-secondary">{advisory.description}</Text>
-
-        {advisory.affected_versions.length > 0 && (
-          <Box>
-            <Text fw={700} mb="xs">{t`Affected versions`}</Text>
-            <List size="sm">
-              {advisory.affected_versions.map((v) => (
-                <List.Item
-                  key={`${v.min}-${v.fixed}`}
-                >{`${v.min} - ${v.fixed}`}</List.Item>
-              ))}
-            </List>
-          </Box>
+            {acknowledgeButton}
+          </Group>
         )}
-
-        <Box>
-          <Text fw={700} mb="xs">{t`Remediation`}</Text>
-          <Text c="text-secondary">{advisory.remediation}</Text>
-        </Box>
-
-        <Group gap="md" mt="sm">
-          {!acknowledged && onAcknowledge && (
-            <Tooltip
-              label={t`Clicking on Dismiss just hides the notification and you can view this later by toggling 'Show dismissed'`}
-            >
-              <Button
-                variant="outline"
-                color="text-secondary"
-                onClick={() => onAcknowledge(advisory.advisory_id)}
-                data-testid="acknowledge-button"
-              >
-                {t`Dismiss`}
-              </Button>
-            </Tooltip>
-          )}
-          {acknowledged && (
-            <Button
-              variant="outline"
-              color="text-secondary"
-              disabled
-              data-testid="acknowledge-button"
-            >
-              {t`Dismissed`}
-            </Button>
-          )}
-          {advisory.advisory_url && (
-            <Anchor
-              href={advisory.advisory_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="sm"
-              style={{ alignSelf: "center" }}
-            >
-              {t`View advisory`}
-            </Anchor>
-          )}
+        <Group gap="sm" align="center" wrap="wrap">
+          {!isSmallScreen && badges}
+          <Title order={4}>{advisory.title}</Title>
         </Group>
+
+        <Text lineClamp={2} c="text-secondary">
+          {advisory.description}
+        </Text>
+
+        <Stack gap="xs">
+          {advisory.affected_versions.length > 0 && (
+            <Text size="sm" c="text-secondary">
+              {t`Affected versions: ${formatVersionRange(advisory)}`}
+            </Text>
+          )}
+          <Text size="sm" c="text-secondary">
+            {t`Remediation: ${advisory.remediation}`}
+          </Text>
+        </Stack>
+
+        {(advisory.advisory_url || !isSmallScreen) && (
+          <Group gap="md" h={28}>
+            {!isSmallScreen && acknowledgeButton}
+            {advisory.advisory_url && (
+              <Anchor
+                href={advisory.advisory_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+              >
+                {t`View advisory`}
+              </Anchor>
+            )}
+          </Group>
+        )}
       </Stack>
     </Card>
   );

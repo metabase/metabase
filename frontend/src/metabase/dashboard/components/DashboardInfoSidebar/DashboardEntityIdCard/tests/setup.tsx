@@ -4,12 +4,12 @@ import {
   type RenderWithProvidersOptions,
   renderWithProviders,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { DashboardEntityIdCard } from "../DashboardEntityIdCard";
 

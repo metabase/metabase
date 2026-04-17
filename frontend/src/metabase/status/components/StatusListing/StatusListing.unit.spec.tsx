@@ -4,19 +4,19 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DownloadsState } from "metabase/redux/store";
-import {
-  createMockDownload,
-  createMockState,
-  createMockUpload,
-} from "metabase/redux/store/mocks";
-import type { FileUploadState } from "metabase/redux/store/upload";
 import type { Database } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { DownloadsState } from "metabase-types/store";
+import {
+  createMockDownload,
+  createMockState,
+  createMockUpload,
+} from "metabase-types/store/mocks";
+import type { FileUploadState } from "metabase-types/store/upload";
 
 import { StatusListing } from "./StatusListing";
 

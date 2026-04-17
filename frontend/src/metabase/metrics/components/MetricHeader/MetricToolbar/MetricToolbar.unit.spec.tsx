@@ -4,7 +4,6 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { CollectionType, User } from "metabase-types/api";
 import {
   createMockCard,
@@ -12,6 +11,7 @@ import {
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { MetricToolbar } from "./MetricToolbar";
 
@@ -148,7 +148,6 @@ describe("MetricToolbar", () => {
       setup({
         showDataStudioLink: true,
         collectionType: "library-metrics",
-        isAdmin: true,
       });
       await openMenu();
 
@@ -158,7 +157,7 @@ describe("MetricToolbar", () => {
     });
 
     it("should hide 'Open in Data Studio' when not in library collection", async () => {
-      setup({ showDataStudioLink: true, collectionType: null, isAdmin: true });
+      setup({ showDataStudioLink: true, collectionType: null });
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
@@ -170,17 +169,7 @@ describe("MetricToolbar", () => {
       setup({
         showDataStudioLink: false,
         collectionType: "library-metrics",
-        isAdmin: true,
       });
-      await openMenu();
-
-      expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
-      expect(getDividers()).toHaveLength(2);
-      expectNoConsecutiveOrTrailingDividers();
-    });
-
-    it("should hide 'Open in Data Studio' when user is not an admin", async () => {
-      setup({ showDataStudioLink: true, collectionType: "library-metrics" });
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();

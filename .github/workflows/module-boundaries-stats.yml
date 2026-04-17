@@ -24,12 +24,6 @@ jobs:
             console.log(named.length);
           ")
 
-          ENFORCED_MODULES=$(node --input-type=module -e "
-            import { elements } from './frontend/lint/module-boundaries.mjs';
-            const enforced = new Set(elements.filter(e => e.enforceOutgoing).map(e => e.type));
-            console.log(enforced.size);
-          ")
-
           NAMED_DIRS=$(node --input-type=module -e "
             import { elements } from './frontend/lint/module-boundaries.mjs';
             const dirs = new Set();
@@ -45,17 +39,15 @@ jobs:
 
           VIOLATIONS=$(bun run module-boundaries 2>&1 | grep -o '✖ [0-9]* problems' | grep -o '[0-9]*' || echo "0")
 
-          echo "$NAMED_MODULES modules, $ENFORCED_MODULES enforced, $UNMODULED unmoduled folders, $VIOLATIONS violations"
+          echo "$NAMED_MODULES modules, $UNMODULED unmoduled folders, $VIOLATIONS violations"
 
           echo "NAMED_MODULES=$NAMED_MODULES" >> $GITHUB_OUTPUT
-          echo "ENFORCED_MODULES=$ENFORCED_MODULES" >> $GITHUB_OUTPUT
           echo "UNMODULED=$UNMODULED" >> $GITHUB_OUTPUT
           echo "VIOLATIONS=$VIOLATIONS" >> $GITHUB_OUTPUT
       - name: Upload stats
         uses: actions/github-script@v7
         env:
           NAMED_MODULES: ${{ steps.get-stats.outputs.NAMED_MODULES }}
-          ENFORCED_MODULES: ${{ steps.get-stats.outputs.ENFORCED_MODULES }}
           UNMODULED: ${{ steps.get-stats.outputs.UNMODULED }}
           VIOLATIONS: ${{ steps.get-stats.outputs.VIOLATIONS }}
           API_KEY: ${{ secrets.STATS_API_KEY }}
@@ -64,7 +56,6 @@ jobs:
             const { uploadCsvToMb } = require('${{ github.workspace }}/.github/scripts/csv-to-mb.js');
 
             console.log("NAMED_MODULES", Number(process.env.NAMED_MODULES));
-            console.log("ENFORCED_MODULES", Number(process.env.ENFORCED_MODULES));
             console.log("UNMODULED", Number(process.env.UNMODULED));
             console.log("VIOLATIONS", Number(process.env.VIOLATIONS));
 
@@ -72,7 +63,6 @@ jobs:
               {
                 'Date': new Date().toISOString().slice(0, 10), // YYYY-MM-DD
                 'Modules': Number(process.env.NAMED_MODULES),
-                'Enforced modules': Number(process.env.ENFORCED_MODULES),
                 'Unmoduled folders': Number(process.env.UNMODULED),
                 'Violations': Number(process.env.VIOLATIONS),
               }

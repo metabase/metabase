@@ -2,10 +2,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import {
-  findChannelId,
-  getDisplayNames,
-} from "metabase/notifications/channels/utils";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
@@ -35,12 +31,9 @@ export const SlackChannelFieldNew = ({
   const channelField = channelSpec.fields?.find(
     (field) => field.name === CHANNEL_FIELD_NAME,
   );
-  const slackOptions = channelField?.options ?? [];
-  const displayNames = getDisplayNames(slackOptions);
   const value = channel.recipients[0]?.details.value ?? "";
 
   const updateChannel = (value: string) => {
-    const newChannelId = findChannelId(slackOptions, value);
     onChange({
       ...channel,
       recipients: [
@@ -48,7 +41,6 @@ export const SlackChannelFieldNew = ({
           type: "notification-recipient/raw-value",
           details: {
             value,
-            ...(newChannelId != null && { channel_id: newChannelId }),
           },
         },
       ],
@@ -71,7 +63,8 @@ export const SlackChannelFieldNew = ({
       updateChannel(fullChannelName);
     }
 
-    const isPrivate = value.trim().length > 0 && !displayNames.includes(value);
+    const isPrivate =
+      value.trim().length > 0 && !channelField?.options?.includes(value);
 
     setHasPrivateChannelWarning(isPrivate);
   };
@@ -81,7 +74,7 @@ export const SlackChannelFieldNew = ({
   return (
     <div>
       <Autocomplete
-        data={displayNames}
+        data={channelField?.options || []}
         value={value}
         placeholder={t`Pick a user or channel...`}
         limit={300}

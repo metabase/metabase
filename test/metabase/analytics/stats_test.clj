@@ -570,7 +570,6 @@
     :offer-metabase-ai-managed
     :query-reference-validation
     :metabase-ai-managed
-    :metabot-v3
     :cloud-custom-smtp
     :session-timeout-config
     :sso-oidc

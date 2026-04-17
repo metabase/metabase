@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { editSummary } from "metabase/redux/query-builder";
-import type { Dispatch } from "metabase/redux/store";
 import type {
   ClickActionBase,
   Drill,
 } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
+import type { Dispatch } from "metabase-types/store";
 
 const ACTIONS: Record<Lib.SummarizeColumnDrillThruOperator, ClickActionBase> = {
   sum: {

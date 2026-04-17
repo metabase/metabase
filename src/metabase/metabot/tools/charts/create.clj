@@ -1,8 +1,10 @@
 (ns metabase.metabot.tools.charts.create
   "Tool for creating charts from queries."
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [metabase.metabot.agent.links :as links]
+   [metabase.lib.core :as lib]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -12,6 +14,18 @@
   #{:table :bar :line :pie :sunburst :area :combo :row :pivot
     :scatter :waterfall :sankey :scalar :smartscalar :gauge
     :progress :funnel :object :map})
+
+(defn- query->url-hash
+  "Convert an MBQL 4 (legacy) or MBQL 5 query to a base64-encoded URL hash."
+  [query]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (let [dataset-query (if (and (map? query) (:lib/type query))
+                        (lib/->legacy-MBQL query)
+                        query)]
+    (-> {:dataset_query dataset-query}
+        json/encode
+        (.getBytes "UTF-8")
+        codecs/bytes->b64-str)))
 
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
@@ -66,7 +80,7 @@
 
     ;; Create the chart and generate navigation URL
     (let [chart-id (str (random-uuid))
-          results-url (links/query-and-viz-link query chart-type)
+          results-url (str "/question#" (query->url-hash query))
           chart-data {:chart-id chart-id
                       :query-id query-id
                       :chart-type chart-type}]

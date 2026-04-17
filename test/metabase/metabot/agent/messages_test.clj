@@ -246,9 +246,9 @@
                                         :database_id 2,
                                         :name "orders",
                                         :fields
-                                        [{:field_id "t23-0" :name "id" :display_name "ID" :base_type "type/Integer" :database_type "int4" :semantic_type "type/PK"}
-                                         {:field_id "t24-0" :name "status" :display_name "Status" :base_type "type/Integer" :database_type "int4"}
-                                         {:field_id "t25-0" :name "total" :display_name "Total" :base_type "type/Integer" :database_type "int4"}]
+                                        [{:field_id "t23-0" :name "id" :display_name "ID" :type :number :database_type "int4" :semantic_type "pk"}
+                                         {:field_id "t24-0" :name "status" :display_name "Status" :type :number :database_type "int4"}
+                                         {:field_id "t25-0" :name "total" :display_name "Total" :type :number :database_type "int4"}]
                                         :type :table
                                         :database_schema "public",
                                         :display_name "Orders"}],

@@ -4,13 +4,13 @@ import { Route } from "react-router";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { SecurityCenterBanner } from "./SecurityCenterBanner";
 

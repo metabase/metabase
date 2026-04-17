@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import type { StoreDashboard } from "metabase/redux/store";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -15,6 +14,7 @@ import type {
   QuestionDashboardCard,
   VirtualCard,
 } from "metabase-types/api";
+import type { StoreDashboard } from "metabase-types/store";
 
 /**
  * All navigation URLs from dashboards to cards (e.x. clicking a title, drill through)

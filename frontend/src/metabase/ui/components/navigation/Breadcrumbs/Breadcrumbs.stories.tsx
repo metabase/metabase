@@ -1,9 +1,10 @@
-import { Anchor, Breadcrumbs, Icon } from "metabase/ui";
+import { Link } from "metabase/common/components/Link";
+import { Breadcrumbs, Icon } from "metabase/ui";
 
 const DefaultTemplate = () => (
   <Breadcrumbs separator={<Icon size={12} name="chevronright" />}>
-    <Anchor href="#">Root</Anchor>
-    <Anchor href="#">Nested</Anchor>
+    <Link to="#">Root</Link>
+    <Link to="#">Nested</Link>
     <span>Leaf</span>
   </Breadcrumbs>
 );

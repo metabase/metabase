@@ -24,6 +24,7 @@
 .DashboardHeaderContainer {
   position: relative;
   z-index: 2;
+  transition: var(--transition-theme-change);
 
   &:not(.noBorder) {
     border-bottom: 1px solid var(--mb-color-border);

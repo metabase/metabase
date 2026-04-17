@@ -12,7 +12,7 @@ import type {
   DatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/common/types";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type { DatePickerSubmitButtonProps } from "../types";
 

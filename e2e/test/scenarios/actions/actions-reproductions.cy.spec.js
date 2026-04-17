@@ -482,7 +482,7 @@ describe("issue 32840", () => {
   it("uses correct timestamp when executing implicit update action (metabase#32840)", () => {
     cy.findAllByTestId("cell-data").eq(8).click();
     H.modal().within(() => {
-      cy.findByText("July 19, 2026, 7:44 PM").should("be.visible");
+      cy.findByText("July 19, 2023, 7:44 PM").should("be.visible");
       cy.findByTestId("actions-menu").click();
     });
     H.popover().findByText("Update").should("be.visible").click();
@@ -491,12 +491,12 @@ describe("issue 32840", () => {
       .within(() => {
         cy.findByPlaceholderText("Created At").should(
           "have.value",
-          "2026-07-19T19:44:56",
+          "2023-07-19T19:44:56",
         );
         cy.button("Update").scrollIntoView().click();
       });
     cy.wait("@executeAction");
-    H.modal().findByText("July 19, 2026, 7:44 PM").should("be.visible");
+    H.modal().findByText("July 19, 2023, 7:44 PM").should("be.visible");
   });
 });
 

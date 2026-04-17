@@ -2,7 +2,7 @@
   background: var(--mb-color-background-primary);
   box-sizing: border-box;
   padding: 0.5rem 1rem;
-  text-align: left;
+  text-align: center;
   vertical-align: middle;
 
   &.CenterText {

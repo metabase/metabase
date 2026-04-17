@@ -756,7 +756,7 @@ describe("issue 36027", () => {
       cy.findByText("Count").should("be.visible"); // y-axis
 
       // x-axis values
-      ["January 2026", "January 2027", "January 2028", "January 2029"].forEach(
+      ["January 2023", "January 2024", "January 2025", "January 2026"].forEach(
         (state) => {
           cy.findByText(state).should("be.visible");
         },
@@ -1177,7 +1177,7 @@ describe("issue 23449", () => {
   const checkTable = () => {
     H.assertTableData({
       columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
-      firstRows: [[1, 1, "christ", "E", "May 15, 2027, 8:25 PM"]],
+      firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
     });
   };
 
@@ -1281,7 +1281,7 @@ describe("issue 12679", () => {
       cy.findByText("Sum of Total").should("exist");
     });
     cy.findByTestId("question-row-count")
-      .findByText("Showing 175 rows")
+      .findByText("Showing 174 rows")
       .should("exist");
   });
 });
@@ -1757,8 +1757,8 @@ describe("Issue 42817", () => {
                   "join-alias": "NativeOrders",
                 },
               ],
-              "2026-06-23T00:00Z",
-              "2026-07-03T00:00Z",
+              "2023-06-23T00:00Z",
+              "2023-07-03T00:00Z",
             ],
           },
         },

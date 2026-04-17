@@ -48,15 +48,6 @@ import {
   SOFT_RELOAD_CARD,
   ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
-import type {
-  ForeignKeyReference,
-  InitialChartSettingState,
-  QueryBuilderLoadingControls,
-  QueryBuilderParentEntityState,
-  QueryBuilderQueryStatus,
-  QueryBuilderUIControls,
-  Range,
-} from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
 import type { Deferred } from "metabase/utils/promise";
 import type {
@@ -68,6 +59,15 @@ import type {
   ParameterValuesMap,
   TimelineEvent,
 } from "metabase-types/api";
+import type {
+  ForeignKeyReference,
+  InitialChartSettingState,
+  QueryBuilderLoadingControls,
+  QueryBuilderParentEntityState,
+  QueryBuilderQueryStatus,
+  QueryBuilderUIControls,
+  Range,
+} from "metabase-types/store";
 
 import {
   API_CREATE_QUESTION,

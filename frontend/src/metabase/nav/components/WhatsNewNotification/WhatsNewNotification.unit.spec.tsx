@@ -8,7 +8,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { VersionInfo, VersionInfoRecord } from "metabase-types/api"; // Add VersionInfo
 import {
@@ -18,6 +17,7 @@ import {
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { WhatsNewNotification } from "./WhatsNewNotification";
 

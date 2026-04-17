@@ -1,7 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import type { VisualizerState } from "metabase/redux/store/visualizer";
 import {
   extractRemappings,
   getVisualization,
@@ -16,6 +15,7 @@ import type {
   RawSeries,
   SingleSeries,
 } from "metabase-types/api";
+import type { VisualizerState } from "metabase-types/store/visualizer";
 
 import {
   createDataSource,

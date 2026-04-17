@@ -173,23 +173,21 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.saveDashcardVisualizerModal();
 
-    H.getDashboardCard(1)
-      .findByTestId("chart-container")
-      .within(() => {
-        cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
-        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-        cy.findAllByText("Created At: Month").should("exist");
-      });
+    H.getDashboardCard(1).within(() => {
+      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findAllByText("Created At: Month").should("exist");
+    });
 
     H.saveDashboard();
 
-    H.getDashboardCard(1)
-      .findByTestId("chart-container")
-      .within(() => {
+    H.getDashboardCard(1).within(() => {
+      cy.findByTestId("chart-container").within(() => {
         cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
         cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
         cy.findAllByText("Created At: Month").should("exist");
       });
+    });
   });
 
   it("should allow to visualize an existing dashcard another way if its viz type isn't supported by visualizer", () => {

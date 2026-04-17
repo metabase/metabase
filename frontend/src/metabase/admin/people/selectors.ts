@@ -2,9 +2,9 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import { ACTIVE_USERS_NUDGE_THRESHOLD } from "metabase/admin/people/constants";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
-import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import type { State } from "metabase-types/store";
 
 export const getUserTemporaryPassword = (
   state: State,

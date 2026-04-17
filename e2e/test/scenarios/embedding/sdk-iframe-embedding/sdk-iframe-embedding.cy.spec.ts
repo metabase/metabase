@@ -523,7 +523,7 @@ describe("scenarios > embedding > modular embedding", () => {
       });
 
       frame.within(() => {
-        cy.findByText("Order 1").click();
+        cy.findByText("Order 448").click();
       });
 
       cy.log("Verify handleLink was called with the correct URL");
@@ -531,7 +531,7 @@ describe("scenarios > embedding > modular embedding", () => {
         .its("handleLinkCalls")
         .should("have.length", 1)
         .its(0)
-        .should("include", "https://example.org/order/1");
+        .should("include", "https://example.org/order/448");
 
       cy.log("Verify that no default navigation happened");
       cy.get("iframe")

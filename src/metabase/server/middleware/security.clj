@@ -123,7 +123,6 @@
 
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
-(def ^:private cljs-dev-port (or (env/env :mb-cljs-dev-port) "9630"))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -147,7 +146,7 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
-                                    (str "http://localhost:" cljs-dev-port)])
+                                    "http://localhost:9630"])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
@@ -161,7 +160,7 @@
                                    frontend-address)
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   (str "http://localhost:" cljs-dev-port))
+                                   "http://localhost:9630")
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
@@ -181,7 +180,7 @@
                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
                                  ;; CLJS REPL
                                  (when config/is-dev?
-                                   (str "ws://*:" cljs-dev-port))]
+                                   "ws://*:9630")]
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})

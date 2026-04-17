@@ -21,6 +21,7 @@ const makeAdvisory = (overrides: Partial<Advisory>): Advisory => ({
 
 const ALL_PASS_FILTER: AdvisoryFilter = {
   severity: "all",
+  status: "all",
   showAcknowledged: true,
 };
 
@@ -42,7 +43,7 @@ describe("isAffected", () => {
 });
 
 describe("sortAdvisories", () => {
-  it("should split advisories into affecting and notAffecting", () => {
+  it("should place affected items before non-affected items", () => {
     const advisories = [
       makeAdvisory({
         advisory_id: "1",
@@ -56,12 +57,12 @@ describe("sortAdvisories", () => {
       }),
     ];
 
-    const { affecting, notAffecting } = sortAdvisories(advisories);
-    expect(affecting.map((a) => a.advisory_id)).toEqual(["2"]);
-    expect(notAffecting.map((a) => a.advisory_id)).toEqual(["1"]);
+    const sorted = sortAdvisories(advisories);
+    expect(sorted[0].advisory_id).toBe("2");
+    expect(sorted[1].advisory_id).toBe("1");
   });
 
-  it("should sort by severity within each group", () => {
+  it("should sort by severity within the same affected status", () => {
     const advisories = [
       makeAdvisory({
         advisory_id: "low",
@@ -85,8 +86,8 @@ describe("sortAdvisories", () => {
       }),
     ];
 
-    const { affecting } = sortAdvisories(advisories);
-    expect(affecting.map((a) => a.advisory_id)).toEqual([
+    const sorted = sortAdvisories(advisories);
+    expect(sorted.map((a) => a.advisory_id)).toEqual([
       "critical",
       "high",
       "medium",
@@ -110,35 +111,13 @@ describe("sortAdvisories", () => {
       }),
     ];
 
-    const { affecting } = sortAdvisories(advisories);
-    expect(affecting[0].advisory_id).toBe("newer");
-    expect(affecting[1].advisory_id).toBe("older");
+    const sorted = sortAdvisories(advisories);
+    expect(sorted[0].advisory_id).toBe("newer");
+    expect(sorted[1].advisory_id).toBe("older");
   });
 
-  it("should sort notAffecting by severity and date", () => {
-    const advisories = [
-      makeAdvisory({
-        advisory_id: "low-na",
-        severity: "low",
-        match_status: "not_affected",
-      }),
-      makeAdvisory({
-        advisory_id: "critical-na",
-        severity: "critical",
-        match_status: "resolved",
-      }),
-    ];
-
-    const { affecting, notAffecting } = sortAdvisories(advisories);
-    expect(affecting).toHaveLength(0);
-    expect(notAffecting.map((a) => a.advisory_id)).toEqual([
-      "critical-na",
-      "low-na",
-    ]);
-  });
-
-  it("should return empty arrays when given an empty array", () => {
-    expect(sortAdvisories([])).toEqual({ affecting: [], notAffecting: [] });
+  it("should return an empty array when given an empty array", () => {
+    expect(sortAdvisories([])).toEqual([]);
   });
 
   it("should not mutate the original array", () => {
@@ -150,25 +129,6 @@ describe("sortAdvisories", () => {
 
     sortAdvisories(advisories);
     expect(advisories).toEqual(original);
-  });
-
-  it("should treat error status as affecting", () => {
-    const advisories = [
-      makeAdvisory({
-        advisory_id: "err",
-        match_status: "error",
-        severity: "high",
-      }),
-      makeAdvisory({
-        advisory_id: "ok",
-        match_status: "not_affected",
-        severity: "critical",
-      }),
-    ];
-
-    const { affecting, notAffecting } = sortAdvisories(advisories);
-    expect(affecting.map((a) => a.advisory_id)).toEqual(["err"]);
-    expect(notAffecting.map((a) => a.advisory_id)).toEqual(["ok"]);
   });
 });
 
@@ -214,6 +174,24 @@ describe("filterAdvisories", () => {
     expect(result[0].advisory_id).toBe("1");
   });
 
+  it("should filter by affected status", () => {
+    const result = filterAdvisories(advisories, {
+      ...ALL_PASS_FILTER,
+      status: "affected",
+    });
+    expect(result.every((a) => a.match_status === "active")).toBe(true);
+    expect(result).toHaveLength(2);
+  });
+
+  it("should filter by not-affected status", () => {
+    const result = filterAdvisories(advisories, {
+      ...ALL_PASS_FILTER,
+      status: "not-affected",
+    });
+    expect(result.every((a) => a.match_status !== "active")).toBe(true);
+    expect(result).toHaveLength(2);
+  });
+
   it("should hide acknowledged advisories when showAcknowledged is false", () => {
     const result = filterAdvisories(advisories, {
       ...ALL_PASS_FILTER,
@@ -225,7 +203,8 @@ describe("filterAdvisories", () => {
 
   it("should combine multiple filters", () => {
     const result = filterAdvisories(advisories, {
-      severity: "critical",
+      severity: "all",
+      status: "affected",
       showAcknowledged: false,
     });
     expect(result).toHaveLength(1);

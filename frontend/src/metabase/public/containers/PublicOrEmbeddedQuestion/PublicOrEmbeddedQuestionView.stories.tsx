@@ -16,10 +16,6 @@ import {
 } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { publicReducers } from "metabase/reducers-public";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
@@ -35,6 +31,10 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import {
   PublicOrEmbeddedQuestionView,

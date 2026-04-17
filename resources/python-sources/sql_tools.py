@@ -1013,11 +1013,6 @@ class FieldReferenceWalker:
             alias = expr.alias
             for result in inner_results:
                 if "col" in result:
-                    # Shallow-copy before overwriting alias — the same dict may
-                    # be referenced as a source-column by other scopes. Mutating
-                    # it replaces the inner alias (e.g. "datum") with the outer
-                    # alias (e.g. "b"), breaking column resolution upstream.
-                    result["col"] = dict(result["col"])
                     result["col"]["alias"] = alias
             return inner_results
 
@@ -1379,10 +1374,8 @@ class FieldReferenceWalker:
                                 "source_columns": source_ref
                             }
                         }]
-                # Copy before returning — callers may mutate the alias
-                # (e.g. _find_returned_fields sets alias for outer SELECT AS),
-                # and source_column is shared with the source's returned_fields.
-                return [{"col": dict(source_column)}]
+                # Return custom_field as-is to preserve structure
+                return [{"col": source_column}]
             # For composite_field, etc.: return as-is to preserve structure
             else:
                 return [{"col": source_column}]

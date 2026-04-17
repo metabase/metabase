@@ -103,10 +103,7 @@ export function MetricSearchPanel({
                 size="xs"
                 p="sm"
                 leftSection={
-                  <Icon
-                    name={hasFilters ? "filter_plus" : "filter"}
-                    size={16}
-                  />
+                  <Icon name={hasFilters ? "filter_plus" : "filter"} />
                 }
                 className={hasFilters ? S.filterButtonWithCount : undefined}
               >

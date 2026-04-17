@@ -1,12 +1,6 @@
 import { getStore } from "__support__/entities-store";
 import { getParameters } from "metabase/dashboard/selectors";
 import { mainReducers } from "metabase/reducers-main";
-import type { State } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
 import {
   createMockCard,
   createMockDashboardCard,
@@ -15,6 +9,12 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import { createMockNormalizedField } from "metabase-types/api/mocks/schema";
+import type { State } from "metabase-types/store";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "metabase-types/store/mocks";
 
 import {
   REMOVE_PARAMETER,

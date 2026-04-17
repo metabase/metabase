@@ -12,7 +12,6 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
@@ -20,6 +19,7 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 

@@ -26,11 +26,6 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 - **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide
 - **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review checklist
 
-## Serialization
-
-- **[serdes-workflow](.claude/skills/serdes-workflow/SKILL.md)** - Export, validate, and import Metabase content via serdes
-- **[serdes-yaml-edit](.claude/skills/serdes-yaml-edit/SKILL.md)** - Edit exported YAML files with correct portable references
-
 ## Frontend
 
 - **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions

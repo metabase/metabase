@@ -1,6 +1,4 @@
-agent-api-enabled?: null
 aggregated-query-row-limit: null
-ai-features-enabled?: null
 allowed-iframe-hosts: null
 application-colors: null
 application-favicon-url: null
@@ -51,7 +49,6 @@ metabot-nlq-system-prompt: null
 metabot-quota-reached-message: null
 metabot-show-illustrations: null
 metabot-sql-system-prompt: null
-mcp-enabled?: null
 native-query-autocomplete-match-style: null
 no-data-illustration: null
 no-data-illustration-custom: null

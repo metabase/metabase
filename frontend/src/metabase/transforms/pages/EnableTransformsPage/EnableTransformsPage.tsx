@@ -1,11 +1,9 @@
 import { t } from "ttag";
 
 import { useUpdateSettingMutation } from "metabase/api";
-import { getPlan } from "metabase/common/utils/plan";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Button,
@@ -22,13 +20,6 @@ import {
 import { useSelector } from "metabase/utils/redux";
 export const EnableTransformsPage = () => {
   const isAdmin = useSelector(getUserIsAdmin);
-  const plan = useSelector((state) =>
-    getPlan(getSetting(state, "token-features")),
-  );
-  const permissionsDescription =
-    plan === "pro-self-hosted"
-      ? t`Only Analysts and Admins can create and run transforms`
-      : t`Only Admins can create and run transforms`;
 
   const [updateSetting, { isLoading: updateSettingLoading }] =
     useUpdateSettingMutation();
@@ -84,7 +75,7 @@ export const EnableTransformsPage = () => {
             <SimpleCard
               icon="lock"
               title={t`Permissioned`}
-              description={permissionsDescription}
+              description={t`Only Admins can create and run transforms`}
             />
           </SimpleGrid>
         </Card>

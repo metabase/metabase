@@ -6,6 +6,4 @@
 
  :deps
  {com.amazon.redshift/redshift-jdbc42 {:mvn/version "2.2.5"}
-  com.amazonaws/aws-java-sdk-core     {:mvn/version "1.12.792"}
-  ;; pinned: aws-java-sdk-core pulls jackson-core 2.17.2 which has resource exhaustion vulns
-  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}}}
+  com.amazonaws/aws-java-sdk-core     {:mvn/version "1.12.792"}}}

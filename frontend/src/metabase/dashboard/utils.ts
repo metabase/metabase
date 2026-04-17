@@ -1,9 +1,6 @@
 import type { Location } from "history";
-import { getIn } from "icepick";
-import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import type { SelectedTabId } from "metabase/redux/store";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -28,15 +25,12 @@ import type {
   CacheableDashboard,
   Card,
   CardId,
-  ClickBehavior,
-  ColumnSettings,
   DashCardDataMap,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
   Database,
   Dataset,
-  DatasetQuery,
   EmbedDataset,
   Parameter,
   ParameterId,
@@ -45,6 +39,7 @@ import type {
   VirtualCardDisplay,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import type { SelectedTabId } from "metabase-types/store";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -527,73 +522,4 @@ export function setDashboardHeaderParameterIndex(
 
   result.splice(targetIndex, 0, movedParam);
   return result;
-}
-
-export function getClickBehaviorDescription(dashcard: DashboardCard) {
-  const noBehaviorMessage = hasActionsMenu(dashcard)
-    ? t`Open the drill-through menu`
-    : t`Do nothing`;
-  if (isTableDisplay(dashcard)) {
-    const columnSettings: Record<string, ColumnSettings> =
-      getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
-
-    const count = Object.values(columnSettings).filter(
-      (settings) => settings.click_behavior != null,
-    ).length;
-
-    if (count === 0) {
-      return noBehaviorMessage;
-    }
-    return ngettext(
-      msgid`${count} column has custom behavior`,
-      `${count} columns have custom behavior`,
-      count,
-    );
-  }
-
-  if (
-    dashcard.visualization_settings == null ||
-    dashcard.visualization_settings.click_behavior == null
-  ) {
-    return noBehaviorMessage;
-  }
-
-  const clickBehavior = dashcard.visualization_settings
-    .click_behavior as ClickBehavior;
-
-  if (clickBehavior.type === "link") {
-    const { linkType } = clickBehavior;
-    return linkType == null
-      ? t`Go to...`
-      : linkType === "dashboard"
-        ? t`Go to dashboard`
-        : linkType === "question"
-          ? t`Go to question`
-          : t`Go to url`;
-  }
-
-  return t`Filter this dashboard`;
-}
-
-function isEmptyDatasetQuery(
-  datasetQuery: DatasetQuery | Record<string, never> | undefined | null,
-): datasetQuery is Record<string, never> | undefined {
-  return datasetQuery == null || Object.keys(datasetQuery).length === 0;
-}
-
-export function hasActionsMenu(dashcard: DashboardCard) {
-  if (isEmptyDatasetQuery(dashcard.card.dataset_query)) {
-    return false;
-  }
-
-  // This seems to work, but it isn't the right logic.
-  // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
-  const question = Question.create({
-    dataset_query: dashcard.card.dataset_query,
-  });
-  return !question.isNative();
-}
-
-export function isTableDisplay(dashcard: DashboardCard) {
-  return dashcard?.card?.display === "table";
 }

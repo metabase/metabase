@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import type { Dispatch, GetState } from "metabase/redux/store";
 import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 type Dispatcher = (dispatch: Dispatch, getState: GetState) => void;
 

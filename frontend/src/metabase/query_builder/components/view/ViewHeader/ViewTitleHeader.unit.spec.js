@@ -7,7 +7,6 @@ import { setupTableEndpoints } from "__support__/server-mocks";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
@@ -23,6 +22,7 @@ import {
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { ViewTitleHeader } from "./ViewTitleHeader";
 

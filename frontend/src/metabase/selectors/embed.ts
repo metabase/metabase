@@ -1,8 +1,8 @@
+import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   InteractiveEmbeddingOptionsState,
   State,
-} from "metabase/redux/store";
-import { isWithinIframe } from "metabase/utils/iframe";
+} from "metabase-types/store";
 
 export const getIsEmbeddingIframe = (_state?: State): boolean => {
   return isWithinIframe();

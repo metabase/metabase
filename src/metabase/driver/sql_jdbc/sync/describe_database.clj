@@ -176,33 +176,6 @@
                              (and insert update delete) (conj :write))))
                {})))
 
-(defn- privilege-fn-from-map
-  "Given a privilege map (schema -> table -> #{:select :write}), return a privilege-checking function.
-   Falls back to N+1 probe for Postgres FOREIGN TABLEs which aren't covered by current-user-table-privileges."
-  [driver conn privilege-map]
-  (fn [{schema :schema table :name ttype :type} privilege]
-    (assert (#{:select :write} privilege))
-    ;; driver/current-user-table-privileges does not return privileges for foreign
-    ;; table on postgres, so we need to use the select method on them
-    ;;
-    ;; TODO FIXME What the hecc!!! We should NOT be hardcoding driver-specific hacks in functions like this!!!!
-    ;; (^ original author: Cam)
-    (if (#{[:postgres "FOREIGN TABLE"]}
-         [driver ttype])
-      (case privilege
-        :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-        :write  nil) ; Foreign tables typically don't support write operations
-      (contains? (get-in privilege-map [schema table] #{}) privilege))))
-
-(defn- probe-privilege-fn
-  "Fallback privilege-checking function that probes each table individually (N+1)."
-  [driver conn]
-  (fn [{schema :schema table :name} privilege]
-    (assert (#{:select :write} privilege))
-    (case privilege
-      :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-      :write  nil)))
-
 (defn have-privilege-fn
   "Returns a function that takes a map with 3 keys [:schema, :name, :type] and a privilege type,
    returns true if the table has the specified privilege.
@@ -219,31 +192,29 @@
   [driver conn]
   ;; `sql-jdbc.sync.interface/have-select-privilege?` is slow because we're doing a SELECT query on each table
   ;; It's basically a N+1 operation where N is the number of tables in the database
-  (let [supports-table-privs? (driver/database-supports? driver :table-privileges nil)
-        privilege-map          (when supports-table-privs?
-                                 (build-privilege-map driver conn))]
-    (cond
-      ;; Default fast, bulk query that returns all privs in one query
-      (seq privilege-map)
-      (privilege-fn-from-map driver conn privilege-map)
-
-      supports-table-privs?
-      ;; Safety net: if current-user-table-privileges returned nothing, fall back to the N+1 probe approach
-      ;; rather than filtering out all tables (which would retire every table on next sync).
-      (do (log/warn "current-user-table-privileges returned empty results for driver" driver
-                    "- falling back to per-table privilege checks")
-          (probe-privilege-fn driver conn))
-
-      :else
-      (let [can-check-writable?          (driver/database-supports? driver :metadata/table-writable-check {:connection conn})
-            check-writable-privilege-map (when can-check-writable?
-                                           (build-privilege-map driver conn))]
-        (fn [{schema :schema table :name} privilege]
-          (assert (#{:select :write} privilege))
+  (if (driver/database-supports? driver :table-privileges nil)
+    (let [privilege-map (build-privilege-map driver conn)]
+      (fn [{schema :schema table :name ttype :type} privilege]
+        (assert (#{:select :write} privilege))
+        ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
+        ;; table on postgres, so we need to use the select method on them
+        ;;
+        ;; TODO FIXME What the hecc!!! We should NOT be hardcoding driver-specific hacks in functions like this!!!!
+        (if (#{[:postgres "FOREIGN TABLE"]}
+             [driver ttype])
           (case privilege
             :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-            :write  (when can-check-writable?
-                      (contains? (get-in check-writable-privilege-map [schema table] #{}) privilege))))))))
+            :write  nil) ; Foreign tables typically don't support write operations
+          (contains? (get-in privilege-map [schema table] #{}) privilege))))
+    (let [can-check-writable?          (driver/database-supports? driver :metadata/table-writable-check {:connection conn})
+          check-writable-privilege-map (when can-check-writable?
+                                         (build-privilege-map driver conn))]
+      (fn [{schema :schema table :name} privilege]
+        (assert (#{:select :write} privilege))
+        (case privilege
+          :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+          :write  (when can-check-writable?
+                    (contains? (get-in check-writable-privilege-map [schema table] #{}) privilege)))))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch

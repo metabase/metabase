@@ -1,7 +1,7 @@
 import type { ComponentType, ReactElement, ReactNode } from "react";
 
-import type { State } from "metabase/redux/store";
 import type { SourceReplacementEntry } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 

@@ -9,10 +9,10 @@ import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { publicReducers } from "metabase/reducers-public";
-import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Popover } from "metabase/ui";
 import { MetabaseReduxProvider } from "metabase/utils/redux";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { DatePicker } from "./DatePicker";
 

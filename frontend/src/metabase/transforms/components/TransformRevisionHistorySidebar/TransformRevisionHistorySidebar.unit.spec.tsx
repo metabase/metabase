@@ -9,13 +9,13 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Revision, Transform } from "metabase-types/api";
 import {
   createMockRevision,
   createMockTransform,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { TransformRevisionHistorySidebar } from "./TransformRevisionHistorySidebar";
 

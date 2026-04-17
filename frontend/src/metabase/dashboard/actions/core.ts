@@ -1,7 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
-import type { Dispatch, GetState } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
 import type {
   DashCardId,
@@ -10,6 +9,7 @@ import type {
   DashboardCard,
   DashboardId,
 } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 export const setEditingDashboard = (dashboard: Dashboard | null) => {

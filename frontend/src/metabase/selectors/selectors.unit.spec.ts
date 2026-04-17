@@ -1,11 +1,11 @@
 import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import {
   createMockTokenFeatures,
   createMockTokenStatus,
 } from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import {
   getDocsUrl,

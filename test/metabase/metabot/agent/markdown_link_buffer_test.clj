@@ -114,7 +114,7 @@
   (testing "resolves metabase://chart links using charts-state"
     (let [query (lib.tu/venues-query)
           queries {"q-456" query}
-          charts {"c-789" {:chart_id "c789" :queries [query] :visualization_settings {:chart_type :bar}}}
+          charts {"c-789" {:query-id "q-456" :chart-type :bar}}
           [output flushed] (process "[My Chart](metabase://chart/c-789)" queries charts)]
       (is (re-find #"\[My Chart\]\(/question#" output))
       (is (not (re-find #"metabase://" output)))

@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.settings :as metabot.settings]
    [toucan2.core :as t2]))
 
@@ -21,21 +20,15 @@
 (defn any-metabot-enabled?
   "Returns true if at least one of the metabot instances (internal or embedded) is enabled."
   []
-  (and (llm.settings/ai-features-enabled?)
-       (or (metabot.settings/metabot-enabled?)
-           (metabot.settings/embedded-metabot-enabled?))))
+  (or (metabot.settings/metabot-enabled?) (metabot.settings/embedded-metabot-enabled?)))
 
 (defn check-metabot-enabled!
   "Throws a 403 if metabot is not enabled. When called with no arguments, checks that at least one metabot instance is
-   enabled. When called with a `metabot-id`, checks the specific instance's setting."
+  enabled. When called with a `metabot-id`, checks the specific instance's setting."
   ([]
-   (api/check (llm.settings/ai-features-enabled?)
-              [403 "AI features are not enabled."])
    (api/check (any-metabot-enabled?)
               [403 "Metabot is not enabled."]))
   ([metabot-id]
-   (api/check (llm.settings/ai-features-enabled?)
-              [403 "AI features are not enabled."])
    (if (= metabot-id embedded-metabot-id)
      (api/check (metabot.settings/embedded-metabot-enabled?)
                 [403 "Embedded Metabot is not enabled."])

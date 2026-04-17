@@ -172,11 +172,9 @@
 (defn- temporal-type-reconciliation-expected-value
   [{:keys [field temporal-type expected-value honeysql-filter-fn num-args], :as _test-case}]
   (let [field-literal?      (lib.util.match/match-lite field [:field (_ :guard string?) _] true)
-        mock-field          (get mock-temporal-fields temporal-type)
         expected-identifier (cond-> (-> (h2x/identifier :field "ABC" (name temporal-type))
                                         (vary-meta assoc ::bigquery.qp/do-not-qualify? true))
-                              (not field-literal?) (h2x/with-database-type-info (name temporal-type))
-                              field-literal?       (h2x/with-type-info {:effective-type (:base-type mock-field)}))
+                              (not field-literal?) (h2x/with-database-type-info (name temporal-type)))
         args                (repeat (dec num-args) expected-value)]
     (if (fn? honeysql-filter-fn)
       (honeysql-filter-fn expected-identifier args)

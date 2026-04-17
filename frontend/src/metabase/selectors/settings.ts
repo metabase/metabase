@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { getPlan } from "metabase/common/utils/plan";
-import type { State } from "metabase/redux/store";
 import type { TokenStatus, Version } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 export const getSettings: <S extends State>(state: S) => GetSettings<S> =
   createSelector(

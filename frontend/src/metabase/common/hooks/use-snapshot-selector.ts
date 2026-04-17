@@ -1,7 +1,7 @@
 import { type DependencyList, useEffect, useRef } from "react";
 
-import type { State } from "metabase/redux/store";
 import { useStore } from "metabase/utils/redux";
+import type { State } from "metabase-types/store";
 
 /**
  * This hook is similar to useSelector, but it doesn't trigger re-renders when the slice changes.

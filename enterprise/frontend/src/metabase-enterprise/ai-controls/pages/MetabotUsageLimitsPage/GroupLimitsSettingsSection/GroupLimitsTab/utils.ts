@@ -6,11 +6,7 @@ import type {
   MetabotLimitPeriod,
   MetabotLimitType,
 } from "metabase-types/api";
-export {
-  SAVE_DEBOUNCE_MS,
-  sanitizeUsageLimitValue,
-  getMaxUsageInputSuffix,
-} from "../../utils";
+export { SAVE_DEBOUNCE_MS, sanitizeUsageLimitValue } from "../../utils";
 
 export type GroupLimitsTabProps = {
   groupLimits: MetabotGroupLimit[];

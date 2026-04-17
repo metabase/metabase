@@ -10,11 +10,6 @@ import {
 } from "__support__/server-mocks";
 import { Api } from "metabase/api";
 import { mainReducers } from "metabase/reducers-main";
-import type { State, StoreDashcard } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { CardApi } from "metabase/services";
 import type {
   CardId,
@@ -41,6 +36,11 @@ import {
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import type { State, StoreDashcard } from "metabase-types/store";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import type { SectionLayout } from "../sections";
 import { layoutOptions } from "../sections";

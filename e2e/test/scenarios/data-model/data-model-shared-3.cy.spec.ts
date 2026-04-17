@@ -449,22 +449,22 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           verifyTablePreview({
             column: "User ID",
             values: [
-              "2026-10-07T01:34:35.462-07:00",
-              "2026-10-07T01:34:35.462-07:00",
-              "2026-10-07T01:34:35.462-07:00",
-              "2026-10-07T01:34:35.462-07:00",
-              "2026-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
+              "2023-10-07T01:34:35.462-07:00",
             ],
           });
           verifyObjectDetailPreview({
             rowNumber: 1,
-            row: ["User ID", "2026-10-07T01:34:35.462-07:00"],
+            row: ["User ID", "2023-10-07T01:34:35.462-07:00"],
           });
 
           H.visitQuestion(ORDERS_QUESTION_ID);
           cy.findAllByTestId("cell-data")
             .eq(10) // 1st data row, 2nd column (User ID)
-            .should("have.text", "2026-10-07T01:34:35.462-07:00");
+            .should("have.text", "2023-10-07T01:34:35.462-07:00");
         });
       });
 

@@ -5,16 +5,16 @@ import {
   onCloseQuestionInfo,
   setUIControls,
 } from "metabase/redux/query-builder";
-import type {
-  Dispatch,
-  GetState,
-  QueryBuilderMode,
-} from "metabase/redux/store";
 import { createThunkAction } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Series } from "metabase-types/api";
+import type {
+  Dispatch,
+  GetState,
+  QueryBuilderMode,
+} from "metabase-types/store";
 
 import {
   getIsShowingTemplateTagsEditor,

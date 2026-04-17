@@ -5,11 +5,11 @@ import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { Databases } from "metabase/entities/databases";
-import type { AdminPath, State } from "metabase/redux/store";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
 import { connect } from "metabase/utils/redux";
 import type { User } from "metabase-types/api";
+import type { AdminPath, State } from "metabase-types/store";
 
 import { AdminNavbar } from "../components/AdminNavbar";
 

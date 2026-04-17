@@ -1,10 +1,10 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   NotificationCronSubscription,
   ScheduleType,
 } from "metabase-types/api";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { NotificationSchedule } from "./NotificationSchedule";
 

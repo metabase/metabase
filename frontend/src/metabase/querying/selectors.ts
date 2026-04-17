@@ -2,8 +2,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { Databases } from "metabase/entities/databases";
-import type { State } from "metabase/redux/store";
 import type { Database } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 const getDatabasesListDefaultValue: Database[] = [];
 

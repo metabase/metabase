@@ -1,7 +1,6 @@
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import {
@@ -14,6 +13,7 @@ import {
   PRODUCT_CATEGORY_VALUES,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { QueryColumnInfo, TableColumnInfo } from "./ColumnInfo";
 

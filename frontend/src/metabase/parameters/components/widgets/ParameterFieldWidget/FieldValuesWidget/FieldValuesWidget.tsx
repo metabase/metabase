@@ -19,7 +19,6 @@ import {
 } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
-import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import {
   TokenField,
   parseStringValue,
@@ -36,10 +35,10 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import type { State } from "metabase/redux/store";
 import {
   type ComboboxItem,
   Loader,
+  MultiAutocomplete,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
@@ -57,6 +56,7 @@ import type {
   ParameterValueOrArray,
   RowValue,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { Value as ValueComponent } from "../Value";
 
@@ -454,7 +454,7 @@ export const FieldValuesWidgetInner = forwardRef<
             checkedColor={checkedColor}
           />
         ) : multi ? (
-          <MultiAutocompleteWithTranslation
+          <MultiAutocomplete
             value={value.filter(isNotNull).map((value) => String(value))}
             data={options
               .filter((option) => getValue(option) != null)

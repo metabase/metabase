@@ -2,7 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { analyticsApi } from "metabase/api";
-import type { AnalyticsExportState, State } from "metabase/redux/store";
+import type { AnalyticsExportState, State } from "metabase-types/store";
 
 export const getAnalyticsExport = (state: State): AnalyticsExportState =>
   state.analyticsExport;

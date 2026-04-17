@@ -9,7 +9,6 @@ import type {
   ExportFormat,
   TableExportFormat,
 } from "metabase/common/types/export";
-import { exportFormatPng, exportFormats } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
@@ -23,6 +22,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { exportFormatPng, exportFormats } from "metabase/utils/urls";
 import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";

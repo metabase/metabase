@@ -9,10 +9,7 @@ const mockedSlack = {
       name: "channel",
       type: "select",
       displayName: "Post to",
-      options: [
-        { displayName: "#work", id: "C001" },
-        { displayName: "#play", id: "C002" },
-      ],
+      options: ["#work", "#play"],
       required: true,
     },
   ],

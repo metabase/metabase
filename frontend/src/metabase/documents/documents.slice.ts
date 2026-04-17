@@ -7,16 +7,16 @@ import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
-  CardEmbedRef,
-  DocumentsState,
-  MentionCacheItem,
-} from "metabase/redux/store/documents";
-import type {
   Card,
   CardDisplayType,
   Document,
   VisualizationSettings,
 } from "metabase-types/api";
+import type {
+  CardEmbedRef,
+  DocumentsState,
+  MentionCacheItem,
+} from "metabase-types/store/documents";
 
 import { getMentionsCacheKey } from "./utils/mentionsUtils";
 

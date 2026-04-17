@@ -19,7 +19,6 @@ import _ from "underscore";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { useMantineTheme } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
@@ -39,6 +38,7 @@ import type {
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import type { State } from "metabase-types/store";
 
 import {
   PivotTableRoot,

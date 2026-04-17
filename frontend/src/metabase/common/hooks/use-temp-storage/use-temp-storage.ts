@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 
 import { setTempSetting } from "metabase/redux/app";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type {
   State,
   TempStorageKey,
   TempStorageValue,
-} from "metabase/redux/store";
-import { useDispatch, useSelector } from "metabase/utils/redux";
+} from "metabase-types/store";
 
 export const useTempStorage = <Key extends TempStorageKey>(
   key: Key,

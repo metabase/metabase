@@ -9,10 +9,6 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 // TODO: Move this to a more suitable location for sharing.
 import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
@@ -24,6 +20,10 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { AddCardSidebar } from "./AddCardSidebar";
 

@@ -85,8 +85,6 @@ export function DimensionFilterButton({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
-          w={184}
-          justify="space-between"
           fw="bold"
           py="xs"
           px="sm"

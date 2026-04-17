@@ -6,12 +6,12 @@ import { t } from "ttag";
 import { useUpdateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type { Measure } from "metabase-types/api";
 
@@ -56,7 +56,9 @@ export function MeasureDetailPage({
   );
 
   const isValid = aggregations.length === 1;
-  const previewUrl = isValid ? Urls.exploreMeasure(measure.id) : undefined;
+  const previewUrl = isValid
+    ? getDatasetQueryPreviewUrl(definition)
+    : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));

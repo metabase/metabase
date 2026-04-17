@@ -6,7 +6,6 @@ import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
 } from "metabase/dashboard/actions";
-import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import type {
   DashCardId,
@@ -15,6 +14,7 @@ import type {
   ParameterId,
   QuestionDashboardCard,
 } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   AUTO_WIRE_TOAST_TIMEOUT,

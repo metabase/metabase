@@ -628,11 +628,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ).as("cardQuery");
 
         H.chartPathWithFillColor("#509EE3")
-          .eq(14) // August 2026 (Total of 12 reviews, 9 unique days)
+          .eq(14) // August 2023 (Total of 12 reviews, 9 unique days)
           .click();
 
         cy.wait("@cardQuery");
-        cy.url().should("include", "2026-08");
+        cy.url().should("include", "2023-08");
         H.chartPathWithFillColor("#509EE3").should("have.length", 1);
         // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
         // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
@@ -826,9 +826,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
     });
     H.tableHeaderColumn("Quantity");
-    cy.findByTestId("table-body")
-      .get("[data-dataset-index=0] > [data-column-id='ID']")
-      .should("have.text", "3") // Subject to change - sensitive to year shifting in the Sample Database
+    cy.get(".test-Table-ID")
+      .first()
+      // Mid-point check that this cell actually contains ID = 1
+      .contains("1")
       .click();
 
     cy.wait("@dataset").then((xhr) => {
@@ -836,7 +837,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("Subtotal");
-      cy.findByText("52.72");
+      cy.findByText("37.65");
     });
   });
 

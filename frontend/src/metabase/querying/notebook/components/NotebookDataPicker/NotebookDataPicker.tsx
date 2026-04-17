@@ -175,7 +175,6 @@ function ModernDataPicker({
   shouldShowLibrary,
 }: ModernDataPickerProps) {
   const context = useNotebookContext();
-  const getItemTooltip = context.dataPickerOptions?.getItemTooltip;
   const modelList = getModelFilterList(context, hasMetrics);
 
   const databaseId = Lib.databaseID(query) ?? undefined;
@@ -263,7 +262,6 @@ function ModernDataPicker({
                   shouldDisableDatabase?.(i)),
             );
           }}
-          options={getItemTooltip ? { getItemTooltip } : undefined}
           // searchQuery={dataSourceSearchQuery} ?
         />
       )}

@@ -6,7 +6,7 @@ import {
   createStoreHook,
 } from "react-redux";
 
-import type { State } from "metabase/redux/store";
+import type { State } from "metabase-types/store";
 
 import { MetabaseReduxContext } from "./custom-context";
 

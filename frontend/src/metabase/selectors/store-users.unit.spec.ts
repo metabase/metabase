@@ -2,12 +2,12 @@ import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
+import { getStoreUsers } from "metabase/selectors/store-users";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
-import { getStoreUsers } from "metabase/selectors/store-users";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+} from "metabase-types/store/mocks";
 
 const setupRefreshableProperties = ({
   current_user_matches_store_user,

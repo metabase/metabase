@@ -8,12 +8,12 @@ import {
   getDataPicker,
   getEntityTypes,
 } from "metabase/redux/embedding-data-picker";
-import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, TableId } from "metabase-types/api";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 

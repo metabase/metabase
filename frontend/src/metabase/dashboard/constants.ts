@@ -1,7 +1,7 @@
 import type {
   DashboardSidebarName,
   DashboardState,
-} from "metabase/redux/store";
+} from "metabase-types/store";
 
 import type { EmbedDisplayParams } from "./types";
 

@@ -1,23 +1,5 @@
-.root {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mantine-spacing-xl);
-}
-
 .advisoryList {
   > :not(:last-child) {
     margin-bottom: var(--mantine-spacing-md);
   }
-}
-
-.emptyRoot {
-  align-items: center;
-  justify-content: center;
-  min-height: 50vh;
-  gap: 24px;
-}
-
-.countBadge {
-  background-color: var(--mb-color-text-primary);
-  color: var(--mb-color-white);
 }

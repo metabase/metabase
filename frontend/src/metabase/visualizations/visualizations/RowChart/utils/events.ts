@@ -16,7 +16,6 @@ import type {
   Series,
 } from "metabase/visualizations/shared/components/RowChart/types";
 import type {
-  GroupedDataset,
   GroupedDatum,
   MetricDatum,
   SeriesInfo,
@@ -33,7 +32,6 @@ import type {
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
-  RowValue,
   RowValues,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -153,22 +151,19 @@ export const getClickData = (
   );
 
   const xValue = series.xAccessor(datum);
+  const yValue = series.yAccessor(datum);
 
   const dimensions: ClickObjectDimension[] = [
     {
       column: chartColumns.dimension.column,
-      value: datum.dimensionValue,
+      value: yValue,
     },
   ];
 
   if ("breakout" in chartColumns) {
-    const breakoutRawRows =
-      datum.breakout?.[series.seriesKey]?.rawRows ?? datum.rawRows;
-    const rawBreakoutValue =
-      breakoutRawRows[0]?.[chartColumns.breakout.index] ?? null;
     dimensions.push({
       column: chartColumns.breakout.column,
-      value: rawBreakoutValue,
+      value: series.seriesInfo?.breakoutValue ?? null,
     });
   }
 
@@ -181,26 +176,11 @@ export const getClickData = (
   };
 };
 
-const getRawBreakoutValue = (
-  groupedData: GroupedDataset,
-  seriesKey: string,
-  breakoutColumnIndex: number,
-): RowValue => {
-  for (const datum of groupedData) {
-    const rawRows = datum.breakout?.[seriesKey]?.rawRows;
-    if (rawRows && rawRows.length > 0) {
-      return rawRows[0][breakoutColumnIndex] ?? null;
-    }
-  }
-  return null;
-};
-
 export const getLegendClickData = (
   seriesIndex: number,
   series: Series<GroupedDatum, SeriesInfo>[],
   visualizationSettings: VisualizationSettings,
   chartColumns: CartesianChartColumns,
-  groupedData: GroupedDataset,
 ) => {
   const currentSeries = series[seriesIndex];
 
@@ -209,11 +189,7 @@ export const getLegendClickData = (
       ? [
           {
             column: chartColumns.breakout.column,
-            value: getRawBreakoutValue(
-              groupedData,
-              currentSeries.seriesKey,
-              chartColumns.breakout.index,
-            ),
+            value: currentSeries.seriesInfo?.breakoutValue ?? null,
           },
         ]
       : undefined;

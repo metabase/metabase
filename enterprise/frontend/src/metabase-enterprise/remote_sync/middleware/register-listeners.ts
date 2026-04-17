@@ -8,8 +8,8 @@ import type {
 import { isAnyOf } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
-import type { State } from "metabase/redux/store";
 import type { Card, Collection, Dashboard, Document } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS, TRANSFORMS_KEY } from "../constants";
 

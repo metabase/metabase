@@ -14,7 +14,6 @@ import {
   isQuestionRunnable,
   isSavedQuestionChanged,
 } from "metabase/querying/common/utils/question";
-import type { State } from "metabase/redux/store";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
@@ -58,6 +57,7 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import type { State } from "metabase-types/store";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { createRawSeries, getWritableColumnProperties } from "./utils";

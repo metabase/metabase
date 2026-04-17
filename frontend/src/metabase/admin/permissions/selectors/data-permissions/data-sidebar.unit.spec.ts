@@ -1,4 +1,4 @@
-import type { State } from "metabase/redux/store";
+import type { State } from "metabase-types/store";
 
 import type { RawDataRouteParams } from "../../types";
 

@@ -14,7 +14,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
-   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -1958,41 +1957,20 @@
           (is (= 5 (qc))))))))
 
 (deftest result-metadata-test
-  (testing "model Card extraction portablizes :fk_target_field_id in :result_metadata"
-    (mt/with-temp [:model/Card c {:type :model :dataset_query (mt/query venues)}]
-      (let [res (qp/process-query
-                 (qp/userland-query
-                  (:dataset_query c)
-                  {:card-id (:id c)}))]
-        (when-not (= (:status res) :completed)
-          (throw (ex-info "Query failed" res)))
-        (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
-          (is (=? {:fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]}
-                  (->> (:result_metadata ser)
-                       (u/seek #(and (= (:name %) "CATEGORY_ID")
-                                     (= (:display_name %) "Category ID")))))))))))
-
-(deftest model-preserved-keys-extract-test
-  (testing "model Card preserved-key overrides survive extract"
-    (let [base-cols  (qp.preprocess/query->expected-cols (mt/query venues))
-          overridden (mapv (fn [col]
-                             (cond-> (assoc col
-                                            :display_name    (str "Custom " (:name col))
-                                            :visibility_type :normal
-                                            :description     "user-set")
-                               (= "CATEGORY_ID" (:name col)) (assoc :semantic_type :type/Category)))
-                           base-cols)]
-      (mt/with-temp
-        [:model/Card {card-id :id} {:type            :model
-                                    :dataset_query   (mt/query venues)
-                                    :result_metadata overridden}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
-              by-name   (u/index-by :name (:result_metadata extracted))]
-          (is (every? #(re-matches #"Custom .*" (:display_name %))
-                      (:result_metadata extracted)))
-          (is (= "user-set" (:description (get by-name "ID"))))
-          (is (= :type/Category (:semantic_type (get by-name "CATEGORY_ID"))))
-          (is (vector? (:fk_target_field_id (get by-name "CATEGORY_ID")))))))))
+  (mt/with-temp [:model/Card c {:dataset_query (mt/query venues)}]
+    (let [res (qp/process-query
+               (qp/userland-query
+                (:dataset_query c)
+                {:card-id (:id c)}))]
+      (when-not (= (:status res) :completed)
+        (throw (ex-info "Query failed" res)))
+      (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
+        (is (=? {:base_type          :type/Integer
+                 :id                 [string? "PUBLIC" "VENUES" "CATEGORY_ID"]
+                 :fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]
+                 :field_ref          [:field [string? "PUBLIC" "VENUES" "CATEGORY_ID"] nil]}
+                (->> (:result_metadata ser)
+                     (u/seek #(= (:display_name %) "Category ID")))))))))
 
 (deftest extract-single-collection-test
   (mt/with-empty-h2-app-db!

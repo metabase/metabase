@@ -57,11 +57,13 @@
             (settings/check-and-update-remote-settings! {:remote-sync-transforms true})
             (is (false? @git-check-called?) "Git validation should not be called for transforms-only update")
             (is (true? (settings/remote-sync-transforms))))
+
           (testing "Updating only remote-sync-auto-import does not check git settings"
             (reset! git-check-called? false)
             (settings/check-and-update-remote-settings! {:remote-sync-auto-import true})
             (is (false? @git-check-called?) "Git validation should not be called for auto-import-only update")
             (is (true? (settings/remote-sync-auto-import))))
+
           (testing "Updating both non-git settings does not check git settings"
             (reset! git-check-called? false)
             (settings/check-and-update-remote-settings! {:remote-sync-transforms false

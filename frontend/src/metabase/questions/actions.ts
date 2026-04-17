@@ -1,10 +1,10 @@
 import { cardApi, datasetApi } from "metabase/api";
 import { Tables } from "metabase/entities/tables";
-import type { Dispatch } from "metabase/redux/store";
 import { entityCompatibleQuery } from "metabase/utils/entities";
 import type { Card, TableId, UnsavedCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
+import type { Dispatch } from "metabase-types/store";
 
 export const loadMetadataForTable =
   (tableId: TableId) => async (dispatch: Dispatch) => {

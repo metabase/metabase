@@ -9,7 +9,4 @@
  ;; https://github.com/metabase/metabase/actions/workflows/athena.yml
  ;; new versions of athena-jdbc appear here:
  ;; https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver.html#jdbc-v3-driver-download-uber-jar
- {com.metabase/athena-jdbc-thin {:mvn/version "3.7.0"
-                                :exclusions [software.amazon.awssdk/athena-streaming]}
-  ;; not on Maven Central; published to our private maven by the athena workflow
-  com.metabase/athena-streaming {:mvn/version "2.0"}}}
+ {com.metabase/athena-jdbc {:mvn/version "3.7.0"}}}

@@ -7,8 +7,8 @@ import {
   setupTrialAvailableEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { UpgradeModal } from "./UpgradeModal";
 

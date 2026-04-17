@@ -575,12 +575,6 @@
   (is (= {:a 100, :b 200}
          (test-json-setting))))
 
-(deftest db-stored-value-test
-  (testing "should expose the raw DB/cache value through the public API"
-    (is (= "raw-value"
-           (with-redefs [setting/db-or-cache-value (constantly "raw-value")]
-             (setting/db-stored-value :test-setting-1))))))
-
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value! [v]

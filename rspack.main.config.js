@@ -77,8 +77,8 @@ const SWC_LOADER = {
 };
 
 class OnScriptError {
-  apply(/** @type {import("webpack").Compiler} */ compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", (/** @type {import("webpack").Compilation} */ compilation) => {
+  apply(compiler) {
+    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
         "OnScriptError",
         (data, cb) => {

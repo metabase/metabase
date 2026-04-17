@@ -1,8 +1,6 @@
 import type { Schema as NormalizrSchema } from "normalizr";
 import { normalize } from "normalizr";
 
-import type { EntitiesState } from "metabase/redux/store";
-import { createMockNormalizedEntitiesState } from "metabase/redux/store/mocks";
 import {
   ActionSchema,
   CollectionSchema,
@@ -35,6 +33,8 @@ import type {
   User,
   WritebackAction,
 } from "metabase-types/api";
+import type { EntitiesState } from "metabase-types/store";
+import { createMockNormalizedEntitiesState } from "metabase-types/store/mocks";
 
 export interface EntitiesStateOpts {
   actions?: WritebackAction[];

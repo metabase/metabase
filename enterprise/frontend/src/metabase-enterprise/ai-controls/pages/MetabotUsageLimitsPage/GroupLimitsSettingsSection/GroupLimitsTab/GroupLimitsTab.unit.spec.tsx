@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupUpdateAIControlsGroupLimitEndpoint } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   GroupInfo,
   MetabotGroupLimit,
@@ -79,7 +79,7 @@ describe("GroupLimitsTab", () => {
     expect(screen.getByText("Administrators")).toBeInTheDocument();
     expect(screen.getByText("Marketing")).toBeInTheDocument();
 
-    const adminInput = screen.getByRole("textbox", {
+    const adminInput = screen.getByRole("spinbutton", {
       name: /Administrators/,
     });
     expect(adminInput).toBeInTheDocument();
@@ -115,8 +115,8 @@ describe("GroupLimitsTab", () => {
       ],
     });
 
-    expect(screen.getByDisplayValue("100 million")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("50 million")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("100")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("50")).toBeInTheDocument();
   });
 
   it("shows 'Unlimited' placeholder when instance limit is null", () => {
@@ -136,14 +136,12 @@ describe("GroupLimitsTab", () => {
   it("updates the input value when user types", async () => {
     setup();
 
-    const adminInput = screen.getByRole("textbox", {
+    const adminInput = screen.getByRole("spinbutton", {
       name: /Administrators/,
     });
-    await userEvent.type(adminInput, "1");
-    expect(adminInput).toHaveValue("1 million");
-    await userEvent.clear(adminInput);
-    await userEvent.type(adminInput, "10");
-    expect(adminInput).toHaveValue("10 million");
+    await userEvent.type(adminInput, "250");
+
+    expect(adminInput).toHaveValue(250);
   });
 
   it("shows error message when error is present", () => {
@@ -165,23 +163,6 @@ describe("GroupLimitsTab", () => {
     setup({ limitPeriod: "weekly", limitType: "tokens" });
 
     expect(screen.getByText(/each week/)).toBeInTheDocument();
-  });
-
-  it("shows error when value exceeds the instance limit", async () => {
-    setup({ instanceLimit: 100 });
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    const adminsGroupInput = screen.getByLabelText(
-      /Max tokens per user for Administrators/,
-    );
-    await userEvent.type(adminsGroupInput, "200");
-
-    await waitFor(() => {
-      const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent(
-        /Can't be higher than the instance limit/,
-      );
-    });
   });
 
   describe("'All Users' group override warning icons", () => {

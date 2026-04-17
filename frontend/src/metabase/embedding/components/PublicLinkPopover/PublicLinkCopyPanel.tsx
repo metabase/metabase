@@ -1,7 +1,6 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
-import type { ExportFormat } from "metabase/common/types/export";
 import {
   Anchor,
   Box,
@@ -16,6 +15,7 @@ import {
   PublicLinkCopyButton,
   RemoveLinkAnchor,
 } from "./PublicLinkCopyPanel.styled";
+import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({
   loading = false,
@@ -31,9 +31,9 @@ export const PublicLinkCopyPanel = ({
   loading?: boolean;
   url: string | null;
   onRemoveLink?: MouseEventHandler;
-  selectedExtension?: ExportFormat | null;
-  onChangeExtension?: (extension: ExportFormat | null) => void;
-  extensions?: ExportFormat[];
+  selectedExtension?: ExportFormatType;
+  onChangeExtension?: (extension: ExportFormatType) => void;
+  extensions?: ExportFormatType[];
   removeButtonLabel?: string;
   removeTooltipLabel?: string;
   onCopy?: () => void;

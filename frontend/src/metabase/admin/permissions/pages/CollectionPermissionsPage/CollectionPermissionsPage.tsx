@@ -7,9 +7,9 @@ import _ from "underscore";
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
-import type { State } from "metabase/redux/store";
 import { connect, useSelector } from "metabase/utils/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import {
   PermissionsEditor,

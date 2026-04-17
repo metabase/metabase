@@ -2,13 +2,13 @@ import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { AdminPeopleApp } from "./AdminPeopleApp";
 

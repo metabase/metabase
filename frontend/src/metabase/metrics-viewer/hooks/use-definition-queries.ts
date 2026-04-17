@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import type { State } from "metabase/redux/store";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -16,6 +15,7 @@ import type {
   TypedProjection,
 } from "metabase-types/api";
 import type { MetricDatasetRequest } from "metabase-types/api/metric";
+import type { State } from "metabase-types/store";
 
 import {
   type ExpressionDefinitionEntry,

@@ -11,7 +11,6 @@ import {
   screen,
 } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import type { WrappedResult } from "metabase/search/types";
 import type { TokenFeatures } from "metabase-types/api";
@@ -20,6 +19,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { createWrappedSearchResult } from "./util";
 

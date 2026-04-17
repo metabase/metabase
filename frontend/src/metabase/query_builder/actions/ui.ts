@@ -5,13 +5,13 @@ import {
   setUIControls,
 } from "metabase/redux/query-builder";
 import { updateSetting, updateUserSetting } from "metabase/redux/settings";
+import type { Card } from "metabase-types/api";
 import type {
   DatasetEditorTab,
   Dispatch,
   GetState,
   QueryBuilderMode,
-} from "metabase/redux/store";
-import type { Card } from "metabase-types/api";
+} from "metabase-types/store";
 
 import { trackFirstNonTableChartGenerated } from "../analytics";
 

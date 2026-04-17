@@ -10,10 +10,10 @@ import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { publicReducers } from "metabase/reducers-public";
-import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { MetabaseReduxProvider } from "metabase/utils/redux";
 import type { ScheduleSettings } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { Schedule } from "./Schedule";
 

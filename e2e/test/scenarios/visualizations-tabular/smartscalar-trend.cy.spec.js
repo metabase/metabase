@@ -538,7 +538,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     );
 
     cy.findByTestId("scalar-period")
-      .findByText("Apr 2029")
+      .findByText("Apr 2026")
       .should("be.visible");
     cy.findByTestId("scalar-container").findByText("344").click();
 
@@ -556,7 +556,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // Validate that the filter was applied
     cy.findByTestId("scalar-period")
-      .findByText("Mar 2029")
+      .findByText("Mar 2026")
       .should("be.visible");
     cy.findByTestId("scalar-container").findByText("527").should("be.visible");
   });

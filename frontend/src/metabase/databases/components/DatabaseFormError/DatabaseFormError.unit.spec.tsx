@@ -1,6 +1,6 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseFormError } from "./DatabaseFormError";
 import {

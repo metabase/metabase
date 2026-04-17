@@ -189,7 +189,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           cy.findByTestId("qb-filters-panel")
             .findByText("Product → Category is Doohickey")
             .should("be.visible");
-          H.queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2025
+          H.queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2022
         });
       });
     });

@@ -1,8 +1,8 @@
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
-import type { Dispatch, State } from "metabase/redux/store";
 import type { Collection } from "metabase-types/api";
+import type { Dispatch, State } from "metabase-types/store";
 
 import type { UseQuery } from "./rtk";
 

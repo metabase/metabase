@@ -44,13 +44,13 @@ describe("MeasureHeader", () => {
     );
   });
 
-  it("shows explore and remove options in the actions menu", async () => {
+  it("shows preview and remove options in the actions menu", async () => {
     setup();
     await userEvent.click(
       screen.getByRole("button", { name: "Measure actions" }),
     );
     expect(
-      screen.getByRole("menuitem", { name: /Explore/ }),
+      screen.getByRole("menuitem", { name: /Preview/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("menuitem", { name: /Remove measure/ }),
@@ -69,7 +69,7 @@ describe("MeasureHeader", () => {
         screen.getByRole("button", { name: "Measure actions" }),
       );
       expect(
-        screen.getByRole("menuitem", { name: /Explore/ }),
+        screen.getByRole("menuitem", { name: /Preview/ }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("menuitem", { name: /Remove measure/ }),

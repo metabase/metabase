@@ -14,7 +14,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
@@ -32,6 +31,7 @@ import {
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";

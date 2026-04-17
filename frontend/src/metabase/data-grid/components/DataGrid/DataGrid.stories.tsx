@@ -9,12 +9,12 @@ import type {
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { publicReducers } from "metabase/reducers-public";
+import { Checkbox, Flex } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
-import { Checkbox, Flex } from "metabase/ui";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
+} from "metabase-types/store/mocks";
 
 import { DataGrid } from "./DataGrid";
 import classes from "./DataGrid.module.css";

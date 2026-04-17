@@ -8,7 +8,6 @@ import type {
 import {
   assertTableData,
   hovercard,
-  modal,
   popover,
   undoToast,
 } from "./e2e-ui-elements-helpers";
@@ -144,15 +143,6 @@ export const DataModel = {
   },
   MeasureRevisionHistory: {
     get: getMeasureRevisionHistory,
-  },
-  SourceReplacement: {
-    getModal: getSourceReplacementModal,
-    getConfirmationModal: getSourceReplacementConfirmationModal,
-    getReplaceButton: getSourceReplacementReplaceButton,
-    getCancelButton: getSourceReplacementCancelButton,
-    getTargetPickerButton: getSourceReplacementTargetPickerButton,
-    getDependentsTab: getSourceReplacementDependentsTab,
-    getFindAndReplaceButton: getSourceReplacementFindAndReplaceButton,
   },
 };
 
@@ -852,41 +842,4 @@ function getInterceptsForArea(area: Area) {
   if (area === "data studio") {
     cy.intercept("GET", "/api/database").as("databases");
   }
-}
-
-/** source replacement helpers */
-
-function getSourceReplacementModal() {
-  return modal().first();
-}
-
-function getSourceReplacementConfirmationModal() {
-  return modal().should("have.length", 2).last();
-}
-
-function getSourceReplacementReplaceButton() {
-  return getSourceReplacementModal().findByRole("button", {
-    name: /Replace data source/,
-  });
-}
-
-function getSourceReplacementCancelButton() {
-  return getSourceReplacementModal().findByRole("button", { name: "Cancel" });
-}
-
-function getSourceReplacementTargetPickerButton() {
-  return getSourceReplacementModal().contains(
-    "button",
-    "Pick a table, model, or saved question",
-  );
-}
-
-function getSourceReplacementDependentsTab(count: number) {
-  return getSourceReplacementModal().findByRole("tab", {
-    name: new RegExp(`${count} items? will be changed`),
-  });
-}
-
-function getSourceReplacementFindAndReplaceButton() {
-  return cy.findByRole("button", { name: "Find and replace" });
 }

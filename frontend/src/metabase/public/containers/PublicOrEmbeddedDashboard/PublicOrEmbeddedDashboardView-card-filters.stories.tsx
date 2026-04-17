@@ -13,11 +13,6 @@ import {
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -34,6 +29,11 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 import { PRODUCTS } from "metabase-types/api/mocks/presets";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 

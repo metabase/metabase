@@ -23,7 +23,6 @@ import {
 } from "metabase/entities/collections";
 import { Databases } from "metabase/entities/databases";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import {
   getIsTenantUser,
   getUser,
@@ -33,6 +32,7 @@ import { connect, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { NavbarErrorView } from "../NavbarErrorView";
 import { NavbarLoadingView } from "../NavbarLoadingView";

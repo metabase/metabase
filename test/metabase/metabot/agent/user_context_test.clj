@@ -378,9 +378,9 @@
 
   (testing "table viewing context omits measures/segments sections when none exist"
     (with-redefs [entity-details/get-table-details
-                  (fn [{:keys [entity-id]}]
+                  (fn [{:keys [table-id]}]
                     {:structured-output
-                     {:id entity-id
+                     {:id table-id
                       :type :table
                       :name "plain_table"
                       :database_id 1

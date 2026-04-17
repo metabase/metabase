@@ -447,15 +447,15 @@
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :model_id               (serdes/fk :model/Card)
-               :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
-               :http                   (serdes/nested :model/HTTPAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
-               :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
+               :query                  (serdes/nested :model/QueryAction :action_id opts)
+               :http                   (serdes/nested :model/HTTPAction :action_id opts)
+               :implicit               (serdes/nested :model/ImplicitAction :action_id opts)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :parameter_mappings     {:export serdes/export-parameter-mappings
                                         :import serdes/import-parameter-mappings}
                :visualization_settings {:export serdes/export-visualization-settings
                                         :import serdes/import-visualization-settings}}
-   :defaults  {:archived false}})
+   :defaults {:archived false}})
 
 (defmethod serdes/dependencies "Action" [action]
   (set

@@ -6,13 +6,13 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Measure, Revision } from "metabase-types/api";
 import {
   createMockMeasure,
   createMockRevision,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { MeasureRevisionHistory } from "./MeasureRevisionHistory";
 

@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import type { DetailViewState } from "metabase/redux/store";
 import type { CollectionId, User } from "metabase-types/api";
+import type { DetailViewState } from "metabase-types/store";
 
 import S from "./AppBar.module.css";
 import AppBarLarge from "./AppBarLarge";
@@ -25,7 +25,6 @@ export interface AppBarProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
-  isMetricsViewer?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }

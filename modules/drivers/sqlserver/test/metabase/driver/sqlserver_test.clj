@@ -12,7 +12,6 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
@@ -26,7 +25,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [next.jdbc]
@@ -885,30 +883,3 @@
       (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
              (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
                                                 :output-table "PRODUCTS_COPY"}))))))
-
-(deftest table-privileges-test
-  (mt/test-driver :sqlserver
-    (testing "`current-user-table-privileges` returns correct structure and privileges"
-      (sql-jdbc.execute/do-with-connection-with-options
-       :sqlserver (mt/db) nil
-       (fn [conn]
-         (let [privileges (sql-jdbc.sync/current-user-table-privileges :sqlserver {:connection conn})]
-           (is (seq privileges) "Should return at least one table")
-           (doseq [priv privileges]
-             (is (= #{:role :schema :table :select :update :insert :delete}
-                    (set (keys priv)))
-                 "Should have all required keys")
-             (is (nil? (:role priv)))
-             (is (string? (:schema priv)))
-             (is (string? (:table priv)))
-             (is (boolean? (:select priv)))
-             (is (boolean? (:update priv)))
-             (is (boolean? (:insert priv)))
-             (is (boolean? (:delete priv))))
-           (testing "Test tables should appear with at least SELECT privilege"
-             (let [dbo-orders (filter (fn [priv]
-                                        (and (= "dbo" (:schema priv))
-                                             (= "ORDERS" (u/upper-case-en (:table priv)))))
-                                      privileges)]
-               (when (seq dbo-orders)
-                 (is (every? :select dbo-orders)))))))))))

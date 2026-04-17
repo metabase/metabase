@@ -1,4 +1,3 @@
-import type { UploadMode } from "metabase/redux/store/upload";
 import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
@@ -13,6 +12,7 @@ import type {
   Dashboard,
   TableId,
 } from "metabase-types/api";
+import type { UploadMode } from "metabase-types/store/upload";
 
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;

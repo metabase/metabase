@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import { getStore } from "__support__/entities-store";
 import { Api } from "metabase/api";
 import { mainReducers } from "metabase/reducers-main";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import {
   MAX_UPLOAD_STRING,

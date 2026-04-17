@@ -299,14 +299,14 @@ const EXCLUDE_DATE_CASES = [
     label: "Days of the week…",
     options: ["Monday"],
     expectedDisplayName: "Created At excludes Mondays",
-    expectedRowCount: 170, // this might change based on a year
+    expectedRowCount: 166,
   },
   {
     title: "day of week, multiple",
     label: "Days of the week…",
     options: ["Monday", "Wednesday"],
     expectedDisplayName: "Created At excludes 2 day of week selections",
-    expectedRowCount: 142, // this might change based on a year
+    expectedRowCount: 132,
   },
   {
     title: "month of year",

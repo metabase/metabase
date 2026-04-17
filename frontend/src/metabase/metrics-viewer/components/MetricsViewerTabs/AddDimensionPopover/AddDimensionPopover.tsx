@@ -91,7 +91,7 @@ export function AddDimensionPopover({
           aria-label={t`Add dimension tab`}
           onClick={() => setIsOpen(true)}
         >
-          <Icon name="add" c="icon-primary" />
+          <Icon name="add" />
         </ActionIcon>
       </Popover.Target>
       <Popover.Dropdown p={0} className={S.dropdown}>

@@ -8,13 +8,13 @@ import {
   setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Transform } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTransform,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { PythonTransformTopBar } from "./PythonTransformTopBar";
 

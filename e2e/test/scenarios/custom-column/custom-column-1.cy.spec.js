@@ -602,20 +602,14 @@ describe("scenarios > question > custom column", () => {
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Fixed date range…").click();
-      cy.findByLabelText("Start date").clear().type("12/10/2027");
-      cy.findByLabelText("End date").clear().type("01/05/2028");
+      cy.findByLabelText("Start date").clear().type("12/10/2024");
+      cy.findByLabelText("End date").clear().type("01/05/2025");
       cy.button("Add filter").click();
     });
 
     cy.wait("@dataset");
-    cy.findByTestId("question-row-count")
-      .should("be.visible")
-      .and("have.text", "Showing 487 rows");
-
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "CustomDate is Dec 10, 2027 – Jan 5, 2028",
-    );
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Showing 487 rows").should("be.visible");
   });
 
   it("should work with relative date filter applied to a custom column (metabase#16273)", () => {

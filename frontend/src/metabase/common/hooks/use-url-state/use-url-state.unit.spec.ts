@@ -1,7 +1,7 @@
 import type { Location } from "history";
 
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockLocation } from "metabase/redux/store/mocks";
+import { createMockLocation } from "metabase-types/store/mocks";
 
 import type { QueryParam } from "./types";
 import { type UrlStateConfig, useUrlState } from "./use-url-state";

@@ -1,6 +1,6 @@
-import type { State } from "metabase/redux/store";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { CollectionEssentials } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 export type ModelFilterControlsProps = any;
 export type ModelFilterSettings = {

@@ -10,7 +10,6 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
@@ -78,7 +77,7 @@ interface MetricToolbarButtonsProps {
 
 function MetricToolbarButtons({
   card,
-  showDataStudioLink: showDataStudioLinkProp,
+  showDataStudioLink,
   onOpenModal,
 }: MetricToolbarButtonsProps) {
   const metadata = useSelector(getMetadata);
@@ -101,17 +100,15 @@ function MetricToolbarButtons({
 
   const dispatch = useDispatch();
 
-  const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
-
-  const showDataStudioLink =
-    showDataStudioLinkProp &&
-    getLibraryCollectionType(card.collection?.type) != null &&
-    canAccessDataStudio;
+  const isInLibrary =
+    showDataStudioLink &&
+    getLibraryCollectionType(card.collection?.type) != null;
 
   return (
     <Group wrap="nowrap" gap="sm">
       {isNumericMetric(card) && (
         <Button
+          size="sm"
           component={ForwardRefLink}
           to={Urls.exploreMetric(card.id)}
           target="_blank"
@@ -176,11 +173,11 @@ function MetricToolbarButtons({
             </Menu.Item>
           )}
 
-          {(PLUGIN_AUDIT.isEnabled || showDataStudioLink) && (
+          {(PLUGIN_AUDIT.isEnabled || isInLibrary) && (
             <Menu.Divider role="separator" />
           )}
 
-          {showDataStudioLink && (
+          {isInLibrary && (
             <Menu.Item
               leftSection={<Icon name="grid_bordered" />}
               onClick={() => dispatch(openUrl(Urls.dataStudioMetric(card.id)))}

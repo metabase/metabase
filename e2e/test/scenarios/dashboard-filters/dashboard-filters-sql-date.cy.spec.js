@@ -65,7 +65,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     cy.findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "Oct",
-      year: "2025",
+      year: "2022",
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -80,7 +80,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
 
     // Make sure we can override the default value
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("October 2025").click();
+    cy.findByText("October 2022").click();
     H.popover().contains("Aug").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Macy Olson");

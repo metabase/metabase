@@ -5,7 +5,6 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.util :as u]
@@ -63,16 +62,14 @@
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
-   (let [transform  (t2/select-one [:model/Transform :name :entity_id :source_type] :id transform-id)
-         metered-as (premium-features/transform-metered-as (:source_type transform))
+   (let [transform (t2/select-one [:model/Transform :name :entity_id] :id transform-id)
          run (t2/insert-returning-instance! :model/TransformRun
                                             (assoc properties
                                                    :transform_id transform-id
                                                    :transform_name (:name transform)
                                                    :transform_entity_id (:entity_id transform)
                                                    :status :started
-                                                   :is_active true
-                                                   :metered_as metered-as))]
+                                                   :is_active true))]
      ;; Pass user_id to the event so audit log properly attributes the run
      (events/publish-event! :event/transform-run-start
                             (cond-> {:object run}

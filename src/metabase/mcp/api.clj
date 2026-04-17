@@ -10,7 +10,6 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.tools :as mcp.tools]
-   [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
@@ -276,10 +275,6 @@
 
 (defn- www-authenticate-discovery []
   (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
-
-(def +mcp-enabled
-  "Wrap routes so they may only be accessed when the MCP server is enabled."
-  mcp.validation/+mcp-enabled)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint.

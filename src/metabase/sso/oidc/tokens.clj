@@ -3,9 +3,11 @@
   (:require
    [buddy.core.keys :as keys]
    [buddy.sign.jwt :as jwt]
+   [clj-http.client :as http]
    [java-time.api :as t]
-   [metabase.sso.oidc.http :as oidc.http]
+   [metabase.sso.settings :as sso.settings]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -42,9 +44,16 @@
 (defn- fetch-jwks
   "Fetch JWKS from the given URI. Returns the parsed JWKS map or nil on error."
   [jwks-uri]
+  (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) jwks-uri)
+    (throw (ex-info "Invalid JWKS URI: address not allowed by network restrictions"
+                    {:url jwks-uri})))
   (try
     (log/infof "Fetching JWKS from %s" jwks-uri)
-    (-> (oidc.http/oidc-get jwks-uri {:accept :json})
+    (-> (http/get jwks-uri {:as :json
+                            :accept :json
+                            :throw-exceptions false
+                            :conn-timeout 5000
+                            :socket-timeout 5000})
         :body)
     (catch Exception e
       (log/warnf e "Failed to fetch JWKS from %s" jwks-uri)

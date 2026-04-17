@@ -9,10 +9,10 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
-import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
 import { zoomInRow } from "metabase/query_builder/actions";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
+import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
 const ALLOWED_VISUALIZATION_PROPS = [
@@ -74,8 +74,7 @@ export class VisualizationResult extends Component {
 
     const noResults = datasetContainsNoResults(result.data);
     if (noResults && !isRunning && !renderEmptyMessage) {
-      const supportsRowsPresentAlert =
-        !isEmbeddingSdk() && getAlertType(question) === ALERT_TYPE_ROWS;
+      const supportsRowsPresentAlert = question.alertType() === ALERT_TYPE_ROWS;
 
       const supportsBackToPreviousResult =
         !isEmbeddingSdk() || !!onNavigateBack;

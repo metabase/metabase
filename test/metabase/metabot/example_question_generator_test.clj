@@ -184,5 +184,4 @@
                                   "duration_ms"         nat-int?
                                   "source"              "example_question_generation_batch"
                                   "tag"                 "example-question-generation"}}]
-                      (->> (snowplow-test/pop-event-data-and-user-id!)
-                           (remove #(= "new_instance_created" (get-in % [:data "event"])))))))))))))
+                      (snowplow-test/pop-event-data-and-user-id!))))))))))

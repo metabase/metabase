@@ -3,9 +3,9 @@ import {
   setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { CollectionId } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { useGetPersonalCollection } from "./use-get-personal-collection";
 

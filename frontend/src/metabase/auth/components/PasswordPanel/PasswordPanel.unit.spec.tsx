@@ -8,12 +8,12 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import MetabaseSettings from "metabase/utils/settings";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
-import MetabaseSettings from "metabase/utils/settings";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+} from "metabase-types/store/mocks";
 
 import { PasswordPanel } from "./PasswordPanel";
 

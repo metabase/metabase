@@ -108,47 +108,6 @@
           (mt/user-http-request :rasta :post 403
                                 "ee/security-center/SC-0000-001/acknowledge"))))))
 
-(deftest acknowledge-advisories-test
-  (testing "POST /api/ee/security-center/acknowledge"
-    (mt/with-premium-features #{:admin-security-center :audit-app}
-      (testing "superuser can acknowledge multiple advisories"
-        (with-test-advisories!
-          (let [response (mt/user-http-request :crowberto :post 200
-                                               "ee/security-center/acknowledge"
-                                               {:advisory_ids ["SC-0000-001" "SC-0000-002"]})]
-            (is (= 2 (count response)))
-            (is (every? :acknowledged_at response))
-            (is (every? :acknowledged_by response))
-            (is (= #{"SC-0000-001" "SC-0000-002"}
-                   (set (map :advisory_id response)))))))
-      (testing "skips already-acknowledged advisories"
-        (with-test-advisories!
-          ;; Acknowledge one first
-          (mt/user-http-request :crowberto :post 200
-                                "ee/security-center/SC-0000-001/acknowledge")
-          ;; Bulk acknowledge including the already-acknowledged one
-          (let [response (mt/user-http-request :crowberto :post 200
-                                               "ee/security-center/acknowledge"
-                                               {:advisory_ids ["SC-0000-001" "SC-0000-002"]})]
-            (is (= 1 (count response)))
-            (is (= "SC-0000-002" (-> response first :advisory_id))))))
-      (testing "returns empty array when all are already acknowledged"
-        (with-test-advisories!
-          (mt/user-http-request :crowberto :post 200
-                                "ee/security-center/SC-0000-001/acknowledge")
-          (let [response (mt/user-http-request :crowberto :post 200
-                                               "ee/security-center/acknowledge"
-                                               {:advisory_ids ["SC-0000-001"]})]
-            (is (= [] response)))))
-      (testing "returns 400 for empty advisory_ids"
-        (mt/user-http-request :crowberto :post 400
-                              "ee/security-center/acknowledge"
-                              {:advisory_ids []}))
-      (testing "non-superuser gets 403"
-        (mt/user-http-request :rasta :post 403
-                              "ee/security-center/acknowledge"
-                              {:advisory_ids ["SC-0000-001"]})))))
-
 (deftest sync-endpoint-test
   (testing "POST /api/ee/security-center/sync"
     (mt/with-premium-features #{:admin-security-center}

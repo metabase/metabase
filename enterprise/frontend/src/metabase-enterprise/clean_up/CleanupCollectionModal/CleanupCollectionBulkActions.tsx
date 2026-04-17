@@ -7,8 +7,8 @@ import {
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { UndoListOverlay } from "metabase/common/components/UndoListing";
-import type { Undo } from "metabase/redux/store/undo";
 import type { CollectionItem } from "metabase-types/api";
+import type { Undo } from "metabase-types/store/undo";
 
 import type { StaleCollectionItem } from "../types";
 

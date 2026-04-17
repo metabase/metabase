@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { remoteSyncApi } from "metabase-enterprise/api";
+import type { State } from "metabase-types/store";
 
 import { initialState } from "./sync-task-slice";
 import type { RemoteSyncStoreState } from "./types";

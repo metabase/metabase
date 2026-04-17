@@ -1,8 +1,8 @@
 import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
-import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
+import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
 export function setupSearchEndpoints(
   items: (CollectionItem | SearchResult)[],

@@ -1,13 +1,7 @@
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  NumberInput,
-  SegmentedControl,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { SegmentedControl, Stack, Text, TextInput } from "metabase/ui";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import S from "./GeneralLimitsSettingsSection.module.css";
@@ -17,7 +11,6 @@ import {
 } from "./hooks";
 import {
   getInstanceLimitInputLabel,
-  getMaxUsageInputSuffix,
   getQuotaMessageInputDescription,
   limitTypeOptions,
   resetPeriodOptions,
@@ -73,7 +66,7 @@ export function GeneralLimitsSettingsSection() {
             onChange={handleLimitPeriodChange}
           />
         </Stack>
-        <NumberInput
+        <TextInput
           label={getInstanceLimitInputLabel(
             limitType || "tokens",
             limitPeriod || "monthly",
@@ -84,13 +77,12 @@ export function GeneralLimitsSettingsSection() {
             input: S.InstanceTokenLimitInput,
             description: S.InputDescription,
           }}
-          suffix={getMaxUsageInputSuffix(limitType, instanceLimit)}
-          min={0}
-          decimalScale={0}
+          type="number"
+          min={1}
           value={instanceLimit != null ? instanceLimit : ""}
-          onChange={(value) =>
+          onChange={(e) =>
             handleInstanceLimitInputChange(
-              sanitizeUsageLimitValue(String(value)),
+              sanitizeUsageLimitValue(e.target.value),
             )
           }
         />
@@ -99,8 +91,8 @@ export function GeneralLimitsSettingsSection() {
           description={getQuotaMessageInputDescription(limitPeriod)}
           placeholder={t`You have reached your AI usage limit for the current period. Please contact your administrator.`}
           classNames={{
+            input: S.QuotaMessageInput,
             description: S.InputDescription,
-            root: S.QuotaMessageInputWrapper,
           }}
           value={quotaMessage || ""}
           onChange={(e) => handleQuotaMessageChange(e.target.value)}

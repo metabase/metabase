@@ -246,64 +246,6 @@
             (is (= #{["common.py.yaml"]}
                    (file-set (io/file dump-dir "python_libraries"))))))))))
 
-(deftest dashcard-ordering-test
-  (testing "Test that dashcard ordering in YAML export is stable when the DB returns dashcards
-   in a different order (simulating non-deterministic query results from Aurora/postgres)."
-    (mt/with-empty-h2-app-db!
-      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        (let [now (t/offset-date-time)
-              col (ts/create! :model/Collection :name "coll")
-              db (ts/create! :model/Database :name "mydb")
-              tbl (ts/create! :model/Table :name "mytable" :db_id (:id db))
-              fld (ts/create! :model/Field :name "myfield" :table_id (:id tbl))
-              c1 (ts/create! :model/Card :name "Card A" :collection_id (:id col)
-                             :database_id (:id db) :table_id (:id tbl))
-              c2 (ts/create! :model/Card :name "Card B" :collection_id (:id col)
-                             :database_id (:id db) :table_id (:id tbl))
-              c3 (ts/create! :model/Card :name "Card C" :collection_id (:id col)
-                             :database_id (:id db) :table_id (:id tbl))
-              dash (ts/create! :model/Dashboard :name "My Dashboard" :collection_id (:id col))
-              ;; Create all dashcards with the same created_at (simulating a batch save)
-              _dc1 (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id c1)
-                               :row 0 :col 0 :size_x 4 :size_y 4 :created_at now
-                               :parameter_mappings [{:parameter_id "param1"
-                                                     :card_id      (:id c1)
-                                                     :target       [:dimension [:field (:id fld) nil]]}])
-              _dc2 (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id c2)
-                               :row 0 :col 4 :size_x 4 :size_y 4 :created_at now)
-              _dc3 (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id c3)
-                               :row 4 :col 0 :size_x 4 :size_y 4 :created_at now)
-
-              find-dash-file (fn [dir]
-                               (->> (file-seq (io/file dir))
-                                    (filter #(str/ends-with? (.getName ^java.io.File %) ".yaml"))
-                                    (filter #(str/includes? (.getName ^java.io.File %) "my_dashboard"))
-                                    first))
-              clean-and-export! (fn []
-                                  (doseq [^java.io.File f (reverse (file-seq (io/file dump-dir)))]
-                                    (.delete f))
-                                  (.mkdirs (io/file dump-dir))
-                                  (storage/store! (serdes/with-cache (into [] (extract/extract {:no-settings true
-                                                                                                :no-transforms true})))
-                                                  (storage.files/file-writer dump-dir))
-                                  (slurp (find-dash-file dump-dir)))
-
-              ;; Export with normal DB order
-              yaml-before (clean-and-export!)
-
-              ;; Export again but with nested entity query results reversed,
-              ;; simulating non-deterministic DB row ordering (as seen on Aurora Postgres)
-              original-fn @#'serdes/transform->nested
-              yaml-reversed
-              (with-redefs [serdes/transform->nested
-                            (fn [transform opts batch]
-                              (update-vals (original-fn transform opts batch) reverse))]
-                (clean-and-export!))]
-
-          (testing "Dashcard ordering should be stable regardless of DB return order"
-            (is (= yaml-before yaml-reversed)
-                "Dashboard YAML should be identical even when DB returns dashcards in different order")))))))
-
 (deftest name-too-long-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!

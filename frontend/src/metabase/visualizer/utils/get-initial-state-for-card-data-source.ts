@@ -1,4 +1,3 @@
-import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
@@ -16,6 +15,7 @@ import type {
   DatasetColumn,
   VisualizationDisplay,
 } from "metabase-types/api";
+import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase-types/store/visualizer";
 
 import {
   createDimensionColumn,

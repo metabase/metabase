@@ -37,16 +37,14 @@
    #"#metabase"
    #"clojure\.lang\."])
 
-(defn- find-field-id
-  "Find the real field ID by name in a table's visible columns."
+(defn- find-field-index
+  "Find the index of a field by name in a table's visible columns."
   [table-id field-name]
   (let [mp    (mt/metadata-provider)
         query (lib/query mp (lib.metadata/table mp table-id))
         cols  (lib/visible-columns query -1 {:include-implicitly-joinable? false})]
-    (->> cols
-         (filter #(= field-name (:name %)))
-         first
-         :id)))
+    (some (fn [[i col]] (when (= field-name (:name col)) i))
+          (map-indexed vector cols))))
 
 (defn- assert-formatted-output
   "Assert that a tool result contains a well-formatted :output string.
@@ -94,10 +92,10 @@
 
    ["read_resource: table field values"
     #(let [table-id (mt/id :orders)
-           field-id (find-field-id table-id "QUANTITY")]
+           idx      (find-field-index table-id "QUANTITY")]
        (ensure-fresh-field-values! (mt/id :orders :quantity))
        (resource-tools/read-resource-tool
-        {:uris [(str "metabase://table/" table-id "/fields/" field-id)]}))
+        {:uris [(str "metabase://table/" table-id "/fields/t" table-id "-" idx)]}))
     #"<field-metadata\b"]])
 
 (defn- read-resource-metric-invocations [metric-id]
@@ -256,12 +254,12 @@
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [table-id (mt/id :orders)
-              field-id (find-field-id table-id "QUANTITY")]
+              idx      (find-field-index table-id "QUANTITY")]
           (ensure-fresh-field-values! (mt/id :orders :quantity))
           (let [result (metadata-tools/get-field-values-tool
                         {:data_source "table"
                          :source_id   table-id
-                         :field_id    field-id})]
+                         :field_id    (str "t" table-id "-" idx)})]
             (assert-formatted-structured result "get_field_values: table field" #"<field-metadata\b")))))))
 
 (deftest get-field-values-metric-structured-output-test
@@ -276,10 +274,10 @@
                                                       :database_id   (mt/id)
                                                       :name          "Test Metric For Fields"
                                                       :type          :metric}]
-            ;; Use real field ID — first filterable column of the metric
+            ;; Use the card-field-id-prefix format: c<id>-<index>
             ;; Temp metrics may not have fingerprints, so field metadata may be "No metadata available"
             ;; — still a valid formatted string, just not XML-wrapped
-            (let [field-id (mt/id :orders :total)
+            (let [field-id (str "c" metric-id "-0")
                   result   (metadata-tools/get-field-values-tool
                             {:data_source "metric"
                              :source_id   metric-id
@@ -299,10 +297,9 @@
                                                      :database_id   (mt/id)
                                                      :name          "Test Model For Fields"
                                                      :type          :model}]
-            ;; Use real field ID — first returned column of the model
             ;; Temp models may not have fingerprints, so we accept either
             ;; <field-metadata> XML or "No metadata available" fallback
-            (let [field-id (mt/id :orders :id)
+            (let [field-id (str "c" model-id "-0")
                   result   (metadata-tools/get-field-values-tool
                             {:data_source "model"
                              :source_id   model-id
@@ -322,8 +319,9 @@
                                                      :database_id   (mt/id)
                                                      :name          "Test Model Field Values"
                                                      :type          :model}]
+            ;; field index 1 = :quantity (second field)
             (ensure-fresh-field-values! (mt/id :orders :quantity))
-            (let [field-id (mt/id :orders :quantity)
+            (let [field-id (str "c" model-id "-1")
                   result   (resource-tools/read-resource-tool
                             {:uris [(str "metabase://model/" model-id "/fields/" field-id)]})]
               (assert-formatted-output result "model field values" #"<field-metadata\b"))))))))
@@ -340,9 +338,9 @@
                                                       :database_id   (mt/id)
                                                       :name          "Test Metric Dim Values"
                                                       :type          :metric}]
-            ;; Use a real filterable field ID from the metric's source table
+            ;; dimension index 0 = first filterable column
             ;; Temp metrics may not have fingerprints — "No metadata available" is also valid
-            (let [field-id (mt/id :orders :id)
+            (let [field-id (str "c" metric-id "-0")
                   result   (resource-tools/read-resource-tool
                             {:uris [(str "metabase://metric/" metric-id "/dimensions/" field-id)]})]
               (assert-formatted-output result "metric dimension values" #"(?:<field-metadata\b|No metadata available)"))))))))

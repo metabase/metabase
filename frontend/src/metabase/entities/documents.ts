@@ -5,7 +5,6 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import type { Dispatch } from "metabase/redux/store";
 import { DocumentSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
 import {
@@ -22,6 +21,7 @@ import type {
   GetDocumentRequest,
   UpdateDocumentRequest,
 } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 /**
  * @deprecated use "metabase/api" instead

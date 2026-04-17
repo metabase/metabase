@@ -1,10 +1,10 @@
 import { mockSettings } from "__support__/settings";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   DashboardSubscription,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
 

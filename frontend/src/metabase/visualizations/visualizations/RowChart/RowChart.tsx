@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
-import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
@@ -30,6 +29,7 @@ import type {
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
+import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import {
   getGroupedDataset,
   getSeries,
@@ -219,13 +219,7 @@ const RowChartVisualization = ({
 
   const handleSelectSeries = (event: React.MouseEvent, seriesIndex: number) => {
     const clickData = {
-      ...getLegendClickData(
-        seriesIndex,
-        series,
-        settings,
-        chartColumns,
-        groupedData,
-      ),
+      ...getLegendClickData(seriesIndex, series, settings, chartColumns),
       element: event.currentTarget,
     };
 

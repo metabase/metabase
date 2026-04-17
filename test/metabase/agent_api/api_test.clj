@@ -6,10 +6,10 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -70,19 +70,6 @@
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
 
-(deftest agent-api-enabled-setting-test
-  (testing "External Agent API routes return 403 when disabled"
-    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
-      (is (= "Agent API is not enabled."
-             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
-
-(deftest ai-features-enabled-setting-test
-  (testing "External Agent API routes return 403 when AI features are globally disabled"
-    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
-                                           :agent-api-enabled?   "true"]
-      (is (= "AI features are not enabled."
-             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
-
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
 (deftest get-table-details-test
@@ -119,36 +106,6 @@
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
       (is (some #(seq (:field_values %)) (:fields table))))))
 
-(deftest get-table-details-field-types-test
-  (testing "Field metadata (base_type, effective_type, semantic_type, coercion_strategy) is returned correctly"
-    (mt/with-temp [:model/Database {db-id :id}    {}
-                   :model/Table    {table-id :id} {:db_id db-id, :name "t", :active true}
-                   :model/Field    _              {:table_id table-id, :name "id"
-                                                   :base_type :type/BigInteger
-                                                   :semantic_type :type/PK}
-                   :model/Field    _              {:table_id table-id, :name "name"
-                                                   :base_type :type/Text}
-                   :model/Field    _              {:table_id table-id, :name "created_at"
-                                                   :base_type :type/Text
-                                                   :effective_type :type/DateTime
-                                                   :coercion_strategy :Coercion/ISO8601->DateTime}]
-      (let [fields  (-> (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
-                        :fields)
-            by-name (m/index-by :name fields)]
-        (testing "base_type is always set"
-          (is (= "type/BigInteger" (get-in by-name ["id" :base_type])))
-          (is (= "type/Text"       (get-in by-name ["name" :base_type])))
-          (is (= "type/Text"       (get-in by-name ["created_at" :base_type]))))
-        (testing "semantic_type is returned when set"
-          (is (= "type/PK" (get-in by-name ["id" :semantic_type])))
-          (is (nil? (get-in by-name ["name" :semantic_type]))))
-        (testing "effective_type and coercion_strategy are returned when coerced"
-          (is (= "type/DateTime"               (get-in by-name ["created_at" :effective_type])))
-          (is (= "Coercion/ISO8601->DateTime" (get-in by-name ["created_at" :coercion_strategy]))))
-        (testing "effective_type is omitted when it equals base_type"
-          (is (not (contains? (get by-name "id") :effective_type)))
-          (is (not (contains? (get by-name "name") :effective_type))))))))
-
 (deftest get-metric-details-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
@@ -179,15 +136,17 @@
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id)))
 
 (defn- visible-field-id
-  "Find the real field ID for a field by display name within a table's visible columns."
+  "Find the field-id string for a field by display name within a table's visible columns."
   [table-id field-display-name]
-  (let [mp           (mt/metadata-provider)
-        query        (lib/query mp (lib.metadata/table mp table-id))
-        visible-cols (lib/visible-columns query)]
-    (->> visible-cols
-         (filter #(= (lib/display-name query %) field-display-name))
-         first
-         :id)))
+  (let [mp            (mt/metadata-provider)
+        query         (lib/query mp (lib.metadata/table mp table-id))
+        field-prefix  (metabot.tools.u/table-field-id-prefix table-id)
+        visible-cols  (lib/visible-columns query)]
+    (->> (keep-indexed (fn [i col]
+                         (when (= (lib/display-name query col) field-display-name)
+                           (str field-prefix i)))
+                       visible-cols)
+         first)))
 
 (deftest get-table-field-values-test
   ;; Ensure field values exist for the field we'll test
@@ -213,12 +172,12 @@
 
   (testing "Returns 404 for non-existent table"
     (is (= "Not found."
-           (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/999999/values"))))
+           (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
 
-  (testing "Returns 404 for non-existent field"
+  (testing "Returns 400 for invalid field-id format"
     (let [table-id (mt/id :people)]
-      (is (= "Field 999999 not found"
-             (mt/user-http-request :crowberto :get 404 (format "agent/v1/table/%d/field/999999/values" table-id)))))))
+      (is (= "Invalid field_id format: not-a-valid-id"
+             (mt/user-http-request :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id)))))))
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
@@ -238,35 +197,40 @@
 (deftest construct-query-test
   (testing "Constructs a simple query from a table"
     (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations []})]
+          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id table-id})]
       (is (string? (:query response)) "Response should contain a query string")
       (let [decoded (decode-query response)]
         (is (= :mbql/query (lib/normalized-query-type decoded)))
         (is (= (mt/id) (lib/database-id decoded)))
         (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
 
-  (testing "Respects explicit limit operation"
+  (testing "Applies default limit of 200 when no limit is specified"
     (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["limit" 10]]})
+          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id table-id})
+          decoded  (decode-query response)]
+      (is (= 200 (lib/current-limit decoded)))))
+
+  (testing "Respects explicit limit"
+    (let [table-id (mt/id :orders)
+          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id table-id
+                                          :limit    10})
           decoded  (decode-query response)]
       (is (= 10 (lib/current-limit decoded)))))
 
   (testing "Returns 404 for non-existent table"
-    (is (= "Not found."
-           (mt/user-http-request :rasta :post 404 "agent/v2/construct-query"
-                                 {:source     {:type "table" :id 999999}
-                                  :operations []})))))
+    (is (= "No table found with table_id 999999"
+           (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
+                                 {:table_id 999999})))))
 
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
     (let [table-id       (mt/id :orders)
-          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:source     {:type "table" :id table-id}
-                                                :operations [["limit" 5]]})
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                               {:table_id table-id
+                                                :limit    5})
           ;; Streaming response returns 202 (accepted) since it starts streaming before completion
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
@@ -281,9 +245,9 @@
 
   (testing "Enforces agent query row limit even when query specifies a higher limit"
     (let [table-id       (mt/id :orders)
-          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:source     {:type "table" :id table-id}
-                                                :operations [["limit" 300]]})
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                               {:table_id table-id
+                                                :limit    300})
           execute-resp   (mt/user-http-request :rasta :post 202 "agent/v1/execute"
                                                {:query (:query construct-resp)})]
       (is (=? {:status "completed" :row_count 200}
@@ -307,11 +271,12 @@
 
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
-             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/999999/values"))))
+             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
 
-    (testing "Returns 404 for non-existent field on metric"
-      (is (= "Field 999999 not found"
-             (mt/user-http-request :rasta :get 404 (format "agent/v1/metric/%d/field/999999/values" (:id metric))))))))
+    (testing "Returns 400 for field-id from wrong entity type"
+      ;; Using a table field-id (t-prefix) when querying a metric should fail
+      (is (re-find #"does not match expected prefix"
+                   (mt/user-http-request :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric))))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -319,9 +284,8 @@
                                      :database_id   (mt/id)
                                      :dataset_query (orders-count-query)}]
     (testing "Constructs a query from a metric"
-      (let [response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                           {:source     {:type "metric" :id (:id metric)}
-                                            :operations []})]
+      (let [response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                           {:metric_id (:id metric)})]
         (is (string? (:query response)) "Response should contain a query string")
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
@@ -329,17 +293,28 @@
 
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
-             (mt/user-http-request :rasta :post 404 "agent/v2/construct-query"
-                                   {:source     {:type "metric" :id 999999}
-                                    :operations []}))))))
+             (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
+                                   {:metric_id 999999}))))))
 
 (deftest construct-query-with-count-aggregation-test
-  (testing "Count aggregation produces a valid query"
+  (testing "Count aggregation without field_id produces a valid query"
     (let [table-id (mt/id :orders)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["aggregate" ["count"]]
-                                                       ["limit" 10]]})]
+          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id     table-id
+                                          :aggregations [{:function "count"}]
+                                          :limit        10})]
+      (is (string? (:query response)))
+      (let [decoded (decode-query response)]
+        (is (= 1 (count (lib/aggregations decoded)))))))
+
+  (testing "Count aggregation with field_id still works"
+    (let [table-id (mt/id :orders)
+          table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
+          field-id (-> table :fields first :field_id)
+          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id     table-id
+                                          :aggregations [{:function "count" :field_id field-id}]
+                                          :limit        10})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (= 1 (count (lib/aggregations decoded))))))))
@@ -347,11 +322,14 @@
 (deftest construct-query-with-filters-test
   (testing "Constructs a query with filters"
     (let [table-id (mt/id :orders)
-          field-id (mt/id :orders :id)
-          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["filter" ["not-null" ["field" field-id]]]
-                                                       ["limit" 10]]})]
+          ;; Get table details to find a valid field_id
+          table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
+          field-id (-> table :fields first :field_id)
+          response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id table-id
+                                          :filters  [{:field_id  field-id
+                                                      :operation "is-not-null"}]
+                                          :limit    10})]
       (is (string? (:query response)))
       (let [decoded (decode-query response)]
         (is (seq (lib/filters decoded)) "Query should have filters")))))
@@ -379,10 +357,10 @@
   (testing "Returns results for a table query"
     (let [table-id (mt/id :orders)
           field-id (visible-field-id table-id "ID")
-          response (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["order-by" ["field" field-id]]
-                                                       ["limit" 5]]})]
+          response (mt/user-http-request :rasta :post 202 "agent/v1/query"
+                                         {:table_id table-id
+                                          :order_by [{:field {:field_id field-id} :direction "asc"}]
+                                          :limit    5})]
       (is (=? {:status             "completed"
                :row_count          5
                :continuation_token string?
@@ -393,11 +371,11 @@
   (testing "Continuation token returns next page of results"
     (let [table-id (mt/id :orders)
           field-id (visible-field-id table-id "ID")
-          page1    (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                         {:source     {:type "table" :id table-id}
-                                          :operations [["order-by" ["field" field-id]]
-                                                       ["limit" 5]]})
-          page2    (mt/user-http-request :rasta :post 202 "agent/v2/query"
+          page1    (mt/user-http-request :rasta :post 202 "agent/v1/query"
+                                         {:table_id table-id
+                                          :order_by [{:field {:field_id field-id} :direction "asc"}]
+                                          :limit    5})
+          page2    (mt/user-http-request :rasta :post 202 "agent/v1/query"
                                          {:continuation_token (:continuation_token page1)})]
       (is (=? {:row_count          5
                :continuation_token string?
@@ -414,16 +392,16 @@
   (testing "No continuation_token when all rows are returned"
     (is (=? {:status             "completed"
              :continuation_token nil?}
-            (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:source     {:type "table" :id (mt/id :orders)}
-                                   :operations [["aggregate" ["count"]]]}))))
+            (mt/user-http-request :rasta :post 202 "agent/v1/query"
+                                  {:table_id     (mt/id :orders)
+                                   :aggregations [{:function "count"}]}))))
 
   (testing "Constraint cap limits results to 200 rows"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
-            (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:source     {:type "table" :id (mt/id :orders)}
-                                   :operations [["limit" 1000]]})))))
+            (mt/user-http-request :rasta :post 202 "agent/v1/query"
+                                  {:table_id (mt/id :orders)
+                                   :limit    1000})))))
 
 (deftest combined-query-metric-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -433,9 +411,8 @@
     (testing "Returns results for a metric query"
       (is (=? {:status    "completed"
                :row_count pos?}
-              (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                    {:source     {:type "metric" :id (:id metric)}
-                                     :operations []}))))))
+              (mt/user-http-request :rasta :post 202 "agent/v1/query"
+                                    {:metric_id (:id metric)}))))))
 
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]

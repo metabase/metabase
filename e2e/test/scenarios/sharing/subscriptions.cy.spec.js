@@ -514,28 +514,6 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.openDashboardMenu();
       H.popover().findByText("Subscriptions").should("be.visible");
     });
-
-    it("should persist the immutable Slack channel_id alongside the channel name", () => {
-      cy.intercept("POST", "/api/pulse").as("createPulse");
-
-      openSlackCreationForm();
-
-      cy.findByPlaceholderText("Pick a user or channel...").click();
-      H.popover().findByText("#work").click();
-
-      H.sidebar().findByRole("button", { name: "Done" }).click();
-
-      cy.wait("@createPulse").then(({ request: { body } }) => {
-        // The mocked channel `#work` has id `C001` in e2e-slack-helpers.js.
-        // Storing the immutable channel_id at save time is what makes the
-        // subscription survive future channel renames in Slack.
-        const slackChannel = body.channels.find(
-          (c) => c.channel_type === "slack",
-        );
-        expect(slackChannel.details.channel).to.eq("#work");
-        expect(slackChannel.details.channel_id).to.eq("C001");
-      });
-    });
   });
 
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {

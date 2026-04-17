@@ -19,7 +19,6 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
-   [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -222,7 +221,6 @@
 
   (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
-  (llm.startup/check-and-sync-settings-on-startup!)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)

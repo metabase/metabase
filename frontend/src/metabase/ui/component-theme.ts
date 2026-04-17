@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-export const OVERLAY_Z_INDEX = 200;
+import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import type { ColorName } from "metabase/ui/colors/types";
 
 /**

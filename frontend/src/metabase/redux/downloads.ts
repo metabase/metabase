@@ -8,12 +8,10 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
-import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { DownloadsState, State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup/selectors";
 import api, { GET, POST } from "metabase/utils/api";
 import { openSaveDialog } from "metabase/utils/dom";
@@ -35,6 +33,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
+import type { DownloadsState, State } from "metabase-types/store";
 
 import { trackDownloadResults } from "./analytics";
 
@@ -228,7 +227,7 @@ export const downloadQueryResults = createAsyncThunk(
       exportType: opts.type,
     });
 
-    if (opts.type === exportFormatPng) {
+    if (opts.type === Urls.exportFormatPng) {
       await dispatch(downloadToImage({ opts, id: Date.now() }));
     } else {
       await dispatch(downloadDataset({ opts, id: Date.now() }));

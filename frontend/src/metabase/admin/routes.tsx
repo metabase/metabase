@@ -59,8 +59,8 @@ import {
   PLUGIN_TENANTS,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
+import type { State } from "metabase-types/store";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";

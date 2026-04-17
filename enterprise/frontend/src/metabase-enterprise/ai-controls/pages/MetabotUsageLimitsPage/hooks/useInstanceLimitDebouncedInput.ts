@@ -37,13 +37,8 @@ export function useInstanceLimitDebouncedInput() {
 
   const handleInstanceLimitInputChange = useCallback(
     (maxUsage: number | null) => {
-      setInstanceLimit((prev) => {
-        if (prev !== maxUsage) {
-          void debouncedSaveInstanceLimit(maxUsage);
-        }
-
-        return maxUsage;
-      });
+      setInstanceLimit(maxUsage);
+      debouncedSaveInstanceLimit(maxUsage);
     },
     [debouncedSaveInstanceLimit],
   );

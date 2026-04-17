@@ -1,3 +1,7 @@
+.affectedCard {
+  background-color: var(--mb-color-background-error);
+}
+
 .severityCritical {
   background-color: var(--mb-color-error);
   color: var(--mb-color-white);
@@ -18,7 +22,14 @@
   color: var(--mb-color-white);
 }
 
-.severityNeutral {
-  background-color: var(--mb-color-background-disabled);
-  color: var(--mb-color-text-tertiary);
+.statusAffected {
+  background-color: var(--mb-color-background-error);
+  border-color: var(--mb-color-error);
+  color: var(--mb-color-error);
+}
+
+.statusNotAffected {
+  background-color: var(--mb-color-background-success);
+  border-color: var(--mb-color-success);
+  color: var(--mb-color-success);
 }

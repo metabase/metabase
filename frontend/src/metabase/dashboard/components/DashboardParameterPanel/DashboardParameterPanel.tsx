@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useRef } from "react";
 
+import TransitionS from "metabase/css/core/transitions.module.css";
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
@@ -29,10 +30,12 @@ export function DashboardParameterPanel() {
   const allowSticky = isParametersWidgetContainersSticky(
     visibleParameters.length,
   );
-  const { isSticky } = useIsParameterPanelSticky({
+  const { isSticky, isStickyStateChanging } = useIsParameterPanelSticky({
     parameterPanelRef,
     disabled: !allowSticky || !hasVisibleParameters,
   });
+
+  const shouldApplyThemeChangeTransition = !isStickyStateChanging && isSticky;
 
   if (!hasVisibleParameters) {
     return null;
@@ -67,6 +70,7 @@ export function DashboardParameterPanel() {
     <span ref={parameterPanelRef}>
       <FullWidthContainer
         className={cx(S.ParametersWidgetContainer, {
+          [TransitionS.transitionThemeChange]: shouldApplyThemeChangeTransition,
           [S.allowSticky]: allowSticky,
           [S.isSticky]: isSticky,
           [S.isEmbeddingSdk]: isEmbeddingSdk(),

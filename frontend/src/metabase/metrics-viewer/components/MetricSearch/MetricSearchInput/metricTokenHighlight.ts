@@ -1,11 +1,9 @@
 import {
-  type EditorState,
   MapMode,
   RangeSet,
   RangeValue,
   StateEffect,
   StateField,
-  type Transaction,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -17,8 +15,12 @@ import {
 
 import type { MetricDefinition } from "metabase-lib/metric";
 
-import type { MetricSourceId } from "../../../types/viewer-state";
-import type { MetricIdentityEntry } from "../utils";
+import type {
+  MetricSourceId,
+  MetricsViewerFormulaEntity,
+} from "../../../types/viewer-state";
+import type { MetricIdentityEntry, MetricNameMap } from "../utils";
+import { parseFullTextWithPositions, traverseMetricTokens } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
 
@@ -43,19 +45,33 @@ class MetricTokenWidget extends WidgetType {
   }
 }
 
+export const setMetricNames = StateEffect.define<MetricNameMap>();
+
+const metricNamesField = StateField.define<MetricNameMap>({
+  create: () => ({}),
+  update(entries, tr) {
+    for (const effect of tr.effects) {
+      if (effect.is(setMetricNames)) {
+        return effect.value;
+      }
+    }
+    return entries;
+  },
+});
+
 // ── Identity tracking ──────────────────────────────────────────────────────
 
 class MetricIdentity extends RangeValue {
   override mapMode = MapMode.TrackDel;
-  // Prevent the range from absorbing adjacent text insertions —
-  // without this, typing right next to a metric would extend its range.
+  // Don't absorb text inserted at range boundaries — the identity
+  // must track exactly the original token span, not grow with adjacent edits.
   override startSide = 1;
   override endSide = -1;
 
   constructor(
     readonly sourceId: MetricSourceId,
     readonly definition: MetricDefinition | null,
-    readonly slotIndex: number | undefined,
+    readonly slotIndex: number,
   ) {
     super();
   }
@@ -72,52 +88,53 @@ class MetricIdentity extends RangeValue {
 export const setMetricIdentities =
   StateEffect.define<RangeSet<MetricIdentity>>();
 
-export const addMetricIdentity = StateEffect.define<MetricIdentityEntry>();
-
 export const metricIdentityField = StateField.define<RangeSet<MetricIdentity>>({
   create: () => RangeSet.empty,
   update(identities, tr) {
-    // Full reset — replaces all identities. Any addMetricIdentity effects
-    // in the same transaction are intentionally ignored.
     for (const effect of tr.effects) {
       if (effect.is(setMetricIdentities)) {
         return effect.value;
       }
     }
-
-    let current = identities;
     if (tr.docChanged) {
-      current = current.map(tr.changes);
+      return identities.map(tr.changes);
     }
-
-    for (const effect of tr.effects) {
-      if (effect.is(addMetricIdentity)) {
-        const { from, to, sourceId, definition, slotIndex } = effect.value;
-        const newRange = new MetricIdentity(
-          sourceId,
-          definition,
-          slotIndex,
-        ).range(from, to);
-        current = current.update({ add: [newRange] });
-      }
-    }
-
-    return current;
+    return identities;
   },
 });
 
-export function identitiesFromEntries(
-  entries: MetricIdentityEntry[],
+export function buildMetricIdentities(
+  text: string,
+  metricNames: MetricNameMap,
+  entities: MetricsViewerFormulaEntity[],
 ): RangeSet<MetricIdentity> {
-  const ranges = entries.map((entry) =>
-    new MetricIdentity(entry.sourceId, entry.definition, entry.slotIndex).range(
-      entry.from,
-      entry.to,
-    ),
-  );
+  const ranges: ReturnType<MetricIdentity["range"]>[] = [];
+  let slotCounter = 0;
+
+  traverseMetricTokens(text, metricNames, entities, (visit) => {
+    const slotIndex = slotCounter++;
+    const sourceId =
+      visit.kind === "standalone" ? visit.entity.id : visit.exprToken.sourceId;
+    const definition =
+      visit.kind === "standalone"
+        ? visit.entity.definition
+        : (visit.exprToken.definition ?? null);
+
+    ranges.push(
+      new MetricIdentity(sourceId, definition, slotIndex).range(
+        visit.positioned.from,
+        visit.positioned.to,
+      ),
+    );
+  });
+
   return RangeSet.of(ranges, true);
 }
 
+/**
+ * Reads the current metric identities from the CodeMirror state.
+ * Positions are already in current-document coordinates (mapped automatically).
+ */
 export function readMetricIdentities(view: EditorView): MetricIdentityEntry[] {
   const identities = view.state.field(metricIdentityField);
   const result: MetricIdentityEntry[] = [];
@@ -138,18 +155,30 @@ export function readMetricIdentities(view: EditorView): MetricIdentityEntry[] {
 
 type MetricRange = { from: number; to: number; name: string };
 
-function computeMetricTokenRanges(state: EditorState): MetricRange[] {
-  const identities = state.field(metricIdentityField);
-  const docLength = state.doc.length;
-  const ranges: MetricRange[] = [];
+function computeMetricTokenRanges(
+  docText: string,
+  docLength: number,
+  metricNames: MetricNameMap,
+): MetricRange[] {
+  if (Object.keys(metricNames).length === 0) {
+    return [];
+  }
 
-  identities.between(0, docLength, (from, to) => {
-    if (from < to) {
-      ranges.push({ from, to, name: state.doc.sliceString(from, to) });
-    }
-  });
-
-  return ranges;
+  const tokens = parseFullTextWithPositions(docText, metricNames);
+  return tokens
+    .filter(
+      (t) =>
+        t.type === "metric" &&
+        t.from >= 0 &&
+        t.to <= docLength &&
+        t.from < t.to,
+    )
+    .sort((a, b) => a.from - b.from)
+    .map((t) => ({
+      from: t.from,
+      to: t.to,
+      name: docText.slice(t.from, t.to),
+    }));
 }
 
 function rangesToDecorations(ranges: MetricRange[]): DecorationSet {
@@ -164,30 +193,32 @@ function rangesToDecorations(ranges: MetricRange[]): DecorationSet {
   return Decoration.set(decorations);
 }
 
-function identitiesChanged(tr: Transaction): boolean {
-  return (
-    tr.docChanged ||
-    tr.effects.some((e) => e.is(setMetricIdentities) || e.is(addMetricIdentity))
-  );
-}
-
+/** Stores the raw metric ranges for lookup by keymap handlers. */
 const metricTokenRangesField = StateField.define<MetricRange[]>({
   create: () => [],
   update(ranges, tr) {
-    if (!identitiesChanged(tr)) {
-      return ranges;
+    const metricNames = tr.state.field(metricNamesField);
+    const metricNamesChanged = tr.effects.some((e) => e.is(setMetricNames));
+    if (tr.docChanged || metricNamesChanged) {
+      return computeMetricTokenRanges(
+        tr.newDoc.toString(),
+        tr.newDoc.length,
+        metricNames,
+      );
     }
-    return computeMetricTokenRanges(tr.state);
+    return ranges;
   },
 });
 
+/** Derives replace decorations from the metric ranges field (no re-parse). */
 const metricDecorationsField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
-  update(decorations, tr) {
-    if (!identitiesChanged(tr)) {
-      return decorations;
+  update(deco, tr) {
+    const metricNamesChanged = tr.effects.some((e) => e.is(setMetricNames));
+    if (tr.docChanged || metricNamesChanged) {
+      return rangesToDecorations(tr.state.field(metricTokenRangesField));
     }
-    return rangesToDecorations(tr.state.field(metricTokenRangesField));
+    return deco;
   },
   provide: (f) => EditorView.decorations.from(f),
 });
@@ -263,6 +294,7 @@ const metricTokenKeymap = keymap.of([
 ]);
 
 export const metricTokenHighlight = [
+  metricNamesField,
   metricIdentityField,
   metricTokenRangesField,
   metricDecorationsField,

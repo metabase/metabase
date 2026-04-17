@@ -7,10 +7,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import {
-  createMockAppState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -18,6 +14,10 @@ import {
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
+import {
+  createMockAppState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { Onboarding } from "../Onboarding";
 import type { ChecklistItemValue } from "../types";

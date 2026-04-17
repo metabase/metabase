@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
-import type { ComboboxProps } from "metabase/ui";
+import { type ComboboxProps, MultiAutocomplete } from "metabase/ui";
 
 interface StaticValuePickerProps {
   selectedValues: string[];
@@ -21,7 +20,7 @@ export function StaticValuePicker({
   onChange,
 }: StaticValuePickerProps) {
   return (
-    <MultiAutocompleteWithTranslation
+    <MultiAutocomplete
       value={selectedValues}
       placeholder={placeholder}
       autoFocus={autoFocus}

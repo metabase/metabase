@@ -348,7 +348,7 @@
             (is (every? #(= :table (:type %)) tables))
             (is (every? #(every? (fn [field] (contains? field :field_id)) (:fields %)) tables))
             (is (every? #(every? (fn [field] (contains? field :name)) (:fields %)) tables))
-            (is (every? #(every? (fn [field] (contains? field :base_type)) (:fields %)) tables))
+            (is (every? #(every? (fn [field] (contains? field :type)) (:fields %)) tables))
             (is (every? #(every? (fn [field] (contains? field :database_type)) (:fields %)) tables))
             (is (every? #(contains? % :metrics) tables)))))
 

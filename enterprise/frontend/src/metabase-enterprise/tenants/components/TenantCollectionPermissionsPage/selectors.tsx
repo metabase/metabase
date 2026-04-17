@@ -22,7 +22,6 @@ import {
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { ExpandedCollection, State } from "metabase/redux/store";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -34,6 +33,7 @@ import type {
   CollectionPermissions,
   Group as GroupType,
 } from "metabase-types/api";
+import type { ExpandedCollection, State } from "metabase-types/store";
 
 export const tenantCollectionsQuery = {
   tree: true,

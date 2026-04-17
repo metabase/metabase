@@ -1,10 +1,10 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
-import type { State } from "metabase/redux/store";
 import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { GroupId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 export type GroupRouteParams = {
   groupId?: number;

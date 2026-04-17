@@ -177,32 +177,6 @@
                                         {:source-field ["my-db" nil "orders" "subtotal"]}]]
                            :id        "[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"}}}}}}})))))
 
-(deftest ^:parallel export-import-template-tag-table-id-test
-  (testing "template tags of type :table serialize their :table-id as a portable tuple"
-    (let [template-tags {"table" {:id           "abc"
-                                  :name         "table"
-                                  :display-name "Table"
-                                  :type         :table
-                                  :table-id     42}}
-          exported      (binding [serdes/*export-table-fk* (constantly ["DB" "SCHEMA" "TABLE"])]
-                          (serdes/export-mbql template-tags))]
-      (is (= {"table" {:id           "abc"
-                       :name         "table"
-                       :display-name "Table"
-                       :type         :table
-                       :table-id     ["DB" "SCHEMA" "TABLE"]}}
-             exported))
-      (is (= 42
-             (binding [serdes/*import-table-fk* (constantly 42)]
-               (get-in (#'serdes/import-mbql* exported) ["table" :table-id])))))))
-
-(deftest ^:parallel template-tag-table-id-deps-test
-  (testing "template tag :table-id contributes a Table dependency"
-    (is (contains? (#'serdes/mbql-deps-map {:table-id ["DB" "SCHEMA" "TABLE"]})
-                   [{:model "Database" :id "DB"}
-                    {:model "Schema" :id "SCHEMA"}
-                    {:model "Table" :id "TABLE"}]))))
-
 (deftest ^:parallel export-parameters-test
   (binding [serdes/*export-fk*       (fn [id model]
                                        (format "%s___%d" (name model) id))

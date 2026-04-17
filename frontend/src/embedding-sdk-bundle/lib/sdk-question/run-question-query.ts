@@ -68,6 +68,11 @@ export async function runQuestionQuerySdk(
     question = question.maybeResetDisplay(data, sensibleDisplays, undefined);
   }
 
+  // FIXME: this removes "You can also get an alert when there are some results." feature for question
+  if (question) {
+    question.alertType = () => null;
+  }
+
   return { question, queryResults };
 }
 

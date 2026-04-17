@@ -126,8 +126,8 @@ describe("issue 39487", () => {
       createTimeSeriesQuestionWithFilter([
         "between",
         CREATED_AT_FIELD,
-        "2027-05-01", // 5 day rows
-        "2027-06-01", // 6 day rows
+        "2024-05-01", // 5 day rows
+        "2024-06-01", // 6 day rows
       ]);
 
       cy.log("timeseries filter button");
@@ -147,9 +147,9 @@ describe("issue 39487", () => {
         cy.log(
           "changing text input values should navigate the calendars (metabase#64602)",
         );
-        cy.findAllByRole("textbox").first().clear().type("2027/05/01");
-        cy.findByText("May 2027").should("be.visible");
-        cy.findByLabelText("1 May 2027").should(
+        cy.findAllByRole("textbox").first().clear().type("2024/05/01");
+        cy.findByText("May 2024").should("be.visible");
+        cy.findByLabelText("1 May 2024").should(
           "have.attr",
           "data-first-in-range",
           "true",
@@ -159,8 +159,8 @@ describe("issue 39487", () => {
           .should("have.length", 2)
           .last()
           .clear()
-          .type("2027/06/01");
-        cy.findAllByLabelText("1 June 2027")
+          .type("2024/06/01");
+        cy.findAllByLabelText("1 June 2024")
           .filter(":visible")
           .should("have.length", 1)
           .and("have.attr", "data-last-in-range", "true");
@@ -174,13 +174,13 @@ describe("issue 39487", () => {
       H.tableHeaderClick("Created At: Year");
       H.popover().findByText("Filter by this column").click();
       H.popover().findByText("Fixed date range…").click();
-      H.popover().findAllByRole("textbox").first().clear().type("2027/05/01");
+      H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
       H.popover()
         .findAllByRole("textbox")
         .should("have.length", 2)
         .last()
         .clear()
-        .type("2027/06/01");
+        .type("2024/06/01");
       previousButton().click();
       checkDateRangeFilter();
 
@@ -244,7 +244,7 @@ describe("issue 39487", () => {
   function checkDateRangeFilter() {
     measureInitialValues();
 
-    nextButton().click(); // go to 2027-07 - 5 day rows
+    nextButton().click(); // go to 2024-07 - 5 day rows
     assertNoLayoutShift();
   }
 
@@ -925,8 +925,8 @@ describe("issue 54920", () => {
     H.popover().within(() => {
       cy.findByText("Reviews → Created At").click();
       cy.findByText("Fixed date range…").click();
-      cy.findByLabelText("Start date").clear().type("10/12/2027");
-      cy.findByLabelText("End date").clear().type("10/15/2027");
+      cy.findByLabelText("Start date").clear().type("10/12/2024");
+      cy.findByLabelText("End date").clear().type("10/15/2024");
       cy.button("Add filter").click();
     });
     H.visualize();
@@ -1552,29 +1552,29 @@ describe("issue 68574", () => {
       date_style: "D MMMM, YYYY",
       date_abbreviate: false,
     });
-    visitQuestion("2027-01-01");
-    assertParameterFormat("1 January, 2027");
+    visitQuestion("2024-01-01");
+    assertParameterFormat("1 January, 2024");
 
     cy.log("change the date format");
     updateFormattingSettings({
       date_style: "dddd, MMMM D, YYYY",
       date_abbreviate: false,
     });
-    visitQuestion("2027-01-01");
-    assertParameterFormat("Friday, January 1, 2027");
+    visitQuestion("2024-01-01");
+    assertParameterFormat("Monday, January 1, 2024");
 
     cy.log("enable date abbreviation");
     updateFormattingSettings({
       date_style: "dddd, MMMM D, YYYY",
       date_abbreviate: true,
     });
-    visitQuestion("2027-01-01");
-    assertParameterFormat("Fri, Jan 1, 2027");
+    visitQuestion("2024-01-01");
+    assertParameterFormat("Mon, Jan 1, 2024");
 
     cy.log("even when the setting is unset, it should render a valid format");
     updateFormattingSettings(undefined);
-    visitQuestion("2027-01-01");
-    assertParameterFormat("January 1, 2027");
+    visitQuestion("2024-01-01");
+    assertParameterFormat("January 1, 2024");
   });
 
   function updateFormattingSettings(settings: any) {

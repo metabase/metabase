@@ -69,8 +69,8 @@ export function DimensionPillBar({
 
   return (
     <Flex
-      bg="background-primary"
-      p="xs"
+      bg="background-secondary"
+      p="sm"
       bdrs="xl"
       w="100%"
       align="center"

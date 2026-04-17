@@ -10,7 +10,7 @@ import {
   INITIALIZE_QB,
   RESET_QB,
 } from "metabase/redux/query-builder";
-import type { ParameterValuesCache } from "metabase/redux/store/parameters";
+import type { ParameterValuesCache } from "metabase-types/store/parameters";
 
 import type { FetchParameterValuesPayload } from "./actions";
 import { FETCH_PARAMETER_VALUES } from "./actions";

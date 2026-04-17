@@ -282,44 +282,10 @@
               (is (= support-last-name (:last_name created-user)))
               (is (some? (:token grant)) "Token should be created for the new support user")
               (is (string? (:token grant)))
-              (is (:is_superuser created-user) "Support user should have admin access")
               (let [auth-identity (t2/select-one :model/AuthIdentity
                                                  :user_id (:id created-user)
                                                  :provider "support-access-grant")]
                 (is (some? auth-identity) "AuthIdentity should be created for new support user")))))))))
-
-(deftest create-grant-gives-support-user-admin-access-test
-  (testing "create-grant! sets is_superuser on existing support user"
-    (let [support-email "support-admin@example.com"]
-      (mt/with-temp [:model/User {creator-id :id} {}
-                     :model/User {support-user-id :id} {:email support-email :is_superuser false}]
-        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity]
-          (with-redefs [sag.settings/support-access-grant-email (constantly support-email)]
-            (grants/create-grant! creator-id 240 "SUPPORT-ADMIN-1" "test notes")
-            (let [updated-user (t2/select-one :model/User :id support-user-id)]
-              (is (:is_superuser updated-user) "Support user should have admin access after grant creation")))))))
-  (testing "revoking a grant removes is_superuser from support user"
-    (let [support-email "support-admin-revoke@example.com"]
-      (mt/with-temp [:model/User {creator-id :id} {:is_superuser true}
-                     :model/User {support-user-id :id} {:email support-email :is_superuser false}]
-        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity]
-          (with-redefs [sag.settings/support-access-grant-email (constantly support-email)]
-            (let [grant (grants/create-grant! creator-id 240 "SUPPORT-ADMIN-2" "test notes")]
-              (grants/revoke-grant! creator-id (:id grant))
-              (let [updated-user (t2/select-one :model/User :id support-user-id)]
-                (is (not (:is_superuser updated-user)) "Support user should lose admin access after grant revocation")))))))))
-
-(deftest create-grant-reactivates-support-user-with-admin-access-test
-  (testing "create-grant! reactivates a deactivated support user and gives them admin access"
-    (let [support-email "support-reactivate@example.com"]
-      (mt/with-temp [:model/User {creator-id :id} {}
-                     :model/User {support-user-id :id} {:email support-email :is_active false :is_superuser false}]
-        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity]
-          (with-redefs [sag.settings/support-access-grant-email (constantly support-email)]
-            (grants/create-grant! creator-id 240 "SUPPORT-REACTIVATE-1" "test notes")
-            (let [updated-user (t2/select-one [:model/User :id :is_active :is_superuser] :id support-user-id)]
-              (is (:is_active updated-user) "Support user should be reactivated")
-              (is (:is_superuser updated-user) "Reactivated support user should have admin access"))))))))
 
 (deftest create-grant-publishes-event-test
   (testing "Creating a grant publishes :event/support-access-grant-created event"

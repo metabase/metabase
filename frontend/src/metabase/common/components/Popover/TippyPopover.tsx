@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
 import { EventSandbox } from "metabase/common/components/EventSandbox";
-import { getPortalRootElement } from "metabase/common/utils/portal";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
 import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";

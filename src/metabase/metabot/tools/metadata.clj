@@ -51,8 +51,7 @@
     (let [table-results (mapv #(safe-fetch
                                 (fn [table-id]
                                   (entity-details-tools/get-table-details
-                                   {:entity-type :table
-                                    :entity-id table-id
+                                   {:table-id table-id
                                     :with-fields? true
                                     :with-field-values? false
                                     :with-related-tables? false
@@ -65,8 +64,7 @@
           model-results (mapv #(safe-fetch
                                 (fn [model-id]
                                   (entity-details-tools/get-table-details
-                                   {:entity-type :model
-                                    :entity-id model-id
+                                   {:model-id model-id
                                     :with-fields? true
                                     :with-field-values? false
                                     :with-related-tables? false
@@ -169,7 +167,7 @@
   [:map {:closed true}
    [:data_source [:enum "table" "model" "metric"]]
    [:source_id :int]
-   [:field_id [:or :int :string]]])
+   [:field_id :string]])
 
 (mu/defn ^{:tool-name "get_field_values"
            :scope     scope/agent-metadata-read}

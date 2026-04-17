@@ -1,6 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
-import { createMockLocation } from "metabase/redux/store/mocks";
 import { serializeCardForUrl } from "metabase/utils/card";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
@@ -9,6 +8,7 @@ import {
   createMockCard,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
+import { createMockLocation } from "metabase-types/store/mocks";
 
 import { isNavigationAllowed } from ".";
 

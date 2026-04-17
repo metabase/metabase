@@ -2,8 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
-import { type ComboboxItem, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import {
+  type ComboboxItem,
+  Flex,
+  Icon,
+  MultiAutocomplete,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 
 import S from "./DatabaseMultiSelect.module.css";
@@ -98,7 +104,7 @@ export const DatabaseMultiSelect = ({
   };
 
   return (
-    <MultiAutocompleteWithTranslation
+    <MultiAutocomplete
       value={databaseIds}
       data={options}
       placeholder={placeholder}
