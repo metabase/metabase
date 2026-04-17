@@ -1,0 +1,13 @@
+[{"id":1,"table_id":1,"name":"id","active":true},
+ {"id":2,"table_id":1,"name":"name","active":true},
+ {"id":3,"table_id":1,"name":"email","active":true},
+ {"id":4,"table_id":1,"name":"created_at","active":true},
+ {"id":5,"table_id":2,"name":"id","active":true},
+ {"id":6,"table_id":2,"name":"customer_id","active":true},
+ {"id":7,"table_id":2,"name":"total","active":true},
+ {"id":8,"table_id":2,"name":"status","active":true},
+ {"id":9,"table_id":2,"name":"created_at","active":true},
+ {"id":10,"table_id":3,"name":"id","active":true},
+ {"id":11,"table_id":3,"name":"name","active":true},
+ {"id":12,"table_id":3,"name":"price","active":true},
+ {"id":13,"table_id":3,"name":"category","active":true}]
