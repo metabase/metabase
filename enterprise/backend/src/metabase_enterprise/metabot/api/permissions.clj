@@ -6,6 +6,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.scope :as scope]
+   [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def ^:private perm-type-enum
@@ -71,6 +73,20 @@
           (t2/insert! :model/MetabotPermissions {:group_id   group_id
                                                  :perm_type  perm-type-kw
                                                  :perm_value perm-value-kw})))))
+  (metabot-perms/all-permissions))
+
+(api.macros/defendpoint :post "/advanced" :- permissions-response-schema
+  "Switch to advanced group-level permissions. Removes any custom permissions from the All Users group."
+  []
+  (api/check-superuser)
+  (t2/delete! :model/MetabotPermissions :group_id (u/the-id (perms/all-users-group)))
+  (metabot-perms/all-permissions))
+
+(api.macros/defendpoint :delete "/advanced" :- permissions-response-schema
+  "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins and All Users."
+  []
+  (api/check-superuser)
+  (t2/delete! :model/MetabotPermissions :group_id [:not-in [(u/the-id (perms/admin-group)) (u/the-id (perms/all-users-group))]])
   (metabot-perms/all-permissions))
 
 (def ^{:arglists '([request respond raise])} routes

@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.metabot.permissions]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def ^:private all-perm-types
@@ -92,4 +94,62 @@
                                            (mt/user-http-request :crowberto :get 402 "ee/ai-controls/permissions"))
       (mt/assert-has-premium-feature-error "AI Controls"
                                            (mt/user-http-request :crowberto :put 402 "ee/ai-controls/permissions"
-                                                                 {:permissions []})))))
+                                                                 {:permissions []}))
+      (mt/assert-has-premium-feature-error "AI Controls"
+                                           (mt/user-http-request :crowberto :post 402 "ee/ai-controls/permissions/advanced"))
+      (mt/assert-has-premium-feature-error "AI Controls"
+                                           (mt/user-http-request :crowberto :delete 402 "ee/ai-controls/permissions/advanced")))))
+
+(deftest enable-advanced-permissions-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "POST /api/ee/ai-controls/permissions/advanced"
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "ee/ai-controls/permissions/advanced"))))
+      (testing "removes All Users group custom permissions and returns full permissions"
+        (let [all-users-id (u/the-id (perms/all-users-group))]
+          ;; Pre-clean any leftover rows for the magic All Users group to avoid unique-constraint violations.
+          (t2/delete! :model/MetabotPermissions :group_id all-users-id)
+          (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Other Group"}
+                         :model/MetabotPermissions         _              {:group_id   all-users-id
+                                                                           :perm_type  :permission/metabot-sql-generation
+                                                                           :perm_value :yes}
+                         :model/MetabotPermissions         _              {:group_id   group-id
+                                                                           :perm_type  :permission/metabot-nlq
+                                                                           :perm_value :yes}]
+            (let [response (mt/user-http-request :crowberto :post 200 "ee/ai-controls/permissions/advanced")]
+              (is (map? response))
+              (is (contains? response :permissions))
+              (is (= 0 (t2/count :model/MetabotPermissions :group_id all-users-id))
+                  "All Users custom permissions should be removed")
+              (is (= 1 (t2/count :model/MetabotPermissions :group_id group-id))
+                  "Other group permissions should be untouched")
+              (let [all-users-perms (->> (:permissions response)
+                                         (filter #(= (:group_id %) all-users-id)))]
+                (is (every? #(= "no" (:perm_value %)) all-users-perms)
+                    "All Users permissions in response should reflect defaults (no)")))))))))
+
+(deftest disable-advanced-permissions-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "DELETE /api/ee/ai-controls/permissions/advanced"
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 "ee/ai-controls/permissions/advanced"))))
+      (testing "removes custom permissions from specific groups only, preserving All Users"
+        (let [all-users-id (u/the-id (perms/all-users-group))]
+          ;; Pre-clean any leftover rows for the magic All Users group to avoid unique-constraint violations.
+          (t2/delete! :model/MetabotPermissions :group_id all-users-id)
+          (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Specific Group"}
+                         :model/MetabotPermissions         _              {:group_id   all-users-id
+                                                                           :perm_type  :permission/metabot-nlq
+                                                                           :perm_value :yes}
+                         :model/MetabotPermissions         _              {:group_id   group-id
+                                                                           :perm_type  :permission/metabot-sql-generation
+                                                                           :perm_value :yes}]
+            (let [response (mt/user-http-request :crowberto :delete 200 "ee/ai-controls/permissions/advanced")]
+              (is (map? response))
+              (is (contains? response :permissions))
+              (is (= 0 (t2/count :model/MetabotPermissions :group_id group-id))
+                  "Specific group custom permissions should be removed")
+              (is (= 1 (t2/count :model/MetabotPermissions :group_id all-users-id))
+                  "All Users custom permissions should be untouched"))))))))
