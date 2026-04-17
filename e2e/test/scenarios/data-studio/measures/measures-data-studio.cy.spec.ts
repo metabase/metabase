@@ -150,7 +150,7 @@ describe("scenarios > data studio > data model > measures", () => {
       verifyMeasureInQueryBuilder("Total Revenue");
     });
 
-    it("should add aggregation and show preview in menu", () => {
+    it("should add aggregation and show explore in menu", () => {
       visitDataStudioMeasures(PRODUCTS_ID);
 
       MeasureList.getNewMeasureLink().scrollIntoView().click();
@@ -164,9 +164,9 @@ describe("scenarios > data studio > data model > measures", () => {
         .findByText(/Average of Price/i)
         .should("exist");
 
-      cy.log("verify preview is available in menu");
+      cy.log("verify explore is available in menu");
       MeasureEditor.getActionsButton().click();
-      H.popover().findByText("Preview").should("be.visible");
+      H.popover().findByText("Explore").should("be.visible");
     });
   });
 
@@ -471,7 +471,7 @@ describe("scenarios > data studio > data model > measures", () => {
 
         cy.log("verify Remove measure option is hidden in actions menu");
         MeasureEditor.getActionsButton().click();
-        H.popover().findByText("Preview").should("be.visible");
+        H.popover().findByText("Explore").should("be.visible");
         H.popover().findByText("Remove measure").should("not.exist");
         cy.realPress("Escape");
 
