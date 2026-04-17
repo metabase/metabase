@@ -41,7 +41,7 @@ export const MORE_COLORS: {
   { key: "text-secondary", label: () => t`Secondary text` },
   { key: "text-tertiary", label: () => t`Tertiary text` },
   { key: "border", label: () => t`Border` },
-  { key: "background-secondary", label: () => t`Secondary background` },
+  { key: "background-secondary", label: () => t`Second. background` },
   { key: "filter", label: () => t`Filter` },
   { key: "summarize", label: () => t`Summarize` },
   { key: "positive", label: () => t`Positive` },

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
-import { ColorPicker } from "metabase/common/components/ColorPicker";
 import type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 import {
   Box,
@@ -18,7 +17,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import { ColorRow } from "./ColorRow";
 import { ColorSwatchCard } from "./ColorSwatchCard";
 import {
   CHART_COLOR_COUNT,
@@ -73,7 +71,20 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
 
           {/* Main colors */}
           <Card withBorder p="lg">
-            <Text fw={600} fz="sm" mb="sm">{t`Main colors`}</Text>
+            <Flex mb="sm" h="26" align="center" justify="space-between">
+              <Text fw={600}>{t`Main colors`}</Text>
+              {editor.hasMainColorChanges && (
+                <Button
+                  variant="subtle"
+                  pt="5"
+                  size="compact-sm"
+                  aria-label={t`Revert to default colors`}
+                  onClick={editor.resetMainColors}
+                >
+                  <Icon name="revert" size={16} />
+                </Button>
+              )}
+            </Flex>
             <Flex gap="sm">
               {PRIMARY_COLORS.map(({ key, label }) => (
                 <ColorSwatchCard
@@ -85,12 +96,12 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
               ))}
             </Flex>
 
-            <Flex mt="sm" align="center" justify="space-between">
+            <Flex mt="md" h="26" align="center" justify="space-between">
               <UnstyledButton onClick={() => setMoreColorsOpen((v) => !v)}>
                 <Flex align="center" gap="xs">
                   <Text c="brand" fz="sm" fw={600}>
                     {moreColorsOpen
-                      ? t`Hide additional colors`
+                      ? t`Show fewer colors`
                       : t`Show more colors`}
                   </Text>
                   <Icon
@@ -107,7 +118,6 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
                   size="compact-sm"
                   aria-label={t`Revert to default colors`}
                   onClick={editor.resetAdditionalColors}
-                  px="xs"
                 >
                   <Icon name="revert" size={16} />
                 </Button>
@@ -115,38 +125,51 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
             </Flex>
 
             <Collapse in={moreColorsOpen}>
-              <Stack gap="sm" mt="md">
+              <Box
+                mt="sm"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "var(--mantine-spacing-sm)",
+                }}
+              >
                 {MORE_COLORS.map(({ key, label }) => (
-                  <ColorRow
+                  <ColorSwatchCard
                     key={key}
                     label={label()}
                     value={(colors[key] as string) ?? ""}
                     onChange={(color) => editor.setColor(key, color ?? "")}
                   />
                 ))}
+              </Box>
 
-                <Text fw={600} fz="sm" mt="sm">{t`Chart colors`}</Text>
-                <Flex gap="sm" wrap="wrap">
-                  {Array.from({ length: CHART_COLOR_COUNT }, (_, i) => {
-                    const chartColor = charts[i];
-                    const value =
-                      typeof chartColor === "object" && chartColor?.base
-                        ? chartColor.base
-                        : typeof chartColor === "string"
-                          ? chartColor
-                          : "";
-                    return (
-                      <ColorPicker
-                        key={i}
-                        value={value}
-                        onChange={(color) =>
-                          editor.setChartColor(i, color ?? "")
-                        }
-                      />
-                    );
-                  })}
-                </Flex>
-              </Stack>
+              <Text fw={600} fz="sm" mt="sm">{t`Chart colors`}</Text>
+              <Box
+                mt="sm"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "var(--mantine-spacing-sm)",
+                }}
+              >
+                {Array.from({ length: CHART_COLOR_COUNT }, (_, i) => {
+                  const chartColor = charts[i];
+                  const value =
+                    typeof chartColor === "object" && chartColor?.base
+                      ? chartColor.base
+                      : typeof chartColor === "string"
+                        ? chartColor
+                        : "";
+                  return (
+                    <ColorSwatchCard
+                      key={i}
+                      label={`Chart ${i + 1}`}
+                      value={value}
+                      onChange={(color) => editor.setChartColor(i, color ?? "")}
+                    />
+                  );
+                })}
+              </Box>
             </Collapse>
           </Card>
 

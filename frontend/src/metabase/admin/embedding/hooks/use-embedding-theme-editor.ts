@@ -31,6 +31,12 @@ const ADDITIONAL_COLOR_KEYS: Exclude<MetabaseColor, "charts">[] = [
   "shadow",
 ];
 
+const PRIMARY_COLORS_KEYS: Exclude<MetabaseColor, "charts">[] = [
+  "brand",
+  "background",
+  "text-primary",
+];
+
 export function useEmbeddingThemeEditor(themeId: number) {
   const {
     data: serverTheme,
@@ -137,6 +143,23 @@ export function useEmbeddingThemeEditor(themeId: number) {
     return !isEqual(colors.charts ?? [], defaultColors.charts ?? []);
   }, [currentTheme, defaultThemeSettings]);
 
+  const hasMainColorChanges = useMemo(() => {
+    if (!currentTheme) {
+      return false;
+    }
+
+    const colors = currentTheme.settings.colors ?? {};
+    const defaultColors = defaultThemeSettings.colors ?? {};
+
+    for (const key of PRIMARY_COLORS_KEYS) {
+      if ((colors[key] ?? "") !== ((defaultColors[key] as string) ?? "")) {
+        return true;
+      }
+    }
+
+    return !isEqual(colors.charts ?? [], defaultColors.charts ?? []);
+  }, [currentTheme, defaultThemeSettings]);
+
   const resetAdditionalColors = useCallback(() => {
     updateSettings((s) => {
       const defaultColors = defaultThemeSettings.colors ?? {};
@@ -147,6 +170,19 @@ export function useEmbeddingThemeEditor(themeId: number) {
       }
 
       updatedColors.charts = defaultColors.charts ?? [];
+
+      return { colors: updatedColors };
+    });
+  }, [updateSettings, defaultThemeSettings]);
+
+  const resetMainColors = useCallback(() => {
+    updateSettings((s) => {
+      const defaultColors = defaultThemeSettings.colors ?? {};
+      const updatedColors = { ...s.colors };
+
+      for (const key of PRIMARY_COLORS_KEYS) {
+        updatedColors[key] = (defaultColors[key] as string) ?? "";
+      }
 
       return { colors: updatedColors };
     });
@@ -181,6 +217,8 @@ export function useEmbeddingThemeEditor(themeId: number) {
     setName,
     setColor,
     setChartColor,
+    hasMainColorChanges,
+    resetMainColors,
     hasAdditionalColorChanges,
     resetAdditionalColors,
     setFontFamily,
