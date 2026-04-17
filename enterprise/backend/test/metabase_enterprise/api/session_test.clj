@@ -38,6 +38,7 @@
                               :embedding-hub
                               :hosting
                               :metabase-ai-managed
+                              :metabot-v3
                               :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
@@ -87,6 +88,7 @@
             :embedding_simple               true
             :hosting                        true
             :metabase-ai-managed            true
+            :metabot-v3                     true
             :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true

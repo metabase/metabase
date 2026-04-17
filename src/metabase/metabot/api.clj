@@ -287,9 +287,6 @@
    [:model {:optional true} [:maybe :string]]
    [:api-key {:optional true} [:maybe :string]]])
 
-(def ^:private metabase-default-model
-  "anthropic/claude-sonnet-4-6")
-
 (defn- provider-api-key-setting-key
   [provider]
   (case provider
@@ -308,7 +305,7 @@
   [provider model]
   (cond
     (nil? model) nil
-    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabase-default-model
+    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabot.settings/default-llm-metabot-provider
     :else (non-blank-string model)))
 
 (def ^:private invalid-api-key-statuses
@@ -416,20 +413,13 @@
   []
   (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
 
-(defn- api-error->status-code
-  [error]
-  (or (:status (ex-data error))
-      (:status-code (ex-data error))
-      400))
-
-(defn- verify-api-key!
-  [provider api-key]
-  (when-let [trimmed-api-key (non-blank-string api-key)]
-    (when-let [api-key-error (:api-key-error (provider-models-response provider trimmed-api-key))]
-      (throw (ex-info api-key-error
-                      {:status-code 400
-                       :api-error true}))))
-  nil)
+(defn- throw-api-key-error!
+  [response]
+  (when-let [api-key-error (:api-key-error response)]
+    (throw (ex-info api-key-error
+                    {:status-code 400
+                     :api-error true})))
+  response)
 
 (api.macros/defendpoint :get "/settings"
   :- metabot-settings-response-schema
@@ -448,20 +438,14 @@
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
   (let [{:keys [provider model api-key]} body
-        model (effective-provider-model provider model)]
-    (verify-api-key! provider api-key)
+        model (effective-provider-model provider model)
+        response (-> (settings-response provider api-key)
+                     throw-api-key-error!)]
     (when (contains? body :api-key)
       (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
     (when model
       (setting/set! :llm-metabot-provider (str provider "/" model)))
-    (try
-      (settings-response provider)
-      (catch clojure.lang.ExceptionInfo e
-        (if (:api-error (ex-data e))
-          (throw (ex-info (.getMessage e)
-                          (assoc (ex-data e) :status-code (api-error->status-code e))
-                          e))
-          (throw e))))))
+    (assoc response :value (metabot.settings/llm-metabot-provider))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."

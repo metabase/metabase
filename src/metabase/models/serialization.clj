@@ -70,6 +70,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve :as resolve]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -242,7 +243,7 @@
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."
   [s]
-  (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
+  (resolve/identity-hash? s))
 
 ;; ## Memoizing `hydrated-hash`
 ;;
@@ -450,7 +451,7 @@
 
 (defmethod make-spec :default [_ _] nil)
 
-(defn ^:dynamic ^::cache *make-spec*
+(defn ^:dynamic *make-spec*
   "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
   [model-name opts]
   (make-spec model-name opts))
@@ -849,9 +850,7 @@
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
   [id-str]
-  (boolean (and id-str
-                (string? id-str)
-                (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
+  (resolve/entity-id? id-str))
 
 ;; TODO: Clean up this [[identity-hash]] infrastructure once the `seed_entity_ids` issue is fixed. See above on the
 ;; details of the two hashing schemes.
@@ -929,32 +928,33 @@
      :unique-name-fns (atom {})}))
 
 ;;; # Utilities for implementing serdes
-;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the
-;;; number of database lookups, since many entities might belong to eg. a single collection.
+;;; These wrapper functions delegate to the current resolver (set by [[with-cache]]).
+;;; When no resolver is bound, they fall back to the database-backed resolver.
+
+;; TODO: `requiring-resolve` is needed here because resolve.db requires this ns
+;; (for `generate-path`, `field-hierarchy`, `lookup-by-id`, `recursively-find-field-q`).
+;; Moving those into resolve.db (or a shared utils ns) would break the cycle and
+;; let us require resolve.db directly.
+(defn- export-resolver []
+  (or resolve/*export-resolver*
+      @(requiring-resolve 'metabase.models.serialization.resolve.db/default-export-resolver)))
+
+(defn- import-resolver []
+  (or resolve/*import-resolver*
+      @(requiring-resolve 'metabase.models.serialization.resolve.db/default-import-resolver)))
 
 ;;; ## General foreign keys
 
-(mu/defn ^:dynamic ^::cache *export-fk*
+(mu/defn ^:dynamic *export-fk*
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
-  Unusual parameter order means this can be used as `(update x :some_id export-fk 'SomeModel)`.
+  Unusual parameter order means this can be used as `(update x :some_id *export-fk* 'SomeModel)`.
 
   NOTE: This works for both top-level and nested entities. Top-level entities like `Card` are returned as just a
   portable ID string.. Nested entities are returned as a vector of such ID strings."
   [id    :- [:maybe pos-int?]
    model :- ::model-keyword-or-symbol]
-  (when id
-    (let [model-name (name model)
-          entity     (t2/select-one model (first (t2/primary-keys model)) id)
-          path       (when entity
-                       (mapv :id (generate-path model-name entity)))]
-      (cond
-        (nil? entity)      (throw (ex-info "FK target not found" {:model model
-                                                                  :id    id
-                                                                  :skip  true
-                                                                  ::type :target-not-found}))
-        (= (count path) 1) (first path)
-        :else              path))))
+  (resolve/export-fk (export-resolver) id model))
 
 (defmacro ^:private fk-elide
   "If a call to `*export-fk*` inside of this fails, do not export the whole data structure"
@@ -967,7 +967,7 @@
          (throw e#))
        nil)))
 
-(mu/defn ^:dynamic ^::cache *import-fk*
+(mu/defn ^:dynamic *import-fk*
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
   entity and gets its primary key.
 
@@ -980,67 +980,56 @@
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
   [eid
    model :- ::model-keyword-or-symbol]
-  (when eid
-    (let [eid    (if (vector? eid)
-                   (last eid)
-                   eid)
-          entity (lookup-by-id model eid)]
-      (if entity
-        (get entity (first (t2/primary-keys model)))
-        (throw (ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
-                        {:entity_id eid :model (name model)}))))))
+  (resolve/import-fk (import-resolver) eid model))
 
-(mu/defn ^:dynamic ^::cache *export-fk-keyed*
+(mu/defn ^:dynamic *export-fk-keyed*
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
-  [[import-fk-keyed]] is the inverse.
-  Unusual parameter order lets this be called as, for example, `(update x :db_id export-fk-keyed :model/Database :name)`.
+  [[*import-fk-keyed*]] is the inverse.
+  Unusual parameter order lets this be called as, for example, `(update x :db_id *export-fk-keyed* :model/Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
   [id
    model :- ::model-keyword-or-symbol
    field]
-  (t2/select-one-fn field model :id id))
+  (resolve/export-fk-keyed (export-resolver) id model field))
 
-(defn ^:dynamic ^::cache *import-fk-keyed*
+(defn ^:dynamic *import-fk-keyed*
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
   Eg. `Database.name`.
 
   Unusual parameter order lets this be called as, for example,
-  `(update x :creator_id import-fk-keyed :model/Database :name)`."
+  `(update x :creator_id *import-fk-keyed* :model/Database :name)`."
   [portable model field]
-  (t2/select-one-pk model field portable))
+  (resolve/import-fk-keyed (import-resolver) portable model field))
 
 ;;; ## Users
-(mu/defn ^:dynamic ^::cache *export-user*
+(mu/defn ^:dynamic *export-user*
   "Exports a user as the email address.
-  This just calls [[export-fk-keyed]], but the counterpart [[import-user]] is more involved. This is a unique function
+  This just calls [[*export-fk-keyed*]], but the counterpart [[*import-user*]] is more involved. This is a unique function
   so they form a pair."
   [id :- [:maybe ::lib.schema.id/user]]
-  (when id (*export-fk-keyed* id 'User :email)))
+  (resolve/export-user (export-resolver) id))
 
-(mu/defn ^:dynamic ^::cache *import-user*
+(mu/defn ^:dynamic *import-user*
   "Imports a user by their email address.
   If a user with that email address exists, returns its primary key.
   If no such user exists, creates a dummy inactive one with the default settings, blank name, and randomized password.
   Does not send any invite emails."
   [email :- [:maybe string?]]
-  (when email
-    (or (*import-fk-keyed* email 'User :email)
-        ;; Need to break a circular dependency here.
-        (:id ((resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
+  (resolve/import-user (import-resolver) email))
 
 ;;; ## Databases
 
-(defn ^:dynamic ^::cache *export-database-fk*
+(defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
   [id]
   (when id
     (t2/select-one-fn :name [:model/Database :id :name] :id id)))
 
-(defn ^:dynamic ^::cache *import-database-fk*
+(defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
   [[*export-database-fk*]] is the inverse."
   [db-name]
@@ -1048,29 +1037,22 @@
 
 ;;; ## Tables
 
-(mu/defn ^:dynamic ^::cache *export-table-fk*
+(mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
-  [[import-table-fk]] is the inverse."
+  [[*import-table-fk*]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (when table-id
     (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
           db-name                     (*export-database-fk* db_id)]
       [db-name schema name])))
 
-(mu/defn ^:dynamic ^::cache *import-table-fk*
-  "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
+(mu/defn ^:dynamic *import-table-fk*
+  "Given a `table_id` as exported by [[*export-table-fk*]], resolve it back into a numeric `table_id`.
   The input might be nil, in which case so is the output. This is legal for a native question."
-  [[db-name schema table-name :as table-id] :- [:maybe [:tuple string? [:maybe string?] string?]]]
-  (when table-id
-    (if-let [db-id (t2/select-one-fn :id :model/Database :name db-name)]
-      (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
-          (throw (ex-info (format "table id present, but no table found: %s" table-id)
-                          {:table-id table-id})))
-      (throw (ex-info (format "table id present, but database not found: %s" table-id)
-                      {:table-id table-id
-                       :database-names (sort (t2/select-fn-vec :name :model/Table))})))))
+  [[_db-name _schema _table-name :as table-id] :- [:maybe [:tuple string? [:maybe string?] string?]]]
+  (resolve/import-table-fk (import-resolver) table-id))
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
@@ -1102,7 +1084,9 @@
 
 ;;; ## Fields
 
-(defn- field-hierarchy [id]
+(defn field-hierarchy
+  "Returns the field hierarchy (field + parents) for a field ID. Used by resolvers."
+  [id]
   (reverse
    (t2/select :model/Field
               {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
@@ -1128,26 +1112,20 @@
               [:= :name field]
               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
-(mu/defn ^:dynamic ^::cache *export-field-fk*
+(mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
   (when field-id
-    (let [{field-name :name :keys [parent_id table_id]} (t2/select-one [:model/Field :name :parent_id :table_id] :id field-id)]
-      (if (nil? parent_id)
-        (conj (*export-table-fk* table_id) field-name)
-        (let [fields                      (field-hierarchy field-id)
-              [db-name schema table-name] (*export-table-fk* table_id)]
-          (into [db-name schema table-name] (map :name fields)))))))
+    (let [fields                      (field-hierarchy field-id)
+          [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
+      (into [db-name schema table-name] (map :name fields)))))
 
-(mu/defn ^:dynamic ^::cache *import-field-fk* :- [:maybe pos-int?]
+(mu/defn ^:dynamic *import-field-fk*
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
-  [[db-name schema table-name & fields :as field-id] :- [:maybe [:cat string? [:maybe string?] string? #_fields [:+ string?]]]]
-  (when field-id
-    (let [table-id (*import-table-fk* [db-name schema table-name])
-          field-q  (recursively-find-field-q table-id (reverse fields))]
-      (t2/select-one-pk :model/Field field-q))))
+  [[_db-name _schema _table-name & _fields :as field-id] :- [:maybe [:cat string? [:maybe string?] string? #_fields [:+ string?]]]]
+  (resolve/import-field-fk (import-resolver) field-id))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
@@ -1936,12 +1914,8 @@
 ;;; ## Memoizing appdb lookups
 
 (defmacro with-cache
-  "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."
+  "Runs body with resolvers bound to cached (memoized) versions for performance."
   [& body]
-  (let [ns* 'metabase.models.serialization]
-    `(binding ~(reduce into []
-                       (for [[var-sym var] (ns-interns ns*)
-                             :when (::cache (meta var))
-                             :let [fq-sym (symbol (name ns*) (name var-sym))]]
-                         [fq-sym `(memoize ~fq-sym)]))
-       ~@body)))
+  `(binding [resolve/*export-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.db/cached-export-resolver))
+             resolve/*import-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.db/cached-import-resolver))]
+     ~@body))

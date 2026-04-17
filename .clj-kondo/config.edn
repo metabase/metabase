@@ -492,6 +492,7 @@
   metabase.task.impl/defjob                                                             clojure.core/defn
   metabase.test.data.interface/defdataset                                               clojure.core/def
   metabase.test.data.interface/defdataset-edn                                           clojure.core/def
+  metabase.test.embedded-postgres.core/with-system                                      clojure.core/let
   metabase.test.gentest/defgentest                                                      clojure.test/deftest
   metabase.test/defdataset                                                              clojure.core/def
   metabase.test/let-url                                                                 clojure.core/let
