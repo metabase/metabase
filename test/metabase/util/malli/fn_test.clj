@@ -386,7 +386,7 @@
 (deftest ^:parallel pre-post-conditions-test-1-vanilla-pass-through
   (testing "plain :pre and :post pass through the macros"
     (testing "single arity"
-      (let [expansion (macroexpand '(mu.fn/fn [{:keys [a]}]
+      (let [expansion (macroexpand '(metabase.util.malli.fn/fn [{:keys [a]}]
                                       {:pre [(pos? a)] :post [(even? %)]}
                                       (* a 2)))]
         (is (=? '(let* [&f (clojure.core/fn [{:keys [a]}]
@@ -395,7 +395,7 @@
                         &input-schema-0-a [:maybe :map]])
                 (take 2 expansion)))))
     (testing "multiple arity"
-      (let [expansion (macroexpand '(mu.fn/fn
+      (let [expansion (macroexpand '(metabase.util.malli.fn/fn
                                       ([{:keys [a]}]
                                        {:pre [(pos? a)] :post [(even? %)]}
                                        (* a 2))
@@ -415,7 +415,7 @@
 (deftest ^:synchronized pre-post-conditions-test-2-include-test-variants
   (testing ":test/pre and :test/post conditions"
     (testing "single arity"
-      (let [form '(mu.fn/fn [{:keys [a]}]
+      (let [form '(metabase.util.malli.fn/fn [{:keys [a]}]
                     {:pre       [(pos? a)]
                      :post      [(even? %)]
                      :test/pre  [(int? a)]
@@ -441,7 +441,7 @@
                             &input-schema-0-a [:maybe :map]])
                     (take 2 (macroexpand form))))))))
     (testing "multiple arity"
-      (let [form '(mu.fn/fn
+      (let [form '(metabase.util.malli.fn/fn
                     ([{:keys [a]}]
                      {:pre       [(pos? a)]
                       :post      [(even? %)]
