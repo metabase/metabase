@@ -598,26 +598,40 @@
 (defn- write-databases-metadata!
   "Streams the databases/tables/fields metadata as JSON to the given OutputStream."
   [^java.io.OutputStream os]
-  (let [db-filter [:and [:= :is_audit false] [:= :router_database_id nil]
-                   [:in :id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
-        t-filter  [:and [:= :active true] [:= :visibility_type nil]
-                   [:in :id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
-        f-filter  [:and [:= :active true] [:<> :visibility_type "sensitive"]
-                   [:in :table_id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
-        writer   (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
+  (let [db-filter [:and
+                   [:= :d.is_audit false]
+                   [:= :d.router_database_id nil]
+                   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
+        t-filter  [:and
+                   [:= :t.active true]
+                   [:= :t.visibility_type nil]
+                   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
+        f-filter  [:and
+                   [:= :f.active true]
+                   [:<> :f.visibility_type "sensitive"]]
+        writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
     (.write writer "{\"databases\":")
     (write-json-array! writer
-                       (t2/reducible-select [:model/Database :id :name :engine] {:where db-filter})
+                       (t2/reducible-select [:model/Database :d.id :d.name :d.engine]
+                                            {:from  [[:metabase_database :d]]
+                                             :where db-filter})
                        format-database-metadata)
     (.write writer ",\"tables\":")
     (write-json-array! writer
-                       (t2/reducible-select [:model/Table :id :db_id :name :schema :description] {:where t-filter})
+                       (t2/reducible-select [:model/Table :t.id :t.db_id :t.name :t.schema :t.description]
+                                            {:from  [[:metabase_table :t]]
+                                             :join  [[:metabase_database :d] [:= :t.db_id :d.id]]
+                                             :where [:and db-filter t-filter]})
                        format-table-metadata)
     (.write writer ",\"fields\":")
     (write-json-array! writer
-                       (t2/reducible-select [:model/Field :id :table_id :parent_id :fk_target_field_id :name :description
-                                             :base_type :database_type :effective_type :semantic_type :coercion_strategy]
-                                            {:where f-filter})
+                       (t2/reducible-select [:model/Field :f.id :f.table_id :f.parent_id :f.fk_target_field_id
+                                             :f.name :f.description :f.base_type :f.database_type
+                                             :f.effective_type :f.semantic_type :f.coercion_strategy]
+                                            {:from  [[:metabase_field :f]]
+                                             :join  [[:metabase_table :t]    [:= :f.table_id :t.id]
+                                                     [:metabase_database :d] [:= :t.db_id :d.id]]
+                                             :where [:and db-filter t-filter f-filter]})
                        format-field-metadata)
     (.write writer "}")
     (.flush writer)))
