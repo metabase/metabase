@@ -153,6 +153,9 @@ function QuestionPickerInner({
         </>
       )}
 
+      {/* Hide the question list at top-level "Collections"
+          and "Shared collections" root. These have fake IDs that don't map to
+          real collections, so querying questions against them would fail. */}
       {((!isAtSharedTenantRoot && !isAtTopLevel) || debouncedSearchText) && (
         <QuestionList
           hasCollections={collections.length > 0}
