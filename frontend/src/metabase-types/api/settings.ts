@@ -330,6 +330,7 @@ export const tokenFeatures = [
   "hosting",
   "offer-metabase-ai-managed",
   "metabase-ai-managed",
+  "metabot-v3",
   "official_collections",
   "sandboxes",
   "scim",

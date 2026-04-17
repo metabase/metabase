@@ -28,6 +28,7 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
+   [metabase.server.streaming-response :as server.streaming-response :refer [streaming-response]]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
@@ -37,6 +38,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -543,6 +545,116 @@
                          :let [query (database-usage-query model id)]
                          :when query]
                      [query model])})))
+
+;;; ----------------------------------------- GET /api/database/metadata ------------------------------------------
+
+(defn- format-database-metadata
+  "Formats a Database record for the /metadata endpoint response."
+  [{:keys [id name engine]}]
+  {:id id :name name :engine engine})
+
+(defn- format-table-metadata
+  "Formats a Table record for the /metadata endpoint response, omitting nil optional fields."
+  [{:keys [id db_id name schema description]}]
+  (m/assoc-some {:id id :db_id db_id :name name}
+                :schema schema
+                :description description))
+
+(defn- perm-user-info []
+  {:user-id       api/*current-user-id*
+   :is-superuser? api/*is-superuser?*})
+
+(defn- format-field-metadata
+  "Formats a Field record for the /metadata endpoint response. Includes effective_type only when it differs from base_type."
+  [{:keys [id table_id parent_id fk_target_field_id name description base_type database_type effective_type semantic_type coercion_strategy]}]
+  (m/assoc-some {:id id :table_id table_id :name name}
+                :parent_id parent_id
+                :fk_target_field_id fk_target_field_id
+                :description description
+                :base_type base_type
+                :database_type database_type
+                :effective_type (when (and effective_type (not= base_type effective_type)) effective_type)
+                :semantic_type semantic_type
+                :coercion_strategy coercion_strategy))
+
+(defn- perm-mapping []
+  {:perms/view-data      :unrestricted
+   :perms/create-queries :query-builder})
+
+(defn- write-json-array!
+  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row."
+  [^java.io.Writer writer reducible format-fn]
+  (.write writer "[")
+  (let [first? (volatile! true)]
+    (reduce (fn [_ row]
+              (if @first?
+                (vreset! first? false)
+                (.write writer ","))
+              (json/encode-to (format-fn row) writer {}))
+            nil
+            reducible))
+  (.write writer "]"))
+
+(defn- write-databases-metadata!
+  "Streams the databases/tables/fields metadata as JSON to the given OutputStream."
+  [^java.io.OutputStream os]
+  (let [db-filter [:and [:= :is_audit false] [:= :router_database_id nil]
+                   [:in :id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
+        t-filter  [:and [:= :active true] [:= :visibility_type nil]
+                   [:in :id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
+        f-filter  [:and [:= :active true] [:<> :visibility_type "sensitive"]
+                   [:in :table_id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
+        writer   (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
+    (.write writer "{\"databases\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/Database :id :name :engine] {:where db-filter})
+                       format-database-metadata)
+    (.write writer ",\"tables\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/Table :id :db_id :name :schema :description] {:where t-filter})
+                       format-table-metadata)
+    (.write writer ",\"fields\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/Field :id :table_id :parent_id :fk_target_field_id :name :description
+                                             :base_type :database_type :effective_type :semantic_type :coercion_strategy]
+                                            {:where f-filter})
+                       format-field-metadata)
+    (.write writer "}")
+    (.flush writer)))
+
+(mr/def ::databases-metadata-response
+  [:map
+   [:databases [:sequential [:map
+                             [:id ::lib.schema.id/database]
+                             [:name :string]
+                             [:engine :string]]]]
+   [:tables [:sequential [:map
+                          [:id ::lib.schema.id/table]
+                          [:db_id ::lib.schema.id/database]
+                          [:name :string]
+                          [:schema {:optional true} :string]
+                          [:description {:optional true} :string]]]]
+   [:fields [:sequential [:map
+                          [:id ::lib.schema.id/field]
+                          [:table_id ::lib.schema.id/table]
+                          [:name :string]
+                          [:parent_id {:optional true} ::lib.schema.id/field]
+                          [:fk_target_field_id {:optional true} ::lib.schema.id/field]
+                          [:description {:optional true} :string]
+                          [:base_type :string]
+                          [:database_type {:optional true} :string]
+                          [:effective_type {:optional true} :string]
+                          [:semantic_type {:optional true} :string]
+                          [:coercion_strategy {:optional true} :string]]]]])
+
+(api.macros/defendpoint :get "/metadata"
+  :- (server.streaming-response/streaming-response-schema ::databases-metadata-response)
+  "Get metadata (databases, tables, and fields) for all databases visible to the current user.
+  Returns a flat structure with three arrays: databases, tables, and fields.
+  Response is streamed for efficiency with large schemas."
+  []
+  (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+                      (write-databases-metadata! os)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
