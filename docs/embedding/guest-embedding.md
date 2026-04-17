@@ -268,7 +268,7 @@ const payload = {
 
 This is handy when you want to reuse the same dashboard or question across contexts, and conditionally skip a locked filter in some of them.
 
-### Make sure the filter name matches the locked parameter name
+### Filter name should match the locked parameter name
 
 If you rename a query builder filter that's used as a locked parameter, update the matching key in your JWT `params` object. Locked parameters that are connected to a [SQL variable](../questions/native-editor/sql-parameters.md) don't need to be renamed on the server.
 
