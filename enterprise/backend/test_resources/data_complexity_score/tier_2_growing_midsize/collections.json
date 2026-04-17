@@ -1,0 +1,4 @@
+[{"id":1,"type":"library","name":"Library","location":"/"},
+ {"id":2,"type":"library-data","name":"Data","location":"/1/"},
+ {"id":3,"type":"library-metrics","name":"Metrics","location":"/1/"},
+ {"id":4,"type":null,"name":"Analytics","location":"/"}]

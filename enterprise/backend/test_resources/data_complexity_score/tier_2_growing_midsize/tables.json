@@ -1,0 +1,10 @@
+[{"id":1,"db_id":1,"name":"accounts","active":true,"is_published":true,"collection_id":2},
+ {"id":2,"db_id":1,"name":"contacts","active":true,"is_published":true,"collection_id":2},
+ {"id":3,"db_id":1,"name":"opportunities","active":true,"is_published":true,"collection_id":2},
+ {"id":4,"db_id":1,"name":"invoices","active":true,"is_published":true,"collection_id":2},
+ {"id":5,"db_id":1,"name":"subscriptions","active":true,"is_published":true,"collection_id":2},
+ {"id":6,"db_id":1,"name":"products","active":true,"is_published":true,"collection_id":2},
+ {"id":7,"db_id":2,"name":"events","active":true,"is_published":false,"collection_id":4},
+ {"id":8,"db_id":2,"name":"page_views","active":true,"is_published":false,"collection_id":4},
+ {"id":9,"db_id":2,"name":"sessions","active":true,"is_published":false,"collection_id":4},
+ {"id":10,"db_id":2,"name":"clients","active":true,"is_published":false,"collection_id":4}]
