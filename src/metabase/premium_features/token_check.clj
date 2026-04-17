@@ -129,6 +129,14 @@
    :transform-rolling-advanced-runs        0
    :transform-rolling-usage-date (today)})
 
+(defenterprise transform-metered-as
+  "Return the meter bucket a new transform run of the given source-type counts toward,
+   based on the instance's current premium features. Returns nil when the run is not metered
+   (including all OSS runs, since premium features are never present there)."
+  metabase-enterprise.transforms.core
+  [_source-type]
+  nil)
+
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "
   []
@@ -193,8 +201,9 @@
       (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
                                (some-> body json/decode+kw (assoc :canonical? true)))
       (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
-                              {:valid false
-                               :status "Unable to validate token"
+                              {:valid         false
+                               :canonical?    false
+                               :status        "Unable to validate token"
                                :error-details "Token validation provided no response"})
       ;; exceptions are not cached.
       :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
@@ -274,12 +283,13 @@
         (mr/validate [:re AirgapToken] token)
         (do
           (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (decode-airgap-token token))
+          (assoc (decode-airgap-token token) :canonical? true))
 
         :else
         (do
           (log/error (u/format-color 'red "Invalid token format!"))
           {:valid         false
+           :canonical?    true
            :status        "invalid"
            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
@@ -479,6 +489,7 @@
                (log/infof "Error checking token: %s" (ex-message e))
                (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
+              :canonical?    false
               :status        (tru "Unable to validate token")
               :error-details (.getMessage e)})))
     (-clear-cache! [_] (-clear-cache! token-checker))))
@@ -639,6 +650,16 @@
     (has-feature? :toucan-management)  ; -> false"
   [feature]
   (contains? (*token-features*) (name feature)))
+
+(defn canonically-has-feature?
+  "Returns `true` if the token definitively has `feature`, `false` if it definitively does not, or `nil` if the token
+  status is indeterminate (e.g., network failure, timeout). Returns `false` (not `nil`) when no token is configured."
+  [feature]
+  (if-let [token (premium-features.settings/premium-embedding-token)]
+    (let [result (check-token token)]
+      (when (:canonical? result)
+        (boolean (contains? (set (:features result)) (name feature)))))
+    false))
 
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."

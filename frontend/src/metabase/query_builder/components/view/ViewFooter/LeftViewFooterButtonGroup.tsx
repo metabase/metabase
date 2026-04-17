@@ -12,9 +12,9 @@ import {
   onOpenChartSettings,
   onOpenChartType,
 } from "metabase/redux/query-builder";
+import type { QueryBuilderUIControls } from "metabase/redux/store";
 import { Group } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
-import type { QueryBuilderUIControls } from "metabase-types/store";
 
 import S from "./LeftViewFooterButtonGroup.module.css";
 

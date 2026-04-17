@@ -19,6 +19,7 @@ import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
+import type { QueryBuilderMode } from "metabase/redux/store";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
@@ -27,7 +28,6 @@ import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
-import type { QueryBuilderMode } from "metabase-types/store";
 
 import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
 

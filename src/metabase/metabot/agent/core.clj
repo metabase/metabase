@@ -270,8 +270,12 @@
          (map #(get-structured-output (:result %)))
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
-    (fn [mem {:keys [chart-id] :as chart}]
-      (memory/store-chart mem chart-id chart)))
+    (fn [mem {:keys [chart-id chart-type query]}]
+      (memory/store-chart mem
+                          chart-id
+                          {:chart_id chart-id
+                           :queries [query]
+                           :visualization_settings {:chart_type chart-type}})))
    memory
    parts))
 
@@ -619,12 +623,16 @@
                     result))
                 (catch Exception e
                   (prometheus/inc! :metabase-metabot/agent-errors labels)
-                  (when (:api-error (ex-data e))
-                    (log/debugf "API error details: status=%s body=%s"
-                                (:status (ex-data e))
-                                (pr-str (:body (ex-data e)))))
                   (if (:api-error (ex-data e))
-                    (log/errorf "Agent loop API error: %s" (ex-message e))
+                    (if (:status (ex-data e))
+                      (log/errorf "Agent loop API error: %s status=%s provider=%s body=%s"
+                                  (ex-message e)
+                                  (:status (ex-data e))
+                                  (:provider (ex-data e))
+                                  (pr-str (:body (ex-data e))))
+                      (log/errorf e "Agent loop API error: %s provider=%s"
+                                  (ex-message e)
+                                  (:provider (ex-data e))))
                     (log/error e "Agent loop error"))
                   (rf init (error-part e)))
                 (finally

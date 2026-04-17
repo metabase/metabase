@@ -1,5 +1,6 @@
 import type React from "react";
 
+import type { Dispatch, GetState } from "metabase/redux/store";
 import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

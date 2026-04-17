@@ -1,4 +1,5 @@
 import { selectTab } from "metabase/redux/dashboard";
+import type { Dispatch } from "metabase/redux/store";
 import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
@@ -16,7 +17,6 @@ import {
   getDashboardDrillUrl,
 } from "metabase-lib/v1/queries/drills/dashboard-click-drill";
 import type { ParameterValueOrArray } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 type DashboardDrillType =
   | "link-url"
