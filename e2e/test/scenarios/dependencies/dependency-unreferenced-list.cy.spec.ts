@@ -108,6 +108,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
     H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     cy.viewport(1600, 1400);
     H.resetSnowplow();

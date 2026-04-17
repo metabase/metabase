@@ -7,6 +7,7 @@ describe("scenarios > data studio > transforms > python library", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     // Python library row only appears when we have at least one transform
     H.createSqlTransform({
       sourceQuery: "SELECT 1",

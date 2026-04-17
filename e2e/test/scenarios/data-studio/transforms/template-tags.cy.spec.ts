@@ -14,6 +14,7 @@ describe("scenarios > admin > transforms", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");

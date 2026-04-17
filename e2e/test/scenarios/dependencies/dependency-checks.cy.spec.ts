@@ -12,6 +12,7 @@ describe("scenarios > dependencies > dependency checks", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.resetSnowplow();
 

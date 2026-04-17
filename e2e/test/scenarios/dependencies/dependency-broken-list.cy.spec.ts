@@ -83,6 +83,7 @@ describe("scenarios > dependencies > broken list", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     createContent();
     H.resetSnowplow();
   });

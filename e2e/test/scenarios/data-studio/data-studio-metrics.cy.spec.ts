@@ -6,7 +6,8 @@ describe("scenarios > data studio > library > metrics", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
+    // Needs cloud because the "No notification channels" banner takes up too much space and the run button is not clickable
+    H.activateToken("pro-cloud");
 
     cy.intercept("POST", "/api/card").as("createCard");
     cy.intercept("PUT", "/api/card/*").as("updateCard");

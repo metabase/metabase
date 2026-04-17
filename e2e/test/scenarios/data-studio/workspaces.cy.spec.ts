@@ -31,6 +31,7 @@ describe("scenarios > data studio > workspaces", () => {
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     // TODO (Stas 2025-12-31) -- Is this correct way to grant querying permissions?

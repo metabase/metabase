@@ -13,6 +13,7 @@ describe("issue #68378", () => {
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
   });
 
   it("should show empty schemas when picking a target schema (metabase#68378)", () => {
@@ -41,6 +42,7 @@ describe("issue GDGT-1776", () => {
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
 
     const ITEMS_COUNT = 1000;
 
@@ -89,6 +91,7 @@ describe("issue GDGT-1774", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
   });
 

@@ -84,6 +84,7 @@ describe(
       H.resetSnowplow();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
       H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
