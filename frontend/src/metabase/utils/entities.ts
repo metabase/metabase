@@ -77,7 +77,7 @@ import createCachedSelector from "re-reselect";
 import type React from "react";
 import _ from "underscore";
 
-import { combineReducers, compose } from "metabase/redux";
+import { combineReducers, compose, withAction } from "metabase/redux";
 import {
   type RequestsStateTree,
   requestsReducer,
@@ -87,11 +87,7 @@ import type { EntitiesState, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 
 import { DELETE, GET, POST, PUT } from "./api";
-import {
-  withAction,
-  withCachedDataAndRequestState,
-  withRequestState,
-} from "./redux";
+import { withCachedDataAndRequestState, withRequestState } from "./redux";
 
 const EMPTY_ENTITY_QUERY = {};
 

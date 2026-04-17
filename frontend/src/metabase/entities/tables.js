@@ -24,6 +24,7 @@ import {
   useDispatch,
   useSelector,
 } from "metabase/redux";
+import { withAction } from "metabase/redux/utils";
 import { TableSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -36,7 +37,6 @@ import {
   notify,
 } from "metabase/utils/entities";
 import {
-  withAction,
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/utils/redux";

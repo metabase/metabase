@@ -15,6 +15,7 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux";
+import { withAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -27,7 +28,6 @@ import {
 } from "metabase/utils/entities";
 import {
   updateData,
-  withAction,
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/utils/redux";
