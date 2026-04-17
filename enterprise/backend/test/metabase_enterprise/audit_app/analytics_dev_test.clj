@@ -229,5 +229,3 @@
                           extra-in-sync (set/difference synced-fields expected-fields)]
                       (is (empty? missing-from-sync))
                       (is (empty? extra-in-sync)))))))))))))
-
-
