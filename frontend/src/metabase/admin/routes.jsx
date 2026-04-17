@@ -50,7 +50,7 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
-  PLUGIN_TRANSFORMS,
+  PLUGIN_SECURITY_CENTER,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -131,6 +131,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             <ModalRoute path="new" modal={NewUserModal} noWrap />
           </Route>
 
+<<<<<<< HEAD
           <Route path=":userId" component={PeopleListingApp}>
             <IndexRedirect to="/admin/people" />
             <ModalRoute path="edit" modal={EditUserModal} noWrap />
@@ -141,6 +142,138 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
               <Fragment key={index}>{getRoutes(store)}</Fragment>
             ))}
+=======
+        {/* OSS/Starter has all embedding settings on the same page */}
+        {!hasSimpleEmbedding && (
+          <>
+            <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
+
+            <Redirect from="/admin/embedding/security" to="/admin/embedding" />
+          </>
+        )}
+
+        {/* Backwards compatibility for embedding settings */}
+        <Redirect from="/admin/embedding/modular" to="/admin/embedding" />
+        <Redirect from="/admin/embedding/interactive" to="/admin/embedding" />
+        <Redirect
+          from="/admin/settings/embedding-in-other-applications"
+          to="/admin/embedding"
+        />
+        <Redirect
+          from="/admin/settings/embedding-in-other-applications/full-app"
+          to="/admin/embedding"
+        />
+        <Redirect
+          from="/admin/settings/embedding-in-other-applications/standalone"
+          to="/admin/embedding/guest"
+        />
+        <Redirect
+          from="/admin/settings/embedding-in-other-applications/sdk"
+          to="/admin/embedding"
+        />
+
+        {/* SETTINGS */}
+        <Route path="settings" component={createAdminRouteGuard("settings")}>
+          {getSettingsRoutes()}
+        </Route>
+        {/* PERMISSIONS */}
+        <Route path="permissions" component={IsAdmin}>
+          {getAdminPermissionsRoutes(store)}
+        </Route>
+
+        {/* PERFORMANCE */}
+        <Route
+          path="performance"
+          component={createAdminRouteGuard("performance")}
+        >
+          <Route title={t`Performance`} component={PerformanceApp}>
+            <IndexRedirect to={PerformanceTabId.Databases} />
+            <Route
+              path="databases"
+              title={t`Databases`}
+              component={StrategyEditorForDatabases}
+            />
+            <Route
+              path="models"
+              title={t`Models`}
+              component={ModelPersistenceConfiguration}
+            />
+            <Route
+              path="dashboards-and-questions"
+              title={t`Dashboards and questions`}
+              component={PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards}
+            />
+          </Route>
+        </Route>
+        {PLUGIN_METABOT.getAdminRoutes()}
+
+        {PLUGIN_SECURITY_CENTER.isEnabled && (
+          <Route
+            path="security-center"
+            component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
+          />
+        )}
+
+        <Route path="tools" component={createAdminRouteGuard("tools")}>
+          <Route title={t`Tools`} component={ToolsApp}>
+            <IndexRedirect to="help" />
+            <Route
+              key="error-overview"
+              path="errors"
+              title={t`Erroring Questions`}
+              // If the audit_app feature flag is present, our enterprise plugin system kicks in and we render the
+              // appropriate enterprise component. The upsell component is shown in all other cases.
+              component={PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell}
+            />
+            <Route
+              path="model-caching"
+              title={t`Model Caching Log`}
+              component={ModelCachePage}
+            >
+              <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
+            </Route>
+            <Route path="help" component={Help}>
+              {PLUGIN_SUPPORT.isEnabled && (
+                <ModalRoute
+                  modal={PLUGIN_SUPPORT.GrantAccessModal}
+                  path="grant-access"
+                />
+              )}
+            </Route>
+            <Route path="tasks" component={TasksApp}>
+              <ModalRoute
+                path=":taskId"
+                modal={TaskModal}
+                modalProps={{
+                  // EventSandbox interferes with mouse text selection in CodeMirror editor
+                  disableEventSandbox: true,
+                }}
+              />
+            </Route>
+            <Route path="jobs" component={JobInfoApp}>
+              <ModalRoute
+                path=":jobKey"
+                modal={JobTriggersModal}
+                modalProps={{ wide: true }}
+              />
+            </Route>
+            <Route path="logs" component={Logs}>
+              <ModalRoute
+                path="levels"
+                modal={LogLevelsModal}
+                modalProps={{
+                  // EventSandbox interferes with mouse text selection in CodeMirror editor
+                  disableEventSandbox: true,
+                }}
+              />
+            </Route>
+            {PLUGIN_DEPENDENCIES.isEnabled && (
+              <Route
+                path="dependencies"
+                component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
+              />
+            )}
+>>>>>>> be93a0bddc3 (🤖 backported "Security Center" (#72346) (#72700))
           </Route>
         </Route>
       </Route>

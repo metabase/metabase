@@ -355,3 +355,11 @@
                   (get-in event [:details :scope :table_id]))]
       (audit-log/record-event! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))
       (audit-log/record-event! topic event))))
+
+(derive ::security-advisory-event ::event)
+(derive :event/security-advisory-acknowledge ::security-advisory-event)
+(derive :event/security-advisory-match ::security-advisory-event)
+
+(methodical/defmethod events/publish-event! ::security-advisory-event
+  [topic event]
+  (audit-log/record-event! topic event))

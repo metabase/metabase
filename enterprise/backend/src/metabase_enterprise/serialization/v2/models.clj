@@ -103,6 +103,7 @@
    "Sandbox"
    "SearchIndexMetadata"
    "Secret"
+   "SecurityAdvisory"
    "SemanticSearchTokenTracking"
    "Session"
    "TaskHistory"

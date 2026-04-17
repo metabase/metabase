@@ -500,6 +500,10 @@ export type BookmarkEvent =
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
 
+export type SecurityCenterPageViewedEvent = ValidateEvent<{
+  event: "security_center_page_viewed";
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -550,4 +554,5 @@ export type SimpleEvent =
   | MetadataEditEvent
   | BookmarkEvent
   | RemoteSyncEvent
-  | ClickActionPerformedEvent;
+  | ClickActionPerformedEvent
+  | SecurityCenterPageViewedEvent;
