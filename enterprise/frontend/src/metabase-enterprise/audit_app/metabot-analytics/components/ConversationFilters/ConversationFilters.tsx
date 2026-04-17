@@ -43,7 +43,7 @@ export function ConversationFilters({
         </Popover.Target>
         <Popover.Dropdown>
           <DateAllOptionsWidget
-            value={date}
+            value={null}
             onChange={(val) => {
               onDateChange(val);
               setDateOpened(false);
