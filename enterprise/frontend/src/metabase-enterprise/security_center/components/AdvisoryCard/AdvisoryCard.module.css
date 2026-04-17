@@ -9,7 +9,7 @@
 }
 
 .severityMedium {
-  background-color: var(--mb-color-gold);
+  background-color: var(--mb-color-saturated-yellow);
   color: var(--mb-color-text-primary);
 }
 
