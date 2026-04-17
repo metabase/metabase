@@ -11,8 +11,9 @@
   (:import (java.io File)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git)
+           (org.eclipse.jgit.errors NoRemoteRepositoryException RepositoryNotFoundException)
            (org.eclipse.jgit.lib PersonIdent)
-           (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
+           (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider URIish)))
 
 (set! *warn-on-reflection* true)
 
@@ -456,3 +457,129 @@
   (testing "Bitbucket URL uses x-token-auth"
     (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
       (is (instance? UsernamePasswordCredentialsProvider provider)))))
+
+;; ---------------------------------------------------------------------------
+;; Cache / deleted-directory recovery tests (issue #71364)
+;; ---------------------------------------------------------------------------
+
+(defn- source-repo-path
+  "Returns the on-disk File path where `source`'s clone lives."
+  [{:keys [remote-url token]}]
+  (#'git/repo-path {:remote-url remote-url :token token}))
+
+(deftest ^:parallel stale-cache-error?-test
+  (testing "detects NoRemoteRepositoryException anywhere in the cause chain"
+    (let [root (NoRemoteRepositoryException. (URIish. "file:///tmp/does-not-exist") "origin: not found.")
+          wrapped (ex-info "Git LsRemoteCommand failed: origin: not found." {:remote true} root)]
+      (is (true? (#'git/stale-cache-error? wrapped)))))
+  (testing "detects RepositoryNotFoundException anywhere in the cause chain"
+    (let [root (RepositoryNotFoundException. (io/file "/tmp/does-not-exist"))
+          wrapped (ex-info "Git open failed" {} root)]
+      (is (true? (#'git/stale-cache-error? wrapped)))))
+  (testing "still detects legacy 'Missing commit' message"
+    (is (true? (#'git/stale-cache-error?
+                (ex-info "Missing commit abc123" {})))))
+  (testing "does not match unrelated exceptions"
+    (is (false? (#'git/stale-cache-error? (IllegalStateException. "nope"))))
+    (is (false? (#'git/stale-cache-error? (ex-info "some other git failure" {}))))))
+
+(deftest get-jgit-recovers-from-deleted-directory-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "File in master"})
+          path (source-repo-path source)
+          stale-git (get @@#'git/jgit (.getPath path))]
+      (is (some? stale-git) "Precondition: source is cached")
+      (is (.isDirectory path) "Precondition: on-disk clone exists")
+      (FileUtils/deleteDirectory path)
+      (is (not (.exists path)) "Clone directory is deleted")
+      (let [fresh-git (#'git/get-jgit path {:remote-url (:remote-url source)})]
+        (is (.isDirectory path) "get-jgit re-creates the clone on disk")
+        (is (not (identical? stale-git fresh-git))
+            "get-jgit returns a fresh Git instance, not the stale cached one")
+        (is (= ["master"]
+               (source.p/branches (assoc source :git fresh-git)))
+            "The refreshed Git is usable for remote operations")))))
+
+(deftest branches-recovers-from-deleted-directory-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! "master" remote-dir
+                                         :branches ["branch-1"])
+          path (source-repo-path source)]
+      (FileUtils/deleteDirectory path)
+      (is (= ["branch-1" "master"] (source.p/branches source))
+          "branches recovers by re-cloning after the local dir was deleted")
+      (is (.isDirectory path) "Clone directory has been recreated"))))
+
+(deftest default-branch-recovers-from-deleted-directory-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          path (source-repo-path source)]
+      (FileUtils/deleteDirectory path)
+      (is (= "master" (git/default-branch source))
+          "default-branch recovers by re-cloning after the local dir was deleted")
+      (is (.isDirectory path)))))
+
+(deftest fetch!-recovers-from-deleted-directory-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! "master" remote-dir
+                                        :files {"master.txt" "x"})
+          path (source-repo-path source)]
+      (FileUtils/deleteDirectory path)
+      (git-working-add! remote "new-file.txt" "new")
+      (git-working-commit! remote "Add new file")
+      (git/fetch! source)
+      (is (.isDirectory path) "Clone directory has been recreated")
+      ;; After recovery, a new snapshot should see the post-deletion commit.
+      (let [snap (source.p/snapshot source)]
+        (is (= ["Add new file" "Initial commit"]
+               (map :message (git/log snap)))
+            "fetch! recovered and pulled the latest remote commits")))))
+
+(deftest create-branch-recovers-from-deleted-directory-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          path (source-repo-path source)]
+      (FileUtils/deleteDirectory path)
+      (source.p/create-branch source "new-branch" "master")
+      (is (.isDirectory path))
+      (is (contains? (set (source.p/branches source)) "new-branch")
+          "create-branch recovered and pushed a new branch to the remote"))))
+
+(deftest snapshot-recovers-from-deleted-directory-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          path (source-repo-path source)]
+      (FileUtils/deleteDirectory path)
+      (let [snap (source.p/snapshot source)]
+        (is (some? (:version snap)))
+        (is (.isDirectory path))))))
+
+(deftest with-cache-recovery-retries-once-on-missing-commit-test
+  ;; Regression: the wrapper must still recover from the legacy "Missing commit"
+  ;; error (force-push invalidating a cached commit), not only from deleted dirs.
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          calls (atom 0)
+          f (fn [s]
+              (swap! calls inc)
+              (if (= 1 @calls)
+                (throw (ex-info "Missing commit abc123" {}))
+                (:branch s)))]
+      (is (= "master" (#'git/with-cache-recovery source f)))
+      (is (= 2 @calls) "Wrapper retried exactly once after the failure"))))
+
+(deftest with-cache-recovery-does-not-retry-unrelated-errors-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          calls (atom 0)
+          f (fn [_]
+              (swap! calls inc)
+              (throw (IllegalStateException. "unrelated")))]
+      (is (thrown? IllegalStateException (#'git/with-cache-recovery source f)))
+      (is (= 1 @calls) "Wrapper did not retry on an unrelated exception"))))
