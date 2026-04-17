@@ -212,4 +212,4 @@ describe("Metabot Query Builder", () => {
 
 // Response helpers
 const mockNavigateToResponse = (path: string) =>
-  H.sseBody([{ type: "data-navigate-to", id: "d1", data: path }]);
+  H.sseBody([{ type: "data-navigate_to", id: "d1", data: path }]);

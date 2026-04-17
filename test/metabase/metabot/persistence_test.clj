@@ -3,23 +3,58 @@
    [clojure.test :refer :all]
    [metabase.metabot.persistence :as persistence]))
 
-(deftest migrate-v1-normalizes-tool-type-underscores-test
-  (testing "v1-native tool with underscored name becomes kebab-case after migration"
+(deftest migrate-v1-preserves-tool-name-underscores-test
+  (testing "v1-native tool name is preserved verbatim (underscores intact) in :type and :toolName"
     (let [v1-native-data [{:type "tool-input" :id "tc1" :function "create_sql_query" :arguments {:q "test"}}
-                          {:type "tool-output" :id "tc1" :result {:sql "SELECT 1"}}]]
-      (is (= "tool-create-sql-query"
-             (-> (persistence/migrate-v1-native->v2 v1-native-data) first :type)))))
+                          {:type "tool-output" :id "tc1" :result {:output "SELECT 1"}}]
+          part (-> (persistence/migrate-v1-native->v2 v1-native-data) first)]
+      (is (= "tool-create_sql_query" (:type part)))
+      (is (= "create_sql_query" (:toolName part)))))
 
-  (testing "v1-external-ai-service tool with underscored name becomes kebab-case after migration"
+  (testing "v1-external-ai-service tool name is preserved verbatim (underscores intact) in :type and :toolName"
     (let [v1-data [{:_type "TOOL_CALL"
                     :tool_calls [{:id "tc1" :name "create_sql_query" :arguments "{}"}]}
-                   {:_type "TOOL_RESULT" :tool_call_id "tc1" :content "result"}]]
-      (is (= "tool-create-sql-query"
-             (-> (persistence/migrate-v1-external-ai-service->v2 v1-data) first :type))))))
+                   {:_type "TOOL_RESULT" :tool_call_id "tc1" :content "result"}]
+          part (-> (persistence/migrate-v1-external-ai-service->v2 v1-data) first)]
+      (is (= "tool-create_sql_query" (:type part)))
+      (is (= "create_sql_query" (:toolName part))))))
+
+(deftest migrate-v1-native->v2-tool-output-test
+  (let [input [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}]]
+    (testing "success: :output is the inner text string, not the wrapping :result map"
+      (is (= [{:type       "tool-search"
+               :toolCallId "tc1"
+               :toolName   "search"
+               :state      "output-available"
+               :input      {:q "x"}
+               :output     "result text"}]
+             (persistence/migrate-v1-native->v2
+              (conj input
+                    {:type "tool-output" :id "tc1" :result {:output "result text"}})))))
+
+    (testing "standalone error entries are filtered out as non-storable"
+      (is (= [{:type       "tool-search"
+               :toolCallId "tc1"
+               :toolName   "search"
+               :state      "output-available"
+               :input      {:q "x"}
+               :output     "result text"}]
+             (persistence/migrate-v1-native->v2
+              (conj input
+                    {:type "tool-output" :id "tc1" :result {:output "result text"}}
+                    {:type "error" :error {:message "Something went wrong"}})))))))
 
 (deftest migrate-v1-native->v2-tool-error-test
   (let [input [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}]]
-    (testing "error state: carries :errorText, omits :output"
+    (testing "error state: carries :errorText, omits :output (master stored :result {} on errors)"
+      (let [part (-> (persistence/migrate-v1-native->v2
+                      (conj input {:type "tool-output" :id "tc1" :result {} :error "boom"}))
+                     first)]
+        (is (= "output-error" (:state part)))
+        (is (= "boom" (:errorText part)))
+        (is (not (contains? part :output)))))
+
+    (testing "error state omits :output even when only :error is set (no :result)"
       (let [part (-> (persistence/migrate-v1-native->v2
                       (conj input {:type "tool-output" :id "tc1" :error "boom"}))
                      first)]
@@ -29,26 +64,14 @@
 
     (testing "error state: extracts :message from map-shaped :error"
       (is (= "bad" (-> (persistence/migrate-v1-native->v2
-                        (conj input {:type "tool-output" :id "tc1" :error {:message "bad"}}))
+                        (conj input {:type "tool-output" :id "tc1" :result {} :error {:message "bad"}}))
                        first :errorText))))
 
     (testing "input-available when no matching tool-output exists"
       (let [part (first (persistence/migrate-v1-native->v2 input))]
         (is (= "input-available" (:state part)))
         (is (not (contains? part :output)))
-        (is (not (contains? part :errorText)))))
-
-    (testing "standalone error entries are filtered out as non-storable"
-      (is (= [{:type       "tool-search"
-               :toolCallId "tc1"
-               :toolName   "search"
-               :state      "output-available"
-               :input      {:q "x"}
-               :output     "result"}]
-             (persistence/migrate-v1-native->v2
-              (conj input
-                    {:type "tool-output" :id "tc1" :result "result"}
-                    {:type "error" :error {:message "Something went wrong"}})))))))
+        (is (not (contains? part :errorText)))))))
 
 (deftest migrate-v1-external-ai-service->v2-test
   (testing "TEXT entry becomes text part"
@@ -104,18 +127,18 @@
       (is (= "r1" (:output (nth parts 1))))
       (is (= "r2" (:output (nth parts 2))))))
 
-  (testing "DATA entry with real underscore subtype (navigate_to) → kebab-cased v2"
-    (is (= [{:type "data-navigate-to" :data "/metric/17991"}]
+  (testing "DATA entry with underscore subtype (navigate_to) is preserved verbatim in v2"
+    (is (= [{:type "data-navigate_to" :data "/metric/17991"}]
            (persistence/migrate-v1-external-ai-service->v2
             [{:_type "DATA" :type "navigate_to" :version 1 :value "/metric/17991"}]))))
 
   (testing "each real-world DATA subtype from the CSV"
-    (is (= [{:type "data-navigate-to"        :data "/x"}
-            {:type "data-code-edit"          :data {}}
-            {:type "data-transform-suggestion" :data {:id 1}}
-            {:type "data-adhoc-viz"          :data {:query {}}}
-            {:type "data-todo-list"          :data []}
-            {:type "data-static-viz"         :data {:entity_id 42}}]
+    (is (= [{:type "data-navigate_to"         :data "/x"}
+            {:type "data-code_edit"           :data {}}
+            {:type "data-transform_suggestion" :data {:id 1}}
+            {:type "data-adhoc_viz"           :data {:query {}}}
+            {:type "data-todo_list"           :data []}
+            {:type "data-static_viz"          :data {:entity_id 42}}]
            (persistence/migrate-v1-external-ai-service->v2
             [{:_type "DATA" :type "navigate_to"         :version 1 :value "/x"}
              {:_type "DATA" :type "code_edit"           :version 1 :value {}}
@@ -137,7 +160,7 @@
                                        {:role "tool"      :_type "TOOL_RESULT" :tool_call_id "tc1" :content "r"}
                                        {:_type "DATA" :type "navigate_to" :version 1 :value "/q/1"}]
           result   (persistence/migrate-v1->v2 v1-external-ai-service-data)]
-      (is (= ["text" "tool-search" "data-navigate-to"] (mapv :type result)))))
+      (is (= ["text" "tool-search" "data-navigate_to"] (mapv :type result)))))
 
   (testing "FINISH_MESSAGE entries are silently dropped"
     (is (= [] (persistence/migrate-v1-external-ai-service->v2
@@ -178,28 +201,28 @@
   (testing "missing :prompt or :completion defaults to 0"
     (is (= 50 (#'persistence/total-tokens {"m" {:completion 50}})))))
 
-(deftest internal-parts->storable-produces-kebab-case-test
-  (testing "data parts get kebab-case type names"
-    (let [parts [{:type :data :data-type "navigate-to" :data "/x"}
-                 {:type :data :data-type "todo-list" :data []}
-                 {:type :data :data-type "code-edit" :data {}}
-                 {:type :data :data-type "transform-suggestion" :data {:id 1}}
-                 {:type :data :data-type "adhoc-viz" :data {:query {}}}
-                 {:type :data :data-type "static-viz" :data {:entity_id 42}}]
+(deftest internal-parts->storable-data-type-prefixing-test
+  (testing "data parts get \"data-\" prefix applied to :data-type verbatim"
+    (let [parts [{:type :data :data-type "navigate_to" :data "/x"}
+                 {:type :data :data-type "todo_list" :data []}
+                 {:type :data :data-type "code_edit" :data {}}
+                 {:type :data :data-type "transform_suggestion" :data {:id 1}}
+                 {:type :data :data-type "adhoc_viz" :data {:query {}}}
+                 {:type :data :data-type "static_viz" :data {:entity_id 42}}]
           result (persistence/internal-parts->storable parts)]
-      (is (= ["data-navigate-to"
-              "data-todo-list"
-              "data-code-edit"
-              "data-transform-suggestion"
-              "data-adhoc-viz"
-              "data-static-viz"]
+      (is (= ["data-navigate_to"
+              "data-todo_list"
+              "data-code_edit"
+              "data-transform_suggestion"
+              "data-adhoc_viz"
+              "data-static_viz"]
              (mapv :type result))))))
 
 (deftest internal-parts->storable-data-parts-full-shape-test
   (testing "data part with :data-type produces correct type and preserves :data payload"
-    (is (= [{:type "data-navigate-to" :data "/metric/42"}]
+    (is (= [{:type "data-navigate_to" :data "/metric/42"}]
            (persistence/internal-parts->storable
-            [{:type :data :data-type "navigate-to" :data "/metric/42"}]))))
+            [{:type :data :data-type "navigate_to" :data "/metric/42"}]))))
 
   (testing "data part with nil :data-type falls back to \"data-data\""
     (is (= [{:type "data-data" :data {:some "payload"}}]
@@ -212,9 +235,9 @@
             [{:type :data :data [1 2 3]}]))))
 
   (testing "data part with nil :data preserves nil in output"
-    (is (= [{:type "data-todo-list" :data nil}]
+    (is (= [{:type "data-todo_list" :data nil}]
            (persistence/internal-parts->storable
-            [{:type :data :data-type "todo-list" :data nil}])))))
+            [{:type :data :data-type "todo_list" :data nil}])))))
 
 (deftest internal-parts->storable-error-part-test
   (testing "error part (as produced by agent/core error-part) hits default branch"

@@ -538,7 +538,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           delta: `Here is the [question link](${adHocQuestionPath})`,
         },
         { type: "text-end", id: "t1" },
-        { type: "data-navigate-to", id: "d1", data: adHocQuestionPath },
+        { type: "data-navigate_to", id: "d1", data: adHocQuestionPath },
       ]);
 
       it("should allow to save a new question", () => {

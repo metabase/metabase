@@ -323,8 +323,8 @@
   (testing "POST /events with visualizations uploads images and finalizes them in stop-stream blocks"
     (tu/with-slackbot-setup
       (let [mock-ai-text "Here are your charts"
-            mock-data-parts [{:type "static-viz" :value {:entity_id 101}}
-                             {:type "static-viz" :value {:entity_id 202}}
+            mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
+                             {:type "static_viz" :value {:entity_id 202}}
                              {:type "other_type" :value {:foo "bar"}}]
             event-body (update tu/base-dm-event :event merge
                                {:text      "Show me charts"
@@ -909,7 +909,7 @@
     (tu/with-slackbot-setup
       (let [mock-ai-text    "Here's your data"
             mock-query      {:database 1 :type "query" :query {:source-table 2}}
-            mock-data-parts [{:type "adhoc-viz" :value {:query mock-query :display "bar"}}]
+            mock-data-parts [{:type "adhoc_viz" :value {:query mock-query :display "bar"}}]
             event-body      (update tu/base-dm-event :event merge
                                     {:text "Show me sales data" :channel "C789"
                                      :ts "1234567890.000003" :event_ts "1234567890.000003"
@@ -937,7 +937,7 @@
   (testing "POST /events with adhoc_viz uses :table when display not specified"
     (tu/with-slackbot-setup
       (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
-            mock-data-parts [{:type "adhoc-viz" :value {:query mock-query}}]
+            mock-data-parts [{:type "adhoc_viz" :value {:query mock-query}}]
             event-body      (update tu/base-dm-event :event merge
                                     {:text "Show data" :ts "1234567890.000004" :event_ts "1234567890.000004"})]
         (tu/with-slackbot-mocks
@@ -953,9 +953,9 @@
   (testing "POST /events handles both static_viz and adhoc_viz in same response"
     (tu/with-slackbot-setup
       (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
-            mock-data-parts [{:type "static-viz" :value {:entity_id 101}}
-                             {:type "adhoc-viz" :value {:query mock-query :display "line"}}
-                             {:type "static-viz" :value {:entity_id 202}}]
+            mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
+                             {:type "adhoc_viz" :value {:query mock-query :display "line"}}
+                             {:type "static_viz" :value {:entity_id 202}}]
             event-body      (update tu/base-dm-event :event merge
                                     {:text "Show me everything" :channel "C456"
                                      :ts "1234567890.000005" :event_ts "1234567890.000005"
@@ -985,7 +985,7 @@
                                 :ts "1234567890.000010" :event_ts "1234567890.000010"
                                 :thread_ts "1234567890.000000"})]
         (tu/with-slackbot-mocks
-          {:ai-text "Here's your chart" :data-parts [{:type "static-viz" :value {:entity_id 999999}}]}
+          {:ai-text "Here's your chart" :data-parts [{:type "static_viz" :value {:entity_id 999999}}]}
           (fn [{:keys [post-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
               [slackbot.query/generate-card-output (fn [_card-id]
@@ -1007,8 +1007,8 @@
                                 :thread_ts "1234567890.000000"})]
         (tu/with-slackbot-mocks
           {:ai-text "Here are your charts"
-           :data-parts [{:type "static-viz" :value {:entity_id 999999}}
-                        {:type "static-viz" :value {:entity_id 123}}]}
+           :data-parts [{:type "static_viz" :value {:entity_id 999999}}
+                        {:type "static_viz" :value {:entity_id 123}}]}
           (fn [{:keys [post-calls image-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
               [slackbot.query/generate-card-output (fn [card-id]
@@ -1026,7 +1026,7 @@
 (deftest viz-caption-and-link-on-image-test
   (testing "image viz for static_viz uses the card name as caption, not the AI-provided caption"
     (tu/with-slackbot-setup
-      (let [mock-data-parts [{:type "static-viz" :value {:entity_id 101 :title "AI-generated caption"}}]
+      (let [mock-data-parts [{:type "static_viz" :value {:entity_id 101 :title "AI-generated caption"}}]
             event-body      (update tu/base-dm-event :event merge
                                     {:text "Show revenue" :channel "C456"
                                      :ts "1234567890.000020" :event_ts "1234567890.000020"
@@ -1053,7 +1053,7 @@
   (testing "table viz posts include caption block with link"
     (tu/with-slackbot-setup
       (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
-            mock-data-parts [{:type "adhoc-viz" :value {:query mock-query :title "Sales Data" :link "/question#abc123"}}]
+            mock-data-parts [{:type "adhoc_viz" :value {:query mock-query :title "Sales Data" :link "/question#abc123"}}]
             event-body      (update tu/base-dm-event :event merge
                                     {:text "Show sales" :ts "1234567890.000021" :event_ts "1234567890.000021"
                                      :thread_ts "1234567890.000000"})]

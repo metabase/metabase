@@ -506,7 +506,7 @@ const createMockTransformSuggestionResponse = (
     { type: "text-delta", id: "t1", delta: text },
     { type: "text-end", id: "t1" },
     {
-      type: "data-transform-suggestion",
+      type: "data-transform_suggestion",
       id: "d1",
       data: JSON.parse(transformJSON),
     },

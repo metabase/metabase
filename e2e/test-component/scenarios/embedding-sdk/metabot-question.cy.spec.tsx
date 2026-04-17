@@ -46,7 +46,7 @@ const metabotResponseWithNavigateTo = H.sseBody([
     delta: `Here is the [question link](${adHocQuestionPath})`,
   },
   { type: "text-end", id: "t1" },
-  { type: "data-navigate-to", id: "d1", data: adHocQuestionPath },
+  { type: "data-navigate_to", id: "d1", data: adHocQuestionPath },
 ]);
 
 const metabotRetryResponse = H.sseBody([

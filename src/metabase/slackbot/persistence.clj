@@ -8,7 +8,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- storable->tool-history
-  "Extract tool call history entries from v2 storable parts."
+  "Extract tool call history entries from v2 storable parts (AI SDK UIMessage `ToolUIPart`
+   shape: `:type \"tool-<toolName>\"` with `:state` and merged `:input`/`:output`).
+   Skips `input-available` entries (tool still running — no result to send yet)."
   [parts]
   (mapcat (fn [block]
             (when (and (string? (:type block))
@@ -20,14 +22,11 @@
                                              :arguments (if (string? (:input block))
                                                           (:input block)
                                                           (json/encode (:input block)))}]}
-                    tool-result (when (#{"output-available" "error"} (:state block))
+                    tool-result (when (#{"output-available" "output-error"} (:state block))
                                   {:role         :tool
                                    :tool_call_id (:toolCallId block)
                                    :content      (or (:output block)
-                                                     (when-let [err (:error block)]
-                                                       (if (map? err)
-                                                         (or (:message err) (pr-str err))
-                                                         (str err)))
+                                                     (:errorText block)
                                                      "Tool execution failed")})]
                 (cond-> [tool-call]
                   tool-result (conj tool-result)))))

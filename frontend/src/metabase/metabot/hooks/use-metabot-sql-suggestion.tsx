@@ -33,7 +33,7 @@ const responseHasCodeEdit = (action: SubmitInputResult) => {
         typeof dp === "object" &&
         dp !== null &&
         "type" in dp &&
-        (dp as { type: string }).type === "data-code-edit",
+        (dp as { type: string }).type === "data-code_edit",
     )
   );
 };

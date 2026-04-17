@@ -13,13 +13,13 @@
 ;;
 ;; These match the Python AI Service's AISDKDataTypes enum
 
-(def navigate-to-type "AI-SDK data type for navigation links." "navigate-to")
+(def navigate-to-type "AI-SDK data type for navigation links." "navigate_to")
 (def state-type "AI-SDK data type for state updates." "state")
-(def todo-list-type "AI-SDK data type for todo lists." "todo-list")
-(def code-edit-type "AI-SDK data type for code edits." "code-edit")
-(def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform-suggestion")
-(def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc-viz")
-(def static-viz-type "AI-SDK data type for static visualizations." "static-viz")
+(def todo-list-type "AI-SDK data type for todo lists." "todo_list")
+(def code-edit-type "AI-SDK data type for code edits." "code_edit")
+(def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
+(def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
+(def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 
 ;;; Query URL Encoding
 

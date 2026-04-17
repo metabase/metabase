@@ -66,7 +66,7 @@ export const RedirectReaction = {
             delta: `Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})`,
           },
           { type: "text-end", id: "t1" },
-          { type: "data-navigate-to", id: "d1", data: MOCK_AD_HOC_QUESTION_ID },
+          { type: "data-navigate_to", id: "d1", data: MOCK_AD_HOC_QUESTION_ID },
         ]),
       ],
     },

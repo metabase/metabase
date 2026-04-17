@@ -9,7 +9,7 @@
     (let [url "/question#abc123"
           part (streaming/navigate-to-part url)]
       (is (= :data (:type part)))
-      (is (= "navigate-to" (:data-type part)))
+      (is (= "navigate_to" (:data-type part)))
       (is (= url (:data part)))))
 
   (testing "works with various URL formats"
@@ -42,7 +42,7 @@
           parts (streaming/reactions->data-parts reactions)]
       (is (= 1 (count parts)))
       (is (= :data (:type (first parts))))
-      (is (= "navigate-to" (:data-type (first parts))))
+      (is (= "navigate_to" (:data-type (first parts))))
       (is (= "/question#xyz" (:data (first parts))))))
 
   (testing "handles multiple reactions"
@@ -81,13 +81,13 @@
                  {:id "2" :content "Task 2" :status "completed" :priority "low"}]
           part (streaming/todo-list-part todos)]
       (is (= :data (:type part)))
-      (is (= "todo-list" (:data-type part)))
+      (is (= "todo_list" (:data-type part)))
       (is (= todos (:data part)))))
 
   (testing "handles empty todo list"
     (let [part (streaming/todo-list-part [])]
       (is (= :data (:type part)))
-      (is (= "todo-list" (:data-type part)))
+      (is (= "todo_list" (:data-type part)))
       (is (= [] (:data part))))))
 
 (deftest code-edit-part-test
@@ -97,7 +97,7 @@
                      :value "SELECT * FROM users"}
           part (streaming/code-edit-part edit-data)]
       (is (= :data (:type part)))
-      (is (= "code-edit" (:data-type part)))
+      (is (= "code_edit" (:data-type part)))
       (is (= edit-data (:data part)))))
 
   (testing "handles complex edit data"
@@ -116,7 +116,7 @@
                       :source {:type "sql" :query "SELECT 1"}}
           part (streaming/transform-suggestion-part suggestion)]
       (is (= :data (:type part)))
-      (is (= "transform-suggestion" (:data-type part)))
+      (is (= "transform_suggestion" (:data-type part)))
       (is (= suggestion (:data part)))))
 
   (testing "handles Python transform suggestion"
@@ -135,14 +135,14 @@
                  :display "bar"}
           part (streaming/adhoc-viz-part value)]
       (is (= :data (:type part)))
-      (is (= "adhoc-viz" (:data-type part)))
+      (is (= "adhoc_viz" (:data-type part)))
       (is (= value (:data part)))))
 
   (testing "handles minimal value without title/display"
     (let [value {:query {:database 1} :link "/question#xyz"}
           part (streaming/adhoc-viz-part value)]
       (is (= :data (:type part)))
-      (is (= "adhoc-viz" (:data-type part)))
+      (is (= "adhoc_viz" (:data-type part)))
       (is (= value (:data part))))))
 
 (deftest static-viz-part-test
@@ -150,18 +150,18 @@
     (let [value {:entity_id 42}
           part (streaming/static-viz-part value)]
       (is (= :data (:type part)))
-      (is (= "static-viz" (:data-type part)))
+      (is (= "static_viz" (:data-type part)))
       (is (= value (:data part))))))
 
 (deftest data-type-constants-test
   (testing "data type constants are defined correctly"
-    (is (= "navigate-to" streaming/navigate-to-type))
+    (is (= "navigate_to" streaming/navigate-to-type))
     (is (= "state" streaming/state-type))
-    (is (= "todo-list" streaming/todo-list-type))
-    (is (= "code-edit" streaming/code-edit-type))
-    (is (= "transform-suggestion" streaming/transform-suggestion-type))
-    (is (= "adhoc-viz" streaming/adhoc-viz-type))
-    (is (= "static-viz" streaming/static-viz-type))))
+    (is (= "todo_list" streaming/todo-list-type))
+    (is (= "code_edit" streaming/code-edit-type))
+    (is (= "transform_suggestion" streaming/transform-suggestion-type))
+    (is (= "adhoc_viz" streaming/adhoc-viz-type))
+    (is (= "static_viz" streaming/static-viz-type))))
 
 ;;; Transducer Tests
 
@@ -175,7 +175,7 @@
       (is (= 2 (count result)))
       (is (= :tool-output (:type (first result))))
       (is (= :data (:type (second result))))
-      (is (= "navigate-to" (:data-type (second result))))))
+      (is (= "navigate_to" (:data-type (second result))))))
 
   (testing "passes through non-tool-output parts unchanged"
     (let [parts [{:type :text :text "hello"}
@@ -201,7 +201,7 @@
 
 (deftest expand-data-parts-xf-test
   (testing "expands data-parts from tool-output results"
-    (let [todo-part {:type :data :data-type "todo-list" :data [{:id "1"}]}
+    (let [todo-part {:type :data :data-type "todo_list" :data [{:id "1"}]}
           parts [{:type :tool-output
                   :id "t1"
                   :result {:output "done"
@@ -274,14 +274,14 @@
                   :id "t1"
                   :result {:structured-output {:query-id "q1" :query query}
                            :reactions [{:type :metabot.reaction/redirect :url "/nav"}]
-                           :data-parts [{:type :data :data-type "todo-list" :data []}]}}
+                           :data-parts [{:type :data :data-type "todo_list" :data []}]}}
                  {:type :text :text "[Link](metabase://query/q1)"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
       ;; Should have: tool-output, navigate_to data part, todo_list data part, resolved text
       (is (= 4 (count result)))
       (is (= :tool-output (:type (nth result 0))))
-      (is (= "navigate-to" (:data-type (nth result 1))))
-      (is (= "todo-list" (:data-type (nth result 2))))
+      (is (= "navigate_to" (:data-type (nth result 1))))
+      (is (= "todo_list" (:data-type (nth result 2))))
       (is (re-find #"\[Link\]\(/question#" (:text (nth result 3))))))
 
   (testing "works with empty parts"
@@ -296,6 +296,6 @@
                  {:type :text :text "text"}]
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
       (is (= :tool-output (:type (nth result 0))))
-      (is (= "navigate-to" (:data-type (nth result 1))))
+      (is (= "navigate_to" (:data-type (nth result 1))))
       (is (= "dp" (:data-type (nth result 2))))
       (is (= "text" (:text (nth result 3)))))))

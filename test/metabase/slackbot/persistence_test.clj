@@ -99,14 +99,12 @@
   (let [conv-id (str (random-uuid))]
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
       (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
-      (doseq [{:keys [label error-val expected-content]}
-              [{:label            "map error extracts :message"
-                :error-val        {:message "Something broke" :type "Exception"}
-                :expected-content "Something broke"}
-               {:label            "string error uses the string directly"
-                :error-val        "plain string error"
+      (doseq [{:keys [label errorText expected-content]}
+              [{:label            "string errorText passes through"
+                :errorText        "plain string error"
                 :expected-content "plain string error"}
-               {:label            "nil error falls back to sentinel"
+               {:label            "missing errorText falls back to sentinel"
+                :errorText        nil
                 :expected-content "Tool execution failed"}]]
         (testing label
           (let [ts (str "1709567890." (random-uuid))]
@@ -119,9 +117,9 @@
                          :data            [(cond-> {:type       "tool-search"
                                                     :toolCallId "err"
                                                     :toolName   "search"
-                                                    :state      "error"
+                                                    :state      "output-error"
                                                     :input      {}}
-                                             (some? error-val) (assoc :error error-val))]
+                                             (some? errorText) (assoc :errorText errorText))]
                          :data_version    2})
             (let [parts (get (slackbot.persistence/message-history conv-id #{ts}) ts)]
               (is (= 2 (count parts)))

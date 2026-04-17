@@ -326,7 +326,7 @@ export const sendAgentRequest = createAsyncThunk<
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "data-state" }, (part) => (state = part.data))
-              .with({ type: "data-todo-list" }, (part) => {
+              .with({ type: "data-todo_list" }, (part) => {
                 const message: Omit<
                   MetabotAgentTodoListChatMessage,
                   "id" | "role"
@@ -337,21 +337,21 @@ export const sendAgentRequest = createAsyncThunk<
 
                 dispatch(addAgentMessage({ ...message, agentId }));
               })
-              .with({ type: "data-code-edit" }, (part) => {
+              .with({ type: "data-code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
 
                 if (part.data.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
               })
-              .with({ type: "data-navigate-to" }, (part) => {
+              .with({ type: "data-navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.data));
 
                 if (!isEmbeddingSdk() && !isWorkspace) {
                   dispatch(push(part.data) as UnknownAction);
                 }
               })
-              .with({ type: "data-transform-suggestion" }, ({ data }) => {
+              .with({ type: "data-transform_suggestion" }, ({ data }) => {
                 const suggestedTransform = {
                   ...data,
                   id: data.id || undefined,

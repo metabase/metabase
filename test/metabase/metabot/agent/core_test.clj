@@ -336,7 +336,7 @@
                          {:type     :tool-output
                           :function "construct_notebook_query"
                           :result   {:structured-output {:query {:database (mt/id)}}}}
-                         {:type :data :data-type "navigate-to"}
+                         {:type :data :data-type "navigate_to"}
                          {:type :start}
                      ;; has final text part
                          {:type :text}

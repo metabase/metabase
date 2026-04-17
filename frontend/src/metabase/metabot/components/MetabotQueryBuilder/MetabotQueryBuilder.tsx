@@ -51,7 +51,7 @@ type SubmitInputResult = Awaited<
 const responseHasNavigateTo = (action: SubmitInputResult) =>
   isFulfilled(action) &&
   action.payload.data?.processedResponse.data?.some(
-    isMatching({ type: "data-navigate-to" }),
+    isMatching({ type: "data-navigate_to" }),
   );
 
 const MetabotQueryBuilderInner = () => {

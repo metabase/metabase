@@ -1,7 +1,6 @@
 (ns metabase.metabot.persistence
   "Persistence for Metabot conversations and messages."
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.util.json :as json]
@@ -48,13 +47,14 @@
 
 (defn- v1-external-ai-service-tool-call->parts
   "Split one v1-external-ai-service `TOOL_CALL` entry (which may batch multiple calls)
-   into v2 tool parts, paired with matching results from `outputs` (keyed by `:tool_call_id`)."
+   into v2 AI-SDK `ToolUIPart` entries, paired with matching results from `outputs`
+   (keyed by `:tool_call_id`)."
   [{:keys [tool_calls]} outputs]
   (mapv (fn [{:keys [id name arguments]}]
           (let [output (get outputs id)
                 input  (try (json/decode+kw arguments)
                             (catch Throwable _ arguments))]
-            (cond-> {:type       (str "tool-" (str/replace name "_" "-"))
+            (cond-> {:type       (str "tool-" name)
                      :toolCallId id
                      :toolName   name
                      :state      (if output "output-available" "input-available")
@@ -64,6 +64,8 @@
 
 (defn migrate-v1-external-ai-service->v2
   "Migrate a v1-external-ai-service data array (ai-service origin, `:_type`-keyed) to v2 format.
+   v2 follows AI SDK `UIMessage` parts: each tool call is one `ToolUIPart` with
+   `:type \"tool-<toolName>\"` and a `:state` of `input-available` / `output-available`.
 
    Entry conversions:
    - TEXT            -> {:type \"text\" :text <content>}
@@ -87,7 +89,7 @@
                    (case (:_type entry)
                      "TEXT"            [{:type "text" :text (:content entry)}]
                      "TOOL_CALL"       (v1-external-ai-service-tool-call->parts entry outputs)
-                     "DATA"            [{:type (str "data-" (str/replace (:type entry) "_" "-"))
+                     "DATA"            [{:type (str "data-" (:type entry))
                                          :data (:value entry)}]
                      "FINISH_MESSAGE"  []
                      "ERROR"           []
@@ -110,14 +112,15 @@
 
 (defn migrate-v1-native->v2
   "Migrate a v1-native data array (native-agent origin, `:type`-keyed) to v2 format.
-   Merges separate tool-input/tool-output entries into unified tool-{name} parts.
-   Text and user-message blocks pass through unchanged. Underscores in tool names
-   are kebab-cased inline. Entries whose type is in `non-storable-part-types` are
-   dropped — they should never have been persisted.
+   v2 follows AI SDK `UIMessage` parts: each paired tool-input/tool-output becomes
+   one `ToolUIPart` with `:type \"tool-<toolName>\"` and a `:state`.
+   Text and user-message blocks pass through unchanged. Entries whose type is in
+   `non-storable-part-types` are dropped — they should never have been persisted.
 
    v1-native: [{:type \"tool-input\" :id \"tc1\" :function \"search\" :arguments {...}}
-               {:type \"tool-output\" :id \"tc1\" :result {...}}]
-   v2:        [{:type \"tool-search\" :toolCallId \"tc1\" :state \"output-available\" :input {...} :output {...}}]"
+               {:type \"tool-output\" :id \"tc1\" :result {:output \"...\"}}]
+   v2:        [{:type \"tool-search\" :toolCallId \"tc1\" :toolName \"search\"
+                :state \"output-available\" :input {...} :output \"...\"}]"
   [data]
   (let [data    (remove #(non-storable-part-types (keyword (:type %))) data)
         outputs (->> data
@@ -127,9 +130,10 @@
          (remove #(= "tool-output" (:type %)))
          (mapv (fn [block]
                  (if (= "tool-input" (:type block))
-                   (let [output   (get outputs (:id block))
-                         has-err? (some? (:error output))]
-                     (cond-> {:type       (str "tool-" (str/replace (:function block) "_" "-"))
+                   (let [output        (get outputs (:id block))
+                         has-err?      (some? (:error output))
+                         output-value  (:output (:result output))]
+                     (cond-> {:type       (str "tool-" (:function block))
                               :toolCallId (:id block)
                               :toolName   (:function block)
                               :state      (cond
@@ -137,8 +141,10 @@
                                             (some? output)    "output-available"
                                             :else             "input-available")
                               :input      (:arguments block)}
-                       (some? (:result output)) (assoc :output (:result output))
-                       has-err?                 (assoc :errorText (error->text (:error output)))))
+                       (and (not has-err?) (some? output-value))
+                       (assoc :output output-value)
+                       has-err?
+                       (assoc :errorText (error->text (:error output)))))
                    (if (and (= "error" (:type block)) (map? (:error block)))
                      {:type      "error"
                       :errorText (error->text (:error block))}
@@ -165,11 +171,13 @@
 
 (defn internal-parts->storable
   "Convert internal agent loop parts to v2 storage format.
-   Merges :tool-input/:tool-output pairs into unified tool-{name} entries.
+   Merges :tool-input/:tool-output pairs into unified AI SDK `ToolUIPart` entries
+   with `:type \"tool-<toolName>\"` and a `:state`.
 
    Internal: [{:type :tool-input :id \"tc1\" :function \"search\" :arguments {...}}
-              {:type :tool-output :id \"tc1\" :result {...}}]
-   Storable: [{:type \"tool-search\" :toolCallId \"tc1\" :state \"output-available\" :input {...} :output {...}}]"
+              {:type :tool-output :id \"tc1\" :result {:output \"...\"}}]
+   Storable: [{:type \"tool-search\" :toolCallId \"tc1\" :toolName \"search\"
+               :state \"output-available\" :input {...} :output \"...\"}]"
   [parts]
   (let [outputs (->> parts
                      (filter #(= :tool-output (:type %)))
@@ -178,7 +186,7 @@
          (remove #(= :tool-output (:type %)))
          (mapv (fn [part]
                  (case (:type part)
-                   :text      {:type "text" :text (:text part)}
+                   :text {:type "text" :text (:text part)}
                    :tool-input
                    (let [output   (get outputs (:id part))
                          has-err? (some? (:error output))]
@@ -192,14 +200,14 @@
                               :input      (:arguments part)}
                        (some? (:result output)) (assoc :output (:output (:result output)))
                        has-err?                 (assoc :errorText (error->text (:error output)))))
-                   :data      {:type (str "data-" (or (:data-type part) "data"))
-                               :data (:data part)}
+                   :data {:type (str "data-" (or (:data-type part) "data"))
+                          :data (:data part)}
                    ;; Pass through user messages and anything else unchanged
                    (let [m (cond-> {}
-                             (:role part) (assoc :role (name (:role part)))
+                             (:role part)    (assoc :role (name (:role part)))
                              (:content part) (assoc :content (:content part))
-                             (:type part) (assoc :type (name (:type part)))
-                             (:text part) (assoc :text (:text part)))]
+                             (:type part)    (assoc :type (name (:type part)))
+                             (:text part)    (assoc :text (:text part)))]
                      (if (seq m) m part))))))))
 
 (defn parts->storable-content

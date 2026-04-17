@@ -249,19 +249,19 @@
 
 (def ^:private viz-data-types
   "DATA part types that represent visualizations."
-  #{"static-viz" "adhoc-viz"})
+  #{"static_viz" "adhoc_viz"})
 
 (defn- generate-viz-output
   "Generate visualization output for a data-part. Called by the prefetch executor during streaming."
   [{:keys [type value]}]
   (case type
-    "static-viz"
+    "static_viz"
     (let [card-id (or (:entity_id value)
-                      (throw (ex-info "static-viz missing entity_id" {:value value})))]
+                      (throw (ex-info "static_viz missing entity_id" {:value value})))]
       (slackbot.query/generate-card-output card-id))
-    "adhoc-viz"
+    "adhoc_viz"
     (let [query   (or (:query value)
-                      (throw (ex-info "adhoc-viz missing query" {:value value})))
+                      (throw (ex-info "adhoc_viz missing query" {:value value})))
           display (or (some-> (:display value) keyword) :table)]
       (slackbot.query/generate-adhoc-output query :display display))))
 
@@ -342,11 +342,11 @@
   (let [title    (:title value)
         filename (or (some-> title (u/slugify {:max-length 80}))
                      (case type
-                       "static-viz" (str "chart-" (:entity_id value))
-                       "adhoc-viz"  (str "adhoc-" (t/format "yyyy-MM-dd_HH-mm-ss" (t/zoned-date-time)))))
+                       "static_viz" (str "chart-" (:entity_id value))
+                       "adhoc_viz"  (str "adhoc-" (t/format "yyyy-MM-dd_HH-mm-ss" (t/zoned-date-time)))))
         link     (case type
-                   "adhoc-viz"  (:link value)
-                   "static-viz" (str "/question/" (:entity_id value)))]
+                   "adhoc_viz"  (:link value)
+                   "static_viz" (str "/question/" (:entity_id value)))]
     {:title title :filename filename :link link}))
 
 (defn- make-viz-prefetch-callback
