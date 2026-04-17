@@ -1150,36 +1150,34 @@ describe("admin > custom visualizations", () => {
 
       H.interceptPluginBundle();
 
-      // Only cy.visit in this test — every subsequent page is reached via
-      // clicks in the UI.
       cy.visit("/collection/root");
 
-      // 1. Navigation sidebar bookmark
+      cy.log("Navigation sidebar bookmark");
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
 
-      // 2. Unpinned collection list row
+      cy.log("Unpinned collection list row");
       cy.findByRole("row", { name: new RegExp(UNPINNED_QUESTION_NAME) })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
 
-      // 3. Pinned section (collection_preview: false → icon, not viz)
+      cy.log("Pinned section (collection_preview: false → icon, not viz)");
       H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
 
-      // Navigate → question editor by clicking the pinned card title.
+      cy.log("Navigate → question editor by clicking the pinned card title");
       H.getPinnedSection().findByText(ICON_QUESTION_NAME).click();
       cy.wait("@pluginBundle");
 
-      // 4. Chart type sidebar on the question editor
+      cy.log("Chart type sidebar on the question editor");
       H.openVizTypeSidebar();
       H.vizTypeSidebar()
         .findByRole("img", { name: "demo-viz" })
         .should("be.visible");
       H.openVizTypeSidebar();
 
-      // 5. Command palette option row
+      cy.log("Command palette option row");
       H.commandPaletteSearch(ICON_QUESTION_NAME, false);
       H.commandPalette()
         .findAllByRole("option", { name: new RegExp(ICON_QUESTION_NAME) })
@@ -1187,7 +1185,9 @@ describe("admin > custom visualizations", () => {
         .find(PLUGIN_ICON_SELECTOR)
         .should("be.visible");
 
-      // 6. Search results page — reached by clicking "View and filter all …"
+      cy.log(
+        'Search results page — reached by clicking "View and filter all …"',
+      );
       H.commandPalette()
         .findByText(/View and filter all .* results/)
         .click();
@@ -1197,11 +1197,11 @@ describe("admin > custom visualizations", () => {
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
 
-      // Navigate → home via the nav-sidebar "Home" link.
+      cy.log('Navigate → home via the nav-sidebar "Home" link');
       ensureNavigationSidebarOpen();
       H.navigationSidebar().findByText("Home").click();
 
-      // 7. Home recently-viewed section
+      cy.log("Home recently-viewed section");
       H.main()
         .findByText("Pick up where you left off")
         .parent()
@@ -1209,30 +1209,31 @@ describe("admin > custom visualizations", () => {
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
 
-      // Navigate → dashboard via bookmark link in the nav sidebar.
+      cy.log("Navigate → dashboard via bookmark link in the nav sidebar");
       ensureNavigationSidebarOpen();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DASHBOARD_NAME) })
         .click();
 
-      // 8. Dashboard add-questions sidesheet
+      cy.log("Dashboard add-questions sidesheet");
       H.editDashboard();
       H.openQuestionsSidebar();
       cy.findByTestId("add-card-sidebar")
         .findByRole("menuitem", { name: ICON_QUESTION_NAME })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
+
       // Exit edit mode so the next click-to-navigate isn't blocked by an
       // unsaved-changes prompt.
       cy.findByRole("button", { name: /Cancel/i }).click();
 
-      // Navigate → document via bookmark link.
+      cy.log("Navigate → document via bookmark link");
       ensureNavigationSidebarOpen();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DOC_NAME) })
         .click();
 
-      // 9. Document mention dialog (@ suggestions).
+      cy.log("Document mention dialog (@ suggestions)");
       // By the time we reach this step the plugin list has already been
       // fetched for the embedded card, so no need to wait on it again.
       // Click into the intro paragraph — clicking blindly on document-content
@@ -1252,7 +1253,7 @@ describe("admin > custom visualizations", () => {
         });
       cy.realPress("Escape");
 
-      // 10. Document "Visualize as" panel on the embedded card
+      cy.log('Document "Visualize as" panel on the embedded card');
       H.openDocumentCardMenu(ICON_QUESTION_NAME);
       H.popover().findByText("Edit Visualization").click();
       H.getDocumentSidebar()
@@ -1381,7 +1382,7 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("viz-type-button").click();
 
       cy.log(
-        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up SVG should render (no rotation).",
+        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up SVG should render.",
       );
       // Use the plugin's unique viewBox to avoid matching UI icon SVGs.
       const pluginPath = 'svg[viewBox="0 0 17 16"] > path';
