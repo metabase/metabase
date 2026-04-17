@@ -1,3 +1,4 @@
+import type { FC } from "react";
 import { useMemo } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -30,7 +31,10 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
-import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
+import type {
+  SdkQuestionEntityInternalProps,
+  SdkQuestionEntityPublicProps,
+} from "embedding-sdk-bundle/types/question";
 import { deserializeCardFromQuery } from "metabase/utils/card";
 
 import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
@@ -53,6 +57,13 @@ export type InteractiveQuestionBaseProps = Omit<
  */
 export type InteractiveQuestionProps = InteractiveQuestionBaseProps &
   SdkQuestionEntityPublicProps;
+
+/**
+ * Internal type that includes the `query` prop used by the `useMetabot` hook.
+ * Not re-exported from the public SDK package entry point.
+ */
+export type InteractiveQuestionInternalProps = InteractiveQuestionBaseProps &
+  SdkQuestionEntityInternalProps;
 
 /**
  * @interface
@@ -93,7 +104,7 @@ export type InteractiveQuestionComponents = {
 function InteractiveQuestionInner({
   query,
   ...rest
-}: InteractiveQuestionProps) {
+}: InteractiveQuestionInternalProps) {
   const deserializedCard = useMemo(
     () => (query ? deserializeCardFromQuery(query) : undefined),
     [query],
@@ -133,10 +144,29 @@ const subComponents: InteractiveQuestionComponents = {
   SqlParametersList: SqlParametersList,
 };
 
+const _InteractiveQuestionWrapped = withPublicComponentWrapper(
+  _InteractiveQuestion,
+  { supportsGuestEmbed: false },
+);
+
+/**
+ * Public-facing component — TypeScript contract excludes the internal `query`
+ * prop. Runtime still accepts it (the schema passes it through), but it is
+ * not part of the SDK's public API.
+ */
 export const InteractiveQuestion = Object.assign(
-  withPublicComponentWrapper(_InteractiveQuestion, {
-    supportsGuestEmbed: false,
-  }),
+  _InteractiveQuestionWrapped as FC<InteractiveQuestionProps>,
+  subComponents,
+  { schema: interactiveQuestionSchema },
+);
+
+/**
+ * Same runtime component as {@link InteractiveQuestion}, typed to accept the
+ * internal `query` prop. For use by the `useMetabot` hook and internal tests
+ * only. Not re-exported from the public SDK package entry point.
+ */
+export const _InteractiveQuestionInternal = Object.assign(
+  _InteractiveQuestionWrapped as FC<InteractiveQuestionInternalProps>,
   subComponents,
   { schema: interactiveQuestionSchema },
 );

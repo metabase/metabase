@@ -61,15 +61,17 @@ export type SdkQuestionEntityPublicProps =
        */
       token: SdkEntityToken | null;
       query?: never;
-    }
+    };
+
+/**
+ * Internal type that adds the `query` prop used by the `useMetabot` hook. Not
+ * re-exported from the public SDK package entry point.
+ */
+export type SdkQuestionEntityInternalProps =
+  | SdkQuestionEntityPublicProps
   | {
       questionId?: never;
       token?: never;
-      /**
-       * A base64-encoded query, as returned by `/api/agent/v1/construct-query`,
-       * or a Metabot `navigate_to` path (e.g. `/question#<base64>`).
-       * The `question#` prefix is stripped automatically when present.
-       */
       query: string;
     };
 

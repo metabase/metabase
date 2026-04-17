@@ -2,9 +2,12 @@ import * as Yup from "yup";
 
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
-import type { StaticQuestionProps } from "./StaticQuestion";
+import type { StaticQuestionInternalProps } from "./StaticQuestion";
 
-const propsSchema: Yup.SchemaOf<StaticQuestionProps> = Yup.object({
+// Typed against the internal shape so runtime validation still accepts the
+// `query` prop used by the `useMetabot` hook. The public API (see
+// `StaticQuestionProps`) intentionally doesn't expose `query` to users.
+const propsSchema: Yup.SchemaOf<StaticQuestionInternalProps> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
   height: Yup.mixed().optional(),

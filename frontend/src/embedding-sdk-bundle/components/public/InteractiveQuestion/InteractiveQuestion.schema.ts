@@ -2,9 +2,12 @@ import * as Yup from "yup";
 
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
-import type { InteractiveQuestionProps } from "./InteractiveQuestion";
+import type { InteractiveQuestionInternalProps } from "./InteractiveQuestion";
 
-const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
+// Typed against the internal shape so runtime validation still accepts the
+// `query` prop used by the `useMetabot` hook. The public API (see
+// `InteractiveQuestionProps`) intentionally doesn't expose `query` to users.
+const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
   componentPlugins: Yup.object({
