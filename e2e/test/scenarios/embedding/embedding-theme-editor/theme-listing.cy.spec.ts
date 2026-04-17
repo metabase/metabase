@@ -1,6 +1,13 @@
+const { H } = cy;
+
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
-const { H } = cy;
+function createThemeViaApi(name = "Test theme") {
+  return cy.request("POST", "/api/embed-theme", {
+    name,
+    settings: { colors: { brand: "#509EE3" } },
+  });
+}
 
 describe(
   "scenarios > embedding > themes > theme listing",
@@ -28,16 +35,22 @@ describe(
 
         cy.log("create a theme");
         cy.findByRole("button", { name: /New theme/ }).click();
-
-        // TODO(EMB-946): assert that it navigates to the theme editor page.
-        cy.log("default card is created");
-        cy.findByText("Untitled theme").should("be.visible");
-
-        cy.log("empty state is no longer visible");
-        cy.findByText("Create your first theme to get started").should(
-          "not.exist",
-        );
       });
+
+      cy.log("navigates to the theme editor page");
+      cy.url().should("match", /\/admin\/embedding\/themes\/\d+/);
+    });
+
+    it("navigates to theme editor when clicking an existing theme card", () => {
+      createThemeViaApi("My theme");
+      cy.visit("/admin/embedding/themes");
+
+      H.main().within(() => {
+        cy.findByText("My theme").click();
+      });
+
+      cy.log("navigates to the theme editor page");
+      cy.url().should("match", /\/admin\/embedding\/themes\/\d+/);
     });
 
     it("uses white-labeled colors as a base for creating themes", () => {
@@ -78,11 +91,10 @@ describe(
     });
 
     it("can duplicate a theme", () => {
+      createThemeViaApi("Untitled theme");
       cy.visit("/admin/embedding/themes");
 
       H.main().within(() => {
-        cy.log("create a theme");
-        cy.findByRole("button", { name: /New theme/ }).click();
         cy.findByText("Untitled theme").should("be.visible");
         cy.findByLabelText("Duplicate and delete").click();
       });
@@ -100,11 +112,10 @@ describe(
     });
 
     it("can delete a theme with confirmation", () => {
+      createThemeViaApi("Untitled theme");
       cy.visit("/admin/embedding/themes");
 
       H.main().within(() => {
-        cy.log("create a theme");
-        cy.findByRole("button", { name: /New theme/ }).click();
         cy.findByText("Untitled theme").should("be.visible");
         cy.findByLabelText("Duplicate and delete").click();
       });
