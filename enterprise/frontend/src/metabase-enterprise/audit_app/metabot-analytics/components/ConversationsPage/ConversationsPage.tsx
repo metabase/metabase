@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { Card, Flex, Title } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
@@ -53,49 +54,51 @@ export function ConversationsPage({ location }: WithRouterProps) {
   }, [conversations]);
 
   return (
-    <SettingsPageWrapper mt="sm">
-      <Flex align="center" justify="space-between">
-        <Title order={2} display="flex" style={{ alignItems: "center" }}>
-          {t`Conversations`}
-        </Title>
+    <MetabotAdminLayout fullWidth>
+      <SettingsPageWrapper mt="sm">
+        <Flex align="center" justify="space-between">
+          <Title order={2} display="flex" style={{ alignItems: "center" }}>
+            {t`Conversations`}
+          </Title>
 
-        <ConversationFilters
-          date={date}
-          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-          group={group}
-          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-          profile={profile}
-          onProfileChange={(val) => patchUrlState({ profile: val, page: 0 })}
-          userOptions={userOptions}
-          groupOptions={groupOptions}
-          profileOptions={profileOptions}
-        />
-      </Flex>
+          <ConversationFilters
+            date={date}
+            onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+            user={user}
+            onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+            group={group}
+            onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+            profile={profile}
+            onProfileChange={(val) => patchUrlState({ profile: val, page: 0 })}
+            userOptions={userOptions}
+            groupOptions={groupOptions}
+            profileOptions={profileOptions}
+          />
+        </Flex>
 
-      <Card withBorder shadow="none" p={0}>
-        <ConversationsTable
-          conversations={conversations}
-          isLoading={isLoading}
-          error={error}
-          sortingOptions={sortingOptions}
-          onSortingOptionsChange={(newSortingOptions) =>
-            patchUrlState({ ...newSortingOptions, page: 0 })
-          }
-        />
-      </Card>
+        <Card withBorder shadow="none" p={0}>
+          <ConversationsTable
+            conversations={conversations}
+            isLoading={isLoading}
+            error={error}
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={(newSortingOptions) =>
+              patchUrlState({ ...newSortingOptions, page: 0 })
+            }
+          />
+        </Card>
 
-      <Flex justify="flex-end">
-        <PaginationControls
-          onPreviousPage={() => patchUrlState({ page: page - 1 })}
-          onNextPage={() => patchUrlState({ page: page + 1 })}
-          page={page}
-          pageSize={PAGE_SIZE}
-          itemsLength={conversations.length}
-          total={total}
-        />
-      </Flex>
-    </SettingsPageWrapper>
+        <Flex justify="flex-end">
+          <PaginationControls
+            onPreviousPage={() => patchUrlState({ page: page - 1 })}
+            onNextPage={() => patchUrlState({ page: page + 1 })}
+            page={page}
+            pageSize={PAGE_SIZE}
+            itemsLength={conversations.length}
+            total={total}
+          />
+        </Flex>
+      </SettingsPageWrapper>
+    </MetabotAdminLayout>
   );
 }

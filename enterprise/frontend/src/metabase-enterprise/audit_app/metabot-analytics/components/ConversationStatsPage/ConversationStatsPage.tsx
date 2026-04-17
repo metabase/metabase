@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
@@ -100,69 +101,71 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   );
 
   return (
-    <SettingsPageWrapper mt="sm">
-      <Flex align="center" justify="space-between">
-        <Title order={2} display="flex" style={{ alignItems: "center" }}>
-          {t`Usage stats`}
-        </Title>
+    <MetabotAdminLayout fullWidth>
+      <SettingsPageWrapper mt="sm">
+        <Flex align="center" justify="space-between">
+          <Title order={2} display="flex" style={{ alignItems: "center" }}>
+            {t`Usage stats`}
+          </Title>
 
-        <ConversationFilters
-          date={date}
-          onDateChange={(val) => patchUrlState({ date: val })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val })}
-          group={group}
-          onGroupChange={(val) => patchUrlState({ group: val })}
-          userOptions={userOptions}
-          groupOptions={groupOptions}
-        />
-      </Flex>
+          <ConversationFilters
+            date={date}
+            onDateChange={(val) => patchUrlState({ date: val })}
+            user={user}
+            onUserChange={(val) => patchUrlState({ user: val })}
+            group={group}
+            onGroupChange={(val) => patchUrlState({ group: val })}
+            userOptions={userOptions}
+            groupOptions={groupOptions}
+          />
+        </Flex>
 
-      <Tabs
-        variant="pills"
-        value={metric}
-        onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
-      >
-        <Tabs.List className={S.metricTabs}>
-          <Tabs.Tab
-            className={S.metricTab}
-            value="conversations"
-          >{t`Conversations`}</Tabs.Tab>
-          <Tabs.Tab
-            className={S.metricTab}
-            value="tokens"
-          >{t`Tokens`}</Tabs.Tab>
-          <Tabs.Tab
-            className={S.metricTab}
-            value="messages"
-          >{t`Messages`}</Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+        <Tabs
+          variant="pills"
+          value={metric}
+          onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
+        >
+          <Tabs.List className={S.metricTabs}>
+            <Tabs.Tab
+              className={S.metricTab}
+              value="conversations"
+            >{t`Conversations`}</Tabs.Tab>
+            <Tabs.Tab
+              className={S.metricTab}
+              value="tokens"
+            >{t`Tokens`}</Tabs.Tab>
+            <Tabs.Tab
+              className={S.metricTab}
+              value="messages"
+            >{t`Messages`}</Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
 
-      <ConversationsByDayChart
-        dateFilter={dateFilter}
-        metric={metric}
-        onDimensionClick={handleDayClick}
-      />
-      <SimpleGrid cols={2} spacing="lg">
-        <ConversationsBySourceChart dateFilter={dateFilter} metric={metric} />
-        <ConversationsByProfileBarChart
+        <ConversationsByDayChart
           dateFilter={dateFilter}
           metric={metric}
+          onDimensionClick={handleDayClick}
         />
-      </SimpleGrid>
-      <SimpleGrid cols={3} spacing="lg">
-        <ConversationsByGroupChart dateFilter={dateFilter} metric={metric} />
-        <ConversationsByUserChart
-          dateFilter={dateFilter}
-          metric={metric}
-          onDimensionClick={handleUserClick}
-        />
-        <ConversationsByIPAddressChart
-          dateFilter={dateFilter}
-          metric={metric}
-        />
-      </SimpleGrid>
-    </SettingsPageWrapper>
+        <SimpleGrid cols={2} spacing="lg">
+          <ConversationsBySourceChart dateFilter={dateFilter} metric={metric} />
+          <ConversationsByProfileBarChart
+            dateFilter={dateFilter}
+            metric={metric}
+          />
+        </SimpleGrid>
+        <SimpleGrid cols={3} spacing="lg">
+          <ConversationsByGroupChart dateFilter={dateFilter} metric={metric} />
+          <ConversationsByUserChart
+            dateFilter={dateFilter}
+            metric={metric}
+            onDimensionClick={handleUserClick}
+          />
+          <ConversationsByIPAddressChart
+            dateFilter={dateFilter}
+            metric={metric}
+          />
+        </SimpleGrid>
+      </SettingsPageWrapper>
+    </MetabotAdminLayout>
   );
 }

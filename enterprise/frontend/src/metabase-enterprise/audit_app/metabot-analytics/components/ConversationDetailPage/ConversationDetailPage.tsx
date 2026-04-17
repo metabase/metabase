@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -23,7 +24,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
@@ -51,7 +52,6 @@ function StatCard({ label, value }: StatCardProps) {
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
   const convoId = params.convoId;
-  const dispatch = useDispatch();
 
   const {
     data: conversation,
@@ -60,7 +60,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   } = useGetMetabotConversationQuery(convoId);
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <MetabotAdminLayout>
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </MetabotAdminLayout>
+    );
   }
 
   if (!conversation) {
@@ -78,98 +82,97 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const queries = conversation.queries ?? [];
 
   return (
-    <>
-      <Anchor
-        size="sm"
-        mt="md"
-        onClick={() =>
-          dispatch(push("/admin/metabot/usage-auditing/conversations"))
-        }
-        style={{ cursor: "pointer" }}
-      >
-        <Flex align="center" gap={4}>
-          <Icon name="chevronleft" size={12} />
-          {t`Back to conversations`}
-        </Flex>
-      </Anchor>
+    <MetabotAdminLayout>
+      <Stack gap="2.5rem">
+        <Breadcrumbs
+          crumbs={[
+            [t`Conversations`, "/admin/metabot/usage-auditing/conversations"],
+            <>
+              {userName}, <DateTime value={conversation.created_at} />
+            </>,
+          ]}
+        />
 
-      <Flex justify="space-between" align="flex-start" mt="md" gap="md">
-        <Stack gap="sm">
-          <Title order={2}>{t`Conversation with ${userName}`}</Title>
-          <Flex gap="lg" align="center" wrap="wrap">
-            <Flex gap="xs" align="center">
-              <Icon name="calendar" size={16} c="text-tertiary" />
-              <Text size="md" c="text-secondary">
-                <DateTime value={conversation.created_at} unit="day" />
-              </Text>
-            </Flex>
-            {firstModel && (
+        <Flex justify="space-between" align="flex-start" gap="md">
+          <Stack gap="sm">
+            <Title order={2}>{t`Conversation with ${userName}`}</Title>
+            <Flex gap="lg" align="center" wrap="wrap">
               <Flex gap="xs" align="center">
-                <Icon name="metabot" size={16} c="text-tertiary" />
+                <Icon name="calendar" size={16} c="text-tertiary" />
                 <Text size="md" c="text-secondary">
-                  {firstModel}
+                  <DateTime value={conversation.created_at} unit="day" />
                 </Text>
               </Flex>
-            )}
-            <Flex gap="xs" align="center">
-              <Icon name="group" size={16} c="text-tertiary" />
-              <Text size="md" c="text-secondary">
-                TODO
-              </Text>
+              {firstModel && (
+                <Flex gap="xs" align="center">
+                  <Icon name="metabot" size={16} c="text-tertiary" />
+                  <Text size="md" c="text-secondary">
+                    {firstModel}
+                  </Text>
+                </Flex>
+              )}
+              <Flex gap="xs" align="center">
+                <Icon name="group" size={16} c="text-tertiary" />
+                <Text size="md" c="text-secondary">
+                  TODO
+                </Text>
+              </Flex>
+              {conversation.slack_permalink && (
+                <Anchor
+                  href={conversation.slack_permalink}
+                  target="_blank"
+                  rel="noreferrer"
+                  size="md"
+                >
+                  {t`Open in Slack`}
+                </Anchor>
+              )}
             </Flex>
-            {conversation.slack_permalink && (
-              <Anchor
-                href={conversation.slack_permalink}
-                target="_blank"
-                rel="noreferrer"
-                size="md"
-              >
-                {t`Open in Slack`}
-              </Anchor>
-            )}
-          </Flex>
-        </Stack>
-        <Card withBorder shadow="none" bg="transparent" py="xs" px="sm">
-          <Flex gap="sm" align="center">
-            <Text size="md" c="text-primary">{t`User rating`}</Text>
-            <Icon name="thumbs_up" size={18} c="text-tertiary" />
-          </Flex>
-        </Card>
-      </Flex>
-
-      <SimpleGrid cols={4} mt="lg">
-        <StatCard label={t`Messages`} value={String(messageCount)} />
-        <StatCard
-          label={t`Total tokens`}
-          value={totalTokens.toLocaleString()}
-        />
-        <StatCard label={t`Queries run`} value={String(queryCount)} />
-        <StatCard label={t`Searches`} value={String(searchCount)} />
-      </SimpleGrid>
-
-      <Title order={3} mt="xl">{t`Conversation`}</Title>
-      <Card withBorder shadow="none" p="xl" mt="sm">
-        <Messages
-          messages={conversation.chat_messages ?? []}
-          errorMessages={[]}
-          isDoingScience={false}
-        />
-      </Card>
-
-      {queries.length > 0 && (
-        <>
-          <Title order={3} mt="xl">{t`Queries generated`}</Title>
-          <Stack mt="sm" gap="md">
-            {queries.map((query) => (
-              <GeneratedQueryCard
-                key={query.call_id ?? `${query.message_id}-${query.query_id}`}
-                query={query}
-              />
-            ))}
           </Stack>
-        </>
-      )}
-    </>
+          {/* <Card withBorder shadow="none" bg="transparent" py="xs" px="sm">
+            <Flex gap="sm" align="center">
+              <Text size="md" c="text-primary">{t`User rating`}</Text>
+              <Icon name="thumbs_up" size={18} c="text-tertiary" />
+            </Flex>
+          </Card> */}
+        </Flex>
+
+        <SimpleGrid cols={4}>
+          <StatCard label={t`Messages`} value={String(messageCount)} />
+          <StatCard
+            label={t`Total tokens`}
+            value={totalTokens.toLocaleString()}
+          />
+          <StatCard label={t`Queries run`} value={String(queryCount)} />
+          <StatCard label={t`Searches`} value={String(searchCount)} />
+        </SimpleGrid>
+
+        <Box>
+          <Title order={4}>{t`Conversation`}</Title>
+          <Card withBorder shadow="none" p="xl" mt="sm">
+            <Messages
+              messages={conversation.chat_messages ?? []}
+              errorMessages={[]}
+              isDoingScience={false}
+            />
+          </Card>
+        </Box>
+
+        {queries.length > 0 && (
+          <Box>
+            <Title order={3}>{t`Queries generated`}</Title>
+            <Stack mt="sm" gap="md">
+              {queries.map((query) => (
+                <GeneratedQueryCard
+                  key={query.call_id ?? `${query.message_id}-${query.query_id}`}
+                  query={query}
+                />
+              ))}
+            </Stack>
+          </Box>
+        )}
+      </Stack>
+    </MetabotAdminLayout>
   );
 }
 
