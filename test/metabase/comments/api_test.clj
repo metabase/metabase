@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.analytics.sdk :as sdk]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -351,10 +350,10 @@
         (is (=? {:comments []
                  :disabled true}
                 (mt/user-http-request :rasta :get 200 "comment/"
-                                      {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}}
+                                      {:request-options {:headers {"x-metabase-client" "embedding-iframe"}}}
                                       :target_type "document"
                                       :target_id doc-id))))
       (testing "Users mentions are not available either"
         (is (= "Not found."
                (mt/user-http-request :rasta :get 404 "comment/mentions"
-                                     {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}})))))))
+                                     {:request-options {:headers {"x-metabase-client" "embedding-iframe"}}})))))))

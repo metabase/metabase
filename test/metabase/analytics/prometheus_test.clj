@@ -256,6 +256,10 @@
       (prometheus/inc! :metabase-sdk/response {:status "404"} 0)
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"} 0)
+      (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status "200"} 0)
+      (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"} 0)
+      (prometheus/inc! :metabase-embedding-public/response {:status "200"} 0)
+      (prometheus/inc! :metabase-embedding-simple/response {:status "200"} 0)
 
       ;; Track SDK responses
       (prometheus/inc! :metabase-sdk/response {:status "200"})
@@ -265,10 +269,22 @@
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"})
 
+      ;; Track new embedding responses
+      (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status "200"})
+      (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"})
+      (prometheus/inc! :metabase-embedding-public/response {:status "200"})
+      (prometheus/inc! :metabase-embedding-simple/response {:status "200"})
+
       (testing "SDK response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "404"}))))
 
       (testing "iframe response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
-        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"})))))))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"}))))
+
+      (testing "new embedding response metrics are recorded correctly"
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-full-app/response {:status "200"})))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-static/response {:status "200"})))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-public/response {:status "200"})))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-simple/response {:status "200"})))))))

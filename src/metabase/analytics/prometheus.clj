@@ -454,6 +454,18 @@
    (prometheus/counter :metabase-embedding-iframe/response
                        {:description "Number of iframe embedding responses by status code."
                         :labels [:status]})
+   (prometheus/counter :metabase-embedding-iframe-full-app/response
+                       {:description "Number of full-app iframe embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-iframe-static/response
+                       {:description "Number of static iframe embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-public/response
+                       {:description "Number of public embedding responses by status code."
+                        :labels [:status]})
+   (prometheus/counter :metabase-embedding-simple/response
+                       {:description "Number of simple (modular) embedding responses by status code."
+                        :labels [:status]})
    (prometheus/counter :metabase-gsheets/connection-deleted
                        {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-manually-synced

@@ -108,22 +108,30 @@
       (assoc :metabase_version (:tag config/mb-version-info))
       (merge (hostname-fields) (pii-fields))))
 
-(def ^:private embedding-sdk-client "embedding-sdk-react")
-(def ^:private embedding-iframe-client "embedding-iframe")
+(def ^:private embedding-clients
+  #{"embedding-sdk-react"
+    "embedding-iframe"
+    "embedding-iframe-full-app"
+    "embedding-iframe-static"
+    "embedding-public"
+    "embedding-simple"})
 
 (defn- track-sdk-response
   "Tabulates the number of responses by status code made by clients of the SDK."
   [sdk-client {:keys [status]}]
   (case sdk-client
-    "embedding-sdk-react"    (prometheus/inc! :metabase-sdk/response {:status (str status)})
-    "embedding-iframe"       (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
+    "embedding-sdk-react"       (prometheus/inc! :metabase-sdk/response {:status (str status)})
+    "embedding-iframe"          (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
+    "embedding-iframe-full-app" (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status (str status)})
+    "embedding-iframe-static"   (prometheus/inc! :metabase-embedding-iframe-static/response {:status (str status)})
+    "embedding-public"          (prometheus/inc! :metabase-embedding-public/response {:status (str status)})
+    "embedding-simple"          (prometheus/inc! :metabase-embedding-simple/response {:status (str status)})
     (log/infof "Unknown client. client: %s" sdk-client)))
 
 (defn embedding-context?
   "Should we track this request as being made by an embedding client?"
   [client]
-  (or (= client embedding-sdk-client)
-      (= client embedding-iframe-client)))
+  (contains? embedding-clients client))
 
 (def ^:private embedding-route-mapping
   [["/api/public/"        "public"]
