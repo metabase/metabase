@@ -443,7 +443,7 @@ describe("issue 16559", () => {
     H.closeDashboardInfoSidebar();
 
     H.openDashboardSettingsSidebar();
-    H.sidesheet().findByText("Auto-apply filters").click();
+    H.sidesheet().findByLabelText("Auto-apply filters").click();
     cy.wait("@saveDashboard");
     H.closeDashboardSettingsSidebar();
 

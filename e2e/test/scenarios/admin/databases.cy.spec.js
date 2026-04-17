@@ -793,23 +793,22 @@ describe("scenarios > admin > databases > sample database", () => {
     // `auto_run_queries` toggle should be ON by default
     cy.findByLabelText(/Rerun queries for simple explorations/)
       .should("have.attr", "data-checked", "true")
-      .click({ force: true });
+      .click();
     // Reported failing in v0.36.4
     cy.log(
       "should respect the settings for automatic query running (metabase#13187)",
     );
     cy.findByLabelText(/Rerun queries for simple explorations/).should(
-      "not.have.attr",
+      "have.attr",
       "data-checked",
+      "false",
     );
 
     cy.log("change the metadata_sync period");
-    cy.findByLabelText(/Choose when syncs and scans happen/).click({
-      force: true,
-    });
+    cy.findByLabelText(/Choose when syncs and scans happen/).click();
     cy.findByDisplayValue("Hourly").click();
     H.popover().within(() => {
-      cy.findByText("Daily").click({ force: true });
+      cy.findByText("Daily").click();
     });
 
     // "lets you change the cache_field_values period"

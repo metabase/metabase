@@ -82,20 +82,12 @@ describe("time-series chrome filter widget", () => {
 
         cy.log("Toggle should be always off initially");
         // This is targeting the input checkbox that is hidden
-        cy.findByLabelText("Include today").should(
-          "have.attr",
-          "aria-checked",
-          "false",
-        );
+        cy.findByLabelText("Include today").should("not.be.checked");
 
         // This is clicking on an actual label in the UI
-        cy.findByText("Include today").click();
+        cy.findByLabelText("Include today").click();
 
-        cy.findByLabelText("Include today").should(
-          "have.attr",
-          "aria-checked",
-          "true",
-        );
+        cy.findByLabelText("Include today").should("be.checked");
         cy.button("Apply").click();
         cy.wait("@dataset");
       });
@@ -114,21 +106,13 @@ describe("time-series chrome filter widget", () => {
           "true",
         );
 
-        cy.findByLabelText("Include today").should(
-          "have.attr",
-          "aria-checked",
-          "true",
-        );
+        cy.findByLabelText("Include today").should("be.checked");
 
         cy.log(
           "Switch should preserve its state after we change the direction",
         );
         cy.findByRole("tab", { name: "Next" }).click();
-        cy.findByLabelText("Include today").should(
-          "have.attr",
-          "aria-checked",
-          "true",
-        );
+        cy.findByLabelText("Include today").should("be.checked");
       });
     });
   });
