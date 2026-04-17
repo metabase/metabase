@@ -10,6 +10,7 @@ import {
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getSetting } from "metabase/selectors/settings";
@@ -22,7 +23,6 @@ import type {
   MetabotChatContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
 import { METABOT_ERR_MSG } from "../constants";
 

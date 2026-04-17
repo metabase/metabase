@@ -5,12 +5,12 @@ import {
   getRowIndexToPKMap,
   getZoomedObjectId,
 } from "metabase/query_builder/selectors";
+import type { State } from "metabase/redux/store";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 const getZoomedObjectIdSafe = (state: State) => {
   return state.qb ? getZoomedObjectId(state) : undefined;
