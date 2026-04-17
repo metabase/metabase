@@ -416,7 +416,7 @@
     {:query       (update-in query-map [:stages last-idx] dissoc :limit)
      :total-limit total-limit}))
 
-(defn- compute-page-items
+(defn- remaining-page-rows
   "Rows to request for this page, respecting the user's total cap.
    Returns at most page-size, and never more than remaining rows under the cap."
   [total-limit page]
@@ -477,7 +477,7 @@
             {:query query :total-limit (:limit pagination) :page (:page pagination)})
           (let [{:keys [query total-limit]} (extract-total-limit (evaluate-program-for-execution body))]
             {:query query :total-limit total-limit :page 1}))
-        items           (compute-page-items total-limit page)
+        items           (remaining-page-rows total-limit page)
         mbql5-with-page (apply-page-to-query query page items)]
     (qp.streaming/streaming-response
      [rff :api]

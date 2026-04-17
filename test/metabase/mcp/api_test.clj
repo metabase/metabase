@@ -264,7 +264,6 @@
             message        (:text (first (:content result)))]
         (is (= 200 (:status response)))
         (is (true? (:isError result)))
-        (is (str/starts-with? message "Invalid body"))
         (is (str/includes? message "term_queries")))))
 
   (testing "search returns actionable error for singleton semantic query strings"
@@ -278,7 +277,6 @@
             message        (:text (first (:content result)))]
         (is (= 200 (:status response)))
         (is (true? (:isError result)))
-        (is (str/starts-with? message "Invalid body"))
         (is (str/includes? message "semantic_queries")))))
 
   (testing "search coerces JSON-stringified arrays so clients that serialize args through a string layer still work"

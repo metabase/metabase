@@ -247,6 +247,8 @@
         task-support  (:task-support tool-md)
         scope         (get-in form [:metadata :scope])
         body-schema   (get-in form [:params :body :schema])
+        ;; Opt-out for tools that want raw schema errors to reach the client unchanged —
+        ;; e.g. tools whose argument coercion would mask useful validation feedback.
         strict-input? (:strict-input-shape? tool-md)]
     (cond-> {:name        tool-name
              :description description
