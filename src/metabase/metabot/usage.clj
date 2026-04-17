@@ -62,16 +62,17 @@
         default-key (default-metabase-meter-key)]
     (meter-value meters default-key)))
 
-(defn- managed-free-limit-reached?
-  [token-status]
-  (some-> (meter-entry token-status)
-          :is-locked))
+(defn managed-free-limit-reached?
+  "True when the configured managed Metabase provider is locked for free-tier usage."
+  ([] (and (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
+           (some-> (premium-features/token-status) managed-free-limit-reached?)))
+  ([token-status]
+   (some-> (meter-entry token-status)
+           :is-locked)))
 
 (defn check-metabase-managed-free-limit!
   "Return the free-trial lock message when the managed Metabase provider is locked."
   []
-  (api/check (not (and
-                   (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-                   (some-> (premium-features/token-status) managed-free-limit-reached?)))
+  (api/check (not (managed-free-limit-reached?))
              [402 {:message    (tru "You''ve used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key.")
                    :error-code "metabase-ai-managed-locked"}]))

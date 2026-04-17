@@ -406,7 +406,7 @@
 
 (deftest settings-put-api-key-switches-from-metabase-to-provider-default-model-test
   (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
-    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-opus-4-1"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"
                                        llm.settings/llm-anthropic-api-key nil]
       (let [calls (atom 0)]
         (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
