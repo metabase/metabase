@@ -1,0 +1,19 @@
+## Client IP address for Metabot conversations (web-originated only).
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-13T00:00:00
+      author: tyler
+      comment: Add ip_address to metabot_conversation for web-originated conversations
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: ip_address
+                  type: varchar(45)
+                  remarks: Client IP captured at conversation creation; NULL for Slack-originated conversations.
+                  constraints:
+                    nullable: true
