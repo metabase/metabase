@@ -2897,7 +2897,9 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       cy.log("open detail sidebar");
       cy.findAllByText("MBQL transform").first().click();
-      cy.findByRole("img", { name: "close icon" }).should("be.visible");
+      H.DataStudio.Runs.sidebar()
+        .findByRole("img", { name: "close icon" })
+        .should("be.visible");
       cy.findByRole("link", { name: "View this transform" })
         .should("be.visible")
         .should("have.attr", "href", "/data-studio/transforms/1");

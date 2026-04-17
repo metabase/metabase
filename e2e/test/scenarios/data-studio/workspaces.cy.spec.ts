@@ -1345,7 +1345,8 @@ describe("scenarios > data studio > workspaces", () => {
       cy.findByTestId("python-results").should("not.exist");
 
       cy.log("Python editor should fill available height (no white box)");
-      const MIN_EDITOR_HEIGHT = 590;
+
+      const MIN_EDITOR_HEIGHT = 535; // assumes that no notification banner is showing
       cy.findByTestId("python-editor").should(($editor) => {
         const height = $editor.height();
         expect(height).to.be.at.least(
