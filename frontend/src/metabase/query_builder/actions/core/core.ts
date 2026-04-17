@@ -22,6 +22,7 @@ import { entityCompatibleQuery } from "metabase/utils/entities";
 import { createThunkAction } from "metabase/utils/redux";
 import { isNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
+import { getDefaultSize } from "metabase/visualizations";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -375,10 +376,13 @@ async function reduxCreateQuestion(
   dispatch: Dispatch,
   options?: OnCreateOptions,
 ) {
+  const display = question.display();
+  const size = getDefaultSize(display);
   const action = await dispatch(
     Questions.actions.create({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
+      ...(size && { size_x: size.width, size_y: size.height }),
     }),
   );
   return question.setCard(Questions.HACK_getObjectFromAction(action));

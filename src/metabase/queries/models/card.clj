@@ -868,7 +868,7 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
-(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card]
+(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
   (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
@@ -878,7 +878,11 @@
             cards-on-first-tab (or (when first-tab
                                      (:cards first-tab))
                                    dashcards)
-            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
+            new-spot (if-let [{:keys [size_x size_y]} size]
+                       (autoplace/get-position-for-new-dashcard
+                        cards-on-first-tab size_x size_y autoplace/default-grid-width)
+                       (autoplace/get-position-for-new-dashcard
+                        cards-on-first-tab (:display card)))]
         (t2/insert! :model/DashboardCard (assoc new-spot
                                                 :dashboard_tab_id (some-> first-tab :id)
                                                 :card_id (:id card)
@@ -933,7 +937,7 @@
                (not new-dashboard-id))))
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update))
+      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update nil))
 
     (when (and
            ;; we start out as a DQ, and
@@ -1013,7 +1017,7 @@
                                                   (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
-         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
+         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
