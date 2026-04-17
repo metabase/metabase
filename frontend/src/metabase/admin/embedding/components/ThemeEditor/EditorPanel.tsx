@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { WHITELABEL_CHART_COLOR_NAMES } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
 import { ColorPicker } from "metabase/common/components/ColorPicker";
-import type { MetabaseColor } from "metabase/embedding-sdk/theme";
 import type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 import {
   Box,
@@ -22,54 +20,12 @@ import {
 
 import { ColorRow } from "./ColorRow";
 import { ColorSwatchCard } from "./ColorSwatchCard";
-
-const FONT_FAMILY_OPTIONS: { value: string; label: string }[] = [
-  { value: "Roboto", label: "Roboto" },
-  { value: "Merriweather", label: "Merriweather" },
-  { value: "Open Sans", label: "Open Sans" },
-  { value: "Lato", label: "Lato" },
-  { value: "Noto Sans", label: "Noto Sans" },
-  { value: "Roboto Slab", label: "Roboto Slab" },
-  { value: "Source Sans Pro", label: "Source Sans Pro" },
-  { value: "Raleway", label: "Raleway" },
-  { value: "Slabo 27px", label: "Slabo 27px" },
-  { value: "PT Sans", label: "PT Sans" },
-  { value: "Poppins", label: "Poppins" },
-  { value: "PT Serif", label: "PT Serif" },
-  { value: "Roboto Mono", label: "Roboto Mono" },
-  { value: "Roboto Condensed", label: "Roboto Condensed" },
-  { value: "Playfair Display", label: "Playfair Display" },
-  { value: "Oswald", label: "Oswald" },
-  { value: "Ubuntu", label: "Ubuntu" },
-  { value: "Montserrat", label: "Montserrat" },
-  { value: "Lora", label: "Lora" },
-];
-
-const PRIMARY_COLORS: {
-  key: Exclude<MetabaseColor, "charts">;
-  label: () => string;
-}[] = [
-  { key: "brand", label: () => t`Brand` },
-  { key: "background", label: () => t`Background` },
-  { key: "text-primary", label: () => t`Primary text` },
-];
-
-const MORE_COLORS: {
-  key: Exclude<MetabaseColor, "charts">;
-  label: () => string;
-}[] = [
-  { key: "text-secondary", label: () => t`Secondary text` },
-  { key: "text-tertiary", label: () => t`Tertiary text` },
-  { key: "border", label: () => t`Border` },
-  { key: "background-secondary", label: () => t`Secondary background` },
-  { key: "filter", label: () => t`Filter` },
-  { key: "summarize", label: () => t`Summarize` },
-  { key: "positive", label: () => t`Positive` },
-  { key: "negative", label: () => t`Negative` },
-  { key: "shadow", label: () => t`Shadow` },
-];
-
-const CHART_COLOR_COUNT = WHITELABEL_CHART_COLOR_NAMES.length;
+import {
+  CHART_COLOR_COUNT,
+  FONT_FAMILY_OPTIONS,
+  MORE_COLORS,
+  PRIMARY_COLORS,
+} from "./constants";
 
 interface EditorPanelProps {
   editor: EmbeddingThemeEditorResult;
