@@ -125,7 +125,8 @@
       (let [result (document-tools/document-construct-model-chart-tool
                     {:name "Test Name"
                      :description "Test Desc"
-                     :query {:source {:model_id 4}}
+                     :source_entity {:type "model" :id 4}
+                     :program {:source {:type "context" :ref "source"} :operations []}
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
         (is (true? (:final-response? result)))
