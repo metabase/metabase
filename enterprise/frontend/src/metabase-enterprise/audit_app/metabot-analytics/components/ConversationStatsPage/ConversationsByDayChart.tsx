@@ -93,7 +93,7 @@ export function ConversationsByDayChart({
   }
 
   return (
-    <Card withBorder p="md" h={350}>
+    <Card withBorder shadow="none" p="md" h={350}>
       <Text fw="bold" mb="sm">
         {getChartTitle(metric, "day")}
       </Text>

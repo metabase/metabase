@@ -13,7 +13,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Anchor,
-  Badge,
+  Box,
   Card,
   Flex,
   Icon,
@@ -38,7 +38,7 @@ type StatCardProps = {
 
 function StatCard({ label, value }: StatCardProps) {
   return (
-    <Card withBorder p="md">
+    <Card withBorder shadow="none" p="md">
       <Text size="sm" c="text-secondary">
         {label}
       </Text>
@@ -72,6 +72,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     : t`Unknown`;
   const totalTokens = conversation.total_tokens ?? 0;
   const messageCount = conversation.message_count ?? 0;
+  const searchCount = conversation.search_count ?? 0;
+  const queryCount = conversation.query_count ?? 0;
   const firstModel = conversation.model ?? undefined;
   const queries = conversation.queries ?? [];
 
@@ -91,43 +93,62 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         </Flex>
       </Anchor>
 
-      <Flex justify="space-between" align="flex-start" mt="md">
-        <div>
+      <Flex justify="space-between" align="flex-start" mt="md" gap="md">
+        <Stack gap="sm">
           <Title order={2}>{t`Conversation with ${userName}`}</Title>
-          <Flex gap="sm" mt="xs" align="center">
+          <Flex gap="lg" align="center" wrap="wrap">
+            <Flex gap="xs" align="center">
+              <Icon name="calendar" size={16} c="text-tertiary" />
+              <Text size="md" c="text-secondary">
+                <DateTime value={conversation.created_at} unit="day" />
+              </Text>
+            </Flex>
             {firstModel && (
-              <Badge size="sm" variant="light">
-                {firstModel}
-              </Badge>
+              <Flex gap="xs" align="center">
+                <Icon name="metabot" size={16} c="text-tertiary" />
+                <Text size="md" c="text-secondary">
+                  {firstModel}
+                </Text>
+              </Flex>
             )}
-            <Text size="sm" c="text-secondary">
-              <DateTime value={conversation.created_at} unit="day" />
-            </Text>
+            <Flex gap="xs" align="center">
+              <Icon name="group" size={16} c="text-tertiary" />
+              <Text size="md" c="text-secondary">
+                TODO
+              </Text>
+            </Flex>
             {conversation.slack_permalink && (
               <Anchor
                 href={conversation.slack_permalink}
                 target="_blank"
                 rel="noreferrer"
-                size="sm"
+                size="md"
               >
                 {t`Open in Slack`}
               </Anchor>
             )}
           </Flex>
-        </div>
+        </Stack>
+        <Card withBorder shadow="none" bg="transparent" py="xs" px="sm">
+          <Flex gap="sm" align="center">
+            <Text size="md" c="text-primary">{t`User rating`}</Text>
+            <Icon name="thumbs_up" size={18} c="text-tertiary" />
+          </Flex>
+        </Card>
       </Flex>
 
-      <SimpleGrid cols={3} mt="lg">
+      <SimpleGrid cols={4} mt="lg">
+        <StatCard label={t`Messages`} value={String(messageCount)} />
         <StatCard
           label={t`Total tokens`}
           value={totalTokens.toLocaleString()}
         />
-        <StatCard label={t`Queries run`} value="—" />
-        <StatCard label={t`Messages`} value={String(messageCount)} />
+        <StatCard label={t`Queries run`} value={String(queryCount)} />
+        <StatCard label={t`Searches`} value={String(searchCount)} />
       </SimpleGrid>
 
       <Title order={3} mt="xl">{t`Conversation`}</Title>
-      <Card withBorder p="xl" mt="sm">
+      <Card withBorder shadow="none" p="xl" mt="sm">
         <Messages
           messages={conversation.chat_messages ?? []}
           errorMessages={[]}
@@ -135,22 +156,18 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         />
       </Card>
 
-      <Title order={3} mt="xl">{t`Queries generated`}</Title>
-      {queries.length === 0 ? (
-        <Card withBorder p="xl" mt="sm">
-          <Flex justify="center" align="center" mih={120} c="text-tertiary">
-            <Text size="lg">{t`No queries generated`}</Text>
-          </Flex>
-        </Card>
-      ) : (
-        <Stack mt="sm" gap="md">
-          {queries.map((query) => (
-            <GeneratedQueryCard
-              key={query.call_id ?? `${query.message_id}-${query.query_id}`}
-              query={query}
-            />
-          ))}
-        </Stack>
+      {queries.length > 0 && (
+        <>
+          <Title order={3} mt="xl">{t`Queries generated`}</Title>
+          <Stack mt="sm" gap="md">
+            {queries.map((query) => (
+              <GeneratedQueryCard
+                key={query.call_id ?? `${query.message_id}-${query.query_id}`}
+                query={query}
+              />
+            ))}
+          </Stack>
+        </>
       )}
     </>
   );
@@ -165,14 +182,17 @@ function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 
 function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
   return (
-    <Card withBorder p="md">
-      <CodeEditor value={query.sql ?? ""} language="sql" readOnly />
-      {query.tables.length > 0 && (
-        <Text size="sm" mt="sm" c="text-secondary">
-          <Text span fw={700}>{t`Tables: `}</Text>
-          {query.tables.join(", ")}
-        </Text>
-      )}
+    <Card withBorder shadow="none" p="md">
+      <Stack gap="sm">
+        <Text size="lg" fw={700}>{t`SQL query`}</Text>
+        <CodeEditor value={query.sql ?? ""} language="sql" readOnly />
+        {query.tables.length > 0 && (
+          <Text size="sm" c="text-secondary">
+            <Text span fw={700}>{t`Tables: `}</Text>
+            {query.tables.join(", ")}
+          </Text>
+        )}
+      </Stack>
     </Card>
   );
 }
@@ -206,7 +226,7 @@ function NotebookGeneratedQueryCard({ mbql }: { mbql: DatasetQuery }) {
 
   if (isLoading) {
     return (
-      <Card withBorder p="md">
+      <Card withBorder shadow="none" p="md">
         <Flex justify="center" align="center" mih={120}>
           <Loader />
         </Flex>
@@ -216,7 +236,7 @@ function NotebookGeneratedQueryCard({ mbql }: { mbql: DatasetQuery }) {
 
   if (isError || mbql.database == null) {
     return (
-      <Card withBorder p="md">
+      <Card withBorder shadow="none" p="md">
         <CodeEditor
           value={JSON.stringify(mbql, null, 2)}
           language="json"
@@ -226,18 +246,33 @@ function NotebookGeneratedQueryCard({ mbql }: { mbql: DatasetQuery }) {
     );
   }
 
+  const title = question.generateQueryDescription() || t`Notebook query`;
+
   return (
-    <Card withBorder p={0} style={{ overflowX: "auto" }}>
-      <Notebook
-        question={question}
-        isDirty={false}
-        isRunnable={false}
-        isResultDirty={false}
-        reportTimezone={reportTimezone}
-        hasVisualizeButton={false}
-        updateQuestion={noopUpdateQuestion}
-        readOnly
-      />
+    <Card
+      withBorder
+      shadow="none"
+      p={{ base: "md", sm: "xl" }}
+      pb="sm"
+      style={{ overflowX: "auto" }}
+    >
+      <Stack gap="md">
+        <Text size="lg" fw={700}>
+          {title}
+        </Text>
+        <Box mx={{ base: "-md", sm: "-xl" }} my={{ base: "-md", sm: "-xl" }}>
+          <Notebook
+            question={question}
+            isDirty={false}
+            isRunnable={false}
+            isResultDirty={false}
+            reportTimezone={reportTimezone}
+            hasVisualizeButton={false}
+            updateQuestion={noopUpdateQuestion}
+            readOnly
+          />
+        </Box>
+      </Stack>
     </Card>
   );
 }

@@ -74,7 +74,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
         />
       </Flex>
 
-      <Card withBorder p={0}>
+      <Card withBorder shadow="none" p={0}>
         <ConversationsTable
           conversations={conversations}
           isLoading={isLoading}

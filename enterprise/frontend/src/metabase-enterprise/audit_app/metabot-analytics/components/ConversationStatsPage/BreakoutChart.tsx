@@ -101,7 +101,7 @@ export function BreakoutChart({
   }
 
   return (
-    <Card withBorder p="md" h={350}>
+    <Card withBorder shadow="none" p="md" h={350}>
       <Text fw="bold" mb="sm">
         {title}
       </Text>
