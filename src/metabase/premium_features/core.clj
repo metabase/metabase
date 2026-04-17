@@ -36,6 +36,7 @@
   TokenStatus
   clear-cache!
   token-check-url
+  transform-metered-as
   transform-stats]
 
  (metabase.premium-features.settings
