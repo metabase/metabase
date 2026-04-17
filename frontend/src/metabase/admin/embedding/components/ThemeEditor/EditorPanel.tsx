@@ -210,8 +210,11 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
                 label={t`Base font size`}
                 value={parseFontSizeNumber(currentTheme.settings.fontSize)}
                 onChange={(e) => {
-                  const num = e.currentTarget.value;
-                  editor.setFontSize(num ? `${num}px` : "");
+                  const raw = e.currentTarget.value;
+                  if (raw !== "" && !/^\d+$/.test(raw)) {
+                    return;
+                  }
+                  editor.setFontSize(raw ? `${raw}px` : "");
                 }}
                 rightSection={
                   <Text c="text-tertiary" fz="sm">
