@@ -307,21 +307,18 @@
    :tool  {:name "search"
            :description (str "Search for tables and metrics in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
-                             "Both arguments must be JSON arrays of strings.")
-           :annotations {:read-only? true}
-           ;; Surface validation errors to clients instead of silently reshaping stringified arrays,
-           ;; so mis-shaped calls get clear feedback rather than coerced success.
-           :strict-input-shape? true}}
+                             "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
+           :annotations {:read-only? true}}}
   [_route-params
    _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
    :- [:map
        [:term_queries {:optional true
-                       :tool/description "Keyword search queries as a JSON array of strings, for example [\"orders\", \"revenue\"]."}
+                       :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
         [:maybe [:sequential ms/NonBlankString]]]
        [:semantic_queries {:optional true
-                           :tool/description "Natural-language search queries as a JSON array of strings, for example [\"how much revenue did we make\"]."}
+                           :tool/description "Natural-language search queries as an array of strings, for example [\"how much revenue did we make\"]."}
         [:maybe [:sequential ms/NonBlankString]]]]]
   (let [results (metabot-search/search
                  {:term-queries     (or term-queries [])

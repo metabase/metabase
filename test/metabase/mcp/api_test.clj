@@ -184,12 +184,19 @@
           (is (map? (:inputSchema tool)))))
       (testing "search description guides clients toward the expected array shape"
         (let [tools-by-name (into {} (map (juxt :name identity)) tools)
-              property-desc (fn [tool-name property-name]
-                              (or (get-in tools-by-name [tool-name :inputSchema :properties property-name :description])
-                                  (get-in tools-by-name [tool-name :inputSchema :properties (keyword property-name) :description])))]
-          (is (str/includes? (get-in tools-by-name ["search" :description]) "JSON arrays of strings"))
-          (is (str/includes? (property-desc "search" "term_queries") "JSON array of strings"))
-          (is (str/includes? (property-desc "search" "semantic_queries") "JSON array of strings")))))))
+              search-tool   (get tools-by-name "search")
+              property-schema (fn [tool-name property-name]
+                                (or (get-in tools-by-name [tool-name :inputSchema :properties property-name])
+                                    (get-in tools-by-name [tool-name :inputSchema :properties (keyword property-name)])))
+              one-of-types  (fn [schema]
+                              (set (keep :type (:oneOf schema))))
+              array-branch  (fn [schema]
+                              (some #(when (= "array" (:type %)) %) (:oneOf schema)))]
+          (is (str/includes? (:description search-tool) "arrays of strings"))
+          (is (= #{"array" "null"} (one-of-types (property-schema "search" "term_queries"))))
+          (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
+          (is (= #{"array" "null"} (one-of-types (property-schema "search" "semantic_queries"))))
+          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type]))))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -246,31 +253,35 @@
           (is (contains? search-data :data))
           (is (contains? search-data :total_count))))))
 
-  (testing "search rejects singleton string arguments"
+  (testing "search returns actionable error for singleton string arguments"
     (search.tu/with-legacy-search
       (let [[session-id _] (initialize!)
             response       (mcp-request (jsonrpc-request "tools/call"
                                                          {:name      "search"
                                                           :arguments {:term_queries "orders"}})
                                         {"mcp-session-id" session-id})
-            result         (get-in response [:body :result])]
+            result         (get-in response [:body :result])
+            message        (:text (first (:content result)))]
         (is (= 200 (:status response)))
         (is (true? (:isError result)))
-        (is (= "Invalid body" (:text (first (:content result))))))))
+        (is (str/starts-with? message "Invalid body"))
+        (is (str/includes? message "term_queries")))))
 
-  (testing "search rejects singleton semantic query strings"
+  (testing "search returns actionable error for singleton semantic query strings"
     (search.tu/with-legacy-search
       (let [[session-id _] (initialize!)
             response       (mcp-request (jsonrpc-request "tools/call"
                                                          {:name      "search"
                                                           :arguments {:semantic_queries "orders table"}})
                                         {"mcp-session-id" session-id})
-            result         (get-in response [:body :result])]
+            result         (get-in response [:body :result])
+            message        (:text (first (:content result)))]
         (is (= 200 (:status response)))
         (is (true? (:isError result)))
-        (is (= "Invalid body" (:text (first (:content result))))))))
+        (is (str/starts-with? message "Invalid body"))
+        (is (str/includes? message "semantic_queries")))))
 
-  (testing "search rejects JSON-stringified arrays"
+  (testing "search coerces JSON-stringified arrays so clients that serialize args through a string layer still work"
     (search.tu/with-legacy-search
       (let [[session-id _] (initialize!)
             response       (mcp-request (jsonrpc-request "tools/call"
@@ -279,8 +290,10 @@
                                         {"mcp-session-id" session-id})
             result         (get-in response [:body :result])]
         (is (= 200 (:status response)))
-        (is (true? (:isError result)))
-        (is (= "Invalid body" (:text (first (:content result)))))))))
+        (is (nil? (:isError result)))
+        (let [search-data (json/decode+kw (:text (first (:content result))))]
+          (is (contains? search-data :data))
+          (is (contains? search-data :total_count)))))))
 
 (deftest tools-call-query-coerces-stringified-structured-args-test
   (testing "query accepts JSON-stringified order_by arguments"
