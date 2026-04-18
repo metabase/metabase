@@ -1002,8 +1002,7 @@
 
   internal-stats
   {:team "UX West"
-   :api  #{metabase.internal-stats.core
-           metabase.internal-stats.metabot}
+   :api  #{metabase.internal-stats.core}
    :uses #{app-db
            models
            util}
@@ -1197,7 +1196,6 @@
               config
               documents
               driver
-              internal-stats
               legacy-mbql
               lib
               lib-be
@@ -1224,7 +1222,8 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog
+                    :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2966,7 +2965,8 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api}
+   :api     #{metabase-enterprise.metabot.api
+              metabase-enterprise.metabot.init}
    :friends #{enterprise/agent-api
               slackbot
               mcp
@@ -2977,10 +2977,11 @@
               models
               permissions
               premium-features
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
-   :model-imports #{:model/Card :model/Transform}}
+   :model-imports #{:model/AiUsageLog :model/Card :model/Transform}}
 
   enterprise/permission-debug
   {:team "UX West"

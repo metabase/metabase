@@ -2,12 +2,15 @@
   "API namespace for the `metabase.metabot` module."
   (:require
    [metabase.metabot.provider-util]
+   [metabase.metabot.usage]
    [potemkin :as p]))
 
 (p/import-vars
  [metabase.metabot.provider-util
   metabase-provider?
-  provider-and-model->provider])
+  provider-and-model->provider]
+ [metabase.metabot.usage
+  log-ai-usage!])
 
 ;; TODO: Port analyze-chart to use the native LLM infrastructure
 ;; instead of the deleted `metabase.metabot.client`.
