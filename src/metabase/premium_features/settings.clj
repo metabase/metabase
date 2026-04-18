@@ -1,6 +1,7 @@
 (ns metabase.premium-features.settings
   "Impls for settings that need to fetch token status live in [[metabase.premium-features.token-check]]."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -292,6 +293,18 @@
   "Should we enable the Library?"
   :library)
 
+(define-premium-feature security-center-enabled?
+  "True if the current instance has Security Center access.
+   Requires the `:admin-security-center` feature flag, a non-trial subscription,
+   and a self-hosted instance."
+  :admin-security-center
+  :getter (fn []
+            (and (has-feature? :admin-security-center)
+                 (not (is-hosted?))
+                 (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
+                 (or config/is-test? config/is-e2e?
+                     (not= (mdb/db-type) :h2)))))
+
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Should the multi-tenant feature be enabled?"
   :tenants)
@@ -299,6 +312,10 @@
 (define-premium-feature ^{:added "0.59.0"} enable-workspaces?
   "Should we allow users to use workspaces?"
   :workspaces)
+
+(define-premium-feature enable-metabot-v3?
+  "Should we allow users to use the Metabase-managed tiered AI provider?"
+  :metabot-v3)
 
 (define-premium-feature ^{:added "0.60.0"} enable-metabase-ai-managed?
   "Should we allow users to use the Metabase-managed AI provider?"
@@ -317,7 +334,8 @@
   :ai-controls)
 
 (defn- -token-features []
-  {:advanced_permissions           (enable-advanced-permissions?)
+  {:admin_security_center          (security-center-enabled?)
+   :advanced_permissions           (enable-advanced-permissions?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)
@@ -342,6 +360,7 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
+   :metabot-v3                     (enable-metabot-v3?)
    :metabase-ai-managed            (enable-metabase-ai-managed?)
    :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)

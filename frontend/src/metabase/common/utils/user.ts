@@ -1,4 +1,4 @@
-import { isEmail } from "metabase/lib/email";
+import { isEmail } from "metabase/utils/email";
 import type { BaseUser, Group } from "metabase-types/api";
 
 export type PartialUser = Partial<

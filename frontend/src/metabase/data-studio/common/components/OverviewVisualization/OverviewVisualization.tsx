@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import { useSelector } from "metabase/lib/redux";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/utils/redux";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 

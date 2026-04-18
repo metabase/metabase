@@ -17,7 +17,6 @@ import Animation from "metabase/css/core/animation.module.css";
 import { useDocumentState } from "metabase/documents/hooks/use-document-state";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -28,6 +27,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import S from "./CommentsSidesheet.module.css";

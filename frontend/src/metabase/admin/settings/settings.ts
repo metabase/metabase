@@ -1,9 +1,9 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
-import { createThunkAction } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import type { State } from "metabase/redux/store";
 import { SettingsApi } from "metabase/services";
-import type { State } from "metabase-types/store";
+import { createThunkAction } from "metabase/utils/redux";
 
 // ACTION TYPES AND ACTION CREATORS
 

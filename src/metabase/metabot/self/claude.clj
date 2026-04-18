@@ -4,6 +4,7 @@
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -184,15 +185,19 @@
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
 (defn- anthropic-errors [res]
-  (case (long (:status res 0))
-    401 (tru "Anthropic API key expired or invalid")
-    403 (tru "Anthropic API key has insufficient permissions")
-    404 (tru "Anthropic API endpoint is unavailable or the model was not found")
-    413 (tru "Anthropic API rejected our request because it was too large")
-    429 (tru "Anthropic API has rate limited us")
-    500 (tru "Anthropic API is not working but not saying why")
-    529 (tru "Anthropic API is overloaded and is asking us to wait")
-    (tru "Unhandled error accessing Anthropic API")))
+  (let [status    (long (:status res 0))
+        error-msg (get-in res [:body :error :message])]
+    (case status
+      401 (tru "Anthropic API key expired or invalid")
+      403 (tru "Anthropic API key has insufficient permissions")
+      404 (tru "Anthropic API endpoint is unavailable or the model was not found")
+      413 (tru "Anthropic API rejected our request because it was too large")
+      429 (tru "Anthropic API has rate limited us")
+      500 (tru "Anthropic API is not working but not saying why")
+      529 (tru "Anthropic API is overloaded and is asking us to wait")
+      (if error-msg
+        (tru "Anthropic API error (HTTP {0}): {1}" status error-msg)
+        (tru "Anthropic API error (HTTP {0})" status)))))
 
 (defn list-models
   "List available Anthropic models.
@@ -222,10 +227,10 @@
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
-        req       (cond-> {:model      model
-                           :max_tokens (or max-tokens 4096)
-                           :stream     true
-                           :messages   messages}
+        req       (cond-> {:model         model
+                           :max_tokens    (or max-tokens 4096)
+                           :stream        true
+                           :messages      messages}
                     system            (assoc :system system)
                     all-tools         (assoc :tools all-tools)
                     (and all-tools
@@ -256,7 +261,11 @@
                                       :headers {"anthropic-version" "2023-06-01"
                                                 "content-type"      "application/json"}
                                       :body    (json/encode req)})]
-          (core/sse-reducible (:body response)))
+          (-> (core/sse-reducible (:body response))
+              (debug/capture-stream {:provider "anthropic"
+                                     :model    model
+                                     :url      "/v1/messages"
+                                     :request  req})))
         (catch Exception e
           (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
 

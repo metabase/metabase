@@ -120,6 +120,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("analysis", () => {
     it("should show unreferenced entities", () => {
       setupEntities();
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
@@ -142,6 +143,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("search", () => {
     it("should search for entities", () => {
       setupEntities();
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type(
         MODEL_FOR_QUESTION_DATA_SOURCE,
@@ -154,6 +156,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should search for entities with type filters", () => {
       setupEntities();
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type("tag");
       checkList({
@@ -176,6 +179,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("filters", () => {
     it("should filter entities by type", () => {
       setupEntities();
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: ENTITY_NAMES });
 
@@ -206,9 +210,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should persist filter changes after page reload", () => {
       setupEntities();
-      H.waitForUnreferencedEntities((entities) =>
-        entities.some((e) => e.data.name === MODEL_FOR_QUESTION_DATA_SOURCE),
-      );
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: MODEL_NAMES });
 
@@ -222,9 +224,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should filter by location", () => {
       setupEntities();
-      H.waitForUnreferencedEntities((entities) =>
-        entities.some((e) => e.data.name === MODEL_FOR_MODEL_DATA_SOURCE),
-      );
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({
         visibleEntities: [
@@ -258,6 +258,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("sorting", () => {
     it("should sort by name", () => {
       setupEntities();
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type("Model for");
 
@@ -281,6 +282,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should sort by location", () => {
       setupEntities();
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type("Model for");
 
@@ -299,6 +301,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should persist sorting changes after page reload", () => {
       setupEntities();
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type("Model for");
 
@@ -314,12 +317,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("selecting entities", () => {
     it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
-      H.waitForUnreferencedEntities((entities) =>
-        entities.some(
-          (e) =>
-            e.type === "table" && e.data.display_name === TABLE_DISPLAY_NAME,
-        ),
-      );
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();

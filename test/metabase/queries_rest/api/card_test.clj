@@ -3730,9 +3730,9 @@
    (fn [card]
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))
 
-(deftest save-mlv2-card-test
+(deftest save-mbql5-card-test
   (testing "POST /api/card"
-    (testing "Should be able to save a Card with an MLv2 query (#39024)"
+    (testing "Should be able to save a Card with an MBQL 5 query (#39024)"
       (mt/with-model-cleanup [:model/Card]
         (let [metadata-provider (mt/metadata-provider)
               venues            (lib.metadata/table metadata-provider (mt/id :venues))
@@ -3749,9 +3749,9 @@
                                                    :source-table (mt/id :venues)}]}}
                   response)))))))
 
-(deftest ^:parallel run-mlv2-card-query-test
+(deftest ^:parallel run-mbql5-card-query-test
   (testing "POST /api/card/:id/query"
-    (testing "Should be able to run a query for a Card with an MLv2 query (#39024)"
+    (testing "Should be able to run a query for a Card with an MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -4832,3 +4832,56 @@
                           :aggregation  [["count"]]}}
               (-> (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)) :legacy-mbql true)
                   :dataset_query))))))
+
+;;; +--------------------------------------------------------------------------------------------------+
+;;; |       result_metadata persistence with parameters (QUE2-502)                                     |
+;;; |       See also: metabase.dashboards-rest.api-test (dashboard endpoint tests for MBQL cards)      |
+;;; +--------------------------------------------------------------------------------------------------+
+
+(deftest parameterized-native-card-does-not-persist-result-metadata-test ; QUE2-502
+  (testing "POST /api/card/:id/query — native card with non-default parameter values should not update result_metadata"
+    (let [query (mt/native-query
+                 {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
+                  :template-tags {"product_id" {:id           "_PRODUCT_ID_"
+                                                :name         "product_id"
+                                                :display-name "Product ID"
+                                                :type         :number
+                                                :required     true
+                                                :default      "1"}}})]
+      (mt/with-temp [:model/Card {card-id :id}
+                     {:dataset_query query}]
+        ;; First run without parameters to establish baseline metadata (uses default value)
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+        (let [baseline-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+          (is (some? baseline-metadata)
+              "Baseline metadata should be established by default-value run")
+          ;; Run with a non-default parameter value — metadata should NOT be updated
+          (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)
+                                {:parameters [{:id     "_PRODUCT_ID_"
+                                               :type   :number
+                                               :target [:variable [:template-tag "product_id"]]
+                                               :value  "50"}]})
+          (is (= baseline-metadata
+                 (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              "result_metadata should not change when native card is run with non-default parameter values"))))))
+
+(deftest native-card-with-default-parameters-persists-result-metadata-test ; QUE2-502
+  (testing "POST /api/card/:id/query — native card with default parameter values SHOULD update result_metadata"
+    (let [query (mt/native-query
+                 {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
+                  :template-tags {"product_id" {:id           "_PRODUCT_ID_"
+                                                :name         "product_id"
+                                                :display-name "Product ID"
+                                                :type         :number
+                                                :required     true
+                                                :default      "1"}}})]
+      (mt/with-temp [:model/Card {card-id :id}
+                     {:dataset_query query}]
+        ;; Run with the default value passed explicitly (as the frontend does)
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)
+                              {:parameters [{:id     "_PRODUCT_ID_"
+                                             :type   :number
+                                             :target [:variable [:template-tag "product_id"]]
+                                             :value  "1"}]})
+        (is (some? (t2/select-one-fn :result_metadata :model/Card :id card-id))
+            "result_metadata should be persisted when native card runs with default parameter values")))))

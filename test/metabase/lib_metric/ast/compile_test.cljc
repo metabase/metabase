@@ -12,7 +12,7 @@
 (def ^:private dim-ref-2 {:node/type :ast/dimension-ref :dimension-id uuid-2 :options {:temporal-unit :month}})
 
 (def ^:private sample-ast
-  {:node/type  :ast/root
+  {:node/type  :ast/source-query
    :source     {:node/type   :source/metric
                 :id          42
                 :name        "Test Metric"
@@ -36,8 +36,7 @@
                  :table-id     100
                  :column       {:node/type :ast/column :id 2}}]
    :filter     nil
-   :group-by   []
-   :metadata-provider :test-provider})
+   :group-by   []})
 
 ;;; -------------------------------------------------- Basic Compilation --------------------------------------------------
 

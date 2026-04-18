@@ -1,4 +1,4 @@
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {

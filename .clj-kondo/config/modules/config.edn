@@ -155,17 +155,26 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api}
-   :friends #{enterprise/agent-api}
-   :uses    #{api
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init}
+   :uses    #{agent-lib
+              api
               auth-identity
               lib
+              llm
               metabot
               query-processor
               request
               server
+              settings
               util}
    :model-imports #{:model/User}}
+
+  agent-lib
+  {:team "Metabot"
+   :api  #{metabase.agent-lib.core}
+   :uses #{lib
+           util}}
 
   analytics
   {:team "UX West"
@@ -952,6 +961,7 @@
    :api  #{metabase.frontend-errors.api}
    :uses #{analytics
            api
+           request
            util}}
 
   geojson
@@ -1060,7 +1070,8 @@
            legacy-mbql
            types
            util}
-   :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
+   :friends #{agent-lib           ;; Structured MBQL builder; needs direct access to a few lib internals.
+              legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
@@ -1102,7 +1113,8 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init
-           metabase.llm.settings}
+           metabase.llm.settings
+           metabase.llm.startup}
    :uses #{analytics
            api
            driver
@@ -1110,6 +1122,7 @@
            lib-be
            metabot
            models
+           premium-features
            request
            settings
            sql-tools
@@ -1152,6 +1165,7 @@
            api
            api-scope
            config
+           llm
            oauth-server
            request
            server
@@ -1179,25 +1193,26 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-               metabase.metabot.core
-               metabase.metabot.init
-               metabase.metabot.self
-               metabase.metabot.settings}
+              metabase.metabot.core
+              metabase.metabot.init
+              metabase.metabot.self
+              metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
               slackbot}
-    :uses    #{activity-feed
-               analytics
-               api
-               api-scope
-               app-db
-               audit-app
-               channel
-               collections
-               config
-               documents
-               driver
-               legacy-mbql
+   :uses    #{activity-feed
+              agent-lib
+              analytics
+              api
+              api-scope
+              app-db
+              audit-app
+              channel
+              collections
+              config
+              documents
+              driver
+              legacy-mbql
               lib
               lib-be
               llm
@@ -1290,6 +1305,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.serialization.resolve
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -1375,8 +1391,11 @@
    :uses #{api
            appearance
            models
+           request
            settings
            system
+           task
+           tracing
            util}}
 
   ;; TODO -- too many API namespaces
@@ -1443,7 +1462,6 @@
   {:team "UX West"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
-           app-db
            audit-app
            events
            permissions
@@ -1485,6 +1503,7 @@
            config
            events
            internal-stats
+           llm
            settings
            startup
            task
@@ -1537,7 +1556,10 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Document}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Document}}
 
   pulse
   {:team "Gadget"
@@ -1766,6 +1788,7 @@
            config
            embedding
            permissions ; FIXME
+           premium-features
            session
            settings
            users
@@ -1899,7 +1922,8 @@
            tracing
            users
            util
-           enterprise/sso}}
+           enterprise/sso}
+   :model-imports #{:model/Session}}
 
   session
   {:team "UX West"
@@ -2039,6 +2063,7 @@
               permissions
               premium-features
               request
+              server
               settings
               system
               util}
@@ -2143,7 +2168,10 @@
            premium-features
            search
            util}
-   :model-imports #{:model/AiUsageLog :model/Card :model/Dashboard}}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
+                    :model/Dashboard
+                    :model/SecurityAdvisory}}
 
   tiles
   {:team "UX West"
@@ -2231,12 +2259,12 @@
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
            metabase.transforms-base.util}
+   ;; TODO regressions — transforms-base should not depend on :model/Transform or
+   ;; :model/TransformRun directly. Remove once the module is agnostic to global
+   ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
                     :model/DatabaseRouter
                     :model/Table
-                    ;; TODO regressions — transforms-base should not depend on
-                    ;; these directly. Remove once the module is agnostic to
-                    ;; global versus workspace transforms.
                     :model/Transform
                     :model/TransformRun}
    :uses #{driver
@@ -2519,6 +2547,7 @@
            request
            sample-data
            secrets
+           server
            settings
            sync
            upload
@@ -2632,13 +2661,6 @@
                     :model/Sandbox
                     :model/Table}}
 
-  enterprise/agent-api
-  {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.workspace}
-   :uses #{api
-           util
-           enterprise/workspaces}}
-
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -2733,9 +2755,24 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Dashboard
+                    :model/DatabaseRouter
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
+
+  enterprise/checker
+  {:team "Graphy"
+   ;; todo: add ability to prevent usage (transitive even) of app db
+   :api  #{}
+   :uses #{classloader
+           lib
+           models
+           plugins
+           query-processor
+           sql-tools
+           util
+           enterprise/dependencies}
+   :model-imports #{:model/Database}}
 
   enterprise/cloud-add-ons
   {:team "Cloud"
@@ -2832,7 +2869,8 @@
 
   enterprise/dependencies
   {:team "Graphy"
-   :api  #{metabase-enterprise.dependencies.api
+   :api  #{metabase-enterprise.dependencies.analysis
+           metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
@@ -2840,7 +2878,6 @@
            api
            app-db
            collections
-           config
            documents
            driver
            events
@@ -2865,8 +2902,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardCardSeries
                     :model/Document
                     :model/Field
                     :model/Measure
@@ -2960,8 +2995,7 @@
    :api     #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
-   :friends #{enterprise/agent-api
-              slackbot
+   :friends #{slackbot
               mcp
               metabot}
    :uses    #{api
@@ -3055,6 +3089,7 @@
                     :model/Field
                     :model/Measure
                     :model/PersistedInfo
+                    :model/Sandbox
                     :model/Segment
                     :model/Table
                     :model/Transform}}
@@ -3116,6 +3151,28 @@
    :api  #{}
    :uses #{premium-features
            search}}
+
+  enterprise/security-center
+  {:team "Gadget"
+   :api  #{metabase-enterprise.security-center.api
+           metabase-enterprise.security-center.init}
+   :uses #{analytics
+           api
+           app-db
+           channel
+           config
+           driver
+           events
+           models
+           notification
+           permissions
+           premium-features
+           settings
+           system
+           task
+           util}
+   :model-exports #{:model/SecurityAdvisory}
+   :model-imports #{:model/User}}
 
   enterprise/semantic-search
   {:team "Metabot"
@@ -3306,7 +3363,6 @@
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :friends #{enterprise/agent-api}
    :uses #{api
            api-scope
            app-db

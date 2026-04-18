@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { UserTenancy } from "metabase-types/api";
 
 import { ACTIVE_STATUS, type ActiveStatus } from "../constants";

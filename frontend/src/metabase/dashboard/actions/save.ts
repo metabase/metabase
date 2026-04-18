@@ -2,17 +2,17 @@ import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
 import { Dashboards } from "metabase/entities/dashboards";
-import { createThunkAction } from "metabase/lib/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
-import { CardApi } from "metabase/services";
-import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
-import type { DashCardId, ParameterId } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   StoreDashboard,
   StoreDashcard,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import { CardApi } from "metabase/services";
+import { createThunkAction } from "metabase/utils/redux";
+import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
+import type { DashCardId, ParameterId } from "metabase-types/api";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";

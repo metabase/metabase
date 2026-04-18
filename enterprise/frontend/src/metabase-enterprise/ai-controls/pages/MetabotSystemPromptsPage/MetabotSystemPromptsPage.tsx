@@ -4,9 +4,9 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text, Textarea } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";

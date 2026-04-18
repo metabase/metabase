@@ -6,6 +6,8 @@ redirect_from:
 
 # Embedding overview
 
+You can use Metabase as a BI tool for your own team, or embed Metabase in your app so your customers can explore their own data.
+
 ## [Introduction](./introduction.md)
 
 What is embedding, and how does it work?

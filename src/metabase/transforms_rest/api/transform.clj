@@ -67,7 +67,8 @@
    [:transform_entity_id {:optional true} [:maybe :string]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -86,7 +87,6 @@
    [:collection_id [:maybe pos-int?]]
    [:target_db_id {:optional true} [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
-   [:dependency_analysis_version :int]
    [:creator CreatorResponse]
    [:last_run {:optional true} [:maybe TransformLastRunResponse]]
    [:tag_ids {:optional true} [:sequential pos-int?]]
@@ -113,6 +113,7 @@
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]

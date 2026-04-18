@@ -4,7 +4,6 @@ import { useLatest, useMount } from "react-use";
 
 import { fetchDataOrError } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
@@ -14,6 +13,7 @@ import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { EmbedApi, PublicApi, maybeUsePivotEndpoint } from "metabase/services";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";

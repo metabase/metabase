@@ -5,7 +5,7 @@ import type {
   PermissionSubject,
   SpecialGroupType,
 } from "metabase/admin/permissions/types";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { buildDataModelPermission } from "./data-model-permission";

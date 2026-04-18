@@ -3,9 +3,9 @@
 
 import Color from "color";
 
-import { isNumber } from "metabase/lib/types";
 import { alpha } from "metabase/ui/colors";
 import { getSafeColor } from "metabase/ui/colors/safe-color";
+import { isNumber } from "metabase/utils/types";
 import type {
   ColumnFormattingOperator,
   ColumnFormattingSetting,

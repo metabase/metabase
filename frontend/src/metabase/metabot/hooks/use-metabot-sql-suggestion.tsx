@@ -2,7 +2,6 @@ import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import {
   addDeveloperMessage,
@@ -11,6 +10,7 @@ import {
   resetConversation,
 } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { DatabaseId } from "metabase-types/api";
 
 import { useMetabotAgent } from "./use-metabot-agent";
