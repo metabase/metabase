@@ -74,8 +74,10 @@ export type MetabotSuggestionActions = {
   ) => Promise<ApplySuggestionResult>;
 };
 
-interface EnterpriseMetabotContext
-  extends Omit<MetabotCtx, "suggestionActions" | "setSuggestionActions"> {
+interface EnterpriseMetabotContext extends Omit<
+  MetabotCtx,
+  "suggestionActions" | "setSuggestionActions"
+> {
   suggestionActions: MetabotSuggestionActions | null;
   setSuggestionActions: (actions: MetabotSuggestionActions | null) => void;
 }
