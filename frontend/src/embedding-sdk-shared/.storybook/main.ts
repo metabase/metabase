@@ -139,9 +139,8 @@ const config: StorybookConfig = {
         ...appConfig.resolve?.alias,
         ...(isEmbeddingSdkPackageInstalled && {
           // $ means that only exact "embedding-sdk-package" imports will be rerouted, all nested embedding-sdk-package/* will still be resolved locally
-          "embedding-sdk-package$": require.resolve(
-            "@metabase/embedding-sdk-react",
-          ),
+          "embedding-sdk-package$":
+            require.resolve("@metabase/embedding-sdk-react"),
         }),
       },
       extensions: appConfig.resolve?.extensions,
