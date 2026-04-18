@@ -1,101 +1,19 @@
-## AI usage log table
+## Backport of ai_usage_log table from v61
 
 databaseChangeLog:
-  - changeSet:
-      id: v61.t42424d
-      author: nvoxland
-      comment: Create metabot_instance_limit table
-      changes:
-        - createTable:
-            tableName: metabot_instance_limit
-            remarks: Metabot usage limits at the instance or tenant level
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: tenant_id
-                  type: int
-                  remarks: The tenant ID, or null for instance-wide limit
-                  constraints:
-                    nullable: true
-                    unique: true
-              - column:
-                  name: max_usage
-                  type: int
-                  remarks: The maximum usage value, interpreted according to the metabot-limit-unit setting. Null is unlimited
+  - logicalFilePath: migrations/060_update_migrations.yaml
 
   - changeSet:
-      id: v61.44ga4
-      author: nvoxland
-      comment: Add foreign key on metabot_instance_limit.tenant_id referencing tenant
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabot_instance_limit
-            baseColumnNames: tenant_id
-            referencedTableName: tenant
-            referencedColumnNames: id
-            constraintName: fk_metabot_instance_limit_ref_tenant
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v61.gr34fp
-      author: nvoxland
-      comment: Create metabot_group_limit table
-      changes:
-        - createTable:
-            tableName: metabot_group_limit
-            remarks: Metabot usage limits per group
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: group_id
-                  type: int
-                  remarks: The ID of the associated permissions group
-                  constraints:
-                    nullable: false
-                    unique: true
-              - column:
-                  name: max_usage
-                  type: int
-                  remarks: The maximum usage value, interpreted according to the metabot-limit-unit setting
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v61.gr34fp-fk
-      author: nvoxland
-      comment: Add foreign key on metabot_group_limit.group_id referencing permissions_group
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabot_group_limit
-            baseColumnNames: group_id
-            referencedTableName: permissions_group
-            referencedColumnNames: id
-            constraintName: fk_metabot_group_limit_ref_permissions_group
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v61.gresdvx
+      id: v60.gresdvx
       author: nvoxland
       comment: Create the ai_usage_log
       preConditions:
         - onFail: MARK_RAN
         - not:
             changeSetExecuted:
-              id: v60.gresdvx
+              id: v61.gresdvx
               author: nvoxland
-              changeLogFile: migrations/060_update_migrations.yaml
+              changeLogFile: migrations/061/20260330_ai_usage_log.yaml
       changes:
         - createTable:
             tableName: ai_usage_log
@@ -165,19 +83,18 @@ databaseChangeLog:
                   name: request_id
                   type: varchar(36)
                   remarks: 'UUID for correlating with Snowplow events'
-      rollback: ""
 
   - changeSet:
-      id: v61.8g8esw
+      id: v60.8g8esw
       author: nvoxland
       comment: Index on ai_usage_log.user_id
       preConditions:
         - onFail: MARK_RAN
         - not:
             changeSetExecuted:
-              id: v60.8g8esw
+              id: v61.8g8esw
               author: nvoxland
-              changeLogFile: migrations/060_update_migrations.yaml
+              changeLogFile: migrations/061/20260330_ai_usage_log.yaml
       changes:
         - createIndex:
             indexName: idx_ai_usage_log_user_id
@@ -185,4 +102,3 @@ databaseChangeLog:
             columns:
               - column:
                   name: user_id
-      rollback: ""
