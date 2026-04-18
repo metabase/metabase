@@ -62,8 +62,10 @@ export function MetricQueryPage({
   );
 }
 
-interface MetricQueryPageBodyProps
-  extends Omit<MetricQueryPageProps, "params"> {
+interface MetricQueryPageBodyProps extends Omit<
+  MetricQueryPageProps,
+  "params"
+> {
   card: CardApiType;
   urls: MetricUrls;
 }

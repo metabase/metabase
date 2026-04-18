@@ -6,8 +6,10 @@ import { Box } from "metabase/ui";
 
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
-interface TreeNodeListProps<TData = unknown>
-  extends Omit<BoxProps, "children"> {
+interface TreeNodeListProps<TData = unknown> extends Omit<
+  BoxProps,
+  "children"
+> {
   items: ITreeNodeItem<TData>[];
   expandedIds: Set<ITreeNodeItem<TData>["id"]>;
   selectedId?: ITreeNodeItem<TData>["id"];
