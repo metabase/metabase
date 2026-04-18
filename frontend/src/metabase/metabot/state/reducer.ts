@@ -18,7 +18,7 @@ import {
   type ConvoPayloadAction,
   convoReducer,
   createConversation,
-  findToolCallMessage,
+  findLastToolCallMessage,
   getMetabotInitialState,
   getRequestConversation,
   resetReactionState,
@@ -165,7 +165,7 @@ export const metabot = createSlice({
         }>,
       ) => {
         const { toolCallId, toolName, args } = action.payload;
-        const existingMsg = findToolCallMessage(convo, toolCallId);
+        const existingMsg = findLastToolCallMessage(convo, toolCallId);
         if (existingMsg) {
           // if toolCallStart was called (tool-input-start event is optional)
           // update the exisiting tool call record to include the args recieved
@@ -201,7 +201,10 @@ export const metabot = createSlice({
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
         );
 
-        const message = findToolCallMessage(convo, action.payload.toolCallId);
+        const message = findLastToolCallMessage(
+          convo,
+          action.payload.toolCallId,
+        );
         if (message) {
           message.status = "ended";
           message.result = action.payload.result;

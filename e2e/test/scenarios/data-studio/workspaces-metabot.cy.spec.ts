@@ -52,7 +52,7 @@ describe.skip("scenarios > data studio > workspaces > metabot", () => {
     H.mockMetabotResponse({
       body: createMockTransformSuggestionResponse(
         "I'll create a SQL transform that selects all animals for you.",
-        createMockNativeTransformJSON(
+        createMockNativeTransform(
           null,
           WRITABLE_DB_ID,
           'SELECT * FROM "Schema A"."Animals"',
@@ -165,7 +165,7 @@ describe.skip("scenarios > data studio > workspaces > metabot", () => {
     H.mockMetabotResponse({
       body: createMockTransformSuggestionResponse(
         "I'll create a SQL transform that selects all animals for you.",
-        createMockNativeTransformJSON(
+        createMockNativeTransform(
           null,
           WRITABLE_DB_ID,
           'SELECT * FROM "Schema A"."Animals"',
@@ -232,11 +232,11 @@ describe.skip("scenarios > data studio > workspaces > metabot", () => {
       H.mockMetabotResponse({
         body: createMockTransformSuggestionResponse(
           "I'll create a Python transform that returns a simple DataFrame.",
-          createMockPythonTransformJSON(
+          createMockPythonTransform(
             null,
             WRITABLE_DB_ID,
             {},
-            "import pandas as pd\\n\\ndef transform():\\n    return pd.DataFrame({'message': ['Hello from Python!']})",
+            "import pandas as pd\n\ndef transform():\n    return pd.DataFrame({'message': ['Hello from Python!']})",
           ),
         ),
       });
@@ -349,11 +349,11 @@ describe.skip("scenarios > data studio > workspaces > metabot", () => {
       H.mockMetabotResponse({
         body: createMockTransformSuggestionResponse(
           "I'll create a Python transform that returns a simple DataFrame.",
-          createMockPythonTransformJSON(
+          createMockPythonTransform(
             null,
             WRITABLE_DB_ID,
             {},
-            "import pandas as pd\\n\\ndef transform():\\n    return pd.DataFrame({'message': ['Hello from Python!']})",
+            "import pandas as pd\n\ndef transform():\n    return pd.DataFrame({'message': ['Hello from Python!']})",
           ),
         ),
       });
@@ -399,37 +399,62 @@ describe.skip("scenarios > data studio > workspaces > metabot", () => {
   );
 });
 
-function createMockNativeTransformJSON(
+function createMockNativeTransform(
   id: number | null,
   databaseId: number,
   sql: string,
 ) {
-  const escapedSql = sql.replace(/"/g, '\\"');
-  return `{"id":${id},"name":"New transform","entity_id":null,"description":"","source":{"type":"query","query":{"database":${databaseId},"type":"native","native":{"query":"${escapedSql}","template-tags":{}}}},"target":{"type":"table","name":""},"created_at":null,"updated_at":null}`;
+  return {
+    id,
+    name: "New transform",
+    entity_id: null,
+    description: "",
+    source: {
+      type: "query",
+      query: {
+        database: databaseId,
+        type: "native",
+        native: { query: sql, "template-tags": {} },
+      },
+    },
+    target: { type: "table", name: "" },
+    created_at: null,
+    updated_at: null,
+  };
 }
 
-function createMockPythonTransformJSON(
+function createMockPythonTransform(
   id: number | null,
   databaseId: number,
   sourceTables: { [tableName: string]: number },
   body: string,
 ) {
-  return `{"id":${id},"name":"New transform","entity_id":null,"description":"","source":{"type":"python","source-database":${databaseId},"source-tables":${JSON.stringify(sourceTables)},"body":"${body}"},"target":{"type":"table","name":""},"created_at":null,"updated_at":null}`;
+  return {
+    id,
+    name: "New transform",
+    entity_id: null,
+    description: "",
+    source: {
+      type: "python",
+      "source-database": databaseId,
+      "source-tables": sourceTables,
+      body,
+    },
+    target: { type: "table", name: "" },
+    created_at: null,
+    updated_at: null,
+  };
 }
 
 function createMockTransformSuggestionResponse(
   text: string,
-  transformJSON: string,
+  transform: object,
 ) {
   return H.sseBody([
     { type: "text-start", id: "t1" },
     { type: "text-delta", id: "t1", delta: text },
     { type: "text-end", id: "t1" },
-    {
-      type: "data-transform_suggestion",
-      id: "d1",
-      data: JSON.parse(transformJSON),
-    },
+    { type: "data-transform_suggestion", id: "d1", data: transform },
     { type: "data-state", id: "d2", data: {} },
   ]);
 }

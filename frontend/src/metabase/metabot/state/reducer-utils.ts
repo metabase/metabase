@@ -102,7 +102,7 @@ export const getConversationOrThrow = (
   return convo;
 };
 
-export const findToolCallMessage = (
+export const findLastToolCallMessage = (
   convo: WritableDraft<MetabotConverstationState>,
   toolCallId: string,
 ) =>
