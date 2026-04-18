@@ -737,24 +737,44 @@
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
   [docs]
+  (log/debug "filter-read-permitted input"
+             {:by-model (frequencies (map :model docs))
+              :distinct-collections (count (into #{} (map :collection_id) docs))})
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         {indexed-entities true regular-docs false} (group-by #(= "indexed-entity" (:model %)) docs)
-        other-docs (for [[t2-model docs] (group-by doc->t2-model regular-docs)
-                         t2-instance (t2/select t2-model :id [:in (map :id docs)])]
-                     t2-instance)
+        ;; Card's `can-read?` only reads `:collection_id` (via `perms/can-read-audit-helper`), which
+        ;; is denormalized onto the index row. Synthesize minimal Toucan instances for Card-backed
+        ;; docs (search-models card/metric/dataset) to skip the `t2/select :model/Card` round-trip
+        ;; and its transform/after-select pipeline — the dominant cost of the permission filter.
+        {card-docs true non-card-docs false} (group-by #(= :model/Card (doc->t2-model %)) regular-docs)
+        card-stubs (mapv (fn [doc] (t2/instance :model/Card {:id (:id doc)
+                                                             :collection_id (:collection_id doc)}))
+                         card-docs)
+        select-timer (u/start-timer)
+        other-t2-instances (vec
+                            (for [[t2-model docs] (group-by doc->t2-model non-card-docs)
+                                  t2-instance (t2/select t2-model :id [:in (map :id docs)])]
+                              t2-instance))
+        select-ms (u/since-ms select-timer)
+        check-timer (u/start-timer)
         permitted-entities (filter-can-read-indexed-entity indexed-entities)
-        doc->t2 (comp (u/index-by (juxt :id t2/model) other-docs)
+        doc->t2 (comp (u/index-by (juxt :id t2/model) (into card-stubs other-t2-instances))
                       (juxt :id doc->t2-model))
         result (into
                 (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
                 permitted-entities)
+        check-ms (u/since-ms check-timer)
         time-ms (u/since-ms timer)]
 
     (log/debug "Permission filtering" {:before-count (count docs)
                                        :after-count (count result)
                                        :indexed-entities-count (count indexed-entities)
                                        :regular-docs-count (count regular-docs)
+                                       :card-stubs-count (count card-stubs)
+                                       :non-card-fetched-count (count other-t2-instances)
+                                       :select-ms select-ms
+                                       :check-ms check-ms
                                        :time-ms time-ms})
 
     (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
