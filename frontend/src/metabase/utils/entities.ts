@@ -81,6 +81,10 @@ import { combineReducers, compose, withAction } from "metabase/redux";
 import {
   type RequestsStateTree,
   requestsReducer,
+  setRequestError,
+  setRequestLoaded,
+  setRequestLoading,
+  setRequestPromise,
   setRequestUnloaded,
 } from "metabase/redux/requests";
 import type { Dispatch, EntitiesState, State } from "metabase/redux/store";
@@ -88,7 +92,6 @@ import { addUndo } from "metabase/redux/undo";
 import { delay } from "metabase/utils/promise";
 
 import { DELETE, GET, POST, PUT } from "./api";
-import { withRequestState } from "./redux";
 
 const EMPTY_ENTITY_QUERY = {};
 
@@ -1083,6 +1086,49 @@ export function withNormalize<TArgs extends unknown[]>(schema: Schema) {
     (...args: TArgs) =>
     async (dispatch: Dispatch, getState: () => State) =>
       normalize(await thunkCreator(...args)(dispatch, getState), schema);
+}
+
+/**
+ * Decorator that tracks the state of a request action
+ */
+export function withRequestState<TArgs extends unknown[]>(
+  getRequestStatePath: (...args: TArgs) => string[],
+  getQueryKey?: (...args: TArgs) => string | undefined,
+) {
+  // thunk decorator:
+  return (thunkCreator: ThunkCreator<TArgs>) =>
+    // thunk creator:
+    (...args: TArgs) =>
+    // thunk:
+    async (dispatch: Dispatch, getState: () => State) => {
+      const statePath = getRequestStatePath(...args);
+      const queryKey = getQueryKey && getQueryKey(...args);
+      try {
+        dispatch(setRequestLoading(statePath, queryKey));
+
+        const queryPromise = thunkCreator(...args)(dispatch, getState);
+        dispatch(
+          setRequestPromise(
+            statePath,
+            queryKey,
+            queryPromise as Promise<unknown>,
+          ),
+        );
+
+        const result = await queryPromise;
+
+        // Dispatch `setRequestLoaded` after clearing the call stack because
+        // we want to the actual data to be updated before we notify
+        // components that fetching the data is completed
+        setTimeout(() => dispatch(setRequestLoaded(statePath, queryKey)));
+
+        return result;
+      } catch (error) {
+        console.error(`Request ${statePath.join(",")} failed:`, error);
+        dispatch(setRequestError(statePath, queryKey, error));
+        throw error;
+      }
+    };
 }
 
 /**

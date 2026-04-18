@@ -21,8 +21,8 @@ import {
   createEntity,
   entityCompatibleQuery,
   undo,
+  withRequestState,
 } from "metabase/utils/entities";
-import { withRequestState } from "metabase/utils/redux";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
