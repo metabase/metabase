@@ -1,117 +1,89 @@
 import type { Location } from "history";
-import { useEffect } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { useListUserAttributesQuery } from "metabase/api";
+import {
+  useListGroupTableAccessPoliciesQuery,
+  useListUserAttributesQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
-import { connect } from "metabase/redux";
-import {
-  getGroupTableAccessPolicy,
-  getPolicyRequestState,
-} from "metabase-enterprise/sandboxes/selectors";
-import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
-import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import type {
-  GroupTableAccessPolicy,
-  UserAttributeKey,
-} from "metabase-types/api";
+import { useDispatch, useSelector } from "metabase/redux";
+import { parseIntParam } from "metabase/utils/urls";
+import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
+import type { GroupTableAccessPolicy } from "metabase-types/api";
 
-import {
-  fetchPolicy,
-  updatePolicy,
-  updateTableSandboxingPermission,
-} from "../actions";
+import { updatePolicy, updateTableSandboxingPermission } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";
 import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
-  policy: GroupTableAccessPolicy;
-  attributes: UserAttributeKey[];
-  push: (path: string) => void;
   params: GroupTableAccessPolicyParams;
   location: Location;
   route: any;
-  policyRequestState: any;
-  fetchPolicy: (params: GroupTableAccessPolicyParams) => void;
-  fetchUserAttributes: () => void;
-  updatePolicy: (policy: GroupTableAccessPolicy) => void;
-  updateTableSandboxingPermission: (
-    params: GroupTableAccessPolicyParams,
-  ) => void;
 }
 
 const EditSandboxingModalContainer = ({
-  policy,
-  push,
   params,
   location,
   route,
-  fetchPolicy,
-  fetchUserAttributes,
-  policyRequestState,
-  updatePolicy,
-  updateTableSandboxingPermission,
 }: EditSandboxingModalContainerProps) => {
-  useEffect(() => {
-    fetchPolicy(params);
-    fetchUserAttributes();
-  }, [fetchPolicy, params, fetchUserAttributes]);
+  const dispatch = useDispatch();
+
+  const groupId = parseIntParam(params.groupId);
+  const tableId = parseIntParam(params.tableId);
+
+  const {
+    data: policies,
+    isLoading: isPoliciesLoading,
+    error: policiesError,
+  } = useListGroupTableAccessPoliciesQuery({
+    group_id: groupId,
+    table_id: tableId,
+  });
 
   const { data: attributes } = useListUserAttributesQuery();
-  const isLoading = policyRequestState?.loading || !attributes;
 
-  if (!policyRequestState?.loaded) {
-    return null;
+  // The plugins state is added dynamically by the enterprise plugin system,
+  // so we need to cast to SandboxesState (same approach as the old connect-based mapStateToProps).
+  const draftPolicy = useSelector((state) =>
+    getGroupTableAccessPolicy(state as unknown as SandboxesState, { params }),
+  );
+
+  const fetchedPolicy = policies?.[0];
+  const policy = draftPolicy ?? fetchedPolicy;
+
+  const isLoading = isPoliciesLoading || !attributes;
+
+  if (policiesError) {
+    return <LoadingAndErrorWrapper error={policiesError} />;
+  }
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
   }
 
   const close = () => {
-    return push(getParentPath(route, location));
+    return dispatch(push(getParentPath(route, location)));
   };
 
   const handleSave = async (policy: GroupTableAccessPolicy) => {
-    updatePolicy(policy);
-    updateTableSandboxingPermission(params);
+    dispatch(updatePolicy(policy));
+    dispatch(updateTableSandboxingPermission(params));
     close();
   };
 
   return (
-    <LoadingAndErrorWrapper
-      loading={isLoading}
-      error={policyRequestState?.error}
-    >
-      <EditSandboxingModal
-        policy={policy}
-        attributes={attributes || []}
-        params={params}
-        onCancel={close}
-        onSave={handleSave}
-      />
-    </LoadingAndErrorWrapper>
+    <EditSandboxingModal
+      policy={policy}
+      attributes={attributes || []}
+      params={params}
+      onCancel={close}
+      onSave={handleSave}
+    />
   );
 };
 
-const mapStateToProps = (
-  state: SandboxesState,
-  props: EditSandboxingModalContainerProps,
-) => ({
-  policy: getGroupTableAccessPolicy(state, props),
-  policyRequestState: getPolicyRequestState(state, props),
-  attributes: getUserAttributes(state),
-});
-
-const mapDispatchToProps = {
-  push,
-  fetchPolicy,
-  updatePolicy,
-  fetchUserAttributes,
-  updateTableSandboxingPermission,
-};
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
-)(EditSandboxingModalContainer);
+export default _.compose(withRouter)(EditSandboxingModalContainer);

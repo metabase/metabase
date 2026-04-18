@@ -52,6 +52,13 @@ export function parseStringParam(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+export function parseIntParam(value: unknown): number | undefined {
+  if (typeof value === "string") {
+    const number = parseInt(value);
+    return Number.isFinite(number) ? number : undefined;
+  }
+}
+
 export function parseNumberParam(value: unknown): number | undefined {
   if (typeof value === "string") {
     const number = parseFloat(value);
