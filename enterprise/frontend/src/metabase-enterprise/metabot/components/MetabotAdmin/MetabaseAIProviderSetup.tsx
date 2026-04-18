@@ -33,6 +33,7 @@ import {
   METABASE_MANAGED_AI_FEATURE,
   METABASE_MANAGED_AI_PRODUCT_TYPE,
   METABASE_MANAGED_AI_TERMS_URL,
+  METABASE_TIERED_AI_PRODUCT_TYPE,
   METABOT_V3_FEATURE,
   OFFER_METABASE_MANAGED_AI_FEATURE,
 } from "../../constants";
@@ -110,14 +111,49 @@ export function MetabaseAIProviderSetup() {
     .otherwise(() => handleMetabasePurchase);
 
   const onDisconnect = useCallback(async () => {
-    if (!hasMetabaseManagedAiProviderFeature) {
+    const feature = match({
+      offerMetabaseManagedAi,
+      hasMetabaseManagedAiProviderFeature,
+      hasDeprecatedMetabaseAiProvider,
+    })
+      .returnType<
+        | typeof METABASE_MANAGED_AI_PRODUCT_TYPE
+        | typeof METABASE_TIERED_AI_PRODUCT_TYPE
+        | null
+      >()
+      .with(
+        { hasMetabaseManagedAiProviderFeature: true },
+        () => METABASE_MANAGED_AI_PRODUCT_TYPE,
+      )
+      .with(
+        { offerMetabaseManagedAi: true, hasDeprecatedMetabaseAiProvider: true },
+        () => METABASE_TIERED_AI_PRODUCT_TYPE,
+      )
+      .with(
+        {
+          offerMetabaseManagedAi: false,
+          hasDeprecatedMetabaseAiProvider: true,
+        },
+        // If we can't upgrade to managed AI, we don't want to disable the existing one.
+        () => null,
+      )
+      .otherwise(() => {
+        throw new Error("No feature is enabled to cancel");
+      });
+
+    if (!feature) {
       return;
     }
 
     await removeCloudAddOn({
-      product_type: METABASE_MANAGED_AI_PRODUCT_TYPE,
+      product_type: feature,
     }).unwrap();
-  }, [hasMetabaseManagedAiProviderFeature, removeCloudAddOn]);
+  }, [
+    offerMetabaseManagedAi,
+    hasMetabaseManagedAiProviderFeature,
+    hasDeprecatedMetabaseAiProvider,
+    removeCloudAddOn,
+  ]);
 
   const { isLoading } = useMetabotSetupContext(onConnect, onDisconnect);
 
