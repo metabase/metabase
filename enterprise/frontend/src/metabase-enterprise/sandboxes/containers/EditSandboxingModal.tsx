@@ -1,7 +1,5 @@
 import type { Location } from "history";
-import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import _ from "underscore";
 
 import {
   useListGroupTableAccessPoliciesQuery,
@@ -21,7 +19,7 @@ import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 interface EditSandboxingModalContainerProps {
   params: GroupTableAccessPolicyParams;
   location: Location;
-  route: any;
+  route: { path: string };
 }
 
 const EditSandboxingModalContainer = ({
@@ -86,4 +84,4 @@ const EditSandboxingModalContainer = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(withRouter)(EditSandboxingModalContainer);
+export default EditSandboxingModalContainer;
