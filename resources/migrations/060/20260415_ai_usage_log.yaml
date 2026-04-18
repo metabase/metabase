@@ -11,9 +11,15 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - not:
             changeSetExecuted:
+<<<<<<<< HEAD:resources/migrations/060/20260415_ai_usage_log.yaml
               id: v61.gresdvx
               author: nvoxland
               changeLogFile: migrations/061/20260330_ai_usage_log.yaml
+========
+              id: v60.gresdvx
+              author: nvoxland
+              changeLogFile: migrations/060_update_migrations.yaml
+>>>>>>>> ddc4e3604bf (BOT-1321 Add ai_usage_log migration to v60 (#72651)):resources/migrations/061/20260330_ai_usage_log.yaml
       changes:
         - createTable:
             tableName: ai_usage_log
@@ -83,6 +89,7 @@ databaseChangeLog:
                   name: request_id
                   type: varchar(36)
                   remarks: 'UUID for correlating with Snowplow events'
+      rollback: ""
 
   - changeSet:
       id: v60.8g8esw
@@ -92,9 +99,15 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - not:
             changeSetExecuted:
+<<<<<<<< HEAD:resources/migrations/060/20260415_ai_usage_log.yaml
               id: v61.8g8esw
               author: nvoxland
               changeLogFile: migrations/061/20260330_ai_usage_log.yaml
+========
+              id: v60.8g8esw
+              author: nvoxland
+              changeLogFile: migrations/060_update_migrations.yaml
+>>>>>>>> ddc4e3604bf (BOT-1321 Add ai_usage_log migration to v60 (#72651)):resources/migrations/061/20260330_ai_usage_log.yaml
       changes:
         - createIndex:
             indexName: idx_ai_usage_log_user_id
@@ -102,3 +115,4 @@ databaseChangeLog:
             columns:
               - column:
                   name: user_id
+      rollback: ""
