@@ -44,8 +44,9 @@ import { getDocumentTitle, getFavicon } from "../../selectors";
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
-interface DashboardAppProps
-  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
+interface DashboardAppProps extends PropsWithChildren<
+  WithRouterProps<{ slug: string }>
+> {
   dashboardId?: DashboardId;
   route: Route;
 }

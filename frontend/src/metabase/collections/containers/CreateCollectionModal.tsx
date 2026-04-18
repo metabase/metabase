@@ -15,8 +15,10 @@ import type { CreateCollectionFormOwnProps } from "../components/CreateCollectio
 import { CreateCollectionForm } from "../components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "../components/CreateCollectionForm/CreateCollectionForm";
 
-interface CreateCollectionModalOwnProps
-  extends Omit<CreateCollectionFormOwnProps, "onCancel" | "onSubmit"> {
+interface CreateCollectionModalOwnProps extends Omit<
+  CreateCollectionFormOwnProps,
+  "onCancel" | "onSubmit"
+> {
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
 }
