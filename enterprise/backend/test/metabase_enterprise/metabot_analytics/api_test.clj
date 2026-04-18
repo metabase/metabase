@@ -33,9 +33,26 @@
 
 (defn- delete-conversations!
   [conversation-ids]
-  (let [conversation-ids (vec conversation-ids)]
+  (let [conversation-ids (vec conversation-ids)
+        message-ids      (when (seq conversation-ids)
+                           (t2/select-pks-vec :model/MetabotMessage
+                                              :conversation_id [:in conversation-ids]))]
+    (when (seq message-ids)
+      (t2/delete! :model/MetabotFeedback {:where [:in :message_id message-ids]}))
     (t2/delete! :model/MetabotMessage {:where [:in :conversation_id conversation-ids]})
     (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]})))
+
+(defn- insert-feedback!
+  [{:keys [message-id positive issue-type freeform user-id created-at updated-at]}]
+  (t2/insert! :model/MetabotFeedback
+              (cond-> {:message_id        message-id
+                       :positive          positive
+                       :issue_type        issue-type
+                       :freeform_feedback freeform
+                       :user_id           user-id}
+                created-at (assoc :created_at created-at)
+                updated-at (assoc :updated_at updated-at)))
+  message-id)
 
 (defn- offset-date-time
   [s]
@@ -558,6 +575,76 @@
                   :convo-null   convo-null})
           (finally
             (delete-conversations! [convo-web convo-slack convo-null])))))))
+
+(deftest get-conversation-feedback-requires-superuser-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id/feedback requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403
+                                   (format "ee/metabot-analytics/conversations/%s/feedback"
+                                           (str (random-uuid)))))))))
+
+(deftest get-conversation-feedback-404-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id/feedback 404s for unknown conversations"
+      (mt/user-http-request :crowberto :get 404
+                            (format "ee/metabot-analytics/conversations/%s/feedback"
+                                    (str (random-uuid)))))))
+
+(deftest get-conversation-feedback-returns-rows-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id/feedback returns one feedback row per rated message in submission order"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            jan-1           (offset-date-time "2026-04-01T00:00:00Z")
+            jan-2           (offset-date-time "2026-04-02T00:00:00Z")
+            jan-3           (offset-date-time "2026-04-03T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id conversation-id
+                                 :user-id         user-id
+                                 :created-at      jan-1
+                                 :summary         "feedback conversation"})
+          (let [msg-1 (first (t2/insert-returning-pks!
+                              :model/MetabotMessage
+                              {:conversation_id conversation-id
+                               :created_at      jan-2
+                               :role            "assistant"
+                               :profile_id      "gpt-5"
+                               :total_tokens    5
+                               :data            [{:type "text" :text "first answer"}]}))
+                msg-2 (first (t2/insert-returning-pks!
+                              :model/MetabotMessage
+                              {:conversation_id conversation-id
+                               :created_at      jan-3
+                               :role            "assistant"
+                               :profile_id      "gpt-5"
+                               :total_tokens    7
+                               :data            [{:type "text" :text "second answer"}]}))]
+            (insert-feedback! {:message-id msg-1
+                               :positive   true
+                               :freeform   "great"
+                               :user-id    user-id
+                               :created-at jan-2})
+            (insert-feedback! {:message-id msg-2
+                               :positive   false
+                               :issue-type "not-factual"
+                               :freeform   "wrong"
+                               :user-id    user-id
+                               :created-at jan-3})
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s/feedback"
+                                                         conversation-id))]
+              (is (= 2 (count response)))
+              (is (= [true false] (map :positive response)))
+              (is (= [msg-1 msg-2] (map :message_id response)))
+              (is (= "not-factual" (:issue_type (second response))))
+              (is (= {:id         user-id
+                      :email      "crowberto@metabase.com"
+                      :first_name "Crowberto"
+                      :last_name  "Corv"}
+                     (:user (first response))))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
 
 (deftest ip-address-test
   (with-ip-address-fixture!

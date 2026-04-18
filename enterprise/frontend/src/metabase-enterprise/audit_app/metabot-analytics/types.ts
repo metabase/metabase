@@ -57,6 +57,16 @@ export type GeneratedQuery = {
   tables: string[];
 };
 
+export type ConversationFeedback = {
+  message_id: number;
+  positive: boolean;
+  issue_type: string | null;
+  freeform_feedback: string | null;
+  created_at: string;
+  updated_at: string;
+  user: MetabotUserInfo | null;
+};
+
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;

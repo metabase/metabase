@@ -326,18 +326,24 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/feedback"
-  "Proxy Metabot feedback to Harbormaster, adding the premium embedding token."
+  "Persist Metabot feedback locally and proxy it to Harbormaster (with the premium embedding token)."
   [_route-params
    _query-params
    feedback :- :map]
   (metabot.config/check-metabot-enabled!)
   (try
-    (api/check-400 (metabot.feedback/submit-to-harbormaster! feedback)
-                   "Cannot submit feedback. The license token and/or Store API URL are missing!")
-    api/generic-204-no-content
+    (metabot.feedback/persist-feedback! feedback)
     (catch Exception e
-      (log/error e "Failed to submit feedback to Harbormaster")
-      (throw e))))
+      ;; ex-message only — `log/error e` would dump the whole feedback payload (including the
+      ;; conversation snapshot with embedded chart SVGs) via the ex-info data.
+      (log/errorf "Failed to persist Metabot feedback locally: %s" (ex-message e))))
+  (comment (try
+             (api/check-400 (metabot.feedback/submit-to-harbormaster! feedback)
+                            "Cannot submit feedback. The license token and/or Store API URL are missing!")
+             api/generic-204-no-content
+             (catch Exception e
+               (log/errorf "Failed to submit feedback to Harbormaster: %s" (ex-message e))
+               (throw e)))))
 
 (def ^:private metabot-provider-schema
   (into [:enum] metabot.settings/supported-metabot-providers))

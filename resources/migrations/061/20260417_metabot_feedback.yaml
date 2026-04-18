@@ -1,0 +1,67 @@
+## Persist Metabot message feedback locally (in addition to proxying to Harbormaster).
+## metabot_feedback is a 1:1 extension table — its PK is the metabot_message it belongs to.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-17T10:00:00
+      author: sloansparger
+      comment: metabot_feedback table (1:1 extension of metabot_message)
+      changes:
+        - createTable:
+            tableName: metabot_feedback
+            remarks: User feedback (thumbs up/down + optional comment) for a metabot_message — 1:1 with metabot_message via shared PK.
+            columns:
+              - column:
+                  name: message_id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: metabot_message
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_feedback_message_id
+                    deleteCascade: true
+                  remarks: 'PK + FK to metabot_message.id — enforces 1:1'
+              - column:
+                  name: positive
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'true = thumbs up, false = thumbs down'
+              - column:
+                  name: issue_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+                  remarks: 'Optional structured issue category (e.g. "ui-bug", "not-factual")'
+              - column:
+                  name: freeform_feedback
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'Optional freeform comment'
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_feedback_user_id
+                  remarks: 'User who submitted the feedback'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'When the feedback was submitted'
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'When the feedback was last updated'

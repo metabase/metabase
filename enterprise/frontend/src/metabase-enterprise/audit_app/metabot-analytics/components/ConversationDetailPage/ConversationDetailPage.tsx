@@ -31,8 +31,11 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
 import type { DatasetQuery } from "metabase-types/api";
 
-import { useGetMetabotConversationQuery } from "../../api";
-import type { GeneratedQuery } from "../../types";
+import {
+  useGetMetabotConversationFeedbackQuery,
+  useGetMetabotConversationQuery,
+} from "../../api";
+import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 type StatCardProps = {
   label: string;
@@ -60,6 +63,9 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     isLoading,
     error,
   } = useGetMetabotConversationQuery(convoId);
+
+  const { data: feedback = [] } =
+    useGetMetabotConversationFeedbackQuery(convoId);
 
   if (isLoading || error) {
     return (
@@ -131,13 +137,18 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               )}
             </Flex>
           </Stack>
-          {/* <Card withBorder shadow="none" bg="transparent" py="xs" px="sm">
-            <Flex gap="sm" align="center">
-              <Text size="md" c="text-primary">{t`User rating`}</Text>
-              <Icon name="thumbs_up" size={18} c="text-tertiary" />
-            </Flex>
-          </Card> */}
         </Flex>
+
+        {feedback.length > 0 && (
+          <Box>
+            <Title order={3}>{t`Feedback`}</Title>
+            <Stack mt="sm" gap="md">
+              {feedback.map((item) => (
+                <FeedbackCard key={item.message_id} feedback={item} />
+              ))}
+            </Stack>
+          </Box>
+        )}
 
         <SimpleGrid cols={4}>
           <StatCard label={t`Messages`} value={String(messageCount)} />
@@ -175,6 +186,47 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         )}
       </Stack>
     </MetabotAdminLayout>
+  );
+}
+
+function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
+  const submitterName = feedback.user
+    ? getUserName(feedback.user) || feedback.user.email
+    : t`Unknown`;
+  const sentimentLabel = feedback.positive ? t`Positive` : t`Negative`;
+
+  return (
+    <Card withBorder shadow="none" p="md">
+      <Stack gap="sm">
+        <Flex justify="space-between" align="center" gap="sm" wrap="wrap">
+          <Flex gap="sm" align="center">
+            <Icon
+              name={feedback.positive ? "thumbs_up" : "thumbs_down"}
+              size={20}
+              c={feedback.positive ? "success" : "error"}
+            />
+            <Text fw={700}>{sentimentLabel}</Text>
+            {feedback.issue_type && (
+              <Text size="sm" c="text-secondary">
+                {`· ${feedback.issue_type}`}
+              </Text>
+            )}
+          </Flex>
+          <Flex gap="xs" align="center">
+            <Text size="sm" c="text-secondary">
+              {submitterName}
+            </Text>
+            <Text size="sm" c="text-tertiary">
+              {`· `}
+              <DateTime value={feedback.created_at} />
+            </Text>
+          </Flex>
+        </Flex>
+        {feedback.freeform_feedback && (
+          <Text size="sm">{feedback.freeform_feedback}</Text>
+        )}
+      </Stack>
+    </Card>
   );
 }
 
