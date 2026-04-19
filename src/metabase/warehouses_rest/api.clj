@@ -573,8 +573,9 @@
                 :semantic_type semantic_type
                 :coercion_strategy coercion_strategy))
 
-(defn- perm-user-info []
+(defn- perm-user-info
   "User information used to check permissions."
+  []
   {:user-id       api/*current-user-id*
    :is-superuser? api/*is-superuser?*})
 
