@@ -847,6 +847,8 @@
         (let [timings {:search-string-length (count search-string)
                        :raw-results-count (count raw-results)
                        :final-results-count (count final-results)
+                       :raw-results-models (frequencies (map :model raw-results))
+                       :final-results-models (frequencies (map :model final-results))
                        :embedding-time-ms embedding-time-ms
                        :db-query-time-ms db-query-time-ms
                        :filter-time-ms filter-time-ms
