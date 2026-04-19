@@ -713,26 +713,12 @@
   [row]
   (update row :metadata decode-pgobject))
 
-(defn- filter-can-read-indexed-entity
-  "Check permissions for indexed entities by resolving to their parent model / card"
-  [indexed-entity-docs]
-  (let [->model-index-id #(-> % :id search/indexed-entity-id->model-index-id)
-        model-index-ids (into #{} (map ->model-index-id indexed-entity-docs))
-        model-indexes (when (seq model-index-ids)
-                        (t2/select :model/ModelIndex :id [:in model-index-ids]))
-        index-id->card (when (seq model-indexes)
-                         (let [card-ids    (map :model_id model-indexes)
-                               cards       (t2/select :model/Card :id [:in card-ids])
-                               cards-by-id (u/index-by :id cards)]
-                           (into {}
-                                 (map (fn [model-index]
-                                        [(:id model-index) (get cards-by-id (:model_id model-index))])
-                                      model-indexes))))]
-    (filterv (fn [doc]
-               (when-let [model-index-id (-> doc ->model-index-id)]
-                 (when-let [parent-card (get index-id->card model-index-id)]
-                   (mi/can-read? parent-card))))
-             indexed-entity-docs)))
+;; Models whose `mi/can-read?` is a pure function of `:collection_id` (via
+;; `perms/can-read-audit-helper` → `perms-objects-set-for-parent-collection`).
+;; `indexed-entity` rows resolve to the parent Card, whose `collection_id` is denormalized
+;; onto the index row at ingest time via the search spec's Collection join.
+(def ^:private collection-id-only-search-models
+  #{"card" "metric" "dataset" "dashboard" "indexed-entity"})
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
@@ -742,37 +728,35 @@
               :distinct-collections (count (into #{} (map :collection_id) docs))})
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        {indexed-entities true regular-docs false} (group-by #(= "indexed-entity" (:model %)) docs)
-        ;; Card's `can-read?` only reads `:collection_id` (via `perms/can-read-audit-helper`), which
-        ;; is denormalized onto the index row. Synthesize minimal Toucan instances for Card-backed
-        ;; docs (search-models card/metric/dataset) to skip the `t2/select :model/Card` round-trip
-        ;; and its transform/after-select pipeline — the dominant cost of the permission filter.
-        {card-docs true non-card-docs false} (group-by #(= :model/Card (doc->t2-model %)) regular-docs)
-        card-stubs (mapv (fn [doc] (t2/instance :model/Card {:id (:id doc)
-                                                             :collection_id (:collection_id doc)}))
-                         card-docs)
-        select-timer (u/start-timer)
-        other-t2-instances (vec
-                            (for [[t2-model docs] (group-by doc->t2-model non-card-docs)
-                                  t2-instance (t2/select t2-model :id [:in (map :id docs)])]
-                              t2-instance))
-        select-ms (u/since-ms select-timer)
+        {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
+        ;; Fast path: the permission check depends only on `:collection_id`, which is already on the
+        ;; index row. Dedupe by collection_id so `can-read?` runs once per distinct collection instead
+        ;; of once per document. A stub `:model/Card` instance is sufficient to drive the dispatch
+        ;; and satisfies the fields `mi/can-read? :model/Card` actually reads.
+        coll-readable? (memoize
+                        (fn [coll-id]
+                          (mi/can-read? (t2/instance :model/Card {:collection_id coll-id}))))
         check-timer (u/start-timer)
-        permitted-entities (filter-can-read-indexed-entity indexed-entities)
-        doc->t2 (comp (u/index-by (juxt :id t2/model) (into card-stubs other-t2-instances))
-                      (juxt :id doc->t2-model))
-        result (into
-                (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
-                permitted-entities)
+        fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         check-ms (u/since-ms check-timer)
+        select-timer (u/start-timer)
+        slow-t2-instances (vec
+                           (for [[t2-model docs] (group-by doc->t2-model slow-docs)
+                                 t2-instance (t2/select t2-model :id [:in (map :id docs)])]
+                             t2-instance))
+        select-ms (u/since-ms select-timer)
+        doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
+                      (juxt :id doc->t2-model))
+        slow-filtered (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) slow-docs)
+        result (into fast-filtered slow-filtered)
         time-ms (u/since-ms timer)]
 
     (log/debug "Permission filtering" {:before-count (count docs)
                                        :after-count (count result)
-                                       :indexed-entities-count (count indexed-entities)
-                                       :regular-docs-count (count regular-docs)
-                                       :card-stubs-count (count card-stubs)
-                                       :non-card-fetched-count (count other-t2-instances)
+                                       :fast-count (count fast-docs)
+                                       :slow-count (count slow-docs)
+                                       :slow-fetched-count (count slow-t2-instances)
+                                       :distinct-fast-coll-ids (count (into #{} (map :collection_id) fast-docs))
                                        :select-ms select-ms
                                        :check-ms check-ms
                                        :time-ms time-ms})
