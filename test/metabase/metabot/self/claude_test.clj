@@ -7,6 +7,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
@@ -172,6 +173,7 @@
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]
         (testing "Prefers BYOK over ai proxy"
           (with-redefs [self.core/sse-reducible identity
+                        debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://api.anthropic.com/v1/messages"
@@ -182,6 +184,7 @@
         (testing "Uses ai proxy when explicitly requested"
           (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
                         self.core/sse-reducible             identity
+                        debug/capture-stream                (fn [r _] r)
                         http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://proxy.example/anthropic/v1/messages"
