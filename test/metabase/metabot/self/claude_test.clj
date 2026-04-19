@@ -238,6 +238,22 @@
           (is (= "structured_output" (-> body :tools first :name)))
           (is (not (contains? (-> body :tools first) :cache_control))))))))
 
+(deftest claude-system-cache-breakpoint-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [input [{:role :user :content "hi"}]]
+      (testing "system prompt is wrapped as a cached content block"
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :system "You are a helpful assistant."})]
+          (is (= [{:type          "text"
+                   :text          "You are a helpful assistant."
+                   :cache_control {:type "ephemeral"}}]
+                 (:system body)))))
+
+      (testing "no :system key when system is not provided"
+        (let [body (capture-claude-request-body! {:input input})]
+          (is (not (contains? body :system))))))))
+
 (deftest claude-list-models-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]

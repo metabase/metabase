@@ -194,6 +194,15 @@
     (update tools (dec (count tools)) assoc :cache_control {:type "ephemeral"})
     tools))
 
+(defn- system->cached-content-blocks
+  "Wrap a system prompt string in a single content block with an ephemeral
+  cache_control marker. Claude caches everything up to and including the marked
+  block, so the whole rendered prompt becomes cacheable within the 5-minute TTL."
+  [system]
+  [{:type          "text"
+    :text          system
+    :cache_control {:type "ephemeral"}}])
+
 (defn- anthropic-errors [res]
   (let [status    (long (:status res 0))
         error-msg (get-in res [:body :error :message])]
@@ -244,7 +253,7 @@
                            :max_tokens    (or max-tokens 4096)
                            :stream        true
                            :messages      messages}
-                    system            (assoc :system system)
+                    system            (assoc :system (system->cached-content-blocks system))
                     all-tools         (assoc :tools all-tools)
                     (and all-tools
                          tool_choice) (assoc :tool_choice (case (name tool_choice)
