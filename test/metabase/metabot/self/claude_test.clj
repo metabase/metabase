@@ -8,7 +8,8 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -202,6 +203,40 @@
                    clojure.lang.ExceptionInfo
                    #"No Anthropic API key is set"
                    (claude/claude-raw {:input [{:role :user :content "hi"}]}))))))))))
+
+(defn- capture-claude-request-body!
+  "Invoke `claude-raw` with stubbed HTTP, returning the decoded request body map."
+  [opts]
+  (let [captured (atom nil)]
+    (with-redefs [self.core/sse-reducible identity
+                  http/request            (fn [req]
+                                            (reset! captured (json/decode+kw (:body req)))
+                                            {:body req})]
+      (claude/claude-raw opts))
+    @captured))
+
+(deftest claude-tools-cache-breakpoint-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [tools [(metabot.tu/get-time-tool) (metabot.tu/convert-currency-tool)]
+          input [{:role :user :content "hi"}]]
+      (testing "cache_control is attached to the last tool only"
+        (let [body    (capture-claude-request-body! {:input input :tools tools})
+              [t1 t2] (:tools body)]
+          (is (= 2 (count (:tools body))))
+          (is (not (contains? t1 :cache_control)))
+          (is (= {:type "ephemeral"} (:cache_control t2)))))
+
+      (testing "no :tools key in request when no tools passed"
+        (let [body (capture-claude-request-body! {:input input})]
+          (is (not (contains? body :tools)))))
+
+      (testing "no cache_control on structured-output path (schema set)"
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :schema {:type "object" :properties {:answer {:type "string"}}}})]
+          (is (= 1 (count (:tools body))))
+          (is (= "structured_output" (-> body :tools first :name)))
+          (is (not (contains? (-> body :tools first) :cache_control))))))))
 
 (deftest claude-list-models-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}

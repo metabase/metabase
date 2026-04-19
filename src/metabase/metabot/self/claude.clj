@@ -184,6 +184,16 @@
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
+(defn- add-tools-cache-breakpoint
+  "Attach an ephemeral cache_control marker to the last tool in `tools`.
+  Anthropic caches everything in the request up to and including the block with
+  `cache_control`, so a single breakpoint on the final tool covers the whole
+  tool list."
+  [tools]
+  (if (seq tools)
+    (update tools (dec (count tools)) assoc :cache_control {:type "ephemeral"})
+    tools))
+
 (defn- anthropic-errors [res]
   (let [status    (long (:status res 0))
         error-msg (get-in res [:body :error :message])]
@@ -227,6 +237,9 @@
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
+        all-tools (if (and all-tools (not schema))
+                    (add-tools-cache-breakpoint all-tools)
+                    all-tools)
         req       (cond-> {:model         model
                            :max_tokens    (or max-tokens 4096)
                            :stream        true
