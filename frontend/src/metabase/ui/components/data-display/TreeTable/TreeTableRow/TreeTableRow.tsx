@@ -20,8 +20,9 @@ import { getColumnStyle } from "../utils";
 
 import S from "./TreeTableRow.module.css";
 
-interface TreeTableRowContentProps<TData extends TreeNodeData>
-  extends TreeTableStylesProps {
+interface TreeTableRowContentProps<
+  TData extends TreeNodeData,
+> extends TreeTableStylesProps {
   row: Row<TData>;
   rowIndex: number;
   table: Table<TData>;
