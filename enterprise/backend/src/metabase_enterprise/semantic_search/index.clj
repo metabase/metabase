@@ -720,9 +720,6 @@
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
   [docs]
-  (log/debug "filter-read-permitted input"
-             {:by-model (frequencies (map :model docs))
-              :distinct-collections (count (into #{} (map :collection_id) docs))})
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
