@@ -595,10 +595,8 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       (state, { payload }) =>
         state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
-    builder.addMatcher(
-      isLoadDataPermissionsForDbAction,
-      (state, { payload }) =>
-        state != null ? merge(payload.groups, current(state)) : payload.groups,
+    builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
+      state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(
@@ -726,10 +724,8 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
       (state, { payload }) =>
         state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
-    builder.addMatcher(
-      isLoadDataPermissionsForDbAction,
-      (state, { payload }) =>
-        state != null ? merge(payload.groups, current(state)) : payload.groups,
+    builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
+      state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(

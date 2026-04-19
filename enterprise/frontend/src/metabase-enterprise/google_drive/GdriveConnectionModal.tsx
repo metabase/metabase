@@ -165,7 +165,7 @@ function GoogleSheetsConnectModal({
           <Text>
             2.{" "}
             {c("{0} is an email address")
-              .jt`Enter: ${(<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
+              .jt`Enter: ${<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>}`}
           </Text>
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>

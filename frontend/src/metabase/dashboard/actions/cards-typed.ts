@@ -490,8 +490,8 @@ export const removeCardFromDashboard = createThunkAction(
       const dashcardCountByCardId = _.countBy(dashcards, "card_id");
       const isLastDashboardQuestionDashcard = Boolean(
         dashcard.card_id &&
-          dashcard.card.dashboard_id !== null &&
-          dashcardCountByCardId[dashcard.card_id] <= 1,
+        dashcard.card.dashboard_id !== null &&
+        dashcardCountByCardId[dashcard.card_id] <= 1,
       );
       dispatch(
         addUndo({
