@@ -26,6 +26,13 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *debug-info*
+  "Atom used to collect backend-side timing data for a single search request, keyed by engine.
+   Populated only when the HTTP request is made with `include_debug=true`. Attached to the
+   response under `:debug` so the local perf harness in `search-perf-test/` can correlate
+   server timings with wall-clock. Hacky; not meant for production consumers."
+  nil)
+
 (defmulti ^:private check-permissions-for-model
   {:arglists '([search-ctx search-result])}
   (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
@@ -270,6 +277,7 @@
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
+   [:include-debug?                      {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
    [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
@@ -292,6 +300,7 @@
            is-impersonated-user?
            is-sandboxed-user?
            include-dashboard-questions?
+           include-debug?
            include-metadata?
            is-superuser?
            is-data-analyst?
@@ -347,6 +356,7 @@
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
+                 (some? include-debug?)                      (assoc :include-debug? include-debug?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids)
                  (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids)
@@ -416,7 +426,10 @@
              :total            (count total-results)}
 
       (:calculate-available-models? search-ctx)
-      (assoc :available_models (model-set-fn search-ctx)))))
+      (assoc :available_models (model-set-fn search-ctx))
+
+      (and *debug-info* (seq @*debug-info*))
+      (assoc :debug @*debug-info*))))
 
 (defn- hydrate-dashboards [results]
   (->> (t2/hydrate results [:dashboard :moderation_status])
@@ -441,22 +454,23 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
-  (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
-                                               :search/query-length (count (:search-string search-ctx))
-                                               :search/model-count  (count (:models search-ctx))}
-    (let [reducible-results (search.engine/results search-ctx)
-          scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
-          xf                (comp
-                             (take search.config/*db-max-results*)
-                             (map normalize-result)
-                             (filter (partial check-permissions-for-model search-ctx))
-                             (map (partial normalize-result-more search-ctx))
-                             (keep #(search.engine/score scoring-ctx %)))
-          total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
-                              true hydrate-dashboards
-                              true hydrate-user-metadata
-                              (:include-metadata? search-ctx) (add-metadata)
-                              (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                              true (add-collection-effective-location)
-                              true (map serialize))]
-      (search-results search-ctx search.engine/model-set total-results))))
+  (binding [*debug-info* (when (:include-debug? search-ctx) (atom {}))]
+    (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
+                                                 :search/query-length (count (:search-string search-ctx))
+                                                 :search/model-count  (count (:models search-ctx))}
+      (let [reducible-results (search.engine/results search-ctx)
+            scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+            xf                (comp
+                               (take search.config/*db-max-results*)
+                               (map normalize-result)
+                               (filter (partial check-permissions-for-model search-ctx))
+                               (map (partial normalize-result-more search-ctx))
+                               (keep #(search.engine/score scoring-ctx %)))
+            total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+                                true hydrate-dashboards
+                                true hydrate-user-metadata
+                                (:include-metadata? search-ctx) (add-metadata)
+                                (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
+                                true (add-collection-effective-location)
+                                true (map serialize))]
+        (search-results search-ctx search.engine/model-set total-results)))))

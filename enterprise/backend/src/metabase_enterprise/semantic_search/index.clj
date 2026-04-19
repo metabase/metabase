@@ -16,6 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.impl :as search.impl]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -843,15 +844,17 @@
             appdb-scores-time-ms (u/since-ms appdb-scores-timer)
             total-time-ms (u/since-ms timer)]
 
-        (log/debug "Semantic search"
-                   {:search-string-length (count search-string)
-                    :raw-results-count (count raw-results)
-                    :final-results-count (count final-results)
-                    :embedding-time-ms embedding-time-ms
-                    :db-query-time-ms db-query-time-ms
-                    :filter-time-ms filter-time-ms
-                    :appdb-scores-time-ms appdb-scores-time-ms
-                    :total-time-ms total-time-ms})
+        (let [timings {:search-string-length (count search-string)
+                       :raw-results-count (count raw-results)
+                       :final-results-count (count final-results)
+                       :embedding-time-ms embedding-time-ms
+                       :db-query-time-ms db-query-time-ms
+                       :filter-time-ms filter-time-ms
+                       :appdb-scores-time-ms appdb-scores-time-ms
+                       :total-time-ms total-time-ms}]
+          (log/debug "Semantic search" timings)
+          (when-let [atm search.impl/*debug-info*]
+            (swap! atm assoc :semantic timings)))
 
         (analytics/inc! :metabase-search/semantic-embedding-ms
                         {:embedding-model (:name embedding-model)}

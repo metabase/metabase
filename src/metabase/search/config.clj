@@ -268,6 +268,7 @@
    [:verified                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
+   [:include-debug?                      {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
    [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
    [:has-temporal-dim                    {:optional true} :boolean]

@@ -194,6 +194,7 @@
     filter-items-in-personal-collection :filter_items_in_personal_collection
     display-type                        :display_type
     include-dashboard-questions         :include_dashboard_questions
+    include-debug                       :include_debug
     last-edited-at                      :last_edited_at
     last-edited-by                      :last_edited_by
     model-ancestors                     :model_ancestors
@@ -223,6 +224,7 @@
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:calculate_available_models          {:optional true} [:maybe true?]]
        [:include_dashboard_questions         {:default false} [:maybe :boolean]]
+       [:include_debug                       {:default false} [:maybe :boolean]]
        [:include_metadata                    {:default false} [:maybe :boolean]]
        [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]
        [:has_temporal_dim                    {:optional true} [:maybe :boolean]]]]
@@ -255,6 +257,7 @@
                 :ids                                 (set ids)
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
+                :include-debug?                      include-debug
                 :include-metadata?                   include-metadata
                 :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
                 :has-temporal-dim                    has-temporal-dim
