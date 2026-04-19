@@ -242,6 +242,24 @@
           (is (= "structured_output" (-> body :tools first :name)))
           (is (not (contains? (-> body :tools first) :cache_control))))))))
 
+(deftest claude-auto-cache-breakpoint-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [input [{:role :user :content "hi"}]]
+      (testing "top-level cache_control is set on every request (enables automatic caching of message history)"
+        (is (= {:type "ephemeral"}
+               (:cache_control (capture-claude-request-body! {:input input}))))
+        (is (= {:type "ephemeral"}
+               (:cache_control (capture-claude-request-body!
+                                {:input  input
+                                 :system "You are a helpful assistant."
+                                 :tools  [(metabot.tu/get-time-tool)]})))))
+
+      (testing "top-level cache_control is set on the structured-output path too"
+        (is (= {:type "ephemeral"}
+               (:cache_control (capture-claude-request-body!
+                                {:input  input
+                                 :schema {:type "object" :properties {:answer {:type "string"}}}}))))))))
+
 (deftest claude-system-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
     (let [input [{:role :user :content "hi"}]]

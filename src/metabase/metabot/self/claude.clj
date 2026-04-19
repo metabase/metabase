@@ -272,6 +272,7 @@
         req       (cond-> {:model         model
                            :max_tokens    (or max-tokens 4096)
                            :stream        true
+                           :cache_control {:type "ephemeral"}
                            :messages      messages}
                     system            (assoc :system (system->cached-content-blocks system))
                     all-tools         (assoc :tools all-tools)
