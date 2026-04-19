@@ -582,21 +582,30 @@
    :perms/create-queries :query-builder})
 
 (defn- write-json-array!
-  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row."
+  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row.
+
+  `run!` is required here because it dispatches through `reduce`, which consumes the
+  `IReduceInit` returned by `t2/reducible-select` row-by-row without materializing.
+  `doseq` cannot be used: it walks a seq, and producing a seq from the reducible
+  would realize every row into memory — defeating the point of streaming."
   [^java.io.Writer writer reducible format-fn]
   (.write writer "[")
   (let [first? (volatile! true)]
-    (reduce (fn [_ row]
-              (if @first?
-                (vreset! first? false)
-                (.write writer ","))
-              (json/encode-to (format-fn row) writer {}))
-            nil
-            reducible))
+    (run! (fn [row]
+            (if @first?
+              (vreset! first? false)
+              (.write writer ","))
+            (json/encode-to (format-fn row) writer {}))
+          reducible))
   (.write writer "]"))
 
 (defn- write-databases-metadata!
-  "Streams the databases/tables/fields metadata as JSON to the given OutputStream."
+  "Streams the databases/tables/fields metadata as JSON to the given OutputStream.
+
+  Warehouses with large schemas can produce gigabytes of metadata, so streaming is
+  required — materializing the full response in memory would OOM the server. Each
+  section is written directly to the underlying writer as rows are pulled from a
+  reducible query, keeping memory usage bounded regardless of schema size."
   [^java.io.OutputStream os]
   (let [db-filter [:and
                    [:= :d.is_audit false]
