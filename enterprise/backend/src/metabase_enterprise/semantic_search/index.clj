@@ -585,7 +585,7 @@
    [:model_created_at :model_created_at]
    [:model_updated_at :model_updated_at]
    [:last_viewed_at :last_viewed_at]
-   [:metadata :metadata]])
+   [:legacy_input :legacy_input]])
 
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
@@ -691,27 +691,23 @@
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
+                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :keyword_rank]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
 (defn- legacy-input-with-score
-  "Fetches the legacy_input field from a result's metadata and attaches a score based on the
-  embedding distance."
+  "Extracts the (already-decoded) `:legacy_input` map from `row` and attaches the total score
+  plus per-scorer breakdown."
   [weights scorers row]
-  (let [raw (get-in row [:metadata :legacy_input])
-        ;; legacy_input may be a pre-encoded JSON string (from ->document) stored as a string
-        ;; value inside the metadata JSONB blob; decode it back to a map if so.
-        legacy-input (cond-> raw (string? raw) (json/decode true))]
-    (assoc legacy-input
-           :score (:total_score row 1.0)
-           :all-scores (scoring/all-scores weights scorers row))))
+  (assoc (:legacy_input row)
+         :score (:total_score row 1.0)
+         :all-scores (scoring/all-scores weights scorers row)))
 
-(defn- decode-metadata
-  "Decode `row`s `:metadata`."
+(defn- decode-legacy-input
+  "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
   [row]
-  (update row :metadata decode-pgobject))
+  (update row :legacy_input decode-pgobject))
 
 ;; Models whose `mi/can-read?` is a pure function of `:collection_id` (via
 ;; `perms/can-read-audit-helper` → `perms-objects-set-for-parent-collection`).
@@ -823,7 +819,7 @@
             weights (search.config/weights search-context)
             scorers (scoring/semantic-scorers (:table-name index) search-context)
             query (scored-search-query index embedding search-context scorers)
-            xform (comp (map decode-metadata)
+            xform (comp (map decode-legacy-input)
                         (map (partial legacy-input-with-score weights (keys scorers))))
             reducible (reducible-search-query db query)
             raw-results (tracing/with-span :search "search.semantic.db-query"

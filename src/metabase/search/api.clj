@@ -1,6 +1,5 @@
 (ns metabase.search.api
   (:require
-   [clj-async-profiler.core :as prof]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
@@ -229,38 +228,38 @@
        [:has_temporal_dim                    {:optional true} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
-    (prof/profile (u/prog1 (search/search
-                            (search/search-context
-                             {:archived                            archived
-                              :collection                          collection
-                              :context                             context
-                              :created-at                          created-at
-                              :created-by                          (set created-by)
-                              :current-user-id                     api/*current-user-id*
-                              :is-impersonated-user?               (perms/impersonated-user?)
-                              :is-sandboxed-user?                  (perms/sandboxed-user?)
-                              :is-superuser?                       api/*is-superuser?*
-                              :current-user-perms                  @api/*current-user-permissions-set*
-                              :filter-items-in-personal-collection filter-items-in-personal-collection
-                              :last-edited-at                      last-edited-at
-                              :last-edited-by                      (set last-edited-by)
-                              :limit                               (request/limit)
-                              :model-ancestors?                    model-ancestors
-                              :models                              (not-empty (set models))
-                              :offset                              (request/offset)
-                              :search-engine                       search-engine
-                              :search-native-query                 search-native-query
-                              :search-string                       (some-> q str/trim not-empty)
-                              :table-db-id                         table-db-id
-                              :verified                            verified
-                              :ids                                 (set ids)
-                              :calculate-available-models?         calculate-available-models
-                              :include-dashboard-questions?        include-dashboard-questions
-                              :include-metadata?                   include-metadata
-                              :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
-                              :has-temporal-dim                    has-temporal-dim
-                              :display-type                        (set display-type)}))
-                    (analytics/inc! :metabase-search/response-ok)))
+    (u/prog1 (search/search
+              (search/search-context
+               {:archived                            archived
+                :collection                          collection
+                :context                             context
+                :created-at                          created-at
+                :created-by                          (set created-by)
+                :current-user-id                     api/*current-user-id*
+                :is-impersonated-user?               (perms/impersonated-user?)
+                :is-sandboxed-user?                  (perms/sandboxed-user?)
+                :is-superuser?                       api/*is-superuser?*
+                :current-user-perms                  @api/*current-user-permissions-set*
+                :filter-items-in-personal-collection filter-items-in-personal-collection
+                :last-edited-at                      last-edited-at
+                :last-edited-by                      (set last-edited-by)
+                :limit                               (request/limit)
+                :model-ancestors?                    model-ancestors
+                :models                              (not-empty (set models))
+                :offset                              (request/offset)
+                :search-engine                       search-engine
+                :search-native-query                 search-native-query
+                :search-string                       (some-> q str/trim not-empty)
+                :table-db-id                         table-db-id
+                :verified                            verified
+                :ids                                 (set ids)
+                :calculate-available-models?         calculate-available-models
+                :include-dashboard-questions?        include-dashboard-questions
+                :include-metadata?                   include-metadata
+                :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
+                :has-temporal-dim                    has-temporal-dim
+                :display-type                        (set display-type)}))
+      (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
         (when (or (not status-code) (= 5 (quot status-code 100)))
