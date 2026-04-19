@@ -58,6 +58,7 @@
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
     :model/MetabotPrompt                     metabase.metabot.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index

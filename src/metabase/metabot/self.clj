@@ -18,6 +18,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
@@ -178,7 +179,15 @@
                  :request-id          (some-> request-id analytics/uuid->ai-service-hex-uuid)
                  :session-id          session-id
                  :source              source
-                 :tag                 tag})))
+                 :tag                 tag})
+               (usage/log-ai-usage!
+                {:source            (or tag source "unknown")
+                 :model             model
+                 :prompt-tokens     prompt
+                 :completion-tokens completion
+                 :conversation-id   session-id
+                 :profile-id        profile-id
+                 :request-id        request-id})))
            part))))
 
 (defn- report-tool-usage-xf
