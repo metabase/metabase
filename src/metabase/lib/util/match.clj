@@ -617,14 +617,6 @@
   ;; macros that power this macro directly
   `(replace* ~x ~patterns-and-results))
 
-(defmacro replace-in
-  "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
-  {:style/indent :defn}
-  [x ks & patterns-and-results]
-  `(metabase.lib.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace* x# ~patterns-and-results))))
-
-;; TODO - it would be useful to have something like a `replace-all` function as well
-
 (defmacro replace-lite
   "Walk `form` recursively and replace all patterns matched with `match-lite` by the respective return expressions. The
   same pattern options are supported, and `&parents` and `&match` anaphors are available in the same way."
@@ -639,3 +631,11 @@
                                             '&parents))))
       ~form
       ~(when contains-&parents? []))))
+
+(defmacro replace-in
+  "Like `replace-lite`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
+  {:style/indent :defn}
+  [x ks & patterns-and-results]
+  `(metabase.lib.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace-lite x# ~@patterns-and-results))))
+
+;; TODO - it would be useful to have something like a `replace-all` function as well
