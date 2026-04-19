@@ -194,14 +194,34 @@
     (update tools (dec (count tools)) assoc :cache_control {:type "ephemeral"})
     tools))
 
+(def ^:private system-cache-breakpoint-sentinel
+  "Literal marker placed in selmer templates to indicate where the static cacheable
+  prefix ends and the dynamic per-request suffix begins. Anthropic-only; ignored
+  by other provider adapters."
+  "<<<METABOT_CACHE_BREAKPOINT>>>")
+
 (defn- system->cached-content-blocks
-  "Wrap a system prompt string in a single content block with an ephemeral
-  cache_control marker. Claude caches everything up to and including the marked
-  block, so the whole rendered prompt becomes cacheable within the 5-minute TTL."
+  "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
+
+  If `system` contains the cache breakpoint sentinel, split it into two content
+  blocks: a cached static prefix and an uncached dynamic suffix. The model sees
+  the concatenation; the split is purely a wire-protocol device for caching.
+
+  If the sentinel is absent, fall back to a single cached content block covering
+  the whole prompt."
   [system]
-  [{:type          "text"
-    :text          system
-    :cache_control {:type "ephemeral"}}])
+  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
+    (if (neg? idx)
+      [{:type          "text"
+        :text          system
+        :cache_control {:type "ephemeral"}}]
+      (let [prefix (str/trimr (subs system 0 idx))
+            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
+        [{:type          "text"
+          :text          prefix
+          :cache_control {:type "ephemeral"}}
+         {:type "text"
+          :text suffix}]))))
 
 (defn- anthropic-errors [res]
   (let [status    (long (:status res 0))

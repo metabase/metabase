@@ -387,6 +387,8 @@ The following tools have specific behavioral requirements that you must follow:
 </tools>
 {% endif %}
 
+<<<METABOT_CACHE_BREAKPOINT>>>
+
 # Important Context
 
 Current date and time: {{current_time}}
