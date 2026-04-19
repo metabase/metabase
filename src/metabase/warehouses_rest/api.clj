@@ -560,10 +560,6 @@
                 :schema schema
                 :description description))
 
-(defn- perm-user-info []
-  {:user-id       api/*current-user-id*
-   :is-superuser? api/*is-superuser?*})
-
 (defn- format-field-metadata
   "Formats a Field record for the /metadata endpoint response. Includes effective_type only when it differs from base_type."
   [{:keys [id table_id parent_id fk_target_field_id name description base_type database_type effective_type semantic_type coercion_strategy]}]
@@ -577,7 +573,15 @@
                 :semantic_type semantic_type
                 :coercion_strategy coercion_strategy))
 
-(defn- perm-mapping []
+(defn- perm-user-info []
+  "User information used to check permissions."
+  {:user-id       api/*current-user-id*
+   :is-superuser? api/*is-superuser?*})
+
+(defn- perm-mapping
+  "Permission mapping used to filter databases and tables to those visible to the current user.
+  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or `Query builder and native`)."
+  []
   {:perms/view-data      :unrestricted
    :perms/create-queries :query-builder})
 
@@ -645,36 +649,48 @@
     (.write writer "}")
     (.flush writer)))
 
+(mr/def ::database-info
+  [:map
+   [:id ::lib.schema.id/database]
+   [:name :string]
+   [:engine :string]])
+
+(mr/def ::table-info
+  [:map
+   [:id ::lib.schema.id/table]
+   [:db_id ::lib.schema.id/database]
+   [:name :string]
+   [:schema {:optional true} :string]
+   [:description {:optional true} :string]])
+
+(mr/def ::field-info
+  [:map
+   [:id ::lib.schema.id/field]
+   [:table_id ::lib.schema.id/table]
+   [:name :string]
+   [:parent_id {:optional true} ::lib.schema.id/field]
+   [:fk_target_field_id {:optional true} ::lib.schema.id/field]
+   [:description {:optional true} :string]
+   [:base_type :string]
+   [:database_type {:optional true} :string]
+   [:effective_type {:optional true} :string]
+   [:semantic_type {:optional true} :string]
+   [:coercion_strategy {:optional true} :string]])
+
 (mr/def ::databases-metadata-response
   [:map
-   [:databases [:sequential [:map
-                             [:id ::lib.schema.id/database]
-                             [:name :string]
-                             [:engine :string]]]]
-   [:tables [:sequential [:map
-                          [:id ::lib.schema.id/table]
-                          [:db_id ::lib.schema.id/database]
-                          [:name :string]
-                          [:schema {:optional true} :string]
-                          [:description {:optional true} :string]]]]
-   [:fields [:sequential [:map
-                          [:id ::lib.schema.id/field]
-                          [:table_id ::lib.schema.id/table]
-                          [:name :string]
-                          [:parent_id {:optional true} ::lib.schema.id/field]
-                          [:fk_target_field_id {:optional true} ::lib.schema.id/field]
-                          [:description {:optional true} :string]
-                          [:base_type :string]
-                          [:database_type {:optional true} :string]
-                          [:effective_type {:optional true} :string]
-                          [:semantic_type {:optional true} :string]
-                          [:coercion_strategy {:optional true} :string]]]]])
+   [:databases [:sequential ::database-info]]
+   [:tables    [:sequential ::table-info]]
+   [:fields    [:sequential ::field-info]]])
 
 (api.macros/defendpoint :get "/metadata"
   :- (server.streaming-response/streaming-response-schema ::databases-metadata-response)
   "Get metadata (databases, tables, and fields) for all databases visible to the current user.
   Returns a flat structure with three arrays: databases, tables, and fields.
-  Response is streamed for efficiency with large schemas."
+  Response is streamed for efficiency with large schemas.
+
+  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
+  `Query builder and native`) permissions on each database and table."
   []
   (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
                       (write-databases-metadata! os)))
