@@ -735,8 +735,16 @@
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
-        ;; Fast path: the permission check depends only on `:collection_id`, which is already on the
-        ;; index row. Dedupe by `[stub-model, collection_id]` so `can-read?` runs at most once per
+        ;; Fast path: for `collection-id-only-search-models` the read permission is a pure function
+        ;; of `:collection_id`, which is denormalized onto the index row at ingest time. We deliberately
+        ;; trust the indexed value rather than re-fetching the app DB row — that avoids an N-row
+        ;; `t2/select` on every semantic search and is the main win of this path. The trade-off is
+        ;; that between a move (or delete) and the next reindex, a user can see a search hit whose
+        ;; live `collection_id` they no longer have access to. The index is eventually consistent by
+        ;; design; and the per-row API fetch (loading the entity after clicking through) still
+        ;; enforces live permissions, so the exposure is bounded to search-result metadata.
+        ;;
+        ;; Dedupe by `[stub-model, collection_id]` so `can-read?` runs at most once per
         ;; (model, collection) pair instead of once per document.
         readable? (memoize
                    (fn [stub-model coll-id]

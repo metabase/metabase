@@ -466,50 +466,53 @@
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-personal-coll-id user2-sub-coll-id shared-coll-id nil]))))))))
 
-(deftest filter-read-permitted-indexed-entity-test
+(deftest filter-read-permitted-fast-path-test
   (mt/with-premium-features #{:semantic-search}
-    (testing "filter-read-permitted routes indexed-entity docs through the collection_id-only fast path"
+    (testing "filter-read-permitted routes collection-id-only models through the fast path"
       (mt/with-temp [:model/Collection {readable-coll-id :id} {}
                      :model/Collection {unreadable-coll-id :id} {}]
-        (let [indexed-entity-docs [{:id "1:123"
-                                    :model "indexed-entity"
-                                    :collection_id readable-coll-id}
-                                   {:id "2:456"
-                                    :model "indexed-entity"
-                                    :collection_id unreadable-coll-id}
-                                   {:id "3:789"
-                                    :model "indexed-entity"
-                                    :collection_id nil}]]
+        (testing "indexed-entity docs are filtered by denormalized :collection_id"
+          (let [docs [{:id "1:123" :model "indexed-entity" :collection_id readable-coll-id}
+                      {:id "2:456" :model "indexed-entity" :collection_id unreadable-coll-id}
+                      {:id "3:789" :model "indexed-entity" :collection_id nil}]]
+            (testing "keeps all entities when user has root permissions"
+              (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                (is (= 3 (count (#'semantic.index/filter-read-permitted docs))))))
 
-          (testing "keeps all entities when user has root permissions"
-            (binding [api/*current-user-permissions-set* (atom #{"/"})]
-              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
-                (is (= 3 (count result))))))
+            (testing "drops all entities when user has no permissions"
+              (binding [api/*current-user-permissions-set* (atom #{})]
+                (is (= 0 (count (#'semantic.index/filter-read-permitted docs))))))
 
-          (testing "drops all entities when user has no permissions"
-            (binding [api/*current-user-permissions-set* (atom #{})]
-              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
-                (is (= 0 (count result))))))
+            (testing "keeps only entities in readable collections"
+              (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
+                (let [result (#'semantic.index/filter-read-permitted docs)]
+                  (is (= 1 (count result)))
+                  (is (= "1:123" (:id (first result)))))))))
 
-          (testing "keeps only entities in readable collections"
-            (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
-              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
-                (is (= 1 (count result)))
-                (is (= "1:123" (:id (first result)))))))
+        (testing "card/metric/dataset/dashboard docs use the same fast path"
+          (doseq [model ["card" "metric" "dataset" "dashboard"]]
+            (testing (str "model=" model)
+              (let [docs [{:id 1 :model model :collection_id readable-coll-id}
+                          {:id 2 :model model :collection_id unreadable-coll-id}
+                          {:id 3 :model model :collection_id nil}]]
+                (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
+                  (let [result (#'semantic.index/filter-read-permitted docs)]
+                    (is (= [1] (map :id result))
+                        "only the doc whose denormalized collection_id is readable survives")))))))
 
-          (testing "memoizes permission check per collection_id across docs"
-            (let [calls (atom 0)
-                  real-can-read? mi/can-read?]
-              (with-redefs [mi/can-read? (fn [& args]
-                                           (swap! calls inc)
-                                           (apply real-can-read? args))]
-                (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                  (#'semantic.index/filter-read-permitted
-                   (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
-                  (is (= 1 @calls) "expected one can-read? call for the single distinct collection_id")))))
+        (testing "memoizes permission check per collection_id across docs"
+          (let [calls (atom 0)
+                real-can-read? mi/can-read?]
+            (with-redefs [mi/can-read? (fn [& args]
+                                         (swap! calls inc)
+                                         (apply real-can-read? args))]
+              (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                (#'semantic.index/filter-read-permitted
+                 (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
+                (is (= 1 @calls) "expected one can-read? call for the single distinct collection_id")))))
 
-          (testing "handles empty input"
-            (is (= [] (#'semantic.index/filter-read-permitted [])))))))))
+        (testing "handles empty input"
+          (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
 (deftest filter-read-permitted-dispatch-test
   (mt/with-premium-features #{:semantic-search}
