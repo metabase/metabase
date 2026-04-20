@@ -1299,6 +1299,7 @@
            lib
            lib-be
            permissions
+           premium-features
            query-processor
            remote-sync
            search
