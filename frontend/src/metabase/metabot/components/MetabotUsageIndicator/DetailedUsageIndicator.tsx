@@ -12,6 +12,10 @@ import { formatResetRate, formatUsageText, getColor } from "./utils";
 export function DetailedUsageIndicator() {
   const { user, pool, limitUnit, resetRate } = useMetabotUsage();
 
+  if (!pool) {
+    return null;
+  }
+
   return (
     <Stack className={S.detailedRoot} gap="xs">
       {user && <UsageBar label={t`Your usage`} scope={user} unit={limitUnit} />}
@@ -25,7 +29,7 @@ export function DetailedUsageIndicator() {
         />
       )}
       {resetRate && (
-        <Text size="xs" c="text-tertiary">
+        <Text size="xs" c="text-tertiary" w="100%" ta="right">
           {formatResetRate(resetRate)}
         </Text>
       )}
@@ -42,7 +46,7 @@ type UsageBarProps = {
 function UsageBar({ label, scope, unit }: UsageBarProps) {
   return (
     <Box>
-      <Group justify="space-between" mb={2}>
+      <Group justify="space-between" mb="xs">
         <Text size="xs" c="text-tertiary">
           {label}
         </Text>
@@ -52,9 +56,11 @@ function UsageBar({ label, scope, unit }: UsageBarProps) {
       </Group>
       <Progress
         value={scope.percent}
-        size={4}
+        size={5}
+        bd={`1px solid var(--mb-color-${getColor(scope)})`}
         color={getColor(scope)}
         aria-label={label}
+        variant="filled"
       />
     </Box>
   );
