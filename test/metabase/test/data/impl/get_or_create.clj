@@ -421,6 +421,10 @@
                                                                     :details  connection-details
                                                                     :settings {:database-source-dataset-name database-name}})))]
     (sync-newly-created-database! driver database-definition connection-details db)
+    (log/infof "[test-data sync] %s Database %d %s — synced %d active tables (of %d total) after sync-newly-created-database!"
+               driver (u/the-id db) (pr-str database-name)
+               (t2/count :model/Table :db_id (u/the-id db) :active true)
+               (t2/count :model/Table :db_id (u/the-id db)))
     (when (not (driver/database-supports? driver :metadata/key-constraints nil))
       (add-foreign-key-relationships! driver database-definition db))
     (set-test-db-permissions! (u/the-id db))
