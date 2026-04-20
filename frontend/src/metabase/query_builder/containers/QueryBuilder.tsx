@@ -121,6 +121,7 @@ import {
   zoomInRow,
 } from "../actions";
 import { trackCardBookmarkAdded } from "../analytics";
+import { ObjectDetailControlsProvider } from "../components/ObjectDetailControlsProvider";
 import { View } from "../components/view/View";
 import {
   getCard,
@@ -628,7 +629,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   return (
-    <>
+    <ObjectDetailControlsProvider>
       <View
         {...props}
         modal={uiControls.modal}
@@ -650,7 +651,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         isLocationAllowed={isLocationAllowed}
         route={route}
       />
-    </>
+    </ObjectDetailControlsProvider>
   );
 }
 

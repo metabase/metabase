@@ -1,90 +1,61 @@
-import { Tables } from "metabase/entities/tables";
 import {
-  closeObjectDetail,
-  followForeignKey,
-  loadObjectDetailFKReferences,
-  runQuestionQuery,
-  viewNextObjectDetail,
-  viewPreviousObjectDetail,
-} from "metabase/query_builder/actions";
-import {
-  getCanZoomNextRow,
-  getCanZoomPreviousRow,
-  getQuestion,
-  getTableForeignKeyReferences,
-  getTableForeignKeys,
-  getTableMetadata,
-  getZoomRow,
-  getZoomedObjectId,
-} from "metabase/query_builder/selectors";
-import type { State } from "metabase/redux/store";
-import { getUser } from "metabase/selectors/user";
-import { connect } from "metabase/utils/redux";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-
+  type ObjectDetailControls,
+  useObjectDetailControls,
+} from "./ObjectDetailControlsContext";
 import { ObjectDetailWrapper } from "./ObjectDetailWrapper";
-import type { ObjectDetailProps, ObjectId } from "./types";
+import type { ObjectDetailProps } from "./types";
 import { getIdValue, getSingleResultsRow } from "./utils";
 
-const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
-  const isLoggedIn = !!getUser(state);
+type OwnProps = Omit<ObjectDetailProps, keyof ObjectDetailControls>;
 
-  if (!isLoggedIn) {
-    return {};
-  }
-
-  const table = getTableMetadata(state);
-  let zoomedRowID = getZoomedObjectId(state);
-  const isZooming = zoomedRowID != null;
-
-  if (!isZooming) {
-    zoomedRowID = getIdValue({ data, tableId: table?.id });
-  }
-
-  const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
-  const canZoomPreviousRow = isZooming ? getCanZoomPreviousRow(state) : false;
-  const canZoomNextRow = isZooming ? Boolean(getCanZoomNextRow(state)) : false;
-
-  return {
-    question: getQuestion(state),
+export function ObjectDetail(props: OwnProps) {
+  const controls = useObjectDetailControls();
+  const {
+    question,
     table,
-    tableForeignKeys: getTableForeignKeys(state),
-    tableForeignKeyReferences: getTableForeignKeyReferences(state) ?? undefined,
-    zoomedRowID: zoomedRowID ?? undefined,
-    zoomedRow,
-    canZoom: isZooming && !!zoomedRow,
+    tableForeignKeys,
+    tableForeignKeyReferences,
+    zoomedObjectId,
+    zoomedRow: contextZoomedRow,
     canZoomPreviousRow,
     canZoomNextRow,
-  };
-};
-type MapStateProps = ReturnType<typeof mapStateToProps>;
+    fetchTableFks,
+    loadObjectDetailFKReferences,
+    followForeignKey,
+    viewPreviousObjectDetail,
+    viewNextObjectDetail,
+    closeObjectDetail,
+    onActionSuccess,
+  } = controls;
 
-// ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
-const mapDispatchToProps = (dispatch: any) => ({
-  fetchTableFks: (id: number) =>
-    dispatch(Tables.objectActions.fetchForeignKeys({ id })),
-  loadObjectDetailFKReferences: (args: any) =>
-    dispatch(loadObjectDetailFKReferences(args)),
-  followForeignKey: ({
-    objectId,
-    fk,
-  }: {
-    objectId: ObjectId;
-    fk: ForeignKey;
-  }) => dispatch(followForeignKey({ objectId, fk })),
-  viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
-  viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
-  closeObjectDetail: () => dispatch(closeObjectDetail()),
-  onActionSuccess: () => dispatch(runQuestionQuery()),
-});
-type MapDispatchProps = ReturnType<typeof mapDispatchToProps>;
+  const { data } = props;
+  const isZooming = zoomedObjectId != null;
+  const zoomedRowID = isZooming
+    ? zoomedObjectId
+    : getIdValue({ data, tableId: table?.id });
 
-type OwnProps = Omit<
-  ObjectDetailProps,
-  keyof MapStateProps | keyof MapDispatchProps
->;
+  const zoomedRow = isZooming ? contextZoomedRow : getSingleResultsRow(data);
+  const canZoom = isZooming && !!zoomedRow;
 
-export const ObjectDetail = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ObjectDetailWrapper) as unknown as React.ComponentType<OwnProps>;
+  return (
+    <ObjectDetailWrapper
+      {...props}
+      question={question}
+      table={table}
+      tableForeignKeys={tableForeignKeys}
+      tableForeignKeyReferences={tableForeignKeyReferences ?? undefined}
+      zoomedRowID={zoomedRowID ?? undefined}
+      zoomedRow={zoomedRow}
+      canZoom={canZoom}
+      canZoomPreviousRow={isZooming && !!canZoomPreviousRow}
+      canZoomNextRow={isZooming && !!canZoomNextRow}
+      fetchTableFks={fetchTableFks}
+      loadObjectDetailFKReferences={loadObjectDetailFKReferences}
+      followForeignKey={followForeignKey}
+      viewPreviousObjectDetail={viewPreviousObjectDetail}
+      viewNextObjectDetail={viewNextObjectDetail}
+      closeObjectDetail={closeObjectDetail}
+      onActionSuccess={onActionSuccess}
+    />
+  );
+}

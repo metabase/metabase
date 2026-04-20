@@ -14,6 +14,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { ObjectDetailControlsProvider } from "metabase/query_builder/components/ObjectDetailControlsProvider";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -105,14 +106,16 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
     }),
   });
   renderWithProviders(
-    <ObjectDetail
-      data={testDataset}
-      settings={{}}
-      isObjectDetail
-      onVisualizationClick={jest.fn()}
-      visualizationIsClickable={jest.fn()}
-      isDashboard={false}
-    />,
+    <ObjectDetailControlsProvider>
+      <ObjectDetail
+        data={testDataset}
+        settings={{}}
+        isObjectDetail
+        onVisualizationClick={jest.fn()}
+        visualizationIsClickable={jest.fn()}
+        isDashboard={false}
+      />
+    </ObjectDetailControlsProvider>,
     {
       storeInitialState: state,
     },
