@@ -511,6 +511,43 @@
           (testing "handles empty input"
             (is (= [] (#'semantic.index/filter-read-permitted [])))))))))
 
+(deftest filter-read-permitted-dispatch-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "fast path dispatches through the per-search-model t2 model"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (binding [api/*current-user-permissions-set* (atom #{"/"})]
+
+          (testing "card and dashboard in the same collection do NOT share a memo bucket"
+            ;; Card dispatches through :model/Card, Dashboard through :model/Dashboard. Their
+            ;; `can-read?` answers happen to agree today (both route through
+            ;; `can-read-audit-helper` which ignores the model keyword for non-Collection models),
+            ;; but the dispatch MUST still hit each model's own defmethod so future divergence
+            ;; cannot silently ride on Card's semantics.
+            (let [calls (atom 0)
+                  real-can-read? mi/can-read?]
+              (with-redefs [mi/can-read? (fn [& args]
+                                           (swap! calls inc)
+                                           (apply real-can-read? args))]
+                (#'semantic.index/filter-read-permitted
+                 [{:id 1 :model "card" :collection_id coll-id}
+                  {:id 2 :model "dashboard" :collection_id coll-id}])
+                (is (= 2 @calls)
+                    "card and dashboard must dispatch separately even for the same collection_id"))))
+
+          (testing "card and indexed-entity share the :model/Card memo bucket"
+            ;; indexed-entity is deliberately routed through :model/Card — its index row's
+            ;; `collection_id` is the parent Card's, denormalized at ingest time.
+            (let [calls (atom 0)
+                  real-can-read? mi/can-read?]
+              (with-redefs [mi/can-read? (fn [& args]
+                                           (swap! calls inc)
+                                           (apply real-can-read? args))]
+                (#'semantic.index/filter-read-permitted
+                 [{:id 1   :model "card"            :collection_id coll-id}
+                  {:id "1:99" :model "indexed-entity" :collection_id coll-id}])
+                (is (= 1 @calls)
+                    "card and indexed-entity both dispatch through :model/Card and memoize together")))))))))
+
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"
     (testing "boolean inputs are returned unchanged"
