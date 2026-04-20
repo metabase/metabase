@@ -897,11 +897,13 @@
   {:team "Embedding"
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
+           metabase.embedding.seed
            metabase.embedding.settings
            metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
+           appearance
            models
            premium-features
            server
