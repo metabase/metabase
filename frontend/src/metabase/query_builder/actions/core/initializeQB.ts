@@ -1,7 +1,7 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
-import { cardIsEquivalent, deserializeCard, parseHash  } from "metabase/common/utils/card";
+import { cardIsEquivalent, deserializeCard, parseHash } from "metabase/common/utils/card";
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
 import {
