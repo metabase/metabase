@@ -1248,21 +1248,28 @@ describe("getWordAtCursor", () => {
     expect(result.end).toBe(text.length);
   });
 
-  it("fallback: keeps spaces inside the word but trims adjacent to delimiter", () => {
-    // Scanning left stops at '+', scanning right hits end-of-text.
-    // The space between 'M' and 'N' stays (names can contain spaces).
-    const text = "Rev + M N";
-    const result = getWordAtCursor(text, text.length, {}, []);
-    expect(result.word).toBe("M N");
-    expect(result.start).toBe(6);
-    expect(result.end).toBe(text.length);
-  });
-
   it("fallback: returns an empty word at the cursor when only whitespace follows a delimiter", () => {
     const text = "Metric, ";
     const result = getWordAtCursor(text, text.length, {}, []);
     expect(result.word).toBe("");
     expect(result.start).toBe(text.length);
+    expect(result.end).toBe(text.length);
+  });
+
+  it("only splits on delimiters or whitespace", () => {
+    // The trailing 't' in "xyznonexistent" is a prefix of "Test Measure", but we
+    // only split on delimiters or whitespace.
+    const metricNames: MetricNameMap = {
+      "metric:1": "Test Measure",
+      "metric:2": "Count of orders",
+    };
+    const text = "Test Measure, xyznonexistent";
+    const identities: MetricIdentityEntry[] = [
+      { sourceId: "metric:1", from: 0, to: 12, definition: null, slotIndex: 0 },
+    ];
+    const result = getWordAtCursor(text, text.length, metricNames, identities);
+    expect(result.word).toBe("xyznonexistent");
+    expect(result.start).toBe(14);
     expect(result.end).toBe(text.length);
   });
 });

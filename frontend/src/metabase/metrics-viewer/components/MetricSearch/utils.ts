@@ -175,6 +175,10 @@ function isWordChar(ch: string): boolean {
   return /\w/.test(ch);
 }
 
+function isWordDelimiter(ch: string): boolean {
+  return EXPRESSION_DELIMITERS.has(ch) || /\s/.test(ch);
+}
+
 /**
  * Extracts the "word" (potential metric name) at the given cursor position
  */
@@ -211,13 +215,27 @@ export function getWordAtCursor(
     text.length,
   );
   let start = cursorPos;
+  let end = cursorPos;
+  // we can only split on delimiters or whitespace, so first extend start and end until we hit a delimiter or whitespace
   for (let i = cursorPos - 1; i >= leftBoundary; i--) {
-    if (isMetricNamePrefix(text.slice(i, cursorPos))) {
+    if (isWordDelimiter(text[i])) {
+      break;
+    }
+    start = i;
+  }
+  for (let i = cursorPos + 1; i <= rightBoundary; i++) {
+    if (isWordDelimiter(text[i])) {
+      break;
+    }
+    end = i + 1;
+  }
+  // now we can extend across a delimiter or whitespace if we find a metric name prefix
+  for (let i = start - 1; i >= leftBoundary; i--) {
+    if (isMetricNamePrefix(text.slice(i, end))) {
       start = i;
     }
   }
-  let end = cursorPos;
-  for (let i = cursorPos + 1; i <= rightBoundary; i++) {
+  for (let i = end + 1; i <= rightBoundary; i++) {
     if (isMetricNamePrefix(text.slice(start, i))) {
       end = i;
     } else {
