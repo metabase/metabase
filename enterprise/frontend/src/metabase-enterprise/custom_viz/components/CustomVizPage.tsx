@@ -24,6 +24,11 @@ import {
   useUpdateCustomVizPluginMutation,
 } from "metabase-enterprise/api";
 
+import {
+  trackCustomVizPluginCreated,
+  trackCustomVizPluginUpdated,
+} from "../analytics";
+
 type Props = {
   params?: {
     id?: string;
@@ -73,17 +78,29 @@ export function CustomVizPage({ params }: Props) {
   const handleSubmit = useCallback(
     async (values: FormState) => {
       if (isEdit && plugin) {
-        await updatePlugin({
-          id: plugin.id,
-          access_token: values.accessToken || undefined,
-          pinned_version: values.pinnedVersion || null,
-        }).unwrap();
+        try {
+          await updatePlugin({
+            id: plugin.id,
+            access_token: values.accessToken || undefined,
+            pinned_version: values.pinnedVersion || null,
+          }).unwrap();
+          trackCustomVizPluginUpdated("success");
+        } catch (error) {
+          trackCustomVizPluginUpdated("failure");
+          throw error;
+        }
       } else {
-        await createPlugin({
-          repo_url: values.repoUrl,
-          access_token: values.accessToken || undefined,
-          pinned_version: values.pinnedVersion || null,
-        }).unwrap();
+        try {
+          await createPlugin({
+            repo_url: values.repoUrl,
+            access_token: values.accessToken || undefined,
+            pinned_version: values.pinnedVersion || null,
+          }).unwrap();
+          trackCustomVizPluginCreated("success");
+        } catch (error) {
+          trackCustomVizPluginCreated("failure");
+          throw error;
+        }
       }
       dispatch(push(Urls.customViz()));
     },
