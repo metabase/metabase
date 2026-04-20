@@ -88,7 +88,7 @@ export const getLocaleToUse = (
   if (!locale) {
     return "en";
   }
-  const [language, country] = locale.split("-");
+  const [language, country] = locale.split(/[-_]/);
 
   const normalizedLanguage = language.toLowerCase();
   const normalizedCountry = country?.toUpperCase();

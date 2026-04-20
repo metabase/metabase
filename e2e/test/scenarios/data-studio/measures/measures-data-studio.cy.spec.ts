@@ -11,7 +11,7 @@ describe("scenarios > data studio > data model > measures", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.intercept("POST", "/api/measure").as("createMeasure");
     cy.intercept("PUT", "/api/measure/*").as("updateMeasure");

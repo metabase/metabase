@@ -32,7 +32,7 @@ export const TenantIdentifierInput = ({
     : c("example tenant identifier value").t`e.g. acme-corp`;
 
   const description = columnName
-    ? jt`Enter a value that matches the ${(<strong key="col">{columnName}</strong>)} column.`
+    ? jt`Enter a value that matches the ${<strong key="col">{columnName}</strong>} column.`
     : config.description;
 
   return (

@@ -307,7 +307,7 @@
 (defn- parse-filter [filter-clause]
   ;; strip out all the filters against temporal fields. Those are handled separately, as intervals
   (-> (driver-api/replace-lite filter-clause
-        [_ [:field _ {:temporal-unit (_ :guard identity)}] & _]
+        [_ [:field _ {:temporal-unit &truthy}] & _]
         nil)
       ;; TODO (Cam 8/18/25) -- I am 90% sure this is serving no useful purpose.
       #_{:clj-kondo/ignore [:deprecated-var]}
@@ -356,7 +356,7 @@
   clauses, the methods are skipped entirely."
   {:arglists '([filter-clause])}
   (fn [filter-clause]
-    (when (driver-api/match-lite filter-clause [:field _ (_ :guard :temporal-unit)] true)
+    (when (driver-api/match-lite filter-clause [:field _ {:temporal-unit &truthy}] true)
       (driver-api/dispatch-by-clause-name-or-class filter-clause))))
 
 (defmethod filter-clause->intervals :default
@@ -1028,7 +1028,7 @@
   [field]
   (when field
     (driver-api/match-lite field
-      [:field _id-or-name (_opts :guard :temporal-unit)]
+      [:field _id-or-name {:temporal-unit &truthy}]
       true
 
       [:field (id :guard pos-int?) _opts]
@@ -1166,7 +1166,7 @@
         ts?       (boolean
                    (and
                     ;; Checks whether the query is a timeseries
-                    (driver-api/match-lite (first breakout-fields) [:field _ (_ :guard :temporal-unit)] true)
+                    (driver-api/match-lite (first breakout-fields) [:field _ {:temporal-unit &truthy}] true)
                     ;; (excludes x-of-y type breakouts)
                     (contains? timeseries-units (:unit (first breakout-fields)))
                     ;; (excludes queries with LIMIT)

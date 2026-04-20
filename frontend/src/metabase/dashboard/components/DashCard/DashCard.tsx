@@ -27,6 +27,7 @@ import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { useDispatch, useSelector, useStore } from "metabase/utils/redux";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
@@ -45,10 +46,7 @@ import type {
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
-import type {
-  CardSlownessStatus,
-  DashCardOnChangeCardAndRunHandler,
-} from "./types";
+import type { DashCardOnChangeCardAndRunHandler } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();

@@ -416,7 +416,7 @@ describe("scenarios > embedding > questions > downloads", () => {
           .as("allow-download-toggle")
           .should("be.checked");
 
-        cy.findByText("Download (csv, xlsx, json, png)").click();
+        cy.findByLabelText("Download (csv, xlsx, json, png)").click();
         cy.get("@allow-download-toggle").should("not.be.checked");
 
         cy.log('Use API to "publish" this question and to enable its filter');
