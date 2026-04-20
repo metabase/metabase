@@ -11,7 +11,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -550,6 +551,63 @@
                   {:id "1:99" :model "indexed-entity" :collection_id coll-id}])
                 (is (= 1 @calls)
                     "card and indexed-entity both dispatch through :model/Card and memoize together")))))))))
+
+;; The fast path in `filter-read-permitted` assumes every model listed in
+;; `collection-id-only-search-models` has a `mi/can-read?` whose result is fully determined by
+;; `:collection_id` + the current user's permissions set. This contract test catches drift in
+;; two directions:
+;;   1. A model is added to the set that doesn't actually satisfy the contract.
+;;   2. An existing model's `can-read?` grows a check on a field other than `:collection_id`
+;;      (e.g., `:archived`, `:type`, `:database_id`), silently making the fast path incorrect.
+;; If the set gains a new entry, add a spec here — the `keys` check below will fail otherwise.
+;; We vary the "should-be-irrelevant" fields across permutations so any new check in `can-read?`
+;; against such a field will flip at least one permutation away from the helper and fail the test.
+(def ^:private collection-id-only-model-test-specs
+  "Maps each entry in `collection-id-only-search-models` to the t2 model used for dispatch.
+  `indexed-entity` resolves to the parent Card at ingest time, so Card covers its contract."
+  {"card"           :model/Card
+   "metric"         :model/Card
+   "dataset"        :model/Card
+   "dashboard"      :model/Dashboard
+   "indexed-entity" :model/Card})
+
+(deftest collection-id-only-search-models-contract-test
+  (testing "every entry in `collection-id-only-search-models` has a matching test spec"
+    (is (= @#'semantic.index/collection-id-only-search-models
+           collection-id-only-model-test-specs)
+        "If you added/changed a model in `collection-id-only-search-models`, update `collection-id-only-model-test-specs` to match."))
+
+  (testing "mi/can-read? is a pure function of :collection_id for each listed model"
+    ;; Synthetic coll-ids chosen to align with the perm-set strings below. No DB involvement —
+    ;; the permission check only reads the instance map and the bound perm set.
+    (let [perm-scenarios [["root perms"                42  #{"/"}]
+                          ["no perms"                  42  #{}]
+                          ["read on matching coll"     42  #{"/collection/42/read/"}]
+                          ["read on other coll only"   42  #{"/collection/99/read/"}]
+                          ["nil collection with root"  nil #{"/"}]
+                          ["nil collection no perms"   nil #{}]]
+          ;; Extra fields on the synthetic instance. If `can-read?` stays collection_id-only,
+          ;; none of these should affect the result. A future `can-read?` that gates on any of
+          ;; them will diverge from the stub for at least one permutation.
+          extra-fields   [{}
+                          {:archived true}
+                          {:archived false}
+                          {:type :question}
+                          {:type :model}
+                          {:type :metric}
+                          {:database_id 1}
+                          {:dataset_query {}}]]
+      (doseq [[search-model t2-model] collection-id-only-model-test-specs
+              [label coll-id perms]   perm-scenarios
+              extras                  extra-fields]
+        (let [full-instance (t2/instance t2-model (assoc extras :collection_id coll-id))
+              stub-instance (t2/instance t2-model {:collection_id coll-id})]
+          (binding [api/*current-user-permissions-set* (atom perms)]
+            (let [slow-path (boolean (mi/can-read? full-instance))
+                  fast-path (boolean (mi/can-read? stub-instance))]
+              (is (= slow-path fast-path)
+                  (format "%s %s extras=%s: fast path=%s mi/can-read?=%s. If these disagree, `can-read?` likely depends on a field other than `:collection_id`, so removing this model from `collection-id-only-search-models` is required."
+                          search-model label extras fast-path slow-path)))))))))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"
