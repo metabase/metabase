@@ -456,3 +456,51 @@
   (testing "Bitbucket URL uses x-token-auth"
     (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
       (is (instance? UsernamePasswordCredentialsProvider provider)))))
+
+;; ---------------------------------------------------------------------------
+;; Missing remote branch tests (issue #72778)
+;; ---------------------------------------------------------------------------
+
+(defn- delete-remote-branch!
+  "Deletes a branch on the 'remote' repo used by a test."
+  [{:keys [^Git git]} ^String branch]
+  (.. git branchDelete (setBranchNames (into-array String [branch])) (setForce true) call))
+
+(deftest fetch!-prunes-deleted-remote-branches-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])]
+      (is (some? (git/commit-sha source "branch-1"))
+          "Precondition: branch-1 is resolvable locally after initial clone")
+      (delete-remote-branch! remote "branch-1")
+      (git/fetch! source)
+      (is (nil? (git/commit-sha source "branch-1"))
+          "branch-1 ref is pruned locally after the remote branch is deleted")
+      (is (some? (git/commit-sha source "master"))
+          "other refs are unaffected"))))
+
+(deftest snapshot-throws-missing-branch-ex-data-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[_master remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          bad-source (->source! "does-not-exist" remote)]
+      (try
+        (source.p/snapshot bad-source)
+        (is false "snapshot should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= "Invalid branch: does-not-exist" (ex-message e)))
+          (is (= :missing-branch (:error-type (ex-data e))))
+          (is (= "does-not-exist" (:branch (ex-data e)))))))))
+
+(deftest snapshot-throws-missing-branch-after-remote-delete-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[_master remote] (init-source! "master" remote-dir :branches ["branch-1"])
+          source-on-branch-1 (->source! "branch-1" remote)]
+      (is (some? (source.p/snapshot source-on-branch-1))
+          "Precondition: snapshot works before the branch is deleted")
+      (delete-remote-branch! remote "branch-1")
+      (try
+        (source.p/snapshot source-on-branch-1)
+        (is false "snapshot should have thrown after the remote branch was deleted")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :missing-branch (:error-type (ex-data e))))
+          (is (= "branch-1" (:branch (ex-data e)))))))))

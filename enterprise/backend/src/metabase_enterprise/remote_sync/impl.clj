@@ -368,6 +368,51 @@
         expiry-time (t/plus last-checked (t/seconds ttl-seconds))]
     (t/after? (t/instant) expiry-time)))
 
+(defn- cache-valid? [cache-state current-branch force-refresh?]
+  (and cache-state
+       (not force-refresh?)
+       (= current-branch (:branch cache-state))
+       (not (cache-expired? (:last-checked cache-state)))))
+
+(defn- snapshot-or-missing-branch
+  "Returns a snapshot of `source`, or `::missing-branch` if the configured branch
+  no longer exists on the remote. Other exceptions propagate."
+  [source]
+  (try
+    (source.p/snapshot source)
+    (catch Exception e
+      (case (:error-type (ex-data e))
+        :missing-branch ::missing-branch
+        (throw e)))))
+
+(defn- branch-missing-result
+  "Response for a configured branch that no longer exists upstream. Intentionally
+  not cached so the next call re-checks after the user switches branches."
+  [current-branch last-imported]
+  {:last-checked (t/instant)
+   :branch current-branch
+   :remote-version nil
+   :local-version last-imported
+   :has-changes? false
+   :branch-missing? true
+   :cached? false})
+
+(defn- fresh-result!
+  "Computes a has-remote-changes? response from a successful snapshot, caches it,
+  and returns it tagged as uncached."
+  [current-branch last-imported snapshot]
+  (let [current-remote (source.p/version snapshot)
+        result {:last-checked (t/instant)
+                :branch current-branch
+                :remote-version current-remote
+                :local-version last-imported
+                ;; has-changes? is true if nothing's been imported yet, or if
+                ;; remote moved past local.
+                :has-changes? (or (nil? last-imported)
+                                  (not= last-imported current-remote))}]
+    (reset! remote-changes-cache result)
+    (assoc result :cached? false)))
+
 (defn has-remote-changes?
   "Check if remote has new changes compared to last imported version.
    Uses cache to avoid frequent git operations. Returns map with:
@@ -375,6 +420,9 @@
    - :remote-version string (git SHA)
    - :local-version string (git SHA of last import, or nil)
    - :cached? boolean (whether result came from cache)
+   - :branch-missing? boolean (true if the configured branch no longer exists
+     on the remote; the result is not cached in that case so the next call
+     picks up a branch switch immediately)
 
    Cache is invalidated if:
    - TTL has expired
@@ -384,29 +432,15 @@
    (has-remote-changes? nil))
   ([{:keys [force-refresh?]}]
    (let [cache-state @remote-changes-cache
-         current-branch (settings/remote-sync-branch)
-         cache-valid? (and cache-state
-                           (not force-refresh?)
-                           (= current-branch (:branch cache-state))
-                           (not (cache-expired? (:last-checked cache-state))))]
-     (if cache-valid?
+         current-branch (settings/remote-sync-branch)]
+     (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
        (let [last-imported (remote-sync.task/last-version)
              source (source/source-from-settings current-branch)
-             snapshot (source.p/snapshot source)
-             current-remote (source.p/version snapshot)
-             ;; has-changes? is true if:
-             ;; - never imported (last-imported is nil), OR
-             ;; - remote version differs from local version
-             has-changes? (or (nil? last-imported)
-                              (not= last-imported current-remote))
-             result {:last-checked (t/instant)
-                     :branch current-branch
-                     :remote-version current-remote
-                     :local-version last-imported
-                     :has-changes? has-changes?}]
-         (reset! remote-changes-cache result)
-         (assoc result :cached? false))))))
+             snapshot (snapshot-or-missing-branch source)]
+         (if (= ::missing-branch snapshot)
+           (branch-missing-result current-branch last-imported)
+           (fresh-result! current-branch last-imported snapshot)))))))
 
 ;;; ------------------------------------------- Task Result Handling -------------------------------------------
 

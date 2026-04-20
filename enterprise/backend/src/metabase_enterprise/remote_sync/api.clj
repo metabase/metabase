@@ -68,10 +68,11 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
-    {:has_changes (:has-changes? result)
-     :remote_version (:remote-version result)
-     :local_version (:local-version result)
-     :cached (:cached? result)}))
+    (cond-> {:has_changes (:has-changes? result)
+             :remote_version (:remote-version result)
+             :local_version (:local-version result)
+             :cached (:cached? result)}
+      (:branch-missing? result) (assoc :branch_missing true))))
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return all models with changes that have not been pushed to the remote sync source in any
