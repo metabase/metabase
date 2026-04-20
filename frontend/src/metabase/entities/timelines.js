@@ -33,12 +33,12 @@ export const Timelines = createEntity({
   path: "/api/timeline",
   schema: TimelineSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetTimelineQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: ({ collectionId, ...params } = {}, dispatch) =>

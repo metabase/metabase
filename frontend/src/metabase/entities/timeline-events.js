@@ -17,11 +17,11 @@ export const TimelineEvents = createEntity({
   path: "/api/timeline-event",
   schema: TimelineEventSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
-  },
+  }),
 
   api: {
     list: () => {

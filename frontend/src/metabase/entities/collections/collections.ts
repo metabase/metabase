@@ -71,12 +71,12 @@ export const Collections = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`collections`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetCollectionQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: async (params: ListParams, dispatch: Dispatch) => {

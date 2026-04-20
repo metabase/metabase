@@ -17,12 +17,12 @@ export const Metrics = createEntity({
   path: "/api/metric",
   schema: MetricSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListMetricsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

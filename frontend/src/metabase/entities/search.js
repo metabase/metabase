@@ -30,9 +30,9 @@ export const Search = createEntity({
   name: "search",
   path: "/api/search",
 
-  rtk: {
+  rtk: () => ({
     useListQuery,
-  },
+  }),
 
   api: {
     list: async (query = {}, dispatch) => {

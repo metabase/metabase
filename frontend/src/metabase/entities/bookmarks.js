@@ -22,9 +22,9 @@ export const Bookmarks = createEntity({
   nameOne: "bookmark",
   path: "/api/bookmark",
   schema: BookmarkSchema,
-  rtk: {
+  rtk: () => ({
     useListQuery: useListBookmarksQuery,
-  },
+  }),
   api: {
     list: (_, dispatch) => {
       return entityCompatibleQuery(

@@ -28,12 +28,12 @@ export const PersistedModels = createEntity({
   path: "/api/persist",
   schema: PersistedModelSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListPersistedInfoQuery,
-  },
+  }),
 
   api: {
     get: ({ id, type }, options, dispatch) => {

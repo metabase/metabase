@@ -37,12 +37,12 @@ export const Questions = createEntity({
   nameOne: "question",
   path: "/api/card",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetCardQuery,
     }),
     useListQuery: useListCardsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

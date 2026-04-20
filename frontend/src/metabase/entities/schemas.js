@@ -32,12 +32,12 @@ export const Schemas = createEntity({
   name: "schemas",
   schema: SchemaSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: async ({ dbId, getAll = false, ...args }, dispatch) => {

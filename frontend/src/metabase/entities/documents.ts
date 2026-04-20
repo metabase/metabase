@@ -37,11 +37,11 @@ export const Documents = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`documents`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetDocumentQuery,
     }),
-  },
+  }),
 
   api: {
     get: (

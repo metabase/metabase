@@ -63,7 +63,7 @@ export const Tables = createEntity({
   path: "/api/table",
   schema: TableSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchMetadata") {
         return {
@@ -88,7 +88,7 @@ export const Tables = createEntity({
       };
     },
     useListQuery,
-  },
+  }),
 
   api: {
     list: async ({ dbId, schemaName, ...params } = {}, dispatch) => {

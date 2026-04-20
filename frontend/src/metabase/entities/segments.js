@@ -17,12 +17,12 @@ export const Segments = createEntity({
   path: "/api/segment",
   schema: SegmentSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListSegmentsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

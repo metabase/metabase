@@ -17,12 +17,12 @@ export const Measures = createEntity({
   path: "/api/measure",
   schema: MeasureSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListMeasuresQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

@@ -282,6 +282,8 @@ export type Entity = {
   Name: React.ComponentType<
     { id: EntityId | null | undefined } & Record<string, any>
   >;
+
+  rtk: EntityRtkBridge;
 };
 
 /**
@@ -325,7 +327,7 @@ type EntityDef = {
   wrapEntity?: Entity["wrapEntity"];
   requestsReducer?: Entity["requestsReducer"];
   actionShouldInvalidateLists?: Entity["actionShouldInvalidateLists"];
-  rtk?: EntityRtkBridge;
+  rtk?: EntityRtkBridge | (() => EntityRtkBridge);
   // Per-entity custom fields (e.g. `getAnalyticsMetadata`, `form`, `forms`).
   // These are attached to the entity object and used by entity-aware machinery.
 
@@ -985,6 +987,19 @@ export function createEntity(def: EntityDef): Entity {
   // add container components and HOCs
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require to avoid circular dependency
   require("metabase/entities/containers").addEntityContainers(entity);
+
+  // rtk can be defined as a function or a direct value
+  // make it a getter to callers don't need to worry about this detail
+  // and can still use definition.rtk
+  const rtk = entity.rtk;
+  Object.defineProperty(entity, "rtk", {
+    get() {
+      if (typeof rtk === "function") {
+        return rtk();
+      }
+      return rtk;
+    },
+  });
 
   return entity;
 }

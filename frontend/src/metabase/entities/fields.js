@@ -56,7 +56,7 @@ export const Fields = createEntity({
   path: "/api/field",
   schema: FieldSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchFieldValues") {
         return {
@@ -68,7 +68,7 @@ export const Fields = createEntity({
         useGetQuery: useGetFieldQuery,
       };
     },
-  },
+  }),
 
   api: {
     get: (entityQuery, options, dispatch) =>

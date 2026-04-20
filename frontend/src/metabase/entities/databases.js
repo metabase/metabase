@@ -35,7 +35,7 @@ export const Databases = createEntity({
   nameOne: "database",
   nameMany: "databases",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchDatabaseMetadata") {
         return {
@@ -48,7 +48,7 @@ export const Databases = createEntity({
       };
     },
     useListQuery: useListDatabasesQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

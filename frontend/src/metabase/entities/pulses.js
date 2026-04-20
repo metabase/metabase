@@ -20,12 +20,12 @@ export const Pulses = createEntity({
   nameOne: "pulse",
   path: "/api/pulse",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListSubscriptionsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

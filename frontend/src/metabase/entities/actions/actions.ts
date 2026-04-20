@@ -119,12 +119,12 @@ export const Actions = createEntity({
   nameOne: "action",
   schema: ActionSchema,
   path: "/api/action",
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetActionQuery,
     }),
     useListQuery: useListActionsQuery,
-  },
+  }),
   api: {
     list: (entityQuery: ListActionsRequest, dispatch: Dispatch) =>
       entityCompatibleQuery(

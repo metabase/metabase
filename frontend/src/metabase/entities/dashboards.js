@@ -39,12 +39,12 @@ export const Dashboards = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`dashboards`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetDashboardQuery,
     }),
     useListQuery: useListDashboardsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
