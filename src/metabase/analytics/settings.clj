@@ -59,6 +59,23 @@
   :visibility :public
   :doc        false)
 
+(defsetting metaplow-tracking-enabled
+  (deferred-tru
+   (str "Boolean indicating whether analytics events are being sent to Snowplow. "
+        "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
+  :type       :boolean
+  :getter     (fn [] (boolean (and (anon-tracking-enabled)
+                                   (setting/get-value-of-type :string :metaplow-url))))
+  :visibility :public
+  :doc        false)
+
+(defsetting metaplow-url
+  (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
+  :encryption :no
+  :visibility :public
+  :audit      :never
+  :doc        false)
+
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
   :encryption :no

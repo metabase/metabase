@@ -1,6 +1,7 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
 import { shouldLogAnalytics } from "metabase/env";
+import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import Settings from "metabase/utils/settings";
 import type { SchemaEventMap, SchemaType } from "metabase-types/analytics";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
@@ -45,14 +46,14 @@ export function trackSchemaEvent<S extends SchemaType>(
   schema: S,
   event: SchemaEventMap[S],
 ): void {
-  const shouldSendEvent =
-    Settings.trackingEnabled() && Settings.snowplowEnabled();
+  const trackingEnabled = Settings.trackingEnabled();
+  const shouldSendSnowplow = Settings.snowplowEnabled();
 
   if (shouldLogAnalytics) {
     const { event: type, ...other } = event;
     // eslint-disable-next-line no-console
     console.log(
-      `%c[SNOWPLOW EVENT | event sent:${shouldSendEvent}]%c, ${type}`,
+      `%c[SNOWPLOW EVENT | event sent:${shouldSendSnowplow}]%c, ${type}`,
       // eslint-disable-next-line metabase/no-color-literals
       "background: #222; color: #bada55",
       "color: ",
@@ -60,12 +61,21 @@ export function trackSchemaEvent<S extends SchemaType>(
     );
   }
 
-  if (shouldSendEvent) {
+  if (!trackingEnabled) {
+    return;
+  }
+
+  if (shouldSendSnowplow) {
     Snowplow.trackSelfDescribingEvent({
       event: {
         schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
         data: event,
       },
     });
+  }
+
+  if (Settings.get("metaplow-tracking-enabled")) {
+    const { event: name, ...data } = event;
+    trackMetaplowEvent(name, data);
   }
 }
