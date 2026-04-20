@@ -189,6 +189,20 @@ describe("AISettingsPage", () => {
     expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
   });
 
+  it("switches tabs without adding a section hash to the URL", async () => {
+    const { history } = await setup({
+      enableEmbedding: true,
+      initialRoute: "/admin/metabot",
+    });
+
+    await userEvent.click(screen.getByRole("tab", { name: "Embedded" }));
+
+    expect(history?.getCurrentLocation()).toMatchObject({
+      pathname: `/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`,
+      hash: "",
+    });
+  });
+
   it("persists disable ai features", async () => {
     await setup();
 
