@@ -45,19 +45,19 @@ describe("resolveSavedTheme", () => {
     ).toStrictEqual(theme);
   });
 
-  it("returns the raw theme when the id does not match any saved theme", () => {
+  it("strips the id when it does not match any saved theme", () => {
     const theme: SdkIframeEmbedSetupTheme = { id: 999 };
 
     expect(
       resolveSavedTheme({ theme, savedThemes: SAVED_THEMES }),
-    ).toStrictEqual(theme);
+    ).toStrictEqual({});
   });
 
-  it("returns the raw theme when savedThemes is still loading", () => {
+  it("strips the id when savedThemes is still loading", () => {
     const theme: SdkIframeEmbedSetupTheme = { id: 1 };
 
     expect(resolveSavedTheme({ theme, savedThemes: undefined })).toStrictEqual(
-      theme,
+      {},
     );
   });
 
@@ -68,7 +68,6 @@ describe("resolveSavedTheme", () => {
     });
 
     expect(resolved).toStrictEqual({
-      id: 1,
       colors: {
         brand: "#BB86FC",
         "text-primary": "#FFFFFF",
@@ -117,7 +116,6 @@ describe("resolveSavedTheme", () => {
     });
 
     expect(resolved).toStrictEqual({
-      id: 3,
       fontFamily: "Lato",
       colors: { brand: "#00FF00" },
     });
