@@ -399,12 +399,12 @@ describe("issue 25537", () => {
   });
 
   it("should be able to pick a saved model when using a non-english locale (metabase#25537)", () => {
-    setLocale("de");
+    setLocale("en-ZZ");
     H.createQuestion(questionDetails);
 
     H.startNewQuestion();
     H.miniPicker().within(() => {
-      cy.findByText("Unsere Analysen").click();
+      cy.findByText("[zz] Our analytics").click();
       cy.findByText(questionDetails.name).should("exist");
     });
   });

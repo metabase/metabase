@@ -319,14 +319,14 @@
                                               {:models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
                                                         {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                                                         {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
-      (is (= {:value  "metabase/anthropic/claude-opus-4-1"
+      (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
               :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
                        {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                        {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "metabase"
-                                    :model    "anthropic/claude-opus-4-1"})))
-      (is (= "metabase/anthropic/claude-opus-4-1"
+                                    :model    "anthropic/claude-sonnet-4-6"})))
+      (is (= "metabase/anthropic/claude-sonnet-4-6"
              (metabot.settings/llm-metabot-provider))))))
 
 (deftest settings-put-defaults-empty-metabase-model-test

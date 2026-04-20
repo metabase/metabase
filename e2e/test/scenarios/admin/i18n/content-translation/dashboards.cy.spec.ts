@@ -31,7 +31,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Category", msgstr: "La catégorie" },
@@ -116,7 +116,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
@@ -207,7 +207,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
@@ -376,7 +376,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         ...germanFieldNames,
@@ -459,7 +459,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.restore();
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         uploadTranslationDictionaryViaAPI([
           ...germanFieldNames,
@@ -971,7 +971,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       uploadTranslationDictionaryViaAPI(translations);
       cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
         enable_embedding: true,
@@ -1066,7 +1066,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },

@@ -710,12 +710,25 @@
   [row]
   (update row :legacy_input decode-pgobject))
 
-;; Models whose `mi/can-read?` is a pure function of `:collection_id` (via
-;; `perms/can-read-audit-helper` → `perms-objects-set-for-parent-collection`).
-;; `indexed-entity` rows resolve to the parent Card, whose `collection_id` is denormalized
-;; onto the index row at ingest time via the search spec's Collection join.
+;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
+;; already denormalized on the index row. Values are the Toucan model whose `can-read?`
+;; defmethod is invoked on a stub instance carrying only `:collection_id`.
+;;
+;;  - "card" / "metric" / "dataset" → :model/Card
+;;  - "dashboard"                   → :model/Dashboard (as of 20260420 this _could_ be
+;;                                    :model/Card for additional albeit modest perf gains
+;;                                    but choosing to not silently ride Card's semantics)
+;;  - "indexed-entity"              → :model/Card by design: the index row's
+;;                                    `collection_id` is the parent Card's (denormalized
+;;                                    via the spec's Collection join), so routing through
+;;                                    Card short-circuits the original ModelIndex → Card
+;;                                    resolution in `filter-can-read-indexed-entity`.
 (def ^:private collection-id-only-search-models
-  #{"card" "metric" "dataset" "dashboard" "indexed-entity"})
+  {"card"           :model/Card
+   "metric"         :model/Card
+   "dataset"        :model/Card
+   "dashboard"      :model/Dashboard
+   "indexed-entity" :model/Card})
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
@@ -724,21 +737,19 @@
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
         ;; Fast path: the permission check depends only on `:collection_id`, which is already on the
-        ;; index row. Dedupe by collection_id so `can-read?` runs once per distinct collection instead
-        ;; of once per document. A stub `:model/Card` instance is sufficient to drive the dispatch
-        ;; and satisfies the fields `mi/can-read? :model/Card` actually reads.
-        coll-readable? (memoize
-                        (fn [coll-id]
-                          (mi/can-read? (t2/instance :model/Card {:collection_id coll-id}))))
-        check-timer (u/start-timer)
-        fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
-        check-ms (u/since-ms check-timer)
-        select-timer (u/start-timer)
+        ;; index row. Dedupe by `[stub-model, collection_id]` so `can-read?` runs at most once per
+        ;; (model, collection) pair instead of once per document.
+        readable? (memoize
+                   (fn [stub-model coll-id]
+                     (mi/can-read? (t2/instance stub-model {:collection_id coll-id}))))
+        fast-filtered (filterv (fn [doc]
+                                 (readable? (get collection-id-only-search-models (:model doc))
+                                            (:collection_id doc)))
+                               fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model docs] (group-by doc->t2-model slow-docs)
                                  t2-instance (t2/select t2-model :id [:in (map :id docs)])]
                              t2-instance))
-        select-ms (u/since-ms select-timer)
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
         slow-filtered (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) slow-docs)
@@ -750,9 +761,6 @@
                                        :fast-count (count fast-docs)
                                        :slow-count (count slow-docs)
                                        :slow-fetched-count (count slow-t2-instances)
-                                       :distinct-fast-coll-ids (count (into #{} (map :collection_id) fast-docs))
-                                       :select-ms select-ms
-                                       :check-ms check-ms
                                        :time-ms time-ms})
 
     (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
