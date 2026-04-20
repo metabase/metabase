@@ -2,9 +2,10 @@ import userEvent from "@testing-library/user-event";
 import Color from "color";
 import { useState } from "react";
 
-import { render, screen, within } from "__support__/ui";
+import { act, render, screen, within } from "__support__/ui";
 
 import { ColorPicker } from "./ColorPicker";
+import { ColorPickerContent } from "./ColorPickerContent";
 
 const TestColorPicker = () => {
   const [value, setValue] = useState("white");
@@ -36,5 +37,42 @@ describe("ColorPicker", () => {
     await userEvent.type(input, color.hex());
 
     expect(screen.getByLabelText(color.hex())).toBeInTheDocument();
+  });
+
+  describe("ColorPickerContent showAlpha", () => {
+    it("does not render the alpha slider by default", () => {
+      render(<ColorPickerContent value="#ff0000" onChange={jest.fn()} />);
+      expect(
+        screen.queryByRole("slider", { name: "Alpha" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders the alpha slider when showAlpha is set", () => {
+      render(
+        <ColorPickerContent value="#ff0000" showAlpha onChange={jest.fn()} />,
+      );
+      expect(screen.getByRole("slider", { name: "Alpha" })).toBeInTheDocument();
+    });
+
+    it("emits an 8-character hex when alpha is reduced via the slider", () => {
+      const onChange = jest.fn();
+      render(
+        <ColorPickerContent value="#ff0000" showAlpha onChange={onChange} />,
+      );
+
+      const slider = screen.getByRole("slider", { name: "Alpha" });
+      jest
+        .spyOn(slider, "getBoundingClientRect")
+        .mockReturnValue({ left: 0, width: 100 } as DOMRect);
+
+      // Drag to ~50% alpha
+      act(() => {
+        slider.dispatchEvent(
+          new MouseEvent("mousedown", { bubbles: true, clientX: 50 }),
+        );
+      });
+
+      expect(onChange).toHaveBeenLastCalledWith("#ff000080");
+    });
   });
 });

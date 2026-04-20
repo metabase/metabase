@@ -94,6 +94,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                   key={key}
                   label={label()}
                   value={(colors[key] as string) ?? ""}
+                  showAlpha
                   onChange={(color) => editor.setColor(key, color ?? "")}
                 />
               ))}
@@ -141,6 +142,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                     key={key}
                     label={label()}
                     value={(colors[key] as string) ?? ""}
+                    showAlpha
                     onChange={(color) => editor.setColor(key, color ?? "")}
                   />
                 ))}
@@ -168,6 +170,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                       key={i}
                       label={`Chart ${i + 1}`}
                       value={value}
+                      showAlpha
                       onChange={(color) => editor.setChartColor(i, color ?? "")}
                     />
                   );

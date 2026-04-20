@@ -69,3 +69,45 @@ export const HuePointer = styled(ControlsPointer)`
   height: 0.625rem;
   transform: translate(-50%, -0.0625rem);
 `;
+
+// eslint-disable-next-line metabase/no-color-literals
+export const AlphaTrack = styled.div`
+  position: relative;
+  height: 0.5rem;
+  margin-top: 1rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  cursor: pointer;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 0.5rem 0.5rem;
+  background-position:
+    0 0,
+    0 0.25rem,
+    0.25rem -0.25rem,
+    -0.25rem 0;
+`;
+
+// eslint-disable-next-line metabase/no-color-literals
+export const AlphaGradient = styled.div`
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0),
+    var(--alpha-color, rgba(0, 0, 0, 0))
+  );
+  pointer-events: none;
+`;
+
+export const AlphaPointer = styled(ControlsPointer)`
+  width: 0.625rem;
+  height: 0.625rem;
+  transform: translate(-50%, -0.0625rem);
+  position: absolute;
+  top: 0;
+`;
