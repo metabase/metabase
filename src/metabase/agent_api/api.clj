@@ -427,17 +427,14 @@
   [token]
   (-> token u/decode-base64 json/decode+kw))
 
-(defn- extract-total-limit
-  "Pull the user's :limit off a live lib query's last stage and return
-   {:query <serializable-limitless-query> :total-limit <int>}. The :limit is removed
-   because it is enforced via pagination in the application layer, and capped at
-   the combined query endpoint's hard maximum. The returned :query is prepared for
-   serialization so it can round-trip through a continuation token."
+(defn- total-row-limit
+  "The user's requested :limit, defaulted when absent and capped at the combined
+   endpoint's hard maximum. This is the app-level total-row budget enforced across
+   paginated responses; each page's QP-level cap comes from `:page.items`, which
+   `remaining-page-rows` clamps to respect this total."
   [live-query]
-  (let [user-limit  (lib/current-limit live-query)
-        total-limit (min (or user-limit default-query-row-limit) max-total-row-limit)]
-    {:query       (lib/prepare-for-serialization (lib/limit live-query nil))
-     :total-limit total-limit}))
+  (min (or (lib/current-limit live-query) default-query-row-limit)
+       max-total-row-limit))
 
 (defn- rows-before-page
   "Total rows consumed by the pages preceding `page`. Single source of truth for
@@ -459,10 +456,10 @@
        (< (rows-before-page (inc page)) total-limit)))
 
 (defn- apply-page-to-query
-  "Set `:page` on the last stage of a plain MBQL 5 query map (lib metadata already
-  stripped). Operates on the plain-map form because the continuation-token path only
-  has that shape available — rehydrating to a live lib query here would require a
-  metadata provider we don't currently plumb through the token."
+  "Set `:page` on the last stage of a serialized MBQL 5 query map. Operates on the
+  plain-map form because the continuation-token path only has that shape available —
+  rehydrating to a live lib query here would require a metadata provider we don't
+  currently plumb through the token."
   [query-map page items]
   (let [stages   (:stages query-map)
         last-idx (dec (count stages))]
@@ -494,14 +491,16 @@
 
 (defn- initial-page-state
   "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
-   shape. A fresh program evaluates + extracts the user's :limit; a continuation token
-   carries that state from a prior response."
+   shape. A fresh program evaluates the user's program and computes a total-row budget
+   from its `:limit`; a continuation token carries that state from a prior response."
   [body]
   (if-let [token (:continuation_token body)]
     (let [{:keys [query pagination]} (decode-continuation-token token)]
       {:query query :total-limit (:limit pagination) :page (:page pagination)})
-    (let [{:keys [query total-limit]} (extract-total-limit (evaluate-program-to-live-query body))]
-      {:query query :total-limit total-limit :page 1})))
+    (let [live-query (evaluate-program-to-live-query body)]
+      {:query       (lib/prepare-for-serialization live-query)
+       :total-limit (total-row-limit live-query)
+       :page        1})))
 
 (api.macros/defendpoint :post "/v2/query"
   :- (streaming-response/streaming-response-schema ::query-response)
