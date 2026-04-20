@@ -27,10 +27,11 @@ import {
 
 interface EditorPanelProps {
   editor: EmbeddingThemeEditorResult;
+  onSave: () => void;
   onCancel: () => void;
 }
 
-export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
+export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
   const [moreColorsOpen, setMoreColorsOpen] = useState(false);
 
   const { currentTheme } = editor;
@@ -217,11 +218,7 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
         <Button variant="subtle" onClick={onCancel}>
           {t`Cancel`}
         </Button>
-        <Button
-          variant="filled"
-          onClick={editor.handleSave}
-          disabled={!editor.isDirty}
-        >
+        <Button variant="filled" onClick={onSave} disabled={!editor.isDirty}>
           {t`Save theme`}
         </Button>
       </Flex>

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
-import _ from "underscore";
 
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { USER_SETTINGS_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
@@ -25,14 +24,12 @@ const getSettingsToPersist = ({
   isSimpleEmbedFeatureAvailable: boolean;
   settings: Partial<SdkIframeEmbedSetupSettings>;
 }): Partial<Pick<SdkIframeEmbedSetupSettings, "theme">> => {
-  const keys = [];
-
-  // We don't allow theme change when `simple embedding` feature is not available.
-  if (isSimpleEmbedFeatureAvailable) {
-    keys.push("theme");
+  // Theme customization requires the `simple embedding` feature.
+  if (!isSimpleEmbedFeatureAvailable || !settings.theme) {
+    return {};
   }
 
-  return _.pick(settings, keys);
+  return { theme: settings.theme };
 };
 
 const usePersistedSettings = ({

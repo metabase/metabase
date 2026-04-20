@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
@@ -23,11 +24,19 @@ export function EmbeddingThemeEditorApp({
   const themeId = parseInt(params.themeId, 10);
   const editor = useEmbeddingThemeEditor(themeId);
   const dispatch = useDispatch();
+  const isSavingRef = useRef(false);
 
-  useBeforeUnload(editor.isDirty);
+  const shouldWarnOnLeave = editor.isDirty && !isSavingRef.current;
+  useBeforeUnload(shouldWarnOnLeave);
 
-  const handleCancel = () => {
+  const goToThemeList = () => {
     dispatch(push("/admin/embedding/themes"));
+  };
+
+  const handleSave = async () => {
+    isSavingRef.current = true;
+    await editor.handleSave();
+    goToThemeList();
   };
 
   if (editor.isLoading) {
@@ -44,9 +53,13 @@ export function EmbeddingThemeEditorApp({
 
   return (
     <Flex h="100%" style={{ overflow: "hidden" }}>
-      <EditorPanel editor={editor} onCancel={handleCancel} />
+      <EditorPanel
+        editor={editor}
+        onSave={handleSave}
+        onCancel={goToThemeList}
+      />
       <PreviewPanel settings={editor.currentTheme.settings} />
-      <LeaveRouteConfirmModal isEnabled={editor.isDirty} route={route} />
+      <LeaveRouteConfirmModal isEnabled={shouldWarnOnLeave} route={route} />
     </Flex>
   );
 }

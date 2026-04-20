@@ -92,9 +92,6 @@ describe(
       cy.findByRole("button", { name: /Save theme/ }).click();
 
       H.undoToast().findByText("Theme saved").should("exist");
-
-      cy.log("save button should be disabled after save");
-      cy.findByRole("button", { name: /Save theme/ }).should("be.disabled");
     });
 
     it("can cancel and navigate back to listing", () => {
@@ -175,6 +172,17 @@ describe(
           .findByLabelText("Revert to default main colors")
           .should("be.visible");
 
+        cy.log("click revert to reset main colors back to defaults");
+        H.main().findByLabelText("Revert to default main colors").click();
+
+        cy.log("revert button should disappear after resetting");
+        H.main()
+          .findByLabelText("Revert to default main colors")
+          .should("not.exist");
+
+        cy.log("change the brand color again");
+        changeColor("Brand", "FF0000");
+
         cy.log("save the theme with the changed brand color");
         cy.findByRole("button", { name: /Save theme/ }).click();
 
@@ -184,14 +192,6 @@ describe(
         });
 
         H.undoToast().findByText("Theme saved").should("exist");
-
-        cy.log("click revert to reset main colors back to defaults");
-        H.main().findByLabelText("Revert to default main colors").click();
-
-        cy.log("revert button should disappear after resetting");
-        H.main()
-          .findByLabelText("Revert to default main colors")
-          .should("not.exist");
       });
     });
 
