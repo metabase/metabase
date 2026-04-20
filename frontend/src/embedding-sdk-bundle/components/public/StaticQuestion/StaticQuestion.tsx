@@ -167,12 +167,12 @@ const StaticQuestionInner = (
               >
                 {withChartTypeSelector && (
                   <SdkQuestion.ChartTypeDropdown
-                    className={MobileToolbarS.LeftButton}
+                    className={MobileToolbarS.MobileToolbarLeftButton}
                   />
                 )}
 
                 <SdkQuestion.DownloadWidgetDropdown
-                  buttonClassName={MobileToolbarS.RightButton}
+                  buttonClassName={MobileToolbarS.MobileToolbarRightButton}
                 />
               </RenderIfHasContent>
 

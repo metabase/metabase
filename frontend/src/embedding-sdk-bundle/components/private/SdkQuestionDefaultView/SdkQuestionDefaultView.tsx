@@ -226,18 +226,20 @@ export const SdkQuestionDefaultView = ({
                 justify="start"
                 className={cx(
                   ToolbarButtonS.PrimaryToolbarButton,
-                  MobileToolbarS.LeftButton,
+                  MobileToolbarS.MobileToolbarLeftButton,
                 )}
                 onClick={toggleEditor}
               />
             ) : (
               withChartTypeSelector && (
-                <ChartTypeDropdown className={MobileToolbarS.LeftButton} />
+                <ChartTypeDropdown
+                  className={MobileToolbarS.MobileToolbarLeftButton}
+                />
               )
             )}
 
             <EditorButton
-              className={MobileToolbarS.RightButton}
+              className={MobileToolbarS.MobileToolbarRightButton}
               isOpen={isEditorOpen}
               onClick={toggleEditor}
             />
