@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -80,7 +79,6 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
     opened,
     defaultOpened,
     onOpenChange,
-    className: externalClassName,
     ...buttonProps
   } = props;
 
@@ -151,7 +149,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
           px={undefined}
           pr="md"
           rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
-          className={cx(ToolbarButtonS.PrimaryToolbarButton, externalClassName)}
+          className={ToolbarButtonS.PrimaryToolbarButton}
           {...buttonProps}
           onClick={() => combobox.toggleDropdown()}
         />
