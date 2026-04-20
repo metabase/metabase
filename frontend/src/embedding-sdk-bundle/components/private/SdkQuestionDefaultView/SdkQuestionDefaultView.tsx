@@ -45,18 +45,17 @@ import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
 import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
 import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
+import { ResultToolbar } from "../SdkQuestion/components/ResultToolbar/ResultToolbar";
 import {
   SaveButton,
   shouldShowSaveButton,
 } from "../SdkQuestion/components/SaveButton";
 import { SummarizeDropdown } from "../SdkQuestion/components/Summarize/SummarizeDropdown";
-import { ToolbarButton } from "../SdkQuestion/components/util/ToolbarButton";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
-import ToolbarButtonS from "../SdkQuestion/styles/ToolbarButton.module.css";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
+import { MobileToolbar } from "./MobileToolbar";
 import SdkQuestionDefaultViewS from "./SdkQuestionDefaultView.module.css";
-import { SdkToolbar } from "./SdkToolbar";
 
 export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   /**
@@ -216,87 +215,81 @@ export const SdkQuestionDefaultView = ({
         </RenderIfHasContent>
 
         {queryResults && (
-          <SdkToolbar
-            isMobile={isMobile}
-            data-testid="interactive-question-result-toolbar"
-            left={
-              isEditorOpen ? (
-                <PopoverBackButton
-                  onClick={toggleEditor}
-                  c="brand"
-                  fz="md"
-                  ml="sm"
-                >
-                  {t`Back to visualization`}
-                </PopoverBackButton>
-              ) : (
-                withChartTypeSelector && (
-                  <>
-                    <Button.Group>
-                      <ChartTypeDropdown />
-                      <QuestionSettingsDropdown />
-                    </Button.Group>
+          <>
+            {!isMobile && (
+              <RenderIfHasContent
+                component={ResultToolbar}
+                data-testid="interactive-question-result-toolbar"
+              >
+                <RenderIfHasContent component={Group} gap="xs">
+                  {isEditorOpen ? (
+                    <PopoverBackButton
+                      onClick={toggleEditor}
+                      c="brand"
+                      fz="md"
+                      ml="sm"
+                    >
+                      {t`Back to visualization`}
+                    </PopoverBackButton>
+                  ) : (
+                    <>
+                      {withChartTypeSelector && (
+                        <>
+                          <Button.Group>
+                            <ChartTypeDropdown />
+                            <QuestionSettingsDropdown />
+                          </Button.Group>
 
-                    {!isNativeQuestion && (
-                      <Divider
-                        mx="xs"
-                        orientation="vertical"
-                        style={{
-                          color: "var(--mb-color-border) !important",
-                        }}
-                      />
-                    )}
-                  </>
-                )
-              )
-            }
-            mobileLeft={({ className, styles }) =>
-              isEditorOpen ? (
-                <ToolbarButton
-                  isHighlighted={false}
-                  variant="default"
-                  icon="chevronleft"
-                  label={t`Back to visualization`}
-                  c="brand"
-                  justify="start"
-                  className={cx(ToolbarButtonS.PrimaryToolbarButton, className)}
-                  onClick={toggleEditor}
-                />
-              ) : (
-                withChartTypeSelector && (
-                  <ChartTypeDropdown className={className} styles={styles} />
-                )
-              )
-            }
-            desktopExtra={
-              !isEditorOpen &&
-              !isNativeQuestion && (
-                <>
-                  <FilterDropdown />
-                  <SummarizeDropdown />
-                  <BreakoutDropdown />
-                </>
-              )
-            }
-            right={
-              <>
-                {!isEditorOpen && (
-                  <>
-                    <DownloadWidgetDropdown />
-                    <QuestionAlertsButton />
-                  </>
+                          {!isNativeQuestion && (
+                            <Divider
+                              mx="xs"
+                              orientation="vertical"
+                              style={{
+                                color: "var(--mb-color-border) !important",
+                              }}
+                            />
+                          )}
+                        </>
+                      )}
+
+                      {!isNativeQuestion && (
+                        <>
+                          <FilterDropdown />
+                          <SummarizeDropdown />
+                          <BreakoutDropdown />
+                        </>
+                      )}
+                    </>
+                  )}
+                </RenderIfHasContent>
+                <RenderIfHasContent component={Group} gap="sm" ml="auto">
+                  {!isEditorOpen && (
+                    <>
+                      <DownloadWidgetDropdown />
+                      <QuestionAlertsButton />
+                    </>
+                  )}
+                  <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+                </RenderIfHasContent>
+              </RenderIfHasContent>
+            )}
+
+            {isMobile && (
+              <MobileToolbar
+                isEditorOpen={isEditorOpen}
+                toggleEditor={toggleEditor}
+                withChartTypeSelector={withChartTypeSelector}
+                rightButton={({ className }) => (
+                  <EditorButton
+                    className={className}
+                    isOpen={isEditorOpen}
+                    onClick={toggleEditor}
+                  />
                 )}
-                <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
-              </>
-            }
-            mobileRight={({ className }) => (
-              <EditorButton
-                className={className}
-                isOpen={isEditorOpen}
-                onClick={toggleEditor}
+                data-testid="result-mobile-toolbar"
               />
             )}
-          />
+          </>
         )}
 
         {isGuestEmbed && (
