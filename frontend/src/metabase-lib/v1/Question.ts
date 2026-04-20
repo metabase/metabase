@@ -9,7 +9,6 @@ import {
   type SerializeCardOptions,
   serializeCardForUrl,
 } from "metabase/common/utils/card";
-import { isTransientCardId } from "metabase/common/utils/card";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import {
@@ -914,6 +913,10 @@ class Question {
 
     return new Question(card, metadata, parameterValues);
   }
+}
+
+export function isTransientCardId(id: CardId | string | null | undefined) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
