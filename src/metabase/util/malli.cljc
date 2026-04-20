@@ -97,8 +97,8 @@
                                                           (symbol multifn))
                                     :dispatch-value ~dispatch-value-symb}
               f#                   ~(if instrument?
-                                      (mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))
-                                      (mu.fn/deparameterized-fn-form (mu.fn/parse-fn-tail fn-tail)))]
+                                      (mu.fn/instrumented-fn-form error-context-symb :clj (mu.fn/parse-fn-tail fn-tail))
+                                      (mu.fn/deparameterized-fn-form :clj (mu.fn/parse-fn-tail fn-tail)))]
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                       ~dispatch-value-symb
                       f#)))))
@@ -107,7 +107,7 @@
      "Impl for [[defmethod]] for ClojureScript."
      [multifn dispatch-value & fn-tail]
      `(core/defmethod ~multifn ~dispatch-value
-        ~@(mu.fn/deparameterized-fn-tail (mu.fn/parse-fn-tail fn-tail)))))
+        ~@(mu.fn/deparameterized-fn-tail :cljs (mu.fn/parse-fn-tail fn-tail)))))
 
 #?(:clj
    (defmacro defmethod
