@@ -29,7 +29,7 @@ export const automaticInsightsDrill: Drill = ({
       name: "automatic-insights.compare",
       title: t`Compare to the rest`,
       section: "auto-popover",
-      icon: "segment",
+      icon: "segment2",
       buttonType: "horizontal",
       url: () => getComparisonDashboardUrl(question, applyDrill(drill)),
     },
