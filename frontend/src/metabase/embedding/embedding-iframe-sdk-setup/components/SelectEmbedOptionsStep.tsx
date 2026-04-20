@@ -332,7 +332,9 @@ const AppearanceSection = () => {
 
   const { theme } = settings;
 
-  const { data: savedThemes } = useListEmbeddingThemesQuery();
+  const { data: savedThemes } = useListEmbeddingThemesQuery(undefined, {
+    skip: !isSimpleEmbedFeatureAvailable,
+  });
 
   const updateThemeId = useCallback(
     (themeId: number | undefined) => {
