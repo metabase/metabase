@@ -692,7 +692,6 @@ describe("InteractiveQuestion — query prop", () => {
     await setup();
 
     expect(screen.getByTestId("query-visualization-root")).toBeVisible();
-    // screen.debug(undefined, Infinity);
     expect(
       within(screen.getByTestId("table-root")).getByText(
         TEST_COLUMN.display_name,

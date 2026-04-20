@@ -186,7 +186,6 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
     expect(scheduleTypeSelect).toHaveValue("weekly");
     expect(screen.getByTestId("select-weekday")).toHaveValue("Monday");
 
-    // screen.debug(undefined, Infinity);
     // Verify time is 2:00pm
     const timeSelector = screen.getByTestId("select-time");
     expect(timeSelector).toHaveValue("2:00");
