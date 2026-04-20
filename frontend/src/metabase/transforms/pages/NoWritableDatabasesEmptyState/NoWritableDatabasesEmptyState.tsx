@@ -4,13 +4,16 @@ import { t } from "ttag";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Center, Icon, Stack, Text, Title } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
 export function NoWritableDatabasesEmptyState() {
   const isAdmin = useSelector(getUserIsAdmin);
+  const user = useSelector(getUser);
+  const canAccessDatabases =
+    isAdmin || user?.permissions?.can_access_db_details;
 
   return (
     <PageContainer data-testid="no-writable-databases-empty-state">
@@ -29,7 +32,7 @@ export function NoWritableDatabasesEmptyState() {
           <Text ta="center" c="text-secondary">
             {t`None of your connected databases have a writable connection. Either edit the connection on the database you want to enable transforms on, or connect to a different database.`}
           </Text>
-          {isAdmin && (
+          {canAccessDatabases && (
             <Button
               component={Link}
               to={Urls.viewDatabases()}

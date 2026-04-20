@@ -28,12 +28,14 @@ const setup = ({
   hasTransformFeature = false,
   transformsEnabled = false,
   isAdmin = false,
+  canAccessDbDetails = false,
   databases = [],
 }: {
   isHosted?: boolean;
   hasTransformFeature?: boolean;
   transformsEnabled?: boolean;
   isAdmin?: boolean;
+  canAccessDbDetails?: boolean;
   databases?: Database[];
 } = {}) => {
   setupUserMetabotPermissionsEndpoint();
@@ -64,7 +66,10 @@ const setup = ({
     {
       storeInitialState: createMockState({
         settings,
-        currentUser: createMockUser({ is_superuser: isAdmin }),
+        currentUser: createMockUser({
+          is_superuser: isAdmin,
+          permissions: { can_access_db_details: canAccessDbDetails },
+        }),
       }),
       withRouter: true,
       initialRoute: path,
@@ -188,7 +193,23 @@ describe("TransformSectionLayout", () => {
       expect(link).toHaveAttribute("href", "/admin/databases");
     });
 
-    it("should not show the 'View your database connections' button for non-admin users", async () => {
+    it("should show the 'View your database connections' button for users with manage database permission", async () => {
+      setup({
+        transformsEnabled: true,
+        isAdmin: false,
+        canAccessDbDetails: true,
+        databases: [],
+      });
+
+      await assertNoWritableDatabasesEmptyState();
+      expect(
+        screen.getByRole("link", {
+          name: "View your database connections",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show the 'View your database connections' button for non-admin users without manage database permission", async () => {
       setup({
         transformsEnabled: true,
         isAdmin: false,
