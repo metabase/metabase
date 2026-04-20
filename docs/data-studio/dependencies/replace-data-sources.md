@@ -63,7 +63,7 @@ You can replace a table, model, or saved question with any other table, model, o
 
 - If replacing a table, that **original table can't be a target of a Metabase's [semantic foreign keys](../../data-modeling/semantic-types.md)** from other tables.
 
-  Foreign keys can still exist on the database level, but not on the level of Metabase semantic types. This requirement is necessary to avoid issues with implicit joins when swapping tables: for example, there can
+  Foreign keys can still exist on the database level, but not on the level of Metabase semantic types. This requirement is necessary to avoid issues with implicit joins when swapping tables.
 
   The old table can still have foreign keys _to_ other tables, it just can't be the _target_ of a foreign key.
 
