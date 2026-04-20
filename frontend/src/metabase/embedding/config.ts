@@ -32,8 +32,8 @@ export function isEmbedding() {
 }
 
 /**
- * Detect if this page is embedded in itself, i.e. it's a embed preview
- * will need to do something different if we ever embed metabase in itself for another reason
+ * Detect if this page is embedded in itself, i.e. it's an embed preview.
+ * It will need to do something different if we ever embed Metabase in itself for another reason.
  */
 export function isEmbedPreview() {
   return IFRAMED_IN_SELF;
