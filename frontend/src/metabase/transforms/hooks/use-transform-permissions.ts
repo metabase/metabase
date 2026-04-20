@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useListDatabasesQuery } from "metabase/api/database";
 import type { Database, Transform } from "metabase-types/api";
 
-import { sourceDatabaseId } from "../utils";
+import { doesDatabaseSupportTransforms, sourceDatabaseId } from "../utils";
 
 export const canEditTransform = (
   transform: Transform,
@@ -25,7 +25,11 @@ export const useTransformPermissions = ({
   } = useListDatabasesQuery({ include_analytics: true });
 
   const transformsDatabases = useMemo(() => {
-    return databases?.data.filter((d) => d.transforms_permissions === "write");
+    return databases?.data.filter(
+      (d) =>
+        d.transforms_permissions === "write" &&
+        doesDatabaseSupportTransforms(d),
+    );
   }, [databases]);
 
   const readOnly = useMemo(() => {

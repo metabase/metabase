@@ -5,7 +5,9 @@ import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
+import { NoWritableDatabasesEmptyState } from "metabase/transforms/pages/NoWritableDatabasesEmptyState";
 import { getShouldShowTransformsUpsell } from "metabase/transforms/selectors";
 
 import { SectionLayout } from "../../components/SectionLayout";
@@ -21,11 +23,20 @@ export function TransformsSectionLayout({
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
   const isTransformsEnabled = useSetting("transforms-enabled");
   const isHosted = useSetting("is-hosted?");
+  const { transformsDatabases, isLoadingDatabases } = useTransformPermissions();
 
   if (shouldShowUpsell) {
     return <PLUGIN_TRANSFORMS.TransformsUpsellPage />;
   } else if (!isTransformsEnabled && !isHosted) {
     return <EnableTransformsPage />;
+  }
+
+  if (!isLoadingDatabases && transformsDatabases?.length === 0) {
+    return (
+      <SectionLayout>
+        <NoWritableDatabasesEmptyState />
+      </SectionLayout>
+    );
   }
 
   return <SectionLayout>{children}</SectionLayout>;
