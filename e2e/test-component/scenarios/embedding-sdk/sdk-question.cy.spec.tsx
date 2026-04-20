@@ -389,11 +389,11 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       getSdkRoot()
         .findByTestId("interactive-question-result-toolbar")
         .within(() => {
-          cy.get(".Icon-filter").should("not.exist");
-          cy.get(".Icon-sum").should("not.exist");
-          cy.get(".Icon-arrow_split").should("not.exist");
+          cy.get(".Icon-filter").should("not.be.visible");
+          cy.get(".Icon-sum").should("not.be.visible");
+          cy.get(".Icon-arrow_split").should("not.be.visible");
           cy.findByTestId("question-download-widget-button").should(
-            "not.exist",
+            "not.be.visible",
           );
         });
     });

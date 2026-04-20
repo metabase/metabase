@@ -13,7 +13,6 @@ import { QuestionVisualization } from "embedding-sdk-bundle/components/private/S
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
-import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
@@ -54,7 +53,7 @@ import { SummarizeDropdown } from "../SdkQuestion/components/Summarize/Summarize
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
-import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
+import SdkQuestionDefaultViewS from "./SdkQuestionDefaultView.module.css";
 
 export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   /**
@@ -160,8 +159,6 @@ export const SdkQuestionDefaultView = ({
     { skipCollectionFetching: !isSaveEnabled },
   );
 
-  const { ref: containerRef, isMobile } = useMobileLayout();
-
   if (
     !isEditorOpen &&
     (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
@@ -186,15 +183,14 @@ export const SdkQuestionDefaultView = ({
 
   return (
     <FlexibleSizeComponent
-      ref={containerRef}
       height={height}
       width={width}
-      className={cx(InteractiveQuestionS.Container, className)}
+      className={cx(SdkQuestionDefaultViewS.Container, className)}
       style={style}
     >
       <RenderIfHasContent
         component={Stack}
-        className={InteractiveQuestionS.TopBar}
+        className={SdkQuestionDefaultViewS.TopBar}
         gap="sm"
         p="md"
       >
@@ -236,8 +232,9 @@ export const SdkQuestionDefaultView = ({
                         <QuestionSettingsDropdown />
                       </Button.Group>
 
-                      {!isNativeQuestion && !isMobile && (
+                      {!isNativeQuestion && (
                         <Divider
+                          className={SdkQuestionDefaultViewS.HideOnMobile}
                           mx="xs"
                           orientation="vertical"
                           style={{
@@ -248,22 +245,28 @@ export const SdkQuestionDefaultView = ({
                     </>
                   )}
 
-                  {!isNativeQuestion && !isMobile && (
-                    <>
+                  {!isNativeQuestion && (
+                    <Group
+                      className={SdkQuestionDefaultViewS.HideOnMobile}
+                      gap="xs"
+                    >
                       <FilterDropdown />
                       <SummarizeDropdown />
                       <BreakoutDropdown />
-                    </>
+                    </Group>
                   )}
                 </>
               )}
             </RenderIfHasContent>
             <RenderIfHasContent component={Group} gap="sm" ml="auto">
-              {!isEditorOpen && !isMobile && (
-                <>
+              {!isEditorOpen && (
+                <Group
+                  className={SdkQuestionDefaultViewS.HideOnMobile}
+                  gap="sm"
+                >
                   <DownloadWidgetDropdown />
                   <QuestionAlertsButton />
-                </>
+                </Group>
               )}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </RenderIfHasContent>
@@ -278,12 +281,12 @@ export const SdkQuestionDefaultView = ({
       </RenderIfHasContent>
 
       <Box
-        className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
+        className={cx(SdkQuestionDefaultViewS.Main, "sdk-question-main")}
         p="sm"
         w="100%"
         h="100%"
       >
-        <Box className={InteractiveQuestionS.Content}>
+        <Box className={SdkQuestionDefaultViewS.Content}>
           {isEditorOpen ? (
             <Editor onApply={closeEditor} />
           ) : (
