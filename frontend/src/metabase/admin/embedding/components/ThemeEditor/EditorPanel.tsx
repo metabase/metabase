@@ -67,6 +67,8 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
               label={t`Theme name`}
               value={currentTheme.name}
               onChange={(e) => editor.setName(e.currentTarget.value)}
+              autoFocus
+              onFocus={(e) => e.currentTarget.select()}
             />
           </Card>
 
