@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
+import * as CardLib from "metabase/common/utils/card";
 import { Databases } from "metabase/entities/databases";
 import { Snippets } from "metabase/entities/snippets";
 import * as questionActions from "metabase/questions/actions";
@@ -9,7 +10,6 @@ import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
-import * as CardLib from "metabase/common/utils/card";
 import { checkNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";

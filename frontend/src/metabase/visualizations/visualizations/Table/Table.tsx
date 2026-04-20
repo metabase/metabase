@@ -3,6 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isNative } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
@@ -29,7 +30,6 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isNative } from "metabase/common/utils/card";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isAvatarURL,

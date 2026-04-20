@@ -5,11 +5,12 @@ import slugg from "slugg";
 import _ from "underscore";
 
 /* eslint-disable no-restricted-imports */
-import { applyParameter } from "metabase/querying/parameters/utils/query";
 import {
   type SerializeCardOptions,
   serializeCardForUrl,
 } from "metabase/common/utils/card";
+import { isTransientCardId } from "metabase/common/utils/card";
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -27,7 +28,6 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import { isTransientCardId } from "metabase/common/utils/card";
 import type {
   Card,
   CardDisplayType,

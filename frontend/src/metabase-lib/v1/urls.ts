@@ -1,10 +1,10 @@
+import { isTransientCardId } from "metabase/common/utils/card";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/utils/template-tags";
-import { isTransientCardId } from "metabase/common/utils/card";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import type Question from "./Question";
