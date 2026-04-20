@@ -20,29 +20,21 @@ export type ResponsiveSlot = {
   mobile?: (props: MobileSlotProps) => ReactNode;
 };
 
-/**
- * Slot content can be:
- * - A `{ desktop, mobile }` object when content differs significantly between layouts.
- * - A render function `(mobile: MobileSlotProps | null) => ReactNode` when content
- *   is the same component with different props — receives `null` on desktop,
- *   `{ className, styles }` on mobile.
- */
-export type SlotProp =
-  | ResponsiveSlot
-  | ((mobile: MobileSlotProps | null) => ReactNode)
-  | null;
-
 type SdkToolbarProps = {
   isMobile: boolean;
 
-  /** Left control (chart type selector, back button). */
-  left?: SlotProp;
+  /** Left control (chart type selector, back button).
+   *  `desktop`: rendered in the left Group.
+   *  `mobile`: render prop receiving { className, styles } for LeftButton styling. */
+  left?: ResponsiveSlot | null;
 
   /** Extra desktop-only controls (filters, summarize, breakout). Hidden on mobile. */
   desktopExtra?: ReactNode;
 
-  /** Right controls (editor, download, alerts). */
-  right?: SlotProp;
+  /** Right controls (editor, download, alerts).
+   *  `desktop`: rendered in a right-aligned Group.
+   *  `mobile`: render prop receiving { className } for RightButton styling. */
+  right?: ResponsiveSlot;
 
   "data-testid"?: string;
 };
@@ -60,22 +52,6 @@ const mobileRightProps: MobileSlotProps = {
   styles: {},
 };
 
-function resolveSlot(
-  slot: SlotProp | undefined,
-  isMobile: boolean,
-  mobileProps: MobileSlotProps,
-): ReactNode {
-  if (!slot) {
-    return null;
-  }
-
-  if (typeof slot === "function") {
-    return slot(isMobile ? mobileProps : null);
-  }
-
-  return isMobile ? slot.mobile?.(mobileProps) : slot.desktop;
-}
-
 export const SdkToolbar = forwardRef<HTMLDivElement, SdkToolbarProps>(
   function SdkToolbar(
     { isMobile, left, desktopExtra, right, "data-testid": dataTestId },
@@ -84,8 +60,8 @@ export const SdkToolbar = forwardRef<HTMLDivElement, SdkToolbarProps>(
     if (isMobile) {
       return (
         <Box ref={ref} className={S.MobileToolbar} data-testid={dataTestId}>
-          {resolveSlot(left, true, mobileLeftProps)}
-          {resolveSlot(right, true, mobileRightProps)}
+          {left?.mobile?.(mobileLeftProps)}
+          {right?.mobile?.(mobileRightProps)}
         </Box>
       );
     }
@@ -93,11 +69,11 @@ export const SdkToolbar = forwardRef<HTMLDivElement, SdkToolbarProps>(
     return (
       <ResultToolbar ref={ref} data-testid={dataTestId}>
         <RenderIfHasContent component={Group} gap="xs">
-          {resolveSlot(left, false, mobileLeftProps)}
+          {left?.desktop}
           {desktopExtra}
         </RenderIfHasContent>
         <RenderIfHasContent component={Group} gap="sm" ml="auto">
-          {resolveSlot(right, false, mobileRightProps)}
+          {right?.desktop}
         </RenderIfHasContent>
       </ResultToolbar>
     );
