@@ -33,7 +33,11 @@
     (testing "through full pipeline produces text + usage"
       (is (=? [{:type :start :id string?}
                {:type :text :id string? :text string?}
-               {:type :usage :id string? :model string? :usage {:promptTokens pos-int?}}]
+               {:type :usage :id string? :model string?
+                :usage {:promptTokens pos-int?
+                        :completionTokens nat-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel claude-tool-input-conv-test
@@ -46,7 +50,11 @@
     (testing "through full pipeline produces tool-input + usage"
       (is (=? [{:type :start}
                {:type :tool-input :arguments map?}
-               {:type :usage :model string? :usage {:promptTokens pos-int?}}]
+               {:type :usage :model string?
+                :usage {:promptTokens pos-int?
+                        :completionTokens nat-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel claude-text-and-tool-input-conv-test
@@ -63,7 +71,11 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
-               {:type :usage :model string? :usage {:promptTokens pos-int?}}]
+               {:type :usage :model string?
+                :usage {:promptTokens pos-int?
+                        :completionTokens nat-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel claude-lite-aisdk-xf-test
@@ -74,10 +86,60 @@
     (testing "lite-aisdk-xf collects tool inputs"
       (is (=? [{:type :start}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
-               {:type :usage :model string? :usage {:promptTokens pos-int?}}]
+               {:type :usage :model string?
+                :usage {:promptTokens pos-int?
+                        :completionTokens nat-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens nat-int?}}]
               (remove #(= :text (:type %)) res))))
     (testing "lite-aisdk-xf streams text deltas"
       (is (< 10 (count (filter #(= :text (:type %)) res)))))))
+
+(deftest ^:parallel claude-usage-chunk-cache-fields-test
+  (testing "cache_creation_input_tokens / cache_read_input_tokens from Claude are surfaced on the :usage chunk;
+            :promptTokens is the total input (fresh + cache_creation + cache_read)"
+    (let [events [{:type "message_start"
+                   :message {:id    "msg-1"
+                             :model "claude-haiku-4-5"
+                             :usage {:input_tokens                100
+                                     :output_tokens               0
+                                     :cache_creation_input_tokens 250
+                                     :cache_read_input_tokens     4200}}}
+                  {:type "content_block_start" :index 0 :content_block {:type "text" :id "text-1"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "ok"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "message_delta"
+                   :delta {:stop_reason "end_turn"}
+                   :usage {:input_tokens                100
+                           :output_tokens               7
+                           :cache_creation_input_tokens 250
+                           :cache_read_input_tokens     4200}}
+                  {:type "message_stop"}]
+          chunks (into [] (claude/claude->aisdk-chunks-xf) events)
+          usage  (first (filter #(= :usage (:type %)) chunks))]
+      ;; promptTokens = 100 fresh + 250 cache_creation + 4200 cache_read = 4550
+      (is (=? {:type  :usage
+               :id    "msg-1"
+               :model "claude-haiku-4-5"
+               :usage {:promptTokens        4550
+                       :completionTokens    7
+                       :cacheCreationTokens 250
+                       :cacheReadTokens     4200}}
+              usage))))
+
+  (testing "missing cache fields default to 0"
+    (let [events [{:type "message_start"
+                   :message {:id    "msg-2"
+                             :model "claude-haiku-4-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  {:type "message_delta"
+                   :delta {:stop_reason "end_turn"}
+                   :usage {:input_tokens 10 :output_tokens 3}}
+                  {:type "message_stop"}]
+          chunks (into [] (claude/claude->aisdk-chunks-xf) events)
+          usage  (first (filter #(= :usage (:type %)) chunks))]
+      (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
+             (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->claude-messages tests

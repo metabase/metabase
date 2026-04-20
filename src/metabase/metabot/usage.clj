@@ -11,16 +11,18 @@
 
 (def ^:private usage-map-schema
   [:map
-   [:source            :string]
-   [:model             :string]
-   [:prompt-tokens     [:int {:min 0}]]
-   [:completion-tokens [:int {:min 0}]]
-   [:user-id           {:optional true} [:maybe ms/PositiveInt]]
-   [:tenant-id         {:optional true} [:maybe ms/PositiveInt]]
-   [:conversation-id   {:optional true} [:maybe :string]]
-   [:profile-id        {:optional true} [:maybe :keyword]]
-   [:request-id        {:optional true} [:maybe :string]]
-   [:ai-proxied        {:optional true} [:maybe :boolean]]])
+   [:source                :string]
+   [:model                 :string]
+   [:prompt-tokens         [:int {:min 0}]]
+   [:completion-tokens     [:int {:min 0}]]
+   [:cache-creation-tokens {:optional true} [:maybe [:int {:min 0}]]]
+   [:cache-read-tokens     {:optional true} [:maybe [:int {:min 0}]]]
+   [:user-id               {:optional true} [:maybe ms/PositiveInt]]
+   [:tenant-id             {:optional true} [:maybe ms/PositiveInt]]
+   [:conversation-id       {:optional true} [:maybe :string]]
+   [:profile-id            {:optional true} [:maybe :keyword]]
+   [:request-id            {:optional true} [:maybe :string]]
+   [:ai-proxied            {:optional true} [:maybe :boolean]]])
 
 (defenterprise-schema log-ai-usage! :- :any
   "Record an LLM API call in the ai_usage_log table.

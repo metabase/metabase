@@ -651,7 +651,43 @@
             (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
           (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
           (is (==  25 (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
-          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
+          (is (== 125 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))
+
+        (prometheus/clear! :metabase-metabot/llm-input-tokens)
+        (prometheus/clear! :metabase-metabot/llm-output-tokens)
+        (prometheus/clear! :metabase-metabot/llm-cache-creation-tokens)
+        (prometheus/clear! :metabase-metabot/llm-cache-read-tokens)
+
+        (testing "increments cache token counters when the :usage part carries cache fields"
+          ;; :promptTokens is the pre-summed total input (40 fresh + 300 cache_creation + 1200 cache_read = 1540).
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type  :start :id "m1"}
+                                      {:type  :usage
+                                       :usage {:promptTokens        1540
+                                               :completionTokens    10
+                                               :cacheCreationTokens 300
+                                               :cacheReadTokens     1200}
+                                       :model "test-model"}]))]
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+          (is (==  300 (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+          (is (== 1200 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
+
+        (prometheus/clear! :metabase-metabot/llm-input-tokens)
+        (prometheus/clear! :metabase-metabot/llm-output-tokens)
+        (prometheus/clear! :metabase-metabot/llm-cache-creation-tokens)
+        (prometheus/clear! :metabase-metabot/llm-cache-read-tokens)
+
+        (testing "does not increment cache counters when cache fields are absent or zero"
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type  :start :id "m1"}
+                                      {:type  :usage
+                                       :usage {:promptTokens 10 :completionTokens 5}
+                                       :model "test-model"}]))]
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+          (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+          (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))))))
 
 (deftest call-llm-structured-prometheus-test
   (mt/with-prometheus-system! [_ system]
@@ -744,12 +780,18 @@
 (deftest call-llm-snowplow-test
   (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with a tool call"
     (let [rasta-id (mt/user->id :rasta)]
+      ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
+      ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
+      ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
       (with-redefs [openrouter/openrouter
                     (constantly (test-util/mock-llm-response
                                  [{:type :start :id "msg-1"}
                                   {:type :tool-input :id "call-1" :function "get-time"
                                    :arguments {:tz "UTC"}}
-                                  {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                  {:type :usage :usage {:promptTokens        950
+                                                        :completionTokens    20
+                                                        :cacheCreationTokens 50
+                                                        :cacheReadTokens     800}
                                    :model "test-model" :id "msg-1"}]))]
         (mt/with-current-user rasta-id
           (snowplow-test/with-fake-snowplow-collector
@@ -758,15 +800,17 @@
                   token-events (filter #(contains? (:data %) "total_tokens") events)
                   tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
               (is (=? [{:user-id (str rasta-id)
-                        :data    {"model_id"            "openrouter/test-model"
-                                  "total_tokens"         120
-                                  "prompt_tokens"        100
-                                  "completion_tokens"    20
-                                  "estimated_costs_usd"  0.0
-                                  "duration_ms"          nat-int?
-                                  "source"               "test-source"
-                                  "tag"                  "test-tag"
-                                  "session_id"           "00000000-0000-0000-0000-000000000002"}}]
+                        :data    {"model_id"              "openrouter/test-model"
+                                  "total_tokens"           970
+                                  "prompt_tokens"          950
+                                  "completion_tokens"      20
+                                  "cache_creation_tokens"  50
+                                  "cache_read_tokens"      800
+                                  "estimated_costs_usd"    0.0
+                                  "duration_ms"            nat-int?
+                                  "source"                 "test-source"
+                                  "tag"                    "test-tag"
+                                  "session_id"             "00000000-0000-0000-0000-000000000002"}}]
                       token-events))
               (is (=? [{:user-id (str rasta-id)
                         :data    {"event"         "agent_used_tool"

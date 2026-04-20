@@ -575,6 +575,12 @@
    (prometheus/counter :metabase-metabot/llm-output-tokens
                        {:description "LLM output tokens"
                         :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-cache-creation-tokens
+                       {:description "LLM cache creation input tokens (Anthropic prompt caching)"
+                        :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-cache-read-tokens
+                       {:description "LLM cache read input tokens (Anthropic prompt caching)"
+                        :labels [:model :source]})
    (prometheus/histogram :metabase-metabot/llm-tokens-per-call
                          {:description "Tokens per LLM call"
                           :labels [:model :source]

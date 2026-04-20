@@ -160,35 +160,41 @@
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
-             (let [usage      (:usage part)
-                   model      (or model (:model part) "unknown")
-                   prompt     (:promptTokens usage 0)
-                   completion (:completionTokens usage 0)]
+             (let [usage           (:usage part)
+                   model           (or model (:model part) "unknown")
+                   prompt          (:promptTokens usage 0)
+                   completion      (:completionTokens usage 0)
+                   cache-creation  (:cacheCreationTokens usage 0)
+                   cache-read      (:cacheReadTokens usage 0)]
                (analytics/track-token-usage!
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
-                {:prometheus          true
-                 :snowplow            (some? request-id)
-                 :profile             (some-> profile-id name)
-                 :model-id            model
-                 :prompt-tokens       prompt
-                 :completion-tokens   completion
-                 :total-tokens        (+ prompt completion)
-                 :estimated-costs-usd 0.0
-                 :duration-ms         (long (u/since-ms start-ms))
-                 :user-id             api/*current-user-id*
-                 :request-id          (some-> request-id analytics/uuid->ai-service-hex-uuid)
-                 :session-id          session-id
-                 :source              source
-                 :tag                 tag})
+                {:prometheus            true
+                 :snowplow              (some? request-id)
+                 :profile               (some-> profile-id name)
+                 :model-id              model
+                 :prompt-tokens         prompt
+                 :completion-tokens     completion
+                 :cache-creation-tokens cache-creation
+                 :cache-read-tokens     cache-read
+                 :total-tokens          (+ prompt completion)
+                 :estimated-costs-usd   0.0
+                 :duration-ms           (long (u/since-ms start-ms))
+                 :user-id               api/*current-user-id*
+                 :request-id            (some-> request-id analytics/uuid->ai-service-hex-uuid)
+                 :session-id            session-id
+                 :source                source
+                 :tag                   tag})
                (usage/log-ai-usage!
-                {:source            (or tag source "unknown")
-                 :model             model
-                 :prompt-tokens     prompt
-                 :completion-tokens completion
-                 :conversation-id   session-id
-                 :profile-id        profile-id
-                 :request-id        request-id
-                 :ai-proxied        (boolean ai-proxy?)})))
+                {:source                (or tag source "unknown")
+                 :model                 model
+                 :prompt-tokens         prompt
+                 :completion-tokens     completion
+                 :cache-creation-tokens cache-creation
+                 :cache-read-tokens     cache-read
+                 :conversation-id       session-id
+                 :profile-id            profile-id
+                 :request-id            request-id
+                 :ai-proxied            (boolean ai-proxy?)})))
            part))))
 
 (defn- report-tool-usage-xf

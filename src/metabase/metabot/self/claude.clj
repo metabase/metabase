@@ -14,6 +14,43 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- claude-usage->aisdk-usage
+  "Convert an Anthropic `usage` block into the AISDK `:usage` shape.
+
+  Anthropic reports three disjoint input-token buckets; the total input sent to
+  the model is the sum of all three:
+
+      input_tokens                 — fresh (non-cached) input
+      cache_creation_input_tokens  — input written to the provider cache
+      cache_read_input_tokens      — input served from the provider cache
+
+  We pre-sum these into :promptTokens so downstream analytics and ai_usage_log
+  see a provider-neutral total-input count, matching OpenAI's prompt_tokens
+  semantic (where cache counts are a subset breakdown of the total).
+
+  ai_usage_log column mapping:
+
+    without Anthropic prompt caching:
+      prompt_tokens     := input_tokens
+      completion_tokens := output_tokens
+      total_tokens      := input_tokens + output_tokens
+
+    with Anthropic prompt caching:
+      prompt_tokens     := input_tokens + cache_creation_input_tokens + cache_read_input_tokens
+      completion_tokens := output_tokens
+      total_tokens      := prompt_tokens + completion_tokens
+
+  The two are equivalent when caching is inactive (both cache buckets are 0),
+  so one unified formula is used in code; the split above is purely for reader
+  clarity."
+  [u]
+  {:promptTokens        (+ (:input_tokens u 0)
+                           (:cache_creation_input_tokens u 0)
+                           (:cache_read_input_tokens u 0))
+   :completionTokens    (:output_tokens u 0)
+   :cacheCreationTokens (:cache_creation_input_tokens u 0)
+   :cacheReadTokens     (:cache_read_input_tokens u 0)})
+
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
 
@@ -57,10 +94,9 @@
          (cond-> result
            ;; close up latest type if incomplete
            @current-type (close!)
-           ;; flush last-known usage if stream ended before message_delta
+           ;; flush last-known usage if stream ended before message_delta.
            @last-usage   (rf {:type  :usage
-                              :usage {:promptTokens     (:input_tokens @last-usage 0)
-                                      :completionTokens (:output_tokens @last-usage 0)}
+                              :usage (claude-usage->aisdk-usage @last-usage)
                               :id    @message-id
                               :model @model-name})
            true          (rf)))
@@ -105,6 +141,7 @@
              ;; but message_delta values are cumulative and include the earlier
              ;; counts.
              ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
+             ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
              (= t "message_delta")      (u/prog1
                                           (vreset! last-usage (:usage chunk)))
              ;; end of message

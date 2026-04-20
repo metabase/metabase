@@ -50,7 +50,7 @@
    :snowplow/action           "1-0-0"
    :snowplow/embed_share      "1-0-2"
    :snowplow/llm_usage        "1-0-0"
-   :snowplow/token_usage      "1-0-4"
+   :snowplow/token_usage      "1-0-5"
    :snowplow/serialization    "1-0-1"
    :snowplow/simple_event     "1-0-0"
    :snowplow/cleanup          "1-0-0"
