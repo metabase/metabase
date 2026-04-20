@@ -41,7 +41,11 @@ const EditSandboxingModalContainer = ({
     table_id: tableId,
   });
 
-  const { data: attributes } = useListUserAttributesQuery();
+  const {
+    data: attributes = [],
+    isLoading: isAttributesLoading,
+    error: attributesError,
+  } = useListUserAttributesQuery();
 
   // The plugins state is added dynamically by the enterprise plugin system,
   // so we need to cast to SandboxesState (same approach as the old connect-based mapStateToProps).
@@ -52,10 +56,11 @@ const EditSandboxingModalContainer = ({
   const fetchedPolicy = policies?.[0];
   const policy = draftPolicy ?? fetchedPolicy;
 
-  const isLoading = isPoliciesLoading || !attributes;
+  const isLoading = isPoliciesLoading || isAttributesLoading;
+  const error = policiesError || attributesError;
 
-  if (policiesError) {
-    return <LoadingAndErrorWrapper error={policiesError} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
   }
 
   if (isLoading) {
