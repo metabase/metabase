@@ -42,7 +42,6 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_METABOT,
   PLUGIN_SECURITY_CENTER,
-  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
