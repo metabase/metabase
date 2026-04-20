@@ -1,10 +1,13 @@
 import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import { useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import {
+  METABOT_ERR_MSG,
+  METABOT_PROFILE_OVERRIDES,
+} from "metabase/metabot/constants";
+import {
+  type MetabotErrorMessage,
   addDeveloperMessage,
   getMetabotSuggestedCodeEdit,
   removeSuggestedCodeEdit,
@@ -44,7 +47,7 @@ export function useMetabotSQLSuggestion({
 }: UseMetabotSQLSuggestionOptions) {
   const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
 
-  const [hasError, setHasError] = useState(false);
+  const [error, setError] = useState<MetabotErrorMessage>();
 
   const dispatch = useDispatch();
   const source = useSelector((state) =>
@@ -59,18 +62,29 @@ export function useMetabotSQLSuggestion({
       sourceSql?: string;
       referencedEntities?: unknown;
     }) => {
-      setHasError(false);
+      setError(undefined);
       const action = await submitInput(prompt, {
         profile: METABOT_PROFILE_OVERRIDES.SQL,
         preventOpenSidebar: true,
       });
+
+      const nextError =
+        isFulfilled(action) &&
+        !action.payload.success &&
+        action.payload.errorMessage;
+
       if (
         isRejected(action) ||
         (isFulfilled(action) && !action.payload?.success) ||
         !responseHasCodeEdit(action)
       ) {
-        setHasError(true);
-        throw new Error(t`Something went wrong. Please try again.`);
+        const error = nextError || {
+          type: "message",
+          message: METABOT_ERR_MSG.default,
+        };
+
+        setError(error);
+        throw new Error(error.message);
       } else {
         onGenerated?.();
       }
@@ -105,7 +119,7 @@ export function useMetabotSQLSuggestion({
     source,
     isLoading: isDoingScience,
     generate,
-    error: hasError ? t`Something went wrong. Please try again.` : undefined,
+    error,
     cancelRequest,
     clear,
     reject,
