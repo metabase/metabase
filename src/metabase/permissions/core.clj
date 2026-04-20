@@ -79,12 +79,17 @@
  [metabase.permissions.models.permissions
   namespace-clause
   can-read-audit-helper
+  can-read-via-parent-collection?
+  collection-id-only-read-method
+  collection-id-only-read-models
   current-user-has-application-permissions?
+  define-collection-id-only-read-perms!
   grant-application-permissions!
   grant-collection-read-permissions!
   grant-collection-readwrite-permissions!
   grant-permissions!
   perms-objects-set-for-parent-collection
+  register-collection-id-only-read-method!
   revoke-application-permissions!
   revoke-collection-permissions!
   set-has-application-permission-of-type?

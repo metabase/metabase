@@ -420,19 +420,77 @@
    (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
      [:= namespace-keyword "tenant-specific"])])
 
+(defn can-read-via-parent-collection?
+  "Read permission for any row whose read policy is a pure function of `:collection_id` plus
+  the current user's permissions set. Both [[can-read-audit-helper]] (the standard
+  Card/Dashboard/etc. path) and semantic search's `filter-read-permitted` fast path go through
+  this function, so they cannot drift: the signature is deliberately `[coll-id]` (not an
+  instance), making it structurally impossible for the logic to grow a dependency on other
+  instance fields."
+  [coll-id]
+  (and (or (premium-features/enable-audit-app?)
+           (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
+       (mi/current-user-has-full-permissions?
+        #{(permissions.path/collection-read-path
+           (or coll-id
+               {:metabase.collections.models.collection.root/is-root? true
+                :namespace                                            nil}))})))
+
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
   "Audit instances should only be readable if audit app is enabled."
   [model    :- :keyword
    instance :- :map]
-  (if (and (not (premium-features/enable-audit-app?))
-           (case model
-             :model/Collection (audit/is-collection-id-audit? (:id instance))
-             (audit/is-parent-collection-audit? instance)))
-    false
-    (case model
-      :model/Collection (mi/current-user-has-full-permissions? :read instance)
-      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read)))))
+  (case model
+    :model/Collection
+    (if (and (not (premium-features/enable-audit-app?))
+             (audit/is-collection-id-audit? (:id instance)))
+      false
+      (mi/current-user-has-full-permissions? :read instance))
+    ;; default: models whose read perms depend only on `:collection_id`.
+    (can-read-via-parent-collection? (:collection_id instance))))
+
+;;; ---- Collection-id-only read registration ----
+
+(defonce ^:private collection-id-only-read-method-registry
+  ;; t2-model-kw → the fn installed as `mi/can-read?` by
+  ;; `define-collection-id-only-read-perms!`. The identity-check test uses this to detect any
+  ;; later `defmethod mi/can-read?` that would silently override the registered semantics.
+  (atom {}))
+
+(defn collection-id-only-read-models
+  "Set of t2 model keywords whose `mi/can-read?` was installed via
+  [[define-collection-id-only-read-perms!]]. Downstream consumers (e.g., semantic search's
+  fast-path filter) derive their own sets from this so the two can't drift."
+  []
+  (set (keys @collection-id-only-read-method-registry)))
+
+(defn collection-id-only-read-method
+  "The exact `mi/can-read?` fn installed by [[define-collection-id-only-read-perms!]] for
+  `t2-model`. Exposed so identity-check tests can detect later overrides. Returns nil for
+  unregistered models."
+  [t2-model]
+  (get @collection-id-only-read-method-registry t2-model))
+
+(defn register-collection-id-only-read-method!
+  "Implementation detail of [[define-collection-id-only-read-perms!]]. Do not call directly."
+  [t2-model method]
+  (swap! collection-id-only-read-method-registry assoc t2-model method))
+
+(defmacro define-collection-id-only-read-perms!
+  "Install `mi/can-read?` for `t2-model` as a pure delegate to
+  [[can-read-via-parent-collection?]], and register the model so downstream code (notably
+  semantic search's permission-filter fast path) can discover it. Use this in a model
+  namespace in place of a handwritten `(defmethod mi/can-read? t2-model ...)` whose body is
+  `(can-read-audit-helper t2-model instance)`. If the model ever needs richer read perms,
+  remove the macro invocation and write a plain `defmethod` — the identity-check test in
+  `metabase.permissions.models.permissions-test` will otherwise flag a silent override."
+  [t2-model]
+  `(do
+     (defmethod mi/can-read? ~t2-model
+       ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
+       ([_# pk#]    (mi/can-read? (t2/select-one ~t2-model :id pk#))))
+     (register-collection-id-only-read-method! ~t2-model (get-method mi/can-read? ~t2-model))))
 
 ; Audit permissions helper fns end
 

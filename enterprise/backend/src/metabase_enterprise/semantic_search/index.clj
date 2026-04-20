@@ -710,35 +710,40 @@
   [row]
   (update row :legacy_input decode-pgobject))
 
-;; Models whose `mi/can-read?` is a pure function of `:collection_id` (via
-;; `perms/can-read-audit-helper` → `perms-objects-set-for-parent-collection`).
-;; `indexed-entity` rows resolve to the parent Card, whose `collection_id` is denormalized
-;; onto the index row at ingest time via the search spec's Collection join.
+;; Search-model strings whose read permission is determined by `:collection_id` alone. Derived
+;; from `perms/collection-id-only-read-models` (models registered via
+;; `perms/define-collection-id-only-read-perms!`) plus `"indexed-entity"`, whose index-row
+;; `:collection_id` is denormalized from the parent Card via the search spec's Collection join
+;; and whose read policy is therefore transitively the registered Card's.
+;; Computed lazily so the registry has time to populate at app init before first search.
 (def ^:private collection-id-only-search-models
-  #{"card" "metric" "dataset" "dashboard" "indexed-entity"})
+  (delay
+    (let [registered-t2-models (perms/collection-id-only-read-models)]
+      (into #{"indexed-entity"}
+            (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
+                  (map key))
+            (search/specifications)))))
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
-        ;; Fast path: for `collection-id-only-search-models` the read permission is a pure function
-        ;; of `:collection_id`, which is denormalized onto the index row at ingest time. We deliberately
-        ;; trust the indexed value rather than re-fetching the app DB row — that avoids an N-row
-        ;; `t2/select` on every semantic search and is the main win of this path. The trade-off is
-        ;; that between a move (or delete) and the next reindex, a user can see a search hit whose
-        ;; live `collection_id` they no longer have access to. The index is eventually consistent by
-        ;; design; and the per-row API fetch (loading the entity after clicking through) still
-        ;; enforces live permissions, so the exposure is bounded to search-result metadata.
+        fast-set      @collection-id-only-search-models
+        {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)
+        ;; Fast path: for models registered via `perms/define-collection-id-only-read-perms!`,
+        ;; `mi/can-read?` is definitionally `(perms/can-read-via-parent-collection?
+        ;; (:collection_id instance))`, so we can skip the t2/select and check permissions
+        ;; straight from the denormalized `:collection_id` on the index row. Calling the shared
+        ;; helper directly means the fast path runs literally the same code as the slow path
+        ;; for these models — no drift possible on the permission logic. Memoizing dedupes the
+        ;; perm check across docs that share a collection.
         ;;
-        ;; We call `perms/can-read-audit-helper` directly instead of going through
-        ;; `mi/can-read? :model/Card` — this makes the "only :collection_id matters" contract
-        ;; explicit (if Card's `can-read?` ever gains other checks, this path intentionally won't
-        ;; pick them up) and avoids multimethod dispatch + instance allocation per distinct id.
-        coll-readable? (memoize
-                        (fn [coll-id]
-                          (perms/can-read-audit-helper :model/Card {:collection_id coll-id})))
+        ;; Trade-off: the indexed `:collection_id` is eventually-consistent. Between a move or
+        ;; delete and the next reindex, a user may see a search hit whose live `collection_id`
+        ;; they no longer have access to. The per-row entity fetch on click-through still
+        ;; enforces live permissions, bounding exposure to search-result metadata.
+        coll-readable? (memoize perms/can-read-via-parent-collection?)
         check-timer (u/start-timer)
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         check-ms (u/since-ms check-timer)

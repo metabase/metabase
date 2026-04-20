@@ -9,11 +9,9 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -504,73 +502,28 @@
 
         (testing "memoizes permission check per collection_id across docs"
           (let [calls (atom 0)
-                real-helper perms/can-read-audit-helper]
-            (with-redefs [perms/can-read-audit-helper (fn [& args]
-                                                        (swap! calls inc)
-                                                        (apply real-helper args))]
+                real-helper perms/can-read-via-parent-collection?]
+            (with-redefs [perms/can-read-via-parent-collection? (fn [& args]
+                                                                  (swap! calls inc)
+                                                                  (apply real-helper args))]
               (binding [api/*current-user-permissions-set* (atom #{"/"})]
                 (#'semantic.index/filter-read-permitted
                  (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
-                (is (= 1 @calls) "expected one can-read-audit-helper call for the single distinct collection_id")))))
+                (is (= 1 @calls) "expected one can-read-via-parent-collection? call for the single distinct collection_id")))))
 
         (testing "handles empty input"
           (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
-;; The fast path in `filter-read-permitted` assumes every model listed in
-;; `collection-id-only-search-models` has a `mi/can-read?` whose result is fully determined by
-;; `:collection_id` + the current user's permissions set. This contract test catches drift in
-;; two directions:
-;;   1. A model is added to the set that doesn't actually satisfy the contract.
-;;   2. An existing model's `can-read?` grows a check on a field other than `:collection_id`
-;;      (e.g., `:archived`, `:type`, `:database_id`), silently making the fast path incorrect.
-;; If the set gains a new entry, add a spec here — the `keys` check below will fail otherwise.
-;; We vary the "should-be-irrelevant" fields across permutations so any new check in `can-read?`
-;; against such a field will flip at least one permutation away from the helper and fail the test.
-(def ^:private collection-id-only-model-test-specs
-  "Maps each entry in `collection-id-only-search-models` to the t2 model used for dispatch.
-  `indexed-entity` resolves to the parent Card at ingest time, so Card covers its contract."
-  {"card"           :model/Card
-   "metric"         :model/Card
-   "dataset"        :model/Card
-   "dashboard"      :model/Dashboard
-   "indexed-entity" :model/Card})
-
-(deftest collection-id-only-search-models-contract-test
-  (testing "every entry in `collection-id-only-search-models` has a test spec"
-    (is (= @#'semantic.index/collection-id-only-search-models
-           (set (keys collection-id-only-model-test-specs)))
-        "If you added a model to `collection-id-only-search-models`, add a corresponding entry to `collection-id-only-model-test-specs`."))
-
-  (testing "mi/can-read? is a pure function of :collection_id for each listed model"
-    ;; Synthetic coll-ids chosen to align with the perm-set strings below. No DB involvement —
-    ;; the permission check only reads the instance map and the bound perm set.
-    (let [perm-scenarios [["root perms"                42  #{"/"}]
-                          ["no perms"                  42  #{}]
-                          ["read on matching coll"     42  #{"/collection/42/read/"}]
-                          ["read on other coll only"   42  #{"/collection/99/read/"}]
-                          ["nil collection with root"  nil #{"/"}]
-                          ["nil collection no perms"   nil #{}]]
-          ;; Extra fields on the synthetic instance. If `can-read?` stays collection_id-only,
-          ;; none of these should affect the result. A future `can-read?` that gates on any of
-          ;; them will diverge from the helper for at least one permutation.
-          extra-fields   [{}
-                          {:archived true}
-                          {:archived false}
-                          {:type :question}
-                          {:type :model}
-                          {:type :metric}
-                          {:database_id 1}
-                          {:dataset_query {}}]]
-      (doseq [[search-model t2-model] collection-id-only-model-test-specs
-              [label coll-id perms]   perm-scenarios
-              extras                  extra-fields]
-        (let [instance (t2/instance t2-model (assoc extras :collection_id coll-id))]
-          (binding [api/*current-user-permissions-set* (atom perms)]
-            (let [slow-path (boolean (mi/can-read? instance))
-                  fast-path (boolean (perms/can-read-audit-helper :model/Card {:collection_id coll-id}))]
-              (is (= slow-path fast-path)
-                  (format "%s %s extras=%s: fast path=%s mi/can-read?=%s. If these disagree, `can-read?` likely depends on a field other than `:collection_id`, so removing this model from `collection-id-only-search-models` is required."
-                          search-model label extras fast-path slow-path)))))))))
+(deftest collection-id-only-search-models-derived-correctly-test
+  (testing "derived set includes every search-model whose t2 model is registered as collection-id-only, plus indexed-entity"
+    ;; Sanity smoke test: derivation machinery is working. If this fails, the registry
+    ;; probably isn't populating (namespace load order) or the search spec for one of these
+    ;; models lost its t2 model keyword.
+    (is (= #{"card" "metric" "dataset" "dashboard" "indexed-entity"}
+           @@#'semantic.index/collection-id-only-search-models)
+        "The fast-path set is derived from `perms/collection-id-only-read-models` plus
+         indexed-entity. If you added `perms/define-collection-id-only-read-perms!` to a new
+         model (or removed it from an existing one), update this expected set.")))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"
