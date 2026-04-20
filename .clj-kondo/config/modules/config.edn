@@ -3194,7 +3194,7 @@
            task
            tracing
            util}
-   :model-imports #{:model/Card :model/Collection}}
+   :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
   enterprise/serialization
   {:team "Graphy"
