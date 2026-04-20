@@ -16,13 +16,18 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { addUndo } from "metabase/redux/undo";
-import { Flex, Stack, Title } from "metabase/ui";
+import { Flex, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type {
   AdminNotificationListItem,
   NotificationId,
 } from "metabase-types/api";
+
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "../../../components/SettingsSection";
 
 import { ChangeOwnerModal } from "./ChangeOwnerModal";
 import { NotificationsFilters } from "./NotificationsFilters";
@@ -192,74 +197,79 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
   const selectedCount = selectedIds.length;
 
   return (
-    <Stack p="lg" gap="md">
-      <Title order={2}>{t`Notifications`}</Title>
+    <SettingsPageWrapper>
+      <SettingsSection>
+        <Title order={1}>{t`Notifications`}</Title>
 
-      <NotificationsFilters state={urlState} onChange={patchUrlState} />
+        <Flex gap="md" justify="space-between" wrap="wrap" align="flex-end">
+          <NotificationsFilters state={urlState} onChange={patchUrlState} />
 
-      <Flex justify="flex-end">
-        <PaginationControls
-          page={urlState.page}
-          pageSize={PAGE_SIZE}
-          itemsLength={notifications.length}
-          total={total}
-          onPreviousPage={() =>
-            patchUrlState({ page: Math.max(0, urlState.page - 1) })
-          }
-          onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
+          <PaginationControls
+            page={urlState.page}
+            pageSize={PAGE_SIZE}
+            itemsLength={notifications.length}
+            total={total}
+            onPreviousPage={() =>
+              patchUrlState({ page: Math.max(0, urlState.page - 1) })
+            }
+            onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
+          />
+        </Flex>
+
+        <NotificationsTable
+          notifications={notifications}
+          error={error}
+          isLoading={isFetching}
+          selectedIds={selectedIds}
+          onToggleRow={handleToggleRow}
+          onToggleAll={handleToggleAll}
+          onRowClick={handleRowClick}
         />
-      </Flex>
 
-      <NotificationsTable
-        notifications={notifications}
-        error={error}
-        isLoading={isFetching}
-        selectedIds={selectedIds}
-        onToggleRow={handleToggleRow}
-        onToggleAll={handleToggleAll}
-        onRowClick={handleRowClick}
-      />
-
-      <BulkActionBar
-        opened={selectedCount > 0}
-        message={
-          selectedCount === 1
-            ? t`1 alert selected`
-            : t`${selectedCount} alerts selected`
-        }
-      >
-        {urlState.status === "archived" ? (
-          <BulkActionButton onClick={handleUnarchive} disabled={isBulkLoading}>
-            {t`Unarchive`}
-          </BulkActionButton>
-        ) : (
-          <BulkActionDangerButton
-            onClick={handleArchive}
+        <BulkActionBar
+          opened={selectedCount > 0}
+          message={
+            selectedCount === 1
+              ? t`1 alert selected`
+              : t`${selectedCount} alerts selected`
+          }
+        >
+          {urlState.status === "archived" ? (
+            <BulkActionButton
+              onClick={handleUnarchive}
+              disabled={isBulkLoading}
+            >
+              {t`Unarchive`}
+            </BulkActionButton>
+          ) : (
+            <BulkActionDangerButton
+              onClick={handleArchive}
+              disabled={isBulkLoading}
+            >
+              {t`Archive`}
+            </BulkActionDangerButton>
+          )}
+          <BulkActionButton
+            onClick={() => setIsChangeOwnerOpen(true)}
             disabled={isBulkLoading}
           >
-            {t`Archive`}
-          </BulkActionDangerButton>
-        )}
-        <BulkActionButton
-          onClick={() => setIsChangeOwnerOpen(true)}
-          disabled={isBulkLoading}
-        >
-          {t`Change owner`}
-        </BulkActionButton>
-        <BulkActionButton onClick={() => setSelectedIds([])}>
-          {t`Clear`}
-        </BulkActionButton>
-      </BulkActionBar>
+            {t`Change owner`}
+          </BulkActionButton>
+          <BulkActionButton onClick={() => setSelectedIds([])}>
+            {t`Clear`}
+          </BulkActionButton>
+        </BulkActionBar>
 
-      <ChangeOwnerModal
-        opened={isChangeOwnerOpen}
-        count={selectedCount}
-        isSubmitting={isBulkLoading}
-        onClose={() => setIsChangeOwnerOpen(false)}
-        onConfirm={handleChangeOwnerConfirm}
-      />
+        <ChangeOwnerModal
+          opened={isChangeOwnerOpen}
+          count={selectedCount}
+          isSubmitting={isBulkLoading}
+          onClose={() => setIsChangeOwnerOpen(false)}
+          onConfirm={handleChangeOwnerConfirm}
+        />
 
-      {confirmContent}
-    </Stack>
+        {confirmContent}
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };

@@ -37,6 +37,11 @@ import type {
   NotificationSendHistoryEntry,
 } from "metabase-types/api";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "../../../components/SettingsSection";
+
 import { ChangeOwnerModal } from "./ChangeOwnerModal";
 import {
   getChannelIconName,
@@ -153,10 +158,12 @@ export const NotificationDetailPage = ({
 
   if (isLoading || error || !notification) {
     return (
-      <Box p="lg">
-        <BackLink onClick={goBack} />
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </Box>
+      <SettingsPageWrapper>
+        <SettingsSection>
+          <BackLink onClick={goBack} />
+          <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        </SettingsSection>
+      </SettingsPageWrapper>
     );
   }
 
@@ -165,44 +172,46 @@ export const NotificationDetailPage = ({
   const isOrphanedCreator = notification.health === "orphaned_creator";
 
   return (
-    <Stack p="lg" gap="lg">
-      <BackLink onClick={goBack} />
+    <SettingsPageWrapper>
+      <SettingsSection>
+        <BackLink onClick={goBack} />
 
-      <DetailHeader
-        notification={notification}
-        isOrphanedCard={isOrphanedCard}
-        isBulkLoading={isBulkLoading}
-        onArchive={handleArchive}
-        onUnarchive={handleUnarchive}
-        onChangeOwner={() => setIsChangeOwnerOpen(true)}
-      />
+        <DetailHeader
+          notification={notification}
+          isOrphanedCard={isOrphanedCard}
+          isBulkLoading={isBulkLoading}
+          onArchive={handleArchive}
+          onUnarchive={handleUnarchive}
+          onChangeOwner={() => setIsChangeOwnerOpen(true)}
+        />
 
-      <Divider />
+        <Divider />
 
-      <InfoSection
-        notification={notification}
-        isOrphanedCreator={isOrphanedCreator}
-        onChangeOwner={() => setIsChangeOwnerOpen(true)}
-      />
+        <InfoSection
+          notification={notification}
+          isOrphanedCreator={isOrphanedCreator}
+          onChangeOwner={() => setIsChangeOwnerOpen(true)}
+        />
 
-      <Divider />
+        <Divider />
 
-      <RecipientsSection handlers={handlers} />
+        <RecipientsSection handlers={handlers} />
 
-      <Divider />
+        <Divider />
 
-      <SendHistorySection history={notification.send_history ?? []} />
+        <SendHistorySection history={notification.send_history ?? []} />
 
-      <ChangeOwnerModal
-        opened={isChangeOwnerOpen}
-        count={1}
-        isSubmitting={isBulkLoading}
-        onClose={() => setIsChangeOwnerOpen(false)}
-        onConfirm={handleChangeOwnerConfirm}
-      />
+        <ChangeOwnerModal
+          opened={isChangeOwnerOpen}
+          count={1}
+          isSubmitting={isBulkLoading}
+          onClose={() => setIsChangeOwnerOpen(false)}
+          onConfirm={handleChangeOwnerConfirm}
+        />
 
-      {confirmContent}
-    </Stack>
+        {confirmContent}
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };
 
