@@ -96,15 +96,8 @@ export type UseMetabotResult = {
 
   /**
    * A pre-wired component bound to the latest `navigate_to` path.
-   * Suitable for sidebar/panel layouts. `null` until the agent sends a chart.
+   * Suitable for sidebar/panel layouts. Renders nothing until the agent
+   * sends a chart.
    */
-  CurrentChart: React.ComponentType<MetabotChartProps> | null;
-
-  /**
-   * Free-text instructions injected into Metabot's system prompt on each turn
-   * (persona, formatting rules, domain constraints). `undefined` = no injection.
-   */
-  customInstructions: string | undefined;
-  /** Update or clear `customInstructions`. Pass `undefined` to remove. */
-  setCustomInstructions: (instructions: string | undefined) => void;
+  CurrentChart: React.ComponentType<MetabotChartProps>;
 };

@@ -1,16 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { match } from "ts-pattern";
 
-import type { InteractiveQuestionProps } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { InteractiveQuestionInternal } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
-import type { StaticQuestionProps } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import { StaticQuestionInternal } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import type {
   MetabotChartProps,
   MetabotMessage,
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
@@ -24,27 +21,15 @@ import type { MetabotChatMessage } from "metabase/metabot/state/types";
 export const useMetabot = (): UseMetabotResult => {
   const agent = useMetabotAgent();
   const { navigateToPath } = useMetabotReactions();
-
-  const [customInstructions, setCustomInstructions] = useState<
-    string | undefined
-  >();
-
-  useRegisterMetabotContextProvider(
-    // custom_instructions is supported by the backend but not yet typed in
-    // MetabotChatContext — cast is intentional.
-    async () =>
-      customInstructions
-        ? ({ custom_instructions: customInstructions } as never)
-        : undefined,
-    [customInstructions],
+  const chartComponentsCache = useRef(
+    new Map<string, ReturnType<typeof createChartComponent>>(),
   );
 
-  const CurrentChart = useMemo(() => {
-    if (!navigateToPath) {
-      return null;
-    }
-    return createChartComponent(navigateToPath);
-  }, [navigateToPath]);
+  const CurrentChart = useMemo(
+    () =>
+      createCurrentChartComponent(navigateToPath, chartComponentsCache.current),
+    [navigateToPath],
+  );
 
   const agentSubmitMessage = agent.submitInput;
   const submitMessage = useCallback(
@@ -64,28 +49,34 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
+  const messages = useMemo<MetabotMessage[]>(
+    () =>
+      agent.messages
+        .filter(
+          // tool_call messages are an internal debug variant — only surfaced
+          // when metabot's `debugMode` is on, which is not exposed through
+          // the SDK. Filter here so the public `MetabotMessage` union can
+          // exclude them.
+          (
+            message,
+          ): message is Exclude<MetabotChatMessage, { type: "tool_call" }> =>
+            message.type !== "tool_call",
+        )
+        .map(mapMessage),
+    [agent.messages],
+  );
+
   return {
     submitMessage,
     retryMessage,
     cancelRequest: agent.cancelRequest,
     resetConversation: agent.resetConversation,
 
-    // tool_call messages are an internal debug variant — only surfaced when
-    // metabot's `debugMode` is on, which is not exposed through the SDK.
-    // Filter here so the public `MetabotMessage` union can exclude them.
-    messages: agent.messages
-      .filter(
-        (m): m is Exclude<MetabotChatMessage, { type: "tool_call" }> =>
-          m.type !== "tool_call",
-      )
-      .map(mapMessage),
+    messages,
     errorMessages: agent.errorMessages,
     isProcessing: agent.isDoingScience,
 
     CurrentChart,
-
-    customInstructions,
-    setCustomInstructions,
   };
 };
 
@@ -97,32 +88,40 @@ export const useMetabot = (): UseMetabotResult => {
 function createChartComponent(questionPath: string) {
   return function MetabotChart({ drills, ...rest }: MetabotChartProps) {
     if (drills) {
-      return (
-        <InteractiveQuestionInternal
-          query={questionPath}
-          {...(rest as Omit<
-            InteractiveQuestionProps,
-            "questionId" | "token" | "query"
-          >)}
-        />
-      );
+      return <InteractiveQuestionInternal query={questionPath} {...rest} />;
     }
-    return (
-      <StaticQuestionInternal
-        query={questionPath}
-        {...(rest as Omit<
-          StaticQuestionProps,
-          "questionId" | "token" | "query"
-        >)}
-      />
-    );
+    return <StaticQuestionInternal query={questionPath} {...rest} />;
   };
 }
 
+function getCachedChartComponent(
+  questionPath: string,
+  cache: Map<string, ReturnType<typeof createChartComponent>>,
+) {
+  if (!cache.has(questionPath)) {
+    cache.set(questionPath, createChartComponent(questionPath));
+  }
+  return cache.get(questionPath)!;
+}
+
+function EmptyChart() {
+  return null;
+}
+
+function createCurrentChartComponent(
+  questionPath: string | null,
+  cache: Map<string, ReturnType<typeof createChartComponent>>,
+) {
+  if (!questionPath) {
+    return EmptyChart;
+  }
+  return getCachedChartComponent(questionPath, cache);
+}
+
 const mapMessage = (
-  msg: Exclude<MetabotChatMessage, { type: "tool_call" }>,
+  message: Exclude<MetabotChatMessage, { type: "tool_call" }>,
 ): MetabotMessage =>
-  match(msg)
+  match(message)
     .with(
       { role: "user", type: "text" },
       ({ id, message }) =>

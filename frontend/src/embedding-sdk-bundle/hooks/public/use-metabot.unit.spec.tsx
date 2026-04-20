@@ -1,17 +1,15 @@
-import userEvent from "@testing-library/user-event";
-
 import { act, screen, waitFor } from "__support__/ui";
 import { metabotActions } from "metabase/metabot/state";
 import { setup } from "metabase/metabot/tests/utils";
 
 import { useMetabot } from "./use-metabot";
 
-// These tests verify `useMetabot().CurrentChart` wiring only: null before
-// `navigate_to`, StaticQuestion vs InteractiveQuestion based on `drills`,
-// and `query` forwarding. Mocks surface `data-testid` + `data-query` so
-// those assertions are direct. Real rendering of Static/Interactive questions
-// (base64 query decode, ad-hoc dataset execution, viz output) is covered by
-// StaticQuestion.unit.spec.tsx and InteractiveQuestion.unit.spec.tsx.
+// These tests verify `useMetabot().CurrentChart` wiring only: renders nothing
+// before `navigate_to`, StaticQuestion vs InteractiveQuestion based on
+// `drills`, and `query` forwarding. Mocks surface `data-testid` + `data-query`
+// so those assertions are direct. Real rendering of Static/Interactive
+// questions (base64 query decode, ad-hoc dataset execution, viz output) is
+// covered by StaticQuestion.unit.spec.tsx and InteractiveQuestion.unit.spec.tsx.
 jest.mock("embedding-sdk-bundle/components/public/StaticQuestion", () => {
   const Component = ({ query }: { query?: string }) => (
     <div data-testid="mock-static-question" data-query={query} />
@@ -33,34 +31,33 @@ describe("useMetabot", () => {
   describe("CurrentChart", () => {
     const TestCurrentChart = ({ drills }: { drills?: true }) => {
       const { CurrentChart } = useMetabot();
-      if (!CurrentChart) {
-        return <div data-testid="no-chart" />;
-      }
       return <CurrentChart drills={drills} />;
     };
 
-    it("is null before navigate_to fires", () => {
+    it("renders nothing before navigate_to fires", () => {
       setup({
         ui: <TestCurrentChart />,
       });
 
-      expect(screen.getByTestId("no-chart")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("mock-static-question"),
+      ).not.toBeInTheDocument();
     });
 
-    it("becomes a component after navigate_to fires", async () => {
+    it("renders a chart after navigate_to fires", async () => {
       const { store } = setup({
         ui: <TestCurrentChart />,
       });
 
-      expect(screen.getByTestId("no-chart")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("mock-static-question"),
+      ).not.toBeInTheDocument();
 
       act(() => {
         store.dispatch(metabotActions.setNavigateToPath("/question#base64"));
       });
 
-      await waitFor(() => {
-        expect(screen.queryByTestId("no-chart")).not.toBeInTheDocument();
-      });
+      expect(await screen.findByTestId("mock-static-question")).toBeVisible();
     });
 
     it("renders StaticQuestion when drills is absent", async () => {
@@ -168,15 +165,15 @@ describe("useMetabot", () => {
         );
       });
 
-      const [msg] = await readMessages();
-      expect(msg).toEqual({
+      const [message] = await readMessages();
+      expect(message).toEqual({
         id: "u2",
         role: "user",
         type: "action",
         message: "5 rows",
         actionLabel: "Run Query",
       });
-      expect(msg).not.toHaveProperty("userMessage");
+      expect(message).not.toHaveProperty("userMessage");
     });
 
     it("maps agent.text passthrough", async () => {
@@ -192,8 +189,8 @@ describe("useMetabot", () => {
         );
       });
 
-      const [msg] = await readMessages();
-      expect(msg).toEqual({
+      const [message] = await readMessages();
+      expect(message).toEqual({
         id: expect.any(String),
         role: "agent",
         type: "text",
@@ -220,8 +217,8 @@ describe("useMetabot", () => {
         );
       });
 
-      const [msg] = await readMessages();
-      expect(msg).toEqual({
+      const [message] = await readMessages();
+      expect(message).toEqual({
         id: expect.any(String),
         role: "agent",
         type: "todo_list",
@@ -253,8 +250,8 @@ describe("useMetabot", () => {
         );
       });
 
-      const [msg] = await readMessages();
-      expect(msg).toEqual({
+      const [message] = await readMessages();
+      expect(message).toEqual({
         id: expect.any(String),
         role: "agent",
         type: "edit_suggestion",
@@ -284,55 +281,14 @@ describe("useMetabot", () => {
         );
       });
 
-      const msgs = await readMessages();
-      expect(msgs).toHaveLength(1);
-      expect(msgs[0]).toEqual({
+      const messages = await readMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toEqual({
         id: expect.any(String),
         role: "agent",
         type: "text",
         message: "ok",
       });
-    });
-  });
-
-  describe("customInstructions", () => {
-    const TestCustomInstructions = () => {
-      const { customInstructions, setCustomInstructions } = useMetabot();
-      return (
-        <>
-          <div data-testid="value">{customInstructions ?? "__undefined__"}</div>
-          <button onClick={() => setCustomInstructions("persona X")}>
-            set
-          </button>
-          <button onClick={() => setCustomInstructions(undefined)}>
-            clear
-          </button>
-        </>
-      );
-    };
-
-    it("defaults to undefined", () => {
-      setup({ ui: <TestCustomInstructions /> });
-
-      expect(screen.getByTestId("value")).toHaveTextContent("__undefined__");
-    });
-
-    it("updates when setCustomInstructions is called with a string", async () => {
-      setup({ ui: <TestCustomInstructions /> });
-
-      await userEvent.click(screen.getByRole("button", { name: "set" }));
-
-      expect(screen.getByTestId("value")).toHaveTextContent("persona X");
-    });
-
-    it("clears when setCustomInstructions is called with undefined", async () => {
-      setup({ ui: <TestCustomInstructions /> });
-
-      await userEvent.click(screen.getByRole("button", { name: "set" }));
-      expect(screen.getByTestId("value")).toHaveTextContent("persona X");
-
-      await userEvent.click(screen.getByRole("button", { name: "clear" }));
-      expect(screen.getByTestId("value")).toHaveTextContent("__undefined__");
     });
   });
 });
