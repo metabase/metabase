@@ -42,7 +42,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
 
     H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
