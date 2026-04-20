@@ -24,7 +24,6 @@
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.security-center.api]
-   [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
    [metabase-enterprise.upload-management.api]
