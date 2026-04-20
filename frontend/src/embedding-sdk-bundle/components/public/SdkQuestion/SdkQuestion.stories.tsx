@@ -96,18 +96,6 @@ export const Default = {
   },
 };
 
-export const WithoutChartTypeSelectorButton = {
-  render: Template,
-
-  args: {
-    questionId: QUESTION_ID,
-    isSaveEnabled: true,
-    targetCollection: undefined,
-    title: true,
-    withChartTypeSelector: false,
-  },
-};
-
 export const WithEditableSqlParametersCustomLayout = {
   render(args: SdkQuestionComponentProps) {
     return (
