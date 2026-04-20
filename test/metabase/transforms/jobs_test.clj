@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.logging :as log]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -23,31 +24,6 @@
    (java.util.concurrent CyclicBarrier TimeUnit)))
 
 (set! *warn-on-reflection* true)
-
-(deftest basic-deps-test
-  (let [ordering {1 #{2 3}
-                  2 #{3 4}
-                  3 #{}
-                  4 #{5}
-                  5 #{}
-                  6 #{7 8}
-                  7 #{}
-                  8 #{}}]
-    (is (= #{1 2 3 4 5}
-           (#'jobs/get-deps ordering [1])))
-    (is (= #{1 2 3 4 5 6 7 8}
-           (#'jobs/get-deps ordering [1 6])))
-    (is (= #{2 3 4 5 6 7 8}
-           (#'jobs/get-deps ordering [2 6])))
-    (is (= #{1 2 3 4 5}
-           (#'jobs/get-deps ordering [1 2 3])))))
-
-(deftest cycle-deps-test
-  (let [ordering {1 #{2}
-                  2 #{3}
-                  3 #{1}}]
-    (is (= #{1 2 3}
-           (#'jobs/get-deps ordering [1])))))
 
 (deftest job-transform-ids-test
   (testing "single tag, single transform"
@@ -449,6 +425,33 @@
                        (catch Exception _))
                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                      (is (mt/received-email-body? :crowberto #"transform0")))))))))))))
+
+(deftest get-plan-ignores-unrelated-routing-enabled-transforms-test
+  (when config/ee-available?
+    (testing "get-plan must not scan unrelated transforms on routing-enabled databases"
+     ;; Regression: a transform on a routing-enabled database is unrunnable (by design), but historically
+     ;; `get-plan` would fetch *every* transform in the system and call `table-dependencies` on each to
+     ;; build a global dependency graph. The routing-enabled transform would throw during that scan,
+     ;; taking down the whole scheduler and sending a misleading failure email naming the zombie
+     ;; transform — even when no job was asking to run it.
+      (mt/with-premium-features #{:database-routing :transforms-basic}
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Database       _destination {:engine             :h2
+                                                             :router_database_id (mt/id)
+                                                             :details            {:destination_database true}}
+                         :model/DatabaseRouter _            {:database_id    (mt/id)
+                                                             :user_attribute "db_name"}
+                        ;; Zombie transform on a routing-enabled database, NOT tagged to any job.
+                         :model/Transform      _zombie      {:name       "zombie-transform"
+                                                             :source     {:type  :query
+                                                                          :query (lib/native-query mp "SELECT 1")}
+                                                             :creator_id (mt/user->id :crowberto)
+                                                             :target     {:type     "table"
+                                                                          :database (mt/id)
+                                                                          :schema   "PUBLIC"
+                                                                          :name     "zombie_out"}}]
+            (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
+              (is (empty? (:order (#'jobs/get-plan #{})))))))))))
 
 (deftest run-transforms!-race-condition-test
   ;; Previously a race would ensure one transform run got the duplicate key error and aborted.

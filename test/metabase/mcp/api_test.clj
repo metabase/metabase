@@ -168,16 +168,15 @@
       (is (= 200 (:status post-response))))))
 
 (deftest tools-list-test
-  (testing "tools/list returns the 10 agent tools"
+  (testing "tools/list returns the 8 agent tools"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" session-id})
           tools (get-in response [:body :result :tools])]
       (is (= 200 (:status response)))
       (is (pos? (count tools)))
-      (is (= #{"search" "list_databases" "get_database" "get_table" "get_metric"
-               "get_table_field_values" "get_metric_field_values"
-               "construct_query" "execute_query" "query"}
+      (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
+               "get_metric_field_values" "construct_query" "execute_query" "query"}
              (set (map :name tools))))
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
@@ -406,8 +405,11 @@
                                     (reset! streamed? true)
                                     (original-fn response))]
         (let [[session-id _] (initialize!)
-              construct-data (call-tool session-id "construct_query" {:table_id (mt/id :orders) :limit 5})
-              execute-data   (call-tool session-id "execute_query"   {:query (:query construct-data)})]
+              construct-data (call-tool session-id "construct_query"
+                                        {:source     {:type "table" :id (mt/id :orders)}
+                                         :operations [["limit" 5]]})
+              execute-data   (call-tool session-id "execute_query"
+                                        {:query (:query construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
           (is (=? {:status    "completed"
                    :row_count 5
@@ -444,7 +446,7 @@
 (deftest tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
-      (is (= 10 (count tools)))))
+      (is (= 8 (count tools)))))
 
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
@@ -457,11 +459,11 @@
 
   (testing "tools/list with wildcard scope matches all agent tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
-      (is (= 10 (count tools)))))
+      (is (= 8 (count tools)))))
 
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
-      (is (= 10 (count tools)))))
+      (is (= 8 (count tools)))))
 
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]

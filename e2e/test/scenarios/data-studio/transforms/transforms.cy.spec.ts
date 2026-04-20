@@ -38,7 +38,8 @@ describe("scenarios > admin > transforms", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
@@ -500,7 +501,7 @@ LIMIT
       H.assertQueryBuilderRowCount(3);
     });
 
-    it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
+    it("should not be possible to create an MBQL transform from a table from an unsupported database", () => {
       visitTransformListPage();
       cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
@@ -520,10 +521,19 @@ LIMIT
         cy.findAllByTestId("picker-item")
           .contains(/Writable Postgres/)
           .should("not.have.attr", "data-disabled");
+
+        cy.log("Should show a tooltip explaining why the database is disabled");
+        cy.findAllByTestId("picker-item")
+          .contains("Sample Database")
+          .realHover();
       });
+      H.tooltip().should(
+        "contain.text",
+        "Transforms can't be enabled on the Sample Database.",
+      );
     });
 
-    it("should not be possible to create an mbql transform from metrics", () => {
+    it("should not be possible to create an MBQL transform from metrics", () => {
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (tableId) =>
           H.createQuestion({
@@ -572,6 +582,13 @@ LIMIT
 
       cy.log("Clicking the disabled item does not close the popover");
       H.popover().should("be.visible");
+
+      cy.log("Should show a tooltip explaining why the database is disabled");
+      H.popover().findByRole("option", { name: "Sample Database" }).realHover();
+      H.tooltip().should(
+        "contain.text",
+        "Transforms can't be enabled on the Sample Database.",
+      );
     });
 
     it("not show the 'Show details' buttons in ID columns (metabase#64473)", () => {
@@ -2734,7 +2751,8 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
   beforeEach(() => {
     H.restore("mysql-8");
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/transform").as("createTransform");
@@ -2781,7 +2799,8 @@ describe("scenarios > admin > transforms > jobs", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("POST", "/api/transform-job").as("createJob");
@@ -2894,7 +2913,9 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       cy.log("open detail sidebar");
       cy.findAllByText("MBQL transform").first().click();
-      cy.findByRole("img", { name: "close icon" }).should("be.visible");
+      H.DataStudio.Runs.sidebar()
+        .findByRole("img", { name: "close icon" })
+        .should("be.visible");
       cy.findByRole("link", { name: "View this transform" })
         .should("be.visible")
         .should("have.attr", "href", "/data-studio/transforms/1");
@@ -3104,7 +3125,8 @@ describe("scenarios > admin > transforms > runs", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
   });
 
@@ -3538,7 +3560,8 @@ describe(
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
       H.resetSnowplow();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
       H.setPythonRunnerSettings();
@@ -3644,7 +3667,8 @@ describe("scenarios > admin > transforms", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
   });
 
   afterEach(() => {
@@ -3965,7 +3989,8 @@ describe("scenarios > data studio > transforms > permissions", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("POST", "/api/transform").as("createTransform");

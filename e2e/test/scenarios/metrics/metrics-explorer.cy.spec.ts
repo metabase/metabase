@@ -455,7 +455,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Created At" }).should("be.visible");
         const currentYear = new Date().getFullYear();
-        for (let year = 2022; year <= currentYear; year++) {
+        for (let year = 2025; year <= currentYear; year++) {
           cy.findByText(String(year)).should("be.visible");
         }
       });
@@ -820,9 +820,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().findAllByTestId("expression-metric-header").eq(1).click();
 
       H.popover().within(() => {
-        cy.get("[data-element-id=list-item][aria-selected=false]")
-          .contains(/Created At/)
-          .click();
+        cy.findByText("Birth Date").click();
       });
 
       cy.wait("@dataset");
@@ -859,9 +857,7 @@ describe("scenarios > metrics > explorer", () => {
 
       // Pick a non-default dimension (e.g. "Created At" for Products)
       H.popover().within(() => {
-        cy.get("[data-element-id=list-item][aria-selected=false]")
-          .contains(/Created At/)
-          .click();
+        cy.findByText("Birth Date").click();
       });
 
       cy.wait("@dataset");
@@ -1261,7 +1257,11 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should not show dimensions that are already in tabs in the dimension picker", () => {
-      addMetric("Count of products");
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of products" },
+      ]);
       cy.wait("@dataset");
       H.MetricsViewer.tabsShouldBe([
         "Created At",
@@ -1278,6 +1278,16 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText("State").should("not.exist");
         cy.findByText("Title").should("not.exist");
         cy.findByText("Category").should("not.exist");
+
+        // metric math should not cause dimensions to be repeated
+        cy.findAllByText("Birth Date").should("have.length", 1);
+
+        cy.findByText("Rating").click();
+      });
+
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findAllByText("Product → Rating").should("exist");
+        cy.findAllByText("Multiple dimensions").should("not.exist");
       });
     });
 
@@ -1762,10 +1772,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 7, 2024");
+          .type("February 7, 2027");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("July 7, 2024");
+          .type("July 7, 2027");
         cy.button("Add filter").click();
       });
 
@@ -1781,7 +1791,7 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("January 1, 2024");
+          .type("January 1, 2027");
         cy.button("Update filter").click();
       });
 
@@ -1831,10 +1841,10 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().within(() => {
         cy.findByRole("textbox", { name: "Start date" })
           .clear()
-          .type("February 1, 2024");
+          .type("February 1, 2027");
         cy.findByRole("textbox", { name: "End date" })
           .clear()
-          .type("February 7, 2024");
+          .type("February 7, 2027");
         cy.button("Add filter").click();
       });
 
@@ -1916,7 +1926,7 @@ describe("scenarios > metrics > explorer", () => {
         .should("exist");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
-        12,
+        10,
       );
     });
 
@@ -1930,6 +1940,38 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText(/October/).should("be.visible");
         cy.findByText(/November/).should("be.visible");
       });
+    });
+  });
+
+  describe("Dimension filters", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+    });
+
+    it("should not show 'No compatible dimensions' after deleting and retyping an expression with metrics in a different order (UXW-3748)", () => {
+      cy.log("Create expression: Count of orders + Count of products");
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of products" },
+      ]);
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
+
+      cy.log(
+        "Re-enter the formula editor, delete the whole expression, retype with metrics in the opposite order",
+      );
+      H.MetricsViewer.searchInput().clear();
+      addMetricMath([
+        { metricName: "Count of products" },
+        "+",
+        { metricName: "Count of orders" },
+      ]);
+      cy.wait("@dataset");
+
+      cy.log("Expression should run without 'No compatible dimensions' error");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
     });
   });
 

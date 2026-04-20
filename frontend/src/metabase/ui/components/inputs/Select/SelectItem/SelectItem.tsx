@@ -8,8 +8,7 @@ import S from "./SelectItem.module.css";
 import { getItemFontSize, getItemLineHeight } from "./utils";
 
 export interface SelectItemProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "style">,
-    BoxProps {
+  extends Omit<HTMLAttributes<HTMLDivElement>, "style">, BoxProps {
   disabled?: boolean;
   size?: MantineSize;
   selected?: boolean;

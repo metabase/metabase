@@ -67,7 +67,8 @@
    [:transform_entity_id {:optional true} [:maybe :string]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -112,6 +113,7 @@
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]
@@ -185,8 +187,8 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        global-ordering (transforms.core/transform-ordering (vals id->transform))
-        dep-ids         (get global-ordering id)
+        {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
+        dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner)
          transforms.u/add-source-readable)))

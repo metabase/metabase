@@ -28,6 +28,7 @@ export interface ExpressionMetricSource {
   metricName: string;
   metricCount?: number;
   colors?: string[];
+  currentDimension?: DimensionMetadata;
   currentDimensionLabel?: string;
   currentDimensionIcon?: IconName;
   availableOptions: DimensionOption[];
@@ -69,8 +70,8 @@ export function DimensionPillBar({
 
   return (
     <Flex
-      bg="background-secondary"
-      p="sm"
+      bg="background-primary"
+      p="xs"
       bdrs="xl"
       w="100%"
       align="center"
