@@ -23,8 +23,9 @@ interface TileUrlParams {
   parameters?: Parameter[];
   /**
    * Indicates whether the tile URL is being generated for a preview embed context.
-   * You probably don't need to set this manually as it defaults to `isEmbedPreview()` from metabase/embedding/config
-   * @default isEmbedPreview() from metabase/embedding/config
+   * You probably don't need to set this manually; it defaults to `isEmbedPreview()`
+   * from `metabase/embedding/config`.
+   * @defaultValue isEmbedPreview()
    */
   isEmbedPreview?: boolean;
 }
