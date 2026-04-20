@@ -66,12 +66,10 @@ describe("ThemeSelectorSection", () => {
     it("renders Default Theme, saved theme cards, and a Custom card", () => {
       setup();
 
-      expect(
-        screen.getByTestId("theme-card-Default Theme"),
-      ).toBeInTheDocument();
-      expect(screen.getByTestId("theme-card-Dark Theme")).toBeInTheDocument();
-      expect(screen.getByTestId("theme-card-Ocean Theme")).toBeInTheDocument();
-      expect(screen.getByTestId("theme-card-Custom")).toBeInTheDocument();
+      expect(screen.getByText("Default Theme")).toBeInTheDocument();
+      expect(screen.getByText("Dark Theme")).toBeInTheDocument();
+      expect(screen.getByText("Ocean Theme")).toBeInTheDocument();
+      expect(screen.getByText("Custom")).toBeInTheDocument();
     });
 
     it("selects Default Theme by default and sets no theme", async () => {
