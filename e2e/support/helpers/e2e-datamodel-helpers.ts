@@ -272,7 +272,8 @@ function getTablePickerDatabase(name: string) {
   return cy
     .findAllByTestId("tree-item")
     .filter('[data-type="database"]')
-    .filter(`:contains("${name}")`);
+    .filter(`:contains("${name}")`)
+    .should("be.visible");
 }
 
 function getTablePickerDatabaseToggle(name: string) {
@@ -287,7 +288,8 @@ function getTablePickerSchema(name: string) {
   return cy
     .findAllByTestId("tree-item")
     .filter('[data-type="schema"]')
-    .filter(`:contains("${name}")`);
+    .filter(`:contains("${name}")`)
+    .should("be.visible");
 }
 
 function getTablePickerSchemaToggle(name: string) {
@@ -302,7 +304,8 @@ function getTablePickerTable(name: string) {
   return cy
     .findAllByTestId("tree-item")
     .filter('[data-type="table"]')
-    .filter(`:contains("${name}")`);
+    .filter(`:contains("${name}")`)
+    .should("be.visible");
 }
 
 function getTablePickerSearchInput() {
