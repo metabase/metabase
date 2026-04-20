@@ -11,7 +11,10 @@ import _ from "underscore";
 import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import {
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_PDF_EXPORT_ROOT_ID,
+} from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup/selectors";
@@ -201,6 +204,7 @@ export const downloadDashboardToPdf = createAsyncThunk(
     await saveDashboardPdf({
       fileName,
       selector: cardNodeSelector,
+      parametersNodeSelector: `#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`,
       dashboardName: dashboard.name,
       includeBranding,
     });

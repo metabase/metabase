@@ -1,7 +1,6 @@
 import Color from "color";
 import { t } from "ttag";
 
-import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { isStorybookActive } from "metabase/env";
 import { getCspNonce } from "metabase/utils/csp";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
@@ -157,6 +156,7 @@ const PAGE_PADDING = 16;
 interface SavePdfProps {
   fileName: string;
   selector: string;
+  parametersNodeSelector: string;
   dashboardName: string;
   includeBranding: boolean;
 }
@@ -176,6 +176,7 @@ async function isValidColor(str: string) {
 export const saveDashboardPdf = async ({
   fileName,
   selector,
+  parametersNodeSelector,
   dashboardName,
   includeBranding,
 }: SavePdfProps) => {
@@ -190,7 +191,7 @@ export const saveDashboardPdf = async ({
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
   const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.querySelector(parametersNodeSelector)
     ?.cloneNode(true);
 
   let parametersHeight = 0;
