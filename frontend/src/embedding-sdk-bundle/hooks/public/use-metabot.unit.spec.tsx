@@ -1,6 +1,14 @@
+import userEvent from "@testing-library/user-event";
+
 import { act, screen, waitFor } from "__support__/ui";
 import { metabotActions } from "metabase/metabot/state";
-import { setup } from "metabase/metabot/tests/utils";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import {
+  lastReqBody,
+  mockAgentEndpoint,
+  setup,
+  whoIsYourFavoriteResponse,
+} from "metabase/metabot/tests/utils";
 
 import { useMetabot } from "./use-metabot";
 
@@ -289,6 +297,77 @@ describe("useMetabot", () => {
         type: "text",
         message: "ok",
       });
+    });
+  });
+
+  describe("submitMessage", () => {
+    const TestSubmit = ({
+      onResolved,
+    }: {
+      onResolved?: (value: unknown) => void;
+    }) => {
+      const { submitMessage } = useMetabot();
+      const handleClick = async () => {
+        const result = await submitMessage("hi");
+        onResolved?.(result);
+      };
+      return (
+        <button data-testid="submit-btn" onClick={handleClick}>
+          submit
+        </button>
+      );
+    };
+
+    it("forwards the message to the underlying agent request", async () => {
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
+      setup({ ui: <TestSubmit /> });
+
+      await userEvent.click(screen.getByTestId("submit-btn"));
+
+      const reqBody = await lastReqBody(agentSpy);
+      expect(reqBody?.message).toBe("hi");
+    });
+
+    it("does not open the metabot sidebar (preventOpenSidebar)", async () => {
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      // default setup() forces omnibot.visible = true; override so we can
+      // observe whether submitMessage would flip it back on.
+      const { store } = setup({
+        ui: <TestSubmit />,
+        metabotInitialState: getMetabotInitialState(),
+      });
+
+      expect(
+        store.getState().metabot?.conversations?.omnibot?.messages.length,
+      ).toBe(0);
+      expect(store.getState().metabot?.conversations?.omnibot?.visible).toBe(
+        false,
+      );
+
+      await userEvent.click(screen.getByTestId("submit-btn"));
+
+      await waitFor(() => {
+        expect(
+          store.getState().metabot?.conversations?.omnibot?.messages.length,
+        ).toBeGreaterThan(0);
+      });
+
+      expect(store.getState().metabot?.conversations?.omnibot?.visible).toBe(
+        false,
+      );
+    });
+
+    it("resolves to undefined even though agent.submitInput returns an action", async () => {
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      const onResolved = jest.fn();
+      setup({ ui: <TestSubmit onResolved={onResolved} /> });
+
+      await userEvent.click(screen.getByTestId("submit-btn"));
+
+      await waitFor(() => expect(onResolved).toHaveBeenCalled());
+      expect(onResolved).toHaveBeenCalledWith(undefined);
     });
   });
 });
