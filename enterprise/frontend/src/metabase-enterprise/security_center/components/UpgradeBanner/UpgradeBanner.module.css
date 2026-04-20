@@ -1,6 +1,6 @@
 .root {
   padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
-  background-color: var(--mb-color-background-warning);
+  background-color: color-mix(in srgb, var(--mb-color-warning) 15%, white);
   border-radius: var(--mantine-radius-md);
   border: 1px solid var(--mb-color-warning);
 }

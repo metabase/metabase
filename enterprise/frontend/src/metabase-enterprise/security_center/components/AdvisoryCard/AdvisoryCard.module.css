@@ -1,11 +1,11 @@
 .severityCritical {
   background-color: var(--mb-color-error);
-  color: var(--mb-color-white);
+  color: var(--mb-color-text-white);
 }
 
 .severityHigh {
   background-color: var(--mb-color-warning);
-  color: var(--mb-color-white);
+  color: var(--mb-color-text-white);
 }
 
 .severityMedium {
@@ -15,7 +15,7 @@
 
 .severityLow {
   background-color: var(--mb-color-success);
-  color: var(--mb-color-white);
+  color: var(--mb-color-text-white);
 }
 
 .severityNeutral {

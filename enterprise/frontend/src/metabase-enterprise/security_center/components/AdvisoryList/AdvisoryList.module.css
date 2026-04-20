@@ -19,5 +19,5 @@
 
 .countBadge {
   background-color: var(--mb-color-text-primary);
-  color: var(--mb-color-white);
+  color: var(--mb-color-text-white);
 }
