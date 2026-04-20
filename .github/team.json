@@ -1,6 +1,14 @@
 {
   "teams": [
     {
+      "name": "Gadget",
+      "label": ".Team/Gadget",
+      "members": [
+        "bronsa",
+        "ngoc"
+        ]
+    },
+    {
       "name": "Querying",
       "label": ".Team/Querying",
       "members": [
