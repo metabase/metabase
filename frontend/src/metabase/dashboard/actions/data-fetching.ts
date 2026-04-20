@@ -320,19 +320,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled: deferred.promise,
     };
 
-    // make the actual request
-    // @ts-expect-error: Is this still in use?
-    if (datasetQuery.type === "endpoint") {
-      // @ts-expect-error: Is this still in use?
-      const endpoint = datasetQuery.endpoint as string;
-      // @ts-expect-error: Is this still in use?
-      const parameters = datasetQuery.parameters;
-
-      // @ts-expect-error: Is this still in use?
-      result = await fetchDataOrError<Dataset>(
-        MetabaseApi.datasetEndpoint({ endpoint, parameters }, queryOptions),
-      );
-    } else if (dashboardType === "public") {
+    if (dashboardType === "public") {
       result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           PublicApi.dashboardCardQuery,
