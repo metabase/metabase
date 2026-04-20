@@ -369,7 +369,7 @@ export function MetabotSetupInner({
         {envSettingName && <SetByEnvVar varName={envSettingName} />}
 
         <Flex justify="end">
-          {match({ isCurrentConfigured, isModal })
+          {match({ isCurrentConfigured, isConnectButtonEnabled, isModal })
             .with({ isModal: true, isCurrentConfigured: true }, () => (
               <Button
                 variant="filled"
@@ -380,46 +380,40 @@ export function MetabotSetupInner({
                 {t`Done`}
               </Button>
             ))
-            .when(
-              () => isCurrentConfigured && isConnectButtonEnabled,
+            .with(
+              { isCurrentConfigured: true, isConnectButtonEnabled: false },
+              () => (
+                <Button
+                  c="danger"
+                  loading={isLoading}
+                  disabled={isLoading}
+                  onClick={async () => {
+                    setIsDisconnecting(true);
+                    try {
+                      await handleDisconnect();
+                    } finally {
+                      setIsDisconnecting(false);
+                    }
+                  }}
+                >
+                  {t`Disconnect`}
+                </Button>
+              ),
+            )
+            .with(
+              { isCurrentConfigured: false },
+              { isCurrentConfigured: true, isConnectButtonEnabled: true },
               () => (
                 <Button
                   variant="filled"
                   loading={isLoading}
-                  disabled={isLoading}
+                  disabled={isLoading || !isConnectButtonEnabled}
                   onClick={handleConnect}
                 >
                   {t`Connect`}
                 </Button>
               ),
             )
-            .with({ isCurrentConfigured: true }, () => (
-              <Button
-                c="danger"
-                loading={isLoading}
-                disabled={isLoading}
-                onClick={async () => {
-                  setIsDisconnecting(true);
-                  try {
-                    await handleDisconnect();
-                  } finally {
-                    setIsDisconnecting(false);
-                  }
-                }}
-              >
-                {t`Disconnect`}
-              </Button>
-            ))
-            .with({ isCurrentConfigured: false }, () => (
-              <Button
-                variant="filled"
-                loading={isLoading}
-                disabled={isLoading || !isConnectButtonEnabled}
-                onClick={handleConnect}
-              >
-                {t`Connect`}
-              </Button>
-            ))
             .exhaustive()}
         </Flex>
       </Stack>

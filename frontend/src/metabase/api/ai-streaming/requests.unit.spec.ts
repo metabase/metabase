@@ -100,7 +100,7 @@ describe("ai requests", () => {
         status: 402,
         body: {
           message: "You've used all of your included AI service tokens.",
-          "error-code": "metabase-ai-managed-locked",
+          "error-code": "metabase_ai_managed_locked",
         },
       });
 
@@ -109,7 +109,7 @@ describe("ai requests", () => {
       ).rejects.toMatchObject({
         status: 402,
         message: "You've used all of your included AI service tokens.",
-        "error-code": "metabase-ai-managed-locked",
+        "error-code": "metabase_ai_managed_locked",
       });
     });
 

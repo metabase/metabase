@@ -75,4 +75,4 @@
   []
   (api/check (not (managed-free-limit-reached?))
              [402 {:message    (tru "You''ve used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key.")
-                   :error-code "metabase-ai-managed-locked"}]))
+                   :error-code "metabase_ai_managed_locked"}]))

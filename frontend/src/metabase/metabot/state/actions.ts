@@ -101,7 +101,7 @@ const handleResponseError = (
         shouldRetry: true,
       }),
     )
-    .with({ status: 402, "error-code": "metabase-ai-managed-locked" }, () => ({
+    .with({ status: 402, "error-code": "metabase_ai_managed_locked" }, () => ({
       errorMessage: {
         type: "locked" as const,
         message: METABOT_ERR_MSG.locked,

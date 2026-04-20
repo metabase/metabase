@@ -482,7 +482,7 @@
 (defn- free-limit-error-message
   [e]
   (let [{:keys [error-code message]} (ex-data e)]
-    (when (= error-code "metabase-ai-managed-locked")
+    (when (= error-code "metabase_ai_managed_locked")
       (or message (ex-message e)))))
 
 (defn- prepare-response-context

@@ -48,7 +48,7 @@ describe("metabot > errors", () => {
       status: 402,
       body: {
         message: "You've used all of your included AI service tokens.",
-        "error-code": "metabase-ai-managed-locked",
+        "error-code": "metabase_ai_managed_locked",
       },
     });
 
