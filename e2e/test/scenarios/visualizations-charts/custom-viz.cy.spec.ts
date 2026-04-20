@@ -107,6 +107,8 @@ describe("admin > custom visualizations", () => {
     });
 
     it("should add a plugin via the form and show it in the list", () => {
+      H.resetSnowplow();
+      H.enableTracking();
       H.setupCustomVizRepo();
       H.visitCustomVizSettings();
 
@@ -124,6 +126,11 @@ describe("admin > custom visualizations", () => {
 
       // Should redirect to list and show the plugin
       H.main().findByText("demo-viz").should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_viz_plugin_created",
+        result: "success",
+      });
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should display manifest information and commit SHA after registration", () => {
@@ -235,6 +242,8 @@ describe("admin > custom visualizations", () => {
       });
 
       it("should update commit after refetch", () => {
+        H.resetSnowplow();
+        H.enableTracking();
         H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
           const initialCommit = plugin.resolved_commit;
           if (initialCommit == null) {
@@ -276,10 +285,16 @@ describe("admin > custom visualizations", () => {
               .findByText(new RegExp(`Commit: ${newCommit.slice(0, 8)}`))
               .should("be.visible");
           });
+          H.expectUnstructuredSnowplowEvent({
+            event: "custom_viz_plugin_refreshed",
+          });
+          H.expectNoBadSnowplowEvents();
         });
       });
 
       it("should update pinned version via edit form", () => {
+        H.resetSnowplow();
+        H.enableTracking();
         H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
           H.visitCustomVizEditForm(plugin.id);
 
@@ -294,6 +309,10 @@ describe("admin > custom visualizations", () => {
 
           cy.wait("@pluginUpdate").then(({ request }) => {
             expect(request.body.pinned_version).to.equal("main");
+          });
+          H.expectUnstructuredSnowplowEvent({
+            event: "custom_viz_plugin_updated",
+            result: "success",
           });
 
           const invalidPinnedVersion = "definitely-not-a-real-ref-zzz";
@@ -328,6 +347,7 @@ describe("admin > custom visualizations", () => {
             "have.value",
             invalidPinnedVersion,
           );
+          H.expectNoBadSnowplowEvents();
         });
       });
     });
@@ -338,6 +358,8 @@ describe("admin > custom visualizations", () => {
       });
 
       it("disabled plugin should fall back to default display and hide from chart type selector", () => {
+        H.resetSnowplow();
+        H.enableTracking();
         H.setupCustomVizPlugin().then(() => {
           // Single-value question (Count of Orders) — demo-viz requires
           // exactly one row with one numeric column.
@@ -361,6 +383,10 @@ describe("admin > custom visualizations", () => {
           H.main().findByText("demo-viz").realHover();
           cy.findByRole("button", { name: "Plugin actions" }).click();
           H.popover().findByText("Disable").click();
+          H.expectUnstructuredSnowplowEvent({
+            event: "custom_viz_plugin_toggled",
+            event_detail: "disabled",
+          });
 
           // Menu should now show "Enable" instead of "Disable"
           H.main().findByText("demo-viz").realHover();
@@ -374,6 +400,7 @@ describe("admin > custom visualizations", () => {
           // Custom viz section should not appear in chart type selector
           cy.findByTestId("viz-type-button").click();
           cy.findByText("Custom visualizations").should("not.exist");
+          H.expectNoBadSnowplowEvents();
         });
       });
     });
@@ -384,6 +411,8 @@ describe("admin > custom visualizations", () => {
       });
 
       it("question should fall back when plugin is deleted", () => {
+        H.resetSnowplow();
+        H.enableTracking();
         H.setupCustomVizPlugin().then(() => {
           H.createQuestion(
             {
@@ -407,6 +436,9 @@ describe("admin > custom visualizations", () => {
           H.main()
             .findByText("You don't have any custom visualizations.")
             .should("be.visible");
+          H.expectUnstructuredSnowplowEvent({
+            event: "custom_viz_plugin_deleted",
+          });
 
           // Visit the question — should fall back to table
           H.visitQuestion("@deleteCardId");
@@ -415,6 +447,7 @@ describe("admin > custom visualizations", () => {
           // Custom viz section should not appear in chart type selector
           cy.findByTestId("viz-type-button").click();
           cy.findByText("Custom visualizations").should("not.exist");
+          H.expectNoBadSnowplowEvents();
         });
       });
     });
@@ -455,6 +488,8 @@ describe("admin > custom visualizations", () => {
     }
 
     it("renders the selected custom viz for the question", () => {
+      H.resetSnowplow();
+      H.enableTracking();
       H.visitQuestion("@questionId");
       switchToDemoViz();
 
@@ -466,6 +501,8 @@ describe("admin > custom visualizations", () => {
         .should("be.visible");
       // Default threshold from getDefault
       H.main().findByText("Threshold: 0").should("be.visible");
+      H.expectUnstructuredSnowplowEvent({ event: "custom_viz_selected" });
+      H.expectNoBadSnowplowEvents();
     });
 
     it("persists the selected custom viz and its settings across reloads", () => {
