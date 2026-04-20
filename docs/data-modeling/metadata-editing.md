@@ -65,6 +65,12 @@ You can toggle the visibility of a table by clicking on the **eye** icon next to
 
 To hide **all of the tables in a database** (say, if you've migrated to a new database), click on the **eye** icon next to the database name in the sidebar.
 
+### Default row limit
+
+In the Table metadata admin page, the **Default row limit** field caps the initial query that runs when anyone opens the table from the data browser. Useful for large tables where an unbounded initial view is slow.
+
+Set a number (e.g. 1000) to apply the cap. Leave the field empty to remove it. Users can still change or clear the limit in the Query Builder — this is a display default, not a permissions feature. Saved questions and native SQL queries are not affected.
+
 ## Field settings
 
 _Admin > Table Metadata > Database > Table > Field_

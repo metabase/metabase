@@ -11776,6 +11776,25 @@ databaseChangeLog:
               - column:
                   name: match_status
 
+  - changeSet:
+      id: v55.2026-04-20T12:00:00
+      author: michaelionov
+      comment: Generic JSON settings blob on Table, mirroring Field.settings. Holds admin-set per-table defaults (row limit, filter, future).
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: settings
+                  type: ${text.type}
+                  remarks: JSON blob for admin-set per-table defaults (e.g. default_row_limit, default_filter_clause).
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: settings
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

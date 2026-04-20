@@ -40,6 +40,15 @@ export type TableDataSource =
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
+/**
+ * Admin-editable JSON blob of per-table defaults. Extend with additional keys
+ * as new "default X per table" features land. Mirrors `Field.settings`.
+ */
+export interface TableSettings {
+  /** MBQL :limit injected when a user opens the table in the Query Builder. */
+  default_row_limit?: number | null;
+}
+
 export type Table = {
   id: TableId;
   type?: CardType;
@@ -83,6 +92,7 @@ export type Table = {
   collection_id: CollectionId | null;
   is_published: boolean;
   collection?: Collection;
+  settings?: TableSettings | null;
 };
 
 export type TableOwner = Pick<
@@ -162,6 +172,11 @@ export interface UpdateTableRequest {
   entity_type?: string | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
+  /**
+   * Shallow-merged into the table's existing `settings`. A `null` value on a
+   * key drops it; a top-level `null` wipes the whole blob.
+   */
+  settings?: TableSettings | null;
 }
 
 export interface UpdateTableListRequest {

@@ -1,6 +1,7 @@
 export * from "./CoercionStrategyPicker";
 export * from "./CurrencyPicker";
 export * from "./DataSourceInput";
+export * from "./DefaultColumnsSection";
 export * from "./DiscardFieldValuesButton";
 export * from "./DiscardTableFieldValuesButton";
 export * from "./FieldEmptyState";
@@ -26,6 +27,7 @@ export * from "./SortableFieldList";
 export * from "./SyncOptionsModal";
 export * from "./SyncTableSchemaButton";
 export * from "./TableBreadcrumbs";
+export * from "./TableDefaultsPanel";
 export * from "./TableFieldList";
 export * from "./TableSortableFieldList";
 export * from "./TableSection";

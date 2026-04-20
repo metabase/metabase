@@ -1,3 +1,4 @@
+import { assocIn } from "icepick";
 import _ from "underscore";
 
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
@@ -64,11 +65,12 @@ class Table {
   }
 
   question() {
-    return Question.create({
+    const question = Question.create({
       DEPRECATED_RAW_MBQL_databaseId: this.db && this.db.id,
       DEPRECATED_RAW_MBQL_tableId: this.id,
       metadata: this.metadata,
     });
+    return applyTableDefaults(question, this.settings);
   }
 
   displayName({ includeSchema }: { includeSchema?: boolean } = {}) {
@@ -130,6 +132,45 @@ class Table {
     Object.assign(table, this);
     return table;
   }
+}
+
+/**
+ * Apply admin-set per-table defaults to a freshly-created Question. Defaults
+ * only seed the initial Question — user edits in the Query Builder override them.
+ */
+function applyTableDefaults(
+  question: Question,
+  settings: Table["settings"] | undefined,
+): Question {
+  if (!settings) {
+    return question;
+  }
+  const { default_row_limit } = settings;
+  if (typeof default_row_limit !== "number" || default_row_limit <= 0) {
+    return question;
+  }
+  // Native queries have no :limit at the MBQL level; admin defaults only apply
+  // to structured queries. This matches the shape of the question created by
+  // `Table.question()` (always `type: "query"` via `STRUCTURED_QUERY_TEMPLATE`).
+  const datasetQuery = question.datasetQuery();
+  if (!isStructuredDatasetQuery(datasetQuery)) {
+    return question;
+  }
+  return question.setDatasetQuery(
+    assocIn(datasetQuery, ["query", "limit"], default_row_limit),
+  );
+}
+
+function isStructuredDatasetQuery(
+  query: unknown,
+): query is { type: "query"; query: Record<string, unknown> } {
+  return (
+    typeof query === "object" &&
+    query !== null &&
+    (query as { type?: unknown }).type === "query" &&
+    typeof (query as { query?: unknown }).query === "object" &&
+    (query as { query?: unknown }).query !== null
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

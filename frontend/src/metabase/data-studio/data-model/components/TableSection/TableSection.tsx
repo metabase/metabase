@@ -10,8 +10,10 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import {
+  DefaultColumnsSection,
   FieldOrderPicker,
   NameDescriptionInput,
+  TableDefaultsPanel,
 } from "metabase/metadata/components";
 import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton";
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
@@ -46,7 +48,6 @@ import {
 } from "metabase-types/api";
 
 import S from "./TableSection.module.css";
-import { DefaultColumnsSection } from "./components/DefaultColumnsSection";
 import { MeasureList } from "./components/MeasureList";
 import { SegmentList } from "./components/SegmentList";
 import { TableAttributesEditSingle } from "./components/TableAttributesEditSingle";
@@ -333,6 +334,10 @@ const TableSectionBase = ({
               </Group>
 
               <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
+
+              {isConcreteTableId(table.id) && (
+                <TableDefaultsPanel table={table} />
+              )}
 
               <TableSectionGroup title={t`Metadata`}>
                 <TableMetadata table={table} />

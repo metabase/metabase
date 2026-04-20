@@ -80,4 +80,54 @@ describe("Table", () => {
       expect(destinationTable?.connectedTables()).toEqual([originTable]);
     });
   });
+
+  describe("question() with settings.default_row_limit", () => {
+    const getLimit = (metadata: ReturnType<typeof setup>, tableId: number) => {
+      const q = metadata.table(tableId)?.question();
+      const dq = q?.datasetQuery() as { query?: { limit?: number } };
+      return dq?.query?.limit;
+    };
+
+    it("seeds MBQL :limit when settings.default_row_limit is set", () => {
+      const TABLE_WITH_LIMIT = createMockTable({
+        id: 99,
+        settings: { default_row_limit: 250 },
+      });
+      const metadata = createMockMetadata({ tables: [TABLE_WITH_LIMIT] });
+
+      expect(getLimit(metadata, 99)).toBe(250);
+    });
+
+    it("does not add :limit when settings is absent", () => {
+      const metadata = setup();
+      expect(getLimit(metadata, TABLE_ORIGIN_ID)).toBeUndefined();
+    });
+
+    it("ignores non-positive values", () => {
+      const TABLE_BAD_LIMIT = createMockTable({
+        id: 100,
+        settings: { default_row_limit: 0 },
+      });
+      const metadata = createMockMetadata({ tables: [TABLE_BAD_LIMIT] });
+      expect(getLimit(metadata, 100)).toBeUndefined();
+    });
+
+    it("ignores null default_row_limit", () => {
+      const TABLE_NULL_LIMIT = createMockTable({
+        id: 101,
+        settings: { default_row_limit: null },
+      });
+      const metadata = createMockMetadata({ tables: [TABLE_NULL_LIMIT] });
+      expect(getLimit(metadata, 101)).toBeUndefined();
+    });
+
+    it("ignores settings that is null (no blob at all)", () => {
+      const TABLE_NO_SETTINGS = createMockTable({
+        id: 102,
+        settings: null,
+      });
+      const metadata = createMockMetadata({ tables: [TABLE_NO_SETTINGS] });
+      expect(getLimit(metadata, 102)).toBeUndefined();
+    });
+  });
 });
