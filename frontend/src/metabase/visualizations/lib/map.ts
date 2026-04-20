@@ -1,4 +1,4 @@
-import { IS_EMBED_PREVIEW } from "metabase/utils/embed";
+import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
 import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
 import type { DashboardId, JsonQuery, Parameter } from "metabase-types/api";
@@ -23,8 +23,8 @@ interface TileUrlParams {
   parameters?: Parameter[];
   /**
    * Indicates whether the tile URL is being generated for a preview embed context.
-   * You probably don't need to set this manually as it defaults to `IS_EMBED_PREVIEW` (it's used for tests).
-   * @default IS_EMBED_PREVIEW
+   * You probably don't need to set this manually as it defaults to `isEmbedPreview()` from metabase/embedding/config
+   * @default isEmbedPreview() from metabase/embedding/config
    */
   isEmbedPreview?: boolean;
 }
@@ -42,7 +42,7 @@ export function getTileUrl(params: TileUrlParams): string {
     uuid,
     token,
     parameters,
-    isEmbedPreview = IS_EMBED_PREVIEW,
+    isEmbedPreview = getIsEmbedPreview(),
   } = params;
 
   const isDashboard = dashboardId && dashcardId && cardId;
