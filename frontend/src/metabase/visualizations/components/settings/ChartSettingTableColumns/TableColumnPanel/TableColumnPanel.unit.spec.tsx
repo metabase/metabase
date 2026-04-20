@@ -159,6 +159,25 @@ describe("DatasetColumnSelector", () => {
     expect(onChange).toHaveBeenCalledWith(newSettings);
   });
 
+  it("should show columns that are 'hidden-by-default' in the picker", () => {
+    setup({
+      columns: [
+        COLUMNS[0],
+        COLUMNS[1],
+        { ...COLUMNS[2], visibility_type: "hidden-by-default" },
+        COLUMNS[3],
+      ],
+      columnSettings: COLUMN_SETTINGS,
+    });
+
+    const items = screen.getAllByTestId(/draggable-item/);
+    expect(items).toHaveLength(4);
+    expect(items[0]).toHaveTextContent("Total");
+    expect(items[1]).toHaveTextContent("ID");
+    expect(items[2]).toHaveTextContent("Tax");
+    expect(items[3]).toHaveTextContent("Subtotal");
+  });
+
   it("should show columns that are 'details-only' if enabled", () => {
     setup({
       columns: [

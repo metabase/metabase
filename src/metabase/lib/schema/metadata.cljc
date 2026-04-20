@@ -293,11 +293,12 @@
 
 (def column-visibility-types
   "Possible values for column `:visibility-type`."
-  #{:normal       ; Default setting.  field has no visibility restrictions.
-    :details-only ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
-    :hidden       ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
-    :sensitive    ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
-    :retired})    ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
+  #{:normal             ; Default setting.  field has no visibility restrictions.
+    :details-only       ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
+    :hidden             ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
+    :hidden-by-default  ; Field stays selectable in the column picker, but is unchecked by default when a table is first opened.
+    :sensitive          ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
+    :retired})          ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
 (mr/def ::column.visibility-type
   (into [:enum {:decode/normalize keyword}] column-visibility-types))

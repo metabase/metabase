@@ -566,7 +566,7 @@ export function tableColumnSettings({
             .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
             .map((column) => ({
               name: column.name,
-              enabled: true,
+              enabled: column.visibility_type !== "hidden-by-default",
             })),
         ];
       },

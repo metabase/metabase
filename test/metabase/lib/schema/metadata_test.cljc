@@ -128,6 +128,18 @@
     ::mbql.s/legacy-column-metadata
     ::lib.schema.metadata/lib-or-legacy-column))
 
+(deftest ^:parallel column-visibility-types-test
+  (testing "All documented visibility-type values pass schema validation"
+    (are [vt] (mr/validate ::lib.schema.metadata/column.visibility-type vt)
+      :normal
+      :details-only
+      :hidden
+      :hidden-by-default
+      :sensitive
+      :retired))
+  (testing "Unknown visibility-type values are rejected"
+    (is (not (mr/validate ::lib.schema.metadata/column.visibility-type :bogus)))))
+
 (deftest ^:parallel remove-inner-ident-test
   (testing "Remove deprecated keys like :model/inner_ident automatically (GIT-8399)"
     (is (= {:lib/type :metadata/column, :base-type :type/*, :name "X"}

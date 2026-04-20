@@ -720,6 +720,15 @@
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
+(deftest hidden-by-default-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata returns fields with :hidden-by-default like :normal fields"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :hidden-by-default}
+      (let [field-names (set (for [f (:fields (mt/user-http-request :rasta :get 200
+                                                                    (format "table/%d/query_metadata" (mt/id :venues))))]
+                               (:name f)))]
+        (is (contains? field-names "PRICE")
+            ":hidden-by-default fields must be returned in query metadata so the column picker can list them")))))
+
 (deftest ^:parallel table-segment-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "segments include :definition_description"

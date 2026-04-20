@@ -46,6 +46,7 @@ import {
 } from "metabase-types/api";
 
 import S from "./TableSection.module.css";
+import { DefaultColumnsSection } from "./components/DefaultColumnsSection";
 import { MeasureList } from "./components/MeasureList";
 import { SegmentList } from "./components/SegmentList";
 import { TableAttributesEditSingle } from "./components/TableAttributesEditSingle";
@@ -378,6 +379,10 @@ const TableSectionBase = ({
                   message={t`This table has no fields`}
                   spacing="sm"
                 />
+              )}
+
+              {hasFields && !isSorting && (
+                <DefaultColumnsSection table={table} />
               )}
 
               {hasFields && (

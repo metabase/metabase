@@ -618,6 +618,15 @@ export const FIELD_VISIBILITY_TYPES = [
     },
   },
   {
+    id: "hidden-by-default",
+    get name() {
+      return t`Hidden by default`;
+    },
+    get description() {
+      return t`This field won't be shown when the table is first opened, but users can add it via the column picker.`;
+    },
+  },
+  {
     id: "sensitive",
     get name() {
       return t`Do not include`;

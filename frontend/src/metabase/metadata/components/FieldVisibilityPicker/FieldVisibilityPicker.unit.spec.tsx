@@ -36,6 +36,7 @@ describe("FieldVisibilityPicker", () => {
 
     expect(screen.getByText("Everywhere")).toBeInTheDocument();
     expect(screen.getByText("Only in detail views")).toBeInTheDocument();
+    expect(screen.getByText("Hidden by default")).toBeInTheDocument();
     expect(screen.getByText("Do not include")).toBeInTheDocument();
   });
 
@@ -48,6 +49,17 @@ describe("FieldVisibilityPicker", () => {
     await userEvent.click(screen.getByText("Do not include"));
 
     expect(onChange).toHaveBeenCalledWith("sensitive");
+  });
+
+  it("calls onChange with hidden-by-default when that option is chosen", async () => {
+    const { onChange } = setup();
+
+    const select = screen.getByPlaceholderText("Select a field visibility");
+
+    await userEvent.click(select);
+    await userEvent.click(screen.getByText("Hidden by default"));
+
+    expect(onChange).toHaveBeenCalledWith("hidden-by-default");
   });
 
   it("shows correct visibility descriptions (metabase#56077)", async () => {
@@ -71,6 +83,11 @@ describe("FieldVisibilityPicker", () => {
     expect(
       dropdown.getByText(
         "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      dropdown.getByText(
+        "This field won't be shown when the table is first opened, but users can add it via the column picker.",
       ),
     ).toBeInTheDocument();
   });

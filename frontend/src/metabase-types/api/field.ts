@@ -45,6 +45,7 @@ export type DateTimeFieldFingerprint = {
 export type FieldVisibilityType =
   | "details-only"
   | "hidden"
+  | "hidden-by-default"
   | "normal"
   | "retired"
   | "sensitive";

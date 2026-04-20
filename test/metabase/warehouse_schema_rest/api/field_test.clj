@@ -161,6 +161,16 @@
                       :nfc_path           nil}
                      (simple-field-details (t2/select-one :model/Field :id field-id)))))))))))
 
+(deftest update-field-visibility-type-hidden-by-default-test
+  (testing "PUT /api/field/:id accepts :hidden-by-default and round-trips"
+    (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+      (let [response (mt/user-http-request :crowberto :put 200
+                                           (format "field/%d" field-id)
+                                           {:visibility_type :hidden-by-default})]
+        (is (= "hidden-by-default" (:visibility_type response))))
+      (is (= :hidden-by-default
+             (:visibility_type (t2/select-one :model/Field :id field-id)))))))
+
 (deftest update-field-test-2
   (testing "PUT /api/field/:id"
     (testing "updating coercion strategies"

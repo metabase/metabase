@@ -7,7 +7,11 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-import { NUMBER_COLUMN_SETTINGS, columnSettings } from "./column";
+import {
+  NUMBER_COLUMN_SETTINGS,
+  columnSettings,
+  tableColumnSettings,
+} from "./column";
 
 registerVisualizations();
 
@@ -121,6 +125,70 @@ describe("column settings", () => {
       computed.column?.(series[0].data.cols[0]),
     );
     expect(number_style).toBe("percent");
+  });
+
+  describe("tableColumnSettings default seeding", () => {
+    const buildSeries = (cols: Partial<DatasetColumn>[]): Series => [
+      createMockSingleSeries(
+        {},
+        {
+          data: {
+            cols: cols.map((col, i) =>
+              createMockColumn({ name: `c${i}`, ...col }),
+            ),
+          },
+        },
+      ),
+    ];
+
+    const seed = (
+      cols: Partial<DatasetColumn>[],
+      storedSettings: Record<string, unknown> = {},
+    ) => {
+      const def = checkNotNull(tableColumnSettings()["table.columns"]);
+      const series = buildSeries(cols);
+      return checkNotNull(def.getValue)(series, storedSettings);
+    };
+
+    it("defaults 'normal' columns to enabled: true", () => {
+      const seeded = seed([
+        { name: "a", visibility_type: "normal" },
+        { name: "b" },
+      ]);
+      expect(seeded).toEqual([
+        { name: "a", enabled: true },
+        { name: "b", enabled: true },
+      ]);
+    });
+
+    it("defaults 'hidden-by-default' columns to enabled: false", () => {
+      const seeded = seed([
+        { name: "a", visibility_type: "normal" },
+        { name: "b", visibility_type: "hidden-by-default" },
+        { name: "c", visibility_type: "details-only" },
+      ]);
+      expect(seeded).toEqual([
+        { name: "a", enabled: true },
+        { name: "b", enabled: false },
+        { name: "c", enabled: true },
+      ]);
+    });
+
+    it("preserves existing saved 'enabled: true' even after visibility_type flips to 'hidden-by-default'", () => {
+      // Regression: the seeding branch only affects NEW columns that have no
+      // matching setting. Existing saved settings should be returned verbatim.
+      const seeded = seed(
+        [
+          { name: "a", visibility_type: "normal" },
+          { name: "b", visibility_type: "hidden-by-default" },
+        ],
+        { "table.columns": [{ name: "b", enabled: true }] },
+      );
+      expect(seeded).toEqual([
+        { name: "b", enabled: true },
+        { name: "a", enabled: true },
+      ]);
+    });
   });
 
   describe("NUMBER_COLUMN_SETTINGS", () => {

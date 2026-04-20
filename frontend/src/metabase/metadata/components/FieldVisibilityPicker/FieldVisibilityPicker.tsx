@@ -95,6 +95,7 @@ function isFieldVisibilityType(value: string): value is FieldVisibilityType {
   const visibilityTypesMap: Record<FieldVisibilityType, boolean> = {
     "details-only": true,
     hidden: true,
+    "hidden-by-default": true,
     normal: true,
     retired: true,
     sensitive: true,
