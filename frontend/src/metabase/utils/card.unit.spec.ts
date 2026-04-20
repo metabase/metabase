@@ -1,4 +1,5 @@
 import {
+  deserializeCardFromQuery,
   deserializeCardFromUrl,
   serializeCardForUrl,
 } from "metabase/utils/card";
@@ -8,8 +9,19 @@ import {
   utf8_to_b64,
   utf8_to_b64url,
 } from "metabase/utils/encoding";
+import type { Card, UnsavedCard } from "metabase-types/api";
 
 const CARD_ID = 31;
+
+interface GetCardOpts {
+  newCard?: boolean;
+  hasOriginalCard?: boolean;
+  isNative?: boolean;
+  database?: number;
+  display?: string;
+  queryFields?: Record<string, unknown>;
+  table?: number;
+}
 
 // TODO Atte Keinänen 8/5/17: Create a reusable version `getCard` for reducing test code duplication
 const getCard = ({
@@ -20,7 +32,7 @@ const getCard = ({
   display = "table",
   queryFields = {},
   table = undefined,
-}) => {
+}: GetCardOpts = {}): Card | UnsavedCard => {
   const savedCardFields = {
     name: "Example Saved Question",
     description: "For satisfying your craving for information",
@@ -51,7 +63,7 @@ const getCard = ({
     },
     ...(newCard ? {} : savedCardFields),
     ...(hasOriginalCard ? { original_card_id: CARD_ID } : {}),
-  };
+  } as Card | UnsavedCard;
 };
 
 describe("lib/card", () => {
@@ -89,6 +101,26 @@ describe("lib/card", () => {
       expect(cardAfterSerialization).toHaveProperty(
         "original_card_id",
         CARD_ID,
+      );
+    });
+  });
+
+  describe("deserializeCardFromQuery", () => {
+    const MBQL_QUERY = {
+      database: 1,
+      type: "query",
+      query: { "source-table": 2 },
+    };
+    const CARD_PAYLOAD = {
+      dataset_query: MBQL_QUERY,
+      display: "bar",
+      visualization_settings: {},
+    };
+    const WRAPPED_B64 = utf8_to_b64url(JSON.stringify(CARD_PAYLOAD));
+
+    it("should strip /question# prefix and decode the payload", () => {
+      expect(deserializeCardFromQuery(`/question#${WRAPPED_B64}`)).toEqual(
+        CARD_PAYLOAD,
       );
     });
   });
