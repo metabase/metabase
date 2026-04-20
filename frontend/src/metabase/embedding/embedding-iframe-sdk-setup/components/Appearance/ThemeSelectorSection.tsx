@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, SimpleGrid, Tooltip } from "metabase/ui";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 
 import type { SdkIframeEmbedSetupTheme } from "../../types";
@@ -85,13 +85,7 @@ export const ThemeSelectorSection = ({
   return (
     <Flex direction="column" gap={0} w="100%">
       {hasThemes && (
-        <Box
-          style={{
-            display: "grid",
-            gap: "var(--mantine-spacing-sm)",
-            gridTemplateColumns: "1fr 1fr",
-          }}
-        >
+        <SimpleGrid cols={2} spacing="sm">
           <ThemeCard
             name={t`Default Theme`}
             colors={[]}
@@ -118,7 +112,7 @@ export const ThemeSelectorSection = ({
             isSelected={isCustomSelected}
             onClick={handleCustomClick}
           />
-        </Box>
+        </SimpleGrid>
       )}
 
       {isCustomSelected && <Box h={24} />}
