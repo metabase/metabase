@@ -380,6 +380,36 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  describe("mobile layout", () => {
+    it("should hide Filter, Summarize and Breakout dropdowns on narrow viewports", () => {
+      cy.viewport(400, 800);
+
+      mountInteractiveQuestion();
+
+      getSdkRoot()
+        .findByTestId("interactive-question-result-toolbar")
+        .within(() => {
+          cy.get(".Icon-filter").should("not.exist");
+          cy.get(".Icon-sum").should("not.exist");
+          cy.get(".Icon-arrow_split").should("not.exist");
+        });
+    });
+
+    it("should show Filter, Summarize and Breakout dropdowns on wide viewports", () => {
+      cy.viewport(1200, 800);
+
+      mountInteractiveQuestion();
+
+      getSdkRoot()
+        .findByTestId("interactive-question-result-toolbar")
+        .within(() => {
+          cy.get(".Icon-filter").should("be.visible");
+          cy.get(".Icon-sum").should("be.visible");
+          cy.get(".Icon-arrow_split").should("be.visible");
+        });
+    });
+  });
+
   describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
     const successTestCases = [
       {
