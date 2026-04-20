@@ -14,6 +14,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.tracing.core :as tracing]
@@ -709,50 +710,41 @@
   [row]
   (update row :legacy_input decode-pgobject))
 
-;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
-;; already denormalized on the index row. Values are the Toucan model whose `can-read?`
-;; defmethod is invoked on a stub instance carrying only `:collection_id`.
-;;
-;;  - "card" / "metric" / "dataset" → :model/Card
-;;  - "dashboard"                   → :model/Dashboard (as of 20260420 this _could_ be
-;;                                    :model/Card for additional albeit modest perf gains
-;;                                    but choosing to not silently ride Card's semantics)
-;;  - "indexed-entity"              → :model/Card by design: the index row's
-;;                                    `collection_id` is the parent Card's (denormalized
-;;                                    via the spec's Collection join), so routing through
-;;                                    Card short-circuits the original ModelIndex → Card
-;;                                    resolution in `filter-can-read-indexed-entity`.
+;; Search-model strings whose read permission is determined by `:collection_id` alone. Derived
+;; from `perms/collection-id-only-read-models` (models registered via
+;; `perms/define-collection-id-only-read-perms!`) plus `"indexed-entity"`, whose index-row
+;; `:collection_id` is denormalized from the parent Card via the search spec's Collection join
+;; and whose read policy is therefore transitively the registered Card's.
+;; Computed lazily so the registry has time to populate at app init before first search.
 (def ^:private collection-id-only-search-models
-  {"card"           :model/Card
-   "metric"         :model/Card
-   "dataset"        :model/Card
-   "dashboard"      :model/Dashboard
-   "indexed-entity" :model/Card})
+  (delay
+    (let [registered-t2-models (perms/collection-id-only-read-models)]
+      (into #{"indexed-entity"}
+            (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
+                  (map key))
+            (search/specifications)))))
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
-        ;; Fast path: for `collection-id-only-search-models` the read permission is a pure function
-        ;; of `:collection_id`, which is denormalized onto the index row at ingest time. We deliberately
-        ;; trust the indexed value rather than re-fetching the app DB row — that avoids an N-row
-        ;; `t2/select` on every semantic search and is the main win of this path. The trade-off is
-        ;; that between a move (or delete) and the next reindex, a user can see a search hit whose
-        ;; live `collection_id` they no longer have access to. The index is eventually consistent by
-        ;; design; and the per-row API fetch (loading the entity after clicking through) still
-        ;; enforces live permissions, so the exposure is bounded to search-result metadata.
+        fast-set      @collection-id-only-search-models
+        {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)
+        ;; Fast path: for models registered via `perms/define-collection-id-only-read-perms!`,
+        ;; `mi/can-read?` is definitionally `(perms/can-read-via-parent-collection?
+        ;; (:collection_id instance))`, so we can skip the t2/select and check permissions
+        ;; straight from the denormalized `:collection_id` on the index row. Calling the shared
+        ;; helper directly means the fast path runs literally the same code as the slow path
+        ;; for these models — no drift possible on the permission logic. Memoizing dedupes the
+        ;; perm check across docs that share a collection.
         ;;
-        ;; Dedupe by `[stub-model, collection_id]` so `can-read?` runs at most once per
-        ;; (model, collection) pair instead of once per document.
-        readable? (memoize
-                   (fn [stub-model coll-id]
-                     (mi/can-read? (t2/instance stub-model {:collection_id coll-id}))))
-        fast-filtered (filterv (fn [doc]
-                                 (readable? (get collection-id-only-search-models (:model doc))
-                                            (:collection_id doc)))
-                               fast-docs)
+        ;; Trade-off: the indexed `:collection_id` is eventually-consistent. Between a move or
+        ;; delete and the next reindex, a user may see a search hit whose live `collection_id`
+        ;; they no longer have access to. The per-row entity fetch on click-through still
+        ;; enforces live permissions, bounding exposure to search-result metadata.
+        coll-readable? (memoize perms/can-read-via-parent-collection?)
+        fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model docs] (group-by doc->t2-model slow-docs)
                                  t2-instance (t2/select t2-model :id [:in (map :id docs)])]

@@ -59,11 +59,7 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
-(defmethod mi/can-read? :model/Dashboard
-  ([instance]
-   (perms/can-read-audit-helper :model/Dashboard instance))
-  ([_ pk]
-   (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
+(perms/define-collection-id-only-read-perms! :model/Dashboard)
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})

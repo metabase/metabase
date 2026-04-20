@@ -144,11 +144,7 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 
-(defmethod mi/can-read? :model/Card
-  ([instance]
-   (perms/can-read-audit-helper :model/Card instance))
-  ([_ pk]
-   (mi/can-read? (t2/select-one :model/Card :id pk))))
+(perms/define-collection-id-only-read-perms! :model/Card)
 
 (defn model?
   "Returns true if `card` is a model."
