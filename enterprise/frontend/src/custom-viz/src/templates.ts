@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { version } from "../package.json";
 
 import gitignoreTemplate from "./templates/.gitignore?raw";
+import readmeTemplate from "./templates/README.md?raw";
 import iconSvgTemplate from "./templates/icon.svg?raw";
 import indexTsxTemplate from "./templates/index.tsx?raw";
 import manifestTemplate from "./templates/metabase-plugin.json?raw";
@@ -71,4 +72,8 @@ export function readBinaryTemplate(filename: string): Buffer {
 
 export function generateGitignore(): string {
   return gitignoreTemplate;
+}
+
+export function generateReadme(name: string, displayName: string): string {
+  return replaceDisplayName(replaceName(readmeTemplate, name), displayName);
 }
