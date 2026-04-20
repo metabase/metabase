@@ -2267,7 +2267,8 @@
                     :model/Table
                     :model/Transform
                     :model/TransformRun}
-   :uses #{driver
+   :uses #{database-routing
+           driver
            events
            lib
            lib-be
