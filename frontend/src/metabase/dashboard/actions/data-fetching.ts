@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { automagicDashboardsApi, dashboardApi } from "metabase/api";
+import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -50,7 +51,6 @@ import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { applyParameters } from "metabase/common/utils/card";
 import type {
   Card,
   CardId,
@@ -328,6 +328,7 @@ export const fetchCardDataAction = createAsyncThunk<
       // @ts-expect-error: Is this still in use?
       const parameters = datasetQuery.parameters;
 
+      // @ts-expect-error: Is this still in use?
       result = await fetchDataOrError<Dataset>(
         MetabaseApi.datasetEndpoint({ endpoint, parameters }, queryOptions),
       );
