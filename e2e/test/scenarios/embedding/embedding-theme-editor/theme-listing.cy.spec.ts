@@ -9,6 +9,14 @@ function createThemeViaApi(name = "Test theme") {
   });
 }
 
+function deleteAllThemes() {
+  cy.request("GET", "/api/embed-theme").then(({ body: themes }) => {
+    themes.forEach((theme: { id: number }) => {
+      cy.request("DELETE", `/api/embed-theme/${theme.id}`);
+    });
+  });
+}
+
 describe(
   "scenarios > embedding > themes > theme listing",
   { tags: "@EE" },
@@ -19,7 +27,7 @@ describe(
       H.activateToken("pro-self-hosted");
     });
 
-    it("shows the new theme card and allows creating a new theme", () => {
+    it("shows default themes and the new theme card, and allows creating a new theme", () => {
       cy.visit("/admin/embedding/themes");
 
       cy.log("theme is visible in embedding sidebar");
@@ -28,6 +36,10 @@ describe(
         .should("be.visible");
 
       H.main().within(() => {
+        cy.log("default Light and Dark themes are seeded");
+        cy.findByText("Light").should("be.visible");
+        cy.findByText("Dark").should("be.visible");
+
         cy.log("new theme card is visible");
         cy.findByRole("button", { name: /New theme/ })
           .should("be.visible")
@@ -60,6 +72,17 @@ describe(
 
       cy.log("no POST was issued");
       cy.get("@createTheme.all").should("have.length", 0);
+    });
+
+    it("shows empty state when all themes are deleted", () => {
+      deleteAllThemes();
+      cy.visit("/admin/embedding/themes");
+
+      H.main().within(() => {
+        cy.findByText("Create your first theme to get started").should(
+          "be.visible",
+        );
+      });
     });
 
     it("navigates to theme editor when clicking an existing theme card", () => {
@@ -173,9 +196,12 @@ describe(
       H.undoToast().findByText("Theme deleted successfully").should("exist");
 
       H.main().within(() => {
-        cy.log("theme should be deleted and only the new theme card remains");
+        cy.log(
+          "deleted theme is gone; default themes and new theme card remain",
+        );
         cy.findByText("Untitled theme").should("not.exist");
-
+        cy.findByText("Light").should("be.visible");
+        cy.findByText("Dark").should("be.visible");
         cy.findByRole("button", { name: /New theme/ }).should("be.visible");
       });
     });
