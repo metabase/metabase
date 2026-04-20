@@ -1,6 +1,10 @@
 (ns metabase.task.bootstrap
   (:require
-   [metabase.classloader.core :as classloader]))
+   [metabase.classloader.core :as classloader]
+   [toucan2.connection :as t2.conn])
+  (:import
+   (java.lang.reflect InvocationHandler InvocationTargetException Method Proxy)
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,17 +23,47 @@
   [f]
   (reset! connection-interceptor f))
 
+(defn- invoke-or-unwrap
+  "Invoke a method on a target, unwrapping InvocationTargetException to preserve the original exception type."
+  [^Method method target ^objects args]
+  (try
+    (if args
+      (.invoke method target args)
+      (.invoke method target (object-array 0)))
+    (catch InvocationTargetException e
+      (throw (or (.getCause e) e)))))
+
+(def ^:private ^:const suppressed-methods
+  "Methods suppressed on the non-closeable connection proxy. These prevent Quartz from interfering with the outer
+  transaction's lifecycle when reusing an existing connection."
+  #{"close" "commit" "rollback" "setAutoCommit"})
+
+(defn- non-closeable-connection
+  "Wrap a Connection in a proxy that suppresses close/commit/rollback/setAutoCommit. Used when reusing the current
+  thread's Toucan2-managed connection for Quartz operations to prevent deadlocks."
+  ^Connection [^Connection conn]
+  (Proxy/newProxyInstance
+   (.getClassLoader Connection)
+   (into-array Class [Connection])
+   (reify InvocationHandler
+     (invoke [_ _ method args]
+       (if (suppressed-methods (.getName ^Method method))
+         nil
+         (invoke-or-unwrap method conn args))))))
+
 (defrecord ^:private ConnectionProvider []
   org.quartz.utils.ConnectionProvider
   (initialize [_])
   (getConnection [_]
-    ;; get a connection from our application DB connection pool. Quartz will close it (i.e., return it to the pool)
-    ;; when it's done
-    ;;
-    ;; very important! Fetch a new connection from the connection pool rather than using currently bound Connection if
-    ;; one already exists -- because Quartz will close this connection when done, we don't want to screw up the
-    ;; calling block
-    (let [conn (.getConnection (app-db))]
+    ;; If there's already a Connection bound to the current thread (via toucan2's *current-connectable*), reuse it
+    ;; through a non-closeable proxy. This prevents deadlocks when Quartz operations are triggered inside
+    ;; with-transaction or with-connection blocks -- without the proxy, Quartz would try to check out a new connection
+    ;; from the pool, which can deadlock if the pool is saturated.
+    ;; The proxy suppresses close/commit/rollback/setAutoCommit so Quartz can't interfere with the outer transaction.
+    (let [current t2.conn/*current-connectable*
+          conn    (if (instance? Connection current)
+                    (non-closeable-connection current)
+                    (.getConnection (app-db)))]
       (if-let [interceptor @connection-interceptor]
         (interceptor conn)
         conn)))
