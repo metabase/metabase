@@ -41,8 +41,9 @@ export type CardType = (typeof CARD_TYPES)[number];
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
-export interface Card<Q extends DatasetQuery = DatasetQuery>
-  extends UnsavedCard<Q> {
+export interface Card<
+  Q extends DatasetQuery = DatasetQuery,
+> extends UnsavedCard<Q> {
   id: CardId;
   entity_id: BaseEntityId;
   created_at: string;

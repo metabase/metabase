@@ -3,8 +3,7 @@ import { forwardRef } from "react";
 
 import { TextAreaRoot } from "./TextArea.styled";
 
-export interface TextAreaProps
-  extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: boolean;
   fullWidth?: boolean;
 }

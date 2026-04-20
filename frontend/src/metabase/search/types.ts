@@ -70,8 +70,9 @@ interface SearchFilter<T extends FilterTypeKeys = any> {
   toUrl: (value: SearchFilterPropTypes[T] | null) => SearchQueryParamValue;
 }
 
-export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
-  extends SearchFilter {
+export interface SearchFilterDropdown<
+  T extends FilterTypeKeys = any,
+> extends SearchFilter {
   type: "dropdown";
   DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
   ContentComponent: ComponentType<SearchFilterComponentProps<T>>;

@@ -1004,9 +1004,9 @@
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
    :uses #{app-db
-           models
-           util}
-   :model-imports #{:model/Card
+           models}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
                     :model/Dashboard
                     :model/MetabotMessage
                     :model/QueryExecution
@@ -2245,14 +2245,14 @@
            metabase.transforms-base.interface
            metabase.transforms-base.util}
    :model-imports #{:model/Database
-                    :model/DatabaseRouter
                     :model/Table
                     ;; TODO regressions — transforms-base should not depend on
                     ;; these directly. Remove once the module is agnostic to
                     ;; global versus workspace transforms.
                     :model/Transform
                     :model/TransformRun}
-   :uses #{driver
+   :uses #{database-routing
+           driver
            events
            lib
            lib-be

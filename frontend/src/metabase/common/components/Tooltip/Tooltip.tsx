@@ -10,13 +10,12 @@ import { isReactDOMTypeElement } from "metabase-types/guards";
 
 const TippyComponent = Tippy.default;
 
-export interface TooltipProps
-  extends Partial<
-    Pick<
-      Tippy.TippyProps,
-      "delay" | "reference" | "placement" | "maxWidth" | "offset"
-    >
-  > {
+export interface TooltipProps extends Partial<
+  Pick<
+    Tippy.TippyProps,
+    "delay" | "reference" | "placement" | "maxWidth" | "offset"
+  >
+> {
   preventOverflow?: boolean;
   tooltip?: React.ReactNode;
   children?: React.ReactNode;
