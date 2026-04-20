@@ -33,14 +33,6 @@ type MetabotAgentTextMessage = {
   message: string;
 };
 
-type MetabotAgentChartMessage = {
-  id: string;
-  role: "agent";
-  type: "chart";
-  /** URL path to the question, e.g. `/question#<base64>` */
-  questionPath: string;
-};
-
 type MetabotAgentTodoListMessage = {
   id: string;
   role: "agent";
@@ -64,7 +56,6 @@ type MetabotAgentEditSuggestionMessage = {
 // does not expose. `use-metabot.tsx` filters tool_call out before mapping.
 type MetabotAgentMessage =
   | MetabotAgentTextMessage
-  | MetabotAgentChartMessage
   | MetabotAgentTodoListMessage
   | MetabotAgentEditSuggestionMessage;
 

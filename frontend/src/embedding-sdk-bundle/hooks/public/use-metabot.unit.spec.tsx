@@ -201,28 +201,6 @@ describe("useMetabot", () => {
       });
     });
 
-    it("renames `navigateTo` to `questionPath` on agent.chart", async () => {
-      const { store } = setup({ ui: <TestMessages /> });
-
-      act(() => {
-        store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "chart",
-            navigateTo: "/question#base64",
-          } as any),
-        );
-      });
-
-      const [msg] = await readMessages();
-      expect(msg).toEqual({
-        id: expect.any(String),
-        role: "agent",
-        type: "chart",
-        questionPath: "/question#base64",
-      });
-    });
-
     it("passes through agent.todo_list payload", async () => {
       const todo = {
         id: "t1",

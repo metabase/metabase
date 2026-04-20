@@ -145,16 +145,6 @@ const mapMessage = (
         ({ id, role: "agent", type: "text", message }) as const,
     )
     .with(
-      { role: "agent", type: "chart" },
-      ({ id, navigateTo }) =>
-        ({
-          id,
-          role: "agent",
-          type: "chart",
-          questionPath: navigateTo,
-        }) as const,
-    )
-    .with(
       { role: "agent", type: "todo_list" },
       ({ id, payload }) =>
         ({

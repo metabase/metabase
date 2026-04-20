@@ -38,7 +38,6 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
-  MetabotAgentChartMessage,
   MetabotAgentEditSuggestionChatMessage,
   MetabotAgentId,
   MetabotAgentTodoListChatMessage,
@@ -356,9 +355,6 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       let state = {};
       let error: unknown = undefined;
-      let pendingChartMessage:
-        | { type: "chart"; navigateTo: string }
-        | undefined = undefined;
 
       const response = await aiStreamingQuery(
         {
@@ -466,12 +462,6 @@ export const sendAgentRequest = createAsyncThunk<
           // so fallback to the state used when the request was issued
           state: Object.keys(state).length === 0 ? request.state : state,
         });
-      }
-
-      if (pendingChartMessage != null) {
-        const chartMsg: Omit<MetabotAgentChartMessage, "id" | "role"> =
-          pendingChartMessage;
-        dispatch(addAgentMessage({ ...chartMsg, agentId }));
       }
 
       return fulfillWithValue({
