@@ -39,14 +39,19 @@
 
 (defn- ->i18n-map
   "Convert the contents of a `.po` file to map format used in the frontend client."
-  [po-contents drop-msgids]
-  {:charset      "utf-8"
-   :headers      (into {} (for [[k v] (:headers po-contents)]
-                            [(str/lower-case k) v]))
-   :translations (->translations-map (:messages po-contents) drop-msgids)})
+  ([po-contents]
+   (->i18n-map po-contents #{}))
+  ([po-contents drop-msgids]
+   {:charset      "utf-8"
+    :headers      (into {} (for [[k v] (:headers po-contents)]
+                             [(str/lower-case k) v]))
+    :translations (->translations-map (:messages po-contents) drop-msgids)}))
 
-(defn- i18n-map [locale drop-msgids]
-  (->i18n-map (i18n/po-contents locale) drop-msgids))
+(defn- i18n-map
+  ([locale]
+   (i18n-map locale #{}))
+  ([locale drop-msgids]
+   (->i18n-map (i18n/po-contents locale) drop-msgids)))
 
 (def target-directory
   "Target directory for frontend i18n resources."
@@ -57,14 +62,17 @@
 
 (defn create-artifact-for-locale!
   "Create an artifact with translated strings for `locale` for frontend (JS) usage. `drop-msgids`
-  is a set of English source strings to exclude (their translations had violations)."
-  [locale drop-msgids]
-  (let [target-file (target-filename locale)]
-    (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
-      (u/create-directory-unless-exists! target-directory)
-      (u/delete-file-if-exists! target-file)
-      (u/step "Write JSON"
-        (with-open [os (FileOutputStream. (io/file target-file))
-                    w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-          (json/generate-stream (i18n-map locale drop-msgids) w)))
-      (u/assert-file-exists target-file))))
+  is a set of English source strings to exclude (their translations had violations). Defaults
+  to `#{}` — no filtering — when omitted."
+  ([locale]
+   (create-artifact-for-locale! locale #{}))
+  ([locale drop-msgids]
+   (let [target-file (target-filename locale)]
+     (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
+       (u/create-directory-unless-exists! target-directory)
+       (u/delete-file-if-exists! target-file)
+       (u/step "Write JSON"
+         (with-open [os (FileOutputStream. (io/file target-file))
+                     w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
+           (json/generate-stream (i18n-map locale drop-msgids) w)))
+       (u/assert-file-exists target-file)))))

@@ -37,41 +37,46 @@
 (defn- target-filename [locale]
   (u/filename target-directory (format "%s.edn" locale)))
 
-(defn- write-edn-file! [po-contents drop-msgids target-file]
-  (u/step "Write EDN file"
-    (with-open [os (FileOutputStream. (io/file target-file))
-                w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-      (.write w "{\n")
-      (.write w ":headers\n")
-      (.write w (pr-str (:headers po-contents)))
-      (.write w "\n\n")
-      (.write w ":messages\n")
-      (.write w "{\n")
-      (doseq [{msg-id :id, msg-str :str, msg-str-plural :str-plural}
-              (messages->edn (:messages po-contents) drop-msgids)
-              :let [msg-strs (or msg-str-plural [msg-str])]]
-        (.write w (pr-str msg-id))
-        (.write w "\n")
-        (when msg-str-plural (.write w "["))
-        (doseq [msg (butlast msg-strs)]
-          (.write w (pr-str msg))
-          (.write w " "))
-        (.write w (pr-str (last msg-strs)))
-        (when msg-str-plural (.write w "]"))
-        (.write w "\n\n"))
-      (.write w "}\n")
-      (.write w "}\n"))))
+(defn- write-edn-file!
+  ([po-contents target-file]
+   (write-edn-file! po-contents #{} target-file))
+  ([po-contents drop-msgids target-file]
+   (u/step "Write EDN file"
+     (with-open [os (FileOutputStream. (io/file target-file))
+                 w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
+       (.write w "{\n")
+       (.write w ":headers\n")
+       (.write w (pr-str (:headers po-contents)))
+       (.write w "\n\n")
+       (.write w ":messages\n")
+       (.write w "{\n")
+       (doseq [{msg-id :id, msg-str :str, msg-str-plural :str-plural}
+               (messages->edn (:messages po-contents) drop-msgids)
+               :let [msg-strs (or msg-str-plural [msg-str])]]
+         (.write w (pr-str msg-id))
+         (.write w "\n")
+         (when msg-str-plural (.write w "["))
+         (doseq [msg (butlast msg-strs)]
+           (.write w (pr-str msg))
+           (.write w " "))
+         (.write w (pr-str (last msg-strs)))
+         (when msg-str-plural (.write w "]"))
+         (.write w "\n\n"))
+       (.write w "}\n")
+       (.write w "}\n")))))
 
 (defn create-artifact-for-locale!
   "Create an artifact with translated strings for `locale` for backend (Clojure) usage. `drop-msgids`
   is a set of English source strings to exclude (their translations had violations); they fall back
-  to English at runtime."
-  [locale drop-msgids]
-  (let [target-file (target-filename locale)]
-    (u/step (format "Create backend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
-      (u/create-directory-unless-exists! target-directory)
-      (u/delete-file-if-exists! target-file)
-      (write-edn-file! (i18n/po-contents locale) drop-msgids target-file)
-      (u/assert-file-exists target-file)
-      (when (seq drop-msgids)
-        (u/announce "Filtered %d invalid backend translations from %s" (count drop-msgids) locale)))))
+  to English at runtime. Defaults to `#{}` — no filtering — when omitted."
+  ([locale]
+   (create-artifact-for-locale! locale #{}))
+  ([locale drop-msgids]
+   (let [target-file (target-filename locale)]
+     (u/step (format "Create backend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
+       (u/create-directory-unless-exists! target-directory)
+       (u/delete-file-if-exists! target-file)
+       (write-edn-file! (i18n/po-contents locale) drop-msgids target-file)
+       (u/assert-file-exists target-file)
+       (when (seq drop-msgids)
+         (u/announce "Filtered %d invalid backend translations from %s" (count drop-msgids) locale))))))
