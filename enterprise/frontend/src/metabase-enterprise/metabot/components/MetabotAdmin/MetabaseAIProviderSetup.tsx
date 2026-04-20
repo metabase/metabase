@@ -23,11 +23,15 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import {
+  useGetMetabotUsageQuery,
+  useRemoveCloudAddOnMutation,
+} from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { useGetMetabotUsageQuery } from "../../../api";
 import {
   METABASE_MANAGED_AI_FEATURE,
+  METABASE_MANAGED_AI_PRODUCT_TYPE,
   METABASE_MANAGED_AI_TERMS_URL,
   METABOT_V3_FEATURE,
   OFFER_METABASE_MANAGED_AI_FEATURE,
@@ -70,6 +74,8 @@ export function MetabaseAIProviderSetup() {
   );
 
   const metabaseManagedAiPurchase = usePurchaseMetabaseManagedAi();
+  const [removeCloudAddOn, removeCloudAddOnResult] =
+    useRemoveCloudAddOnMutation();
 
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSettingUpModalOpen, setIsSettingUpModalOpen] = useState(false);
@@ -103,7 +109,17 @@ export function MetabaseAIProviderSetup() {
     .with({ isStoreUser: false }, () => null)
     .otherwise(() => handleMetabasePurchase);
 
-  const { isLoading } = useMetabotSetupContext(onConnect);
+  const onDisconnect = useCallback(async () => {
+    if (!hasMetabaseManagedAiProviderFeature) {
+      return;
+    }
+
+    await removeCloudAddOn({
+      product_type: METABASE_MANAGED_AI_PRODUCT_TYPE,
+    }).unwrap();
+  }, [hasMetabaseManagedAiProviderFeature, removeCloudAddOn]);
+
+  const { isLoading } = useMetabotSetupContext(onConnect, onDisconnect);
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
@@ -116,6 +132,13 @@ export function MetabaseAIProviderSetup() {
     ? getErrorMessage(
         updateMetabotSettingsResult.error,
         t`Unable to connect to this AI provider.`,
+      )
+    : undefined;
+
+  const removeMetabaseManagedAiError = removeCloudAddOnResult.error
+    ? getErrorMessage(
+        removeCloudAddOnResult.error,
+        t`Unable to disconnect from this AI provider.`,
       )
     : undefined;
 
@@ -209,6 +232,12 @@ export function MetabaseAIProviderSetup() {
       {updateMetabotSettingsError && (
         <Text size="sm" c="error">
           {updateMetabotSettingsError}
+        </Text>
+      )}
+
+      {removeMetabaseManagedAiError && (
+        <Text size="sm" c="error">
+          {removeMetabaseManagedAiError}
         </Text>
       )}
 
