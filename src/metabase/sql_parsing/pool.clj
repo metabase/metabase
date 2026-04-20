@@ -112,10 +112,11 @@
       (zero? (:exit (shell/sh "which" "pip")))))
 
 (defn- version-installed?
-  "Check if sqlglot is installed with the expected version by looking for the dist-info directory."
+  "Check if sqlglot is installed with the expected version. Verifies both the dist-info metadata
+  (needed by uv/pip) and the actual module (needed by Python import)."
   [target-dir expected-version]
-  (let [dist-info (io/file target-dir (str "sqlglot-" expected-version ".dist-info"))]
-    (.exists dist-info)))
+  (and (.exists (io/file target-dir (str "sqlglot-" expected-version ".dist-info") "METADATA"))
+       (.exists (io/file target-dir "sqlglot" "__init__.py"))))
 
 (defn- install-sqlglot!
   "Install sqlglot via uv (preferred) or pip (fallback).
@@ -129,13 +130,13 @@
       (delete-recursive! f)))
   ;; Try uv first (fast), fall back to pip
   (let [pyproject-file (str target-dir "/pyproject.toml")
-        uv-result      (shell/sh "uv" "pip" "install" "-r" pyproject-file "--target" target-dir "--no-compile")]
+        uv-result      (shell/sh "uv" "pip" "install" "-r" pyproject-file "--target" target-dir "--no-compile" "--reinstall")]
     (if (zero? (:exit uv-result))
       (log/info "sqlglot" version "installed via uv")
       (do
         (log/info "uv not available, trying pip...")
         (let [pkg        (str "sqlglot==" version)
-              pip-result (shell/sh "pip" "install" pkg "--target" target-dir "--no-compile")]
+              pip-result (shell/sh "pip" "install" pkg "--target" target-dir "--no-compile" "--force-reinstall")]
           (when-not (zero? (:exit pip-result))
             (throw (ex-info (str "Failed to install sqlglot. Please install uv (recommended) or pip.\n"
                                  "Manual install: uv pip install -r " pyproject-file " --target " target-dir "\n"
