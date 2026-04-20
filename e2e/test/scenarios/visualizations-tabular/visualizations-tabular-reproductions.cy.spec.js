@@ -1343,12 +1343,18 @@ describe("issue 57132", () => {
         );
         delete res.body.data.cols[index].description;
       });
-    });
+    }).as("dataset");
   });
 
   it("should render more values when hovering colum header without description (metabase#57132)", () => {
     H.openProductsTable();
-    H.tableInteractive().findByText("Category").realHover();
+    cy.wait("@dataset");
+
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .filter(":contains(Category)")
+      .should("be.visible")
+      .realHover();
 
     cy.log("The popover should be wide enough to show at least some values");
     H.hovercard()
