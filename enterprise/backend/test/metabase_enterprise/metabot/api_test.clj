@@ -48,9 +48,11 @@
 (deftest usage-get-returns-token-status-usage-test
   (mt/with-premium-features #{:metabot-v3}
     (with-redefs [premium-features/token-status (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value      12345
+                                                                                                           :meter-free-units 1337
                                                                                                            :meter-updated-at "2026-04-02T19:29:12Z"}}})]
-      (is (= {:tokens 12345
-              :updated-at "2026-04-02T19:29:12Z"
+      (is (= {:tokens       12345
+              :free-tokens  1337
+              :updated-at   "2026-04-02T19:29:12Z"
               :is-locked nil}
              (mt/user-http-request :crowberto :get 200 "ee/metabot/usage"))))))
 

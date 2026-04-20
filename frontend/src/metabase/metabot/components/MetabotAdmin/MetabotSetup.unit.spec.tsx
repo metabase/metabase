@@ -82,6 +82,7 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
 type MetabotUsageQuota = {
   "is-locked"?: boolean;
   tokens: number | null;
+  "free-tokens"?: number | null;
   updated_at: string | null;
 };
 
@@ -881,7 +882,7 @@ describe("MetabotSetup", () => {
     expect(screen.getByText("$4.25 per 1M tokens")).toBeInTheDocument();
   });
 
-  it("shows usage summary for the connected Metabase provider", async () => {
+  it("shows included usage for the connected Metabase provider while still within the free limit", async () => {
     const updatedAt = "2026-04-02T19:29:12Z";
     await setup({
       isHosted: true,
@@ -891,6 +892,31 @@ describe("MetabotSetup", () => {
       metabotUsageQuotas: [
         {
           tokens: 250000,
+          "free-tokens": 1000000,
+          updated_at: updatedAt,
+        },
+      ],
+    });
+
+    expect(await screen.findByText("Included use")).toBeInTheDocument();
+    expect(screen.getByText("Free trial tokens")).toBeInTheDocument();
+    expect(screen.getByText("250,000 / 1,000,000")).toBeInTheDocument();
+    expect(screen.getByText("Price per token afterward")).toBeInTheDocument();
+    expect(screen.queryByText("Current billing cycle")).not.toBeInTheDocument();
+    expect(screen.queryByText("Total tokens")).not.toBeInTheDocument();
+  });
+
+  it("shows the normal usage summary for the connected Metabase provider after free tokens run out", async () => {
+    const updatedAt = "2026-04-02T19:29:12Z";
+    await setup({
+      isHosted: true,
+      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      tokenStatusFeatures: ["metabase-ai-managed"],
+      metabasePricePerUnit: 4.25,
+      metabotUsageQuotas: [
+        {
+          tokens: 1250000,
+          "free-tokens": 1000000,
           updated_at: updatedAt,
         },
       ],
@@ -899,11 +925,16 @@ describe("MetabotSetup", () => {
     expect(
       await screen.findByText("Current billing cycle"),
     ).toBeInTheDocument();
-    expect(await screen.findByText("250,000")).toBeInTheDocument();
+    expect(await screen.findByText("1,250,000")).toBeInTheDocument();
     expect(screen.queryByText("Unavailable")).not.toBeInTheDocument();
     expect(screen.getByText("Total tokens")).toBeInTheDocument();
     expect(screen.getByText("Total cost")).toBeInTheDocument();
+    expect(screen.getByText("Price per token")).toBeInTheDocument();
     expect(screen.getByText("$1.06")).toBeInTheDocument();
+    expect(screen.queryByText("Included use")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Price per token afterward"),
+    ).not.toBeInTheDocument();
   });
 
   it("disconnects when clicking use a different AI provider from the locked managed-provider state", async () => {

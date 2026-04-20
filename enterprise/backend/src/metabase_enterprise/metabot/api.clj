@@ -41,6 +41,7 @@
   (perms/check-has-application-permission :setting)
   (let [meter (some-> (premium-features/token-status)
                       meter-entry)]
-    {:is-locked  (:is-locked meter)
-     :tokens     (:meter-value meter)
-     :updated-at (:meter-updated-at meter)}))
+    {:is-locked   (:is-locked meter)
+     :tokens      (:meter-value meter)
+     :free-tokens (:meter-free-units meter)
+     :updated-at  (:meter-updated-at meter)}))

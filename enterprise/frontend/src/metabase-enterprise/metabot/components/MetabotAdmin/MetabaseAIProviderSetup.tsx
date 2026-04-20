@@ -28,6 +28,7 @@ import {
 import { formatNumber } from "metabase/utils/formatting";
 import { useSelector } from "metabase/utils/redux";
 import {
+  type MetabotUsageResponse,
   useGetMetabotUsageQuery,
   useRemoveCloudAddOnMutation,
 } from "metabase-enterprise/api";
@@ -319,8 +320,13 @@ function MetabaseManagedProviderCard({
   const isLocked = metabotUsage?.["is-locked"];
   const totalCost = getMetabaseUsageCost(metabotUsage, pricing);
   const [refreshTokenStatus] = useRefreshTokenStatusMutation();
+  useEffect(() => {
+    refreshTokenStatus();
+  }, [refreshTokenStatus]);
 
-  useEffect(refreshTokenStatus, [refreshTokenStatus]);
+  const freeTokens = metabotUsage?.["free-tokens"] ?? 0;
+  const tokens = metabotUsage?.tokens ?? 0;
+  const hasFreeTokens = freeTokens > 0 && tokens <= freeTokens;
 
   return (
     <Stack gap="md">
@@ -335,6 +341,7 @@ function MetabaseManagedProviderCard({
       {match({
         hasMetabaseManagedAiProviderFeature,
         isLocked,
+        hasFreeTokens,
       })
         .with({ hasMetabaseManagedAiProviderFeature: false }, () => null)
         .with({ isLocked: true }, () => (
@@ -352,28 +359,56 @@ function MetabaseManagedProviderCard({
             />
           </Flex>
         ))
-        .otherwise(() => (
-          <>
-            <Text c="text-secondary" lh="1">{t`Current billing cycle`}</Text>
-            <MetabaseUsageRow
-              label={t`Total tokens`}
-              value={formatNumber(metabotUsage?.tokens ?? 0)}
-            />
-            {!isLoadingPricing && pricing ? (
-              <MetabasePricingRow pricing={pricing} />
-            ) : (
-              <Flex align="center" justify="space-between" gap="md">
-                <Skeleton h="1rem" w="7rem" />
-                <Box flex={1} h={1} bg="border" />
-                <Skeleton h="1rem" w="8rem" />
-              </Flex>
-            )}
-            <MetabaseUsageRow
-              label={t`Total cost`}
-              value={formatMetabaseCost(totalCost)}
-            />
-          </>
-        ))}
+        .with(
+          { hasMetabaseManagedAiProviderFeature: true, hasFreeTokens: true },
+          () => (
+            <>
+              <Text c="text-secondary" lh="1">{t`Included use`}</Text>
+              <MetabaseUsageRow
+                label={t`Free trial tokens`}
+                value={`${formatNumber(tokens)} / ${formatNumber(freeTokens)}`}
+              />
+              {!isLoadingPricing && pricing ? (
+                <MetabasePricingRow
+                  pricing={pricing}
+                  label={t`Price per token afterward`}
+                />
+              ) : (
+                <Flex align="center" justify="space-between" gap="md">
+                  <Skeleton h="1rem" w="7rem" />
+                  <Box flex={1} h={1} bg="border" />
+                  <Skeleton h="1rem" w="8rem" />
+                </Flex>
+              )}
+            </>
+          ),
+        )
+        .with(
+          { hasMetabaseManagedAiProviderFeature: true, hasFreeTokens: false },
+          () => (
+            <>
+              <Text c="text-secondary" lh="1">{t`Current billing cycle`}</Text>
+              <MetabaseUsageRow
+                label={t`Total tokens`}
+                value={formatNumber(tokens)}
+              />
+              {!isLoadingPricing && pricing ? (
+                <MetabasePricingRow pricing={pricing} />
+              ) : (
+                <Flex align="center" justify="space-between" gap="md">
+                  <Skeleton h="1rem" w="7rem" />
+                  <Box flex={1} h={1} bg="border" />
+                  <Skeleton h="1rem" w="8rem" />
+                </Flex>
+              )}
+              <MetabaseUsageRow
+                label={t`Total cost`}
+                value={formatMetabaseCost(totalCost)}
+              />
+            </>
+          ),
+        )
+        .exhaustive()}
     </Stack>
   );
 }
@@ -398,15 +433,17 @@ function MetabaseUsageRow({ label, value }: { label: string; value: string }) {
 }
 
 function MetabasePricingRow({
+  label,
   pricing,
 }: {
+  label?: string;
   pricing: MetabaseManagedAiPricing;
 }) {
   return (
     <Flex align="center" justify="space-between" gap="md">
       <Text lh="1">
         <Flex align="center" gap="sm">
-          {t`Price per token`}
+          {label ?? t`Price per token`}
           <Tooltip
             label={t`Tokens are chunks of text used by AI models. Usage includes both prompts and responses.`}
             multiline
@@ -437,14 +474,18 @@ function MetabasePricingRow({
   );
 }
 
-function MetabasePricingText({
+export function MetabasePricingText({
   pricing,
 }: {
   pricing: MetabaseManagedAiPricing;
 }) {
   return (
     <Group gap="xs" align="center">
-      <Text lh="1">{t`Price per token - ${pricing.price} per ${pricing.unit} tokens`}</Text>
+      <Text lh="1">
+        {pricing.freeUnits
+          ? t`You get ${pricing.freeUnits} tokens for free. Price per token afterward - ${pricing.price} per ${pricing.unit} tokens`
+          : t`Price per token - ${pricing.price} per ${pricing.unit} tokens`}
+      </Text>
       <Tooltip
         label={t`Tokens are chunks of text used by AI models. Usage includes both prompts and responses.`}
         multiline
@@ -462,13 +503,21 @@ function MetabasePricingText({
   );
 }
 
-function getMetabaseUsageCost(
-  tokens: number | null | undefined,
+export function getMetabaseUsageCost(
+  usage: MetabotUsageResponse | undefined,
   pricing: MetabaseManagedAiPricing | null,
 ) {
-  if (!tokens || !pricing) {
+  if (!usage || !pricing) {
     return 0;
   }
 
-  return (tokens / pricing.unitCount) * pricing.pricePerUnit;
+  const { tokens, "free-tokens": freeTokens } = usage;
+  if (!tokens) {
+    return 0;
+  }
+
+  return (
+    (Math.max(0, tokens - (freeTokens ?? 0)) / pricing.unitCount) *
+    pricing.pricePerUnit
+  );
 }
