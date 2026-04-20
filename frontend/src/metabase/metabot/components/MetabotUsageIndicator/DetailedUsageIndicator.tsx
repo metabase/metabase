@@ -12,7 +12,7 @@ import { formatResetRate, formatUsageText, getColor } from "./utils";
 export function DetailedUsageIndicator() {
   const { user, pool, limitUnit, resetRate } = useMetabotUsage();
 
-  if (!pool) {
+  if (!user && !pool) {
     return null;
   }
 
