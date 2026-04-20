@@ -180,3 +180,11 @@ export function adminToolsModelCaching() {
 export function adminToolsGrantAccess() {
   return "/admin/tools/help/grant-access";
 }
+
+export function adminToolsNotifications() {
+  return "/admin/tools/notifications";
+}
+
+export function adminToolsNotificationDetail(id: number) {
+  return `/admin/tools/notifications/${id}`;
+}

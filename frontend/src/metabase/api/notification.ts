@@ -1,4 +1,8 @@
 import type {
+  AdminNotificationDetail,
+  AdminNotificationListParams,
+  AdminNotificationListResponse,
+  BulkNotificationPayload,
   CreateNotificationRequest,
   ListNotificationsRequest,
   Notification,
@@ -14,6 +18,8 @@ import {
   provideNotificationListTags,
   provideNotificationTags,
 } from "./tags";
+
+const ADMIN_LIST_TAG_ID = "LIST-ADMIN";
 
 export const notificationApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -46,7 +52,7 @@ export const notificationApi = Api.injectEndpoints({
         url: "/api/notification",
         body,
       }),
-      invalidatesTags: (notification, error) =>
+      invalidatesTags: (_notification, error) =>
         invalidateTags(error, [listTag("notification")]),
     }),
     updateNotification: builder.mutation<
@@ -87,6 +93,51 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    adminListNotifications: builder.query<
+      AdminNotificationListResponse,
+      AdminNotificationListParams | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/admin/notifications",
+        params: params ?? undefined,
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+              { type: "notification", id: ADMIN_LIST_TAG_ID },
+              ...result.data.map((notification) =>
+                idTag("notification", notification.id),
+              ),
+            ]
+          : [{ type: "notification", id: ADMIN_LIST_TAG_ID }],
+    }),
+    bulkNotificationAction: builder.mutation<
+      { updated: number },
+      BulkNotificationPayload
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/admin/notifications/bulk",
+        body,
+      }),
+      invalidatesTags: (_result, error) =>
+        invalidateTags(error, [
+          listTag("notification"),
+          { type: "notification", id: ADMIN_LIST_TAG_ID },
+        ]),
+    }),
+    adminNotificationDetail: builder.query<
+      AdminNotificationDetail,
+      NotificationId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/admin/notifications/${id}`,
+      }),
+      providesTags: (result) =>
+        result ? [idTag("notification", result.id)] : [],
+    }),
   }),
 });
 
@@ -101,4 +152,7 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useAdminListNotificationsQuery,
+  useBulkNotificationActionMutation,
+  useAdminNotificationDetailQuery,
 } = notificationApi;

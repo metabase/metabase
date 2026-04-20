@@ -41,6 +41,10 @@ import {
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import {
+  NotificationDetailPage,
+  NotificationsAdminPage,
+} from "metabase/admin/tools/components/NotificationsAdminPage";
+import {
   EmbeddingHubAdminSettingsPage,
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
@@ -292,6 +296,11 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
+            <Route path="notifications" component={NotificationsAdminPage} />
+            <Route
+              path="notifications/:notificationId"
+              component={NotificationDetailPage}
+            />
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

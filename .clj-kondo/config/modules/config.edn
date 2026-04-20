@@ -3015,6 +3015,24 @@
                     :model/PermissionsGroupMembership
                     :model/Transform}}
 
+  enterprise/notification-admin
+  {:team "Gadget"
+   :api  #{metabase-enterprise.notification-admin.api}
+   :uses #{api
+           models
+           notification
+           premium-features
+           request
+           task-history
+           util}
+   :model-imports #{:model/Card
+                    :model/Notification
+                    :model/NotificationCard
+                    :model/NotificationHandler
+                    :model/NotificationRecipient
+                    :model/TaskHistory
+                    :model/User}}
+
   enterprise/permission-debug
   {:team "UX West"
    :api  #{metabase-enterprise.permission-debug.api}

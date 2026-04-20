@@ -25,6 +25,7 @@
    [metabase-enterprise.library.api]
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
+   [metabase-enterprise.notification-admin.api]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -94,6 +95,7 @@
   routes here and follow the convention."
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
+   "/admin"                        {"/notifications" (premium-handler 'metabase-enterprise.notification-admin.api :audit-app)}
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)

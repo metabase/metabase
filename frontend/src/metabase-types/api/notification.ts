@@ -167,3 +167,51 @@ export type Notification = NotificationPayload & {
   updated_at?: string;
   created_at?: string;
 };
+
+//#region Admin API types
+export type NotificationHealth =
+  | "healthy"
+  | "orphaned_card"
+  | "orphaned_creator"
+  | "failing";
+
+export type AdminNotificationListItem = Notification & {
+  health: NotificationHealth;
+  last_sent_at: string | null;
+};
+
+export type AdminNotificationListParams = {
+  limit?: number;
+  offset?: number;
+  status?: "active" | "archived" | "all";
+  health?: NotificationHealth;
+  creator_id?: UserId;
+  card_id?: CardId;
+  recipient_email?: string;
+  channel?: NotificationChannelType;
+};
+
+export type AdminNotificationListResponse = {
+  data: AdminNotificationListItem[];
+  total: number;
+};
+
+export type BulkNotificationAction = "archive" | "unarchive" | "change-owner";
+
+export type BulkNotificationPayload = {
+  notification_ids: NotificationId[];
+  action: BulkNotificationAction;
+  owner_id?: UserId;
+};
+
+export type NotificationSendHistoryEntry = {
+  timestamp: string | null;
+  status: string;
+  duration_ms: number | null;
+  error_message?: string;
+};
+
+export type AdminNotificationDetail = AdminNotificationListItem & {
+  send_history: NotificationSendHistoryEntry[];
+};
+//#endregion
