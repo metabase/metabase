@@ -155,7 +155,8 @@ export function MetabaseAIProviderSetup() {
     removeCloudAddOn,
   ]);
 
-  const { isLoading, handleDisconnect, resetProvider, isModal } = useMetabotSetupContext(onConnect, onDisconnect);
+  const { isLoading, handleDisconnect, resetProvider, isModal } =
+    useMetabotSetupContext(onConnect, onDisconnect);
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(

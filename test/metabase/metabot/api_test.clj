@@ -422,12 +422,12 @@
                                                             :display_name "Claude Opus 4.1"
                                                             :group "Opus"}]})]
           (is (= {:value  "anthropic/claude-sonnet-4-6"
-                  :models [{:id "claude-sonnet-4-6"
-                            :display_name "Claude Sonnet 4.6"
-                            :group "Sonnet"}
-                           {:id "claude-opus-4-1"
+                  :models [{:id "claude-opus-4-1"
                             :display_name "Claude Opus 4.1"
-                            :group "Opus"}]}
+                            :group "Opus"}
+                           {:id "claude-sonnet-4-6"
+                            :display_name "Claude Sonnet 4.6"
+                            :group "Sonnet"}]}
                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                        {:provider "anthropic"
                                         :api-key  "sk-ant-valid"})))
@@ -450,12 +450,12 @@
                                                        {:id "claude-opus-4-1"
                                                         :display_name "Claude Opus 4.1"}]})]
       (is (= {:value  "anthropic/claude-opus-4-1"
-              :models [{:id "claude-sonnet-4-6"
-                        :display_name "Claude Sonnet 4.6"
-                        :group "Sonnet"}
-                       {:id "claude-opus-4-1"
+              :models [{:id "claude-opus-4-1"
                         :display_name "Claude Opus 4.1"
-                        :group "Opus"}]}
+                        :group "Opus"}
+                       {:id "claude-sonnet-4-6"
+                        :display_name "Claude Sonnet 4.6"
+                        :group "Sonnet"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "anthropic"
                                     :model    ""})))
