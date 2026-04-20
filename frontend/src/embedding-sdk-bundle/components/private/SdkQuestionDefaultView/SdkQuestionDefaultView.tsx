@@ -259,7 +259,7 @@ export const SdkQuestionDefaultView = ({
               )}
             </RenderIfHasContent>
             <RenderIfHasContent component={Group} gap="sm" ml="auto">
-              {!isEditorOpen && (
+              {!isEditorOpen && !isMobile && (
                 <>
                   <DownloadWidgetDropdown />
                   <QuestionAlertsButton />

@@ -381,10 +381,10 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   describe("mobile layout", () => {
-    it("should hide Filter, Summarize and Breakout dropdowns on narrow viewports", () => {
+    it("should hide Filter, Summarize, Breakout and Download dropdowns on narrow viewports", () => {
       cy.viewport(400, 800);
 
-      mountInteractiveQuestion();
+      mountInteractiveQuestion({ withDownloads: true });
 
       getSdkRoot()
         .findByTestId("interactive-question-result-toolbar")
@@ -392,13 +392,16 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           cy.get(".Icon-filter").should("not.exist");
           cy.get(".Icon-sum").should("not.exist");
           cy.get(".Icon-arrow_split").should("not.exist");
+          cy.findByTestId("question-download-widget-button").should(
+            "not.exist",
+          );
         });
     });
 
-    it("should show Filter, Summarize and Breakout dropdowns on wide viewports", () => {
+    it("should show Filter, Summarize, Breakout and Download dropdowns on wide viewports", () => {
       cy.viewport(1200, 800);
 
-      mountInteractiveQuestion();
+      mountInteractiveQuestion({ withDownloads: true });
 
       getSdkRoot()
         .findByTestId("interactive-question-result-toolbar")
@@ -406,6 +409,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           cy.get(".Icon-filter").should("be.visible");
           cy.get(".Icon-sum").should("be.visible");
           cy.get(".Icon-arrow_split").should("be.visible");
+          cy.findByTestId("question-download-widget-button").should(
+            "be.visible",
+          );
         });
     });
   });

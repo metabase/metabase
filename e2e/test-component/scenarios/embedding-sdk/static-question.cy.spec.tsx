@@ -248,5 +248,21 @@ describe("scenarios > embedding-sdk > static-question", () => {
       getSdkRoot().button("Alerts").should("be.visible").click();
       modal().findByRole("heading", { name: "New alert" }).should("be.visible");
     });
+
+    it("should hide the Alerts button on narrow viewports", () => {
+      cy.viewport(400, 800);
+
+      mountStaticQuestion({ withAlerts: true });
+
+      getSdkRoot().button("Alerts").should("not.exist");
+    });
+
+    it("should show the Alerts button on wide viewports", () => {
+      cy.viewport(1200, 800);
+
+      mountStaticQuestion({ withAlerts: true });
+
+      getSdkRoot().button("Alerts").should("be.visible");
+    });
   });
 });
