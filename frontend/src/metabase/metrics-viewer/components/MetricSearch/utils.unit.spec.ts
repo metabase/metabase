@@ -1152,52 +1152,118 @@ describe("findInvalidRanges — untracked metric detection", () => {
   });
 });
 
-describe("getWordAtCursor — comma handling with metric entries", () => {
+describe("getWordAtCursor", () => {
   const commaMetricNames: MetricNameMap = { "metric:99": "Revenue, Total" };
 
-  it("without entries, comma is always a delimiter", () => {
+  it("falls back to delimiter-based extraction when no metric names are known", () => {
     const text = "Revenue, Total";
-    // cursor at end
-    const result = getWordAtCursor(text, text.length, {});
+    const result = getWordAtCursor(text, text.length, {}, []);
     expect(result.word).toBe("Total");
+    expect(result.start).toBe(9);
+    expect(result.end).toBe(text.length);
   });
 
-  it("with entries, comma inside a known metric name is not a delimiter", () => {
+  it("extracts full metric name when it contains a comma", () => {
     const text = "Revenue, Total";
-    const result = getWordAtCursor(text, text.length, commaMetricNames);
+    const result = getWordAtCursor(text, text.length, commaMetricNames, []);
     expect(result.word).toBe("Revenue, Total");
   });
 
-  it("with entries, separator comma between two metrics is still a delimiter", () => {
+  it("distinguishes separator comma from name-internal comma", () => {
+    // Two separate metrics "Revenue" and "Orders", separated by comma.
+    // Cursor at end is inside the second name, so we should only get "Orders".
     const text = "Revenue, Orders";
-    // cursor at end (inside "Orders")
-    const result = getWordAtCursor(text, text.length, {
-      "metric:1": "Revenue",
-      "metric:2": "Orders",
-    });
+    const result = getWordAtCursor(
+      text,
+      text.length,
+      { "metric:1": "Revenue", "metric:2": "Orders" },
+      [],
+    );
     expect(result.word).toBe("Orders");
   });
 
   it("treats comma as part of metric name when typing a partial match", () => {
-    // User is typing "Revenue, T" which is a prefix of "Revenue, Total"
-    // The comma is NOT a separator because "Revenue" alone is not a known
-    // metric in this set — the only known metric is "Revenue, Total".
+    // User is typing "Revenue, T" which is a prefix of "Revenue, Total".
     const text = "Revenue, T";
-    const result = getWordAtCursor(text, text.length, commaMetricNames);
+    const result = getWordAtCursor(text, text.length, commaMetricNames, []);
     expect(result.word).toBe("Revenue, T");
-  });
-
-  it("math-operator delimiters still work with metric entries", () => {
-    const text = "Revenue, Total + 1";
-    const result = getWordAtCursor(text, text.length, commaMetricNames);
-    expect(result.word).toBe("1");
   });
 
   it("returns full metric name when cursor is in the middle", () => {
     const text = "Revenue, Total";
     // cursor after the comma+space (position 9, inside "Total")
-    const result = getWordAtCursor(text, 9, commaMetricNames);
+    const result = getWordAtCursor(text, 9, commaMetricNames, []);
     expect(result.word).toBe("Revenue, Total");
+  });
+
+  it("matches metric-name prefixes case-insensitively", () => {
+    // User is typing "rev" in lower case; the known metric is "Revenue".
+    const text = "rev";
+    const result = getWordAtCursor(
+      text,
+      text.length,
+      { "metric:1": "Revenue" },
+      [],
+    );
+    expect(result.word).toBe("rev");
+  });
+
+  it("stops at an existing identity on the right (comma separator case)", () => {
+    const metricNames: MetricNameMap = {
+      "metric:1": "Metric1",
+      "metric:2": "Metric2",
+    };
+    const text = "Metric1 + Met, Metric2";
+    const cursorPos = 13; // immediately after "Met"
+    const identities: MetricIdentityEntry[] = [
+      { sourceId: "metric:1", from: 0, to: 7, definition: null, slotIndex: 0 },
+      {
+        sourceId: "metric:2",
+        from: 15,
+        to: 23,
+        definition: null,
+        slotIndex: 1,
+      },
+    ];
+    const result = getWordAtCursor(text, cursorPos, metricNames, identities);
+    expect(result.word).toBe("Met");
+    expect(result.start).toBe(10);
+    expect(result.end).toBe(13);
+  });
+
+  it("treats parens as part of metric name when typing a partial match", () => {
+    const metricNames: MetricNameMap = { "metric:1": "Revenue (new)" };
+    const text = "Revenue (new";
+    const result = getWordAtCursor(text, text.length, metricNames, []);
+    expect(result.word).toBe("Revenue (new");
+    expect(result.start).toBe(0);
+    expect(result.end).toBe(text.length);
+  });
+
+  it("fallback: breaks on math operators and trims surrounding whitespace", () => {
+    const text = "Rev + M";
+    const result = getWordAtCursor(text, text.length, {}, []);
+    expect(result.word).toBe("M");
+    expect(result.start).toBe(6);
+    expect(result.end).toBe(text.length);
+  });
+
+  it("fallback: keeps spaces inside the word but trims adjacent to delimiter", () => {
+    // Scanning left stops at '+', scanning right hits end-of-text.
+    // The space between 'M' and 'N' stays (names can contain spaces).
+    const text = "Rev + M N";
+    const result = getWordAtCursor(text, text.length, {}, []);
+    expect(result.word).toBe("M N");
+    expect(result.start).toBe(6);
+    expect(result.end).toBe(text.length);
+  });
+
+  it("fallback: returns an empty word at the cursor when only whitespace follows a delimiter", () => {
+    const text = "Metric, ";
+    const result = getWordAtCursor(text, text.length, {}, []);
+    expect(result.word).toBe("");
+    expect(result.start).toBe(text.length);
+    expect(result.end).toBe(text.length);
   });
 });
 
