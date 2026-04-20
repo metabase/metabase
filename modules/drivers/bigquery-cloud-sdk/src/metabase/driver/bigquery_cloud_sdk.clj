@@ -148,19 +148,8 @@
         datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
         inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
-    (log/infof "[bq list-datasets] project=%s type=%s inclusion=%s (len=%s bytes=%s) exclusion=%s"
-               (pr-str project-id)
-               (pr-str dataset-filters-type)
-               (pr-str inclusion-patterns)
-               (some-> inclusion-patterns count)
-               (some-> inclusion-patterns (.getBytes "UTF-8") seq vec)
-               (pr-str exclusion-patterns))
     (for [^Dataset dataset (.iterateAll datasets)
-          :let [dataset-id (.. dataset getDatasetId getDataset)
-                _ (log/infof "[bq list-datasets] candidate dataset-id=%s (len=%s bytes=%s)"
-                             (pr-str dataset-id)
-                             (count dataset-id)
-                             (vec (seq (.getBytes ^String dataset-id "UTF-8"))))]
+          :let [dataset-id (.. dataset getDatasetId getDataset)]
           :when ((if logging-schema-exclusions?
                    sql-jdbc.describe-database/include-schema-logging-exclusion
                    driver.s/include-schema?) inclusion-patterns

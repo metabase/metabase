@@ -175,16 +175,11 @@
   (t2/select-one-pk [:model/Table :id] :db_id db-id, :name table-name, :active true))
 
 (defn- throw-unfound-table-error [db-id table-name]
-  (let [{driver :engine, db-name :name, details :details}
-        (t2/select-one [:model/Database :name :engine :details] :id db-id)
-        all-tables (t2/select [:model/Table :id :name :schema :active] :db_id db-id)
-        filter-keys (select-keys details [:dataset-filters-type :dataset-filters-patterns
-                                          :schema-filters-type :schema-filters-patterns])]
+  (let [{driver :engine, db-name :name} (t2/select-one [:model/Database :name :engine] :id db-id)]
     (throw
-     (Exception. (format "No Table %s found for %s Database %d %s.\nFilter details: %s\nAll tables (incl. inactive): %s"
+     (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
                          (pr-str table-name) driver db-id (pr-str db-name)
-                         (pr-str filter-keys)
-                         (u/pprint-to-str (sort-by :id all-tables)))))))
+                         (u/pprint-to-str (t2/select-pk->fn :name :model/Table, :db_id db-id, :active true)))))))
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
