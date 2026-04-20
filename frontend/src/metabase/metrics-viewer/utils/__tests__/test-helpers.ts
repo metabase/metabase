@@ -33,6 +33,7 @@ export const REVENUE_METRIC = createMockNormalizedMetric({
       display_name: "Created At",
       effective_type: "type/DateTime",
       semantic_type: "type/CreationTimestamp",
+      sources: [{ type: "field", "field-id": 1 }],
     }),
     createMockMetricDimension({
       id: "dim-category",
@@ -95,6 +96,7 @@ export const GEO_METRIC = createMockNormalizedMetric({
       display_name: "Created At",
       effective_type: "type/DateTime",
       semantic_type: "type/CreationTimestamp",
+      sources: [{ type: "field", "field-id": 1 }],
     }),
   ],
 });

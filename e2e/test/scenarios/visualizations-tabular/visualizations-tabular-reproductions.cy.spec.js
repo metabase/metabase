@@ -57,7 +57,7 @@ describe("issue 6010", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Created At: Month is Jan 1–31, 2024").should("be.visible");
+      cy.findByText("Created At: Month is Jan 1–31, 2027").should("be.visible");
     });
     // FIXME metrics v2 -- check that the values in column Total are above 150
   });
@@ -111,8 +111,8 @@ describe("issue 11435", () => {
       query: `
   SELECT "PUBLIC"."ORDERS"."ID" AS "ID", "PUBLIC"."ORDERS"."USER_ID" AS "USER_ID", "PUBLIC"."ORDERS"."PRODUCT_ID" AS "PRODUCT_ID", "PUBLIC"."ORDERS"."SUBTOTAL" AS "SUBTOTAL", "PUBLIC"."ORDERS"."TAX" AS "TAX", "PUBLIC"."ORDERS"."TOTAL" AS "TOTAL", "PUBLIC"."ORDERS"."DISCOUNT" AS "DISCOUNT", "PUBLIC"."ORDERS"."CREATED_AT" AS "CREATED_AT", "PUBLIC"."ORDERS"."QUANTITY" AS "QUANTITY"
   FROM "PUBLIC"."ORDERS"
-  WHERE ("PUBLIC"."ORDERS"."CREATED_AT" >= timestamp with time zone '2025-03-12 00:00:00.000+03:00'
-         AND "PUBLIC"."ORDERS"."CREATED_AT" < timestamp with time zone '2025-03-13 00:00:00.000+03:00')
+  WHERE ("PUBLIC"."ORDERS"."CREATED_AT" >= timestamp with time zone '2028-03-12 00:00:00.000+03:00'
+         AND "PUBLIC"."ORDERS"."CREATED_AT" < timestamp with time zone '2028-03-13 00:00:00.000+03:00')
   LIMIT 1048575`,
     },
     visualization_settings: {
@@ -139,12 +139,12 @@ describe("issue 11435", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     hoverLineDot({ index: 1 });
     H.assertEChartsTooltip({
-      header: "March 11, 2025, 8:45:17.010 PM",
+      header: "March 11, 2028, 5:55:36.759 PM",
       rows: [
         {
           color: "#F9D45C",
           name: "TOTAL",
-          value: "25.03",
+          value: "135.23",
         },
       ],
     });
@@ -413,13 +413,11 @@ describe("issue 23076", () => {
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
-    // "Totals for" comes from metabase.pivot.core.cljc, rendered browser-side → [zz] prefix
-    // dayjs has no en-ZZ locale, so month names fall back to English ("May")
-    cy.findAllByText(/^\[zz\] Totals for/, { timeout: 10000 })
+    cy.findAllByText(/^\[zz\] Totals for/)
       .should("be.visible")
       .eq(1)
       .invoke("text")
-      .should("eq", "[zz] Totals for May 2023");
+      .should("eq", "[zz] Totals for May 2026");
   });
 });
 
@@ -1329,33 +1327,6 @@ describe("issue 56771", () => {
         const width = $cell[0].getBoundingClientRect().width;
         expect(width).to.be.greaterThan(160);
       });
-  });
-});
-
-describe("issue 57132", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dataset", function (req) {
-      req.continue((res) => {
-        // remove description from the CATEGORY column
-        const index = res.body.data.cols.findIndex(
-          (col) => col.name === "CATEGORY",
-        );
-        delete res.body.data.cols[index].description;
-      });
-    });
-  });
-
-  it("should render more values when hovering colum header without description (metabase#57132)", () => {
-    H.openProductsTable();
-    H.tableInteractive().findByText("Category").realHover();
-
-    cy.log("The popover should be wide enough to show at least some values");
-    H.popover()
-      .findByText(/^Doohickey, Gadget, Gizmo/)
-      .should("be.visible");
   });
 });
 

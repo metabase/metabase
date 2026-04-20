@@ -18,7 +18,7 @@ import {
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import { useRouter } from "metabase/router/useRouter";
-import { Flex, Stack, Switch, Tabs } from "metabase/ui";
+import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 import type { MetabotInfo } from "metabase-types/api";
 
 import { McpAppsSettings } from "./McpAppsSettings";
@@ -102,29 +102,31 @@ export function AISettingsPage() {
         <>
           <MetabotSetup id={SETUP_SECTION_ID} />
           <DisabledSection disabled={!isConfigured}>
-            <Stack gap="lg">
-              <MetabotSettingsSection
-                hasEmbedding={hasEmbedding}
-                id={METABOT_SECTION_ID}
-                selectedTab={selectedTab}
-              />
-
-              <McpAppsSettings id={MCP_SECTION_ID} />
-
-              <ToggleSettingsSection
-                checked={isAgentApiEnabled}
-                description={jt`Enable external access to the Agent API. ${(
-                  <ExternalLink key="docs" href={agentApiDocsUrl}>
-                    {t`Learn more`}
-                  </ExternalLink>
-                )}`}
-                disabled={isUpdatingAgentApi}
-                id={AGENT_API_SECTION_ID}
-                onChange={handleAgentApiChange}
-                title={t`Agent API`}
-              />
-            </Stack>
+            <MetabotSettingsSection
+              hasEmbedding={hasEmbedding}
+              id={METABOT_SECTION_ID}
+              selectedTab={selectedTab}
+            />
           </DisabledSection>
+          <Divider />
+          <Stack gap="lg">
+            <McpAppsSettings id={MCP_SECTION_ID} />
+
+            <ToggleSettingsSection
+              checked={isAgentApiEnabled}
+              description={jt`Enable external access to the Agent API. ${(
+                <ExternalLink key="docs" href={agentApiDocsUrl}>
+                  {t`Learn more`}
+                </ExternalLink>
+              )}`}
+              disabled={isUpdatingAgentApi}
+              id={AGENT_API_SECTION_ID}
+              onChange={handleAgentApiChange}
+              title={t`Agent API`}
+            />
+          </Stack>
+
+          <Divider />
         </>
       )}
 

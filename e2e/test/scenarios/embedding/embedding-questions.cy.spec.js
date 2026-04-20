@@ -103,7 +103,7 @@ describe("scenarios > embedding > questions", () => {
       // Question settings: Column formating
       cy.findByText("€39.72");
       // Question settings: Abbreviated date, day enabled, 24H clock with seconds
-      cy.findByText("Tue, Feb 11, 2025, 21:40:27");
+      cy.findByText("Fri, Feb 11, 2028, 21:40:27");
       // Question settings: Show mini-bar
       cy.findAllByTestId("mini-bar-container");
 
@@ -131,9 +131,9 @@ describe("scenarios > embedding > questions", () => {
     assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
 
     H.echartsContainer()
-      .findAllByText(/2022/)
+      .findAllByText(/2025/)
       .should("have.length", 5)
-      .and("contain", "Apr 2022");
+      .and("contain", "Apr 2025");
 
     H.echartsContainer().should("contain", "60");
 
@@ -142,7 +142,7 @@ describe("scenarios > embedding > questions", () => {
     H.cartesianChartCircle().last().trigger("mousemove");
 
     H.assertEChartsTooltip({
-      header: "Aug 2022",
+      header: "Aug 2025",
       rows: [{ name: "2", value: "79" }],
     });
   });
@@ -185,7 +185,7 @@ describe("scenarios > embedding > questions", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("February 11, 2025, 9:40 PM");
+    cy.findByText("February 11, 2028, 9:40 PM");
 
     cy.findAllByTestId("mini-bar-container").should("not.exist");
 
@@ -217,7 +217,7 @@ describe("scenarios > embedding > questions", () => {
       .should("contain", "Math")
       .should("contain", "Billed")
       .should("contain", "€39.72")
-      .should("contain", "Tue, Feb 11, 2025, 21:40:27")
+      .should("contain", "Fri, Feb 11, 2028, 21:40:27")
       .should("not.contain", "Subtotal");
 
     cy.findAllByTestId("mini-bar-container").should("have.length", 5);
@@ -228,7 +228,7 @@ describe("scenarios > embedding > questions", () => {
       .should("contain", "98.52598640° W")
       .should("contain", "User → Birth Date")
       .should("contain", "December 12, 1986")
-      .should("contain", "October 7, 2023, 1:34 AM");
+      .should("contain", "October 7, 2026, 1:34 AM");
   });
 });
 
@@ -273,7 +273,7 @@ describe("scenarios [EE] > embedding > questions", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025, 9:40 PM").realHover();
+    H.main().findByText("Februar 11, 2028, 9:40 PM").realHover();
     cy.findByRole("button", { name: "Ergebnis downloaden" }).should("exist");
     cy.url().should("include", "locale=de");
   });
