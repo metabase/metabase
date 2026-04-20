@@ -49,7 +49,9 @@ const SdkIframeEmbedPreviewInner = () => {
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
 
-  const { data: savedThemes } = useListEmbeddingThemesQuery();
+  const { data: savedThemes } = useListEmbeddingThemesQuery(undefined, {
+    skip: !isSimpleEmbedFeatureAvailable || !settings.theme?.id,
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
 
