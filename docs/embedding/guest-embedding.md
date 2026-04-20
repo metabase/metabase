@@ -278,7 +278,7 @@ If you rename a dashboard filter that's used as a locked parameter, update the m
 
 The values for a locked parameter in your JWT should match your filter's values exactly. The best way to set multiple locked parameters, or pass multiple values to a single locked parameter, is to pick a filter value under **Preview locked parameters** in the embed wizard and copy the server code that Metabase generates.
 
-Multiple locked parameters combine with `AND`, not `OR`. If you only want to apply a subset of the locked parameters for a given token, pass `[]` for the ones you want to skip (see [pass an empty array](#to-turn-off-a-locked-parameter-pass-an-empty-array-as-its-value)).
+Multiple locked parameters combine with `AND`, not `OR`. If you only want to apply a subset of the locked parameters for a given token, pass `[]` for the ones you want to skip (see [pass an empty array](#pass-an-empty-array-to-turn-off-a-locked-parameter)).
 
 ## Locked parameters limit the values available to other editable parameters
 

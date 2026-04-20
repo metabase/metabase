@@ -43,9 +43,9 @@ export function ObjectDetailWrapper({
 
   const areImplicitActionsEnabled = Boolean(
     question &&
-      question.canWrite() &&
-      question.type() === "model" &&
-      question.supportsImplicitActions(),
+    question.canWrite() &&
+    question.type() === "model" &&
+    question.supportsImplicitActions(),
   );
 
   const {

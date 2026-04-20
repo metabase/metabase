@@ -294,10 +294,11 @@ export function useMetricsViewer({
     () =>
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
+        sourceOrder,
         metricSlots,
         existingTabDimensionIds,
       ),
-    [definitionsBySourceId, metricSlots, existingTabDimensionIds],
+    [definitionsBySourceId, sourceOrder, metricSlots, existingTabDimensionIds],
   );
 
   const addMetric = useCallback(

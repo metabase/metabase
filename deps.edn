@@ -459,6 +459,7 @@
 
   :cljs
   {:extra-paths ["test"]
+   :jvm-opts    ["-Dmb.run.mode=dev"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
     cider/cider-nrepl                  {:mvn/version "0.58.0"}

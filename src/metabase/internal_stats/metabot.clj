@@ -2,37 +2,36 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- usage-by-model
   "Aggregate combined tokens by provider:model for a given UTC date."
   [date-utc]
-  (let [usages (t2/select-fn-vec :usage
-                                 [:model/MetabotMessage :usage]
-                                 {:where [:and
-                                          :ai_proxied
-                                          [:= [:cast :created_at :date] [:cast date-utc :date]]
-                                          [:not= :usage nil]]})]
-    (->> (for [usage               usages
-               [prov-model tokens] usage
-               :let [k (str/replace-first (u/qualified-name prov-model) "/" ":")]]
-           {(str k ":tokens") (+ (:prompt tokens) (:completion tokens))})
+  (let [rows (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]
+                        {:where    [:and
+                                    :ai_proxied
+                                    [:= [:cast :created_at :date] [:cast date-utc :date]]]
+                         :group-by [:model]})]
+    (->> (for [{:keys [model tokens]} rows
+               :let [k (-> model
+                           (str/replace-first "metabase/" "")
+                           (str/replace-first "/" ":"))]]
+           {(str k ":tokens") (long tokens)})
          (apply merge-with +)
          not-empty)))
 
 (defn metabot-stats
-  "Calculate total Metabot token usage over a window of the previous UTC day 00:00-23:59,
-   plus rolling usage stats for today."
+  "Calculate total Metabot token usage over a window of the previous UTC day 00:00-23:59 plus rolling usage for today.
+
+  Note that the AiUsageLog table is only populated for EE builds, so this will never return data in OSS."
   []
   (let [today-utc     (t/offset-date-time (t/zone-offset "+00"))
         yesterday-utc (t/minus today-utc (t/days 1))
         tokens        (or (t2/select-one-fn :sum
-                                            [:model/MetabotMessage [:%sum.total_tokens :sum]]
+                                            [:model/AiUsageLog [:%sum.total_tokens :sum]]
                                             {:where [:and
                                                      :ai_proxied
-                                                     [:= [:cast :created_at :date] [:cast yesterday-utc :date]]
-                                                     [:not= :usage nil]]})
+                                                     [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
                           0)
         rolling-usage (usage-by-model today-utc)]
     (when (or (pos? tokens) (seq rolling-usage))

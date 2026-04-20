@@ -154,7 +154,7 @@ describe("issue 58231", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should allow to edit permissions for Usage Analytics collection (metabase#58231)", () => {
@@ -175,7 +175,7 @@ describe("issue 56567", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   const withTestCollections = (
