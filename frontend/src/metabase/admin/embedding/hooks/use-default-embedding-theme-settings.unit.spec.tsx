@@ -1,8 +1,8 @@
 import { renderHookWithProviders } from "__support__/ui";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getColors } from "metabase/ui/colors/colors";
 import type { ColorSettings } from "metabase-types/api/settings";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { useDefaultEmbeddingThemeSettings } from "./use-default-embedding-theme-settings";
 
