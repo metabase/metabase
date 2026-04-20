@@ -88,7 +88,7 @@ To find and replace all entities that depend on a data source:
 
    ![Preview changes](../images/check-repalce-changes.png)
 
-7. Once you verified the changes, click U&&
+7. Once you verified the changes, click "Replace data source" in the bottom of the left sidebar.
 
 ### Running the replacement
 
@@ -125,7 +125,6 @@ Metabase will **not allow** you to replace data sources that are used as:
 - Targets of foreign keys
 
 ## Permissions and data source replacement
-
 
 Metabase **won't check** whether swapped data sources have comparable permissions. Admins need to make sure that new data source has appropriate permissions _before_ initiating the replacement, otherwise you could block people from viewing questions, or expose data they're not supposed to see.
 
