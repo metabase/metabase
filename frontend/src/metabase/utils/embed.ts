@@ -3,16 +3,23 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { setInitialUrlOptions } from "metabase/redux/embed";
+import type { Dispatch } from "metabase/redux/store";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason
 export const IS_EMBED_PREVIEW = IFRAMED_IN_SELF;
 
-export function initializeEmbedding(store) {
+export type FrameSpec = {
+  mode: "normal" | "fit";
+  height: number;
+};
+
+export function initializeEmbedding(dispatch: Dispatch) {
   if (isWithinIframe()) {
-    let currentHref;
-    let currentFrame;
+    let currentHref: string | undefined;
+    let currentFrame: FrameSpec | undefined;
+
     // NOTE: history.listen and window's onhashchange + popstate events were not
     // enough to catch all URL changes, so just poll for now :(
     setInterval(() => {
@@ -27,25 +34,34 @@ export function initializeEmbedding(store) {
       }
       const frame = getFrameSpec();
       if (!_.isEqual(currentFrame, frame)) {
-        sendMessage({
-          type: "frame",
-          frame: frame,
-        });
+        sendMessage({ type: "frame", frame });
         currentFrame = frame;
       }
     }, 100);
     window.addEventListener("message", (e) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
-          store.dispatch(push(e.data.metabase.location));
+          dispatch(push(e.data.metabase.location));
         }
       }
     });
-    store.dispatch(setInitialUrlOptions(window.location));
+    dispatch(setInitialUrlOptions(window.location));
   }
 }
 
-function sendMessage(message) {
+type LocationMessage = {
+  type: "location";
+  location: Partial<Location>;
+};
+
+type FrameMessage = {
+  type: "frame";
+  frame: FrameSpec;
+};
+
+type Message = LocationMessage | FrameMessage;
+
+function sendMessage(message: Message) {
   // Reason for using "*" (see #18824)
   //  1) We cannot use MetabaseSettings.get("embedding-app-origin") because the format is different
   //      - the setting value can have multiple URLs but postMessage only supports one URL
@@ -68,7 +84,7 @@ function isFitViewportMode() {
   return false;
 }
 
-function getFrameSpec() {
+function getFrameSpec(): FrameSpec {
   if (isFitViewportMode()) {
     return { mode: "fit", height: getScrollHeight() };
   } else {
@@ -84,8 +100,9 @@ function getScrollHeight() {
   const appBarHeight =
     document.getElementById("[data-element-id=app-bar]")?.offsetHeight ?? 0;
   const dashboardHeaderHeight =
-    document.querySelector("[data-element-id=dashboard-header-container]")
-      ?.offsetHeight ?? 0;
+    document.querySelector<HTMLElement>(
+      "[data-element-id=dashboard-header-container]",
+    )?.offsetHeight ?? 0;
   const dashboardContentHeight =
     document.querySelector("[data-element-id=dashboard-parameters-and-cards]")
       ?.scrollHeight ?? 0;
