@@ -15,7 +15,6 @@ import {
   PublicOrEmbeddedQuestionView,
   type PublicOrEmbeddedQuestionViewProps,
 } from "metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestionView";
-import type { DisplayTheme } from "metabase/public/lib/types";
 import { publicReducers } from "metabase/reducers-public";
 import {
   createMockSettingsState,
@@ -52,7 +51,7 @@ function QuestionProviders({
   theme,
   children,
 }: {
-  theme: DisplayTheme;
+  theme: "light" | "dark";
   children: ReactNode;
 }) {
   const store = useMemo(() => {
@@ -62,16 +61,14 @@ function QuestionProviders({
     return getStore(publicReducers, initialState, [Api.middleware]);
   }, []);
 
-  const forceColorScheme = theme === "night" ? "dark" : "light";
-
   return (
-    <AppColorSchemeProvider forceColorScheme={forceColorScheme}>
+    <AppColorSchemeProvider forceColorScheme={theme}>
       <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
     </AppColorSchemeProvider>
   );
 }
 
-const Template: StoryFn<{ theme: DisplayTheme }> = ({ theme }) => {
+const Template: StoryFn<{ theme: "light" | "dark" }> = ({ theme }) => {
   const asyncCallback = useMemo(() => createAsyncCallback(), []);
   const ready = useHeatmapPlugin();
 
@@ -83,13 +80,15 @@ const Template: StoryFn<{ theme: DisplayTheme }> = ({ theme }) => {
     return () => clearTimeout(id);
   }, [ready, asyncCallback]);
 
+  const questionTheme = theme === "dark" ? "night" : "light";
+
   const questionProps: PublicOrEmbeddedQuestionViewProps = {
     initialized: true,
     card: HEATMAP_CARD,
     metadata: createMockMetadata({}),
     titled: true,
     bordered: true,
-    theme,
+    theme: questionTheme,
     getParameters: () => [],
     parameterValues: {},
     setParameterValue: async () => undefined,
@@ -117,10 +116,10 @@ export default {
 
 export const Light = {
   render: Template,
-  args: { theme: "light" as DisplayTheme },
+  args: { theme: "light" as const },
 };
 
 export const Dark = {
   render: Template,
-  args: { theme: "night" as DisplayTheme },
+  args: { theme: "dark" as const },
 };

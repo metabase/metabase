@@ -14,7 +14,6 @@ import { Api } from "metabase/api";
 import "metabase/common/components/Popover/Popover.module.css";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import type { DisplayTheme } from "metabase/public/lib/types";
 import { publicReducers } from "metabase/reducers-public";
 import {
   createMockDashboardState,
@@ -73,7 +72,7 @@ function DashboardProviders({
   theme,
   children,
 }: {
-  theme: DisplayTheme;
+  theme: "light" | "dark";
   children: ReactNode;
 }) {
   const store = useMemo(() => {
@@ -97,16 +96,14 @@ function DashboardProviders({
     return getStore(publicReducers, initialState, [Api.middleware]);
   }, []);
 
-  const forceColorScheme = theme === "night" ? "dark" : "light";
-
   return (
-    <AppColorSchemeProvider forceColorScheme={forceColorScheme}>
+    <AppColorSchemeProvider forceColorScheme={theme}>
       <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
     </AppColorSchemeProvider>
   );
 }
 
-const Template: StoryFn<{ theme: DisplayTheme }> = ({ theme }) => {
+const Template: StoryFn<{ theme: "light" | "dark" }> = ({ theme }) => {
   const asyncCallback = useMemo(() => createAsyncCallback(), []);
   const ready = useHeatmapPlugin();
 
@@ -118,6 +115,8 @@ const Template: StoryFn<{ theme: DisplayTheme }> = ({ theme }) => {
     return () => clearTimeout(id);
   }, [ready, asyncCallback]);
 
+  const dashboardTheme = theme === "dark" ? "night" : "light";
+
   return (
     <DashboardProviders theme={theme}>
       {ready ? (
@@ -127,7 +126,7 @@ const Template: StoryFn<{ theme: DisplayTheme }> = ({ theme }) => {
           titled
           bordered
           background
-          theme={theme}
+          theme={dashboardTheme}
           downloadsEnabled={{ pdf: false, results: false }}
         >
           <PublicOrEmbeddedDashboardView />
@@ -157,10 +156,10 @@ export default {
 
 export const Light = {
   render: Template,
-  args: { theme: "light" as DisplayTheme },
+  args: { theme: "light" as const },
 };
 
 export const Dark = {
   render: Template,
-  args: { theme: "night" as DisplayTheme },
+  args: { theme: "dark" as const },
 };

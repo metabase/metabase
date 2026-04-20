@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
-import { getCustomPluginIdentifier } from "metabase-enterprise/custom_viz/custom-viz-plugins";
+import {
+  getCustomPluginIdentifier,
+  loadCustomVizPlugin,
+} from "metabase-enterprise/custom_viz/custom-viz-plugins";
 import type { RowValues, VisualizationDisplay } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
-
-import { registerCustomVizPluginForStorybook } from "./register-for-storybook";
 
 export const PLUGIN_BASE_URL = "/custom-viz-fixtures/calendar-heatmap";
 export const PLUGIN_IDENTIFIER = "calendar-heatmap";
@@ -56,12 +57,13 @@ export function useHeatmapPlugin() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    registerCustomVizPluginForStorybook({
-      bundleUrl: `${PLUGIN_BASE_URL}/index.js`,
-      displayName: "Calendar Heatmap",
+    loadCustomVizPlugin({
+      id: 1,
+      resolved_commit: "dev",
+      bundle_url: `${PLUGIN_BASE_URL}/index.js`,
+      display_name: "Calendar Heatmap",
       identifier: PLUGIN_IDENTIFIER,
-      iconUrl: `${PLUGIN_BASE_URL}/assets/calendar.svg`,
-      assetBaseUrl: `${PLUGIN_BASE_URL}/assets`,
+      icon: `${PLUGIN_BASE_URL}/assets/calendar.svg`,
     }).then(() => {
       if (!cancelled) {
         setReady(true);
