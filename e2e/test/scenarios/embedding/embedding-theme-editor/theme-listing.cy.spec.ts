@@ -9,13 +9,6 @@ function createThemeViaApi(name = "Test theme") {
   });
 }
 
-function createThemeViaApi(name = "Test theme") {
-  return cy.request("POST", "/api/embed-theme", {
-    name,
-    settings: { colors: { brand: "#509EE3" } },
-  });
-}
-
 describe(
   "scenarios > embedding > themes > theme listing",
   { tags: "@EE" },
