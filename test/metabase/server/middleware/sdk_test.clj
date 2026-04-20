@@ -305,8 +305,7 @@
 
 (deftest include-sdk-info-pii-fields-test
   (let [request (-> (ring.mock/request :get "/api/public/card/1")
-                    (ring.mock/header "origin" "https://app.example.com")
-                    (ring.mock/header "referer" "https://app.example.com/dashboard/1?x=y")
+                    (ring.mock/header "x-metabase-embed-referrer" "https://app.example.com/dashboard/1?x=y")
                     (ring.mock/header "user-agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                     (assoc :remote-addr "10.0.0.1"))]
     (testing "PII fields populated when setting enabled and request bound"

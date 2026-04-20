@@ -416,9 +416,8 @@
           (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
             (public-test/with-temp-public-card [card]
               (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
-                             {:request-options {:headers {"origin"     "https://app.example.com"
-                                                          "referer"    "https://app.example.com/dashboard/1"
-                                                          "user-agent" "TestAgent/1.0"}}})
+                             {:request-options {:headers {"x-metabase-embed-referrer" "https://app.example.com/dashboard/1"
+                                                          "user-agent"                "TestAgent/1.0"}}})
               (testing "in view_log"
                 (let [view (latest-view nil (:id card))]
                   (is (= "app.example.com" (:embedding_hostname view)))
@@ -438,9 +437,8 @@
           (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
             (public-test/with-temp-public-card [card]
               (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
-                             {:request-options {:headers {"origin"     "https://app.example.com"
-                                                          "referer"    "https://app.example.com/dashboard/1"
-                                                          "user-agent" "TestAgent/1.0"}}})
+                             {:request-options {:headers {"x-metabase-embed-referrer" "https://app.example.com/dashboard/1"
+                                                          "user-agent"                "TestAgent/1.0"}}})
               (testing "in view_log"
                 (let [view (latest-view nil (:id card))]
                   (is (= "app.example.com" (:embedding_hostname view)))
@@ -464,9 +462,8 @@
           (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
             (public-test/with-temp-public-dashboard-and-card [dash card dashcard]
               (client/client :get 202 (public-test/dashcard-url dash card dashcard)
-                             {:request-options {:headers {"origin"     "https://dash.example.com"
-                                                          "referer"    "https://dash.example.com/analytics"
-                                                          "user-agent" "DashAgent/2.0"}}})
+                             {:request-options {:headers {"x-metabase-embed-referrer" "https://dash.example.com/analytics"
+                                                          "user-agent"                "DashAgent/2.0"}}})
               (testing "in view_log"
                 (let [view (latest-view nil (:id card))]
                   (is (= "dash.example.com" (:embedding_hostname view)))
@@ -546,8 +543,7 @@
             (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
                            {:request-options {:headers {"x-metabase-client"         "embedding-sdk-react"
                                                         "x-metabase-client-version" "1.42.0"
-                                                        "origin"                    "https://app.example.com"
-                                                        "referer"                   "https://app.example.com/dashboard/1"
+                                                        "x-metabase-embed-referrer" "https://app.example.com/dashboard/1"
                                                         "user-agent"                "TestAgent/1.0"}}})
             (testing "v_view_log"
               (let [row (latest-v-view-log (:id card))]
@@ -587,8 +583,7 @@
             (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
                            {:request-options {:headers {"x-metabase-client"         "embedding-sdk-react"
                                                         "x-metabase-client-version" "1.42.0"
-                                                        "origin"                    "https://app.example.com"
-                                                        "referer"                   "https://app.example.com/dashboard/1"
+                                                        "x-metabase-embed-referrer" "https://app.example.com/dashboard/1"
                                                         "user-agent"                "TestAgent/1.0"}}})
             (testing "v_view_log"
               (let [row (latest-v-view-log (:id card))]
