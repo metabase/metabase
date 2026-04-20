@@ -423,9 +423,19 @@
       u/encode-base64))
 
 (defn- decode-continuation-token
-  "Decode a base64-encoded continuation token into {:query ... :pagination ...}."
+  "Decode a base64-encoded continuation token into {:query ... :pagination ...}.
+   The token is client-supplied, so sanity-check the pagination ints to turn
+   garbage into a 400 rather than a downstream 500. This is robustness, not a
+   security boundary — a caller can always issue a fresh program to run any
+   query they want."
   [token]
-  (-> token u/decode-base64 json/decode+kw))
+  (let [decoded (-> token u/decode-base64 json/decode+kw)
+        {:keys [limit page]} (:pagination decoded)]
+    (api/check (and (int? limit) (pos? limit))
+               [400 "Invalid continuation token: limit must be a positive integer"])
+    (api/check (and (int? page) (pos? page))
+               [400 "Invalid continuation token: page must be a positive integer"])
+    decoded))
 
 (defn- total-row-limit
   "The user's requested :limit, defaulted when absent and capped at the combined

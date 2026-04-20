@@ -444,6 +444,26 @@
                                   {:source     {:type "table" :id (mt/id :orders)}
                                    :operations [["limit" 1000]]})))))
 
+(defn- make-continuation-token [pagination]
+  (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+       :pagination pagination}
+      json/encode
+      u/encode-base64))
+
+(deftest continuation-token-validation-test
+  (testing "Malformed pagination ints in a continuation token produce a 400, not a 500.
+            This is robustness — the token isn't a trust boundary, since a caller can
+            always issue a fresh program."
+    (doseq [[label pagination] [["zero limit"         {:limit 0      :page 1}]
+                                ["negative limit"     {:limit -10    :page 1}]
+                                ["non-integer limit"  {:limit "lots" :page 1}]
+                                ["zero page"          {:limit 200    :page 0}]
+                                ["negative page"      {:limit 200    :page -1}]
+                                ["non-integer page"   {:limit 200    :page "next"}]]]
+      (testing label
+        (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                              {:continuation_token (make-continuation-token pagination)})))))
+
 (deftest combined-query-metric-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
