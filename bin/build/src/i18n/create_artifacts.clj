@@ -54,13 +54,15 @@
   (u/filename u/project-root-directory "target"))
 
 (def ^:private violations-csv-columns
-  ["locale" "types" "backend" "plural_index" "msgid" "msgid_plural" "msgstr"
+  ["locale" "types" "dropped" "backend" "plural_index" "msgid" "msgid_plural" "msgstr"
    "error" "expected_args" "actual_args" "source_refs"])
 
 (defn- violation->row [{:keys [locale types backend? plural-index msgid msgid-plural msgstr
-                               error expected-arg-counts actual-arg-count source-refs]}]
+                               error expected-arg-counts actual-arg-count source-refs]
+                        :as   violation}]
   [locale
    (str/join "+" (sort (map name types)))
+   (str (boolean (i18n.validation/drop-from-build? violation)))
    (str (boolean backend?))
    (if plural-index (str plural-index) "")
    (or msgid "")

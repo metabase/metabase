@@ -150,7 +150,11 @@
     (filter string? translated)))
 
 (deftest ^:parallel translations-are-valid-message-format-test
-  (testing "Every translated string in resources/i18n/*.edn passes the build-time validator"
+  (testing "Every translated string in resources/i18n/*.edn is a valid MessageFormat pattern"
+    ;; Only MessageFormat validity is asserted here. Skipped indices and arg-count mismatches are
+    ;; intentionally allowed in the build output — they render imperfectly at runtime but don't
+    ;; throw, so dropping them would cause an unnecessary regression to full English fallback.
+    ;; See `bin/build/src/i18n/validation.clj` `drop-from-build?`.
     (doseq [locale-name          (i18n.impl/available-locale-names)
             :let                 [resource (locale-resource locale-name)]
             :when                resource
@@ -160,7 +164,4 @@
       (testing (format "locale %s, source %s, translated %s" locale-name (pr-str english) (pr-str t))
         (is (validation/valid-message-format? t)
             (format "Translated string is not a valid java.text.MessageFormat pattern — the build filter should have dropped it. Inspect target/i18n-violations.csv. msgid=%s locale=%s"
-                    (pr-str english) locale-name))
-        (is (not (validation/skipped-arg-index? t))
-            (format "Translated string has a skipped/duplicated argument index — the build filter should have dropped it. Inspect target/i18n-violations.csv. msgid=%s locale=%s"
                     (pr-str english) locale-name))))))
