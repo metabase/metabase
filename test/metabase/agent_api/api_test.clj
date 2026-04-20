@@ -6,6 +6,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -229,6 +230,22 @@
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestTable"]}))))))))
+
+(deftest coerce-query-list-test
+  (let [coerce #'agent-api.api/coerce-query-list]
+    (testing "arrays pass through unchanged"
+      (is (= ["orders" "revenue"] (coerce ["orders" "revenue"]))))
+    (testing "nil stays nil"
+      (is (nil? (coerce nil))))
+    (testing "a bare string becomes a single-element list"
+      (is (= ["orders"] (coerce "orders"))))
+    (testing "a JSON-stringified array of strings is unwrapped"
+      (is (= ["orders" "revenue"] (coerce "[\"orders\", \"revenue\"]"))))
+    (testing "JSON arrays with non-string elements are not unwrapped — they fall back to a literal single query so that downstream :sequential NonBlankString validation is never bypassed"
+      (is (= ["[1, 2]"] (coerce "[1, 2]")))
+      (is (= ["[\"\"]"] (coerce "[\"\"]"))))
+    (testing "non-JSON strings become a single-element list"
+      (is (= ["not json ["] (coerce "not json ["))))))
 
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."

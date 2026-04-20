@@ -303,15 +303,17 @@
   "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably
    Codex) serialize array args through a string layer, so a caller that intended to
    send `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`. Accept either shape:
-   an array is returned as-is; a string that parses as a JSON array is unwrapped;
-   any other string is treated as a single-element query."
+   an array is returned as-is; a string that parses as a JSON array of non-blank
+   strings is unwrapped; any other string is treated as a single-element query."
   [v]
   (cond
     (nil? v)        nil
     (sequential? v) v
     (string? v)     (or (try
                           (let [parsed (json/decode+kw v)]
-                            (when (sequential? parsed) parsed))
+                            (when (and (sequential? parsed)
+                                       (every? #(and (string? %) (not (str/blank? %))) parsed))
+                              parsed))
                           (catch Exception _ nil))
                         [v])
     :else           v))
@@ -444,11 +446,24 @@
     {:query       (strip-query-for-serialization (lib/limit live-query nil))
      :total-limit total-limit}))
 
+(defn- rows-before-page
+  "Total rows consumed by the pages preceding `page`. Single source of truth for
+   the page-size * (page - 1) arithmetic used by both sizing and pagination-exit."
+  [page]
+  (* (dec page) page-size))
+
 (defn- remaining-page-rows
   "Rows to request for this page, respecting the user's total cap.
    Returns at most page-size, and never more than remaining rows under the cap."
   [total-limit page]
-  (max 0 (min page-size (- total-limit (* (dec page) page-size)))))
+  (max 0 (min page-size (- total-limit (rows-before-page page)))))
+
+(defn- more-pages-available?
+  "True when this page was filled to its requested size *and* the total cap still
+   has room for more rows — i.e. we should emit a continuation token."
+  [page total-limit rows-returned items]
+  (and (= rows-returned items)
+       (< (rows-before-page (inc page)) total-limit)))
 
 (defn- apply-page-to-query
   "Set `:page` on the last stage of a serialized MBQL 5 query map. Operates on the
@@ -484,6 +499,17 @@
    [:continuation [:map [:continuation_token ms/NonBlankString]]]
    [:program      ::program-request]])
 
+(defn- initial-page-state
+  "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
+   shape. A fresh program evaluates + extracts the user's :limit; a continuation token
+   carries that state from a prior response."
+  [body]
+  (if-let [token (:continuation_token body)]
+    (let [{:keys [query pagination]} (decode-continuation-token token)]
+      {:query query :total-limit (:limit pagination) :page (:page pagination)})
+    (let [{:keys [query total-limit]} (extract-total-limit (evaluate-program-to-live-query body))]
+      {:query query :total-limit total-limit :page 1})))
+
 (api.macros/defendpoint :post "/v2/query"
   :- (streaming-response/streaming-response-schema ::query-response)
   "Execute a structured program and stream the results, with continuation-token pagination.
@@ -502,12 +528,7 @@
   [_route-params
    _query-params
    body :- ::query-request]
-  (let [{:keys [query total-limit page]}
-        (if-let [token (:continuation_token body)]
-          (let [{:keys [query pagination]} (decode-continuation-token token)]
-            {:query query :total-limit (:limit pagination) :page (:page pagination)})
-          (let [{:keys [query total-limit]} (extract-total-limit (evaluate-program-to-live-query body))]
-            {:query query :total-limit total-limit :page 1}))
+  (let [{:keys [query total-limit page]} (initial-page-state body)
         items           (remaining-page-rows total-limit page)
         mbql5-with-page (apply-page-to-query query page items)]
     (qp.streaming/streaming-response
@@ -518,8 +539,7 @@
         rff
         (fn [result]
           (assoc result :continuation_token
-                 (when (and (= (:row_count result) items)
-                            (< (* page page-size) total-limit))
+                 (when (more-pages-available? page total-limit (:row_count result) items)
                    (generate-continuation-token query total-limit page)))))))))
 
 ;;; ------------------------------------------------- Execute Query --------------------------------------------------
