@@ -96,8 +96,11 @@ export type UseMetabotResult = {
 
   /**
    * A pre-wired component bound to the latest `navigate_to` path.
-   * Suitable for sidebar/panel layouts. Renders nothing until the agent
-   * sends a chart.
+   * `null` until the agent sends a chart — lets consumers detect presence
+   * and render a placeholder or swap panel content only when set.
+   *
+   * @example
+   * {CurrentChart ? <CurrentChart /> : <Placeholder />}
    */
-  CurrentChart: React.ComponentType<MetabotChartProps>;
+  CurrentChart: React.ComponentType<MetabotChartProps> | null;
 };

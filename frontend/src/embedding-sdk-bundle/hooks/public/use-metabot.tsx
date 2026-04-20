@@ -27,7 +27,9 @@ export const useMetabot = (): UseMetabotResult => {
 
   const CurrentChart = useMemo(
     () =>
-      createCurrentChartComponent(navigateToPath, chartComponentsCache.current),
+      navigateToPath
+        ? getCachedChartComponent(navigateToPath, chartComponentsCache.current)
+        : null,
     [navigateToPath],
   );
 
@@ -102,20 +104,6 @@ function getCachedChartComponent(
     cache.set(questionPath, createChartComponent(questionPath));
   }
   return cache.get(questionPath)!;
-}
-
-function EmptyChart() {
-  return null;
-}
-
-function createCurrentChartComponent(
-  questionPath: string | null,
-  cache: Map<string, ReturnType<typeof createChartComponent>>,
-) {
-  if (!questionPath) {
-    return EmptyChart;
-  }
-  return getCachedChartComponent(questionPath, cache);
 }
 
 const mapMessage = (

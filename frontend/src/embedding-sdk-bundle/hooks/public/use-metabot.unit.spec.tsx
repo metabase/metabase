@@ -39,7 +39,7 @@ describe("useMetabot", () => {
   describe("CurrentChart", () => {
     const TestCurrentChart = ({ drills }: { drills?: true }) => {
       const { CurrentChart } = useMetabot();
-      return <CurrentChart drills={drills} />;
+      return CurrentChart ? <CurrentChart drills={drills} /> : null;
     };
 
     it("renders nothing before navigate_to fires", () => {
