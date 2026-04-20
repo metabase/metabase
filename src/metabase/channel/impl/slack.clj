@@ -158,9 +158,9 @@
                  [{:type "section"
                    :text {:type "mrkdwn"
                           :text (truncate (str "System event: " (name event_topic)) block-text-length-limit)}}])]
-    (doall (for [channel (keep notification-recipient->channel recipients)]
-             {:channel channel
-              :blocks  blocks}))))
+    (doall (for [channel (keep notification-recipient->channel-id recipients)]
+             {:channel-id   channel
+              :attachments  [{:blocks blocks}]}))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;
