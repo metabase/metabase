@@ -183,7 +183,7 @@ describe("scenarios > setup", () => {
       cy.intercept(SUBSCRIBE_URL, {}).as("subscribe");
 
       // Finish & Subscribe
-      cy.findByText(
+      cy.findByLabelText(
         "Get infrequent emails about new releases and feature updates.",
       ).click();
 
@@ -681,7 +681,7 @@ describe("scenarios > setup", () => {
         step: "completed",
       });
 
-      cy.findByText(
+      cy.findByLabelText(
         "Get infrequent emails about new releases and feature updates.",
       ).click();
 
@@ -691,7 +691,7 @@ describe("scenarios > setup", () => {
         event_detail: "opted-in",
       });
 
-      cy.findByText(
+      cy.findByLabelText(
         "Get infrequent emails about new releases and feature updates.",
       ).click();
 
