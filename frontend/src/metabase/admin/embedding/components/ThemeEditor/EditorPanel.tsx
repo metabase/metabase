@@ -184,6 +184,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                 onChange={(value) =>
                   editor.setFontFamily((value ?? "") as MetabaseFontFamily)
                 }
+                placeholder={t`Default`}
                 clearable
                 searchable
               />
@@ -197,6 +198,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                   }
                   editor.setFontSize(raw ? `${raw}px` : "");
                 }}
+                placeholder={t`Default`}
                 rightSection={
                   <Text c="text-tertiary" fz="sm">
                     {"px"}
