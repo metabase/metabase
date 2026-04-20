@@ -25,13 +25,12 @@ import {
   createEntity,
   entityCompatibleQuery,
   notify,
+  updateData,
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/utils/entities";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
-
-import { updateData } from "./utils";
 
 // ADDITIONAL OBJECT ACTIONS
 
