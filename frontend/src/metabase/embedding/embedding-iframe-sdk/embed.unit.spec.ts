@@ -409,6 +409,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
               questionId: undefined,
               componentName: "metabase-dashboard",
               _isLocalhost: true,
+              _embedReferrer: "http://localhost/",
             },
           }),
           "*",
