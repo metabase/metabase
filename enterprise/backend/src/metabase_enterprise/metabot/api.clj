@@ -11,9 +11,9 @@
 
 (def ^:private metabot-usage-response-schema
   [:map
-   [:is-locked [:maybe boolean?]]
+   [:is_locked [:maybe boolean?]]
    [:tokens [:maybe int?]]
-   [:updated-at [:maybe :string]]])
+   [:updated_at [:maybe :string]]])
 
 (defn- meter-value
   [meters meter-key]
@@ -41,7 +41,7 @@
   (perms/check-has-application-permission :setting)
   (let [meter (some-> (premium-features/token-status)
                       meter-entry)]
-    {:is-locked   (:is-locked meter)
+    {:is_locked   (:is-locked meter)
      :tokens      (:meter-value meter)
-     :free-tokens (:meter-free-units meter)
-     :updated-at  (:meter-updated-at meter)}))
+     :free_tokens (:meter-free-units meter)
+     :updated_at  (:meter-updated-at meter)}))

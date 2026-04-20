@@ -51,10 +51,11 @@
                                                                                                            :meter-free-units 1337
                                                                                                            :meter-updated-at "2026-04-02T19:29:12Z"}}})]
       (is (= {:tokens       12345
-              :free-tokens  1337
-              :updated-at   "2026-04-02T19:29:12Z"
-              :is-locked nil}
-             (mt/user-http-request :crowberto :get 200 "ee/metabot/usage"))))))
+              :free_tokens  1337
+              :updated_at   "2026-04-02T19:29:12Z"
+              :is_locked    nil}
+             (-> (mt/user-http-request :crowberto :get 200 "ee/metabot/usage")
+                 (update :updated_at str)))))))
 
 (deftest usage-permissions-test
   (mt/with-premium-features #{:metabot-v3}

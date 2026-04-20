@@ -317,14 +317,14 @@ function MetabaseManagedProviderCard({
   handleDisconnect: VoidFunction;
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
-  const isLocked = metabotUsage?.["is-locked"];
+  const isLocked = metabotUsage?.is_locked;
   const totalCost = getMetabaseUsageCost(metabotUsage, pricing);
   const [refreshTokenStatus] = useRefreshTokenStatusMutation();
   useEffect(() => {
     refreshTokenStatus();
   }, [refreshTokenStatus]);
 
-  const freeTokens = metabotUsage?.["free-tokens"] ?? 0;
+  const freeTokens = metabotUsage?.free_tokens ?? 0;
   const tokens = metabotUsage?.tokens ?? 0;
   const hasFreeTokens = freeTokens > 0 && tokens <= freeTokens;
 
@@ -511,7 +511,7 @@ export function getMetabaseUsageCost(
     return 0;
   }
 
-  const { tokens, "free-tokens": freeTokens } = usage;
+  const { tokens, free_tokens: freeTokens } = usage;
   if (!tokens) {
     return 0;
   }

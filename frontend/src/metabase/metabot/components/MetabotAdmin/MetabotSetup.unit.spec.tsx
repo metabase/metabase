@@ -80,9 +80,9 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
 };
 
 type MetabotUsageQuota = {
-  "is-locked"?: boolean;
+  is_locked?: boolean;
   tokens: number | null;
-  "free-tokens"?: number | null;
+  free_tokens?: number | null;
   updated_at: string | null;
 };
 
@@ -892,7 +892,7 @@ describe("MetabotSetup", () => {
       metabotUsageQuotas: [
         {
           tokens: 250000,
-          "free-tokens": 1000000,
+          free_tokens: 1000000,
           updated_at: updatedAt,
         },
       ],
@@ -916,7 +916,7 @@ describe("MetabotSetup", () => {
       metabotUsageQuotas: [
         {
           tokens: 1250000,
-          "free-tokens": 1000000,
+          free_tokens: 1000000,
           updated_at: updatedAt,
         },
       ],
@@ -944,7 +944,7 @@ describe("MetabotSetup", () => {
       tokenStatusFeatures: ["metabase-ai-managed"],
       metabotUsageQuotas: [
         {
-          "is-locked": true,
+          is_locked: true,
           tokens: 250000,
           updated_at: "2026-04-02T19:29:12Z",
         },
@@ -999,7 +999,7 @@ describe("MetabotSetup", () => {
       tokenStatusFeatures: ["metabase-ai-managed"],
       metabotUsageQuotas: [
         {
-          "is-locked": true,
+          is_locked: true,
           tokens: 250000,
           updated_at: "2026-04-02T19:29:12Z",
         },

@@ -21,8 +21,9 @@ const PRICING: MetabaseManagedAiPricing = {
 function createUsage(tokens: number, freeTokens: number): MetabotUsageResponse {
   return {
     tokens,
-    "free-tokens": freeTokens,
-    "updated-at": null,
+    free_tokens: freeTokens,
+    updated_at: null,
+    is_locked: false,
   };
 }
 
