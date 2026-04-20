@@ -133,7 +133,7 @@ export function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-export function isNative(card: Card) {
+export function isNative(card?: Card | null | undefined) {
   if (!card) {
     return false;
   }
