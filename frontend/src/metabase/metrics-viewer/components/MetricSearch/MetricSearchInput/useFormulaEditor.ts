@@ -20,7 +20,6 @@ import {
   ENTITY_SEPARATOR,
   type MetricNameMap,
   applyTrackedDefinitions,
-  buildExpressionText,
   buildFullTextWithIdentities,
   cleanupParens,
   findInvalidRanges,
@@ -254,39 +253,15 @@ export function useFormulaEditor({
         newText,
         metricNamesRef.current,
       );
-
-    // Preserve custom expression names from the previous formula by matching
-    // on ordinal position among expression entries. The Nth expression after
-    // commit inherits the Nth previous expression's custom name (if any),
-    // regardless of whether its tokens changed. Extra old names are dropped
-    // silently when there are fewer expressions after the edit.
-    const prevEntities = formulaEntitiesRef.current;
-    const metricNames = metricNamesRef.current;
-    const prevCustomNames: (string | null)[] = [];
-    for (const old of prevEntities) {
-      if (!isExpressionEntry(old)) {
-        continue;
-      }
-      const defaultText = buildExpressionText(old.tokens, metricNames);
-      prevCustomNames.push(old.name !== defaultText ? old.name : null);
-    }
-
-    let newExprIdx = 0;
-    const entitiesWithNames = reconciledEntities.map((entity) => {
-      if (!isExpressionEntry(entity)) {
-        return entity;
-      }
-      const inherited = prevCustomNames[newExprIdx];
-      newExprIdx += 1;
-      if (inherited) {
-        return { ...entity, name: inherited };
-      }
-      return entity;
-    });
+    // Custom expression names now ride on `MetricIdentity.customName`
+    // (stamped at edit-session start) and are reinstated on the surviving
+    // expression entities inside `applyTrackedDefinitions`. No
+    // positional-index fallback: if every identity of a named expression
+    // is deleted, the name is lost — by design.
 
     // Find which metric sourceIds are referenced in the parsed entities
     const referencedSourceIds = new Set<MetricSourceId>();
-    for (const entry of entitiesWithNames) {
+    for (const entry of reconciledEntities) {
       if (isMetricEntry(entry)) {
         referencedSourceIds.add(entry.id);
       } else if (isExpressionEntry(entry)) {
@@ -314,7 +289,7 @@ export function useFormulaEditor({
       }
     }
 
-    onFormulaEntitiesChange(entitiesWithNames, slotMapping);
+    onFormulaEntitiesChange(reconciledEntities, slotMapping);
     isEditingSessionActiveRef.current = false;
     setIsFocused(false);
     setIsOpen(false);
