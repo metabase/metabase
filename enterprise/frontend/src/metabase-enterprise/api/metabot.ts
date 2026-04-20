@@ -2,8 +2,9 @@ import { EnterpriseApi } from "./api";
 
 export type MetabotUsageResponse = {
   tokens: number | null;
-  "updated-at": string | null;
-  "is-locked": boolean;
+  free_tokens: number | null;
+  updated_at: string | null;
+  is_locked: boolean;
 };
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
