@@ -405,8 +405,11 @@
                                     (reset! streamed? true)
                                     (original-fn response))]
         (let [[session-id _] (initialize!)
-              construct-data (call-tool session-id "construct_query" {:table_id (mt/id :orders) :limit 5})
-              execute-data   (call-tool session-id "execute_query"   {:query (:query construct-data)})]
+              construct-data (call-tool session-id "construct_query"
+                                        {:source     {:type "table" :id (mt/id :orders)}
+                                         :operations [["limit" 5]]})
+              execute-data   (call-tool session-id "execute_query"
+                                        {:query (:query construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
           (is (=? {:status    "completed"
                    :row_count 5

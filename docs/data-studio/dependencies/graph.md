@@ -1,13 +1,15 @@
 ---
 title: Dependency graph
 summary: Visualize how your content connects and what depends on what in Metabase.
+redirect_from:
+  - /docs/latest/data-studio/dependency-graph
 ---
 
 # Dependency graph
 
 {% include plans-blockquote.html feature="Dependency graph" %}
 
-![Dependency graph](./images/dependency-graph.png)
+![Dependency graph](../images/dependency-graph.png)
 
 The dependency graph provides a visual representation of how your Metabase content is connected. You can use it to follow how data flows through your Metabase to better understand the impact of any changes you make.
 
@@ -16,19 +18,19 @@ The dependency graph provides a visual representation of how your Metabase conte
 The dependency graph tracks the relationships between:
 
 - Tables
-- [Questions](../questions/introduction.md)
-- [Models](../data-modeling/models.md)
-- [Snippets](../questions/native-editor/snippets.md)
-- [Transforms](./transforms/transforms-overview.md)
-- [Metrics](../data-modeling/metrics.md)
-- [Dashboards](../dashboards/introduction.md)
-- [Documents](../documents/introduction.md)
+- [Questions](../../questions/introduction.md)
+- [Models](../../data-modeling/models.md)
+- [Snippets](../../questions/native-editor/snippets.md)
+- [Transforms](../transforms/transforms-overview.md)
+- [Metrics](../../data-modeling/metrics.md)
+- [Dashboards](../../dashboards/introduction.md)
+- [Documents](../../documents/introduction.md)
 
 ## Viewing the dependency graph
 
 To open the full dependency graph:
 
-1. Open [Data Studio](./overview.md).
+1. Open [Data Studio](../overview.md).
 2. Click **Dependency graph** in the left sidebar.
 
 This opens a canvas view where you can search for and visualize the dependencies of any item across your entire Metabase instance.
@@ -62,11 +64,16 @@ Because of this, dependencies can exist even when no data is directly queried. F
 - A question used only to populate a dashboard filter dropdown still counts as a dependency
 - Questions that are joined together may appear as separate dependent items
 
-Some dependencies are inferred rather than explicitly defined. SQL queries can introduce implicit joins, and complex questions may have multiple internal dependency paths instead of a single source to result flow. As a result, a dependency may appear in the graph even if it’s not obvious from the question editor.
+Some dependencies are inferred rather than explicitly defined. SQL queries can introduce implicit joins, and complex questions may have multiple internal dependency paths instead of a single source to result flow. As a result, a dependency may appear in the graph even if it's not obvious from the question editor.
 
 If a dependency looks unexpected, it usually reflects an indirect or inferred relationship. In those cases, review how the item is used before changing or removing it.
 
+## Replace data sources
+
+You can use the dependency graph to replace query sources in bulk. See [Replace data sources](replace-data-sources.md).
+
 ## Further reading
 
-- [Library](./library.md)
-- [Dependency graph](./dependency-graph.md)
+- [Library](../library.md)
+- [Dependency diagnostics](./diagnostics.md)
+- [Replace data sources](./replace-data-sources.md)

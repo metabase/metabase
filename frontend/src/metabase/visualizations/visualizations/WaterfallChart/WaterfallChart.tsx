@@ -2,6 +2,7 @@ import Color from "color";
 import { t } from "ttag";
 
 import { color, staticVizOverrides } from "metabase/ui/colors";
+import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
@@ -47,6 +48,7 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
   supportsVisualizer: false,
   settings: {
     ...GRAPH_AXIS_SETTINGS,
+    ...GRAPH_GOAL_SETTINGS,
     "waterfall.increase_color": {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Display`,

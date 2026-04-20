@@ -4,6 +4,7 @@
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -226,10 +227,10 @@
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
-        req       (cond-> {:model      model
-                           :max_tokens (or max-tokens 4096)
-                           :stream     true
-                           :messages   messages}
+        req       (cond-> {:model         model
+                           :max_tokens    (or max-tokens 4096)
+                           :stream        true
+                           :messages      messages}
                     system            (assoc :system system)
                     all-tools         (assoc :tools all-tools)
                     (and all-tools
@@ -260,7 +261,11 @@
                                       :headers {"anthropic-version" "2023-06-01"
                                                 "content-type"      "application/json"}
                                       :body    (json/encode req)})]
-          (core/sse-reducible (:body response)))
+          (-> (core/sse-reducible (:body response))
+              (debug/capture-stream {:provider "anthropic"
+                                     :model    model
+                                     :url      "/v1/messages"
+                                     :request  req})))
         (catch Exception e
           (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
 

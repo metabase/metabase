@@ -37,19 +37,19 @@ Once you've added Metabot AI in the Metabase store, you can log in to your Metab
 
 ## Bring your own API key
 
-_Admin > AI > Connection settings_
-
-![Connect to an AI provider](./images/ai-connection-settings.png)
+_Admin > AI_
 
 To enable AI features with your own API key:
 
-1. Go to **Admin > AI > Connection settings**.
+1. Go to **Admin > AI**.
 2. Select your **Provider**.
-3. Enter your **API key**.
+3. Enter your **API key**. The **Get or manage keys in [provider]** link opens your provider's key management page in a new tab.
 4. Click **Connect**.
 5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
 
-When your connection is active, you'll see a **CONNECTED** badge. With your key connected, you get access to [Metabot](./metabot.md), [inline SQL generation](./metabot.md#inline-sql-editing), the [MCP server](./mcp.md), and the [Agent API](./agent-api.md).
+When your connection is active, the provider card header shows **Connected to [provider]** (for example, "Connected to Anthropic") next to a green status dot. With your key connected, you get access to [Metabot](./metabot.md), [inline SQL generation](./metabot.md#inline-sql-editing), the [MCP server](./mcp.md), and the [Agent API](./agent-api.md).
+
+To clear your provider connection, click **Disconnect**. Disconnecting removes the stored API key and turns off any AI features that depend on the provider.
 
 ### Supported providers
 
@@ -57,38 +57,34 @@ Currently, Metabase only supports models from Anthropic.
 
 ## Configure Metabot
 
-_Admin > AI > Metabot_
+_Admin > AI > Metabot settings_
 
 ![Metabot settings](./images/ai-settings.png)
 
-You can configure Metabot for your internal Metabase separately from [embedded](../embedding/introduction.md) Metabase contexts. That way you can, for example, use Metabot in your Metabase while not granting access to Metabot in your embedded Metabase.
+The **Metabot settings** card has two tabs — **Internal** and **Embedded** — so you can configure Metabot for your internal Metabase separately from [embedded](../embedding/introduction.md) Metabase contexts. That way you can, for example, use Metabot in your Metabase while not granting access to Metabot in your embedded Metabase. Each tab has its own enable toggle, verified-content setting, allowed collection, and prompt suggestions, all configured independently.
 
 ### Enable Metabot
+
+_Internal tab._
 
 Toggle [Metabot](./metabot.md) on or off for your Metabase. Metabot is enabled by default.
 
 When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden. Currently, Metabot is available to everyone who uses your Metabase. There's no way to scope Metabot usage per person.
 
-Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md).
+Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md) if those are enabled.
 
-### Enable MCP server
+### Enable Embedded Metabot
 
-Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
+_Embedded tab._
 
-### Enable Agent API
-
-Use the **Agent API** toggle to turn external access to the [Agent API](./agent-api.md) on or off.
-
-### Embedded Metabot
-
-_Admin > AI > Embedded Metabot_
-
-The toggle turns embedded Metabot on or off. The toggle affects both full-app embeds and modular embeds.
+The **Embedded Metabot is enabled** toggle turns embedded Metabot on or off. The toggle affects both full-app embeds and modular embeds.
 
 - [Full-app embedding](../embedding/full-app-embedding.md): The Metabot icon and keyboard shortcuts are only available when Metabot is enabled. Turning off Embedded Metabot will hide these icons and disable the keyboard shortcuts.
 - [Modular embedding](../embedding/modular-embedding.md): The toggle doesn't add Metabot anywhere; you have to explicitly include a chat component (like the SDK's [`MetabotQuestion`](../embedding/sdk/ai-chat.md)) in your application. If, however, you've added a component, and you turn off the Embedded Metabot toggle, your chat component will stop working, so you should also remove or hide the component in your application.
 
 ### Verified content
+
+_Available on both the Internal and Embedded tabs, configured independently._
 
 Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models.md) and [metrics](../data-modeling/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
 
@@ -96,17 +92,63 @@ Restricting Metabot to verified models and metrics (and only models and metrics)
 
 ### Collection for natural language querying
 
-Select a collection (including its subcollections) to limit which collections Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration).
+_Internal tab._
+
+Select a collection (including its subcollections) to limit which collections Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration). Click **Pick a different collection** to change the selection.
 
 This setting only affects conversations started from **+ New > AI exploration**.
 
 People can still @-mention items outside of this collection when prompting in AI exploration. Metabot can also see the person's current context (for example, Metabot will know about the dashboard they're currently viewing, even if the dashboard is outside the selected collection).
 
+### Collection Embedded Metabot can use
+
+_Embedded tab._
+
+If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries. Click **Pick a different collection** to choose the collection (and its subcollections) that embedded Metabot can query.
+
 ### Prompt suggestions
 
-When people open a new Metabot chat, Metabase shows a few suggested prompts.
+_Available on both the Internal and Embedded tabs, configured independently._
 
-Click **Regenerate suggested prompts** to generate a fresh set of prompts. You can also run individual prompts to test Metabot's answers, or delete prompts that aren't useful.
+When people open a new Metabot chat, Metabase shows a few suggested prompts based on popular models and metrics in your instance.
+
+Click **Regenerate suggested prompts** to generate a fresh set of prompts. You can also run individual prompts to test Metabot's answers, or delete prompts that aren't useful. The Internal and Embedded tabs each maintain their own set of suggestions, so regenerating on one tab doesn't affect the other.
+
+## MCP server settings
+
+Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
+
+### Supported MCP clients
+
+Under **Supported MCP clients**, switch on any clients you want to allow:
+
+- **Claude** (Claude Desktop and Claude on the web)
+- **Cursor and VS Code**
+- **ChatGPT**
+
+Toggling on a client automatically adds that client's sandbox domains to Metabase's CORS allowlist, which is what lets browser-based MCP clients make cross-origin requests to your Metabase.
+
+Some clients run outside the browser (like Claude Code on your own machine) and don't need a CORS allowlist entry. You can connect those clients without toggling anything on (assuming you've turned on the main MCP server setting).
+
+### Custom MCP client domains
+
+If you run a self-hosted MCP client or one that isn't in the supported list, add its domain to the **Custom MCP client domains** field. Separate values with a space, for example:
+
+```
+https://mcp.internal.example.com https://*.staging.example.com
+```
+
+The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
+
+## Agent API settings
+
+Use the **Agent API** toggle to turn external access to the [Agent API](./agent-api.md) on or off.
+
+## Disable all AI features
+
+The **Disable all AI features** toggle at the bottom of the AI features page is a master kill switch. When turned on, it hides all AI features across your instance — Metabot, inline SQL generation, the MCP server, the Agent API, and any embedded chat components — regardless of the individual toggles above.
+
+Use this toggle for an instance-wide shut-off without having to disconnect your provider or change each feature's own toggle. Turn it off again to restore your previous configuration.
 
 ## Tips for making the most of Metabot
 
@@ -160,7 +202,7 @@ If you're using your own API key, you can track usage and costs through your AI 
 
 ## Choosing the AI model
 
-If you're using your own API key, you can choose which AI model Metabase uses in [Connection settings](#bring-your-own-api-key).
+If you're using your own API key, you can choose which AI model Metabase uses when you [bring your own API key](#bring-your-own-api-key).
 
 On Metabase Cloud, Metabase's AI service selects models automatically. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
 
