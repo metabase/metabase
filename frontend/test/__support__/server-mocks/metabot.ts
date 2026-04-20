@@ -159,6 +159,7 @@ type SetupMetabaseManagedAiEndpointsOptions = {
   billingPeriodMonths?: number;
   metabasePricePerUnit?: number;
   metabotUsageQuota?: {
+    "is-locked"?: boolean;
     tokens: number | null;
     updated_at: string | null;
   } | null;
@@ -174,6 +175,7 @@ export function setupMetabaseManagedAiEndpoints({
   removeCloudAddOnResponse = 200,
 }: SetupMetabaseManagedAiEndpointsOptions = {}) {
   fetchMock.get("path:/api/ee/metabot/usage", {
+    "is-locked": metabotUsageQuota?.["is-locked"] ?? false,
     tokens: metabotUsageQuota?.tokens ?? null,
     updated_at: metabotUsageQuota?.updated_at ?? null,
   });

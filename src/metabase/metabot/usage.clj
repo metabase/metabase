@@ -4,7 +4,13 @@
   [[log-ai-usage!]] records each LLM call to the `ai_usage_log` table (EE only).
   In OSS, no usage is logged."
   (:require
-   [metabase.premium-features.core :refer [defenterprise-schema]]
+   [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise-schema]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
 (def ^:private usage-map-schema
@@ -26,3 +32,36 @@
   metabase-enterprise.metabot.usage
   [_usage-map :- usage-map-schema]
   nil)
+
+(defn- meter-value
+  [meters meter-key]
+  (some-> meter-key keyword meters))
+
+(defn- default-metabase-meter-key
+  []
+  (some-> metabot.settings/default-metabase-llm-metabot-provider
+          provider-util/strip-metabase-prefix
+          u/qualified-name
+          (str/replace-first "/" ":")
+          (str ":tokens")))
+
+(defn- meter-entry
+  [token-status]
+  (let [meters      (:meters token-status)
+        default-key (default-metabase-meter-key)]
+    (meter-value meters default-key)))
+
+(defn managed-free-limit-reached?
+  "True when the configured managed Metabase provider is locked for free-tier usage."
+  ([] (and (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
+           (some-> (premium-features/token-status) managed-free-limit-reached?)))
+  ([token-status]
+   (some-> (meter-entry token-status)
+           :is-locked)))
+
+(defn check-metabase-managed-free-limit!
+  "Return the free-trial lock message when the managed Metabase provider is locked."
+  []
+  (api/check (not (managed-free-limit-reached?))
+             [402 {:message    (tru "You''ve used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key.")
+                   :error-code "metabase_ai_managed_locked"}]))
