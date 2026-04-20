@@ -135,7 +135,8 @@ jobs:
           gh pr comment "$PR_NUMBER" --body "$(cat <<EOF
           ### Translation violations filtered from this update
 
-          Translated strings that failed validation were dropped from the build. They fall back to English at runtime until corrected in Crowdin.
+          Translated strings that are invalid MessageFormat were dropped from the build. They fall back to English at runtime until corrected in Crowdin.
+          Partially translated strings that violate other validations are recorded in the report below, but are left in the build as-is to avoid loss of contextual knowledge for the user.
 
           $SUMMARY
 

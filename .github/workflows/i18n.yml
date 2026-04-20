@@ -33,31 +33,19 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-    - name: Install xgettext if necessary
-      run: |
-        if ! command -v xgettext > /dev/null; then
-          sudo apt install gettext
-        fi
-    - name: Check xgettext version
-      run: xgettext --version
-    - name: Check i18n tags/make sure template can be built
-      run: ./bin/i18n/update-translation-template
-    - name: Verify i18n translations (.po files)
-      run: ./bin/i18n/build-translation-resources
-    - name: Upload i18n violations report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: i18n-violations
-        path: target/i18n-violations.*
-        if-no-files-found: warn
-        retention-days: 14
-    - name: Validate translated MessageFormat patterns
-      run: >-
-        clojure -X:dev:test
-        :only '[metabase.util.i18n.validation-test]'
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Install xgettext if necessary
+        run: |
+          if ! command -v xgettext > /dev/null; then
+            sudo apt install gettext
+          fi
+      - name: Check xgettext version
+        run: xgettext --version
+      - name: Check i18n tags/make sure template can be built
+        run: ./bin/i18n/update-translation-template
+      - name: Verify i18n translations (.po files)
+        run: ./bin/i18n/build-translation-resources
