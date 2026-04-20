@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
 import { useSetting } from "metabase/common/hooks";
@@ -30,13 +31,12 @@ export const ColorCustomizationSection = ({
   >({});
 
   // Clear preview values when theme colors are reset externally.
-  const prevColorsRef = useRef(theme?.colors);
+  const prevColors = usePrevious(theme?.colors);
   useEffect(() => {
-    if (prevColorsRef.current && !theme?.colors) {
+    if (prevColors && !theme?.colors) {
       setColorPreviewValues({});
     }
-    prevColorsRef.current = theme?.colors;
-  }, [theme?.colors]);
+  }, [theme?.colors, prevColors]);
 
   return (
     <Group align="start" gap="xl">
