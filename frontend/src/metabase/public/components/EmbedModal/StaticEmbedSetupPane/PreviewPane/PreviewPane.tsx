@@ -43,8 +43,7 @@ export function PreviewPane({
   );
 }
 
-interface PreviewPaneContainerProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface PreviewPaneContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   hidden?: boolean;
   backgroundType: PreviewBackgroundType;
