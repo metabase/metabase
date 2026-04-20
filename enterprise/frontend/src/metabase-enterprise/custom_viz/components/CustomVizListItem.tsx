@@ -65,17 +65,6 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
         <Stack flex="1" gap="xs" py="xs">
           <Group justify="space-between">
             <Text fw={700}>{plugin.display_name}</Text>
-
-            <Group align="center" flex="0 0 auto" gap="xs">
-              {plugin.enabled && <Icon c="success" name="check" />}
-
-              <Text
-                c={plugin.enabled ? "success" : "text-secondary"}
-                fw={plugin.enabled ? 700 : undefined}
-              >
-                {plugin.enabled ? t`Enabled` : t`Disabled`}
-              </Text>
-            </Group>
           </Group>
           <Group gap="xs">
             <Text
@@ -85,7 +74,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
               rel="noopener noreferrer"
               size="sm"
               c="text-tertiary"
-              td="underline"
+              className={S.customVizItemUrl}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
               {plugin.repo_url}
@@ -108,6 +97,14 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
           )}
         </Stack>
       </Group>
+
+      {!plugin.enabled && (
+        <Group align="center" flex="0 0 auto" gap="xs">
+          <Text c="text-secondary" fw={500}>
+            {t`Disabled`}
+          </Text>
+        </Group>
+      )}
 
       <Box
         className={S.menuContainer}

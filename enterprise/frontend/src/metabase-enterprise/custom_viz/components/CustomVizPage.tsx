@@ -1,21 +1,35 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import * as Yup from "yup";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { getErrorMessage } from "metabase/api/utils";
+import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import {
   Form,
   FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Button, Group, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  Group,
+  Modal,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import {
@@ -32,10 +46,31 @@ type Props = {
 
 type FormState = {
   repoUrl: string;
+  isPrivateRepo: boolean;
   accessToken: string;
+  pinVersion: boolean;
   pinnedVersion: string;
-  acknowledgedRisk: boolean;
 };
+
+const WARNING_ACK_KEY = "custom_viz_add_warning";
+
+const validationSchema: Yup.SchemaOf<FormState> = Yup.object({
+  repoUrl: Yup.string().default(""),
+  isPrivateRepo: Yup.boolean().default(false),
+  accessToken: Yup.string()
+    .default("")
+    .when("isPrivateRepo", {
+      is: true,
+      then: (schema) => schema.required(Errors.required),
+    }),
+  pinVersion: Yup.boolean().default(false),
+  pinnedVersion: Yup.string()
+    .default("")
+    .when("pinVersion", {
+      is: true,
+      then: (schema) => schema.required(Errors.required),
+    }),
+});
 
 export function CustomVizPage({ params }: Props) {
   const dispatch = useDispatch();
@@ -47,48 +82,91 @@ export function CustomVizPage({ params }: Props) {
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
 
-  const validationSchema = useMemo(
-    () =>
-      isEdit
-        ? undefined
-        : Yup.object({
-            acknowledgedRisk: Yup.boolean().oneOf(
-              [true],
-              t`You must acknowledge the security risk before proceeding.`,
-            ),
-          }),
-    [isEdit],
-  );
+  const [warningAcknowledged, { ack }] =
+    useUserAcknowledgement(WARNING_ACK_KEY);
+
+  const [pendingValues, setPendingValues] = useState<FormState | null>(null);
+  const [dontWarnAgain, setDontWarnAgain] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const initialValues = useMemo<FormState>(
     () => ({
       repoUrl: plugin?.repo_url ?? "",
+      isPrivateRepo: false,
       accessToken: "",
+      pinVersion: !!plugin?.pinned_version,
       pinnedVersion: plugin?.pinned_version ?? "",
-      acknowledgedRisk: isEdit,
     }),
-    [plugin, isEdit],
+    [plugin],
   );
 
-  const handleSubmit = useCallback(
+  const submitValues = useCallback(
     async (values: FormState) => {
+      const accessToken =
+        values.isPrivateRepo && values.accessToken
+          ? values.accessToken
+          : undefined;
+      const pinnedVersion =
+        values.pinVersion && values.pinnedVersion ? values.pinnedVersion : null;
+
       if (isEdit && plugin) {
         await updatePlugin({
           id: plugin.id,
-          access_token: values.accessToken || undefined,
-          pinned_version: values.pinnedVersion || null,
+          access_token: accessToken,
+          pinned_version: pinnedVersion,
         }).unwrap();
       } else {
         await createPlugin({
           repo_url: values.repoUrl,
-          access_token: values.accessToken || undefined,
-          pinned_version: values.pinnedVersion || null,
+          access_token: accessToken,
+          pinned_version: pinnedVersion,
         }).unwrap();
       }
       dispatch(push(Urls.customViz()));
     },
     [createPlugin, updatePlugin, plugin, isEdit, dispatch],
   );
+
+  const handleSubmit = useCallback(
+    async (values: FormState) => {
+      if (!isEdit && !warningAcknowledged) {
+        setPendingValues(values);
+        setDontWarnAgain(false);
+        setConfirmError(null);
+        return;
+      }
+      await submitValues(values);
+    },
+    [isEdit, warningAcknowledged, submitValues],
+  );
+
+  const handleConfirm = useCallback(async () => {
+    if (!pendingValues) {
+      return;
+    }
+    setConfirming(true);
+    setConfirmError(null);
+    try {
+      if (dontWarnAgain) {
+        ack();
+      }
+      await submitValues(pendingValues);
+      setPendingValues(null);
+    } catch (error) {
+      setConfirmError(getErrorMessage(error));
+    } finally {
+      setConfirming(false);
+    }
+  }, [pendingValues, dontWarnAgain, ack, submitValues]);
+
+  const handleCancelConfirm = useCallback(() => {
+    if (confirming) {
+      return;
+    }
+    setPendingValues(null);
+    setConfirmError(null);
+  }, [confirming]);
 
   const handleCancel = useCallback(() => {
     dispatch(push(Urls.customViz()));
@@ -114,10 +192,18 @@ export function CustomVizPage({ params }: Props) {
   }
 
   return (
-    <SettingsPageWrapper
-      title={t`Manage custom visualizations`}
-      description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
-    >
+    <SettingsPageWrapper>
+      <Stack gap="0">
+        <Flex justify="space-between">
+          <Title order={1} style={{ alignItems: "center", height: "2.5rem" }}>
+            {t`Custom visualizations`}
+          </Title>
+        </Flex>
+
+        <Text c="text-secondary" maw="40rem">
+          {t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
+        </Text>
+      </Stack>
       <SettingsSection>
         <Box
           bdrs="md"
@@ -128,15 +214,16 @@ export function CustomVizPage({ params }: Props) {
             initialValues={initialValues}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
+            enableReinitialize
           >
-            {({ dirty }) => (
+            {({ dirty, values }) => (
               <Form>
                 <Stack gap="lg">
-                  <Text fw={700} fz="xl">
+                  <Title order={2}>
                     {isEdit
                       ? t`Edit visualization`
                       : t`Add a new visualization`}
-                  </Text>
+                  </Title>
                   <FormTextInput
                     name="repoUrl"
                     label={t`Repository URL`}
@@ -145,31 +232,44 @@ export function CustomVizPage({ params }: Props) {
                     disabled={isEdit}
                     autoFocus={!isEdit}
                   />
-                  <FormTextInput
-                    name="accessToken"
-                    label={t`Repository access token (optional)`}
-                    description={t`Personal access token for private repositories.`}
-                    type="password"
-                  />
-                  <FormTextInput
-                    name="pinnedVersion"
-                    label={t`Pinned version (optional)`}
-                    description={t`Branch, tag, or commit SHA to pin to.`}
-                    placeholder="main"
-                  />
-                  {!isEdit && (
+                  <Stack gap="sm">
                     <FormCheckbox
-                      name="acknowledgedRisk"
-                      label={t`I understand that custom visualizations can execute arbitrary code and should only be added from trusted sources.`}
+                      name="isPrivateRepo"
+                      label={t`This is a private repository`}
                     />
-                  )}
+                    {values.isPrivateRepo && (
+                      <FormTextInput
+                        name="accessToken"
+                        label={t`Repository personal access token`}
+                        type="password"
+                        placeholder="********************"
+                        autoFocus
+                      />
+                    )}
+                  </Stack>
+                  <Stack gap="sm">
+                    <Flex gap="sm" align="center">
+                      <Text fw={700}>{t`Pin to a specific version`}</Text>
+                      <FormSwitch size="sm" name="pinVersion" />
+                    </Flex>
+                    {values.pinVersion && (
+                      <FormTextInput
+                        required
+                        name="pinnedVersion"
+                        aria-label={t`Pinned version`}
+                        description={t`Branch, tag, or commit SHA to pin to.`}
+                        placeholder="main"
+                        autoFocus
+                      />
+                    )}
+                  </Stack>
                   <FormErrorMessage />
                   <Group gap="sm" justify="flex-end">
                     <Button variant="default" onClick={handleCancel}>
                       {t`Cancel`}
                     </Button>
                     <FormSubmitButton
-                      label={t`Save`}
+                      label={isEdit ? t`Save` : t`Add visualization`}
                       disabled={!dirty}
                       variant="filled"
                     />
@@ -180,6 +280,42 @@ export function CustomVizPage({ params }: Props) {
           </FormProvider>
         </Box>
       </SettingsSection>
+
+      <Modal
+        opened={pendingValues !== null}
+        onClose={handleCancelConfirm}
+        title={t`Add this visualization?`}
+        size="lg"
+      >
+        <Stack gap="lg" mt="md">
+          <Text>
+            {jt`Be aware that custom visualizations ${<strong key="arbitrary-code">{t`can execute arbitrary code`}</strong>} and should only be added from trusted sources.`}
+          </Text>
+          <Checkbox
+            checked={dontWarnAgain}
+            onChange={(event) => setDontWarnAgain(event.currentTarget.checked)}
+            label={t`Don't warn me about this again`}
+            disabled={confirming}
+          />
+          {confirmError && <Text c="danger">{confirmError}</Text>}
+          <Flex justify="flex-end" gap="md">
+            <Button
+              variant="subtle"
+              onClick={handleCancelConfirm}
+              disabled={confirming}
+            >
+              {t`Cancel`}
+            </Button>
+            <Button
+              variant="filled"
+              onClick={handleConfirm}
+              loading={confirming}
+            >
+              {t`Add this visualization`}
+            </Button>
+          </Flex>
+        </Stack>
+      </Modal>
     </SettingsPageWrapper>
   );
 }
