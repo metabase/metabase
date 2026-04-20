@@ -28,6 +28,7 @@ export * from "./parameters";
 export * from "./permission";
 export * from "./persist";
 export * from "./revision";
+export * from "./security-center";
 export * from "./search";
 export * from "./segment";
 export * from "./session";
