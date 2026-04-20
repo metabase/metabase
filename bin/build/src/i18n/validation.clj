@@ -48,7 +48,7 @@
                        (when-not format-error (validation/skipped-arg-index? msgstr))
                        (validation/regex-skipped-arg-index? msgstr))
         actual       (when-not format-error (count-fn msgstr))
-        expected     (keep (arg-count-fn backend?) [(:id message) (:id-plural message)])
+        expected     (keep count-fn [(:id message) (:id-plural message)])
         arg-mismatch (when actual (validation/arg-count-mismatch actual expected))]
     (cond-> {:types (cond-> #{}
                       format-error (conj :invalid-message-format)
@@ -75,38 +75,38 @@
 
   Every message (backend AND frontend) is scanned. Backend messages get all three checks (validity,
   skipped-index, arg-count). Frontend messages get only the format-system-agnostic checks (skipped-
-  index, arg-count) using regex-based helpers to avoid `MessageFormat` apostrophe misparsing."
-  ([locale]
-   (invalid-messages-in-po locale (i18n/po-contents locale)))
-  ([locale po-contents]
-   (for [message  (:messages po-contents)
-         form     (msgstr-forms message)
-         :let     [msgstr   (:msgstr form)
-                   backend? (i18n/backend-message? message)
-                   result   (check-violations msgstr message backend?)]
-         :when    (seq (:types result))]
-     (merge {:locale       locale
-             :msgid        (:id message)
-             :msgid-plural (:id-plural message)
-             :msgstr       msgstr
-             :plural-index (:plural-index form)
-             :backend?     backend?
-             :source-refs  (vec (:source-references message))}
-            result))))
+  index, arg-count) using regex-based helpers to avoid `MessageFormat` apostrophe misparsing.
 
-(defn invalid-messages-in-all-po-files
-  "Scan every non-template `.po` file (via `i18n.common/locales`) and return a seq of violation
-  maps, sorted by locale, types, then msgid."
-  []
-  (->> (i18n/locales)
-       (mapcat invalid-messages-in-po)
-       (sort-by (juxt :locale (comp str :types) :msgid :plural-index))))
+  Callers pass in pre-parsed `po-contents` (from `i18n.common/po-contents`) to avoid reparsing the
+  `.po` file — both the build pipeline and the scanner need it, and the build orchestrator
+  (`i18n.create-artifacts`) reads it once and threads it through."
+  [locale po-contents]
+  (for [message  (:messages po-contents)
+        form     (msgstr-forms message)
+        :let     [msgstr   (:msgstr form)
+                  backend? (i18n/backend-message? message)
+                  result   (check-violations msgstr message backend?)]
+        :when    (seq (:types result))]
+    (merge {:locale       locale
+            :msgid        (:id message)
+            :msgid-plural (:id-plural message)
+            :msgstr       msgstr
+            :plural-index (:plural-index form)
+            :backend?     backend?
+            :source-refs  (vec (:source-references message))}
+           result)))
 
 (defn drop-from-build?
-  "Predicate the build-time filter consults to decide whether a violation's translated string
+  "Predicate that the build-time filter consults to decide whether a violation's translated string
   should be excluded from its generated artifact (`.edn` for backend, `.json` for frontend).
 
-  V1 policy: drop every violation from both pipelines. The violations report
-  (`target/i18n-violations.csv`) is the single queue of work for translators to fix in Crowdin."
-  [_violation]
-  true)
+  Drop only translations that would throw at runtime and trigger English fallback anyway —
+  i.e. `:invalid-message-format` (the `MessageFormat` constructor throws on bad patterns).
+  `:skipped-arg-index` and `:arg-count-mismatch` translations render imperfectly (literal `{N}`
+  in output, or silently-dropped args) but don't throw; we keep them so users see mostly-
+  localized text instead of full English fallback.
+
+  The violations report at `target/i18n-violations.csv` includes every violation regardless of
+  drop status; the `dropped` column indicates which ones were excluded from the artifacts."
+  [violation]
+  (contains? (:types violation) :invalid-message-format))
