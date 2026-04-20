@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
@@ -39,6 +39,7 @@ export const CreateTransformMenu = () => {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const isReadOnlyMode = useSetting("read-only-mode");
 
   const handlePythonClick = () => {
     dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
@@ -48,10 +49,14 @@ export const CreateTransformMenu = () => {
     }
   };
 
-  if (isRemoteSyncReadOnly) {
+  if (isRemoteSyncReadOnly || isReadOnlyMode) {
     return (
       <Tooltip
-        label={t`Transforms can't be created when Remote Sync is in read-only mode`}
+        label={
+          isReadOnlyMode
+            ? t`Transforms can't be created when the instance is in read-only mode`
+            : t`Transforms can't be created when Remote Sync is in read-only mode`
+        }
       >
         <Button
           aria-label={t`Create a transform`}

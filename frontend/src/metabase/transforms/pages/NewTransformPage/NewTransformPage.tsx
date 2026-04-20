@@ -8,6 +8,7 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import {
@@ -58,6 +59,7 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const isReadOnlyMode = useSetting("read-only-mode");
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
@@ -67,7 +69,7 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
     );
   }
 
-  if (isRemoteSyncReadOnly) {
+  if (isRemoteSyncReadOnly || isReadOnlyMode) {
     return (
       <PageContainer pos="relative" data-testid="transform-query-editor">
         <PaneHeader
