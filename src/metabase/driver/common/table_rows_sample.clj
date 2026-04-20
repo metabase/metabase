@@ -74,6 +74,7 @@
           (as-> $query (reduce lib/order-by $query order-by)))
         (assoc :middleware {:format-rows?           false
                             :skip-results-metadata? true})
+        (assoc-in [:info :context] :table-rows-sample)
         schema.metadata-queries/add-required-filters-if-needed)))
 
 ;;; TODO (Cam 9/30/25) -- at some point we should update this stuff to use Lib-style metadata instead of Toucan

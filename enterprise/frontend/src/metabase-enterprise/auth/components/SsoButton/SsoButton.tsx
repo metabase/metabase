@@ -2,8 +2,8 @@ import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import { AuthButton } from "metabase/auth/components/AuthButton";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useDispatch } from "metabase/lib/redux";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { useDispatch } from "metabase/utils/redux";
 
 import { loginSSO } from "../../actions";
 

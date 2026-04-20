@@ -2,7 +2,7 @@ import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";

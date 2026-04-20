@@ -1,7 +1,7 @@
 import { getGuestEmbedFilteredParameters } from "embedding-sdk-bundle/lib/get-guest-embed-filtered-parameters";
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
-import type { Deferred } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
+import type { Deferred } from "metabase/utils/promise";
 import { getSensibleDisplays } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
@@ -66,11 +66,6 @@ export async function runQuestionQuerySdk(
 
     const sensibleDisplays = getSensibleDisplays(data);
     question = question.maybeResetDisplay(data, sensibleDisplays, undefined);
-  }
-
-  // FIXME: this removes "You can also get an alert when there are some results." feature for question
-  if (question) {
-    question.alertType = () => null;
   }
 
   return { question, queryResults };

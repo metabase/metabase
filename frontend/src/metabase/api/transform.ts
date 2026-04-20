@@ -1,4 +1,4 @@
-import { isResourceNotFoundError } from "metabase/lib/errors";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   CreateTransformRequest,
   Dataset,

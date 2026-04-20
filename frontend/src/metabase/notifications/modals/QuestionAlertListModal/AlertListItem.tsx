@@ -7,11 +7,11 @@ import { formatCreatorMessage } from "metabase/account/notifications/components/
 import {
   formatNotificationSchedule,
   getNotificationHandlersGroupedByTypes,
-} from "metabase/lib/notifications";
-import { useSelector } from "metabase/lib/redux";
-import { isNotFalsy } from "metabase/lib/types";
+} from "metabase/notifications/utils";
 import { getUser } from "metabase/selectors/user";
 import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import { isNotFalsy } from "metabase/utils/types";
 import type {
   Notification,
   NotificationCardSendCondition,

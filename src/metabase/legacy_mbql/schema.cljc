@@ -648,7 +648,7 @@
   x [:ref ::ExpressionArg])
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
-;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
+;; aligns with the corresponding MBQL 5 schema and with the reference docs we publish.
 (defclause concat
   a    [:ref ::ExpressionArg]
   b    [:ref ::ExpressionArg]
@@ -954,12 +954,11 @@
     (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
 
     [:!=
-     [:field id-or-name (opts :guard (#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit opts)))]
+     [:field id-or-name (:and opts {:temporal-unit (unit :guard #{:day-of-week :month-of-year :quarter-of-year})})]
      & (args :guard (every? u.time/timestamp-coercible? args))]
     (let [args (mapv u.time/coerce-to-timestamp args)]
       (if (every? u.time/valid? args)
-        (let [unit         (:temporal-unit opts)
-              field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
+        (let [field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
               extract-expr (case unit
                              :day-of-week     [:get-day-of-week field :iso]
                              :month-of-year   [:get-month field]

@@ -118,13 +118,32 @@
       (update definition :projections (fnil conj [])
               {:type leaf-type :id leaf-id :lib/uuid leaf-uuid :projection [dimension-ref]}))))
 
+(defn- all-projectable-dimensions
+  "Get all projectable dimensions, handling both single-source and multi-source definitions."
+  [definition]
+  (let [expression (:expression definition)]
+    (if (lib-metric.definition/expression-leaf? expression)
+      (projectable-dimensions definition)
+      ;; Multi-source: collect dimensions from each leaf source
+      (let [leaves (lib-metric.definition/expression-leaves expression)]
+        (into []
+              (mapcat (fn [leaf]
+                        (let [leaf-type (lib-metric.definition/expression-leaf-type leaf)
+                              leaf-id   (lib-metric.definition/expression-leaf-id leaf)
+                              source-metadata {:lib/type (case leaf-type
+                                                           :metric  :metadata/metric
+                                                           :measure :metadata/measure)
+                                               :id       leaf-id}]
+                          (projectable-dimensions-for-source definition source-metadata))))
+              leaves)))))
+
 (mu/defn projection-dimension :- [:maybe ::lib-metric.schema/metadata-dimension]
   "Get the dimension metadata for a projection clause.
    The projection is a dimension-reference [:dimension opts uuid].
    Returns the dimension metadata or nil if not found."
   [definition :- ::lib-metric.schema/metric-definition
    projection-or-reference :- ::lib-metric.schema/dimension-or-reference]
-  (let [dimensions (projectable-dimensions definition)
+  (let [dimensions (all-projectable-dimensions definition)
         dimension-id (if (map? projection-or-reference)
                        (:id projection-or-reference)
                        (projection-dimension-id projection-or-reference))]

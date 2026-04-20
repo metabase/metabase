@@ -14,10 +14,10 @@ import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { connect } from "metabase/lib/redux";
+import type { State } from "metabase/redux/store";
+import * as Errors from "metabase/utils/errors";
+import { connect } from "metabase/utils/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 const SNIPPET_COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()

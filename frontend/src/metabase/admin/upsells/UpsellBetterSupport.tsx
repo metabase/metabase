@@ -3,10 +3,10 @@ import { c, t } from "ttag";
 import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { getPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export const UpsellBetterSupport = ({ location }: { location: string }) => {
   const campaign = "better-hosting";

@@ -18,10 +18,6 @@ import {
 } from "metabase/dashboard/selectors";
 import { getVirtualCardType } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
-import { duration } from "metabase/lib/formatting";
-import { measureTextWidth } from "metabase/lib/measure-text";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -38,6 +34,10 @@ import {
   Title,
   Transition,
 } from "metabase/ui";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { duration } from "metabase/utils/formatting";
+import { measureTextWidth } from "metabase/utils/measure-text";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
@@ -48,7 +48,10 @@ import {
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  CardSlownessStatus,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -81,10 +84,7 @@ import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
-import type {
-  CardSlownessStatus,
-  DashCardOnChangeCardAndRunHandler,
-} from "./types";
+import type { DashCardOnChangeCardAndRunHandler } from "./types";
 import {
   getMissingColumnsFromVisualizationSettings,
   shouldShowParameterMapper,

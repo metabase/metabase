@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type {
   DatasetColumn,

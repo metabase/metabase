@@ -10,7 +10,6 @@ import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import {
   MetabotMentionExtension,
@@ -21,6 +20,8 @@ import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLin
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
+import { getCspNonce } from "metabase/utils/csp";
+import { useSelector } from "metabase/utils/redux";
 import type { DatabaseId } from "metabase-types/api";
 
 import S from "./MetabotPromptInput.module.css";
@@ -90,7 +91,7 @@ export const MetabotPromptInput = forwardRef<
       extensions,
       content: parseMetabotMessageToTiptapDoc(value),
       autofocus: autoFocus,
-      injectNonce: window.MetabaseNonce,
+      injectNonce: getCspNonce(),
       onUpdate: ({ editor }) => {
         const jsonContent = editor.getJSON();
         serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);

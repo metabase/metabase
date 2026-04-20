@@ -130,7 +130,7 @@ When viewing a chart, you can also click through questions to explore the data i
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor have [limited drill-through actions](../native-editor/writing-sql.md#drill-through-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
 
 ### Column heading drill-through
 

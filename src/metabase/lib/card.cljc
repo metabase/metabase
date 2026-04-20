@@ -63,7 +63,7 @@
     (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
 
 (mu/defn- ->card-metadata-column :- ::lib.schema.metadata/column
-  "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
+  "Massage possibly-legacy Card results metadata into Lib ColumnMetadata. Note that `card` might be unavailable so we
   accept both `card-id` and `card`.
 
   * `source-metadata-col` = (possibly snake_cased) column metadata from Card `:source-metadata`
@@ -116,7 +116,7 @@
         (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."
+  "Massage possibly-legacy Card results metadata into Lib ColumnMetadata."
   ([metadata-providerable cols]
    (->card-metadata-columns metadata-providerable nil cols))
 

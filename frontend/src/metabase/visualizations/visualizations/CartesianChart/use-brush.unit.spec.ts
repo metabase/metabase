@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject, RefObject } from "react";
 
-import { isTouchDevice } from "metabase/lib/browser";
+import { createMockMediaQueryList } from "__support__/ui";
 
 import {
   createZrenderMousedownEvent,
@@ -78,10 +78,22 @@ const firePointer = (
   );
 };
 
+const mockMatchMedia = (results: Record<string, boolean>) => {
+  window.matchMedia = (query: string) =>
+    createMockMediaQueryList({
+      matches: results[query] ?? false,
+      media: query,
+    });
+};
+
 const simulateTouch = () => {
   Object.defineProperty(navigator, "maxTouchPoints", {
     value: 5,
     configurable: true,
+  });
+  mockMatchMedia({
+    "(pointer: coarse)": true,
+    "(hover: hover)": false,
   });
 };
 
@@ -89,6 +101,10 @@ const simulateDesktop = () => {
   Object.defineProperty(navigator, "maxTouchPoints", {
     value: 0,
     configurable: true,
+  });
+  mockMatchMedia({
+    "(pointer: coarse)": false,
+    "(hover: hover)": true,
   });
 };
 
@@ -174,57 +190,6 @@ describe("use-brush", () => {
       expect(offsetY).toBe(150);
       expect(target).toBeNull();
       expect(event.preventDefault).toBeInstanceOf(Function);
-    });
-  });
-
-  describe("isTouchDevice", () => {
-    const originalMatchMedia = window.matchMedia;
-
-    afterEach(() => {
-      window.matchMedia = originalMatchMedia;
-    });
-
-    it("returns false when no touch support", () => {
-      simulateDesktop();
-      expect(isTouchDevice()).toBe(false);
-    });
-
-    it("returns true when coarse pointer and no hover", () => {
-      simulateDesktop();
-      window.matchMedia = jest.fn((query: string) => ({
-        matches: query === "(pointer: coarse)" || query === "(hover: none)",
-        media: query,
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      }));
-      expect(isTouchDevice()).toBe(true);
-    });
-
-    it("returns false when fine pointer even with hover none", () => {
-      simulateDesktop();
-      window.matchMedia = jest.fn((query: string) => ({
-        matches: query === "(hover: none)",
-        media: query,
-        onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
-      }));
-      expect(isTouchDevice()).toBe(false);
-    });
-
-    it("returns true when maxTouchPoints > 0", () => {
-      Object.defineProperty(navigator, "maxTouchPoints", {
-        value: 1,
-        configurable: true,
-      });
-      expect(isTouchDevice()).toBe(true);
     });
   });
 

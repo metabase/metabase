@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { isTableDisplay } from "metabase/lib/click-behavior";
+import { isTableDisplay } from "metabase/dashboard/utils";
 import {
   Button,
   Flex,

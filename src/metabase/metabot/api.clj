@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -20,6 +21,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
@@ -29,6 +31,7 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -48,7 +51,8 @@
                                (= (:type %) "state"))
                          messages)
         messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)]
+                     vec)
+        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (constantly (cond-> {:user_id    api/*current-user-id*}
                                             state (assoc :state state))))
@@ -64,7 +68,8 @@
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
                                        (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))})))
+                                       (apply +))
+                 :ai_proxied      (boolean ai-proxy?)})))
 
 (defn- extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -84,6 +89,15 @@
    {}
    parts))
 
+(defn- strip-tool-output-bloat
+  "For :tool-output parts, keep only :output in the result map.
+  Both LLM adapters only read (get-in part [:result :output]) when replaying history.
+  Everything else (:structured-output, :resources, :data-parts, :reactions, etc.)
+  is transient runtime data consumed during streaming and can be very large."
+  [{:keys [type] :as part}]
+  (cond-> part
+    (= :tool-output type) (update :result select-keys [:output])))
+
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
 
@@ -96,11 +110,15 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
+        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
         ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
         ;; :data is like `:navigate_to`
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
-                        vec)]
+                        (mapv strip-tool-output-bloat))]
+    (prometheus/observe! :metabase-metabot/message-persist-bytes
+                         {:profile-id (or profile-id "unknown")}
+                         (u/string-byte-count (json/encode content)))
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
@@ -114,7 +132,8 @@
                    :profile_id      profile-id
                    :total_tokens    (->> (vals usage)
                                          (map #(+ (:prompt %) (:completion %)))
-                                         (reduce + 0))}))))
+                                         (reduce + 0))
+                   :ai_proxied      (boolean ai-proxy?)}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -183,8 +202,7 @@
                                :metabot-id    metabot-id
                                :profile-id    (keyword profile-id)
                                :context       enriched-context
-                               :tracking-opts {:session-id          conversation-id
-                                               :track-user-intent?  true}}
+                               :tracking-opts {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
@@ -204,7 +222,8 @@
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
-     {:profile-id      profile-id
+     {:metabot-id      metabot-id
+      :profile-id      profile-id
       :message         message
       :context         context
       :history         history
@@ -277,7 +296,7 @@
       (throw e))))
 
 (def ^:private metabot-provider-schema
-  [:enum "anthropic" "openai" "openrouter"])
+  (into [:enum] metabot.settings/supported-metabot-providers))
 
 (def ^:private llm-model-response-schema
   [:map
@@ -294,7 +313,7 @@
 (def ^:private metabot-settings-request-schema
   [:map
    [:provider metabot-provider-schema]
-   [:model {:optional true} ms/NonBlankString]
+   [:model {:optional true} [:maybe :string]]
    [:api-key {:optional true} [:maybe :string]]])
 
 (defn- provider-api-key-setting-key
@@ -310,6 +329,13 @@
     (let [trimmed (str/trim value)]
       (when-not (str/blank? trimmed)
         trimmed))))
+
+(defn- effective-provider-model
+  [provider model]
+  (cond
+    (nil? model) nil
+    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabot.settings/default-llm-metabot-provider
+    :else (non-blank-string model)))
 
 (def ^:private invalid-api-key-statuses
   #{401 403})
@@ -358,9 +384,20 @@
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
+(defn- normalize-metabase-model
+  [model]
+  (update model :id (fn [id]
+                      (when id
+                        (if (str/includes? id "/")
+                          id
+                          (str "anthropic/" id))))))
+
 (defn- decorate-provider-models
   [provider models]
-  (let [decorated-models (map #(decorate-provider-model provider %) models)]
+  (let [models           (if (= provider provider-util/metabase-provider-prefix)
+                           (map normalize-metabase-model models)
+                           models)
+        decorated-models (map #(decorate-provider-model provider %) models)]
     (if (contains? #{"anthropic" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
@@ -374,20 +411,24 @@
   ([provider]
    (provider-models-response provider nil))
   ([provider api-key-override]
-   (let [effective-api-key (or (non-blank-string api-key-override)
-                               (non-blank-string
-                                (metabot.settings/configured-provider-api-key provider)))]
-     (if (and provider effective-api-key)
-       (try
-         {:models (decorate-provider-models
-                   provider
-                   (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
-         (catch clojure.lang.ExceptionInfo e
-           (if (invalid-api-key-error? e)
-             {:models []
-              :api-key-error (.getMessage e)}
-             (throw e))))
-       {:models []}))))
+   (if (= provider provider-util/metabase-provider-prefix)
+     {:models (decorate-provider-models
+               provider
+               (:models (metabot.self/list-models "anthropic" {:ai-proxy? true})))}
+     (let [effective-api-key (or (non-blank-string api-key-override)
+                                 (non-blank-string
+                                  (metabot.settings/configured-provider-api-key provider)))]
+       (if (and provider effective-api-key)
+         (try
+           {:models (decorate-provider-models
+                     provider
+                     (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
+           (catch clojure.lang.ExceptionInfo e
+             (if (invalid-api-key-error? e)
+               {:models []
+                :api-key-error (.getMessage e)}
+               (throw e))))
+         {:models []})))))
 
 (defn- settings-response
   ([provider]
@@ -399,24 +440,15 @@
 
 (defn- current-provider
   []
-  (some-> (metabot.settings/llm-metabot-provider)
-          (str/split #"/" 2)
-          first))
+  (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
 
-(defn- api-error->status-code
-  [error]
-  (or (:status (ex-data error))
-      (:status-code (ex-data error))
-      400))
-
-(defn- verify-api-key!
-  [provider api-key]
-  (when-let [trimmed-api-key (non-blank-string api-key)]
-    (when-let [api-key-error (:api-key-error (provider-models-response provider trimmed-api-key))]
-      (throw (ex-info api-key-error
-                      {:status-code 400
-                       :api-error true}))))
-  nil)
+(defn- throw-api-key-error!
+  [response]
+  (when-let [api-key-error (:api-key-error response)]
+    (throw (ex-info api-key-error
+                    {:status-code 400
+                     :api-error true})))
+  response)
 
 (api.macros/defendpoint :get "/settings"
   :- metabot-settings-response-schema
@@ -434,20 +466,15 @@
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider model api-key]} body]
-    (verify-api-key! provider api-key)
+  (let [{:keys [provider model api-key]} body
+        model (effective-provider-model provider model)
+        response (-> (settings-response provider api-key)
+                     throw-api-key-error!)]
     (when (contains? body :api-key)
       (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
     (when model
       (setting/set! :llm-metabot-provider (str provider "/" model)))
-    (try
-      (settings-response provider)
-      (catch clojure.lang.ExceptionInfo e
-        (if (:api-error (ex-data e))
-          (throw (ex-info (.getMessage e)
-                          (assoc (ex-data e) :status-code (api-error->status-code e))
-                          e))
-          (throw e))))))
+    (assoc response :value (metabot.settings/llm-metabot-provider))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."

@@ -139,6 +139,30 @@
                     (is (= []
                            our-result))))))))))))
 
+(deftest published-table-visible-with-data-perms-but-no-collection-access-test
+  (mt/with-premium-features #{:library}
+    (testing "Published table is discoverable when user has data permissions but no collection access"
+      (let [search-term (random-name)
+            table-name  (str search-term " published")]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "No Access Collection" :location "/"}
+                         :model/Table      {pub-table :id} {:name table-name :is_published true :collection_id coll-id}]
+            ;; Grant data permissions on the table
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+            (doseq [engine ["in-place" "appdb"]]
+              (search/reindex! {:async? false :in-place? true})
+              ;; Remove collection permissions so the user has data perms but NO collection access
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (let [result-ids (->> (mt/user-http-request :rasta :get 200 "search"
+                                                            :q search-term :models "table" :search_engine engine)
+                                      :data
+                                      (map :id)
+                                      (into #{}))]
+                  (is (contains? result-ids pub-table)
+                      (format "Published table should be visible with data permissions even without collection access (engine=%s)"
+                              engine)))))))))))
+
 (deftest unpublished-table-visible-with-data-perms-test
   (testing "Unpublished tables are discoverable when the user has data/query permissions"
     (let [search-term (random-name)

@@ -557,6 +557,7 @@ describe("scenarios > visualizations > line chart", () => {
           cy.findAllByTestId("drag-handle").first().as("dragElement");
           H.moveDnDKitElementByAlias("@dragElement", {
             vertical: 50,
+            useMouseEvents: true,
           });
         });
 

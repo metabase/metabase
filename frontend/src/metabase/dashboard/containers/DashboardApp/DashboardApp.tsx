@@ -32,10 +32,10 @@ import {
   usePageTitle,
   usePageTitleWithLoadingTime,
 } from "metabase/hooks/use-page-title";
-import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
+import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -44,8 +44,9 @@ import { getDocumentTitle, getFavicon } from "../../selectors";
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
-interface DashboardAppProps
-  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
+interface DashboardAppProps extends PropsWithChildren<
+  WithRouterProps<{ slug: string }>
+> {
   dashboardId?: DashboardId;
   route: Route;
 }

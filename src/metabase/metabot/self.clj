@@ -10,14 +10,15 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
-   [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
@@ -43,18 +44,19 @@
                     {:provider provider}))))
 
 (defn- parse-provider-model [s]
-  (let [[prov model] (str/split s #"/" 2)]
-    {:provider  prov
-     :stream-fn (resolve-adapter prov)
-     :model     model}))
+  (let [provider (provider-util/provider-and-model->provider s)]
+    {:provider   provider
+     :stream-fn  (resolve-adapter provider)
+     :model      (provider-util/provider-and-model->model s)
+     :ai-proxy?  (provider-util/metabase-provider? s)}))
 
 (defn list-models
   "List available models for a provider using its configured API key,
   or an override API key when provided."
   ([provider]
    ((resolve-model-lister provider)))
-  ([provider {:keys [api-key]}]
-   ((resolve-model-lister provider) api-key)))
+  ([provider opts]
+   ((resolve-model-lister provider) opts)))
 
 ;;; General LLM calling
 ;; Matches the Python ai-service retry behavior:
@@ -154,7 +156,7 @@
     - `:session-id` — conversation UUID string
     - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
                       Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-id request-id session-id source tag]}]
+  [{:keys [model profile-id request-id session-id source tag ai-proxy?]}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
@@ -177,7 +179,16 @@
                  :request-id          (some-> request-id analytics/uuid->ai-service-hex-uuid)
                  :session-id          session-id
                  :source              source
-                 :tag                 tag})))
+                 :tag                 tag})
+               (usage/log-ai-usage!
+                {:source            (or tag source "unknown")
+                 :model             model
+                 :prompt-tokens     prompt
+                 :completion-tokens completion
+                 :conversation-id   session-id
+                 :profile-id        profile-id
+                 :request-id        request-id
+                 :ai-proxied        (boolean ai-proxy?)})))
            part))))
 
 (defn- report-tool-usage-xf
@@ -259,31 +270,35 @@
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
-   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
-     (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
-                              :tool-choice tool-choice})
-     (let [tracking-opts  (assoc tracking-opts :model provider-and-model)
-           streaming-opts (cond-> {:model model :input parts :tools (vals tools)}
-                            system-msg        (assoc :system system-msg)
-                            (and (seq tools)
-                                 tool-choice) (assoc :tool_choice tool-choice))
-           make-source    (fn []
-                            (eduction (comp (core/tool-executor-xf tools)
-                                            (core/lite-aisdk-xf)
-                                            (report-aisdk-errors-xf tracking-opts)
-                                            (report-token-usage-xf tracking-opts)
-                                            (report-tool-usage-xf tracking-opts))
-                                      (stream-fn streaming-opts)))]
-       (reify clojure.lang.IReduceInit
-         (reduce [_ rf init]
-           (with-span :info {:name       :metabot.agent/call-llm
-                             :provider   provider
-                             :model      model
-                             :part-count (count parts)
-                             :tool-count (count tools)}
-             (with-retries
-               tracking-opts
-               #(reduce rf init (make-source))))))))))
+   (if-let [limit-msg (usage/check-usage-limits!)]
+     (reify clojure.lang.IReduceInit
+       (reduce [_ rf init]
+         (rf init {:type :text :text limit-msg})))
+     (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
+       (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
+                                :tool-choice tool-choice :ai-proxy? ai-proxy?})
+       (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
+             streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
+                              system-msg        (assoc :system system-msg)
+                              (and (seq tools)
+                                   tool-choice) (assoc :tool_choice tool-choice))
+             make-source    (fn []
+                              (eduction (comp (core/tool-executor-xf tools)
+                                              (core/lite-aisdk-xf)
+                                              (report-aisdk-errors-xf tracking-opts)
+                                              (report-token-usage-xf tracking-opts)
+                                              (report-tool-usage-xf tracking-opts))
+                                        (stream-fn streaming-opts)))]
+         (reify clojure.lang.IReduceInit
+           (reduce [_ rf init]
+             (with-span :info {:name       :metabot.agent/call-llm
+                               :provider   provider
+                               :model      model
+                               :part-count (count parts)
+                               :tool-count (count tools)}
+               (with-retries
+                 tracking-opts
+                 #(reduce rf init (make-source)))))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.
@@ -303,14 +318,18 @@
 
   Returns the parsed JSON map from the forced tool call."
   [provider-and-model messages json-schema temperature max-tokens tracking-opts]
-  (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
-        _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
-        tracking-opts  (assoc tracking-opts :model provider-and-model)
+  (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
+        _ (log/info "Calling LLM (structured)" {:provider provider
+                                                :model model
+                                                :msg-count (count messages)
+                                                :ai-proxy? ai-proxy?})
+        tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
         streaming-opts {:model       model
                         :input       messages
                         :schema      json-schema
                         :temperature temperature
-                        :max-tokens  max-tokens}]
+                        :max-tokens  max-tokens
+                        :ai-proxy?   ai-proxy?}]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}

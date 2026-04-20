@@ -6,9 +6,9 @@ import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getParameterValues } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
@@ -173,10 +173,10 @@ function ForbiddenDomainError({ url }: { url: string }) {
 
   const renderMessage = () => {
     if (isAdmin) {
-      return jt`If you’re sure you trust this domain, you can add it to your ${(<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>)} in admin settings.`;
+      return jt`If you’re sure you trust this domain, you can add it to your ${<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>} in admin settings.`;
     }
     return showMetabaseLinks
-      ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${(<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>)}.`
+      ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>}.`
       : t`If you’re sure you trust this domain, you can ask an admin to add it to the allowed domains list.`;
   };
 

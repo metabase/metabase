@@ -6,8 +6,8 @@ import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
 import { Schemas } from "metabase/entities/schemas";
-import * as Urls from "metabase/lib/urls";
 import { Flex } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { CollectionItem } from "metabase-types/api";
 
 import { BrowseCard } from "../components/BrowseCard";
