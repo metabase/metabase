@@ -381,6 +381,8 @@ jobs:
         env:
           NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
 
+      # ⚠️ This step should only be executed on the latest stable (gold) release branch.
+      # Only uncomment this when the new release branch becomes stable (gold).
       - name: Add `latest` tag to the latest release branch (`release-x.60.x`) deployment
         working-directory: sdk
         run: |
