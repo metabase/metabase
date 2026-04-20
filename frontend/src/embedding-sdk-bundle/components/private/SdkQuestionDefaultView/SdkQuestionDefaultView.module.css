@@ -63,3 +63,21 @@
   grid-area: Content;
   overflow: auto;
 }
+
+/* Mobile toolbar — Button.Group, hidden by default */
+.MobileToolbar {
+  display: none;
+}
+
+@container (max-width: 639px) {
+  .MobileToolbar {
+    display: flex;
+    flex: 1;
+    border-radius: 1rem;
+    padding: 0;
+  }
+
+  .DesktopToolbar {
+    display: none;
+  }
+}

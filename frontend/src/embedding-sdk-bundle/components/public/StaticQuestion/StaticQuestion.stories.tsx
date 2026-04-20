@@ -69,25 +69,3 @@ export const WithAdditionalElements = {
     withChartTypeSelector: true,
   },
 };
-
-export const WithoutChartTypeSelectorButton = {
-  render: Template,
-
-  args: {
-    questionId: QUESTION_ID,
-    withAlerts: true,
-    withDownloads: true,
-    withChartTypeSelector: false,
-  },
-};
-
-export const WithoutDownloadsButton = {
-  render: Template,
-
-  args: {
-    questionId: QUESTION_ID,
-    withAlerts: true,
-    withDownloads: false,
-    withChartTypeSelector: true,
-  },
-};
