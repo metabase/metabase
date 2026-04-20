@@ -254,7 +254,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
       mountStaticQuestion({ withAlerts: true });
 
-      getSdkRoot().button("Alerts").should("not.be.visible");
+      getSdkRoot().button("Alerts").should("not.exist");
     });
 
     it("should show the Alerts button on wide viewports", () => {

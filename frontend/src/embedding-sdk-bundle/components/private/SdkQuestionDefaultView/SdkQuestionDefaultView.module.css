@@ -2,13 +2,6 @@
   display: grid;
   grid-template: 1fr / 1fr;
   grid-template-areas: "Main";
-  container-type: inline-size;
-}
-
-@container (max-width: 640px) {
-  .HideOnMobile {
-    display: none;
-  }
 }
 
 .Container:has(.TopBar) {

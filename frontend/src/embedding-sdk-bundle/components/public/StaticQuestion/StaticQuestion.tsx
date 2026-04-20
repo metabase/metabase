@@ -23,12 +23,13 @@ import {
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
-import SdkQuestionDefaultViewS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
+import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
 import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
+import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
@@ -111,6 +112,8 @@ const StaticQuestionInner = (
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
+  const { ref: containerRef, isMobile } = useMobileLayout();
+
   const getClickActionMode: ClickActionModeGetter = ({
     question,
   }: {
@@ -138,20 +141,21 @@ const StaticQuestionInner = (
     >
       {children ?? (
         <FlexibleSizeComponent
+          ref={containerRef}
           className={className}
           width={width}
           height={height}
           style={style}
         >
           <Stack
-            className={SdkQuestionDefaultViewS.Container}
+            className={InteractiveQuestionS.Container}
             w="100%"
             h="100%"
             gap="xs"
           >
             <RenderIfHasContent
               component={Stack}
-              className={SdkQuestionDefaultViewS.TopBar}
+              className={InteractiveQuestionS.TopBar}
               gap="sm"
               p="md"
               data-testid="static-question-top-bar"
@@ -167,17 +171,15 @@ const StaticQuestionInner = (
                 <RenderIfHasContent component={Group} gap="sm" ml="auto">
                   <SdkQuestion.DownloadWidgetDropdown />
 
-                  <Box className={SdkQuestionDefaultViewS.HideOnMobile}>
-                    <QuestionAlertsButton />
-                  </Box>
+                  {!isMobile && <QuestionAlertsButton />}
                 </RenderIfHasContent>
               </RenderIfHasContent>
 
               {isGuestEmbed && <SdkQuestion.SqlParametersList />}
             </RenderIfHasContent>
 
-            <Box className={SdkQuestionDefaultViewS.Main} w="100%" h="100%">
-              <Box className={SdkQuestionDefaultViewS.Content}>
+            <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
+              <Box className={InteractiveQuestionS.Content}>
                 <SdkQuestion.QuestionVisualization
                   height={height}
                   width={width}
