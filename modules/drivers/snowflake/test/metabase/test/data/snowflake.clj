@@ -284,9 +284,41 @@
               ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (some-> rs resultset-seq first)))
 
-(defmethod tx/dataset-already-loaded? :snowflake
+;; Session-local cache of loaded dataset names. Populated on first call to dataset-already-loaded?
+;; by fetching ALL loaded datasets in a single query, then subsequent checks are instant.
+;; Only caches positive results - if a dataset isn't in the cache, we check individually
+;; (in case another CI run created it).
+(defonce ^:private loaded-datasets-cache (atom nil))
+(defonce ^:private loaded-datasets-cache-lock (Object.))
+
+;; Cache for track-dataset calls. We only need to track once per session since tracking
+;; just updates an accessed_at timestamp for cleanup (which operates on a days timescale).
+(defonce ^:private tracked-datasets-cache (atom #{}))
+
+(defn- fetch-all-loaded-datasets!
+  "Fetch all datasets that are both tracked AND exist in Snowflake in a single query."
+  [driver]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server nil))
+   {:write? false}
+   (fn [^java.sql.Connection conn]
+     (setup-tracking-db! conn driver)
+     (with-open [^PreparedStatement stmt
+                 (sql-jdbc.execute/prepared-statement
+                  driver
+                  conn
+                  (str "SELECT d.name FROM metabase_test_tracking.PUBLIC.datasets d "
+                       "INNER JOIN metabase_test_tracking.information_schema.databases i "
+                       "ON i.database_name = d.name "
+                       "WHERE d.name LIKE 'sha_%'")
+                  [])
+                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+       (into #{} (map :name) (resultset-seq rs))))))
+
+(defn- dataset-loaded-individual-check
+  "Check if a single dataset is loaded (used when not in cache)."
   [driver db-def]
-  ;; check and see if ANY tables are loaded for the current catalog
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
@@ -297,25 +329,50 @@
       (dataset-tracked?! conn driver db-def)
       (database-exists?! conn driver db-def)))))
 
+(defmethod tx/dataset-already-loaded? :snowflake
+  [driver db-def]
+  ;; On first call, fetch ALL loaded datasets in one query and cache them.
+  ;; Then check if this dataset is in the cache.
+  ;; If not in cache, do an individual check (in case another CI run created it).
+  (when (nil? @loaded-datasets-cache)
+    (locking loaded-datasets-cache-lock
+      ;; Double-check after acquiring lock
+      (when (nil? @loaded-datasets-cache)
+        (log/info "Fetching all loaded Snowflake datasets for cache...")
+        (reset! loaded-datasets-cache (fetch-all-loaded-datasets! driver))
+        (log/infof "Cached %d loaded datasets" (count @loaded-datasets-cache)))))
+  (let [qualified-name (qualified-db-name db-def)]
+    (if (contains? @loaded-datasets-cache qualified-name)
+      true
+      ;; Not in cache - check individually (another CI run may have created it)
+      (when (dataset-loaded-individual-check driver db-def)
+        ;; Add to cache for future checks
+        (swap! loaded-datasets-cache conj qualified-name)
+        true))))
+
 (defmethod tx/track-dataset :snowflake
   [driver db-def]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
-   {:write? false}
-   (fn [^java.sql.Connection conn]
-     (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                          driver
-                                          conn
-                                          (str "MERGE INTO metabase_test_tracking.PUBLIC.datasets d"
-                                               "  USING (select ? as hash, ? as name, current_timestamp() as accessed_at, ? as access_note) as n on d.hash = n.hash"
-                                               "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                                               "  WHEN NOT MATCHED THEN INSERT (hash,name, accessed_at, access_note) VALUES (n.hash, n.name, n.accessed_at, n.access_note)")
-                                          [(tx/hash-dataset db-def)
-                                           (qualified-db-name db-def)
-                                           (tx/tracking-access-note)])
-                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-       (some-> rs resultset-seq doall)))))
+  ;; Only track once per session - tracking just updates accessed_at for cleanup
+  (let [qualified-name (qualified-db-name db-def)]
+    (when-not (contains? @tracked-datasets-cache qualified-name)
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
+       {:write? false}
+       (fn [^java.sql.Connection conn]
+         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                              driver
+                                              conn
+                                              (str "MERGE INTO metabase_test_tracking.PUBLIC.datasets d"
+                                                   "  USING (select ? as hash, ? as name, current_timestamp() as accessed_at, ? as access_note) as n on d.hash = n.hash"
+                                                   "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+                                                   "  WHEN NOT MATCHED THEN INSERT (hash,name, accessed_at, access_note) VALUES (n.hash, n.name, n.accessed_at, n.access_note)")
+                                              [(tx/hash-dataset db-def)
+                                               qualified-name
+                                               (tx/tracking-access-note)])
+                     ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+           (some-> rs resultset-seq doall))))
+      (swap! tracked-datasets-cache conj qualified-name))))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
