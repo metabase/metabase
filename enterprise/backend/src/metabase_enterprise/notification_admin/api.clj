@@ -228,7 +228,7 @@
   `:send_history`. Returns nil if the notification doesn't exist or isn't a card-type notification
   — the caller maps that to a 404."
   [id]
-  (when-let [row (t2/select-one :model/Notification :id id :payload_type "notification/card")]
+  (when-let [row (t2/select-one :model/Notification :id id :payload_type :notification/card)]
     (let [[enriched] (notification-admin.health/compute-for-rows [row])
           hydrated   (models.notification/hydrate-notification enriched)]
       (assoc hydrated :send_history (send-history-for-notification id)))))
