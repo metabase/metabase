@@ -770,7 +770,7 @@
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
   :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:mvn/version "0.15.3"}}
+  {:deps       {dev.weavejester/cljfmt {:mvn/version "0.15.3"}}
    :ns-default cljfmt.tool
    :exec-fn    cljfmt.tool/fix}
 
