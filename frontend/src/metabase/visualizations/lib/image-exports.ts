@@ -30,14 +30,6 @@ export const saveDomImageStyles = css`
       overflow: visible;
     }
 
-    /* Matches DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME in
-       metabase/dashboard/constants.ts; the two must stay in sync. */
-    .Dashboard-Parameters-List {
-      legend {
-        top: -9px;
-      }
-    }
-
     [data-dashcard-key].${GlobalDashboardS.Card} {
       /* the renderer we use for saving to image/pdf doesn't support box-shadow
         so we replace it with a border */
@@ -84,6 +76,16 @@ export const canvasToBlob = (
 ): Promise<Blob | null> => {
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), type);
+  });
+};
+
+// html2canvas renders fieldset legends shifted down; nudge them back up in the
+// cloned parameter bar before capture.
+export const fixParameterLegendOffsetForExport = (
+  parametersNode: HTMLElement,
+) => {
+  parametersNode.querySelectorAll<HTMLElement>("legend").forEach((el) => {
+    el.style.top = "-9px";
   });
 };
 
@@ -167,6 +169,7 @@ export const getDashboardImage = async (
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
       if (parametersNode) {
+        fixParameterLegendOffsetForExport(parametersNode);
         node.insertBefore(parametersNode, node.firstChild);
       }
     },

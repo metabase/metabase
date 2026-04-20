@@ -11,6 +11,7 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
+import { fixParameterLegendOffsetForExport } from "./image-exports";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
@@ -260,6 +261,7 @@ export const saveDashboardPdf = async ({
       });
 
       if (parametersNode instanceof HTMLElement) {
+        fixParameterLegendOffsetForExport(parametersNode);
         node.insertBefore(parametersNode, node.firstChild);
       }
       node.insertBefore(pdfHeader, node.firstChild);
