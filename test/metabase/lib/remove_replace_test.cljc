@@ -283,7 +283,7 @@
                 (lib/remove-clause query 0 (last aggregations))))))))
 
 (deftest ^:parallel remove-clause-adjust-ref-names-test
-  (testing "Field identifiers of same name field refs are adjusted on field removal"
+  (testing "Sticky aggregation :name keeps second-stage refs valid when an earlier aggregation is removed"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
                     (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
@@ -291,10 +291,10 @@
                     lib/append-stage)
           [a0-column a1-column] (-> query
                                     lib/visible-columns
-                                    (->> (filter #(= (:name %) "sum"))))
+                                    (->> (filter #(#{"sum" "sum_2"} (:name %)))))
           _ (is (=? {:name "sum", :lib/source-column-alias "sum"}
                     a0-column))
-          _ (is (=? {:name "sum", :lib/source-column-alias "sum_2"}
+          _ (is (=? {:name "sum_2", :lib/source-column-alias "sum_2"}
                     a1-column))
           query (-> query
                     (lib/expression "xix" (lib/ref a0-column))
@@ -302,8 +302,8 @@
           a0-ref (first (lib/aggregations query 0))]
       (testing "Base: Second stage field refs are identified as sum and sum_2"
         (is (=? {:stages [{:lib/type :mbql.stage/mbql,
-                           :aggregation [[:sum {} [:field {} (meta/id :orders :total)]]
-                                         [:sum {} [:field {} (meta/id :orders :subtotal)]]]
+                           :aggregation [[:sum {:name "sum"} [:field {} (meta/id :orders :total)]]
+                                         [:sum {:name "sum_2"} [:field {} (meta/id :orders :subtotal)]]]
                            :breakout [[:field {} (meta/id :orders :user-id)]]}
                           {:lib/type :mbql.stage/mbql,
                            :expressions
@@ -318,9 +318,9 @@
                               :lib/expression-name "yiy"}
                              "sum_2"]]}]}
                 query)))
-      (testing "Second stage field ref indetifier is adjusted from sum_2 to sum."
+      (testing "Second stage field ref identifier keeps its sticky name after first aggregation is removed."
         (is (=? {:stages [{:lib/type :mbql.stage/mbql,
-                           :aggregation [[:sum {} [:field {} (meta/id :orders :subtotal)]]]
+                           :aggregation [[:sum {:name "sum_2"} [:field {} (meta/id :orders :subtotal)]]]
                            :breakout [[:field {} (meta/id :orders :user-id)]]}
                           {:lib/type :mbql.stage/mbql,
                            :expressions
@@ -328,7 +328,7 @@
                              {:base-type :type/Float
                               :effective-type :type/Float
                               :lib/expression-name "yiy"}
-                             "sum"]]}]}
+                             "sum_2"]]}]}
                 (lib/remove-clause query 0 a0-ref)))))))
 
 (deftest ^:parallel remove-clause-expression-test

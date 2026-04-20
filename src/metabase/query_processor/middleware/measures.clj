@@ -89,9 +89,9 @@
                                         {:type qp.error-type/invalid-measure, :measure measure}))
       :else (do
               (log/debugf "Expanding measure %d:\n%s\n->\n%s" id (u/pprint-to-str &match) (u/pprint-to-str aggregation))
-              ;; Preserve :lib/uuid and :display-name from the measure clause options if present
+              ;; Preserve :lib/uuid, :display-name, and :name from the measure clause options if present
               ;; This is important so that :aggregation refs pointing to the measure remain valid
-              (lib.options/update-options aggregation merge (select-keys opts [:lib/uuid :display-name]))))))
+              (lib.options/update-options aggregation merge (select-keys opts [:lib/uuid :display-name :name]))))))
 
 (mu/defn- expand-measures-once :- ::lib.schema/query
   "Expand all :measure clauses in the query (single pass)."

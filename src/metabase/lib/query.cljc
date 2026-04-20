@@ -5,6 +5,7 @@
    ;; allowed since this is needed to convert legacy queries to MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.aggregation.util :as lib.aggregation.util]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
@@ -266,10 +267,10 @@
                     #(lib.util/add-summary-clause %1 0 :breakout %2)
                     base-query
                     (:breakout metric-first-stage))]
-    (-> base-query
-        (lib.util/add-summary-clause
-         0 :aggregation
-         (lib.options/ensure-uuid [:metric {} card-id])))))
+    (let [metric-clause (lib.options/ensure-uuid [:metric {} card-id])
+          unique-name   (lib.aggregation.util/with-unique-aggregation-name
+                          base-query 0 metric-clause)]
+      (lib.util/add-summary-clause base-query 0 :aggregation unique-name))))
 
 (defmethod query-method :metadata/card
   [metadata-providerable card-metadata]

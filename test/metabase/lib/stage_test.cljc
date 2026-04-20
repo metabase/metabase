@@ -47,11 +47,11 @@
                   :lib/source-column-alias  "expression"
                   :lib/desired-column-alias "expression"}
                  {:base-type                :type/Float
-                  :lib/original-name        "expression"
+                  :lib/original-name        "expression_2"
                   :lib/deduplicated-name    "expression_2"
                   :name                     "expression_2"
                   :display-name             "0.8 × Average of Price"
-                  :lib/source-column-alias  "expression"
+                  :lib/source-column-alias  "expression_2"
                   :lib/desired-column-alias "expression_2"}]
                 (lib/returned-columns query)))))))
 

@@ -442,6 +442,17 @@
       (str/replace strip-id-regex "")
       str/trim))
 
+(defn unique-indexed-name
+  "Given a set of existing `names` and a `base-name`, return a unique variant by appending `_2`, `_3`, ... as needed."
+  [names base-name]
+  (if-not (contains? names base-name)
+    base-name
+    (loop [i 2]
+      (let [candidate (str base-name "_" i)]
+        (if-not (contains? names candidate)
+          candidate
+          (recur (inc i)))))))
+
 (mu/defn add-summary-clause :- ::lib.schema/query
   "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
    as well as dropping any subsequent stages."

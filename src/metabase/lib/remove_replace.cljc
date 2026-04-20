@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.lib.aggregation.util :as lib.aggregation.util]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -473,6 +474,10 @@
    replacement      :- ::lib.schema.expression/expression]
   (mu/disable-enforcement
     (let [location (find-location unmodified-query stage-number target)
+          replacement (if (= [:aggregation] location)
+                        (lib.aggregation.util/with-unique-aggregation-name-after-replacement
+                          unmodified-query stage-number target replacement)
+                        replacement)
           query (loop [query (tweak-expression unmodified-query stage-number target replacement)]
                   (let [explanation (mr/explain ::lib.schema/query query)
                         error-paths (->> (:errors explanation)
