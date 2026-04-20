@@ -16,7 +16,6 @@ import {
   generateIndexTsx,
   generateManifest,
   generatePackageJson,
-  generatePackageLockJson,
   generateTsConfig,
   generateViteConfig,
   readBinaryTemplate,
@@ -58,7 +57,6 @@ program
 
     await Promise.all([
       writeFile(join(name, "package.json"), generatePackageJson(name)),
-      writeFile(join(name, "package-lock.json"), generatePackageLockJson(name)),
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
       writeFile(
@@ -80,7 +78,6 @@ program
 
     console.log("Created files:");
     console.log(`  ${name}/package.json`);
-    console.log(`  ${name}/package-lock.json`);
     console.log(`  ${name}/vite.config.ts`);
     console.log(`  ${name}/tsconfig.json`);
     console.log(`  ${name}/src/index.tsx`);
