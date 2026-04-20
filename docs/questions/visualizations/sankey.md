@@ -58,7 +58,7 @@ Your data can include more than three columns, but each row must include the req
 
 ## Sankey display options
 
-You can change a charts alignment, edge labels, and edge colors.
+You can change a chart's alignment, edge labels, and edge colors.
 
 ### Alignment
 

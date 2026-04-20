@@ -1,8 +1,11 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import {
+  CHART_STYLE,
+  getSplitPanelGap,
+} from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
   ChartDataset,
@@ -411,6 +414,7 @@ const getTicksDimensions = (
     xTicksHeight: 0,
     firstXTickWidth: 0,
     lastXTickWidth: 0,
+    getXTickWidth: () => 0,
   };
 
   if (leftAxisModel) {
@@ -476,6 +480,21 @@ const getTicksDimensions = (
       (isTimeSeries && hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
         : 0);
+
+    ticksDimensions.getXTickWidth = (text: string) => {
+      if (axisEnabledSetting === "rotate-90") {
+        return renderingContext.theme.cartesian.label.fontSize;
+      }
+      const width = renderingContext.measureText(text, {
+        ...CHART_STYLE.axisTicks,
+        size: renderingContext.theme.cartesian.label.fontSize,
+        family: renderingContext.fontFamily,
+      });
+      if (axisEnabledSetting === "rotate-45") {
+        return width / Math.SQRT2;
+      }
+      return width;
+    };
   }
 
   return { ticksDimensions, axisEnabledSetting };
@@ -833,8 +852,10 @@ export const getChartLayout = (
     bounds,
     boundaryWidth,
     outerHeight: height,
+    outerWidth: width,
     axisEnabledSetting,
     stackedBarTicksRotation,
+    panelGap: 0,
   };
 };
 
@@ -883,6 +904,7 @@ const computeSplitPanelLayout = (
     xTicksHeight: computedTicks.xTicksHeight,
     firstXTickWidth: computedTicks.firstXTickWidth,
     lastXTickWidth: computedTicks.lastXTickWidth,
+    getXTickWidth: computedTicks.getXTickWidth,
   };
 
   const padding = getChartPadding(
@@ -903,10 +925,17 @@ const computeSplitPanelLayout = (
     ticksDimensions.yTicksWidthLeft -
     ticksDimensions.yTicksWidthRight;
 
-  const panelGap = CHART_STYLE.splitPanel.gap;
+  const { gapRatio, maxGap } = CHART_STYLE.splitPanel;
   const availableHeight = height - padding.top - padding.bottom;
-  const panelHeight =
-    (availableHeight - (panelCount - 1) * panelGap) / panelCount;
+
+  let panelHeight =
+    availableHeight / (panelCount + (panelCount - 1) / gapRatio);
+  let panelGap = getSplitPanelGap(panelHeight);
+
+  if (panelGap >= maxGap) {
+    panelGap = maxGap;
+    panelHeight = (availableHeight - (panelCount - 1) * maxGap) / panelCount;
+  }
 
   return {
     ticksDimensions,
@@ -914,7 +943,9 @@ const computeSplitPanelLayout = (
     bounds,
     boundaryWidth,
     outerHeight: height,
+    outerWidth: width,
     axisEnabledSetting,
     panelHeight,
+    panelGap,
   };
 };

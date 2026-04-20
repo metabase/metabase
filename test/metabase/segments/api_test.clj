@@ -21,7 +21,7 @@
 
 (defn- segment-response [segment]
   (-> (into {} segment)
-      (dissoc :id :table_id :dependency_analysis_version)
+      (dissoc :id :table_id)
       (update :creator #(into {} %))
       (update :entity_id some?)
       (update :created_at some?)

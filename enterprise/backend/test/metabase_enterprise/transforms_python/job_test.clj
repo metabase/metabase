@@ -4,10 +4,10 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [metabase.driver :as driver]
-   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.transforms.jobs :as jobs]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu]

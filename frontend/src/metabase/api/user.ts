@@ -1,4 +1,3 @@
-import { storeTemporaryPassword } from "metabase/admin/people/people";
 import { userUpdated } from "metabase/redux/user";
 import type {
   CreateUserRequest,
@@ -58,13 +57,6 @@ export const userApi = Api.injectEndpoints({
           listTag("tenant"),
           listTag("permissions-group"),
         ]),
-      onQueryStarted: (request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (user) => {
-          if (request.password) {
-            const payload = { id: user.id, password: request.password };
-            dispatch(storeTemporaryPassword(payload));
-          }
-        }),
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
       query: ({ id, old_password, password }) => ({
@@ -72,9 +64,6 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}/password`,
         body: { old_password, password },
       }),
-      onQueryStarted: ({ id, password }, { dispatch }) => {
-        dispatch(storeTemporaryPassword({ id, password }));
-      },
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),

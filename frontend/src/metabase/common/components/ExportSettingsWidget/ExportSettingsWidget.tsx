@@ -4,9 +4,9 @@ import { c, t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Checkbox, SegmentedControl, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 interface ExportSettingsWidgetProps {
   formats: ExportFormat[];

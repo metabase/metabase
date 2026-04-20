@@ -3,6 +3,7 @@
   (:require
    [metabase.metabot.provider-util]
    [metabase.metabot.scope]
+   [metabase.metabot.usage]
    [potemkin :as p]))
 
 (p/import-vars
@@ -15,6 +16,11 @@
   agent-query-execute
   agent-search
   agent-table-read])
+
+(p/import-vars
+ [metabase.metabot.usage
+  check-usage-limits!
+  log-ai-usage!])
 
 ;; TODO: Port analyze-chart to use the native LLM infrastructure
 ;; instead of the deleted `metabase.metabot.client`.

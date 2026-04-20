@@ -65,11 +65,13 @@ export const ButtonBar = ({
       justify="space-between"
       align="center"
       p="md"
+      miw={0}
       style={{
         borderTop: "1px solid var(--mb-color-border)",
+        overflowX: "auto",
       }}
     >
-      <Flex gap="md">
+      <Flex gap="md" mr="md">
         <NewCollectionDialog />
         <NewDashboardDialog />
       </Flex>

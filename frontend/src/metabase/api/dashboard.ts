@@ -1,6 +1,6 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema } from "metabase/schema";
+import { updateMetadata } from "metabase/utils/redux/metadata";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,

@@ -3,9 +3,9 @@ import { useCallback, useMemo } from "react";
 import { Api, databaseApi, useListPermissionsGroupsQuery } from "metabase/api";
 import { tableApi } from "metabase/api/table";
 import { listTag } from "metabase/api/tags";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { PermissionsApi } from "metabase/services";
+import { useDispatch } from "metabase/utils/redux";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import {

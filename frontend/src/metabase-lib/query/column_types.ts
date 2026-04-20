@@ -55,5 +55,5 @@ export function isAssignableType(
   column1: ColumnMetadata | ColumnTypeInfo,
   column2: ColumnMetadata | ColumnTypeInfo,
 ): boolean {
-  return ML.valid_filter_for_QMARK_(column1, column2);
+  return ML.compatible_type_QMARK_(column1, column2);
 }

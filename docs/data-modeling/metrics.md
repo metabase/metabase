@@ -89,7 +89,7 @@ To edit a metric:
 
 ## Explore and compare metrics
 
-You can explore metrics, break them out by different dimensions, and compare metrics and [measures](../data-studio/data-structure.md#measures) to each other in the [Metrics Explorer](../questions/metrics-explorer.md).
+You can explore metrics, break them out by different dimensions, and compare metrics and [measures](../data-studio/measures.md) to each other in the [Metrics Explorer](../questions/metrics-explorer.md).
 
 ![Metrics explorer](./images/metric-explorer.png)
 
@@ -113,7 +113,7 @@ You can use [custom expressions](../questions/query-builder/expressions.md) to d
  (CountIf([Score] >= 9) - CountIf([Score] <= 6) ) / Count() * 100
 ```
 
-Metric formula must to be an _aggregation_  of a column, meaning you can have a formula like `Sum([Price])` which will add up all the values in the `Price` column across all records, but you can't have a formula like `[Price] + [Tax]` which adds two values on a per-record basis. If you need to create a "calculated" column, consider using [transforms](../data-studio/transforms/transforms-overview.md) or [models](../data-modeling/models.md) instead.
+Metric formula must be an _aggregation_  of a column, meaning you can have a formula like `Sum([Price])` which will add up all the values in the `Price` column across all records, but you can't have a formula like `[Price] + [Tax]` which adds two values on a per-record basis. If you need to create a "calculated" column, consider using [transforms](../data-studio/transforms/transforms-overview.md) or [models](../data-modeling/models.md) instead.
 
 We don't recommend adding filters into the metric definition to avoid filter conflicts when using metrics in the query builder. You can use conditional custom expressions like [`CountIf`, `SumIf`, and `DistinctIf`](../questions/query-builder/expressions-list.md#aggregations) to create conditional aggregations.
 
@@ -166,7 +166,7 @@ Prefer using the [Library](../data-studio/library.md#metrics) to let people know
 
 ## Further reading
 
-- [Measures](../data-studio/data-structure.md#measures)
+- [Measures](../data-studio/measures.md)
 - [Models](./models.md)
 - [Segments](./segments.md)
 - [SQL Snippets](../questions/native-editor/snippets.md)

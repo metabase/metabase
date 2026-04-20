@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { addActionToDashboard } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 
 export const AddActionElementButton = () => {
   const { dashboard, selectedTabId } = useDashboardContext();

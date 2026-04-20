@@ -17,13 +17,13 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 jest.mock("react-router-redux", () => ({
   push: jest.fn(() => ({
@@ -128,7 +128,9 @@ describe("EmbeddingHub", () => {
 
     await userEvent.click(within(dialog).getByText("Foo Bar Table"));
 
-    expect(mockPush).toHaveBeenCalledWith("/auto/dashboard/table/10");
+    expect(mockPush).toHaveBeenCalledWith(
+      "/auto/dashboard/table/10?returnToEmbeddingSetupGuide=true",
+    );
   });
 
   it("shows success banner when first 3 steps are completed", async () => {

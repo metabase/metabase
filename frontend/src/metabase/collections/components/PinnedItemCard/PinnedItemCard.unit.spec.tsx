@@ -6,7 +6,7 @@ import {
   screen,
   getIcon as testGetIcon,
 } from "__support__/ui";
-import { getIcon } from "metabase/lib/icon";
+import { getIcon } from "metabase/utils/icon";
 import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
 import {
   createMockCollection,
@@ -58,7 +58,7 @@ const getCollectionItem = ({
   description?: string;
   collection_position?: number;
   setArchived?: (isArchived: boolean) => Promise<void>;
-  setPinned?: (isPinned: boolean) => void;
+  setPinned?: (isPinned: boolean | number) => void;
 } = {}): CollectionItem & { description: string } => {
   return createMockCollectionItem({
     ...rest,

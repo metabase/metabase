@@ -3,8 +3,10 @@ import { forwardRef, useCallback } from "react";
 
 import { ToggleRoot } from "./Toggle.styled";
 
-export interface ToggleProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
+export interface ToggleProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange"
+> {
   className?: string;
   value?: boolean;
   small?: boolean;

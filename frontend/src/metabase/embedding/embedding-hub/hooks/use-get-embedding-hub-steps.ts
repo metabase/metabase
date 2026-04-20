@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import {
   PLUGIN_TENANTS,
   type SdkIframeEmbedSetupModalInitialState,
 } from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import type { EmbeddingHubStep } from "../types";
 

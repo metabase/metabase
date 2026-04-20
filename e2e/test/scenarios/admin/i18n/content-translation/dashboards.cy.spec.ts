@@ -31,7 +31,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Category", msgstr: "La catégorie" },
@@ -116,7 +116,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
@@ -207,7 +207,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
@@ -376,7 +376,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         ...germanFieldNames,
@@ -459,7 +459,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.restore();
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         uploadTranslationDictionaryViaAPI([
           ...germanFieldNames,
@@ -881,6 +881,79 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           H.filterWidget().findByText("Gerät").should("be.visible");
         });
       });
+
+      it("translates selected static-list filter label in guest embed for values without labels", () => {
+        const staticListFilter = {
+          name: "String",
+          slug: "string",
+          id: "static-list-id",
+          type: "string/=",
+          sectionId: "string",
+          values_source_type: "static-list" as const,
+          values_source_config: {
+            values: [["Gadget"], ["Widget"]],
+          },
+        };
+
+        cy.signInAsAdmin();
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            name: "Expression Question",
+            query: {
+              "source-table": PEOPLE_ID,
+            },
+          },
+          dashboardDetails: {
+            parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
+            enable_embedding: true,
+            embedding_params: {
+              [staticListFilter.slug]: "enabled",
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          // Map the parameter to an expression column so the filter widget
+          // is visible, but hasFields() returns false (testing the tc()
+          // fix in FormattedParameterValue)
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 9,
+                parameter_mappings: [
+                  {
+                    parameter_id: staticListFilter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["expression", "Thing", { "base-type": "type/Integer" }],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboard_id as number },
+              params: {},
+            },
+            {
+              setFilters: { [staticListFilter.slug]: "Gadget" },
+              additionalHashOptions: {
+                locale: "de",
+              },
+            },
+          );
+
+          H.filterWidget().findByText("Gerät").should("be.visible");
+        });
+      });
     });
   });
 
@@ -898,7 +971,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       uploadTranslationDictionaryViaAPI(translations);
       cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
         enable_embedding: true,
@@ -993,7 +1066,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },

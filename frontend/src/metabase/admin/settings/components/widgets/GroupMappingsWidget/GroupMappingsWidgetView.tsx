@@ -8,8 +8,8 @@ import { getErrorMessage } from "metabase/api/utils/errors";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
-import { isDefaultGroup } from "metabase/lib/groups";
 import { Icon, Tooltip } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
 import type { Group, GroupId } from "metabase-types/api";
 
 import AddMappingRow from "./AddMappingRow";

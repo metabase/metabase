@@ -1,9 +1,9 @@
 import { getLocalizationNoticeText } from "metabase/common/components/CommunityLocalizationNotice";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { useSelector } from "metabase/lib/redux";
 import { getSteps } from "metabase/setup/selectors";
 import type { SetupStep } from "metabase/setup/types";
 import { Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { CompletedStep } from "../CompletedStep";

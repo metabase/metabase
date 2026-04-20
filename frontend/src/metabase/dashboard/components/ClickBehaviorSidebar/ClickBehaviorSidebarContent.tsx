@@ -2,8 +2,8 @@ import { getIn } from "icepick";
 import { useMemo } from "react";
 
 import { getDashcardData } from "metabase/dashboard/selectors";
-import { isTableDisplay } from "metabase/lib/click-behavior";
-import { useSelector } from "metabase/lib/redux";
+import { isTableDisplay } from "metabase/dashboard/utils";
+import { useSelector } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ClickBehavior,

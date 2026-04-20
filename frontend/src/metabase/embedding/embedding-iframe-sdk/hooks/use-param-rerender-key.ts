@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
-import { stableStringify } from "metabase/lib/objects";
+import { stableStringify } from "metabase/utils/objects";
 
 import type { SdkIframeEmbedSettings } from "../types/embed";
 

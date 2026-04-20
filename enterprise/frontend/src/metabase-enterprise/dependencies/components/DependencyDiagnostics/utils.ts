@@ -1,4 +1,4 @@
-import type * as Urls from "metabase/lib/urls";
+import type * as Urls from "metabase/utils/urls";
 
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
 import type {

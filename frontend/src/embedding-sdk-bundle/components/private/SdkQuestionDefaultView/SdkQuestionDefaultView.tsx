@@ -133,7 +133,7 @@ export const SdkQuestionDefaultView = ({
       reportLocation({
         type: "question",
         id: originalId,
-        name: "New exploration",
+        name: "New question",
         onNavigate,
       });
     } else if (isExistingQuestion) {

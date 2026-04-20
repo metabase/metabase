@@ -29,7 +29,7 @@
 
   ## Code health
 
-  This API surface grew mostly organically during the development of MLv2 and porting the query builder to use it.
+  This API surface grew mostly organically during the development of Lib and porting the query builder to use it.
   The result is that the API is not as systematic or clean as it could be. There are functions which are very specific
   to a particular use case in one part of the FE, and functions which support legacy compatibility but should be removed
   as those features are ported.
@@ -45,7 +45,7 @@
     Docs will give an alternative to calling these functions that should cover all cases.
 
   Over time, the *Deprecated* functions will be removed, and the *Legacy* ones will become obsolete and get removed as
-  legacy uses are ported to MLv2.
+  legacy uses are ported to Lib.
 
   ## Display Info
   The library functions typically return opaque CLJS data. We want to hide the library's internals, but we want it to be
@@ -105,28 +105,28 @@
   (lib.core/suggested-name query))
 
 (defn ^:export metadataProvider
-  "Convert the provided metadata container to an MLv2 metadata provider.
+  "Convert the provided metadata container to an Lib metadata provider.
 
   > **Code health:** Smelly. Name is not idiomatic Clojure.
 
-  If the `metadata` is already an MLv2 metadata provider, it is simply returned. If it is a JavaScript `Metadata`
-  instance, it is wrapped with an MLv2 adapter."
+  If the `metadata` is already an Lib metadata provider, it is simply returned. If it is a JavaScript `Metadata`
+  instance, it is wrapped with an Lib adapter."
   [database-id metadata]
   (if (lib.metadata.protocols/metadata-provider? metadata)
     metadata
     (js.metadata/metadata-provider database-id metadata)))
 
 (defn ^:export query
-  "Creates an MLv2 query from the provided input: either a table or card metadata, or a legacy MLv1 query in JSON form.
+  "Creates an MBQL 5 query from the provided input: either a table or card metadata, or a legacy MLv1 query in JSON form.
 
   > **Code health:** Healthy.
 
   There are two *arities* for this function:
 
-  With two arguments `metadata-provider` and `table-or-card-metadata`, creates an MLv2 query for that table or card.
+  With two arguments `metadata-provider` and `table-or-card-metadata`, creates an MBQL 5 query for that table or card.
 
   With three arguments `database-id`, `metadata-provider`, and `query-map`, expects the `query-map` to be an MLv1 legacy
-  query in JSON form. The query is converted to MLv2 form based on the metadata and the provided `database-id` (which is
+  query in JSON form. The query is converted to MBQL 5 form based on the metadata and the provided `database-id` (which is
   not always included on the `query-map`).
 
   <details>
@@ -134,7 +134,7 @@
   Attaches a cache to `metadata-provider` so that subsequent calls with the same `database-id` and `query-map` return
   the same query object.
 
-  It would be simpler to attach the MLv2 query to a (non-enumerable) property on the `query-map`, but the `query-map`
+  It would be simpler to attach the MBQL 5 query to a (non-enumerable) property on the `query-map`, but the `query-map`
   might have been `Object.freeze`'d by Immer. So instead we attach a two-level cache to the `metadata-provider`. The
   outer key is `database-id`, and the inner cache is a JS `WeakMap`, using the `query-map` itself as the key.
   This cache is efficient to check, and because it uses a `WeakMap` it does not retain legacy queries if they would
@@ -177,10 +177,10 @@
     :else                  x))
 
 (defn ^:export legacy-query
-  "Coerce an MLv2 query (MBQL 5 in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
+  "Coerce an Lib query (MBQL 5 in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
 
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
-  where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MLv2."
+  where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MBQL 5."
   [query-map]
   (-> (lib.query/->legacy-MBQL query-map)
       fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
@@ -264,7 +264,7 @@
 ;; - FE calls [[display-info]] in this namespace
 ;; - Which calls [[lib.core/display-info]], defined in `metabase.lib.metadata.calculation`.
 ;; - Which delegates to a *multimethod* `display-info-method`
-;; - This has implementations for many different MLv2 values - queries, stages, aggregations, expressions, columns, etc.
+;; - This has implementations for many different MBQL 5 values - queries, stages, aggregations, expressions, columns, etc.
 ;;
 ;; These implementations return their info *in CLJS form*, as a map! That's because `display-info` calls are sometimes
 ;; nested, eg. a *column group*'s `display-info` includes the `display-info` for each column in the group.
@@ -725,8 +725,8 @@
 ;; There are a few places in the FE where we need to compare two queries, typically to check whether the current
 ;; question has been changed and needs to be saved.
 
-;; **This currently only works for legacy queries in JSON form.** At some point MLv2 queries will become the source of
-;; truth, and the format used on the wire. At that point, we'll want a similar comparison for MLv2 queries.
+;; **This currently only works for legacy queries in JSON form.** At some point MBQL 5 queries will become the source of
+;; truth, and the format used on the wire. At that point, we'll want a similar comparison for MBQL 5 queries.
 
 ;; TODO: These equality checks only seem to clean and check the last stages - does that really suffice?
 
@@ -1030,7 +1030,7 @@
 ;; Custom expressions are parsed from a string by a TS library, which returns legacy MBQL clauses. That may get ported
 ;; to Clojure someday, but perhaps not - it's quite standalone and there's no use case for that logic in the BE.
 
-;; MLv2 expression clauses are constructed with [[expression-clause]] from an operator and list of args, typically
+;; MBQL 5 expression clauses are constructed with [[expression-clause]] from an operator and list of args, typically
 ;; coming from that parser. An expression clause can be attached to a query with `expression`.
 
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
@@ -1313,7 +1313,7 @@
   (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs-expression))
 
 (defn ^:export column-metadata?
-  "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
+  "Returns true if arg is an Lib column, ie. has `:lib/type :metadata/column`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
@@ -1323,7 +1323,7 @@
 (defn ^:export metric-metadata?
   "Returns true if arg is named entity that can be used as an aggregation expression on its own, i.e., without
   wrapping it into an aggregating function.
-  Currently, this can be an MLv2 metric (`:lib/type :metadata/metric`) or an aggregation column
+  Currently, this can be an Lib metric (`:lib/type :metadata/metric`) or an aggregation column
   (`:lib/type :metadata/column` and `:lib/source :source/aggregations`).
 
   > **Code health:** Single use. This is used in the expression editor to parse and
@@ -1335,7 +1335,7 @@
                 (= (:lib/source arg) :source/aggregations)))))
 
 (defn ^:export segment-metadata?
-  "Returns true if arg is an MLv2 segment, ie. has `:lib/type :metadata/segment`.
+  "Returns true if arg is an Lib segment, ie. has `:lib/type :metadata/segment`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
@@ -1343,7 +1343,7 @@
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
 (defn ^:export measure-metadata?
-  "Returns true if arg is an MLv2 measure, ie. has `:lib/type :metadata/measure`.
+  "Returns true if arg is an Lib measure, ie. has `:lib/type :metadata/measure`.
 
   > **Code health:** Healthy. This is used in the expression editor to parse and
   format expression clauses."
@@ -1585,7 +1585,7 @@
     column))
 
 (defn ^:export find-column-indexes-from-legacy-refs
-  "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
+  "Given a list of columns (either JS `data.cols` or Lib `ColumnMetadata`) and a list of legacy refs, find each ref's
   corresponding index into the list of columns.
 
   Returns a parallel list to the refs, with the corresponding index, or -1 if no matching column is found.
@@ -2259,8 +2259,8 @@
 
   This properly handles fields, expressions and aggregations.
 
-  > **Code health:** Legacy. Avoid new calls. We should refactor the existing callers so they receive MLv2 columns in
-  the first place, and don't need to convert via to MLv2 via this function."
+  > **Code health:** Legacy. Avoid new calls. We should refactor the existing callers so they receive Lib columns in
+  the first place, and don't need to convert via to Lib via this function."
   [a-query stage-number ^js js-column]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (.-field_ref js-column)]
@@ -2269,7 +2269,7 @@
 
 (defn ^:export legacy-column->type-info
   "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
-  does not require a `query`. MLv2 columns remain unchanged.
+  does not require a `query`. Lib columns remain unchanged.
 
   > **Code health:** Legacy."
   [column]
@@ -2611,12 +2611,12 @@
   (lib.core/with-wrapped-native-query a-query stage-number card-id
     lib.core/update-temporal-filter temporal-column start end))
 
-(defn ^:export valid-filter-for?
-  "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.
+(defn ^:export compatible-type?
+  "Given two columns, returns true if they have compatible types.
 
   > **Code health:** Healthy."
   [src-column dst-column]
-  (lib.types.isa/valid-filter-for? src-column dst-column))
+  (lib.types.isa/compatible-type? src-column dst-column))
 
 (defn ^:export dependent-metadata
   "Return a JS array of entities which `a-query` requires to be loaded. `card-id` is provided

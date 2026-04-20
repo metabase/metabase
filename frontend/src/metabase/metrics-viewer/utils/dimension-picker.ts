@@ -13,6 +13,7 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
+import type { MetricSlot } from "./metric-slots";
 import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
 
 // ── Dimension picker ──
@@ -93,6 +94,7 @@ function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
 export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
+  metricSlots: MetricSlot[],
   existingTabDimensionIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = { shared: [], bySource: {} };
@@ -111,6 +113,18 @@ export function getAvailableDimensionsForPicker(
     .size;
   const hasMultipleSources = loadedSourceCount > 1;
 
+  const sourceIdToSlotIndices = metricSlots.reduce(
+    (acc, slot) => {
+      if (acc[slot.sourceId]) {
+        acc[slot.sourceId].push(slot.slotIndex);
+      } else {
+        acc[slot.sourceId] = [slot.slotIndex];
+      }
+      return acc;
+    },
+    {} as Record<MetricSourceId, number[]>,
+  );
+
   for (const group of groups) {
     const uniqueSources = [...new Set(group.map((entry) => entry.sourceId))];
     const first = group[0];
@@ -123,7 +137,12 @@ export function getAvailableDimensionsForPicker(
           type: first.tabType,
           label: first.label,
           dimensionMapping: Object.fromEntries(
-            group.map((entry) => [entry.sourceId, entry.id]),
+            group.flatMap((entry) =>
+              (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
+                slotIndex,
+                entry.id,
+              ]),
+            ),
           ),
         },
       });
@@ -136,7 +155,12 @@ export function getAvailableDimensionsForPicker(
           tabInfo: {
             type: entry.tabType,
             label: entry.label,
-            dimensionMapping: { [entry.sourceId]: entry.id },
+            dimensionMapping: Object.fromEntries(
+              (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
+                slotIndex,
+                entry.id,
+              ]),
+            ),
           },
         });
       }

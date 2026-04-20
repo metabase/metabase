@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -20,6 +21,23 @@
   (mt/test-driver :sqlite
     (is (= "UTC"
            (driver/db-default-timezone :sqlite (mt/db))))))
+
+(deftest current-user-table-privileges-test
+  (testing "SQLite table privileges normalization"
+    (mt/test-driver :sqlite
+      (is (= {"people"     {:role nil, :schema nil, :table "people", :select true, :insert true, :update true, :delete true}
+              "reviews"    {:role nil, :schema nil, :table "reviews", :select true, :insert true, :update true, :delete true}
+              "checkins"   {:role nil, :schema nil, :table "checkins", :select true, :insert true, :update true, :delete true}
+              "users"      {:role nil, :schema nil, :table "users", :select true, :insert true, :update true, :delete true}
+              "orders"     {:role nil, :schema nil, :table "orders", :select true, :insert true, :update true, :delete true}
+              "venues"     {:role nil, :schema nil, :table "venues", :select true, :insert true, :update true, :delete true}
+              "categories" {:role nil, :schema nil, :table "categories", :select true, :insert true, :update true, :delete true}
+              "products"   {:role nil, :schema nil, :table "products", :select true, :insert true, :update true, :delete true}}
+             (into {}
+                   (map (fn [m] [(:table m) m])
+                        (sql-jdbc.sync/current-user-table-privileges
+                         :sqlite
+                         (sql-jdbc.conn/db->pooled-connection-spec (mt/db))))))))))
 
 (deftest ^:parallel filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"
@@ -118,7 +136,7 @@
   {:name        table-name
    :schema      nil
    :description nil
-   :is_writable nil})
+   :is_writable true})
 
 (deftest timestamp-test-db
   (let [driver :sqlite]
