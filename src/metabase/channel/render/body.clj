@@ -14,6 +14,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
@@ -222,6 +223,16 @@
    _dashcard
    {:keys [rows viz-settings format-rows?] :as unordered-data}]
   (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
+        selector-data               (if-let [pivot-grouping-idx (qp.pivot.postprocess/pivot-grouping-index (map :name (:cols unordered-data)))]
+                                      (update unordered-data :rows
+                                              (fn [pivot-rows]
+                                                (into []
+                                                      (filter (fn [row]
+                                                                (let [group (nth row pivot-grouping-idx nil)
+                                                                      group (or (:num-value group) group)]
+                                                                  (= qp.pivot.postprocess/non-pivot-row-group group))))
+                                                      pivot-rows)))
+                                      unordered-data)
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
@@ -229,7 +240,7 @@
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
-                                      (js.color/make-color-selector unordered-data viz-settings)
+                                      (js.color/make-color-selector selector-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols viz-settings format-rows?)}
                                       (prep-for-html-rendering timezone-id card data)

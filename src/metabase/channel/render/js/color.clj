@@ -78,7 +78,10 @@
   ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
   ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
   ;; code. We do however need to handle BigDecimals as Graal won't convert these
-  (let [converted-rows (convert-bignumbers-by-column rows)]
+  (let [pivoted?       (some #(= "pivot-grouping" (:name %)) cols)
+        viz-settings   (cond-> viz-settings
+                         pivoted? (assoc :table.pivot true))
+        converted-rows (convert-bignumbers-by-column rows)]
     (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
                                converted-rows
                                (json/encode cols)
