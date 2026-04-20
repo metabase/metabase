@@ -219,8 +219,8 @@ export const SdkQuestionDefaultView = ({
           <SdkToolbar
             isMobile={isMobile}
             data-testid="interactive-question-result-toolbar"
-            left={{
-              desktop: isEditorOpen ? (
+            left={
+              isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
                   c="brand"
@@ -248,28 +248,26 @@ export const SdkQuestionDefaultView = ({
                     )}
                   </>
                 )
-              ),
-              mobile: ({ className, styles }) =>
-                isEditorOpen ? (
-                  <ToolbarButton
-                    isHighlighted={false}
-                    variant="default"
-                    icon="chevronleft"
-                    label={t`Back to visualization`}
-                    c="brand"
-                    justify="start"
-                    className={cx(
-                      ToolbarButtonS.PrimaryToolbarButton,
-                      className,
-                    )}
-                    onClick={toggleEditor}
-                  />
-                ) : (
-                  withChartTypeSelector && (
-                    <ChartTypeDropdown className={className} styles={styles} />
-                  )
-                ),
-            }}
+              )
+            }
+            mobileLeft={({ className, styles }) =>
+              isEditorOpen ? (
+                <ToolbarButton
+                  isHighlighted={false}
+                  variant="default"
+                  icon="chevronleft"
+                  label={t`Back to visualization`}
+                  c="brand"
+                  justify="start"
+                  className={cx(ToolbarButtonS.PrimaryToolbarButton, className)}
+                  onClick={toggleEditor}
+                />
+              ) : (
+                withChartTypeSelector && (
+                  <ChartTypeDropdown className={className} styles={styles} />
+                )
+              )
+            }
             desktopExtra={
               !isEditorOpen &&
               !isNativeQuestion && (
@@ -280,27 +278,24 @@ export const SdkQuestionDefaultView = ({
                 </>
               )
             }
-            right={{
-              desktop: (
-                <>
-                  {!isEditorOpen && (
-                    <>
-                      <DownloadWidgetDropdown />
-                      <QuestionAlertsButton />
-                    </>
-                  )}
-
-                  <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
-                </>
-              ),
-              mobile: ({ className }) => (
-                <EditorButton
-                  className={className}
-                  isOpen={isEditorOpen}
-                  onClick={toggleEditor}
-                />
-              ),
-            }}
+            right={
+              <>
+                {!isEditorOpen && (
+                  <>
+                    <DownloadWidgetDropdown />
+                    <QuestionAlertsButton />
+                  </>
+                )}
+                <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+              </>
+            }
+            mobileRight={({ className }) => (
+              <EditorButton
+                className={className}
+                isOpen={isEditorOpen}
+                onClick={toggleEditor}
+              />
+            )}
           />
         )}
 
