@@ -138,6 +138,8 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   it("cannot use existing user session when there is no session", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
+    cy.intercept("GET", "/api/user/current").as("sessionCheck");
+
     const frame = H.loadSdkIframeEmbedTestPage({
       elements: [
         {
@@ -148,6 +150,8 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
       metabaseConfig: { useExistingUserSession: true },
     });
+
+    cy.wait("@sessionCheck");
 
     frame.within(() => {
       cy.findByTestId("sdk-error-container")
