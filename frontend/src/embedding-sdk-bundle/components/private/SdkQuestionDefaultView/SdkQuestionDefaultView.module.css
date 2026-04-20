@@ -1,4 +1,5 @@
 .Container {
+  container-type: inline-size;
   display: grid;
   grid-template: 1fr / 1fr;
   grid-template-areas: "Main";

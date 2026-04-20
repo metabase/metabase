@@ -1,6 +1,5 @@
 .MobileToolbar {
-  display: flex;
-  flex: 1;
+  display: none;
 }
 
 .LeftButton {
@@ -29,4 +28,15 @@
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
   border-right: none;
+}
+
+@container (max-width: 639px) {
+  .MobileToolbar {
+    display: flex;
+    flex: 1;
+  }
+
+  .DesktopToolbar {
+    display: none;
+  }
 }

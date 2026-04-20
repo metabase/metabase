@@ -13,7 +13,6 @@ import { QuestionVisualization } from "embedding-sdk-bundle/components/private/S
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
-import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
@@ -55,6 +54,7 @@ import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import { MobileToolbar } from "./MobileToolbar";
+import MobileToolbarS from "./MobileToolbar.module.css";
 import SdkQuestionDefaultViewS from "./SdkQuestionDefaultView.module.css";
 
 export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
@@ -161,8 +161,6 @@ export const SdkQuestionDefaultView = ({
     { skipCollectionFetching: !isSaveEnabled },
   );
 
-  const { ref: containerRef, isMobile } = useMobileLayout();
-
   if (
     !isEditorOpen &&
     (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
@@ -187,7 +185,6 @@ export const SdkQuestionDefaultView = ({
 
   return (
     <FlexibleSizeComponent
-      ref={containerRef}
       height={height}
       width={width}
       className={cx(SdkQuestionDefaultViewS.Container, className)}
@@ -214,82 +211,81 @@ export const SdkQuestionDefaultView = ({
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </RenderIfHasContent>
 
+        {/* Mobile toolbar — visible when container < 640px */}
         {queryResults && (
-          <>
-            {!isMobile && (
-              <RenderIfHasContent
-                component={ResultToolbar}
-                data-testid="interactive-question-result-toolbar"
-              >
-                <RenderIfHasContent component={Group} gap="xs">
-                  {isEditorOpen ? (
-                    <PopoverBackButton
-                      onClick={toggleEditor}
-                      c="brand"
-                      fz="md"
-                      ml="sm"
-                    >
-                      {t`Back to visualization`}
-                    </PopoverBackButton>
-                  ) : (
-                    <>
-                      {withChartTypeSelector && (
-                        <>
-                          <Button.Group>
-                            <ChartTypeDropdown />
-                            <QuestionSettingsDropdown />
-                          </Button.Group>
-
-                          {!isNativeQuestion && (
-                            <Divider
-                              mx="xs"
-                              orientation="vertical"
-                              style={{
-                                color: "var(--mb-color-border) !important",
-                              }}
-                            />
-                          )}
-                        </>
-                      )}
-
-                      {!isNativeQuestion && (
-                        <>
-                          <FilterDropdown />
-                          <SummarizeDropdown />
-                          <BreakoutDropdown />
-                        </>
-                      )}
-                    </>
-                  )}
-                </RenderIfHasContent>
-                <RenderIfHasContent component={Group} gap="sm" ml="auto">
-                  {!isEditorOpen && (
-                    <>
-                      <DownloadWidgetDropdown />
-                      <QuestionAlertsButton />
-                    </>
-                  )}
-                  <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
-                </RenderIfHasContent>
-              </RenderIfHasContent>
-            )}
-
-            {isMobile && (
-              <MobileToolbar
-                isEditorOpen={isEditorOpen}
-                toggleEditor={toggleEditor}
-                withChartTypeSelector={withChartTypeSelector}
-                rightButton={({ className }) => (
-                  <EditorButton
-                    className={className}
-                    isOpen={isEditorOpen}
-                    onClick={toggleEditor}
-                  />
-                )}
-                data-testid="result-mobile-toolbar"
+          <MobileToolbar
+            isEditorOpen={isEditorOpen}
+            toggleEditor={toggleEditor}
+            withChartTypeSelector={withChartTypeSelector}
+            rightButton={({ className }) => (
+              <EditorButton
+                className={className}
+                isOpen={isEditorOpen}
+                onClick={toggleEditor}
               />
             )}
-          </>
+            data-testid="result-mobile-toolbar"
+          />
+        )}
+
+        {/* Desktop toolbar — visible when container >= 640px */}
+        {queryResults && (
+          <RenderIfHasContent
+            component={ResultToolbar}
+            data-testid="interactive-question-result-toolbar"
+            className={MobileToolbarS.DesktopToolbar}
+          >
+            <RenderIfHasContent component={Group} gap="xs">
+              {isEditorOpen ? (
+                <PopoverBackButton
+                  onClick={toggleEditor}
+                  c="brand"
+                  fz="md"
+                  ml="sm"
+                >
+                  {t`Back to visualization`}
+                </PopoverBackButton>
+              ) : (
+                <>
+                  {withChartTypeSelector && (
+                    <>
+                      <Button.Group>
+                        <ChartTypeDropdown />
+                        <QuestionSettingsDropdown />
+                      </Button.Group>
+
+                      {!isNativeQuestion && (
+                        <Divider
+                          mx="xs"
+                          orientation="vertical"
+                          style={{
+                            color: "var(--mb-color-border) !important",
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
+
+                  {!isNativeQuestion && (
+                    <>
+                      <FilterDropdown />
+                      <SummarizeDropdown />
+                      <BreakoutDropdown />
+                    </>
+                  )}
+                </>
+              )}
+            </RenderIfHasContent>
+            <RenderIfHasContent component={Group} gap="sm" ml="auto">
+              {!isEditorOpen && (
+                <>
+                  <DownloadWidgetDropdown />
+                  <QuestionAlertsButton />
+                </>
+              )}
+              <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+            </RenderIfHasContent>
+          </RenderIfHasContent>
         )}
 
         {isGuestEmbed && (
