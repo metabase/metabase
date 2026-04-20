@@ -30,11 +30,6 @@
 
   textarea {
     white-space: nowrap;
-  }
-
-  &.editableNameEditing {
-    textarea {
-      cursor: text;
-    }
+    cursor: text;
   }
 }

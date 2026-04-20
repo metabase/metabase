@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -32,7 +31,7 @@ export function MetricExpressionPill({
   onRemove,
   onEdit,
 }: MetricExpressionPillProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
   const [menuOpened, setMenuOpened] = useState(false);
   const editableRef = useRef<HTMLDivElement>(null);
 
@@ -47,7 +46,7 @@ export function MetricExpressionPill({
   );
 
   useEffect(() => {
-    if (isEditing) {
+    if (isRenaming) {
       const textarea = editableRef.current?.querySelector("textarea");
       if (textarea) {
         textarea.focus();
@@ -55,11 +54,11 @@ export function MetricExpressionPill({
         textarea.setSelectionRange(0, len);
       }
     }
-  }, [isEditing]);
+  }, [isRenaming]);
 
   const handleRename = useCallback(() => {
     setMenuOpened(false);
-    setIsEditing(true);
+    setIsRenaming(true);
   }, []);
 
   const handleEdit = useCallback(() => {
@@ -68,11 +67,11 @@ export function MetricExpressionPill({
   }, [onEdit]);
 
   const handleBlur = useCallback(() => {
-    if (isEditing) {
+    if (isRenaming) {
       setMenuOpened(false);
-      setIsEditing(false);
+      setIsRenaming(false);
     }
-  }, [isEditing]);
+  }, [isRenaming]);
 
   const handleNameChange = useCallback(
     (value: string) => {
@@ -80,7 +79,7 @@ export function MetricExpressionPill({
       // and legend labels always have a non-empty display name.
       onNameChange(value || expressionText);
       setMenuOpened(false);
-      setIsEditing(false);
+      setIsRenaming(false);
     },
     [onNameChange, expressionText],
   );
@@ -91,7 +90,7 @@ export function MetricExpressionPill({
       onChange={setMenuOpened}
       position="bottom-start"
       withinPortal
-      disabled={isEditing}
+      disabled={isRenaming}
     >
       <Menu.Target>
         <Pill
@@ -112,16 +111,13 @@ export function MetricExpressionPill({
         >
           <Flex align="center" gap="xs">
             <SourceColorIndicator colors={colors} />
-            {isEditing ? (
+            {isRenaming ? (
               <EditableText
                 ref={editableRef}
-                className={cx(
-                  S.editableName,
-                  isEditing && S.editableNameEditing,
-                )}
+                className={S.editableName}
                 initialValue={expressionEntry.name}
                 placeholder={expressionText}
-                isEditing={isEditing}
+                isEditing
                 isOptional
                 onChange={handleNameChange}
                 onBlur={handleBlur}
@@ -129,26 +125,27 @@ export function MetricExpressionPill({
               />
             ) : (
               <Flex align="center" gap={0}>
-                {expressionEntry.name ||
-                  expressionForPill.map((segment, i) => {
-                    if (typeof segment === "number") {
+                {expressionEntry.name && expressionEntry.name !== expressionText
+                  ? expressionEntry.name
+                  : expressionForPill.map((segment, i) => {
+                      if (typeof segment === "number") {
+                        return (
+                          <Badge
+                            key={i}
+                            circle
+                            c="text-hover"
+                            style={{ marginInlineStart: "0.2em" }}
+                          >
+                            {segment}
+                          </Badge>
+                        );
+                      }
                       return (
-                        <Badge
-                          key={i}
-                          circle
-                          c="text-hover"
-                          style={{ marginInlineStart: "0.2em" }}
-                        >
+                        <span key={i} className={S.expressionText}>
                           {segment}
-                        </Badge>
+                        </span>
                       );
-                    }
-                    return (
-                      <span key={i} className={S.expressionText}>
-                        {segment}
-                      </span>
-                    );
-                  })}
+                    })}
                 <span className={S.expressionText}>{"\u00a0"}</span>
               </Flex>
             )}
