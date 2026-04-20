@@ -381,13 +381,13 @@ databaseChangeLog:
             columnDataType: varchar(254)
 
   # ============================================================
-  # Analytics view updates - add embedding_client, surface, is_preview
+  # Analytics view updates - add embedding_client, is_preview
   # ============================================================
 
   - changeSet:
       id: v61.2026-03-26T00:00:17
       author: bcm
-      comment: Updated view v_view_log v4 - add embedding_client, surface, is_preview (EMB-1535)
+      comment: Updated view v_view_log v4 - add embedding_client, is_preview (EMB-1535)
       changes:
         - sqlFile:
             dbms: postgresql
@@ -418,7 +418,7 @@ databaseChangeLog:
   - changeSet:
       id: v61.2026-03-26T00:00:18
       author: bcm
-      comment: Updated view v_query_log v5 - add embedding_client, surface, is_preview (EMB-1535)
+      comment: Updated view v_query_log v5 - add embedding_client, is_preview (EMB-1535)
       changes:
         - sqlFile:
             dbms: postgresql
