@@ -1,47 +1,102 @@
 import { delay } from "__support__/utils";
+import type { Dispatch, RequestState, State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
+import { createMockRequestsState } from "metabase/redux/store/mocks/requests";
 
-import { fetchData, mergeEntities, updateData } from "./utils";
+import { fetchData, updateData } from "./utils";
 
 describe("Metadata", () => {
-  const getDefaultArgs = ({
-    existingData = "data",
-    newData = "new data",
-    requestState = null,
-    requestStateLoading = { loading: true },
-    requestStateLoaded = { loaded: true },
-    requestStateError = { error: new Error("error") },
-    statePath = ["test", "path"],
-    statePathFetch = statePath.concat("fetch"),
-    statePathUpdate = statePath.concat("update"),
-    requestStatePath = statePath,
-    existingStatePath = statePath,
-    getState = () => ({
-      requests: {
-        test: { path: { fetch: requestState, update: requestState } },
-      },
-      test: { path: existingData },
-    }),
-    dispatch = jest.fn(),
-    getData = () => Promise.resolve(newData),
-    putData = () => Promise.resolve(newData),
-  } = {}) => ({
-    dispatch,
-    getState,
-    requestStatePath,
-    existingStatePath,
-    getData,
-    putData,
-    // passthrough args constants
-    existingData,
-    newData,
-    requestState,
-    requestStateLoading,
-    requestStateLoaded,
-    requestStateError,
-    statePath,
-    statePathFetch,
-    statePathUpdate,
-  });
+  const getDefaultArgs = (
+    overrides: {
+      existingData?: string;
+      newData?: string;
+      requestState?: RequestState;
+      requestStateLoading?: RequestState;
+      requestStateLoaded?: RequestState;
+      requestStateError?: RequestState;
+      statePath?: string[];
+      statePathFetch?: string[];
+      statePathUpdate?: string[];
+      requestStatePath?: string[];
+      existingStatePath?: string[];
+      getState?: () => State;
+      dispatch?: Dispatch;
+      getData?: () => Promise<unknown>;
+      putData?: () => Promise<unknown>;
+    } = {},
+  ) => {
+    const existingData = overrides.existingData ?? "data";
+    const newData = overrides.newData ?? "new data";
+    const requestState = overrides.requestState;
+    const requestStateLoading = overrides.requestStateLoading ?? {
+      loading: true,
+      loaded: false,
+      fetched: false,
+      error: null,
+      _isRequestState: true as const,
+    };
+    const requestStateLoaded = overrides.requestStateLoaded ?? {
+      loading: false,
+      loaded: true,
+      fetched: true,
+      error: null,
+      _isRequestState: true as const,
+    };
+    const requestStateError = overrides.requestStateError ?? {
+      loading: false,
+      loaded: false,
+      fetched: false,
+      error: new Error("error"),
+      _isRequestState: true as const,
+    };
+    const statePath = overrides.statePath ?? ["test", "path"];
+    const statePathFetch =
+      overrides.statePathFetch ?? statePath.concat("fetch");
+    const statePathUpdate =
+      overrides.statePathUpdate ?? statePath.concat("update");
+    const requestStatePath = overrides.requestStatePath ?? [
+      "entities",
+      ...statePath,
+    ];
+    const existingStatePath = overrides.existingStatePath ?? statePath;
+    const getState =
+      overrides.getState ??
+      (() => ({
+        ...createMockState(),
+        requests: createMockRequestsState({
+          entities: {
+            test: {
+              path: requestState
+                ? { fetch: requestState, update: requestState }
+                : {},
+            },
+          },
+        }),
+        test: { path: existingData },
+      }));
+    const dispatch = overrides.dispatch ?? jest.fn();
+    const getData = overrides.getData ?? (() => Promise.resolve(newData));
+    const putData = overrides.putData ?? (() => Promise.resolve(newData));
+
+    return {
+      dispatch,
+      getState,
+      requestStatePath,
+      existingStatePath,
+      getData,
+      putData,
+      // passthrough args constants
+      existingData,
+      newData,
+      requestState,
+      requestStateLoading,
+      requestStateLoaded,
+      requestStateError,
+      statePath,
+      statePathFetch,
+      statePathUpdate,
+    };
+  };
 
   const args = getDefaultArgs({});
 
@@ -173,32 +228,6 @@ describe("Metadata", () => {
       await delay(10);
       expect(argsFail.dispatch).toHaveBeenCalledTimes(2);
       expect(data).toEqual(args.existingData);
-    });
-  });
-
-  describe("mergeEntities", () => {
-    it("add an entity", () => {
-      expect(
-        mergeEntities(
-          { 1: { id: 1, name: "foo" } },
-          { 2: { id: 2, name: "bar" } },
-        ),
-      ).toEqual({ 1: { id: 1, name: "foo" }, 2: { id: 2, name: "bar" } });
-    });
-
-    it("merge entity keys", () => {
-      expect(
-        mergeEntities(
-          { 1: { id: 1, name: "foo", prop1: 123 } },
-          { 1: { id: 1, name: "bar", prop2: 456 } },
-        ),
-      ).toEqual({ 1: { id: 1, name: "bar", prop1: 123, prop2: 456 } });
-    });
-
-    it("delete an entity", () => {
-      expect(
-        mergeEntities({ 1: { id: 1 }, 2: { id: 2 } }, { 2: null }),
-      ).toEqual({ 1: { id: 1 } });
     });
   });
 });

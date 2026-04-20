@@ -1,9 +1,13 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
-import requestsReducer from "metabase/redux/requests";
-import { combineEntities, createEntity } from "metabase/utils/entities";
+import {
+  type RequestsStateTree,
+  requestsReducer,
+} from "metabase/redux/requests";
 
-function getObject(id) {
+import { combineEntities, createEntity, mergeEntities } from "./entities";
+
+function getObject(id: number) {
   return { id: id, name: `object${id}` };
 }
 
@@ -11,7 +15,9 @@ function setup() {
   const widgets = createEntity({
     name: "widgets",
     api: {
-      get: jest.fn().mockImplementation(({ id }) => getObject(id)),
+      get: jest
+        .fn()
+        .mockImplementation(({ id }: { id: number }) => getObject(id)),
       list: jest.fn().mockImplementation(() => [getObject(1), getObject(2)]),
     },
   });
@@ -20,8 +26,10 @@ function setup() {
 
   const reducer = combineReducers({
     entities: entities.reducer,
-    requests: (state, action) =>
-      requestsReducer(entities.requestsReducer(state, action), action),
+    requests: (
+      state: RequestsStateTree | undefined,
+      action: { type: string; payload: Record<string, unknown> | undefined },
+    ) => requestsReducer(entities.requestsReducer(state, action), action),
   });
 
   const initialState = {
@@ -35,7 +43,7 @@ function setup() {
 
   const store = configureStore({
     reducer,
-    initialState,
+    preloadedState: initialState,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         immutableCheck: false,
@@ -108,6 +116,38 @@ describe("entities", () => {
 
       await store.dispatch(widgets.actions.fetchList());
       expect(widgets.api.list).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("mergeEntities", () => {
+    it("add an entity", () => {
+      expect(
+        mergeEntities<Record<string, { id: number; name: string }>>(
+          { actions: { id: 1, name: "foo" } },
+          { questions: { id: 2, name: "bar" } },
+        ),
+      ).toEqual({
+        actions: { id: 1, name: "foo" },
+        questions: { id: 2, name: "bar" },
+      });
+    });
+
+    it("merge entity keys", () => {
+      expect(
+        mergeEntities<Record<string, Record<string, string | number>>>(
+          { actions: { id: 1, name: "foo", prop1: 123 } },
+          { actions: { id: 1, name: "bar", prop2: 456 } },
+        ),
+      ).toEqual({ actions: { id: 1, name: "bar", prop1: 123, prop2: 456 } });
+    });
+
+    it("delete an entity", () => {
+      expect(
+        mergeEntities(
+          { databases: { id: 1 }, questions: { id: 2 } },
+          { questions: undefined },
+        ),
+      ).toEqual({ databases: { id: 1 } });
     });
   });
 });
