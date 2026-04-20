@@ -22,7 +22,14 @@ import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { Box, Group, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Group,
+  PopoverBackButton,
+  Stack,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
@@ -32,16 +39,20 @@ import {
 import { RenderIfHasContent } from "../RenderIfHasContent/RenderIfHasContent";
 import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
+import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
 import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
+import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
 import {
   SaveButton,
   shouldShowSaveButton,
 } from "../SdkQuestion/components/SaveButton";
 import { SummarizeDropdown } from "../SdkQuestion/components/Summarize/SummarizeDropdown";
+import { ToolbarButton } from "../SdkQuestion/components/util/ToolbarButton";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
+import ToolbarButtonS from "../SdkQuestion/styles/ToolbarButton.module.css";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import SdkQuestionDefaultViewS from "./SdkQuestionDefaultView.module.css";
@@ -207,11 +218,60 @@ export const SdkQuestionDefaultView = ({
         {queryResults && (
           <SdkToolbar
             isMobile={isMobile}
-            withChartTypeSelector={withChartTypeSelector}
-            withQuestionSettings={!isNativeQuestion}
-            isEditorOpen={isEditorOpen}
-            onToggleEditor={toggleEditor}
+            data-testid="interactive-question-result-toolbar"
+            left={{
+              desktop: isEditorOpen ? (
+                <PopoverBackButton
+                  onClick={toggleEditor}
+                  c="brand"
+                  fz="md"
+                  ml="sm"
+                >
+                  {t`Back to visualization`}
+                </PopoverBackButton>
+              ) : (
+                withChartTypeSelector && (
+                  <>
+                    <Button.Group>
+                      <ChartTypeDropdown />
+                      <QuestionSettingsDropdown />
+                    </Button.Group>
+
+                    {!isNativeQuestion && (
+                      <Divider
+                        mx="xs"
+                        orientation="vertical"
+                        style={{
+                          color: "var(--mb-color-border) !important",
+                        }}
+                      />
+                    )}
+                  </>
+                )
+              ),
+              mobile: ({ className, styles }) =>
+                isEditorOpen ? (
+                  <ToolbarButton
+                    isHighlighted={false}
+                    variant="default"
+                    icon="chevronleft"
+                    label={t`Back to visualization`}
+                    c="brand"
+                    justify="start"
+                    className={cx(
+                      ToolbarButtonS.PrimaryToolbarButton,
+                      className,
+                    )}
+                    onClick={toggleEditor}
+                  />
+                ) : (
+                  withChartTypeSelector && (
+                    <ChartTypeDropdown className={className} styles={styles} />
+                  )
+                ),
+            }}
             desktopExtra={
+              !isEditorOpen &&
               !isNativeQuestion && (
                 <>
                   <FilterDropdown />
@@ -220,14 +280,8 @@ export const SdkQuestionDefaultView = ({
                 </>
               )
             }
-            right={({ isMobile, className }) =>
-              isMobile ? (
-                <EditorButton
-                  className={className}
-                  isOpen={isEditorOpen}
-                  onClick={toggleEditor}
-                />
-              ) : (
+            right={{
+              desktop: (
                 <>
                   {!isEditorOpen && (
                     <>
@@ -235,11 +289,18 @@ export const SdkQuestionDefaultView = ({
                       <QuestionAlertsButton />
                     </>
                   )}
+
                   <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
                 </>
-              )
-            }
-            data-testid="interactive-question-result-toolbar"
+              ),
+              mobile: ({ className }) => (
+                <EditorButton
+                  className={className}
+                  isOpen={isEditorOpen}
+                  onClick={toggleEditor}
+                />
+              ),
+            }}
           />
         )}
 
