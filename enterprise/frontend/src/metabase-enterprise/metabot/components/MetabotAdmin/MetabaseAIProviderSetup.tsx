@@ -1,8 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
+import {
+  useRefreshTokenStatusMutation,
+  useUpdateMetabotSettingsMutation,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useMetabotSetupContext } from "metabase/metabot/components/MetabotAdmin/MetabotSetup";
@@ -314,7 +317,10 @@ function MetabaseManagedProviderCard({
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
   const isLocked = metabotUsage?.["is-locked"];
-  const totalCost = getMetabaseUsageCost(metabotUsage?.tokens, pricing);
+  const totalCost = getMetabaseUsageCost(metabotUsage, pricing);
+  const [refreshTokenStatus] = useRefreshTokenStatusMutation();
+
+  useEffect(refreshTokenStatus, [refreshTokenStatus]);
 
   return (
     <Stack gap="md">
