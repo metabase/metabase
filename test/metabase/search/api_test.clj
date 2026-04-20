@@ -26,7 +26,7 @@
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
 (comment
   ;; We need this to ensure the engine hierarchy is registered
@@ -1563,7 +1563,60 @@
                (search :rasta "exclude"))))
       (testing "getting models should return only models that are applied"
         (is (= #{"dashboard" "collection"}
-               (get-available-models :q search-term :filter_items_in_personal_collection "exclude")))))))
+               (get-available-models :q search-term :filter_items_in_personal_collection "exclude"))))
+      (testing "admin exclude-others excludes other users' personal collection items"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]
+                 ["collection" coll-sub-public]
+                 ["dataset" model-crowberto]
+                 ["dataset" model-sub-crowberto]
+                 ["collection" coll-sub-crowberto]}
+               (search :crowberto "exclude-others"))))
+      (testing "non-admin exclude-others sees own personal items plus public"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]
+                 ["collection" coll-sub-public]
+                 ["card" card-rasta]
+                 ["card" card-sub-rasta]
+                 ["collection" coll-sub-rasta]}
+               (search :rasta "exclude-others"))))
+      (testing "admin only-mine"
+        (is (= #{["dataset" model-crowberto]
+                 ["dataset" model-sub-crowberto]
+                 ["collection" coll-sub-crowberto]}
+               (search :crowberto "only-mine"))))
+      (testing "non-admin only-mine"
+        (is (= #{["card" card-rasta]
+                 ["card" card-sub-rasta]
+                 ["collection" coll-sub-rasta]}
+               (search :rasta "only-mine"))))
+      (testing "search-app context default excludes others' personal collections for admin"
+        (let [search-with-context (fn [user]
+                                    (->> (mt/user-http-request user :get 200 "search"
+                                                               :q search-term
+                                                               :context "search-app")
+                                         :data
+                                         (map (juxt :model :id))
+                                         set))]
+          (is (not (contains? (search-with-context :crowberto) ["card" card-rasta]))
+              "Admin should not see rasta's card in search-app context with default filter")
+          (is (not (contains? (search-with-context :crowberto) ["card" card-sub-rasta]))
+              "Admin should not see rasta's sub-collection card in search-app context with default filter")
+          (is (contains? (search-with-context :crowberto) ["dataset" model-crowberto])
+              "Admin should still see their own personal collection items")))
+      (testing "in-place engine: search-app context default should still exclude others' personal collections (#UXW-3238)"
+        (search.tu/with-legacy-search
+          (let [search-with-context (fn [user]
+                                      (->> (mt/user-http-request user :get 200 "search"
+                                                                 :q search-term
+                                                                 :context "search-app")
+                                           :data
+                                           (map (juxt :model :id))
+                                           set))]
+            (is (not (contains? (search-with-context :crowberto) ["card" card-rasta]))
+                "Admin should not see rasta's card even with in-place engine")
+            (is (not (contains? (search-with-context :crowberto) ["card" card-sub-rasta]))
+                "Admin should not see rasta's sub-collection card even with in-place engine")))))))
 
 (deftest collection-effective-parent-test
   (mt/with-temp [:model/Collection coll-1  {:name "Collection 1"}
