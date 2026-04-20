@@ -382,17 +382,11 @@
         result        (metabot-construct/execute-program source-entity nil program)]
     (get-in result [:structured-output :query])))
 
-(defn- strip-query-for-serialization
-  "JSON round-trip a lib query to strip lib metadata, yielding a plain MBQL 5 map
-  that can be serialized into a continuation token and passed to the QP."
-  [query]
-  (json/decode+kw (json/encode query)))
-
 (defn- evaluate-program-for-execution
-  "Evaluate a program and return a stripped MBQL 5 query map suitable for serialization
-  and QP execution (see [[strip-query-for-serialization]])."
+  "Evaluate a program and return a plain MBQL 5 query map suitable for serialization
+  into a continuation token and execution by the QP."
   [program]
-  (strip-query-for-serialization (evaluate-program-to-live-query program)))
+  (lib/prepare-for-serialization (evaluate-program-to-live-query program)))
 
 (api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
   "Construct an MBQL query from a structured agent-lib program.
@@ -435,15 +429,14 @@
 
 (defn- extract-total-limit
   "Pull the user's :limit off a live lib query's last stage and return
-   {:query <stripped-limitless-query> :total-limit <int>}. The :limit is removed
+   {:query <serializable-limitless-query> :total-limit <int>}. The :limit is removed
    because it is enforced via pagination in the application layer, and capped at
-   the combined query endpoint's hard maximum. The returned :query is run through
-   [[strip-query-for-serialization]] so downstream code and continuation tokens
-   see a consistent plain-map form."
+   the combined query endpoint's hard maximum. The returned :query is prepared for
+   serialization so it can round-trip through a continuation token."
   [live-query]
   (let [user-limit  (lib/current-limit live-query)
         total-limit (min (or user-limit default-query-row-limit) max-total-row-limit)]
-    {:query       (strip-query-for-serialization (lib/limit live-query nil))
+    {:query       (lib/prepare-for-serialization (lib/limit live-query nil))
      :total-limit total-limit}))
 
 (defn- rows-before-page
@@ -466,10 +459,10 @@
        (< (rows-before-page (inc page)) total-limit)))
 
 (defn- apply-page-to-query
-  "Set `:page` on the last stage of a serialized MBQL 5 query map. Operates on the
-  stripped (post-[[strip-query-for-serialization]]) form because the continuation-token
-  path only has that shape available — rehydrating to a live lib query here would
-  require a metadata provider we don't currently plumb through the token."
+  "Set `:page` on the last stage of a plain MBQL 5 query map (lib metadata already
+  stripped). Operates on the plain-map form because the continuation-token path only
+  has that shape available — rehydrating to a live lib query here would require a
+  metadata provider we don't currently plumb through the token."
   [query-map page items]
   (let [stages   (:stages query-map)
         last-idx (dec (count stages))]
