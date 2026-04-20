@@ -57,6 +57,7 @@ export const {
   setIsProcessing,
   setNavigateToPath,
   setProfileOverride,
+  toolCallArgs,
   toolCallStart,
   toolCallEnd,
   setMetabotReqIdOverride,
@@ -324,36 +325,36 @@ export const sendAgentRequest = createAsyncThunk<
           onDataPart: function handleDataPart(part) {
             match(part)
               // only update the convo state if the request is successful
-              .with({ type: "state" }, (part) => (state = part.value))
-              .with({ type: "todo_list" }, (part) => {
+              .with({ type: "data-state" }, (part) => (state = part.data))
+              .with({ type: "data-todo_list" }, (part) => {
                 const message: Omit<
                   MetabotAgentTodoListChatMessage,
                   "id" | "role"
                 > = {
                   type: "todo_list",
-                  payload: part.value,
+                  payload: part.data,
                 };
 
                 dispatch(addAgentMessage({ ...message, agentId }));
               })
-              .with({ type: "code_edit" }, (part) => {
-                dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+              .with({ type: "data-code_edit" }, (part) => {
+                dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
 
-                if (part.value.buffer_id === "qb") {
+                if (part.data.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
               })
-              .with({ type: "navigate_to" }, (part) => {
-                dispatch(setNavigateToPath(part.value));
+              .with({ type: "data-navigate_to" }, (part) => {
+                dispatch(setNavigateToPath(part.data));
 
                 if (!isEmbeddingSdk() && !isWorkspace) {
-                  dispatch(push(part.value) as UnknownAction);
+                  dispatch(push(part.data) as UnknownAction);
                 }
               })
-              .with({ type: "transform_suggestion" }, ({ value }) => {
+              .with({ type: "data-transform_suggestion" }, ({ data }) => {
                 const suggestedTransform = {
-                  ...value,
-                  id: value.id || undefined,
+                  ...data,
+                  id: data.id || undefined,
                   active: true,
                   suggestionId: nanoid(),
                 };
@@ -382,11 +383,49 @@ export const sendAgentRequest = createAsyncThunk<
           onTextPart: function handleTextPart(part) {
             dispatch(addAgentTextDelta({ agentId, text: String(part) }));
           },
-          onToolCallPart: function handleToolCallPart(part) {
-            dispatch(toolCallStart({ ...part, agentId }));
+          onToolInputStart: function handleToolInputStart(part) {
+            dispatch(
+              toolCallStart({
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                agentId,
+              }),
+            );
+          },
+          onToolInputAvailable: function handleToolInputAvailable(part) {
+            dispatch(
+              toolCallArgs({
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                args:
+                  typeof part.input === "string"
+                    ? part.input
+                    : JSON.stringify(part.input),
+                agentId,
+              }),
+            );
           },
           onToolResultPart: function handleToolResultPart(part) {
-            dispatch(toolCallEnd({ ...part, agentId }));
+            dispatch(
+              toolCallEnd({
+                toolCallId: part.toolCallId,
+                result:
+                  typeof part.output === "string"
+                    ? part.output
+                    : JSON.stringify(part.output),
+                agentId,
+              }),
+            );
+          },
+          onToolErrorPart: function handleToolErrorPart(part) {
+            dispatch(
+              toolCallEnd({
+                toolCallId: part.toolCallId,
+                result: part.errorText,
+                isError: true,
+                agentId,
+              }),
+            );
           },
           onError: function handleError(part) {
             error = part;

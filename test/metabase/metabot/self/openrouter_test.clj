@@ -113,8 +113,11 @@
     (testing "single tool call chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
-    (testing "through full pipeline produces tool-input + usage"
+    (testing "through full pipeline produces tool-input-start + tool-input + usage"
       (is (=? [{:type :start}
+               {:type     :tool-input-start
+                :id       string?
+                :function "get-time"}
                {:type      :tool-input
                 :id        string?
                 :function  "get-time"
@@ -132,11 +135,13 @@
     (testing "parallel tool calls are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
-    (testing "through full pipeline produces two tool-inputs + usage"
+    (testing "through full pipeline produces two tool-input-start + two tool-inputs + usage"
       (is (=? [{:type :start}
+               {:type :tool-input-start :function "get-time"}
                {:type      :tool-input
                 :function  "get-time"
                 :arguments {:tz string?}}
+               {:type :tool-input-start :function "convert-currency"}
                {:type      :tool-input
                 :function  "convert-currency"
                 :arguments {:amount number? :from string? :to string?}}
@@ -155,9 +160,10 @@
                {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available}
                {:type :usage}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
-    (testing "through full pipeline produces text + tool-input + usage"
+    (testing "through full pipeline produces text + tool-input-start + tool-input + usage"
       (is (=? [{:type :start}
                {:type :text :text #"(?s)I'm going to get.*call now:"}
+               {:type :tool-input-start :function "get-time"}
                {:type      :tool-input
                 :function  "get-time"
                 :arguments {:tz string?}}
@@ -176,6 +182,7 @@
                              (self.core/lite-aisdk-xf))
                     raw-chunks)]
       (is (=? [{:type :start}
+               {:type :tool-input-start :function "get-time"}
                {:type      :tool-input
                 :function  "get-time"
                 :arguments {:tz string?}}

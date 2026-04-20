@@ -1,208 +1,62 @@
-import { isMatching, match } from "ts-pattern";
-import _ from "underscore";
+import { isMatching } from "ts-pattern";
 
-import type { JSONValue, MetabotHistory } from "metabase-types/api";
+import type { MetabotHistory } from "metabase-types/api";
 
 import {
   type KnownDataPart,
-  dataPartSchema,
-  finishPartSchema,
+  dataEventSchema,
   knownDataPartTypes,
-  toolCallPartSchema,
-  toolResultPartSchema,
+  toolInputAvailableSchema,
+  toolOutputAvailableSchema,
+  toolOutputErrorSchema,
 } from "./schemas";
+import { parseSSEStream } from "./sse-stream";
+import type {
+  FinishReason,
+  MessageMetadata,
+  SSEEvent,
+  ToolInputAvailableEvent,
+  ToolInputStartEvent,
+  ToolOutputAvailableEvent,
+  ToolOutputErrorEvent,
+} from "./sse-types";
+import { isDataEvent } from "./sse-types";
 
-const StreamingPartTypeRegistry = {
-  TEXT: "0",
-  DATA: "2",
-  ERROR: "3",
-  FINISH_MESSAGE: "d",
-  TOOL_CALL: "9",
-  TOOL_RESULT: "a",
-} as const;
+type ToolCall =
+  | { toolCallId: string; toolName: string; state: "call" }
+  | {
+      toolCallId: string;
+      toolName: string;
+      state: "result";
+      value: unknown;
+      error?: string;
+    };
 
-const StreamingPartTypes = Object.values(StreamingPartTypeRegistry);
-
-type StreamingPartType = (typeof StreamingPartTypes)[number];
-
-/**
- * Concatenates all the chunks into a single Uint8Array
- */
-function concatChunks(chunks: Uint8Array[]): Uint8Array {
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const concatenatedChunks = new Uint8Array(totalLength);
-
-  let offset = 0;
-  for (const chunk of chunks) {
-    concatenatedChunks.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return concatenatedChunks;
-}
-
-function parseDataStreamPart(line: string) {
-  const firstSeparatorIndex = line.indexOf(":");
-  if (firstSeparatorIndex === -1) {
-    throw new Error("Failed to parse stream string. No separator found.");
-  }
-
-  const prefix = line.slice(0, firstSeparatorIndex);
-  if (!StreamingPartTypes.includes(prefix as StreamingPartType)) {
-    console.warn(`Received invalid message code: ${prefix}`);
-    return;
-  }
-
-  const code = prefix as StreamingPartType;
-  const textValue = line.slice(firstSeparatorIndex + 1);
-  const jsonValue: JSONValue = JSON.parse(textValue);
-
-  return match(code)
-    .with(StreamingPartTypeRegistry.TEXT, (code) => ({
-      code,
-      name: "text" as const,
-      value: jsonValue,
-    }))
-    .with(StreamingPartTypeRegistry.DATA, (code) => ({
-      code,
-      name: "data" as const,
-      value: dataPartSchema.validateSync(jsonValue, { strict: true }),
-    }))
-    .with(StreamingPartTypeRegistry.TOOL_CALL, (code) => ({
-      code,
-      name: "tool_call" as const,
-      value: toolCallPartSchema.validateSync(jsonValue, { strict: true }),
-    }))
-    .with(StreamingPartTypeRegistry.TOOL_RESULT, (code) => ({
-      code,
-      name: "tool_result" as const,
-      value: toolResultPartSchema.validateSync(jsonValue, { strict: true }),
-    }))
-    .with(StreamingPartTypeRegistry.ERROR, (code) => ({
-      code,
-      name: "error" as const,
-      value: jsonValue,
-    }))
-    .with(StreamingPartTypeRegistry.FINISH_MESSAGE, (code) => ({
-      code,
-      name: "finish_message" as const,
-      value: finishPartSchema.validateSync(jsonValue, { strict: true }),
-    }))
-    .exhaustive();
-}
-
-type ParsedStreamPart = Exclude<ReturnType<typeof parseDataStreamPart>, void>;
-type ParsedStreamPartName = ParsedStreamPart["name"];
-
-function isKnownDataPart(streamPart: ParsedStreamPart): streamPart is Omit<
-  Extract<ParsedStreamPart, { name: "data" }>,
-  "value"
-> & {
-  value: KnownDataPart;
-} {
-  return (
-    streamPart.name === "data" &&
-    knownDataPartTypes.includes(streamPart.value.type)
-  );
-}
-
-type AccumulatedStreamParts = {
-  toolCalls: (
-    | { toolCallId: string; toolName: string; state: "call" }
-    | { toolCallId: string; toolName: string; state: "result"; value: unknown }
-  )[];
-  text: null | string;
-  data: unknown[];
-  parts: ParsedStreamPart[];
-  history: MetabotHistory;
-};
-
-function accumulateStreamParts(streamParts: ParsedStreamPart[]) {
-  const acc: AccumulatedStreamParts = {
-    toolCalls: [],
-    data: [],
-    text: null,
-    parts: streamParts,
-    history: [],
-  };
-
-  return streamParts.reduce((acc, streamPart, index) => {
-    if (streamPart.name === "text") {
-      const lastStreamPart = streamParts[index - 1];
-      acc.text = `${acc.text ?? ""}${streamPart.value}`;
-      if (lastStreamPart?.name === "text") {
-        const historyEntry = acc.history.pop();
-        acc.history.push({
-          ...historyEntry,
-          content: historyEntry.content + streamPart.value,
-        });
-      } else {
-        acc.history.push({ role: "assistant", content: streamPart.value });
-      }
-    }
-    if (streamPart.name === "data") {
-      acc.data = acc.data.concat(streamPart.value);
-    }
-    if (streamPart.name === "tool_call") {
-      acc.toolCalls.push({ ...streamPart.value, state: "call" });
-      acc.history.push({
-        role: "assistant",
-        tool_calls: [
-          {
-            id: streamPart.value.toolCallId,
-            name: streamPart.value.toolName,
-            arguments: streamPart.value.args,
-          },
-        ],
-      });
-    }
-    if (streamPart.name === "tool_result") {
-      const toolCallId = streamPart.value.toolCallId;
-      const index = acc.toolCalls.findIndex((v) => v.toolCallId === toolCallId);
-
-      if (index === -1) {
-        throw new Error(
-          "Tool Results must be preceded by the tool call with the same toolCallId",
-        );
-      }
-
-      acc.toolCalls[index] = {
-        ...acc.toolCalls[index],
-        state: "result",
-        value: streamPart.value.result,
-      };
-      acc.history.push({
-        role: "tool",
-        content: streamPart.value.result,
-        tool_call_id: streamPart.value.toolCallId,
-      });
-    }
-
-    return acc;
-  }, acc);
-}
-
-type StreamPartValue<name extends ParsedStreamPartName> = Extract<
-  ParsedStreamPart,
-  { name: name }
->["value"];
+type DataPart = { type: string; data: unknown };
 
 export type AIStreamingConfig = {
-  onTextPart?: (part: StreamPartValue<"text">) => void;
-  // callback is only called if this version of the client is aware of the received data part type
+  onTextPart?: (delta: string) => void;
   onDataPart?: (part: KnownDataPart) => void;
-  onToolCallPart?: (part: StreamPartValue<"tool_call">) => void;
-  onToolResultPart?: (part: StreamPartValue<"tool_result">) => void;
-  onError?: (error: StreamPartValue<"error">) => void;
+  onToolInputStart?: (event: ToolInputStartEvent) => void;
+  onToolInputAvailable?: (event: ToolInputAvailableEvent) => void;
+  onToolResultPart?: (event: ToolOutputAvailableEvent) => void;
+  onToolErrorPart?: (event: ToolOutputErrorEvent) => void;
+  onError?: (errorText: string) => void;
+  onMessageMetadata?: (metadata: MessageMetadata) => void;
 };
 
-export interface ProcessedChatResponse extends AccumulatedStreamParts {
+export interface ProcessedChatResponse {
   aborted: boolean;
+  toolCalls: ToolCall[];
+  history: MetabotHistory;
+  data: DataPart[];
+  messageMetadata?: MessageMetadata;
+  finishReason?: FinishReason;
 }
 
 /**
- * Processes a stream that follows our AI response protocol and notifies
- * the appropriate handlers as text, data, tool call, etc. parts come in.
+ * Processes an SSE stream that follows our AI response protocol and notifies
+ * the appropriate handlers as events arrive.
  *
  * This function does not error on aborted requests and will return whatever
  * values that it has received so far as a result.
@@ -211,73 +65,172 @@ export async function processChatResponse(
   stream: ReadableStream<Uint8Array>,
   config: AIStreamingConfig,
 ): Promise<ProcessedChatResponse> {
-  const parsedStreamParts: ParsedStreamPart[] = [];
-  const reader = stream.getReader();
-  const decoder = new TextDecoder();
-  let chunks: Uint8Array[] = [];
+  const result: ProcessedChatResponse = {
+    aborted: false,
+    toolCalls: [],
+    history: [],
+    data: [],
+  };
 
-  let aborted = false;
-  while (!aborted) {
-    try {
-      const { value: chunk } = await reader.read();
-
-      if (chunk) {
-        chunks.push(chunk);
-        if (chunk[chunk.length - 1] !== "\n".charCodeAt(0)) {
-          // if the last character is not a newline, we have not read the whole JSON value
-          continue;
-        }
-      }
-
-      if (chunks.length === 0) {
-        break; // we have reached the end of the stream
-      }
-
-      const concatenatedChunks = concatChunks(chunks);
-      chunks = [];
-
-      const streamParts = _.compact(
-        decoder
-          .decode(concatenatedChunks, { stream: true })
-          .split("\n")
-          .filter((line) => line !== "") // splitting leaves an empty string at the end
-          .map(parseDataStreamPart),
-      );
-
-      for (const streamPart of streamParts) {
-        parsedStreamParts.push(streamPart);
-
-        if (streamPart.name === "text") {
-          config.onTextPart?.(streamPart.value);
-        }
-        if (streamPart.name === "data") {
-          if (isKnownDataPart(streamPart)) {
-            config.onDataPart?.(streamPart.value);
-          } else {
-            console.warn("Skipping unknown data part:", streamPart);
-          }
-        }
-        if (streamPart.name === "tool_call") {
-          config.onToolCallPart?.(streamPart.value);
-        }
-        if (streamPart.name === "tool_result") {
-          config.onToolResultPart?.(streamPart.value);
-        }
-        if (streamPart.name === "error") {
-          config.onError?.(streamPart.value);
-        }
-      }
-    } catch (err) {
-      if (isMatching({ name: "AbortError" }, err)) {
-        aborted = true;
-      } else {
-        throw err;
-      }
+  try {
+    for await (const event of parseSSEStream(stream)) {
+      processEvent(event, result, config);
+    }
+  } catch (err) {
+    if (isMatching({ name: "AbortError" }, err)) {
+      result.aborted = true;
+    } else {
+      throw err;
     }
   }
 
-  return {
-    ...accumulateStreamParts(parsedStreamParts),
-    aborted,
-  };
+  return result;
+}
+
+function processEvent(
+  event: SSEEvent,
+  result: ProcessedChatResponse,
+  config: AIStreamingConfig,
+) {
+  switch (event.type) {
+    case "text-delta": {
+      config.onTextPart?.(event.delta);
+      const lastEntry = result.history[result.history.length - 1];
+      if (
+        lastEntry &&
+        lastEntry.role === "assistant" &&
+        "content" in lastEntry
+      ) {
+        lastEntry.content += event.delta;
+      } else {
+        result.history.push({ role: "assistant", content: event.delta });
+      }
+      break;
+    }
+
+    case "tool-input-start": {
+      config.onToolInputStart?.(event);
+      break;
+    }
+
+    case "tool-input-available": {
+      toolInputAvailableSchema.validateSync(event, { strict: true });
+      config.onToolInputAvailable?.(event);
+      result.toolCalls.push({
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        state: "call",
+      });
+      result.history.push({
+        role: "assistant",
+        tool_calls: [
+          {
+            id: event.toolCallId,
+            name: event.toolName,
+            arguments:
+              typeof event.input === "string"
+                ? event.input
+                : JSON.stringify(event.input),
+          },
+        ],
+      });
+      break;
+    }
+
+    case "tool-output-available": {
+      toolOutputAvailableSchema.validateSync(event, { strict: true });
+      const index = result.toolCalls.findIndex(
+        (tc) => tc.toolCallId === event.toolCallId,
+      );
+      if (index === -1) {
+        throw new Error(
+          "Tool Results must be preceded by the tool call with the same toolCallId",
+        );
+      }
+      config.onToolResultPart?.(event);
+      result.toolCalls[index] = {
+        ...result.toolCalls[index],
+        state: "result",
+        value: event.output,
+      };
+      result.history.push({
+        role: "tool",
+        content: event.output,
+        tool_call_id: event.toolCallId,
+      });
+      break;
+    }
+
+    case "tool-output-error": {
+      toolOutputErrorSchema.validateSync(event, { strict: true });
+      const index = result.toolCalls.findIndex(
+        (tc) => tc.toolCallId === event.toolCallId,
+      );
+      if (index === -1) {
+        throw new Error(
+          "Tool Results must be preceded by the tool call with the same toolCallId",
+        );
+      }
+      config.onToolErrorPart?.(event);
+      result.toolCalls[index] = {
+        ...result.toolCalls[index],
+        state: "result",
+        value: undefined,
+        error: event.errorText,
+      };
+      result.history.push({
+        role: "tool",
+        content: event.errorText,
+        tool_call_id: event.toolCallId,
+      });
+      break;
+    }
+
+    case "error": {
+      config.onError?.(event.errorText);
+      break;
+    }
+
+    case "message-metadata": {
+      result.messageMetadata = event.messageMetadata;
+      config.onMessageMetadata?.(event.messageMetadata);
+      break;
+    }
+
+    case "finish": {
+      if (event.finishReason) {
+        result.finishReason = event.finishReason;
+      }
+      // finish chunk's usage supersedes any prior mid-stream message-metadata snapshot
+      if (event.messageMetadata) {
+        result.messageMetadata = event.messageMetadata;
+        config.onMessageMetadata?.(event.messageMetadata);
+      }
+      break;
+    }
+
+    default: {
+      // "data-*" event type
+      if (isDataEvent(event)) {
+        dataEventSchema.validateSync(event, { strict: true });
+        const dataPart: DataPart = { type: event.type, data: event.data };
+        result.data.push(dataPart);
+        if (knownDataPartTypes.includes(event.type)) {
+          config.onDataPart?.(dataPart as KnownDataPart);
+        } else {
+          console.warn("Skipping unknown data part:", dataPart);
+        }
+      }
+
+      // NOTE: allowed events not yet handled
+      //   lifecycle:  start, start-step, finish-step, abort
+      //   text:       text-start, text-end
+      //   tool:       tool-input-delta, tool-input-error, tool-approval-request,
+      //               tool-output-denied
+      //   reasoning:  reasoning-start, reasoning-delta, reasoning-end, reasoning-file
+      //   sources:    source-url, source-document
+      //   files:      file
+      break;
+    }
+  }
 }

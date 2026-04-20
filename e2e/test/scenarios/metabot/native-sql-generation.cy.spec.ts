@@ -235,9 +235,17 @@ describe("Native SQL generation", () => {
 
 // Response helpers
 const mockCodeEditResponse = (sql: string) =>
-  `2:{"type":"code_edit","version":1,"value":{"buffer_id":"qb","mode":"rewrite","value":"${sql}"}}
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.sseBody([
+    {
+      type: "data-code_edit",
+      id: "d1",
+      data: { buffer_id: "qb", mode: "rewrite", value: sql },
+    },
+  ]);
 
 const mockTextOnlyResponse = (text: string) =>
-  `0:"${text}"
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.sseBody([
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: text },
+    { type: "text-end", id: "t1" },
+  ]);

@@ -439,7 +439,7 @@
    :usage-atom usage-atom})
 
 (defn- final-state-part [memory]
-  {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
+  {:type :data, :data-type "state", :data (memory/get-state memory)})
 
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
@@ -484,7 +484,7 @@
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
-          ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
+          ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
           result'            (reduce (xf rf) result llm-call)
@@ -514,7 +514,6 @@
             :else
             (do (log/info "Agent loop complete"
                           {:iterations iteration
-                           ;; TODO: decide if we want this reason to float up to frontend
                            :reason     (finish-reason iteration max-iter parts)})
                 (assoc loop-state
                        :status :done
@@ -545,7 +544,6 @@
   (write-debug-log-file! debug-log)
   {:type      :data
    :data-type "debug_log"
-   :version   1
    :data      debug-log})
 
 (def ^:private profile-id->required-permission

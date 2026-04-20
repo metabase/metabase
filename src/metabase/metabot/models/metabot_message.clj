@@ -1,5 +1,6 @@
 (ns metabase.metabot.models.metabot-message
   (:require
+   [metabase.metabot.persistence :as metabot-persistence]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,3 +16,8 @@
   {:usage mi/transform-json
    :data  mi/transform-json
    :role  mi/transform-keyword})
+
+(t2/define-after-select :model/MetabotMessage [message]
+  (cond-> message
+    (= 1 (:data_version message))
+    (update :data metabot-persistence/migrate-v1->v2)))

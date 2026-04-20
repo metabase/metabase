@@ -29,11 +29,35 @@ const adHocQuestionPath = `/question#${btoa(
   }),
 )}`;
 
-const metabotResponse = `0:"Here is the [question link](${adHocQuestionPath})"`;
-const metabotResponseWithNavigateTo = `${metabotResponse}
-2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
+const metabotResponse = H.sseBody([
+  { type: "text-start", id: "t1" },
+  {
+    type: "text-delta",
+    id: "t1",
+    delta: `Here is the [question link](${adHocQuestionPath})`,
+  },
+  { type: "text-end", id: "t1" },
+]);
+const metabotResponseWithNavigateTo = H.sseBody([
+  { type: "text-start", id: "t1" },
+  {
+    type: "text-delta",
+    id: "t1",
+    delta: `Here is the [question link](${adHocQuestionPath})`,
+  },
+  { type: "text-end", id: "t1" },
+  { type: "data-navigate_to", id: "d1", data: adHocQuestionPath },
+]);
 
-const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
+const metabotRetryResponse = H.sseBody([
+  { type: "text-start", id: "t1" },
+  {
+    type: "text-delta",
+    id: "t1",
+    delta: `Retry: Here is the [question link](${adHocQuestionPath})`,
+  },
+  { type: "text-end", id: "t1" },
+]);
 
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {

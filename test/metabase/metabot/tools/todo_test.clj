@@ -23,7 +23,6 @@
           data-part (first (:data-parts result))]
       (is (= :data (:type data-part)))
       (is (= "todo_list" (:data-type data-part)))
-      (is (= 1 (:version data-part)))
       (is (= todos (:data data-part)))))
 
   (testing "todo-write rejects invalid status"

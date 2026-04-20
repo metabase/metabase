@@ -66,7 +66,7 @@
                                   :profile-id :embedding_next
                                   :context    {}}))]
             ;; Should get parts + state data
-            ;; Note: :finish is not emitted as a part; it's handled by aisdk-line-xf completion
+            ;; Note: :finish is not emitted as a part; it's handled by parts->aisdk-sse-xf completion
             (is (pos? (count result)))
             ;; Should have state data (final part)
             (is (some #(= :data (:type %)) result)))))
@@ -165,7 +165,7 @@
             (is (pos? (count result)))
             ;; Should have text part
             (is (some #(= :text (:type %)) result))
-            ;; Should have state data part (finish is handled by aisdk-line-xf, not emitted as part)
+            ;; Should have state data part (finish is handled by parts->aisdk-sse-xf, not emitted as part)
             (is (some #(and (= :data (:type %))
                             (map? (:data %)))
                       result))))))))
@@ -308,6 +308,7 @@
                                                     :database_id  (mt/id)}])]
               (testing "Should successfully go through 3 iterations"
                 (is (=? [{:type :start}
+                         {:type :tool-input-start :function "search"}
                          {:type :tool-input :function "search"}
                      ;; Cumulative usage after iteration 1: 100 prompt, 20 completion
                          {:type :usage :usage {:promptTokens 100 :completionTokens 20}}
@@ -315,6 +316,7 @@
                           :function "search"
                           :result   {:structured-output {:total_count 1}}}
                          {:type :start}
+                         {:type :tool-input-start :function "construct_notebook_query"}
                          {:type :tool-input :function "construct_notebook_query"}
                      ;; Cumulative usage after iteration 2: 100+200=300 prompt, 20+30=50 completion
                          {:type :usage :usage {:promptTokens 300 :completionTokens 50}}

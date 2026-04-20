@@ -9,12 +9,24 @@ describe("metabot > experimental", () => {
   describe("debug mode", () => {
     const mockResponse = () => {
       mockAgentEndpoint({
-        textChunks: [
-          `0:"Before"`,
-          `9:{"toolCallId":"debug_test","toolName":"debug_test","args":""}`,
-          `a:{"toolCallId":"debug_test","result":""}`,
-          `0:"After"`,
-          `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        events: [
+          { type: "text-start", id: "t1" },
+          { type: "text-delta", id: "t1", delta: "Before" },
+          { type: "text-end", id: "t1" },
+          {
+            type: "tool-input-available",
+            toolCallId: "debug_test",
+            toolName: "debug_test",
+            input: { query: "test" },
+          },
+          {
+            type: "tool-output-available",
+            toolCallId: "debug_test",
+            output: { result: "ok" },
+          },
+          { type: "text-start", id: "t2" },
+          { type: "text-delta", id: "t2", delta: "After" },
+          { type: "text-end", id: "t2" },
         ],
       });
     };

@@ -934,13 +934,15 @@
                      :role            "user"
                      :profile_id      "slackbot"
                      :total_tokens    0
-                     :data            [{:_type "TEXT" :role "user" :content "What is revenue?"}]})
+                     :data            [{:type "text" :text "What is revenue?"}]
+                     :data_version    2})
         (t2/insert! :model/MetabotMessage
                     {:conversation_id conv-id
                      :role            "assistant"
                      :profile_id      "slackbot"
                      :total_tokens    10
-                     :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]})
+                     :data            [{:type "text" :text "Here are the results."}]
+                     :data_version    2})
         (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
                                                                  (swap! harbormaster-calls conj feedback)
                                                                  true)]
@@ -959,12 +961,14 @@
                                          :message_id        conv-id
                                          :freeform_feedback "Great!"}
                      :source            "slack"
-                     :conversation_data {:messages [{:role        :user
-                                                     :data        [{:_type "TEXT" :role "user" :content "What is revenue?"}]
-                                                     :profile_id  "slackbot"}
-                                                    {:role        :assistant
-                                                     :data        [{:_type "TEXT" :role "assistant" :content "Here are the results."}]
-                                                     :profile_id  "slackbot"}]}}
+                     :conversation_data {:messages [{:role         :user
+                                                     :data         [{:type "text" :text "What is revenue?"}]
+                                                     :data_version 2
+                                                     :profile_id   "slackbot"}
+                                                    {:role         :assistant
+                                                     :data         [{:type "text" :text "Here are the results."}]
+                                                     :data_version 2
+                                                     :profile_id   "slackbot"}]}}
                     (first @harbormaster-calls)))))))))
 
 ;; -------------------------------- Visualization Integration Tests --------------------------------

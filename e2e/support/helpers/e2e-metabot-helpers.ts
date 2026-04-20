@@ -91,3 +91,20 @@ export const mockMetabotResponse = (response: StaticResponse) => {
     })
     .as("metabotAgent");
 };
+
+export function sseBody(events: (Record<string, unknown> | string)[]): string {
+  return [...events, { type: "finish" }, "[DONE]"]
+    .map((e) => {
+      const payload = typeof e === "string" ? e : JSON.stringify(e);
+      return `data: ${payload}\n\n`;
+    })
+    .join("");
+}
+
+export function sseTextResponse(text: string): string {
+  return sseBody([
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: text },
+    { type: "text-end", id: "t1" },
+  ]);
+}

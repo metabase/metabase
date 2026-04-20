@@ -8,6 +8,7 @@ import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotAgentId,
   MetabotConverstationState,
+  MetabotDebugToolCallMessage,
   MetabotState,
 } from "./types";
 
@@ -100,6 +101,15 @@ export const getConversationOrThrow = (
   }
   return convo;
 };
+
+export const findLastToolCallMessage = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+) =>
+  convo.messages.findLast(
+    (m): m is MetabotDebugToolCallMessage =>
+      m.type === "tool_call" && m.id === toolCallId,
+  );
 
 export const convoReducer =
   <

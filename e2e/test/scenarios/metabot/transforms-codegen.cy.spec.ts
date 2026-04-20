@@ -501,8 +501,15 @@ const createMockTransformSuggestionResponse = (
   text: string,
   transformJSON: string,
 ) => {
-  return `0:"${text}"
-2:{"type":"transform_suggestion","version":1,"value":${transformJSON}}
-2:{"type":"state","version":1,"value":{}}
-d:{"finishReason":"stop","usage":{}}`;
+  return H.sseBody([
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: text },
+    { type: "text-end", id: "t1" },
+    {
+      type: "data-transform_suggestion",
+      id: "d1",
+      data: JSON.parse(transformJSON),
+    },
+    { type: "data-state", id: "d2", data: {} },
+  ]);
 };

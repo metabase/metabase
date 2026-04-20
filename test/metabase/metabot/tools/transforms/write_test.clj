@@ -133,8 +133,7 @@
       (is (= 1 (count (:data-parts result))))
       (let [data-part (first (:data-parts result))]
         (is (= :data (:type data-part)))
-        (is (= "transform_suggestion" (:data-type data-part)))
-        (is (= 1 (:version data-part)))))))
+        (is (= "transform_suggestion" (:data-type data-part)))))))
 
 ;;; Memory Storage Tests
 

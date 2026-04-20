@@ -73,16 +73,15 @@ describe("query builder code edits from omnibot", () => {
     fetchMock.removeRoutes();
   });
 
-  it("updates the proposed SQL in query builder when omnibot streams a code_edit", async () => {
+  it("updates the proposed SQL in query builder when omnibot streams a data-code_edit", async () => {
     let requestBody: any;
 
     mockedAiStreamingQuery.mockImplementation(async (request, callbacks) => {
       requestBody = request.body;
 
       callbacks?.onDataPart?.({
-        type: "code_edit",
-        version: 1,
-        value: {
+        type: "data-code_edit",
+        data: {
           buffer_id: "qb",
           mode: "rewrite",
           value: SUGGESTED_SQL,

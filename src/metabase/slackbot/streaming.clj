@@ -11,9 +11,7 @@
    [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
@@ -171,7 +169,6 @@
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt stored-msg-id]}]
   (let [data-idx        (volatile! -1)
-        message         (metabot.envelope/user-message prompt)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
@@ -181,7 +178,9 @@
                           :capabilities               capabilities
                           :slack_channel_id           channel-id})
         messages        (conj (vec history) request-message)
-        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
+        _               (metabot.persistence/store-message! conversation-id "slackbot"
+                                                            [{:type "text" :text prompt}]
+                                                            :role          :user
                                                             :channel-id   channel-id
                                                             :slack-msg-id req-slack-msg-id
                                                             :ai-proxy?    (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))
@@ -194,10 +193,13 @@
                                    (when (and on-text (seq (:text part)))
                                      (on-text (:text part)))
 
-                                   :tool-input
+                                   :tool-input-start
                                    (when on-tool-start
                                      (on-tool-start {:id        (:id part)
                                                      :tool-name (:function part)}))
+
+                                   :tool-input
+                                   nil
 
                                    :tool-output
                                    (when on-tool-end
@@ -223,10 +225,21 @@
                  :profile-id :slackbot
                  :context    context}))
     (let [parts     @parts-atom
-          lines     (into [] (self.core/aisdk-line-xf) parts)
+          ;; Extract usage: take last usage per model (cumulative)
+          usage-map (transduce
+                     (filter #(= :usage (:type %)))
+                     (completing
+                      (fn [acc {:keys [usage model]}]
+                        (assoc acc (or model "unknown")
+                               {:prompt     (:promptTokens usage 0)
+                                :completion (:completionTokens usage 0)})))
+                     {}
+                     parts)
           pk        (metabot.persistence/store-message!
                      conversation-id "slackbot"
-                     (metabot.u/aisdk->messages :assistant lines)
+                     (metabot.persistence/parts->storable-content parts)
+                     :role         :assistant
+                     :usage        (when (seq usage-map) usage-map)
                      :channel-id   channel-id
                      :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
                      :user-id      api/*current-user-id*

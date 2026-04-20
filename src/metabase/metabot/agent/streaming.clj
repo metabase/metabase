@@ -67,63 +67,43 @@
 
 (defn todo-list-part
   "Create a TODO_LIST data part for streaming.
-  Todos should be a vector of todo item maps with :id, :content, :status, :priority keys.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.TODO_LIST, version=1, value=todos)"
+  Todos should be a vector of todo item maps with :id, :content, :status, :priority keys."
   [todos]
   {:type :data
    :data-type todo-list-type
-   :version 1
    :data todos})
 
 (defn code-edit-part
   "Create a CODE_EDIT data part for streaming.
-  Edit-data should be a map describing the code edit operation.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.CODE_EDIT, version=1, value=edit_data)"
+  Edit-data should be a map describing the code edit operation."
   [edit-data]
   {:type :data
    :data-type code-edit-type
-   :version 1
    :data edit-data})
 
 (defn transform-suggestion-part
   "Create a TRANSFORM_SUGGESTION data part for streaming.
-  Suggestion should be a map containing the suggested transform definition.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.TRANSFORM_SUGGESTION, version=1, value=suggestion)"
+  Suggestion should be a map containing the suggested transform definition."
   [suggestion]
   {:type :data
    :data-type transform-suggestion-type
-   :version 1
    :data suggestion})
 
 (defn adhoc-viz-part
   "Create an ADHOC_VIZ data part for streaming.
   Value should be a map with :query (dataset query), :link (question URL),
-  and optionally :title and :display.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.ADHOC_VIZ, version=1, value=adhoc_viz_value)"
+  and optionally :title and :display."
   [value]
   {:type :data
    :data-type adhoc-viz-type
-   :version 1
    :data value})
 
 (defn static-viz-part
   "Create a STATIC_VIZ data part for streaming.
-  Value should be a map with :entity_id (int) for the saved question or metric to render.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.STATIC_VIZ, version=1, value={\"entity_id\": entity_id})"
+  Value should be a map with :entity_id (int) for the saved question or metric to render."
   [value]
   {:type :data
    :data-type static-viz-type
-   :version 1
    :data value})
 
 ;;; Reaction Conversion

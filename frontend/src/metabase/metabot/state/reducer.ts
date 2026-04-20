@@ -18,6 +18,7 @@ import {
   type ConvoPayloadAction,
   convoReducer,
   createConversation,
+  findLastToolCallMessage,
   getMetabotInitialState,
   getRequestConversation,
   resetReactionState,
@@ -133,6 +134,11 @@ export const metabot = createSlice({
         }>,
       ) => {
         const { toolCallId, toolName, args } = action.payload;
+        // idempotent: both tool-input-start and tool-input-available are
+        // able to signal the start of a tool call
+        if (convo.activeToolCalls.some((tc) => tc.id === toolCallId)) {
+          return;
+        }
         convo.messages.push({
           id: toolCallId,
           role: "agent",
@@ -149,23 +155,62 @@ export const metabot = createSlice({
         });
       },
     ),
+    toolCallArgs: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          toolName: string;
+          args: string;
+        }>,
+      ) => {
+        const { toolCallId, toolName, args } = action.payload;
+        const existingMsg = findLastToolCallMessage(convo, toolCallId);
+        if (existingMsg) {
+          // if toolCallStart was called (tool-input-start event is optional)
+          // update the exisiting tool call record to include the args recieved
+          existingMsg.args = args;
+        } else {
+          convo.messages.push({
+            id: toolCallId,
+            role: "agent",
+            type: "tool_call",
+            name: toolName,
+            args,
+            status: "started",
+          });
+          convo.activeToolCalls.push({
+            id: toolCallId,
+            name: toolName,
+            message: TOOL_CALL_MESSAGES[toolName],
+            status: "started",
+          });
+        }
+      },
+    ),
     toolCallEnd: convoReducer(
       (
         convo,
-        action: ConvoPayloadAction<{ toolCallId: string; result?: any }>,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          result?: any;
+          isError?: boolean;
+        }>,
       ) => {
         convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
         );
 
-        // Update the message in messages array with result for debug history
-        const message = convo.messages.findLast(
-          (msg) =>
-            msg.type === "tool_call" && msg.id === action.payload.toolCallId,
+        const message = findLastToolCallMessage(
+          convo,
+          action.payload.toolCallId,
         );
-        if (message?.type === "tool_call") {
+        if (message) {
           message.status = "ended";
           message.result = action.payload.result;
+          if (action.payload.isError) {
+            message.is_error = true;
+          }
         }
       },
     ),

@@ -5,11 +5,10 @@ exports[`ai requests aiStreamingQuery should return full result of a successful 
   "aborted": false,
   "data": [
     {
-      "type": "state",
-      "value": {
+      "data": {
         "queries": {},
       },
-      "version": 1,
+      "type": "data-state",
     },
   ],
   "history": [
@@ -18,36 +17,6 @@ exports[`ai requests aiStreamingQuery should return full result of a successful 
       "role": "assistant",
     },
   ],
-  "parts": [
-    {
-      "code": "0",
-      "name": "text",
-      "value": "You, but don't tell anyone.",
-    },
-    {
-      "code": "2",
-      "name": "data",
-      "value": {
-        "type": "state",
-        "value": {
-          "queries": {},
-        },
-        "version": 1,
-      },
-    },
-    {
-      "code": "d",
-      "name": "finish_message",
-      "value": {
-        "finishReason": "stop",
-        "usage": {
-          "completionTokens": 8,
-          "promptTokens": 4916,
-        },
-      },
-    },
-  ],
-  "text": "You, but don't tell anyone.",
   "toolCalls": [],
 }
 `;

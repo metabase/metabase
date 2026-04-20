@@ -21,6 +21,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
@@ -41,35 +42,21 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- store-aiservice-messages!
-  "Store messages that are going from ai-service"
-  [conversation-id profile-id messages]
-  (let [finish   (let [m (u/last messages)]
-                   (when (= (:_type m) :FINISH_MESSAGE)
-                     m))
-        state    (u/seek #(and (= (:_type %) :DATA)
-                               (= (:type %) "state"))
-                         messages)
-        messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)
-        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
+(defn- store-user-message!
+  "Persist the incoming user message and upsert the conversation row."
+  [conversation-id profile-id prompt]
+  (let [ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (constantly (cond-> {:user_id    api/*current-user-id*}
-                                            state (assoc :state state))))
+                              (constantly {:user_id api/*current-user-id*}))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
-                 :data            messages
-                 :usage           (:usage finish)
-                 :role            (:role (first messages))
+                 :data            [{:type "text" :text prompt}]
+                 :role            :user
                  :profile_id      profile-id
-                 :total_tokens    (->> (vals (:usage finish))
-                                       ;; NOTE: this filter is supporting backward-compatible usage format, can be
-                                       ;; removed when ai-service does not give us `completionTokens` in `usage`
-                                       (filter map?)
-                                       (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))
-                 :ai_proxied      (boolean ai-proxy?)})))
+                 :total_tokens    0
+                 :ai_proxied      (boolean ai-proxy?)
+                 :data_version    2})))
 
 (defn- extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -89,33 +76,18 @@
    {}
    parts))
 
-(defn- strip-tool-output-bloat
-  "For :tool-output parts, keep only :output in the result map.
-  Both LLM adapters only read (get-in part [:result :output]) when replaying history.
-  Everything else (:structured-output, :resources, :data-parts, :reactions, etc.)
-  is transient runtime data consumed during streaming and can be very large."
-  [{:keys [type] :as part}]
-  (cond-> part
-    (= :tool-output type) (update :result select-keys [:output])))
+(defn- store-agent-response!
+  "Persist the assistant's response parts to the database in v2 storage format.
 
-(defn- store-native-parts!
-  "Store assistant response parts directly to the database.
-
-  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format,
-  avoiding the intermediate 'aisdk messages' format.
-
-  Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
+  Takes AI SDK parts (after aisdk-xf combining) and stores them via
+  `parts->storable-content`."
   [conversation-id profile-id parts]
   (let [state-part (u/seek #(and (= :data (:type %))
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
         ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-        ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
-        ;; :data is like `:navigate_to`
-        content    (->> parts
-                        (remove #(#{:start :usage :finish :data} (:type %)))
-                        (mapv strip-tool-output-bloat))]
+        content    (metabot-persistence/parts->storable-content parts)]
     (prometheus/observe! :metabase-metabot/message-persist-bytes
                          {:profile-id (or profile-id "unknown")}
                          (u/string-byte-count (json/encode content)))
@@ -133,7 +105,8 @@
                    :total_tokens    (->> (vals usage)
                                          (map #(+ (:prompt %) (:completion %)))
                                          (reduce + 0))
-                   :ai_proxied      (boolean ai-proxy?)}))))
+                   :ai_proxied      (boolean ai-proxy?)
+                   :data_version    2}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -175,7 +148,7 @@
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
-  Streams AI SDK v4 line protocol to the client in real-time while simultaneously
+  Streams AI SDK v6 protocol to the client in real-time while simultaneously
   collecting parts for database storage. Text parts are combined before storage
   to consolidate streaming chunks into single text parts.
 
@@ -189,10 +162,9 @@
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
-            ;; Compose: collect parts AND convert to lines for streaming.
-            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
+            ;; Compose: collect parts AND convert to SSE events for streaming.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?}))]
+                             (self.core/parts->aisdk-sse-xf))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan)
@@ -207,24 +179,23 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (store-agent-response! conversation-id profile-id (into [] (combine-text-parts-xf) @parts-atom))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id profile_id message context history conversation_id state debug]}]
-  (let [message    (metabot.envelope/user-message message)
-        metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
+  (let [metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
-    (store-aiservice-messages! conversation_id profile-id [message])
+    (store-user-message! conversation_id profile-id message)
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
      {:metabot-id      metabot-id
       :profile-id      profile-id
-      :message         message
+      :message         (metabot.envelope/user-message message)
       :context         context
       :history         history
       :conversation-id conversation_id

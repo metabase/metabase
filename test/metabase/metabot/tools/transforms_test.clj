@@ -79,7 +79,7 @@
                                                        :name "Test"
                                                        :source {:type "query" :query "SELECT 1"}}
                                            :message "Transform updated successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
+                       :data-parts [{:type :data :data-type "transform_suggestion"}]}]
       (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
                     deps/check-transform-dependencies    (fn [_] {:structured_output {:success true
                                                                                       :bad_transforms []
@@ -98,7 +98,7 @@
                                                        :name "Test"
                                                        :source {:type "query" :query "SELECT id FROM orders"}}
                                            :message "Transform updated successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
+                       :data-parts [{:type :data :data-type "transform_suggestion"}]}]
       (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
                     deps/check-transform-dependencies    (fn [_]
                                                            {:structured_output
@@ -124,7 +124,7 @@
                                                        :name "Test"
                                                        :source {:type "query" :query "SELECT id FROM orders"}}
                                            :message "Transform updated successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
+                       :data-parts [{:type :data :data-type "transform_suggestion"}]}]
       (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
                     deps/check-transform-dependencies    (fn [_]
                                                            {:structured_output
@@ -154,7 +154,7 @@
                                                        :name "Test"
                                                        :source {:type "query" :query "SELECT 1"}}
                                            :message "Transform updated successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
+                       :data-parts [{:type :data :data-type "transform_suggestion"}]}]
       (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
                     deps/check-transform-dependencies    (fn [_] (throw (Exception. "DB connection failed")))]
         (let [result (binding [shared/*memory-atom* memory-atom]
@@ -172,7 +172,7 @@
           base-result {:structured-output {:transform {:name "New Transform"
                                                        :source {:type "query" :query "SELECT 1"}}
                                            :message "Transform created successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
+                       :data-parts [{:type :data :data-type "transform_suggestion"}]}]
       (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
                     deps/check-transform-dependencies    (fn [_] (reset! dep-called? true) nil)]
         (let [result (binding [shared/*memory-atom* memory-atom]

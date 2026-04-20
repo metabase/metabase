@@ -59,9 +59,14 @@ export const RedirectReaction = {
     msw: {
       handlers: [
         mockStreamResponse([
-          `0:"Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})"`,
-          `2:{"type":"navigate_to","version":1,"value":"${MOCK_AD_HOC_QUESTION_ID}"}
-`,
+          { type: "text-start", id: "t1" },
+          {
+            type: "text-delta",
+            id: "t1",
+            delta: `Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})`,
+          },
+          { type: "text-end", id: "t1" },
+          { type: "data-navigate_to", id: "d1", data: MOCK_AD_HOC_QUESTION_ID },
         ]),
       ],
     },

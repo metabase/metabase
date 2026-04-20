@@ -82,7 +82,6 @@
           part (streaming/todo-list-part todos)]
       (is (= :data (:type part)))
       (is (= "todo_list" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= todos (:data part)))))
 
   (testing "handles empty todo list"
@@ -99,7 +98,6 @@
           part (streaming/code-edit-part edit-data)]
       (is (= :data (:type part)))
       (is (= "code_edit" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= edit-data (:data part)))))
 
   (testing "handles complex edit data"
@@ -119,7 +117,6 @@
           part (streaming/transform-suggestion-part suggestion)]
       (is (= :data (:type part)))
       (is (= "transform_suggestion" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= suggestion (:data part)))))
 
   (testing "handles Python transform suggestion"
@@ -139,7 +136,6 @@
           part (streaming/adhoc-viz-part value)]
       (is (= :data (:type part)))
       (is (= "adhoc_viz" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= value (:data part)))))
 
   (testing "handles minimal value without title/display"
@@ -155,7 +151,6 @@
           part (streaming/static-viz-part value)]
       (is (= :data (:type part)))
       (is (= "static_viz" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= value (:data part))))))
 
 (deftest data-type-constants-test

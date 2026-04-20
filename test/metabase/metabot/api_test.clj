@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.response]
-   [medley.core :as m]
    [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -57,26 +56,26 @@
                       lines    (str/split-lines response)
                       conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-              ;; Native agent emits AI SDK v4 line protocol directly
-                  (testing "response contains expected line types"
-                ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
-                    (is (=? [#"f:.*"
-                             #"0:.*"
-                             #"2:.*"
-                             #"d:.*"]
-                            (m/distinct-by #(subs % 0 2) lines)))
-                ;; Text chunks reassemble to full message
-                    (let [text-lines (filter #(str/starts-with? % "0:") lines)]
-                      (is (= "Hello from native agent!"
-                             (apply str (map #(json/decode (subs % 2)) text-lines)))))
-                ;; Finish line includes usage
-                    (is (str/includes? (last lines) "promptTokens")))
+              ;; Native agent emits AI SDK v6 SSE protocol
+                  (let [events (->> lines
+                                    (remove str/blank?)
+                                    (remove #(= "data: [DONE]" %))
+                                    (mapv #(json/decode (subs % (count "data: ")))))]
+                    (testing "response contains expected SSE event types"
+                      (let [types (set (mapv #(get % "type") events))]
+                        (is (contains? types "start"))
+                        (is (contains? types "text-delta"))
+                        (is (contains? types "finish"))))
+                    (testing "text deltas contain expected message"
+                      (let [text (apply str (map #(get % "delta")
+                                                 (filter #(= "text-delta" (get % "type")) events)))]
+                        (is (str/includes? text "Hello from native agent!")))))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
               ;; Native agent stores parts in raw format
                   (is (=? [{:total_tokens 0
                             :role         :user
-                            :data         [{:role "user" :content (:content question)}]}
+                            :data         [{:type "text" :text (:content question)}]}
                            {:total_tokens pos-int?
                             :role         :assistant
                             :data         [{:type "text" :text "Hello from native agent!"}]}]
@@ -94,7 +93,7 @@
     ;; streams many text-delta events slowly. The Metabase server connects to it
     ;; via the full native-agent pipeline:
     ;;   openrouter-raw → sse-reducible → openrouter->aisdk-chunks-xf → tool-executor-xf
-    ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
+    ;;   → lite-aisdk-xf → agent loop → parts->aisdk-sse-xf → streaming-writer-rf → client
     ;; Then the test client reads one byte and closes the connection.
     ;; We assert that store-parts! is called with a partial result.
     (let [total-chunks 30
@@ -159,7 +158,7 @@
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
                             metabot.context/create-context           identity
-                            api/store-native-parts!                  (fn [_conv-id _prof-id parts]
+                            api/store-agent-response!                (fn [_conv-id _prof-id parts]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -582,13 +581,13 @@
                  [{:type :text, :text "solo"}])))))
 
 (defn- store-and-check!
-  "Helper: call store-native-parts! with the given provider setting, return the stored message."
+  "Helper: call store-agent-response! with the given provider setting, return the stored message."
   [provider]
   (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
     (let [conv-id (str (random-uuid))]
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
-          (#'api/store-native-parts!
+          (#'api/store-agent-response!
            conv-id "internal"
            [{:type :start :id "msg-1"}
             {:type :text :text "Hello"}
@@ -601,7 +600,7 @@
           (t2/delete! :model/MetabotMessage :conversation_id conv-id)
           (t2/delete! :model/MetabotConversation :id conv-id))))))
 
-(deftest store-native-parts-ai-proxy-test
+(deftest store-agent-response-ai-proxy-test
   (testing "metabase/ provider prefix sets ai_proxied true and stores bare model names"
     (let [msg (store-and-check! "metabase/anthropic/claude-sonnet-4-6")]
       (is (true? (:ai_proxied msg)))
@@ -614,26 +613,6 @@
       (is (false? (:ai_proxied msg)))
       (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
              (:usage msg))))))
-
-(deftest strip-tool-output-bloat-test
-  (testing "strips transient keys from tool-output results, keeping only :output"
-    (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
-           (#'api/strip-tool-output-bloat
-            {:type   :tool-output
-             :id     "call-1"
-             :result {:output            "<result>XML</result>"
-                      :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
-                      :structured-output {:result-type :search :data [{:id 1}]}
-                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
-  (testing "leaves non-tool-output parts untouched"
-    (let [text-part {:type :text :text "hello"}]
-      (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
-  (testing "handles result with no :output key"
-    (is (= {:type :tool-output :id "call-2" :result {}}
-           (#'api/strip-tool-output-bloat
-            {:type   :tool-output
-             :id     "call-2"
-             :result {:structured-output {:some "data"}}})))))
 
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."
@@ -712,7 +691,7 @@
     (let [captured-args (atom nil)
           test-metabot-id metabot.config/embedded-metabot-id]
       (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                    api/store-aiservice-messages!         (constantly nil)
+                    api/store-user-message!               (constantly nil)
                     api/native-agent-streaming-request    (fn [args]
                                                             (reset! captured-args args)
                                                             ;; Return a minimal streaming response
