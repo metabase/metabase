@@ -55,13 +55,15 @@ function setup({
   permissions = createDefaultPermissions(),
   groups = defaultGroups,
   useTenants = false,
+  advanced = false,
 }: {
   permissions?: MetabotGroupPermission[];
   groups?: typeof defaultGroups;
   useTenants?: boolean;
+  advanced?: boolean;
 } = {}) {
   setupGroupsEndpoint(groups);
-  setupMetabotGroupPermissionsEndpoint(permissions);
+  setupMetabotGroupPermissionsEndpoint(permissions, advanced);
   setupUpdateMetabotGroupPermissionsEndpoint();
 
   renderWithProviders(<MetabotFeatureAccessPage />, {
@@ -86,15 +88,25 @@ const dataAnalystsGroup = createMockGroup({
 
 describe("MetabotFeatureAccessPage", () => {
   it("renders groups with their permission states", async () => {
-    setup();
+    setup({ advanced: true });
 
     expect(
       await screen.findByTestId("ai-feature-access-table"),
     ).toBeInTheDocument();
 
     expect(screen.getByText("Administrators")).toBeInTheDocument();
-    expect(screen.getByText("All Users")).toBeInTheDocument();
+    expect(screen.queryByText("All Users")).not.toBeInTheDocument();
     expect(screen.getByText("Marketing")).toBeInTheDocument();
+  });
+
+  it("hides non-admin/non-all-users groups in simple mode", async () => {
+    setup();
+
+    await screen.findByTestId("ai-feature-access-table");
+
+    expect(screen.getByText("Administrators")).toBeInTheDocument();
+    expect(screen.getByText("All Users")).toBeInTheDocument();
+    expect(screen.queryByText("Marketing")).not.toBeInTheDocument();
   });
 
   it("renders column headers for each AI tool", async () => {
@@ -148,7 +160,7 @@ describe("MetabotFeatureAccessPage", () => {
   });
 
   it("disables sub-permission checkboxes when metabot is off for a group", async () => {
-    setup();
+    setup({ advanced: true });
     await screen.findByTestId("ai-feature-access-table");
 
     const marketingRow = getPermissionRow("Marketing");
@@ -162,7 +174,7 @@ describe("MetabotFeatureAccessPage", () => {
   });
 
   it("enables sub-permission checkboxes after toggling metabot on", async () => {
-    setup();
+    setup({ advanced: true });
     await screen.findByTestId("ai-feature-access-table");
 
     const marketingRow = getPermissionRow("Marketing");
@@ -231,6 +243,7 @@ describe("MetabotFeatureAccessPage", () => {
       setup({
         groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
         permissions: defaultPermissions,
+        advanced: true,
       });
 
       await screen.findByTestId("ai-feature-access-table");
@@ -263,6 +276,7 @@ describe("MetabotFeatureAccessPage", () => {
       setup({
         groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
         permissions,
+        advanced: true,
       });
 
       await screen.findByTestId("ai-feature-access-table");
@@ -308,6 +322,7 @@ describe("MetabotFeatureAccessPage", () => {
       setup({
         groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
         permissions,
+        advanced: true,
       });
 
       await screen.findByTestId("ai-feature-access-table");
@@ -342,6 +357,7 @@ describe("MetabotFeatureAccessPage", () => {
       setup({
         groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
         permissions,
+        advanced: true,
       });
 
       await screen.findByTestId("ai-feature-access-table");

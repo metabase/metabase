@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -32,17 +32,25 @@ export const useMetabotGroupPermissions = () => {
   >([]);
   const { sendErrorToast } = useMetadataToasts();
 
+  const advanced = permissionsQueryData?.advanced ?? false;
+  const prevAdvancedRef = useRef<boolean | undefined>(undefined);
+
   useEffect(() => {
-    if (groupPermissions.length) {
-      // Already initialized
+    const { permissions } = permissionsQueryData || {};
+    if (!permissions?.length) {
       return;
     }
 
-    const { permissions } = permissionsQueryData || {};
-    if (permissions?.length) {
+    const firstPopulate = groupPermissions.length === 0;
+    const modeTransitioned =
+      prevAdvancedRef.current !== undefined &&
+      prevAdvancedRef.current !== advanced;
+
+    if (firstPopulate || modeTransitioned) {
       setGroupPermissions(permissions);
     }
-  }, [permissionsQueryData, groupPermissions]);
+    prevAdvancedRef.current = advanced;
+  }, [permissionsQueryData, advanced, groupPermissions.length]);
 
   const debouncedUpdatePermissions = useDebouncedCallback(async () => {
     try {
@@ -77,6 +85,7 @@ export const useMetabotGroupPermissions = () => {
   return {
     groupPermissions,
     onPermissionChange,
+    advanced,
     error: permissionsQueryError ? t`Failed to load Metabot permissions` : null,
   };
 };

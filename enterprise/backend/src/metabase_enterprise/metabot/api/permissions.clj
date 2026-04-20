@@ -2,6 +2,7 @@
   "`/api/ee/ai-controls/permissions` routes for managing metabot permissions per group."
   (:require
    [metabase-enterprise.metabot.models.metabot-permissions :as metabot-perms]
+   [metabase-enterprise.metabot.settings :as metabot-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -19,16 +20,24 @@
   (into [:enum] (distinct (mapcat (comp :values val) scope/metabot-permissions))))
 
 (def ^:private permissions-response-schema
-  [:map [:permissions [:sequential [:map
-                                    [:group_id  pos-int?]
-                                    [:perm_type perm-type-enum]
-                                    [:perm_value perm-value-enum]]]]])
+  [:map
+   [:permissions [:sequential [:map
+                               [:group_id   pos-int?]
+                               [:perm_type  perm-type-enum]
+                               [:perm_value perm-value-enum]]]]
+   [:advanced :boolean]])
+
+(defn- permissions-response
+  "Returns the full permissions graph plus the current `metabot-advanced-permissions` flag."
+  []
+  (assoc (metabot-perms/all-permissions)
+         :advanced (boolean (metabot-settings/metabot-advanced-permissions))))
 
 (api.macros/defendpoint :get "/" :- permissions-response-schema
   "List all metabot permissions for all groups, filling in defaults for missing entries."
   []
   (api/check-superuser)
-  (metabot-perms/all-permissions))
+  (permissions-response))
 
 (def ^:private valid-perm-types
   "Set of valid perm_type strings for the PUT request body."
@@ -73,21 +82,23 @@
           (t2/insert! :model/MetabotPermissions {:group_id   group_id
                                                  :perm_type  perm-type-kw
                                                  :perm_value perm-value-kw})))))
-  (metabot-perms/all-permissions))
+  (permissions-response))
 
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
   "Switch to advanced group-level permissions. Removes any custom permissions from the All Users group."
   []
   (api/check-superuser)
   (t2/delete! :model/MetabotPermissions :group_id (u/the-id (perms/all-users-group)))
-  (metabot-perms/all-permissions))
+  (metabot-settings/metabot-advanced-permissions! true)
+  (permissions-response))
 
 (api.macros/defendpoint :delete "/advanced" :- permissions-response-schema
   "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins and All Users."
   []
   (api/check-superuser)
   (t2/delete! :model/MetabotPermissions :group_id [:not-in [(u/the-id (perms/admin-group)) (u/the-id (perms/all-users-group))]])
-  (metabot-perms/all-permissions))
+  (metabot-settings/metabot-advanced-permissions! false)
+  (permissions-response))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/ai-controls/permissions` routes."

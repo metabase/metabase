@@ -17,6 +17,8 @@ import { getAIToolItems } from "./utils";
 export type AiFeatureAccessTableProps = {
   groups: GroupInfo[];
   groupPermissions: MetabotGroupPermission[];
+  advanced: boolean;
+  activeTab: "user-groups" | "tenant-groups";
   onPermissionChange: (
     groupId: number,
     toolKey: AIToolKey,
@@ -25,7 +27,8 @@ export type AiFeatureAccessTableProps = {
 };
 
 export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
-  const { groups, groupPermissions, onPermissionChange } = props;
+  const { groups, groupPermissions, advanced, activeTab, onPermissionChange } =
+    props;
   const toolItems = getAIToolItems();
   const permissionsByGroup = useMemo(
     () => _.groupBy(groupPermissions, "group_id"),
@@ -44,6 +47,25 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
     () => (allUsersGroup ? (permissionsByGroup[allUsersGroup.id] ?? []) : []),
     [allUsersGroup, permissionsByGroup],
   );
+
+  const visibleGroups = useMemo(() => {
+    if (advanced) {
+      return groups.filter(
+        (g) =>
+          !isDefaultGroup(g) && g.magic_group_type !== "all-external-users",
+      );
+    }
+    if (activeTab === "tenant-groups") {
+      return groups.filter(
+        (g) =>
+          g.magic_group_type === "admin" ||
+          g.magic_group_type === "all-external-users",
+      );
+    }
+    return groups.filter(
+      (g) => g.magic_group_type === "admin" || isDefaultGroup(g),
+    );
+  }, [groups, advanced, activeTab]);
 
   return (
     <div className={S.CardContainer} data-testid="ai-feature-access-table">
@@ -64,7 +86,7 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <GroupPermissionRow
               group={group}
               initialPermissions={permissionsByGroup[group.id] || []}
