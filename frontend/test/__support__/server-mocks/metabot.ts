@@ -18,6 +18,8 @@ import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metab
 
 const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
   "metabase-ai-managed";
+const METABASE_TIERED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
+  "metabase-ai-tiered";
 const METABASE_MANAGED_AI_UNIT_MULTIPLIER = 1_000_000;
 
 export function setupMetabotsEndpoints(
@@ -167,6 +169,7 @@ type SetupMetabaseManagedAiEndpointsOptions = {
     updated_at: string | null;
   } | null;
   purchaseCloudAddOnResponse?: number | { status: number; body: unknown };
+  removeCloudAddOnResponse?: number | { status: number; body: unknown };
 };
 
 export function setupMetabaseManagedAiEndpoints({
@@ -174,6 +177,7 @@ export function setupMetabaseManagedAiEndpoints({
   metabasePricePerUnit = 3.75,
   metabotUsageQuota = null,
   purchaseCloudAddOnResponse = 200,
+  removeCloudAddOnResponse = 200,
 }: SetupMetabaseManagedAiEndpointsOptions = {}) {
   fetchMock.get("path:/api/ee/metabot/usage", {
     tokens: metabotUsageQuota?.tokens ?? null,
@@ -210,6 +214,16 @@ export function setupMetabaseManagedAiEndpoints({
   fetchMock.post(
     `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
     purchaseCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_TIERED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
   );
 }
 

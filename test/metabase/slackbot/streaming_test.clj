@@ -157,7 +157,7 @@
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [{:keys [stop-stream-calls]}]
-            (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-haiku-4-5"]
+            (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
               (with-redefs [metabot.persistence/store-message!
                             (fn [_conv-id _profile-id _messages & {:as opts}]
                               (swap! store-opts conj opts)

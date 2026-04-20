@@ -13,7 +13,7 @@ import type { ListDatabasesRequest } from "metabase-types/api";
 export const useDatabaseListQuery = (
   props: UseEntityListQueryProps<ListDatabasesRequest> = {},
 ): UseEntityListQueryResult<Database> => {
-  return useEntityListQuery(props, {
+  return useEntityListQuery<Database, ListDatabasesRequest>(props, {
     fetchList: Databases.actions.fetchList,
     getList: Databases.selectors.getList,
     getLoading: Databases.selectors.getLoading,

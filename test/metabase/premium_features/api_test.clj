@@ -35,23 +35,22 @@
   (testing "POST /api/premium-features/token/refresh"
     (testing "clears cache and returns fresh token status"
       (let [cleared? (atom false)]
-        (mt/with-temporary-setting-values [llm-proxy-base-url nil]
-          (with-redefs [premium-features/token-status           (constantly fake-token-status)
-                        premium-features/premium-embedding-token (constantly nil)
-                        token-check/clear-cache!                (fn [] (reset! cleared? true))]
-            (is (=? (dissoc fake-token-status :trial)
-                    (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
-            (is (true? @cleared?))))))
+        (with-redefs [premium-features/token-status           (constantly fake-token-status)
+                      premium-features/premium-embedding-token (constantly nil)
+                      token-check/clear-cache!                (fn [] (reset! cleared? true))]
+          (is (=? (dissoc fake-token-status :trial)
+                  (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+          (is (true? @cleared?))))))
 
-    (testing "requires superusers"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "premium-features/token/refresh"))))
+  (testing "requires superusers"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :post 403 "premium-features/token/refresh"))))
 
-    (testing "returns 404 if no token is set"
-      (with-redefs [premium-features/token-status (constantly nil)
-                    premium-features/premium-embedding-token (constantly nil)]
-        (is (= "Not found."
-               (mt/user-http-request :crowberto :post 404 "premium-features/token/refresh")))))))
+  (testing "returns 404 if no token is set"
+    (with-redefs [premium-features/token-status (constantly nil)
+                  premium-features/premium-embedding-token (constantly nil)]
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 "premium-features/token/refresh"))))))
 
 (deftest post-token-refresh-invalidates-llm-proxy-cache-test
   (testing "POST /api/premium-features/token/refresh invalidates the AI service token cache when explicitly configured"
@@ -72,21 +71,19 @@
                          @request*))))))))))
 
   (testing "POST /api/premium-features/token/refresh does not invalidate the AI service cache when it is not configured"
-    (mt/with-temporary-setting-values [llm-proxy-base-url nil]
-      (with-redefs [premium-features/token-status            (constantly fake-token-status)
-                    premium-features/premium-embedding-token (constantly "proxy-token")
-                    http/post                                (fn [& _]
-                                                               (throw (ex-info "should not be called" {})))]
-        (is (=? (dissoc fake-token-status :trial)
-                (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))))))
+    (with-redefs [premium-features/token-status            (constantly fake-token-status)
+                  premium-features/premium-embedding-token (constantly "proxy-token")
+                  http/post                                (fn [& _]
+                                                             (throw (ex-info "should not be called" {})))]
+      (is (=? (dissoc fake-token-status :trial)
+              (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh"))))))
 
 (deftest token-refresh-sets-premium-features-cookie-test
   (testing "POST /api/premium-features/token/refresh sets the premium-features-last-updated cookie"
-    (mt/with-temporary-setting-values [llm-proxy-base-url nil]
-      (with-redefs [premium-features/token-status            (constantly fake-token-status)
-                    premium-features/premium-embedding-token (constantly nil)]
-        (let [cs (cookies/cookie-store)]
-          (mt/user-real-request :crowberto :post 200 "premium-features/token/refresh"
-                                {:request-options {:cookie-store cs}})
-          (let [pf-cookie (get (cookies/get-cookies cs) "metabase.PREMIUM_FEATURES_LAST_UPDATED")]
-            (is (some? pf-cookie) "No premium-features-last-updated cookie set")))))))
+    (with-redefs [premium-features/token-status            (constantly fake-token-status)
+                  premium-features/premium-embedding-token (constantly nil)]
+      (let [cs (cookies/cookie-store)]
+        (mt/user-real-request :crowberto :post 200 "premium-features/token/refresh"
+                              {:request-options {:cookie-store cs}})
+        (let [pf-cookie (get (cookies/get-cookies cs) "metabase.PREMIUM_FEATURES_LAST_UPDATED")]
+          (is (some? pf-cookie) "No premium-features-last-updated cookie set"))))))
