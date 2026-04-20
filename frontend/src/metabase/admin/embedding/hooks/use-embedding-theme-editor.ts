@@ -112,19 +112,31 @@ export function useEmbeddingThemeEditor(themeId: number) {
     [updateSettings],
   );
 
-  const setFontFamily = useCallback(
-    (family: string) => {
-      updateSettings(() => ({ fontFamily: family }));
-    },
-    [updateSettings],
-  );
+  const setFontFamily = useCallback((family: string) => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const { fontFamily: _omit, ...rest } = prev.settings;
+      return {
+        ...prev,
+        settings: family ? { ...rest, fontFamily: family } : rest,
+      };
+    });
+  }, []);
 
-  const setFontSize = useCallback(
-    (size: string) => {
-      updateSettings(() => ({ fontSize: size }));
-    },
-    [updateSettings],
-  );
+  const setFontSize = useCallback((size: string) => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const { fontSize: _omit, ...rest } = prev.settings;
+      return {
+        ...prev,
+        settings: size ? { ...rest, fontSize: size } : rest,
+      };
+    });
+  }, []);
 
   const hasAdditionalColorChanges = useMemo(() => {
     if (!currentTheme) {

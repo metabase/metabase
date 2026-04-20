@@ -252,6 +252,46 @@ describe("useEmbeddingThemeEditor", () => {
     });
   });
 
+  describe("clearing font fields", () => {
+    it("removes fontFamily from settings when cleared", async () => {
+      const { result } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.currentTheme?.settings.fontFamily).toBe("Roboto");
+
+      act(() => {
+        result.current.setFontFamily("");
+      });
+
+      expect(
+        "fontFamily" in (result.current.currentTheme?.settings ?? {}),
+      ).toBe(false);
+      expect(result.current.isDirty).toBe(true);
+    });
+
+    it("removes fontSize from settings when cleared", async () => {
+      const { result } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.currentTheme?.settings.fontSize).toBe("14px");
+
+      act(() => {
+        result.current.setFontSize("");
+      });
+
+      expect("fontSize" in (result.current.currentTheme?.settings ?? {})).toBe(
+        false,
+      );
+      expect(result.current.isDirty).toBe(true);
+    });
+  });
+
   it("reports isNotFound on API error", async () => {
     fetchMock.get("path:/api/embed-theme/999", 404);
 
