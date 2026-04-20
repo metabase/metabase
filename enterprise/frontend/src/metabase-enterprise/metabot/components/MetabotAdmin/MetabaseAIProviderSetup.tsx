@@ -6,6 +6,7 @@ import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useMetabotSetupContext } from "metabase/metabot/components/MetabotAdmin/MetabotSetup";
+import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import {
   Anchor,
@@ -55,10 +56,9 @@ export function MetabaseAIProviderSetup() {
   );
   const hasDeprecatedMetabaseAiProvider =
     !!hasPremiumFeature(METABOT_V3_FEATURE);
+  const isConfigured = !!useSetting("llm-metabot-configured?");
 
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
-
-  const isConfigured = useSetting("llm-metabot-configured?");
 
   const [updateMetabotSettings, updateMetabotSettingsResult] =
     useUpdateMetabotSettingsMutation();
@@ -155,7 +155,8 @@ export function MetabaseAIProviderSetup() {
     removeCloudAddOn,
   ]);
 
-  const { isLoading } = useMetabotSetupContext(onConnect, onDisconnect);
+  const { isLoading, handleDisconnect, resetProvider, isModal } =
+    useMetabotSetupContext(onConnect, onDisconnect);
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
@@ -189,6 +190,9 @@ export function MetabaseAIProviderSetup() {
             hasMetabaseManagedAiProviderFeature
           }
           offerMetabaseManagedAi={offerMetabaseManagedAi}
+          isModal={isModal}
+          resetProvider={resetProvider}
+          handleDisconnect={handleDisconnect}
         />
       ) : (
         <>
@@ -295,14 +299,21 @@ function MetabaseManagedProviderCard({
   hasDeprecatedMetabaseAiProvider,
   hasMetabaseManagedAiProviderFeature,
   offerMetabaseManagedAi,
+  isModal,
+  resetProvider,
+  handleDisconnect,
 }: {
   isLoadingPricing: boolean;
   pricing: MetabaseManagedAiPricing | null;
   hasDeprecatedMetabaseAiProvider: boolean;
   hasMetabaseManagedAiProviderFeature: boolean;
   offerMetabaseManagedAi: boolean;
+  isModal: boolean;
+  resetProvider: VoidFunction;
+  handleDisconnect: VoidFunction;
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
+  const isLocked = metabotUsage?.["is-locked"];
   const totalCost = getMetabaseUsageCost(metabotUsage?.tokens, pricing);
 
   return (
@@ -315,28 +326,48 @@ function MetabaseManagedProviderCard({
           </Text>
         )}
 
-      {hasMetabaseManagedAiProviderFeature && (
-        <>
-          <Text c="text-secondary" lh="1">{t`Current billing cycle`}</Text>
-          <MetabaseUsageRow
-            label={t`Total tokens`}
-            value={formatNumber(metabotUsage?.tokens ?? 0)}
-          />
-          {isLoadingPricing ? (
-            <Flex align="center" justify="space-between" gap="md">
-              <Skeleton h="1rem" w="7rem" />
-              <Box flex={1} h={1} bg="border" />
-              <Skeleton h="1rem" w="8rem" />
-            </Flex>
-          ) : pricing ? (
-            <MetabasePricingRow pricing={pricing} />
-          ) : null}
-          <MetabaseUsageRow
-            label={t`Total cost`}
-            value={formatMetabaseCost(totalCost)}
-          />
-        </>
-      )}
+      {match({
+        hasMetabaseManagedAiProviderFeature,
+        isLocked,
+      })
+        .with({ hasMetabaseManagedAiProviderFeature: false }, () => null)
+        .with({ isLocked: true }, () => (
+          <Flex direction="column" gap="xs">
+            <Text c="text-primary" fw={500} lh={1.4}>
+              {t`You've run out of AI service tokens`}
+            </Text>
+            <Text c="text-secondary" fz="sm" lh={1.4}>
+              {t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`}
+            </Text>
+            <MetabotManagedProviderLimitActions
+              inline
+              mt="sm"
+              onConfigure={isModal ? resetProvider : handleDisconnect}
+            />
+          </Flex>
+        ))
+        .otherwise(() => (
+          <>
+            <Text c="text-secondary" lh="1">{t`Current billing cycle`}</Text>
+            <MetabaseUsageRow
+              label={t`Total tokens`}
+              value={formatNumber(metabotUsage?.tokens ?? 0)}
+            />
+            {!isLoadingPricing && pricing ? (
+              <MetabasePricingRow pricing={pricing} />
+            ) : (
+              <Flex align="center" justify="space-between" gap="md">
+                <Skeleton h="1rem" w="7rem" />
+                <Box flex={1} h={1} bg="border" />
+                <Skeleton h="1rem" w="8rem" />
+              </Flex>
+            )}
+            <MetabaseUsageRow
+              label={t`Total cost`}
+              value={formatMetabaseCost(totalCost)}
+            />
+          </>
+        ))}
     </Stack>
   );
 }
