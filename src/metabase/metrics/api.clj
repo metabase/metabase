@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
-   [metabase.interestingness.core :as interestingness]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
@@ -93,16 +92,16 @@
       metrics.perms/filter-dimensions-for-user))
 
 (defn- score-dimensions
-  "Score dimensions by interestingness, sort by score descending, and optionally
-   filter by cutoff and/or limit to top N."
+  "Sort dimensions by interestingness and optionally filter by cutoff and/or
+   limit to top N.
+
+   Uses persisted `:dimension_interestingness` hydrated from the source Field.
+   Dimensions without a persisted score default to `1.0` so they remain visible."
   [entity cutoff limit]
   (let [dims (:dimensions entity)]
     (assoc entity :dimensions
            (cond->> dims
-             true   (mapv (fn [d]
-                            (let [{:keys [score]} (interestingness/score-field
-                                                    interestingness/metrics-viewer-weights d)]
-                              (assoc d :interestingness-score score))))
+             true   (mapv #(assoc % :interestingness-score (or (:dimension_interestingness %) 1.0)))
              true   (sort-by :interestingness-score >)
              true   vec
              cutoff (filterv #(>= (:interestingness-score %) cutoff))

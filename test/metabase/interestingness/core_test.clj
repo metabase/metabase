@@ -3,116 +3,50 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.interestingness.core :as interestingness]))
 
-(defn- constant-scorer [score reason]
-  (fn [_field _context] {:score score :reason reason}))
+;;; Tests here cover only the public facade — the `compute interestingness for X`
+;;; user-facing legos. The underlying composition machinery is tested in
+;;; `metabase.interestingness.impl-test` and the scorers in
+;;; `metabase.interestingness.dimension-test`.
 
-(deftest ^:parallel score-field-test
-  (testing "single scorer"
-    (let [result (interestingness/score-field
-                  {(constant-scorer 0.8 "good") 1.0}
-                  {:semantic-type :type/Category})]
-      (is (= 0.8 (:score result)))
-      (is (map? (:scores result)))
-      (is (= {:semantic-type :type/Category} (:field result)))))
+(deftest ^:parallel dimension-interestingness-test
+  (testing "scores a normalized field"
+    (is (>= (interestingness/dimension-interestingness
+             {:semantic-type :type/CreationTimestamp
+              :base-type :type/DateTime
+              :fingerprint {:global {:distinct-count 5000 :nil% 0.0}
+                            :type {:type/DateTime {:earliest "2022-01-01"
+                                                   :latest "2024-12-31"}}}})
+            0.7)))
 
-  (testing "weighted average of two scorers"
-    (let [result (interestingness/score-field
-                  {(constant-scorer 1.0 "high") 0.75
-                   (constant-scorer 0.5 "mid")  0.25}
-                  {})]
-      (is (= 0.875 (:score result)))))
+  (testing "accepts raw snake_case field maps"
+    (is (<= (interestingness/dimension-interestingness
+             {:semantic_type :type/PK
+              :base_type :type/Integer
+              :fingerprint {:global {:distinct-count 1000 :nil% 0.0}}})
+            0.1))))
 
-  (testing "weights don't need to sum to 1"
-    (let [result (interestingness/score-field
-                  {(constant-scorer 1.0 "a") 3.0
-                   (constant-scorer 0.5 "b") 1.0}
-                  {})]
-      (is (= 0.875 (:score result)))))
+(deftest ^:parallel measure-interestingness-test
+  (testing "rewards a clean numeric aggregation target"
+    (is (>= (interestingness/measure-interestingness
+             {:base_type :type/Float
+              :fingerprint {:global {:distinct-count 5000 :nil% 0.05}
+                            :type {:type/Number {:min 0 :max 1000 :sd 200 :avg 500
+                                                 :skewness 0.2 :excess-kurtosis 0.5
+                                                 :mode-fraction 0.05 :zero-fraction 0.02}}}})
+            0.8)))
 
-  (testing "hard-zero from any scorer clamps total to at most 0.1"
-    (let [result (interestingness/score-field
-                  {(constant-scorer 1.0 "high") 0.75
-                   (constant-scorer 0.0 "gate") 0.25}
-                  {})]
-      (is (<= (:score result) 0.1))))
+  (testing "FKs score below clean numerics (SUM/AVG are meaningless) but above PKs (COUNT DISTINCT is useful)"
+    (is (< (interestingness/measure-interestingness
+            {:semantic_type :type/FK
+             :base_type :type/Integer
+             :fingerprint {:global {:distinct-count 5000 :nil% 0.0}
+                           :type {:type/Number {:min 1 :max 5000 :sd 1000 :avg 2500}}}})
+           0.85)))
 
-  (testing "empty scorer map returns 0.5"
-    (is (= 0.5 (:score (interestingness/score-field {} {} nil)))))
-
-  (testing "nil field doesn't crash"
-    (let [result (interestingness/score-field
-                  {(constant-scorer 0.5 "ok") 1.0}
-                  nil)]
-      (is (= 0.5 (:score result))))))
-
-(deftest ^:parallel context-passthrough-test
-  (testing "context is passed to scorers"
-    (let [received-ctx (atom nil)
-          ctx-scorer   (fn [_field context]
-                         (reset! received-ctx context)
-                         {:score 0.5 :reason "ok"})
-          context      {:intent :revenue}]
-      (interestingness/score-field {ctx-scorer 1.0} {} context)
-      (is (= {:intent :revenue} @received-ctx))))
-
-  (testing "nil context is normalized to {}"
-    (let [received-ctx (atom nil)
-          ctx-scorer   (fn [_field context]
-                         (reset! received-ctx context)
-                         {:score 0.5 :reason "ok"})]
-      (interestingness/score-field {ctx-scorer 1.0} {} nil)
-      (is (= {} @received-ctx))))
-
-  (testing "omitted context is normalized to {}"
-    (let [received-ctx (atom nil)
-          ctx-scorer   (fn [_field context]
-                         (reset! received-ctx context)
-                         {:score 0.5 :reason "ok"})]
-      (interestingness/score-field {ctx-scorer 1.0} {})
-      (is (= {} @received-ctx)))))
-
-(deftest ^:parallel compose-test
-  (testing "compose returns a callable scorer"
-    (let [composed (interestingness/compose
-                    {(constant-scorer 0.8 "a") 1.0
-                     (constant-scorer 0.6 "b") 1.0})
-          result   (composed {} nil)]
-      (is (= 0.7 (:score result)))))
-
-  (testing "composed scorer works with 1-arity"
-    (let [composed (interestingness/compose {(constant-scorer 0.4 "x") 1.0})
-          result   (composed {})]
-      (is (= 0.4 (:score result))))))
-
-(deftest ^:parallel apply-cutoff-test
-  (testing "filters below threshold"
-    (let [scored [{:score 0.8 :field :a}
-                  {:score 0.3 :field :b}
-                  {:score 0.5 :field :c}]]
-      (is (= [{:score 0.8 :field :a} {:score 0.5 :field :c}]
-             (interestingness/apply-cutoff 0.5 scored)))))
-
-  (testing "empty input returns empty"
-    (is (empty? (interestingness/apply-cutoff 0.5 [])))))
-
-(deftest ^:parallel score-and-filter-test
-  (testing "scores, filters, and sorts descending"
-    (let [fields [{:name "good"} {:name "bad"} {:name "ok"}]
-          ;; scorer that uses field name length as score proxy
-          name-scorer (fn [field _ctx]
-                        (let [len (count (:name field))]
-                          {:score (/ len 10.0) :reason (str len " chars")}))
-          results (interestingness/score-and-filter
-                   {name-scorer 1.0} fields 0.25)]
-      (is (= 2 (count results)))
-      (is (= "good" (-> results first :field :name)))
-      (is (>= (-> results first :score) (-> results second :score)))))
-
-  (testing "with context"
-    (let [results (interestingness/score-and-filter
-                   {(constant-scorer 0.9 "x") 1.0}
-                   [{:name "a"}]
-                   0.5
-                   {:intent :revenue})]
-      (is (= 1 (count results))))))
-
+  (testing "dim and measure scores differ for FKs: good as dim (label substitution), weak as measure"
+    (let [fk-field  {:semantic_type :type/FK :base_type :type/Integer
+                     :fingerprint {:global {:distinct-count 5000 :nil% 0.0}
+                                   :type {:type/Number {:min 1 :max 5000 :sd 1000 :avg 2500}}}}
+          dim-score (interestingness/dimension-interestingness fk-field)
+          msr-score (interestingness/measure-interestingness   fk-field)]
+      (is (> dim-score msr-score)))))

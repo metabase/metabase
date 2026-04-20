@@ -1,11 +1,11 @@
-(ns metabase.metabot.stats.outliers
+(ns metabase.interestingness.chart.outliers
   "Modified Z-score based outlier detection for chart analysis.
 
   Uses the Modified Z-score method which is more robust than standard Z-scores
   because it uses median and MAD (Median Absolute Deviation) instead of mean
   and standard deviation, making it resistant to outliers in the calculation itself."
   (:require
-   [metabase.metabot.stats.types :as stats.types]
+   [metabase.interestingness.chart.types :as stats.types]
    [metabase.util.malli :as mu]
    [tech.v3.datatype.argops :as argops]
    [tech.v3.datatype.functional :as dfn]))

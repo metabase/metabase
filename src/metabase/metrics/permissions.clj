@@ -16,13 +16,13 @@
 ;;; ------------------------------------------------- Batch Lookups -------------------------------------------------
 
 (defn- batch-field-info
-  "Batch-fetch field visibility_type and table_id for a set of field IDs.
-   Returns {field-id -> {:visibility_type keyword, :table_id int}}."
+  "Batch-fetch field metadata needed for dimension hydration and permission checks.
+   Returns {field-id -> {:visibility_type keyword, :table_id int, :dimension_interestingness double?}}."
   [field-ids]
   (when (seq field-ids)
     (into {}
-          (map (fn [f] [(:id f) (select-keys f [:visibility_type :table_id])]))
-          (t2/select [:model/Field :id :visibility_type :table_id]
+          (map (fn [f] [(:id f) (select-keys f [:visibility_type :table_id :dimension_interestingness])]))
+          (t2/select [:model/Field :id :visibility_type :table_id :dimension_interestingness]
                      :id [:in field-ids]))))
 
 (defn- batch-table-db-ids
@@ -85,9 +85,18 @@
                       [(:id dim) field-id]))))
           dimensions)))
 
+(defn- hydrate-dimension-interestingness
+  "Attach persisted `:dimension_interestingness` from the source Field when available."
+  [dimensions dim->field-id field-info]
+  (mapv (fn [dim]
+          (if-some [score (get-in field-info [(get dim->field-id (:id dim)) :dimension_interestingness])]
+            (assoc dim :dimension_interestingness score)
+            dim))
+        dimensions))
+
 (defn filter-dimensions-for-user
   "Filter dimensions and dimension_mappings on a metric, removing those the
-   current user shouldn't see due to:
+  current user shouldn't see due to:
    1. Field visibility_type (:hidden or :sensitive)
    2. Table-level view-data permissions
    3. Sandbox column restrictions (EE)
@@ -95,8 +104,7 @@
    Superusers bypass all checks. Dimensions without resolvable field IDs are
    kept (conservative fallback)."
   [{:keys [dimensions dimension_mappings] :as metric}]
-  (if (or api/*is-superuser?*
-          (empty? dimensions))
+  (if (empty? dimensions)
     metric
     (let [dim->field-id  (build-dim->field-id dimensions dimension_mappings)
           all-field-ids  (set (vals dim->field-id))
@@ -120,7 +128,10 @@
                                   (or (nil? sandbox-map)
                                       (nil? (get sandbox-map table_id))
                                       (contains? (get sandbox-map table_id) fid)))))))
-          kept-ids       (into #{} (comp (filter allowed?) (map :id)) dimensions)]
+          visible-dimensions (if api/*is-superuser?*
+                               dimensions
+                               (filterv allowed? dimensions))
+          kept-ids           (into #{} (map :id) visible-dimensions)]
       (assoc metric
-             :dimensions         (filterv #(contains? kept-ids (:id %)) dimensions)
+             :dimensions         (hydrate-dimension-interestingness visible-dimensions dim->field-id field-info)
              :dimension_mappings (filterv #(contains? kept-ids (:dimension-id %)) dimension_mappings)))))

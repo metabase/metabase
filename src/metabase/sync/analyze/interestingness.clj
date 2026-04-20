@@ -21,9 +21,7 @@
   "Score a single field's dimension role and persist the composite score."
   [field :- i/FieldInstance]
   (sync-util/with-error-handling (format "Error scoring interestingness for %s" (sync-util/name-for-logging field))
-    (let [dim-score (:score (interestingness/score-raw-field
-                             interestingness/canonical-dimension-weights
-                             field))]
+    (let [dim-score (interestingness/dimension-interestingness field)]
       (t2/update! :model/Field (u/the-id field)
                   {:dimension_interestingness dim-score}))))
 

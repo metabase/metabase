@@ -36,6 +36,12 @@
   [& body]
   `(do-with-sample-metrics-archived (fn [] ~@body)))
 
+(defn- dimension-for-field-id
+  [dimensions field-id]
+  (some #(when (= field-id (some-> % :sources first :field-id))
+           %)
+        dimensions))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /api/metric/                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -204,6 +210,24 @@
             (doseq [dim dims-with-hfv]
               (is (#{"list" "search" "none"} (:has-field-values dim))
                   (str "dimension " (:name dim) " has-field-values should be list, search, or none")))))))))
+
+(deftest fetch-metric-dimensions-have-dimension-interestingness-test
+  (testing "GET /api/metric/:id hydrates persisted dimension_interestingness from the source field"
+    (let [field-id       (mt/id :venues :name)
+          original-score (t2/select-one-fn :dimension_interestingness :model/Field :id field-id)
+          expected-score 0.91]
+      (try
+        (t2/update! :model/Field field-id {:dimension_interestingness expected-score})
+        (mt/with-temp [:model/Card metric {:name          "Metric with persisted interestingness"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (let [response  (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+                dimension (dimension-for-field-id (:dimensions response) field-id)]
+            (is (some? dimension) "expected a persisted dimension backed by the NAME field")
+            (is (= expected-score (:dimension_interestingness dimension)))
+            (is (= expected-score (:interestingness-score dimension)))))
+        (finally
+          (t2/update! :model/Field field-id {:dimension_interestingness original-score}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |

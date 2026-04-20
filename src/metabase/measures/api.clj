@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
-   [metabase.interestingness.core :as interestingness]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
@@ -80,16 +79,16 @@
       metrics/filter-dimensions-for-user))
 
 (defn- score-dimensions
-  "Score dimensions by interestingness, sort by score descending, and optionally
-   filter by cutoff and/or limit to top N."
+  "Sort dimensions by interestingness and optionally filter by cutoff and/or
+   limit to top N.
+
+   Uses persisted `:dimension_interestingness` hydrated from the source Field.
+   Dimensions without a persisted score default to `1.0` so they remain visible."
   [entity cutoff limit]
   (let [dims (:dimensions entity)]
     (assoc entity :dimensions
            (cond->> dims
-             true   (mapv (fn [d]
-                            (let [{:keys [score]} (interestingness/score-field
-                                                    interestingness/metrics-viewer-weights d)]
-                              (assoc d :interestingness-score score))))
+             true   (mapv #(assoc % :interestingness-score (or (:dimension_interestingness %) 1.0)))
              true   (sort-by :interestingness-score >)
              true   vec
              cutoff (filterv #(>= (:interestingness-score %) cutoff))
@@ -98,7 +97,6 @@
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID.
 
-  Dimensions are scored by interestingness and sorted highest-first.
   Pass `interestingness_cutoff` (0.0-1.0) to filter out low-scoring dimensions.
   Pass `dimension_limit` to return only the top N most interesting dimensions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]

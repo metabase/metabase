@@ -32,6 +32,12 @@
         field (lib.metadata/field metadata-provider field-id)]
     (lib/aggregate query (lib/sum field))))
 
+(defn- dimension-for-field-id
+  [dimensions field-id]
+  (some #(when (= field-id (some-> % :sources first :field-id))
+           %)
+        dimensions))
+
 ;; ## /api/measure/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
@@ -238,6 +244,25 @@
               (doseq [dim dims-with-hfv]
                 (is (#{"list" "search" "none"} (:has-field-values dim))
                     (str "dimension " (:name dim) " has-field-values should be list, search, or none"))))))))))
+
+(deftest fetch-measure-dimensions-have-dimension-interestingness-test
+  (testing "GET /api/measure/:id hydrates persisted dimension_interestingness from the source field"
+    (let [field-id        (mt/id :venues :name)
+          original-score  (t2/select-one-fn :dimension_interestingness :model/Field :id field-id)
+          expected-score  0.87]
+      (try
+        (t2/update! :model/Field field-id {:dimension_interestingness expected-score})
+        (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+          (mt/with-full-data-perms-for-all-users!
+            (let [response  (mt/user-http-request :rasta :get 200 (format "measure/%d" id))
+                  dimension (dimension-for-field-id (:dimensions response) field-id)]
+              (is (some? dimension) "expected a persisted dimension backed by the NAME field")
+              (is (= expected-score (:dimension_interestingness dimension)))
+              (is (= expected-score (:interestingness-score dimension))))))
+        (finally
+          (t2/update! :model/Field field-id {:dimension_interestingness original-score}))))))
 
 (deftest list-test
   (testing "GET /api/measure/"

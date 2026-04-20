@@ -1,9 +1,9 @@
-(ns metabase.metabot.stats.categorical
+(ns metabase.interestingness.chart.categorical
   "Categorical chart statistics."
   (:require
-   [metabase.metabot.stats.outliers :as outliers]
-   [metabase.metabot.stats.types :as stats.types]
-   [metabase.metabot.stats.util :as stats.u]
+   [metabase.interestingness.chart.outliers :as outliers]
+   [metabase.interestingness.chart.types :as stats.types]
+   [metabase.interestingness.chart.util :as stats.u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)

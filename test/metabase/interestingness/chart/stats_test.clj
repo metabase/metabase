@@ -1,7 +1,7 @@
-(ns metabase.metabot.stats.core-test
+(ns metabase.interestingness.chart.stats-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.stats.core :as stats.core]))
+   [metabase.interestingness.chart.stats :as stats.core]))
 
 (set! *warn-on-reflection* true)
 

@@ -1,10 +1,10 @@
-(ns metabase.metabot.stats.time-series-test
+(ns metabase.interestingness.chart.time-series-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase.metabot.stats.time-series :as time-series]
-   [metabase.metabot.stats.util :as stats.u]))
+   [metabase.interestingness.chart.time-series :as time-series]
+   [metabase.interestingness.chart.util :as stats.u]))
 
 (set! *warn-on-reflection* true)
 

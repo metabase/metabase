@@ -411,11 +411,11 @@
                   :percent-url    (stats/share u/url?)
                   :percent-email  (stats/share u/email?)
                   :percent-state  (stats/share u/state?)
+                  :percent-blank  (stats/share str/blank?)
                   :average-length ((map count) stats/mean)
                   :min-length     ((map count) stats/min)
                   :max-length     ((map count) stats/max)
-                  :mode-stats     mode-stats
-                  :blank%         (stats/share str/blank?)})
+                  :mode-stats     mode-stats})
     (fn [{:keys [mode-stats] :as fused}]
       (-> fused
           (dissoc :mode-stats)

@@ -161,7 +161,7 @@
                                :max-length     9.0
                                :mode-fraction  0.2
                                :top-3-fraction 0.6
-                               :blank%         0.0}}}
+                               :percent-blank  0.0}}}
          (transduce identity
                     (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text}))
                     ["metabase" "more" "like" "metabae" "[1, 2, 3]"])))
@@ -177,7 +177,7 @@
                                  :max-length     30.0
                                  :mode-fraction  0.2
                                  :top-3-fraction 0.6
-                                 :blank%         0.0}}}
+                                 :percent-blank  0.0}}}
            (transduce identity
                       (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text}))
                       ["metabase" "more" "like" "metabae" truncated-json])))))

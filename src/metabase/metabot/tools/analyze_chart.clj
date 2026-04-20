@@ -5,9 +5,9 @@
   series data in chart_configs, which is seeded into agent memory during
   initialization. This avoids re-executing queries."
   (:require
+   [metabase.interestingness.chart.repr :as stats.repr]
+   [metabase.interestingness.chart.stats :as stats.core]
    [metabase.metabot.scope :as scope]
-   [metabase.metabot.stats.core :as stats.core]
-   [metabase.metabot.stats.repr :as stats.repr]
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
