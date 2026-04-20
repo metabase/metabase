@@ -24,8 +24,10 @@ export type NormalizedDocument = Document;
 export type NormalizedCard = Card;
 export type NormalizedNativeQuerySnippet = NativeQuerySnippet;
 
-export interface NormalizedDatabase
-  extends Omit<Database, "tables" | "schemas"> {
+export interface NormalizedDatabase extends Omit<
+  Database,
+  "tables" | "schemas"
+> {
   tables?: TableId[];
   schemas?: SchemaId[];
 }
@@ -35,11 +37,10 @@ export interface NormalizedSchema extends Omit<Schema, "database" | "tables"> {
   tables?: TableId[];
 }
 
-export interface NormalizedTable
-  extends Omit<
-    Table,
-    "db" | "fields" | "fks" | "segments" | "measures" | "metrics" | "schema"
-  > {
+export interface NormalizedTable extends Omit<
+  Table,
+  "db" | "fields" | "fks" | "segments" | "measures" | "metrics" | "schema"
+> {
   db?: DatabaseId;
   fields?: FieldId[];
   fks?: NormalizedForeignKey[];
@@ -51,19 +52,25 @@ export interface NormalizedTable
   original_fields?: Field[];
 }
 
-export interface NormalizedForeignKey
-  extends Omit<ForeignKey, "origin" | "destination"> {
+export interface NormalizedForeignKey extends Omit<
+  ForeignKey,
+  "origin" | "destination"
+> {
   origin?: FieldId;
   destination?: FieldId;
 }
 
-export interface NormalizedFieldDimension
-  extends Omit<FieldDimension, "human_readable_field"> {
+export interface NormalizedFieldDimension extends Omit<
+  FieldDimension,
+  "human_readable_field"
+> {
   human_readable_field?: FieldId;
 }
 
-export interface NormalizedField
-  extends Omit<Field, "target" | "table" | "name_field" | "dimensions"> {
+export interface NormalizedField extends Omit<
+  Field,
+  "target" | "table" | "name_field" | "dimensions"
+> {
   uniqueId: string;
   target?: FieldId;
   table?: TableId;
@@ -79,8 +86,10 @@ export interface NormalizedMeasure extends Omit<Measure, "table"> {
   table?: TableId;
 }
 
-export interface NormalizedTimeline
-  extends Omit<Timeline, "collection" | "events"> {
+export interface NormalizedTimeline extends Omit<
+  Timeline,
+  "collection" | "events"
+> {
   collection?: CollectionId;
   events?: TimelineEventId[];
 }

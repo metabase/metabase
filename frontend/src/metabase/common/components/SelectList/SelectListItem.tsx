@@ -9,8 +9,10 @@ import type { BaseSelectListItemProps } from "./BaseSelectListItem";
 import { BaseSelectListItem } from "./BaseSelectListItem";
 import { ItemIcon, ItemRoot, ItemTitle } from "./SelectListItem.styled";
 
-export interface SelectListItemProps
-  extends Omit<BaseSelectListItemProps, "children"> {
+export interface SelectListItemProps extends Omit<
+  BaseSelectListItemProps,
+  "children"
+> {
   name: string;
   icon?: string | IconProps;
   rightIcon?: string | IconProps;

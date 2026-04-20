@@ -27,8 +27,10 @@ import {
 } from "./constants";
 import { isEllipsisActive } from "./utils";
 
-export interface CheckBoxProps
-  extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
+export interface CheckBoxProps extends Omit<
+  HTMLAttributes<HTMLElement>,
+  "onChange" | "onFocus" | "onBlur"
+> {
   name?: string;
   label?: ReactNode;
   labelEllipsis?: boolean;
