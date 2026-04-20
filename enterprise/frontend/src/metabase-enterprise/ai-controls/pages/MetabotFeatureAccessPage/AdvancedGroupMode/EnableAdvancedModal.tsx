@@ -5,12 +5,12 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useEnableAdvancedAIControlsPermissionsMutation } from "metabase-enterprise/api";
 
 type Props = {
-  opened: boolean;
   onClose: () => void;
 };
 
-export function EnableAdvancedModal({ opened, onClose }: Props) {
-  const [enableAdvanced] = useEnableAdvancedAIControlsPermissionsMutation();
+export function EnableAdvancedModal({ onClose }: Props) {
+  const [enableAdvanced, { isLoading: loading }] =
+    useEnableAdvancedAIControlsPermissionsMutation();
   const { sendErrorToast } = useMetadataToasts();
 
   const handleConfirm = async () => {
@@ -24,12 +24,17 @@ export function EnableAdvancedModal({ opened, onClose }: Props) {
 
   return (
     <ConfirmModal
-      opened={opened}
+      opened
       onClose={onClose}
       title={t`Switch to group-level permissions?`}
       message={t`This will remove all AI feature access from the "All Users" group, so users won't have access to AI features unless they're added to a group that has access.`}
       confirmButtonText={t`Switch to group-level permissions`}
-      confirmButtonProps={{ color: "brand", variant: "filled" }}
+      confirmButtonProps={{
+        color: "brand",
+        variant: "filled",
+        loading,
+      }}
+      closeButtonProps={{ disabled: loading }}
       onConfirm={handleConfirm}
     />
   );

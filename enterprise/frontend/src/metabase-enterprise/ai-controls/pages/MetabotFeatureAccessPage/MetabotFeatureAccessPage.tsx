@@ -5,19 +5,17 @@ import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import { ActionIcon, Button, Group, Icon, Menu, Title } from "metabase/ui";
+import { Group, Stack, Title } from "metabase/ui";
 
+import { AdvancedGroupModeButton } from "./AdvancedGroupMode";
 import { AiFeatureAccessTable } from "./AiFeatureAccessTable";
-import { DisableAdvancedModal } from "./DisableAdvancedModal";
-import { EnableAdvancedModal } from "./EnableAdvancedModal";
+import { GearIconMenu } from "./GearIconMenu/GearIconMenu";
 import { GroupCategoryTabs } from "./GroupCategoryTabs";
 import { type GroupTab, useMetabotGroupPermissions } from "./utils";
 
 export function MetabotFeatureAccessPage() {
   const isUsingTenants = useSetting("use-tenants");
   const [activeTab, setActiveTab] = useState<GroupTab>("user-groups");
-  const [enableModalOpen, setEnableModalOpen] = useState(false);
-  const [disableModalOpen, setDisableModalOpen] = useState(false);
 
   const {
     data: userGroups,
@@ -55,55 +53,28 @@ export function MetabotFeatureAccessPage() {
     <SettingsPageWrapper mt="sm">
       <Group justify="space-between" w="100%">
         <Title order={1}>{t`AI feature access`}</Title>
-        {advanced && (
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <ActionIcon variant="subtle" aria-label={t`Settings`}>
-                <Icon name="gear" />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item onClick={() => setDisableModalOpen(true)}>
-                {t`Remove group-level access`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        )}
+        {advanced && <GearIconMenu />}
       </Group>
 
       {isUsingTenants && (
         <GroupCategoryTabs setActiveTab={setActiveTab} activeTab={activeTab} />
       )}
 
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
-        {activeGroups && (
-          <AiFeatureAccessTable
-            groups={activeGroups}
-            groupPermissions={groupPermissions}
-            onPermissionChange={onPermissionChange}
-            advanced={advanced}
-            activeTab={activeTab}
-          />
-        )}
-      </LoadingAndErrorWrapper>
+      <Stack gap="md">
+        <LoadingAndErrorWrapper loading={isLoading} error={error}>
+          {activeGroups && (
+            <AiFeatureAccessTable
+              groups={activeGroups}
+              groupPermissions={groupPermissions}
+              onPermissionChange={onPermissionChange}
+              advanced={advanced}
+              activeTab={activeTab}
+            />
+          )}
+        </LoadingAndErrorWrapper>
 
-      {!advanced && (
-        <Group>
-          <Button
-            variant="filled"
-            onClick={() => setEnableModalOpen(true)}
-          >{t`Set group-level permissions`}</Button>
-        </Group>
-      )}
-
-      <EnableAdvancedModal
-        opened={enableModalOpen}
-        onClose={() => setEnableModalOpen(false)}
-      />
-      <DisableAdvancedModal
-        opened={disableModalOpen}
-        onClose={() => setDisableModalOpen(false)}
-      />
+        {!advanced && <AdvancedGroupModeButton />}
+      </Stack>
     </SettingsPageWrapper>
   );
 }
