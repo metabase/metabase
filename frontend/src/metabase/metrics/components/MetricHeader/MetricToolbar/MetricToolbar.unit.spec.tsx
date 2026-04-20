@@ -148,6 +148,7 @@ describe("MetricToolbar", () => {
       setup({
         showDataStudioLink: true,
         collectionType: "library-metrics",
+        isAdmin: true,
       });
       await openMenu();
 
@@ -157,7 +158,7 @@ describe("MetricToolbar", () => {
     });
 
     it("should hide 'Open in Data Studio' when not in library collection", async () => {
-      setup({ showDataStudioLink: true, collectionType: null });
+      setup({ showDataStudioLink: true, collectionType: null, isAdmin: true });
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
@@ -169,7 +170,17 @@ describe("MetricToolbar", () => {
       setup({
         showDataStudioLink: false,
         collectionType: "library-metrics",
+        isAdmin: true,
       });
+      await openMenu();
+
+      expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
+      expect(getDividers()).toHaveLength(2);
+      expectNoConsecutiveOrTrailingDividers();
+    });
+
+    it("should hide 'Open in Data Studio' when user is not an admin", async () => {
+      setup({ showDataStudioLink: true, collectionType: "library-metrics" });
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
