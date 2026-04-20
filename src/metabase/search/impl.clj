@@ -431,7 +431,11 @@
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (map (partial add-can-write search-ctx))
-                            true (map serialize))]
+                            true (map serialize)
+                            ;; Realize within the enclosing tracing span so hydration and
+                            ;; serialization time is attributed here rather than deferred to
+                            ;; JSON encoding after the span closes.
+                            true vec)]
     (cond-> {:data        paginated-results
              :limit       (:limit-int search-ctx)
              :models      (:models search-ctx)

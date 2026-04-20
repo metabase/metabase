@@ -14,6 +14,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.tracing.core :as tracing]
@@ -722,13 +723,22 @@
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
-        ;; Fast path: the permission check depends only on `:collection_id`, which is already on the
-        ;; index row. Dedupe by collection_id so `can-read?` runs once per distinct collection instead
-        ;; of once per document. A stub `:model/Card` instance is sufficient to drive the dispatch
-        ;; and satisfies the fields `mi/can-read? :model/Card` actually reads.
+        ;; Fast path: for `collection-id-only-search-models` the read permission is a pure function
+        ;; of `:collection_id`, which is denormalized onto the index row at ingest time. We deliberately
+        ;; trust the indexed value rather than re-fetching the app DB row — that avoids an N-row
+        ;; `t2/select` on every semantic search and is the main win of this path. The trade-off is
+        ;; that between a move (or delete) and the next reindex, a user can see a search hit whose
+        ;; live `collection_id` they no longer have access to. The index is eventually consistent by
+        ;; design; and the per-row API fetch (loading the entity after clicking through) still
+        ;; enforces live permissions, so the exposure is bounded to search-result metadata.
+        ;;
+        ;; We call `perms/can-read-audit-helper` directly instead of going through
+        ;; `mi/can-read? :model/Card` — this makes the "only :collection_id matters" contract
+        ;; explicit (if Card's `can-read?` ever gains other checks, this path intentionally won't
+        ;; pick them up) and avoids multimethod dispatch + instance allocation per distinct id.
         coll-readable? (memoize
                         (fn [coll-id]
-                          (mi/can-read? (t2/instance :model/Card {:collection_id coll-id}))))
+                          (perms/can-read-audit-helper :model/Card {:collection_id coll-id})))
         check-timer (u/start-timer)
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         check-ms (u/since-ms check-timer)
