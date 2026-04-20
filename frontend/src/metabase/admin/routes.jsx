@@ -120,38 +120,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         path="troubleshooting"
         component={createAdminRouteGuard("troubleshooting")}
       >
-<<<<<<< HEAD
         <Route title={t`Troubleshooting`} component={TroubleshootingApp}>
-=======
-        <Route title={t`Performance`} component={PerformanceApp}>
-          <IndexRedirect to={PerformanceTabId.Databases} />
-          <Route
-            path="databases"
-            title={t`Databases`}
-            component={StrategyEditorForDatabases}
-          />
-          <Route
-            path="models"
-            title={t`Models`}
-            component={ModelPersistenceConfiguration}
-          />
-          <Route
-            path="dashboards-and-questions"
-            title={t`Dashboards and questions`}
-            component={PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards}
-          />
-        </Route>
-      </Route>
-      {PLUGIN_METABOT.getAdminRoutes()}
-      {PLUGIN_SECURITY_CENTER.isEnabled && (
-        <Route
-          path="security-center"
-          component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
-        />
-      )}
-      <Route path="tools" component={createAdminRouteGuard("tools")}>
-        <Route title={t`Tools`} component={ToolsApp}>
->>>>>>> 1019fac02a0 (🤖 backported "Security Center" (#72346) (#72700) (#72760))
           <IndexRedirect to="help" />
           <Route path="help" component={Help} />
           <Route path="tasks" component={TasksApp}>
@@ -215,6 +184,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
       </Route>
       {PLUGIN_METABOT.getAdminRoutes()}
+      {PLUGIN_SECURITY_CENTER.isEnabled && (
+        <Route
+          path="security-center"
+          component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
+        />
+      )}
       <Route path="tools" component={createAdminRouteGuard("tools")}>
         <Route title={t`Tools`} component={Tools}>
           <IndexRedirect to="errors" />
