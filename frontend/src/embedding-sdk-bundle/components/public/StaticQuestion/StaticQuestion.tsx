@@ -166,12 +166,8 @@ const StaticQuestionInner = (
                 data-testid="result-mobile-toolbar"
               >
                 {withChartTypeSelector && (
-                  <ChartTypeDropdown
+                  <SdkQuestion.ChartTypeDropdown
                     className={MobileToolbarS.LeftButton}
-                    styles={{
-                      inner: { width: "100%" },
-                      label: { marginRight: "auto" },
-                    }}
                   />
                 )}
 
