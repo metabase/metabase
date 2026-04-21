@@ -350,7 +350,7 @@
 
 (defmethod driver/create-schema-if-needed! :clickhouse
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
+  (let [sql [[(format "CREATE DATABASE IF NOT EXISTS %s;" (sql.u/quote-name :clickhouse :schema schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

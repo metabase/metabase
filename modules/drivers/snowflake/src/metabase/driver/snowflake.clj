@@ -1067,17 +1067,23 @@
       (throw (ex-info "Snowflake database configuration is missing required 'warehouse' setting"
                       {:database-id (:id database) :step :init})))
     ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
-    (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
-                 (format "CREATE ROLE IF NOT EXISTS \"%s\"" role-name)
-                 (format "GRANT USAGE ON DATABASE \"%s\" TO ROLE \"%s\"" db-name role-name)
-                 (format "GRANT USAGE ON WAREHOUSE \"%s\" TO ROLE \"%s\"" warehouse role-name)
-                 (format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
-                 (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = \"%s\""
-                         (:user read-user) (:password read-user) role-name)
-                 (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
-      (jdbc/execute! conn-spec [sql]))
+    (let [qdb    (sql.u/quote-name :snowflake :field db-name)
+          qsch   (sql.u/quote-name :snowflake :field schema-name)
+          qrole  (sql.u/quote-name :snowflake :field role-name)
+          qwh    (sql.u/quote-name :snowflake :field warehouse)
+          quser  (sql.u/quote-name :snowflake :field (:user read-user))
+          esc-pw (sql.u/escape-sql (:password read-user) :ansi)]
+      (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s.%s" qdb qsch)
+                   (format "CREATE ROLE IF NOT EXISTS %s" qrole)
+                   (format "GRANT USAGE ON DATABASE %s TO ROLE %s" qdb qrole)
+                   (format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" qwh qrole)
+                   (format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s" qdb qsch qrole)
+                   (format "GRANT ALL PRIVILEGES ON SCHEMA %s.%s TO ROLE %s" qdb qsch qrole)
+                   (format "GRANT ALL ON FUTURE TABLES IN SCHEMA %s.%s TO ROLE %s" qdb qsch qrole)
+                   (format "CREATE USER IF NOT EXISTS %s PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
+                           quser esc-pw qrole)
+                   (format "GRANT ROLE %s TO USER %s" qrole quser)]]
+        (jdbc/execute! conn-spec [sql])))
     {:schema           schema-name
      :database_details (assoc read-user :role role-name :use-password true)}))
 
@@ -1093,10 +1099,14 @@
       (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
                       {:database-id (:id database) :step :destroy})))
     ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
-    (doseq [sql [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE" db-name schema-name)
-                 (format "DROP USER IF EXISTS \"%s\"" username)
-                 (format "DROP ROLE IF EXISTS \"%s\"" role-name)]]
-      (jdbc/execute! conn-spec [sql]))))
+    (let [qdb   (sql.u/quote-name :snowflake :field db-name)
+          qsch  (sql.u/quote-name :snowflake :field schema-name)
+          quser (sql.u/quote-name :snowflake :field username)
+          qrole (sql.u/quote-name :snowflake :field role-name)]
+      (doseq [sql [(format "DROP SCHEMA IF EXISTS %s.%s CASCADE" qdb qsch)
+                   (format "DROP USER IF EXISTS %s" quser)
+                   (format "DROP ROLE IF EXISTS %s" qrole)]]
+        (jdbc/execute! conn-spec [sql])))))
 
 (defmethod driver/grant-workspace-read-access! :snowflake
   [_driver database workspace tables]
