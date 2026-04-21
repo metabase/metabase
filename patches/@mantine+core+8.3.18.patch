@@ -1,9 +1,10 @@
 diff --git a/node_modules/@mantine/core/styles.css b/node_modules/@mantine/core/styles.css
-index d85c47e..eff1daa 100644
+index f88cb14..38be78c 100644
 --- a/node_modules/@mantine/core/styles.css
 +++ b/node_modules/@mantine/core/styles.css
-@@ -1,37 +1,3 @@
--:root {
+@@ -1,38 +1,3 @@
+-:root,
+-:host {
 -  color-scheme: var(--mantine-color-scheme);
 -}
 -
@@ -25,7 +26,8 @@ index d85c47e..eff1daa 100644
 -  text-transform: none;
 -}
 -
--body {
+-body,
+-:host {
 -  margin: 0;
 -  font-family: var(--mantine-font-family);
 -  font-size: var(--mantine-font-size-md);
@@ -36,7 +38,6 @@ index d85c47e..eff1daa 100644
 -  -webkit-font-smoothing: var(--mantine-webkit-font-smoothing);
 -  -moz-osx-font-smoothing: var(--mantine-moz-font-smoothing);
 -}
--
+ 
  @media screen and (max-device-width: 31.25em) {
-
- body {
+ 

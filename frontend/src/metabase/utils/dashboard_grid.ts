@@ -25,21 +25,28 @@ export const DEFAULT_CARD_SIZE = DEFAULT_CARD_SIZE_JSON;
 
 export const MIN_ROW_HEIGHT = 40;
 
+type CardPosition = {
+  col: number;
+  row: number;
+  size_x: number;
+  size_y: number;
+};
+
 // returns the first available position from left to right, top to bottom, based on the existing cards, item size, and
 // grid width. NOTE: If you change the way this function works, please change `get-position-for-new-dashcard` in
 // https://github.com/metabase/metabase/blob/master/src/metabase/dashboards/autoplace.clj
 export function getPositionForNewDashCard(
-  cards,
+  cards: CardPosition[],
   size_x = DEFAULT_CARD_SIZE.width,
   size_y = DEFAULT_CARD_SIZE.height,
   width = GRID_WIDTH,
-) {
+): CardPosition {
   let row = 0;
   let col = 0;
   while (row < 1000) {
     while (col <= width - size_x) {
       let good = true;
-      const position = { col, row, size_x, size_y };
+      const position: CardPosition = { col, row, size_x, size_y };
       for (const card of cards) {
         if (intersects(card, position)) {
           good = false;
@@ -58,7 +65,7 @@ export function getPositionForNewDashCard(
   return { col, row, size_x, size_y };
 }
 
-function intersects(a, b) {
+function intersects(a: CardPosition, b: CardPosition): boolean {
   return !(
     b.col >= a.col + a.size_x ||
     b.col + b.size_x <= a.col ||
@@ -69,8 +76,8 @@ function intersects(a, b) {
 
 // for debugging
 /*eslint-disable */
-function printGrid(cards, width) {
-  let grid = [];
+function printGrid(cards: CardPosition[], width: number) {
+  let grid: number[][] = [];
   for (let card of cards) {
     for (let col = card.col; col < card.col + card.size_x; col++) {
       for (let row = card.row; row < card.row + card.size_y; row++) {
@@ -86,5 +93,4 @@ function printGrid(cards, width) {
   }
   console.log("\n" + grid.map((row) => row.join(".")).join("\n") + "\n");
 }
-
 /*eslint-enable */

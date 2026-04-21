@@ -1456,7 +1456,7 @@ describe("scenarios > dashboard", () => {
     // toggle full-width
     H.editDashboard();
     cy.findByLabelText("Toggle width").click();
-    H.popover().findByText("Full width").click();
+    H.popover().findByLabelText("Full width").click();
     H.assertDashboardFullWidth();
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
@@ -1471,7 +1471,7 @@ describe("scenarios > dashboard", () => {
     // toggle back to fixed
     H.editDashboard();
     cy.findByLabelText("Toggle width").click();
-    H.popover().findByText("Full width").click();
+    H.popover().findByLabelText("Full width").click();
     H.assertDashboardFixedWidth();
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
