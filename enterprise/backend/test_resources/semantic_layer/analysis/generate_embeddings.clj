@@ -22,11 +22,16 @@
       (str/replace #" +" " ")
       str/trim str/lower-case))
 
-(defn- read-json-array [dump-dir filename]
+(defn- read-json-array!
+  "Read a JSON array from `<dump-dir>/<filename>`. Throws when the file is absent so a typo in
+  `dump-dir` or an incomplete export surfaces immediately instead of silently producing an
+  embedding file with no vectors."
+  [dump-dir filename]
   (let [f (io/file dump-dir filename)]
-    (if (.exists f)
-      (json/decode (slurp f) true)
-      [])))
+    (when-not (.exists f)
+      (throw (ex-info (str "Required dump file not found: " (.getPath f))
+                      {:dump-dir dump-dir :filename filename :resolved-path (.getPath f)})))
+    (json/decode (slurp f) true)))
 
 (defn- load-entities
   "Load tables and cards from the JSON dump in `dump-dir`. Mirrors the universe filters used by
@@ -34,18 +39,33 @@
   models/metrics on non-audit databases. Reading from the dump guarantees the generated embeddings
   cover exactly the same snapshot that the downstream analysis scripts load."
   [dump-dir]
-  (let [tables (->> (read-json-array dump-dir "tables.json")
+  (let [tables (->> (read-json-array! dump-dir "tables.json")
                     (filter (fn [t] (and (:active t)
                                          (not= (:db_id t) audit/audit-db-id)))))
-        cards  (->> (read-json-array dump-dir "cards.json")
+        cards  (->> (read-json-array! dump-dir "cards.json")
                     (filter (fn [c] (and (contains? #{"metric" "model"} (:type c))
                                          (not (:archived c))
                                          (not= (:database_id c) audit/audit-db-id)))))]
     {:tables tables :cards cards}))
 
+(defn- assert-rich-fields!
+  "The `:search-text` variant combines name + description (+ schema for tables). If the dump
+  producer didn't carry those fields, the output silently degrades to just `[kind] name`, which
+  is indistinguishable from the `:names` variant. Fail fast instead so a dump-format regression
+  is visible."
+  [{:keys [tables cards]}]
+  (let [tables-rich? (some #(or (contains? % :description) (contains? % :schema)) tables)
+        cards-rich?  (some #(contains? % :description) cards)]
+    (when-not (and tables-rich? cards-rich?)
+      (throw (ex-info (str "Dump is missing descriptive fields required by the :search-text variant."
+                           " Regenerate tables.json with :description and :schema, and cards.json"
+                           " with :description, or drop :search-text from the variants list.")
+                      {:tables-have-description-or-schema? (boolean tables-rich?)
+                       :cards-have-description?            (boolean cards-rich?)})))))
+
 (defn- build-texts
   "Build `{normalized-name → text-to-embed}` for a given text-type."
-  [text-type {:keys [tables cards]}]
+  [text-type {:keys [tables cards] :as entities}]
   (let [entries
         (case text-type
           :names
@@ -57,14 +77,16 @@
                   (map (fn [c] [(embedders/normalize-name (:name c)) (split-name (:name c))]) cards))
 
           :search-text
-          (concat
-           (map (fn [t] [(embedders/normalize-name (:name t))
-                         (str "[table] " (:name t)
-                              (when (:description t) (str " - " (subs (:description t) 0 (min 100 (count (:description t))))))
-                              (when (:schema t) (str " (" (:schema t) ")")))]) tables)
-           (map (fn [c] [(embedders/normalize-name (:name c))
-                         (str "[" (:type c) "] " (:name c)
-                              (when (:description c) (str " - " (subs (:description c) 0 (min 100 (count (:description c)))))))]) cards))
+          (do
+            (assert-rich-fields! entities)
+            (concat
+             (map (fn [t] [(embedders/normalize-name (:name t))
+                           (str "[table] " (:name t)
+                                (when (:description t) (str " - " (subs (:description t) 0 (min 100 (count (:description t))))))
+                                (when (:schema t) (str " (" (:schema t) ")")))]) tables)
+             (map (fn [c] [(embedders/normalize-name (:name c))
+                           (str "[" (:type c) "] " (:name c)
+                                (when (:description c) (str " - " (subs (:description c) 0 (min 100 (count (:description c)))))))]) cards)))
 
           :typed-split
           (concat
