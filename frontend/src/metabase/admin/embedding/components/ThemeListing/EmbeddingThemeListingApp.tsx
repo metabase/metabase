@@ -2,11 +2,9 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks";
 import { UpsellEmbeddingTheme } from "metabase/admin/upsells";
 import {
   useCopyEmbeddingThemeMutation,
-  useCreateEmbeddingThemeMutation,
   useDeleteEmbeddingThemeMutation,
   useListEmbeddingThemesQuery,
 } from "metabase/api/embedding-theme";
@@ -41,26 +39,14 @@ export function EmbeddingThemeListingApp() {
 function EmbeddingThemeListingAppInner() {
   const dispatch = useDispatch();
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
-  const [createTheme] = useCreateEmbeddingThemeMutation();
   const [duplicateTheme] = useCopyEmbeddingThemeMutation();
   const [deleteTheme] = useDeleteEmbeddingThemeMutation();
   const [sendToast] = useToast();
-  const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
 
   const [themeToDelete, setThemeToDelete] = useState<number | null>(null);
 
-  const handleCreateTheme = async () => {
-    try {
-      const newTheme = await createTheme({
-        name: t`Untitled theme`,
-        settings: defaultThemeSettings,
-      }).unwrap();
-
-      dispatch(push(`/admin/embedding/themes/${newTheme.id}`));
-    } catch (error) {
-      console.error("Failed to create theme:", error);
-      sendToast({ message: t`Failed to create theme`, icon: "warning" });
-    }
+  const handleCreateTheme = () => {
+    dispatch(push(`/admin/embedding/themes/new`));
   };
 
   const handleDuplicateTheme = async (themeId: number) => {

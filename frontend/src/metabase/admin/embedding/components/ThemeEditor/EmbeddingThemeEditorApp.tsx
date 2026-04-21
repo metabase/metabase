@@ -21,7 +21,8 @@ export function EmbeddingThemeEditorApp({
   params,
   route,
 }: EmbeddingThemeEditorAppProps) {
-  const themeId = parseInt(params.themeId, 10);
+  const themeId =
+    params.themeId === "new" ? "new" : parseInt(params.themeId, 10);
   const editor = useEmbeddingThemeEditor(themeId);
   const dispatch = useDispatch();
   const isSavingRef = useRef(false);

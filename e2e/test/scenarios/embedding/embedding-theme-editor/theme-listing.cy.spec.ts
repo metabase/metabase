@@ -37,8 +37,32 @@ describe(
         cy.findByRole("button", { name: /New theme/ }).click();
       });
 
-      cy.log("navigates to the theme editor page");
-      cy.url().should("match", /\/admin\/embedding\/themes\/\d+/);
+      cy.log("navigates to the draft theme editor page");
+      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+    });
+
+    it("does not create a theme when cancelling from the draft editor", () => {
+      cy.intercept("POST", "/api/embed-theme").as("createTheme");
+      cy.visit("/admin/embedding/themes");
+
+      H.main()
+        .findByRole("button", { name: /New theme/ })
+        .click();
+
+      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+
+      cy.findByRole("button", { name: /Cancel/ }).click();
+
+      cy.log("navigates back to the listing");
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
+
+      cy.log("empty state is still visible");
+      H.main()
+        .findByText("Create your first theme to get started")
+        .should("be.visible");
+
+      cy.log("no POST was issued");
+      cy.get("@createTheme.all").should("have.length", 0);
     });
 
     it("navigates to theme editor when clicking an existing theme card", () => {
@@ -71,6 +95,8 @@ describe(
       H.main()
         .findByRole("button", { name: /New theme/ })
         .click();
+
+      cy.findByRole("button", { name: /Save theme/ }).click();
 
       cy.wait<{ name: string; settings: MetabaseTheme }>("@createTheme").then(
         (interception) => {

@@ -225,7 +225,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
         <Button variant="subtle" onClick={onCancel}>
           {t`Cancel`}
         </Button>
-        <Button variant="filled" onClick={onSave} disabled={!editor.isDirty}>
+        <Button variant="filled" onClick={onSave} disabled={!editor.canSave}>
           {t`Save theme`}
         </Button>
       </Flex>
