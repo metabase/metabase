@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
@@ -13,7 +12,14 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 import { isSyncInProgress } from "metabase/utils/syncing";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type {
+  ConcreteTableId,
+  Database,
+  DatabaseId,
+  Table,
+} from "metabase-types/api";
 
 import {
   trackBrowseXRayClicked,
@@ -24,17 +30,19 @@ import {
 import S from "./TableBrowser.module.css";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
-const propTypes = {
-  tables: PropTypes.array.isRequired,
-  getTableUrl: PropTypes.func.isRequired,
-  metadata: PropTypes.object,
-  dbId: PropTypes.number,
-  schemaName: PropTypes.string,
-  xraysEnabled: PropTypes.bool,
-  showSchemaInHeader: PropTypes.bool,
+type GetTableUrl = (table: Table, metadata?: Metadata) => string;
+
+type TableBrowserProps = {
+  tables: Table[];
+  getTableUrl: GetTableUrl;
+  metadata?: Metadata;
+  dbId: DatabaseId;
+  schemaName?: string;
+  xraysEnabled?: boolean;
+  showSchemaInHeader?: boolean;
 };
 
-export const TableBrowser = ({
+export const TableBrowserInner = ({
   tables,
   getTableUrl,
   metadata,
@@ -42,15 +50,15 @@ export const TableBrowser = ({
   schemaName,
   xraysEnabled,
   showSchemaInHeader = true,
-}) => {
+}: TableBrowserProps) => {
   const databases = useSelector(getDatabases);
   const database = databases[dbId];
   const isAdmin = useSelector(getUserIsAdmin);
   const databaseCrumb = useDatabaseCrumb(dbId);
   const canEditTables =
-    database &&
+    !!database &&
     isAdmin &&
-    PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled(database);
+    PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled(database as Database);
 
   return (
     <>
@@ -59,7 +67,7 @@ export const TableBrowser = ({
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
             databaseCrumb,
-            showSchemaInHeader && { title: schemaName },
+            ...(showSchemaInHeader ? [{ title: schemaName }] : []),
           ]}
         />
       </Flex>
@@ -80,15 +88,13 @@ export const TableBrowser = ({
   );
 };
 
-TableBrowser.propTypes = propTypes;
-
-const itemPropTypes = {
-  table: PropTypes.object.isRequired,
-  dbId: PropTypes.number,
-  xraysEnabled: PropTypes.bool,
-  metadata: PropTypes.object,
-  getTableUrl: PropTypes.func.isRequired,
-  canEditTables: PropTypes.bool,
+type TableBrowserItemProps = {
+  table: Table;
+  dbId: DatabaseId;
+  xraysEnabled?: boolean;
+  metadata?: Metadata;
+  getTableUrl: GetTableUrl;
+  canEditTables?: boolean;
 };
 
 const TableBrowserItem = ({
@@ -98,7 +104,7 @@ const TableBrowserItem = ({
   metadata,
   getTableUrl,
   canEditTables,
-}) => {
+}: TableBrowserItemProps) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
   const isTableWritable = table.is_writable;
@@ -108,13 +114,13 @@ const TableBrowserItem = ({
       to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
       icon="table"
       title={table.display_name || table.name}
-      onClick={() => trackTableClick(table.id)}
+      onClick={() => trackTableClick(table.id as ConcreteTableId)}
     >
       <>
         {isLoading && <Loader size="xs" data-testid="loading-indicator" />}
         {!isLoading && !isVirtual && (
           <TableBrowserItemButtons
-            tableId={table.id}
+            tableId={table.id as ConcreteTableId}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
             canEditTables={canEditTables && isTableWritable}
@@ -125,13 +131,11 @@ const TableBrowserItem = ({
   );
 };
 
-TableBrowserItem.propTypes = itemPropTypes;
-
-const itemButtonsPropTypes = {
-  tableId: PropTypes.number,
-  dbId: PropTypes.number,
-  xraysEnabled: PropTypes.bool,
-  canEditTables: PropTypes.bool,
+type TableBrowserItemButtonsProps = {
+  tableId: ConcreteTableId;
+  dbId: DatabaseId;
+  xraysEnabled?: boolean;
+  canEditTables?: boolean;
 };
 
 const TableBrowserItemButtons = ({
@@ -139,7 +143,7 @@ const TableBrowserItemButtons = ({
   dbId,
   xraysEnabled,
   canEditTables,
-}) => {
+}: TableBrowserItemButtonsProps) => {
   const handleEditTableClicked = () => {
     trackEditDataButtonClicked(tableId);
   };
@@ -188,8 +192,3 @@ const TableBrowserItemButtons = ({
     </Paper>
   );
 };
-
-TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TableBrowser;
