@@ -2146,7 +2146,8 @@
            task
            tracing
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Database}}
+   :model-imports #{:model/Card :model/Dashboard :model/Database}
+   :model-exports #{:model/TaskHistory}}
 
   tenants
   {:team "Admin Webapp"
@@ -3019,15 +3020,11 @@
   {:team "Gadget"
    :api  #{metabase-enterprise.notification-admin.api}
    :uses #{api
-           models
            notification
-           premium-features
            request
-           task-history
            util}
    :model-imports #{:model/Card
                     :model/Notification
-                    :model/NotificationCard
                     :model/NotificationHandler
                     :model/NotificationRecipient
                     :model/TaskHistory
