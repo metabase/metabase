@@ -253,11 +253,6 @@ export function useFormulaEditor({
         newText,
         metricNamesRef.current,
       );
-    // Custom expression names now ride on `MetricIdentity.customName`
-    // (stamped at edit-session start) and are reinstated on the surviving
-    // expression entities inside `applyTrackedDefinitions`. No
-    // positional-index fallback: if every identity of a named expression
-    // is deleted, the name is lost — by design.
 
     // Find which metric sourceIds are referenced in the parsed entities
     const referencedSourceIds = new Set<MetricSourceId>();

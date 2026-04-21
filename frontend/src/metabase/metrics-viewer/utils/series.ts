@@ -157,9 +157,6 @@ export function buildSeries({
             color,
           });
 
-      // When an expression is the first (or only) series the vizSettingsKey
-      // equals the raw column name ("Expression").  Override the series title
-      // so the tooltip / legend display the user-provided name instead.
       if (isFirstSeries && isExpressionEntry(entity) && seriesKey && name) {
         vizSettingsOverride.series_settings = {
           ...vizSettingsOverride.series_settings,

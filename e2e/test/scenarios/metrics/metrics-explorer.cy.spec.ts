@@ -132,7 +132,10 @@ const addMetric = (name: string, runExpression: boolean = true) => {
     H.MetricsViewer.runButton().click();
   }
 };
-const addMetricMath = (expression: ({ metricName: string } | string)[]) => {
+const addMetricMath = (
+  expression: ({ metricName: string } | string)[],
+  runExpression: boolean = true,
+) => {
   H.MetricsViewer.searchInput().type("{end}, ");
   for (const item of expression) {
     if (typeof item === "string") {
@@ -146,7 +149,9 @@ const addMetricMath = (expression: ({ metricName: string } | string)[]) => {
       H.MetricsViewer.searchResults().findByText(item.metricName).click();
     }
   }
-  H.MetricsViewer.runButton().click();
+  if (runExpression) {
+    H.MetricsViewer.runButton().click();
+  }
 };
 
 /**
@@ -1105,7 +1110,7 @@ describe("scenarios > metrics > explorer", () => {
       });
     });
 
-    it("should preserve custom name when the expression metrics change but the slot stays", () => {
+    it("should preserve custom name when the expression is edited in place but keeps at least one original metric", () => {
       addMetricMath([
         { metricName: "Count of orders" },
         "+",
@@ -1118,39 +1123,47 @@ describe("scenarios > metrics > explorer", () => {
       openExpressionRename(1);
       cy.findByTestId("expression-name-input")
         .clear()
-        .type("Slotted Name{enter}");
+        .type("Preserved Name{enter}");
 
       H.MetricsViewer.searchBarPills()
         .should("have.length", 2)
         .eq(1)
-        .should("contain.text", "Slotted Name");
+        .should("contain.text", "Preserved Name");
 
       cy.log(
-        "Rewrite the expression with completely different metrics in the same slot",
+        "Edit in place: delete '+ Test Measure' from the end of the expression " +
+          "while keeping the 'Count of orders' token intact, then append a new operand. " +
+          "The surviving identity carries the custom name.",
       );
       cy.findByTestId("metrics-formula-input").click();
-
-      H.MetricsViewer.searchInput().clear();
-
-      addMetric("Count of orders", false);
-      addMetricMath([
-        { metricName: "Count of orders" },
-        "*",
-        { metricName: "Count of products" },
-      ]);
+      // Cursor at end → one {backspace} deletes the atomic "Test Measure"
+      // token, the next three delete " + " char-by-char. The first metric
+      // token in the expression ("Count of orders") is untouched and its
+      // MetricIdentity (with customName) survives.
+      H.MetricsViewer.searchInput().type(
+        "{end}{backspace}{backspace}{backspace}{backspace} * Count of products",
+        { waitForAnimations: true },
+      );
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      H.MetricsViewer.runButton().click();
       cy.wait("@dataset");
 
       cy.log(
-        "Custom name should still be preserved because the expression is in the same slot",
+        "The expression now reads 'Count of orders * Count of products' " +
+          "and keeps the user-assigned name because one identity survived.",
       );
       H.MetricsViewer.searchBarPills()
         .should("have.length", 2)
         .eq(1)
-        .should("contain.text", "Slotted Name");
+        .should("contain.text", "Preserved Name");
     });
 
-    it("should shift custom names up when an earlier expression is removed", () => {
-      cy.log("Build a formula with two named expressions in separate slots");
+    it("should keep each expression's own name when an earlier expression is removed", () => {
+      // Regression: names used to shift up by ordinal position, so deleting
+      // the first expression made the second one inherit "First Name".
+      // Now names are bound to identities — the surviving expression keeps
+      // its own "Second Name".
+      cy.log("Build two separately-named expressions");
       cy.findByTestId("metrics-formula-input").click();
       H.MetricsViewer.searchInput().clear();
       addMetricMath([
@@ -1169,7 +1182,6 @@ describe("scenarios > metrics > explorer", () => {
         .eq(0)
         .should("contain.text", "First Name");
 
-      cy.log("Add a second expression and name it");
       cy.findByTestId("metrics-formula-input").click();
       addMetricMath([
         { metricName: "Count of orders" },
@@ -1184,28 +1196,38 @@ describe("scenarios > metrics > explorer", () => {
         .clear()
         .type("Second Name{enter}");
       H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .should("contain.text", "First Name");
+      H.MetricsViewer.searchBarPills()
         .eq(1)
         .should("contain.text", "Second Name");
 
-      cy.log("Remove the first expression from the formula");
+      cy.log(
+        "Delete the first expression in place (atomic-range-aware {del} " +
+          "sequence). The second expression's identities — and therefore " +
+          "its custom name — are preserved by CodeMirror's range tracking.",
+      );
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().clear();
-
-      addMetricMath([
-        { metricName: "Count of orders" },
-        "*",
-        { metricName: "Test Measure" },
-      ]);
+      // text: "Count of orders + Test Measure, Count of orders + Test Measure"
+      // cursor at {home} = 0. Seven forward-deletes remove, in order:
+      // "Count of orders" (atomic), " ", "+", " ", "Test Measure" (atomic),
+      // ",", " ". What remains is exactly the second expression.
+      H.MetricsViewer.searchInput().type(
+        "{home}{del}{del}{del}{del}{del}{del}{del}",
+        { waitForAnimations: true },
+      );
+      H.MetricsViewer.runButton().click();
       cy.wait("@dataset");
 
       cy.log(
-        "Remaining expression now occupies the first slot and inherits 'First Name'",
+        "The surviving expression must keep its own 'Second Name' and " +
+          "must NOT inherit 'First Name' from the removed expression.",
       );
       H.MetricsViewer.searchBarPills()
         .should("have.length", 1)
         .eq(0)
-        .should("contain.text", "First Name")
-        .should("not.contain.text", "Second Name");
+        .should("contain.text", "Second Name")
+        .should("not.contain.text", "First Name");
     });
   });
 
@@ -1982,6 +2004,7 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of orders");
       cy.wait("@dataset");
     });
+
     it("should apply filters and dimensions to individual metric instances within expressions", () => {
       selectBreakout("Count of orders", "Category");
       cy.wait("@dataset");
@@ -2077,10 +2100,7 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       cy.log("Add numeric metric '123' as standalone");
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(`, ${NUMERIC_METRIC_NAME}`);
-      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
-      H.MetricsViewer.runButton().click();
+      addMetric("123");
       cy.wait("@dataset");
 
       cy.log("Sum metric '123' with itself — both selected from dropdown");
@@ -2101,10 +2121,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getMetricVisualization().should("exist");
 
       cy.log("Append metric '123' as standalone — selected from dropdown");
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(`, ${NUMERIC_METRIC_NAME}`);
-      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
-      H.MetricsViewer.runButton().click();
+      addMetric("123");
       cy.wait("@dataset");
       H.MetricsViewer.getMetricVisualization().should("exist");
 

@@ -110,11 +110,6 @@ export function buildFullTextWithIdentities(
     }
 
     if (isExpressionEntry(entity)) {
-      // A truly custom name is one the user typed in the pill — it differs
-      // from the auto-derived expression text. We stamp it onto every
-      // metric-token identity belonging to this expression so that
-      // `applyTrackedDefinitions` can read it back through any identity
-      // that survives a subsequent edit.
       const defaultText = buildExpressionText(entity.tokens, metricNames);
       const customName =
         entity.name && entity.name !== defaultText ? entity.name : undefined;
@@ -1011,12 +1006,6 @@ export type MetricIdentityEntry = {
   to: number;
   definition: MetricDefinition | null;
   slotIndex?: number;
-  /**
-   * User-assigned name for the expression this identity belongs to. Only
-   * populated when the owning `ExpressionDefinitionEntry.name` differs from
-   * the auto-derived text (i.e. the user actually renamed the expression).
-   * Standalone metric identities leave this undefined.
-   */
   customName?: string;
 };
 
@@ -1071,11 +1060,7 @@ export function applyTrackedDefinitions(
     MetricsViewerFormulaEntity,
     Map<number, MetricDefinition | undefined>
   >();
-  // Per-expression custom name, resolved from the first surviving tracked
-  // identity whose `customName` is non-empty. This binds the name to the
-  // identity (and thus to the entity the identity belongs to) rather than
-  // to the ordinal position among expression entries.
-  const exprNames = new Map<MetricsViewerFormulaEntity, string>();
+  const exprCustomNamesMap = new Map<MetricsViewerFormulaEntity, string>();
   const slotMapping = new Map<number, number>();
   let newSlotCounter = 0;
 
@@ -1115,8 +1100,8 @@ export function applyTrackedDefinitions(
       // First surviving identity with a custom name wins. If identities
       // from two named expressions merge into one, the earliest (by token
       // order) name is kept — acceptable per the design.
-      if (tracked.customName && !exprNames.has(visit.entity)) {
-        exprNames.set(visit.entity, tracked.customName);
+      if (tracked.customName && !exprCustomNamesMap.has(visit.entity)) {
+        exprCustomNamesMap.set(visit.entity, tracked.customName);
       }
     },
     trackedIdentities,
@@ -1140,7 +1125,7 @@ export function applyTrackedDefinitions(
       const tokensChanged = newTokens.some(
         (token, index) => token !== entity.tokens[index],
       );
-      const inheritedName = exprNames.get(entity);
+      const inheritedName = exprCustomNamesMap.get(entity);
       const nameChanged =
         inheritedName != null && inheritedName !== entity.name;
       if (!tokensChanged && !nameChanged) {
