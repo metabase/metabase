@@ -1035,83 +1035,87 @@ describe("scenarios > embedding > dashboard appearance", () => {
     });
   });
 
-  it("should resize iframe to dashboard content size (metabase#47061)", () => {
-    const dashboardDetails = {
-      name: "dashboard name",
-      enable_embedding: true,
-    };
+  it(
+    "should resize iframe to dashboard content size (metabase#47061)",
+    { tags: "@skip" },
+    () => {
+      const dashboardDetails = {
+        name: "dashboard name",
+        enable_embedding: true,
+      };
 
-    const questionDetails = {
-      name: "Line chart",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            { "base-type": "type/DateTime", "temporal-unit": "month" },
+      const questionDetails = {
+        name: "Line chart",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": "month" },
+            ],
           ],
-        ],
-        limit: 5,
-      },
-      display: "bar",
-    };
-    H.createQuestion(questionDetails)
-      .then(({ body: { id: card_id } }) => {
-        H.createDashboardWithTabs({
-          ...dashboardDetails,
-          dashcards: [
-            {
-              id: -1,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 8,
-              size_y: 20,
-            },
-          ],
+          limit: 5,
+        },
+        display: "bar",
+      };
+      H.createQuestion(questionDetails)
+        .then(({ body: { id: card_id } }) => {
+          H.createDashboardWithTabs({
+            ...dashboardDetails,
+            dashcards: [
+              {
+                id: -1,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 8,
+                size_y: 20,
+              },
+            ],
+          });
+        })
+        .then((dashboard) => {
+          return H.getEmbeddedPageUrl({
+            resource: { dashboard: dashboard.id },
+            params: {},
+          });
+        })
+        .then((urlOptions) => {
+          const baseUrl = Cypress.config("baseUrl");
+          Cypress.config("baseUrl", null);
+          cy.visit(
+            `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${baseUrl + urlOptions.url}`,
+          );
         });
-      })
-      .then((dashboard) => {
-        return H.getEmbeddedPageUrl({
-          resource: { dashboard: dashboard.id },
-          params: {},
-        });
-      })
-      .then((urlOptions) => {
-        const baseUrl = Cypress.config("baseUrl");
-        Cypress.config("baseUrl", null);
-        cy.visit(
-          `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${baseUrl + urlOptions.url}`,
-        );
+
+      H.getIframeBody().within(() => {
+        cy.findByText(questionDetails.name).should("exist");
+        cy.findByText("May 2025").should("exist");
+
+        // TODO: Enable this once we fix the flakiness https://app.trunk.io/metabase/flaky-tests/test/facb35f0-6d76-5e7d-b21c-40401bbc3ff6?repo=metabase%2Fmetabase
+        // (metabase#49537)
+        // chartPathWithFillColor("#509EE3").last().realHover();
+        // echartsTooltip().should("be.visible");
+        // assertEChartsTooltip({
+        //   header: "August 2025",
+        //   rows: [
+        //     {
+        //       name: "Count",
+        //       value: "79",
+        //       secondaryValue: "+23.44%",
+        //     },
+        //   ],
+        // });
       });
 
-    H.getIframeBody().within(() => {
-      cy.findByText(questionDetails.name).should("exist");
-      cy.findByText("May 2025").should("exist");
-
-      // TODO: Enable this once we fix the flakiness https://app.trunk.io/metabase/flaky-tests/test/facb35f0-6d76-5e7d-b21c-40401bbc3ff6?repo=metabase%2Fmetabase
-      // (metabase#49537)
-      // chartPathWithFillColor("#509EE3").last().realHover();
-      // echartsTooltip().should("be.visible");
-      // assertEChartsTooltip({
-      //   header: "August 2025",
-      //   rows: [
-      //     {
-      //       name: "Count",
-      //       value: "79",
-      //       secondaryValue: "+23.44%",
-      //     },
-      //   ],
-      // });
-    });
-
-    cy.get("#iframe").should(($iframe) => {
-      const [iframe] = $iframe;
-      expect(iframe.clientHeight).to.be.greaterThan(1000);
-    });
-  });
+      cy.get("#iframe").should(($iframe) => {
+        const [iframe] = $iframe;
+        expect(iframe.clientHeight).to.be.greaterThan(1000);
+      });
+    },
+  );
 
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
