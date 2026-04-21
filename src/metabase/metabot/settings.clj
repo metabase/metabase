@@ -105,7 +105,7 @@
   "Default Anthropic model used for Metabot when no explicit model is selected."
   "claude-sonnet-4-6")
 
-(def default-llm-metabot-provider
+(def ^:private default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
   (str "anthropic/" default-anthropic-llm-metabot-model))
 

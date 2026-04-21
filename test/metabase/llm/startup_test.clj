@@ -53,8 +53,9 @@
                         :metabase-ai-managed false))
                     metabot.settings/llm-metabot-configured? (constantly true)]
         (llm.startup/check-and-sync-settings-on-startup!)
-        (is (= metabot.settings/default-llm-metabot-provider
-               (metabot.settings/llm-metabot-provider)))))))
+        (is (= @#'metabot.settings/default-llm-metabot-provider
+               (metabot.settings/llm-metabot-provider)))
+        (is (nil? (setting/db-stored-value :llm-metabot-provider)))))))
 
 (deftest check-and-sync-settings-on-startup-does-not-overwrite-explicit-provider-test
   (mt/discard-setting-changes [llm-metabot-provider]
