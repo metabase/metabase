@@ -20,6 +20,22 @@
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (is (= query (ws.qp.middleware/apply-workspace-table-remapping query))))))
 
+(deftest no-op-when-no-matching-remapping-test
+  (testing "compiled SQL is unchanged when a TableRemapping row exists but does not match any table in the query"
+    (let [mp     (mt/metadata-provider)
+          db-id  (mt/id)
+          orders (lib.metadata/table mp (mt/id :orders))
+          query  (lib/query mp orders)
+          sql-before (:query (qp.compile/compile query))]
+      (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                              :from_schema     "nonexistent_schema"
+                                              :from_table_name "nonexistent_table"
+                                              :to_schema       "ws_bryan_apr21"
+                                              :to_table_name   "orders_copy"}]
+        (let [remapped  (ws.qp.middleware/apply-workspace-table-remapping query)
+              sql-after (:query (qp.compile/compile remapped))]
+          (is (= sql-before sql-after)))))))
+
 (deftest remaps-source-table-from-app-db-test
   (testing "middleware reads TableRemapping rows for the query's database and redirects table refs"
     (let [mp                   (mt/metadata-provider)
