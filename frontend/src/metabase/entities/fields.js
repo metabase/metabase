@@ -25,11 +25,11 @@ import {
   createEntity,
   entityCompatibleQuery,
   notify,
+  withNormalize,
 } from "metabase/utils/entities";
 import {
   updateData,
   withCachedDataAndRequestState,
-  withNormalize,
 } from "metabase/utils/redux";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";

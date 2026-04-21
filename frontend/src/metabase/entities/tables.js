@@ -35,11 +35,9 @@ import {
   createEntity,
   entityCompatibleQuery,
   notify,
-} from "metabase/utils/entities";
-import {
-  withCachedDataAndRequestState,
   withNormalize,
-} from "metabase/utils/redux";
+} from "metabase/utils/entities";
+import { withCachedDataAndRequestState } from "metabase/utils/redux";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,

@@ -1,6 +1,5 @@
 import { compose } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
-import { type Schema, normalize } from "normalizr";
 import _ from "underscore";
 
 import {
@@ -271,11 +270,4 @@ function withCachedData<TArgs extends unknown[]>(
 
         return thunkCreator(...args)(dispatch, getState);
       };
-}
-
-export function withNormalize<TArgs extends unknown[]>(schema: Schema) {
-  return (thunkCreator: ThunkCreator<TArgs>) =>
-    (...args: TArgs) =>
-    async (dispatch: Dispatch, getState: () => State) =>
-      normalize(await thunkCreator(...args)(dispatch, getState), schema);
 }

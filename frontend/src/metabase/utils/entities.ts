@@ -72,7 +72,7 @@ import type { Reducer } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn, merge } from "icepick";
 import inflection from "inflection"; // NOTE: need to use inflection directly here due to circular dependency
-import { denormalize, normalize, schema } from "normalizr";
+import { type Schema, denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import type React from "react";
 import _ from "underscore";
@@ -83,7 +83,7 @@ import {
   requestsReducer,
   setRequestUnloaded,
 } from "metabase/redux/requests";
-import type { EntitiesState, State } from "metabase/redux/store";
+import type { Dispatch, EntitiesState, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 
 import { DELETE, GET, POST, PUT } from "./api";
@@ -1066,4 +1066,20 @@ export async function entityCompatibleQuery(
   } finally {
     action.unsubscribe?.();
   }
+}
+
+type Thunk<R = unknown> = (
+  dispatch: Dispatch,
+  getState: () => State,
+) => Promise<R> | R;
+
+type ThunkCreator<TArgs extends unknown[], R = unknown> = (
+  ...args: TArgs
+) => Thunk<R>;
+
+export function withNormalize<TArgs extends unknown[]>(schema: Schema) {
+  return (thunkCreator: ThunkCreator<TArgs>) =>
+    (...args: TArgs) =>
+    async (dispatch: Dispatch, getState: () => State) =>
+      normalize(await thunkCreator(...args)(dispatch, getState), schema);
 }
