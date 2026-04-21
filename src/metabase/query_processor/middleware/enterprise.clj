@@ -63,6 +63,13 @@
   [query]
   query)
 
+(defenterprise apply-workspace-table-remapping
+  "Pre-processing middleware to rewrite MBQL `:source-table` references (and joins) to workspace tables.
+   Runs after sandboxing so sandbox filters materialize against production schema first."
+  metabase-enterprise.workspaces.query-processor.middleware
+  [query]
+  query)
+
 ;;;; Execution middleware
 
 ;;; (f qp) => qp
