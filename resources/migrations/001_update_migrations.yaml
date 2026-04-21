@@ -11776,6 +11776,34 @@ databaseChangeLog:
               - column:
                   name: match_status
 
+  - changeSet:
+      id: v55.2026-02-14T14:34:23
+      author: amuradyan
+      comment: Add parent column to task_history for nested task tracking with self-referential FK
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: parent_id
+                  type: int
+                  constraints:
+                    nullable: true
+        - addForeignKeyConstraint:
+            baseTableName: task_history
+            baseColumnNames: parent_id
+            referencedTableName: task_history
+            referencedColumnNames: id
+            constraintName: fk_task_history_parent
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: task_history
+            constraintName: fk_task_history_parent
+        - dropColumn:
+            tableName: task_history
+            columnName: parent_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
