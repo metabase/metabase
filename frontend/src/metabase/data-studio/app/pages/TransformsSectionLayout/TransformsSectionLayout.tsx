@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { useTransformSupportedDbs } from "metabase/transforms/hooks/use-transform-supported-dbs";
 import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
 import { NoWritableDatabasesEmptyState } from "metabase/transforms/pages/NoWritableDatabasesEmptyState";
 import { getShouldShowTransformsUpsell } from "metabase/transforms/selectors";
@@ -23,7 +23,8 @@ export function TransformsSectionLayout({
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
   const isTransformsEnabled = useSetting("transforms-enabled");
   const isHosted = useSetting("is-hosted?");
-  const { transformsDatabases, isLoadingDatabases } = useTransformPermissions();
+  const { transformsDatabases, isLoadingDatabases } =
+    useTransformSupportedDbs();
 
   if (shouldShowUpsell) {
     return <PLUGIN_TRANSFORMS.TransformsUpsellPage />;
