@@ -6,6 +6,8 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sql-tools.core :as sql-tools]
@@ -41,15 +43,24 @@
                                                                 {:allow-unused? true}))))))
 
 (defenterprise apply-workspace-table-remapping
-  "Pre-processing middleware. Rewrites MBQL table references (`:source-table`, joins) for workspace
-   transforms. Runs after sandboxing so that production sandbox filters materialize before the
-   table reference is redirected to its workspace copy.
+  "Pre-processing middleware. Redirects MBQL table references to workspace copies by overriding
+   table metadata in the cached metadata provider attached to the query. `:source-table <id>`
+   entries in the query are not rewritten - downstream HoneySQL compilation reads the overridden
+   `:schema` and `:name` when it resolves the table by id.
+
+   Runs after sandboxing so that production sandbox filters materialize against production
+   schema before the final table reference resolves to the workspace copy.
 
    Expects `[:middleware :workspace-table-remapping :tables]` to be a map of
    `table-id -> {:schema \"ws_schema\" :name \"table_name\"}`."
   :feature :workspaces
-  [{{remapping :workspace-table-remapping} :middleware :as query}]
+  [{{remapping :workspace-table-remapping} :middleware, mp :lib/metadata, :as query}]
   (if (or (not remapping) (empty? (:tables remapping)))
     query
-    ;; TODO: walk stages + joins, swap :source-table references according to remapping :tables.
-    query))
+    (do
+      (doseq [[table-id {:keys [schema name]}] (:tables remapping)]
+        (when-let [original (lib.metadata/table mp table-id)]
+          (lib.metadata.protocols/store-metadata!
+           mp
+           (assoc original :schema schema :name name))))
+      query)))
