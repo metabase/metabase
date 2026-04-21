@@ -57,9 +57,12 @@
   (when (and (seq provider) (seq model-name))
     (fn-embedder
      (fn [names]
-       (let [text->vec (semantic-search/process-embeddings-streaming
-                        embedding-model names identity)]
-         ;; Preserve input order so the zipmap in fn-embedder lines names up with their vectors.
-         ;; Names dropped by create-batches (oversized texts) map to nil here and fn-embedder
-         ;; filters them out — matching the "no vector → no synonym signal" contract.
-         (map text->vec names))))))
+       ;; Default to {} so an empty result from process-embeddings-streaming (e.g. every input
+       ;; dropped by create-batches for exceeding openai-max-tokens-per-batch) degrades via the
+       ;; "no vector → no synonym signal" path in fn-embedder instead of throwing on nil lookup.
+       ;; mapv forces realization here so any dispatcher errors surface from this embedder call
+       ;; rather than being deferred until fn-embedder walks the lazy seq.
+       (let [text->vec (or (semantic-search/process-embeddings-streaming
+                            embedding-model names identity)
+                           {})]
+         (mapv text->vec names))))))

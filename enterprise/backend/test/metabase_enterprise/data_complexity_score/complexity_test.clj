@@ -1088,6 +1088,37 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
                               (embedder [{:name "Orders"}])))))))
 
+(deftest ^:sequential provider-embedder-openai-batches-reassemble-by-name-test
+  (testing "with OpenAI provider, provider-embedder splits texts across batches per openai-max-tokens-per-batch and keys each returned vector back to its originating name"
+    ;; Regression: before process-embeddings-streaming routed these calls, provider-embedder sent
+    ;; every distinct name to get-embeddings-batch in a single request, bypassing the openai
+    ;; token-per-batch cap and also making it impossible to exercise the per-batch reassembly path.
+    (let [batches-seen (atom [])
+          ;; Fingerprint each name with a small integer so floating-point round-tripping through
+          ;; float-array doesn't obscure the mapping check below.
+          name->tag    {"alpha" 1.0 "bravo" 2.0 "charlie" 3.0 "delta" 4.0}
+          ;; Return a distinct float-array per input text so we can verify the outer map associates
+          ;; each name with the vector produced for it in its specific batch.
+          stub-batch   (fn [_embedding-model texts & _]
+                         (swap! batches-seen conj (vec texts))
+                         (mapv (fn [t] (float-array [(get name->tag t) 0.0])) texts))]
+      ;; Tiny cap forces create-batches to split the four single-token names into multiple batches.
+      (mt/with-temporary-setting-values [ss.settings/openai-max-tokens-per-batch 2]
+        (with-redefs [ss.embedding/get-embeddings-batch stub-batch]
+          (let [embedder (embedders/provider-embedder
+                          {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 2})
+                names    ["alpha" "bravo" "charlie" "delta"]
+                result   (embedder (mapv #(hash-map :name %) names))]
+            (testing "the dispatcher was called for more than one batch"
+              (is (< 1 (count @batches-seen))))
+            (testing "every input name is embedded exactly once across the batches"
+              (is (= names (vec (sort (mapcat identity @batches-seen))))))
+            (testing "each name in the returned map carries the vector its own batch produced"
+              (is (= (set names) (set (keys result))))
+              (doseq [n names]
+                (is (= (float (get name->tag n)) (aget ^floats (get result n) 0))
+                    (format "vector for %s should match its batch output" n))))))))))
+
 (deftest ^:parallel default-threshold-for-minilm-test
   (testing "default threshold is 0.80 for ollama + MiniLM model names (case-insensitive)"
     (is (= 0.80 (#'complexity/default-threshold-for "ollama" "all-minilm")))
