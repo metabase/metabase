@@ -638,7 +638,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByRole("listbox").findByText("years").click();
 
     H.popover().within(() => {
-      cy.findByText("Include this year").click();
+      cy.findByLabelText("Include this year").click();
       cy.button("Add filter").click();
     });
 

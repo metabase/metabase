@@ -8,9 +8,15 @@ import { createMockDatasetData } from "metabase-types/api/mocks/dataset";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 
-import type { BreakoutColorMap, MetricSourceId } from "../types/viewer-state";
+import type { ExpressionDimensionItem } from "../components/DimensionPillBar";
+import type {
+  BreakoutColorMap,
+  MetricSourceId,
+  MetricsViewerFormulaEntity,
+} from "../types/viewer-state";
 
 import {
+  GEO_METRIC,
   REVENUE_METRIC,
   TOTAL_MEASURE,
   createMetricMetadata,
@@ -21,6 +27,7 @@ import {
 } from "./__tests__/test-helpers";
 import {
   buildCartesianVizSettings,
+  buildDimensionItemsFromDefinitions,
   computeBreakoutColorSettings,
   computeColorVizSettings,
   computeSourceBreakoutColors,
@@ -737,5 +744,138 @@ describe("getSelectedMetricsInfo", () => {
         tableId: ORDERS_ID,
       },
     ]);
+  });
+});
+
+describe("buildDimensionItemsFromDefinitions", () => {
+  const revenueMetadata = createMetricMetadata([REVENUE_METRIC]);
+  const revenueDefinition = setupDefinition(revenueMetadata, REVENUE_METRIC.id);
+  const revenueSourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
+  const revenueProjected = setupDefinitionWithBreakout(
+    revenueMetadata,
+    REVENUE_METRIC.id,
+    0,
+  );
+  const geoMetadata = createMetricMetadata([GEO_METRIC]);
+  const geoDefinition = setupDefinition(geoMetadata, GEO_METRIC.id);
+  const geoSourceId: MetricSourceId = `metric:${GEO_METRIC.id}`;
+  const definitions = {
+    [revenueSourceId]: {
+      id: revenueSourceId,
+      definition: revenueDefinition,
+    },
+    [geoSourceId]: {
+      id: geoSourceId,
+      definition: geoDefinition,
+    },
+  };
+  const emptyProjectionConfig = {};
+
+  describe("standalone metric entities", () => {
+    it("produces a metric item with label when a dimension is selected", () => {
+      const dimensionMapping = { 0: "dim-created-at" };
+      const modifiedDefinitionsBySlotIndex = new Map([[0, revenueProjected]]);
+      const sourceColors = { 0: ["#509EE3"] };
+      const metricSlots = [
+        { slotIndex: 0, entityIndex: 0, sourceId: revenueSourceId },
+      ];
+      const formulaEntities: MetricsViewerFormulaEntity[] = [
+        {
+          id: revenueSourceId,
+          type: "metric",
+          definition: revenueDefinition,
+        },
+      ];
+      const items = buildDimensionItemsFromDefinitions(
+        definitions,
+        dimensionMapping,
+        modifiedDefinitionsBySlotIndex,
+        sourceColors,
+        metricSlots,
+        formulaEntities,
+        emptyProjectionConfig,
+      );
+
+      expect(items).toHaveLength(1);
+      expect(items[0].type).toBe("metric");
+      expect(items[0].label).toBe("Created At");
+      expect(items[0].icon).toBeDefined();
+    });
+  });
+
+  describe("expression entities", () => {
+    const formulaEntities: MetricsViewerFormulaEntity[] = [
+      {
+        id: "expression:test",
+        type: "expression",
+        name: "Test Expression",
+        tokens: [
+          {
+            type: "metric",
+            sourceId: revenueSourceId,
+            count: 1,
+          },
+          {
+            type: "operator",
+            op: "+",
+          },
+          {
+            type: "metric",
+            sourceId: geoSourceId,
+            count: 1,
+          },
+        ],
+      },
+    ];
+    const sourceColors = { 0: ["#509EE3"] };
+    const metricSlots = [
+      { slotIndex: 0, entityIndex: 0, sourceId: revenueSourceId },
+      { slotIndex: 1, entityIndex: 0, sourceId: geoSourceId },
+    ];
+    // modifiedDefinitionsBySlotIndex is not used for expressions
+    // which could be cleaned up. why do we call getModifiedDefinition in buildExpressionMetricSources when we have the modified definitions already?
+    const modifiedDefinitionsBySlotIndex = new Map();
+
+    it("shows a unified label when the dimensions are the same", () => {
+      const dimensionMapping = { 0: "dim-created-at", 1: "dim-created-at" };
+
+      const items = buildDimensionItemsFromDefinitions(
+        definitions,
+        dimensionMapping,
+        modifiedDefinitionsBySlotIndex,
+        sourceColors,
+        metricSlots,
+        formulaEntities,
+        emptyProjectionConfig,
+      );
+
+      expect(items).toHaveLength(1);
+      const expressionItem = items[0] as ExpressionDimensionItem;
+      expect(expressionItem.type).toBe("expression");
+      expect(expressionItem.label).toBe("Created At");
+      expect(expressionItem.icon).toBeDefined();
+      expect(expressionItem.metricSources).toHaveLength(2);
+    });
+
+    it("shows 'multiple dimensions' label when the dimensions are different", () => {
+      const dimensionMapping = { 0: "dim-category", 1: "dim-created-at" };
+
+      const items = buildDimensionItemsFromDefinitions(
+        definitions,
+        dimensionMapping,
+        modifiedDefinitionsBySlotIndex,
+        sourceColors,
+        metricSlots,
+        formulaEntities,
+        emptyProjectionConfig,
+      );
+
+      expect(items).toHaveLength(1);
+      const expressionItem = items[0] as ExpressionDimensionItem;
+      expect(expressionItem.type).toBe("expression");
+      expect(expressionItem.label).toBe("Multiple dimensions");
+      expect(expressionItem.icon).toBeUndefined();
+      expect(expressionItem.metricSources).toHaveLength(2);
+    });
   });
 });
