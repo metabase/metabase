@@ -1,0 +1,761 @@
+{:threshold 0.85,
+ :catalog :universe,
+ :embeddings "names_split_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 4, :median 12, :p75 44, :max 474, :mean 48.19600557361821},
+ :connected-components
+ {:count 296,
+  :multi-member 91,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "customers_10000_20240530173511"
+     "customers notified from 50"
+     "1 request, 1 customer, 1 ticket comment"
+     "customers_10000_20240530173441"
+     "customers_orders_last_3_months"
+     "customers"
+     "number of open bugs"
+     "all bugs"
+     "customers_1000_20250520124535"
+     "metric 2: customers by month"
+     "customers_in_old_versions_203c80a7b01147bcab4eac_20240701192921"
+     "all bug counts"
+     "test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "negative_issues_20241217203222"
+     "b8523356 2023 06 23 90"
+     "order_items"
+     "... (3805 total)"],
+    :size 3805,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["lkup_cd_park_wind_direction"
+     "lkup_cd_park_sky"
+     "lkup_cd_park_precip"
+     "lkup_cd_h"
+     "lkup_cd_event"
+     "lkup_cd_park_daynight"
+     "lkup_cd_park_field"
+     "lkup_cd_fld"
+     "lkup_id_base"
+     "lkup_cd_bases"
+     "lkup_cd_battedball"
+     "lkup_id_home"
+     "lkup_id_last"
+     "lkup_cd_hand"],
+    :size 14,
+    :density 0.4175824175824176,
+    :avg-sim 0.8415279217353109,
+    :min-sim 0.7402606785824635}
+   {:members
+    ["2022 mlb payrolls"
+     "2022_mlb_payrolls_20240209214015"
+     "mlb_2023_attendance_clean_20231012212705"
+     "mlb attendance in 2023"
+     "mlb_2023_attendance_20231012212430"
+     "nba_payroll_1990_2023__20230530151644"
+     "nba_payroll_1990_2023__20230530152400"
+     "mlb_elo_latest_20230703180543"
+     "nba payroll(1990-2023)"],
+    :size 9,
+    :density 0.5,
+    :avg-sim 0.8553021342898496,
+    :min-sim 0.7325340908854663}
+   {:members
+    ["trialers with slack channels model experiment"
+     "experiment_trialers_with_slack_channels_emails_test"
+     "experiment_trialers_with_slack_channels_trialers_slack_channels"
+     "experiment_trialers_with_slack_channels_sheet_5"
+     "experiment_trialers_with_slack_channels_sheet_1"
+     "experiment_trialers_with_slack_channels_emails"
+     "slack_list_experiment_data_sheet_1"
+     "custom_slack_list_experiment_data_sheet_1"],
+    :size 8,
+    :density 0.7142857142857143,
+    :avg-sim 0.8831171172068994,
+    :min-sim 0.7653427528279569}
+   {:members
+    ["weekday hours"
+     "operating_hours"
+     "operating_hours_holiday"
+     "operating_hours_history"
+     "operating_hours_feed"
+     "operating_hours_holiday_feed"
+     "operating_hours_holiday_history"],
+    :size 7,
+    :density 0.7142857142857143,
+    :avg-sim 0.8810541194011728,
+    :min-sim 0.8082120818339641}
+   {:members
+    ["dlrs_lookup_rollup_calculate_job_c"
+     "dlrs_lookup_parent_c"
+     "dlrs_declarative_lookup_rollup_summaries_c"
+     "dlrs_lookup_rollup_summary_c"
+     "dlrs_lookup_rollup_summary_log_c"
+     "dlrs_lookup_rollup_summary_schedule_items_c"
+     "dlrs_lookup_child_c"],
+    :size 7,
+    :density 0.9047619047619048,
+    :avg-sim 0.9004019939144838,
+    :min-sim 0.8431780012276888}
+   {:members
+    ["territory_planning_active_customers_import_recor_20260203202327"
+     "territory_planning_active_customers_active_custo_20260204194346"
+     "territory_planning_active_customers_active_custo_20260204201237"
+     "territory_planning_active_customers_active_custo_20260204194214"
+     "territory_planning_active_customers_geo_and_rout_20260203212309"
+     "territory_planning_active_customers_2025_opps_2_20260204203656"
+     "territory_planning_active_customers_2025_opps_1_20260204203606"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.9336710585613455,
+    :min-sim 0.9109529346620433}
+   {:members
+    ["hdb_metadata"
+     "hdb_schema_notifications"
+     "hdb_action_log"
+     "hdb_scheduled_event_invocation_logs"
+     "hdb_cron_events"
+     "hdb_cron_event_invocation_logs"
+     "hdb_scheduled_events"],
+    :size 7,
+    :density 0.5238095238095238,
+    :avg-sim 0.8514503979797348,
+    :min-sim 0.7889185816014781}
+   {:members
+    ["dataflow_session"
+     "dataflow_profile"
+     "dataflow_batch_import"
+     "dataflow_import_data"
+     "dataflow_profile_history"
+     "dataflow_batch"
+     "dataflow_batch_export"],
+    :size 7,
+    :density 0.619047619047619,
+    :avg-sim 0.8685652305978715,
+    :min-sim 0.8018253068581062}
+   {:members
+    ["openpowerlifting"
+     "openpowerlifting_20230615111922"
+     "openpowerlifting_20230619125214"
+     "openpowerlifting_20230615081709"
+     "openpowerlifting_20230814115145"
+     "openpowerlifting_20230619150816"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9708604766365824,
+    :min-sim 0.9256024915723196}
+   {:members
+    ["embedding homepage event"
+     "embed_share_event"
+     "embedding_homepage_event"
+     "embed flow event"
+     "embed_flow_event"
+     "embed share event"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9029827968508114,
+    :min-sim 0.8589255478365159}
+   {:members
+    ["unify performance tracking emails sent"
+     "unify_performance_tracking_emails_sent_20260303230936"
+     "unify_performance_tracking_emails_sent_20260218005714"
+     "unify performance tracking individual replies"
+     "unify_performance_tracking_individual_replies_20260218010329"
+     "unify_performance_tracking_individual_replies_20260303230955"],
+    :size 6,
+    :density 0.8666666666666667,
+    :avg-sim 0.9169898286608148,
+    :min-sim 0.8476766103767654}
+   {:members
+    ["fivetran_api_call"
+     "fivetran_query"
+     "fivetran_formula"
+     "fivetran_formula_model"
+     "fivetran_formula_failure_reason"
+     "fivetran_audit"],
+    :size 6,
+    :density 0.6,
+    :avg-sim 0.8719625102492546,
+    :min-sim 0.8195038488874289}
+   {:members
+    ["cybermut_api_debug"
+     "protx_api_debug"
+     "ideal_api_debug"
+     "chronopay_api_debug"
+     "paybox_api_debug"
+     "paybox_question_number"],
+    :size 6,
+    :density 0.4,
+    :avg-sim 0.8068406189184004,
+    :min-sim 0.6835149457265376}
+   {:members
+    ["netflix top 100 in 2023"
+     "imdb_top_250_tv_shows_20240301020143"
+     "netflix all weeks global"
+     "netflix_all_weeks_global_20231214030044"
+     "imdb top 250 tv shows"],
+    :size 5,
+    :density 0.5,
+    :avg-sim 0.8412820764520635,
+    :min-sim 0.7377062582484545}]},
+ :greedy-cliques
+ {:count 2912,
+  :multi-member 2707,
+  :top
+  [{:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "... (200 total)"],
+    :size 200,
+    :density 1.0,
+    :avg-sim 0.9285143790380119,
+    :min-sim 0.8745741610056095}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "all_20230825133017"
+     "import_test_20230628183152"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "... (111 total)"],
+    :size 111,
+    :density 1.0,
+    :avg-sim 0.8941527141738203,
+    :min-sim 0.8501900630231418}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "trace_20250825145602"
+     "deliveries_20240927175630"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "import_test_20230628183152"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "trivia_20240918212836"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "... (110 total)"],
+    :size 110,
+    :density 1.0,
+    :avg-sim 0.8949958091533566,
+    :min-sim 0.8501900630231418}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "test_csv_20230816143302"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "... (109 total)"],
+    :size 109,
+    :density 1.0,
+    :avg-sim 0.8942220389454576,
+    :min-sim 0.8504510984028576}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "... (109 total)"],
+    :size 109,
+    :density 1.0,
+    :avg-sim 0.8942986972930084,
+    :min-sim 0.8501900630231418}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "trace_20250825145602"
+     "deliveries_20240927175630"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "trivia_20240918212836"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "... (109 total)"],
+    :size 109,
+    :density 1.0,
+    :avg-sim 0.8954999822038932,
+    :min-sim 0.8512137809737695}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "deliveries_20240927175630"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "trivia_20240918212836"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "... (108 total)"],
+    :size 108,
+    :density 1.0,
+    :avg-sim 0.8954363375158942,
+    :min-sim 0.8500450132765579}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "deliveries_20240927175630"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "import_test_20230628183152"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "test_csv_20230816143302"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "... (106 total)"],
+    :size 106,
+    :density 1.0,
+    :avg-sim 0.895559486503562,
+    :min-sim 0.8501657820237356}
+   {:members
+    ["thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "floors_20251013084354"
+     "trace_20250825145602"
+     "deliveries_20240927175630"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "test_upload_20231114170846"
+     "... (105 total)"],
+    :size 105,
+    :density 1.0,
+    :avg-sim 0.8948765004368698,
+    :min-sim 0.8500288898998172}
+   {:members
+    ["thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "test_upload_20231114170846"
+     "customers_10000_20240530173441"
+     "april_20230622183131"
+     "... (104 total)"],
+    :size 104,
+    :density 1.0,
+    :avg-sim 0.8954845675371058,
+    :min-sim 0.8501730066794055}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "deliveries_20240927175630"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "test_20230620170201"
+     "all_20230825133017"
+     "import_test_20230628183152"
+     "card_13007_20240918153058"
+     "test_csv_20230816143302"
+     "import_test_20230630192939"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "... (103 total)"],
+    :size 103,
+    :density 1.0,
+    :avg-sim 0.8951692286446478,
+    :min-sim 0.8504510984028576}
+   {:members
+    ["thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "test_upload_20231114170846"
+     "customers_10000_20240530173441"
+     "april_20230622183131"
+     "... (101 total)"],
+    :size 101,
+    :density 1.0,
+    :avg-sim 0.8955558381685979,
+    :min-sim 0.8501730066794055}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "download_1__20241110183422"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "test_csv_20230816143302"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "... (101 total)"],
+    :size 101,
+    :density 1.0,
+    :avg-sim 0.8949165724291883,
+    :min-sim 0.8501801747088915}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "metric_results_20251127134806"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "all_20230825133017"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "benchmark_results_20250328150851"
+     "untitled_1_20251015105608"
+     "16249-2"
+     "test_20231204115443"
+     "test_upload_20231114170846"
+     "customers_10000_20240530173441"
+     "april_20230622183131"
+     "... (101 total)"],
+    :size 101,
+    :density 1.0,
+    :avg-sim 0.8945244807414504,
+    :min-sim 0.8504850218443769}
+   {:members
+    ["a6ee2aaf_2023_08_21_90_20230821182217"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "long_column_20240917224933"
+     "trace_20250825145602"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "sheet_20240918230547"
+     "x_20250514215647"
+     "all_20230825133017"
+     "import_test_20230628183152"
+     "card_13007_20240918153058"
+     "book3_20240920154741"
+     "testiong_20240902205602"
+     "371a8853 2023 06 23 30"
+     "c_20230531084957"
+     "untitled_1_20251015105608"
+     "test_20231204115443"
+     "test_upload_20231114170846"
+     "customers_10000_20240530173441"
+     "april_20230622183131"
+     "... (101 total)"],
+    :size 101,
+    :density 1.0,
+    :avg-sim 0.8962058650869577,
+    :min-sim 0.8501900630231418}]},
+ :avg-linkage-hac nil}
