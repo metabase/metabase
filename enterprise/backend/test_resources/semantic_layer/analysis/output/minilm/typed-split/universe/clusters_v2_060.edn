@@ -1,0 +1,727 @@
+{:threshold 0.6,
+ :catalog :universe,
+ :embeddings "typed_split_minilm-l6v2_384d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 7, :median 18, :p75 44, :max 348, :mean 41.54946586158848},
+ :connected-components
+ {:count 129,
+  :multi-member 39,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "customer_orders_last_3_months_native"
+     "monthly_revenue_customer"
+     "customers_orders_last_3_months"
+     "hosting customer monthly changes"
+     "metric 2: customers by month"
+     "issue customer mention"
+     "monthly_revenue_change_customer"
+     "orders1weeklag"
+     "just orders ordered by date"
+     "orders last year model"
+     "just_orders_ordered_by_date_20250415223537"
+     "customer interaction"
+     "revenue product"
+     "monthly_revenue"
+     "revenue_data_subscriptions"
+     "metric 3: revenue by month"
+     "monthly account subscription status and usage"
+     "enterprise + cloud: monthly revenue amounts"
+     "copy_of_revenue_data_churned_customers"
+     "stripe customers"
+     "monthly_revenue_change"
+     "customers 100000"
+     "self-service revenue - duplicate"
+     "stripe_customer"
+     "customer_group"
+     "revenue_data_churned_customers"
+     "self-service customer"
+     "test_of_revenue_data_subscriptions"
+     "revenue_data_unified_subscriptions"
+     "... (4087 total)"],
+    :size 4087,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["lkup_cd_park_wind_direction"
+     "lkup_cd_fld"
+     "lkup_cd_park_precip"
+     "lkup_cd_h"
+     "lkup_cd_event"
+     "lkup_cd_bases"
+     "lkup_cd_park_daynight"
+     "lkup_cd_battedball"
+     "lkup_cd_hand"
+     "lkup_cd_park_field"
+     "lkup_cd_park_sky"
+     "lkup_id_base"
+     "lkup_cd_recorder_method"
+     "lkup_id_home"
+     "lkup_cd_recorder_pitches"
+     "lkup_id_last"],
+    :size 16,
+    :density 0.8083333333333333,
+    :avg-sim 0.6859544078066658,
+    :min-sim 0.47888770183943785}
+   {:members
+    ["mail interactions with trialers"
+     "experiment_trialers_with_slack_channels_emails_test"
+     "mail_interactions_with_trialers_14d45cb4a6eb415b_20230724165620"
+     "experiment_trialers_with_slack_channels_emails"
+     "trialers with slack channels model experiment"
+     "experiment_trialers_with_slack_channels_trialers_slack_channels"
+     "experiment_trialers_with_slack_channels_sheet_5"
+     "experiment_trialers_with_slack_channels_sheet_1"
+     "slack_list_experiment_data_sheet_1"
+     "custom_slack_list_experiment_data_sheet_1"],
+    :size 10,
+    :density 0.5555555555555556,
+    :avg-sim 0.6310058617631364,
+    :min-sim 0.15688387906370754}
+   {:members
+    ["dlrs_lookup_rollup_calculate_job_c"
+     "dlrs_lookup_parent_c"
+     "dlrs_declarative_lookup_rollup_summaries_c"
+     "dlrs_lookup_rollup_summary_c"
+     "dlrs_lookup_rollup_summary_log_c"
+     "dlrs_lookup_rollup_summary_schedule_items_c"
+     "dlrs_lookup_child_c"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.7924220574625872,
+    :min-sim 0.6622069651752598}
+   {:members
+    ["territory_planning_active_customers_import_recor_20260203202327"
+     "territory_planning_active_customers_active_custo_20260204194346"
+     "territory_planning_active_customers_active_custo_20260204201237"
+     "territory_planning_active_customers_active_custo_20260204194214"
+     "territory_planning_active_customers_geo_and_rout_20260203212309"
+     "territory_planning_active_customers_2025_opps_2_20260204203656"
+     "territory_planning_active_customers_2025_opps_1_20260204203606"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.8351817135923473,
+    :min-sim 0.7459480624376479}
+   {:members
+    ["heap oom kills by day and host data 2026 01 14 04 42 41"
+     "heap oom kills by day and host data 2026 01 14 04 40 05"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044910"
+     "heap oom kills by day and host data 2026 01 14 04 48 29"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044355"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044325"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9909896824466882,
+    :min-sim 0.983675581085047}
+   {:members
+    ["openpowerlifting"
+     "openpowerlifting_20230615111922"
+     "openpowerlifting_20230619125214"
+     "openpowerlifting_20230615081709"
+     "openpowerlifting_20230814115145"
+     "openpowerlifting_20230619150816"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.945665489816436,
+    :min-sim 0.8428528544321627}
+   {:members
+    ["top search terms on discourse (90d)"
+     "top search terms on docs, learn, and glossary (90d)"
+     "discourse_users_users"
+     "categorized_discourse_topics_categorized_topics_6_months"],
+    :size 4,
+    :density 0.5,
+    :avg-sim 0.5381623605874252,
+    :min-sim 0.30793377514596615}
+   {:members
+    ["hubspot crm exports all deals 2024 07 22"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722091339"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722090759"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722102708"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9882660228569922,
+    :min-sim 0.9760567325175877}
+   {:members
+    ["waterfall unaggregated ordinal nulls"
+     "waterfall_unaggregated_ordinal_2_20240214181234"
+     "waterfall_unaggregated_ordinal_nulls_20240109230433"
+     "waterfall_starts_above_crosses_0_ends_above_20240214175120"],
+    :size 4,
+    :density 0.6666666666666667,
+    :avg-sim 0.7570674200885957,
+    :min-sim 0.5736965629959848}
+   {:members ["amplitude sample1" "amplitude_sample_20240409134852" "amplitude_sample1_20240820091603"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9054703196796972,
+    :min-sim 0.8629853587007265}
+   {:members
+    ["meetabase data, dashboards and vibes in madrid 🇪🇸 guests 2025 09 23 21 11 37"
+     "meetabase_data_dashboards_and_vibes_in_ba_guests_20250626160559"
+     "meetabase_data_dashboards_and_vibes_in_madrid_gu_20250923212105"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.8011799022880757,
+    :min-sim 0.7554166060974993}
+   {:members ["netflix top 100 in 2023" "netflix all weeks global" "netflix_all_weeks_global_20231214030044"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.7341743287781993,
+    :min-sim 0.6109271360512568}
+   {:members ["swag requesters" "rc_swag_offer_sheet_1" "rc_swag_offer_logistics"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.7160435161366818,
+    :min-sim 0.6661519247294331}
+   {:members ["mfa_amr_claims" "mfa_factors" "mfa_challenges"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.7726171330126893,
+    :min-sim 0.7445638888320085}]},
+ :greedy-cliques
+ {:count 2632,
+  :multi-member 2542,
+  :top
+  [{:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "... (199 total)"],
+    :size 199,
+    :density 1.0,
+    :avg-sim 0.8707227187381017,
+    :min-sim 0.6009830311777824}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "... (199 total)"],
+    :size 199,
+    :density 1.0,
+    :avg-sim 0.872854977882309,
+    :min-sim 0.6009830311777824}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "... (199 total)"],
+    :size 199,
+    :density 1.0,
+    :avg-sim 0.8748900226547,
+    :min-sim 0.6009830311777824}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "fake_table_72"
+     "... (197 total)"],
+    :size 197,
+    :density 1.0,
+    :avg-sim 0.870712525725463,
+    :min-sim 0.6000026280821836}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "fake_table_72"
+     "fake_table_136"
+     "... (197 total)"],
+    :size 197,
+    :density 1.0,
+    :avg-sim 0.8704502923052164,
+    :min-sim 0.6000026280821836}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "fake_table_72"
+     "fake_table_136"
+     "... (196 total)"],
+    :size 196,
+    :density 1.0,
+    :avg-sim 0.8690159405820458,
+    :min-sim 0.6000026280821836}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "fake_table_72"
+     "fake_table_136"
+     "... (194 total)"],
+    :size 194,
+    :density 1.0,
+    :avg-sim 0.8664350214939528,
+    :min-sim 0.6008169494744215}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_72"
+     "fake_table_136"
+     "fake_table_150"
+     "fake_table_106"
+     "fake_table_193"
+     "fake_table_38"
+     "... (157 total)"],
+    :size 157,
+    :density 1.0,
+    :avg-sim 0.8627542919878508,
+    :min-sim 0.6000253856756105}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "test_table_1"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_193"
+     "fake_table_45"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_164"
+     "fake_table_172"
+     "... (155 total)"],
+    :size 155,
+    :density 1.0,
+    :avg-sim 0.8643659175226128,
+    :min-sim 0.6003370331772252}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "test_table_1"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_193"
+     "fake_table_45"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_172"
+     "fake_table_128"
+     "fake_table_194"
+     "... (133 total)"],
+    :size 133,
+    :density 1.0,
+    :avg-sim 0.8560279288267325,
+    :min-sim 0.6000514585130623}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_118"
+     "fake_table_34"
+     "fake_table_15"
+     "fake_table_134"
+     "fake_table_41"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "test_table_1"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_193"
+     "fake_table_196"
+     "fake_table_172"
+     "fake_table_128"
+     "fake_table_112"
+     "fake_table_171"
+     "fake_table_68"
+     "fake_table_8"
+     "fake_table_48"
+     "... (120 total)"],
+    :size 120,
+    :density 1.0,
+    :avg-sim 0.856977134381219,
+    :min-sim 0.6005245900044274}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon___pokemon_20231101134339"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "pokemon_v2_movetargetdescription"
+     "pokemon_v2_contesteffect"
+     "pokemon_v2_versionname"
+     "pokemon_v2_itemflavortext"
+     "... (113 total)"],
+    :size 113,
+    :density 1.0,
+    :avg-sim 0.7416174886681738,
+    :min-sim 0.6003941113356417}
+   {:members
+    ["pokemon_v2_typeefficacypast"
+     "pokemon___pokemon_20231101134339"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "pokemon_v2_movetargetdescription"
+     "pokemon_v2_contesteffect"
+     "pokemon_v2_versionname"
+     "pokemon_v2_itemflavortext"
+     "pokemon_v2_movelearnmethodname"
+     "... (113 total)"],
+    :size 113,
+    :density 1.0,
+    :avg-sim 0.7424020432092735,
+    :min-sim 0.6007155963513637}
+   {:members
+    ["pokemon_v2_typeefficacypast"
+     "pokemon___pokemon_20231101134339"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "pokemon_v2_movetargetdescription"
+     "pokemon_v2_contesteffect"
+     "pokemon_v2_versionname"
+     "pokemon_v2_itemflavortext"
+     "... (112 total)"],
+    :size 112,
+    :density 1.0,
+    :avg-sim 0.7431926458214263,
+    :min-sim 0.6003941113356417}
+   {:members
+    ["pokemon_v2_typeefficacypast"
+     "pokemon___pokemon_20231101134339"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "pokemon_v2_movetargetdescription"
+     "pokemon_v2_contesteffect"
+     "pokemon_v2_versionname"
+     "pokemon_v2_itemflavortext"
+     "... (112 total)"],
+    :size 112,
+    :density 1.0,
+    :avg-sim 0.7430965181882283,
+    :min-sim 0.6003941113356417}]},
+ :avg-linkage-hac nil}

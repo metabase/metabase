@@ -1,0 +1,633 @@
+{:threshold 0.8,
+ :catalog :universe,
+ :embeddings "names_split_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 23, :median 77, :p75 251, :max 1513, :mean 206.5318160705992},
+ :connected-components
+ {:count 43,
+  :multi-member 7,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "historical bug counts by feature and cluster"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "products model from question"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "371a8853_2023_06_23_30_20230623113921"
+     "report_viewed_product_aggregated_yearly"
+     "usage stats anonymous history"
+     "page views anonymous with referer site area"
+     "metric 1: orders by year"
+     "metric 3: revenue by month"
+     "monthly account subscription status and usage"
+     "catalog_product_website"
+     "usage_stats_anonymous_history"
+     "negative_issues_20241217203222"
+     "issue_comment"
+     "bookmark_ordering"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "unsubscribe"
+     "pepe_20240130142814"
+     "customer_survey_q_1_2026_analyzed"
+     "... (4252 total)"],
+    :size 4252,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["airbnb_combined_data" "airbnb_metrics" "sf_airbnb_listings_2018" "airbnb_sf_neighborhoods" "airbnb_sandiego"],
+    :size 5,
+    :density 0.5,
+    :avg-sim 0.8178953323855565,
+    :min-sim 0.7652922138228885}
+   {:members
+    ["calendly_calendly_routing_form_questions_answers_c"
+     "calendly_calendly_action_c"
+     "calendly_calendly_link_c"
+     "calendly_calendly_routing_form_submission_c"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.8896532923817463,
+    :min-sim 0.8603609016844243}
+   {:members ["devops_environment_history" "devops_environment_feed" "devops_environment"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9187607687545255,
+    :min-sim 0.8909586682899706}
+   {:members ["mean years of schooling long run" "mean_years_of_schooling_long_run_20240205162158"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9559796621071612,
+    :min-sim 0.9559796621071612}
+   {:members ["sepa_debit" "au_becs_debit"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.8184378199582495,
+    :min-sim 0.8184378199582495}
+   {:members ["ok_cupid_profiles" "transform_ok_cupid_ages"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.8429046334117521,
+    :min-sim 0.8429046334117521}
+   {:members ["opp"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["baseball native model"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["rds_migration_customer_list_second_batch.csv"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["car_prices"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["pro cloud use case split analysis table"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["talk to sales vs. talk to a person"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["pii management"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["kristin augmented"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}]},
+ :greedy-cliques
+ {:count 3293,
+  :multi-member 3257,
+  :top
+  [{:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "customer_survey_q_1_2026_analyzed"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "dataset_1_20250605101827"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "... (253 total)"],
+    :size 253,
+    :density 1.0,
+    :avg-sim 0.8666276492074017,
+    :min-sim 0.8000246038473837}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "customer_survey_q_1_2026_analyzed"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "dataset_1_20250605101827"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "... (252 total)"],
+    :size 252,
+    :density 1.0,
+    :avg-sim 0.863267382256706,
+    :min-sim 0.800053470129247}
+   {:members
+    ["export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "customer_survey_q_1_2026_analyzed"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "test_file_20260123144138"
+     "dataset_1_20250605101827"
+     "long_column_20240917224933"
+     "all_posts_table_1_20240412021122"
+     "... (251 total)"],
+    :size 251,
+    :density 1.0,
+    :avg-sim 0.8673405869494417,
+    :min-sim 0.8001321357154393}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "a_table_from_a_transform"
+     "blog page views 2025 12 19"
+     "all_posts_table_1_20240412021122"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "catalogrule_website"
+     "note"
+     "card_6007_20240918193627"
+     "... (250 total)"],
+    :size 250,
+    :density 1.0,
+    :avg-sim 0.8624900050029016,
+    :min-sim 0.8000344104813341}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "371a8853_2023_06_23_30_20230623113921"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "customer_survey_q_1_2026_analyzed"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "out_20231114124952"
+     "dataset_1_20250605101827"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "recent_views"
+     "catalogrule_website"
+     "deliveries_20240927175630"
+     "note"
+     "... (250 total)"],
+    :size 250,
+    :density 1.0,
+    :avg-sim 0.8641979315981813,
+    :min-sim 0.800053470129247}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "dataset_1_20250605101827"
+     "all_posts_table_1_20240412021122"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "catalogrule_website"
+     "note"
+     "... (250 total)"],
+    :size 250,
+    :density 1.0,
+    :avg-sim 0.8636652929035725,
+    :min-sim 0.8002745676386436}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "trace_20250825145602"
+     "catalogrule_website"
+     "note"
+     "... (249 total)"],
+    :size 249,
+    :density 1.0,
+    :avg-sim 0.8634229763366831,
+    :min-sim 0.8001126100927649}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "a_table_from_a_transform"
+     "blog page views 2025 12 19"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "catalogrule_website"
+     "note"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "... (249 total)"],
+    :size 249,
+    :density 1.0,
+    :avg-sim 0.8615562953571977,
+    :min-sim 0.8000344104813341}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "customer_survey_q_1_2026_analyzed"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "book4_20230628211759"
+     "a_table_from_a_transform"
+     "blog page views 2025 12 19"
+     "dataset_1_20250605101827"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "catalogrule_website"
+     "... (248 total)"],
+    :size 248,
+    :density 1.0,
+    :avg-sim 0.8626389442742668,
+    :min-sim 0.8000344104813341}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "customer_survey_q_1_2026_analyzed"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "dataset_1_20250605101827"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "catalogrule_website"
+     "deliveries_20240927175630"
+     "... (248 total)"],
+    :size 248,
+    :density 1.0,
+    :avg-sim 0.8628109241246217,
+    :min-sim 0.8000344104813341}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "metric 1: orders by year"
+     "catalog_product_website"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "customer_survey_q_1_2026_analyzed"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "book4_20230628211759"
+     "a_table_from_a_transform"
+     "blog page views 2025 12 19"
+     "dataset_1_20250605101827"
+     "all_posts_table_1_20240412021122"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "... (248 total)"],
+    :size 248,
+    :density 1.0,
+    :avg-sim 0.8636403741918317,
+    :min-sim 0.8000344104813341}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "catalogrule_website"
+     "note"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "learn_article_index_query_result_20241106195853"
+     "... (248 total)"],
+    :size 248,
+    :density 1.0,
+    :avg-sim 0.8629448650796777,
+    :min-sim 0.8001042748525965}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "all_posts_table_1_20240412020937"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "order_items"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "book4_20230628211759"
+     "blog page views 2025 12 19"
+     "test_file_20260123144138"
+     "run_1714589569626_part_r_00000_20240501202908"
+     "dataset_1_20250605101827"
+     "all_posts_table_1_20240412021122"
+     "follow_events"
+     "... (248 total)"],
+    :size 248,
+    :density 1.0,
+    :avg-sim 0.867674423422482,
+    :min-sim 0.8001728754570908}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "book4_20230628211759"
+     "a_table_from_a_transform"
+     "blog page views 2025 12 19"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "catalogrule_website"
+     "note"
+     "card_6007_20240918193627"
+     "test_another_20240918201114"
+     "... (247 total)"],
+    :size 247,
+    :density 1.0,
+    :avg-sim 0.8621886594311239,
+    :min-sim 0.8000344104813341}
+   {:members
+    ["export_demo_20240917230918"
+     "page_view"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "newsletter_subscriber"
+     "371a8853_2023_06_23_30_20230623113921"
+     "hi_document"
+     "catalog_product_website"
+     "issue_comment"
+     "live_view"
+     "order_items"
+     "trivia_20240918215532"
+     "customer_survey_q_1_2026_analyzed"
+     "sheet3_20240918214531"
+     "customers_10000_20240530173511"
+     "leads since 10/10/2025 and conversion details"
+     "book4_20230628211759"
+     "a_table_from_a_transform"
+     "blog page views 2025 12 19"
+     "dataset_1_20250605101827"
+     "orders1weeklag"
+     "follow_events"
+     "answer"
+     "metric 1: orders by category"
+     "recent_views"
+     "catalogrule_website"
+     "... (247 total)"],
+    :size 247,
+    :density 1.0,
+    :avg-sim 0.8628717822744093,
+    :min-sim 0.8000344104813341}]},
+ :avg-linkage-hac nil}
