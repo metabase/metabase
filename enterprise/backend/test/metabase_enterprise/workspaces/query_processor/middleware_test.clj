@@ -78,7 +78,7 @@
                                                 :from_table_name from-name
                                                 :to_schema       to-schema
                                                 :to_table_name   to-name}]
-          (let [remapped (ws.qp.middleware/apply-workspace-remapping query)
+          (let [remapped (ws.qp.middleware/apply-workspace-table-remapping query)
                 sql     (get-in remapped [:stages 0 :native])]
             (testing "new schema and name appear in the rewritten SQL"
               (is (str/includes? sql to-schema))
@@ -92,7 +92,7 @@
     (binding [driver/*driver* :h2]
       (let [mp    (mt/metadata-provider)
             query (lib/native-query mp "SELECT * FROM \"PUBLIC\".\"ORDERS\"")]
-        (is (= query (ws.qp.middleware/apply-workspace-remapping query)))))))
+        (is (= query (ws.qp.middleware/apply-workspace-table-remapping query)))))))
 
 (deftest native-no-op-when-no-matching-remapping-test
   (testing "native SQL is unchanged when a TableRemapping row exists but does not match any table in the query"
@@ -106,7 +106,7 @@
                                                 :from_table_name "nonexistent_table"
                                                 :to_schema       "ws_bryan_apr21"
                                                 :to_table_name   "orders_copy"}]
-          (let [remapped (ws.qp.middleware/apply-workspace-remapping query)]
+          (let [remapped (ws.qp.middleware/apply-workspace-table-remapping query)]
             (is (= sql (get-in remapped [:stages 0 :native])))))))))
 
 (deftest remaps-fields-on-remapped-source-table-test
