@@ -164,9 +164,9 @@
            (swap! local-snapshots assoc id snapshot)
            (t2/select-one :model/CustomVizPlugin :id id))
        (let [row (t2/insert-returning-instance!
-                         :model/CustomVizPlugin
-                         (merge (select-keys plugin [:repo_url :access_token :identifier :pinned_version])
-                                columns)))]
+                  :model/CustomVizPlugin
+                  (merge (select-keys plugin [:repo_url :access_token :identifier :pinned_version])
+                         columns))]
          (swap! local-snapshots assoc (:id row) snapshot)
          row)))))
 
