@@ -147,6 +147,36 @@
                  (mapcat (partial segment-facts-for-clause query stage-number)))
         (or (lib/filters query stage-number) [])))
 
+(defn- composite-facts-for-stage
+  "Emit at most one composite fact per stage, treating the stage's top-level filter list as a single
+  implicit-`:and` basket. We flatten any explicit `:and` children so the basket's atom membership matches
+  the atom rollup's per-atom facts. Stages with fewer than two atoms are skipped (the atom rollup already
+  captures single predicates)."
+  [query stage-number]
+  (let [top-filters (or (lib/filters query stage-number) [])
+        atoms       (into [] (mapcat atomic-filter-clauses) top-filters)
+        atom-count  (count atoms)]
+    (when (>= atom-count 2)
+      (let [synthetic-and    (into [:and] atoms)
+            canonical-clause (canonicalize-for-storage synthetic-and)
+            canonical-atoms  (vec (sort (map canonicalize-for-storage atoms)))
+            field-refs       (clause-field-refs query stage-number synthetic-and)
+            owners           (set (map :owner field-refs))
+            base             {:clause            canonical-clause
+                              :atom-fingerprints canonical-atoms
+                              :atom-count        atom-count}]
+        (cond
+          (empty? field-refs)
+          []
+
+          (= 1 (count owners))
+          [(merge (first owners) base {:ownership-mode :direct})]
+
+          :else
+          (into [(merge base {:source-type nil :source-id nil :ownership-mode :mixed})]
+                (map (fn [owner] (merge owner base {:ownership-mode :projected})))
+                owners))))))
+
 (defn- temporal-breakout
   [breakout]
   (when-let [temporal-unit (lib/raw-temporal-bucket breakout)]
@@ -242,11 +272,13 @@
   "Extract fact-level usage tuples from a normalized MBQL query."
   [query]
   (reduce
-   (fn [{:keys [segments metrics dimensions]} stage-number]
+   (fn [{:keys [segments composites metrics dimensions]} stage-number]
      {:segments   (into segments (segment-facts-for-stage query stage-number))
+      :composites (into composites (composite-facts-for-stage query stage-number))
       :metrics    (into metrics (metric-facts-for-stage query stage-number))
       :dimensions (into dimensions (dimension-facts-for-stage query stage-number))})
-   {:segments []
-    :metrics []
+   {:segments   []
+    :composites []
+    :metrics    []
     :dimensions []}
    (range (lib/stage-count query))))

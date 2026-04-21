@@ -131,6 +131,7 @@
    "SourceDimensionDaily"
    "SourceDimensionProfileDaily"
    "SourceMetricDaily"
+   "SourceSegmentCompositeDaily"
    "SourceSegmentDaily"
    "SupportAccessGrantLog"
    "TaskHistory"

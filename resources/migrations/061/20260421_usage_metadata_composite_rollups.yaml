@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: v61.c3f8a2
+      author: johnswanson
+      comment: Create source_segment_composite_daily for whole-:and filter baskets
+      changes:
+        - createTable:
+            tableName: source_segment_composite_daily
+            remarks: Daily source-scoped composite segment usage rollups (whole :and baskets)
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Surrogate primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_type
+                  type: varchar(16)
+                  remarks: Owning source kind for direct or projected facts, or null for canonical mixed facts
+              - column:
+                  name: source_id
+                  type: int
+                  remarks: Owning table or card ID for direct or projected facts, or null for canonical mixed facts
+              - column:
+                  name: ownership_mode
+                  type: varchar(16)
+                  remarks: Ownership attribution mode such as direct, projected, or mixed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: clause
+                  type: ${text.type}
+                  remarks: Canonical serialized representation of the whole :and filter clause
+                  constraints:
+                    nullable: false
+              - column:
+                  name: atom_fingerprints
+                  type: ${text.type}
+                  remarks: Sorted JSON array of canonical serialized atom clauses contained in the basket
+                  constraints:
+                    nullable: false
+              - column:
+                  name: atom_count
+                  type: int
+                  remarks: Number of atomic predicates in the basket
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bucket_date
+                  type: date
+                  remarks: UTC day covered by the rollup row
+                  constraints:
+                    nullable: false
+              - column:
+                  name: count
+                  type: int
+                  remarks: Number of observations for this composite fact on the bucket day
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v61.e71b4d
+      author: johnswanson
+      comment: Add source_segment_composite_daily bucket/source index
+      changes:
+        - createIndex:
+            indexName: idx_source_segment_composite_daily_bucket_source
+            tableName: source_segment_composite_daily
+            columns:
+              - column:
+                  name: bucket_date
+              - column:
+                  name: source_type
+              - column:
+                  name: source_id
+              - column:
+                  name: ownership_mode
