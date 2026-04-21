@@ -1,0 +1,29 @@
+.root {
+  margin-left: var(--mantine-spacing-xs);
+  margin-right: var(--mantine-spacing-sm);
+}
+
+.iconWrapper {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--mantine-radius-xs);
+  cursor: pointer;
+  color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary-inverse),
+    transparent 35%
+  );
+  transition: all 300ms ease-in-out;
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: light-dark(
+      hsl(from var(--mb-color-admin-navbar) h s calc(l * 0.75)),
+      hsl(from var(--mb-color-admin-navbar-inverse) h s calc(l * 0.75))
+    );
+  }
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+}
