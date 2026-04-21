@@ -7,9 +7,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
-// import { RELOAD_INTERVAL } from "../../constants";
-
-import TableBrowser from "./TableBrowser";
+import { TableBrowser } from "./TableBrowser";
 
 describe("TableBrowser", () => {
   it("should poll until tables have completed initial sync", async () => {
