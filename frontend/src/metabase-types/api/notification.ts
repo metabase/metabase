@@ -204,9 +204,15 @@ export type BulkNotificationPayload = {
   owner_id?: UserId;
 };
 
+export type NotificationSendHistoryStatus =
+  | "success"
+  | "failed"
+  | "started"
+  | "unknown";
+
 export type NotificationSendHistoryEntry = {
   timestamp: string | null;
-  status: string;
+  status: NotificationSendHistoryStatus;
   duration_ms: number | null;
   error_message?: string;
 };

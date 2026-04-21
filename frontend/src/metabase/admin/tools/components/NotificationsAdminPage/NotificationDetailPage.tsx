@@ -14,6 +14,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import AdminS from "metabase/css/admin.module.css";
 import { formatNotificationSchedule } from "metabase/notifications/utils";
+import { formatDuration } from "metabase/query_builder/components/view/ExecutionTime/utils";
 import { addUndo } from "metabase/redux/undo";
 import {
   Badge,
@@ -592,7 +593,9 @@ const SendHistoryRow = ({ entry }: { entry: NotificationSendHistoryEntry }) => {
       <td>
         <StatusBadge status={entry.status} />
       </td>
-      <td>{formatDurationMs(entry.duration_ms)}</td>
+      <td>
+        {entry.duration_ms == null ? "—" : formatDuration(entry.duration_ms)}
+      </td>
       <td>
         {entry.error_message ? (
           <Box
@@ -637,13 +640,3 @@ const StatusBadge = ({ status }: { status: string }) => {
       return <Badge variant="light">{status}</Badge>;
   }
 };
-
-function formatDurationMs(ms: number | null): string {
-  if (ms == null) {
-    return "—";
-  }
-  if (ms < 1000) {
-    return t`${ms}ms`;
-  }
-  return t`${(ms / 1000).toFixed(1)}s`;
-}

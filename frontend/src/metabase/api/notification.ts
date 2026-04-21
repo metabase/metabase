@@ -121,10 +121,10 @@ export const notificationApi = Api.injectEndpoints({
         url: "/api/ee/admin/notifications/bulk",
         body,
       }),
-      invalidatesTags: (_result, error) =>
+      invalidatesTags: (_result, error, { notification_ids }) =>
         invalidateTags(error, [
-          listTag("notification"),
           { type: "notification", id: ADMIN_LIST_TAG_ID },
+          ...notification_ids.map((id) => idTag("notification", id)),
         ]),
     }),
     adminNotificationDetail: builder.query<

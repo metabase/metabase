@@ -134,10 +134,7 @@
 (t2/define-before-update :model/Notification
   [instance]
   (validate-notification instance)
-  ;; `:payload_type` and `:payload_id` are immutable by design — changing them would produce a
-  ;; notification whose payload no longer makes sense. `:creator_id` used to live in this set but
-  ;; is now editable through the superuser-gated admin bulk endpoint
-  ;; (`metabase-enterprise.notification-admin.api`); no non-admin write path surfaces it.
+  ;; :creator_id is mutable via the admin bulk endpoint (superuser-gated; no non-admin write path).
   (when-let [unallowed-key (some #{:payload_type :payload_id} (keys (t2/changes instance)))]
     (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
                     {:status-code 400

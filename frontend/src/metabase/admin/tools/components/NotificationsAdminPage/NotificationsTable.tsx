@@ -1,6 +1,6 @@
 import cx from "classnames";
 import dayjs from "dayjs";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -104,10 +104,8 @@ export const NotificationsTable = ({
               key={notification.id}
               notification={notification}
               selected={selectedSet.has(notification.id)}
-              onToggle={() => onToggleRow(notification.id)}
-              onRowClick={
-                onRowClick ? () => onRowClick(notification.id) : undefined
-              }
+              onToggle={onToggleRow}
+              onRowClick={onRowClick}
             />
           ))}
       </tbody>
@@ -118,16 +116,16 @@ export const NotificationsTable = ({
 type NotificationRowProps = {
   notification: AdminNotificationListItem;
   selected: boolean;
-  onToggle: () => void;
-  onRowClick?: () => void;
+  onToggle: (id: NotificationId) => void;
+  onRowClick?: (id: NotificationId) => void;
 };
 
-const NotificationRow = ({
+const NotificationRow = memo(function NotificationRow({
   notification,
   selected,
   onToggle,
   onRowClick,
-}: NotificationRowProps) => {
+}: NotificationRowProps) {
   const isOrphanedCard = notification.health === "orphaned_card";
   const isOrphanedCreator = notification.health === "orphaned_creator";
 
@@ -135,10 +133,7 @@ const NotificationRow = ({
     () => notification.handlers ?? [],
     [notification.handlers],
   );
-  const subscriptions = useMemo(
-    () => notification.subscriptions ?? [],
-    [notification.subscriptions],
-  );
+  const subscriptions = notification.subscriptions ?? [];
 
   const recipientCount = handlers.reduce(
     (total, handler) => total + (handler.recipients?.length ?? 0),
@@ -153,25 +148,21 @@ const NotificationRow = ({
     return Array.from(types);
   }, [handlers]);
 
-  const scheduleLabels = useMemo(
-    () =>
-      subscriptions
-        .map((subscription) => formatNotificationSchedule(subscription))
-        .filter((value): value is string => Boolean(value)),
-    [subscriptions],
-  );
+  const scheduleLabels = subscriptions
+    .map((subscription) => formatNotificationSchedule(subscription))
+    .filter((value): value is string => Boolean(value));
 
   return (
     <tr
       data-testid={`notification-row-${notification.id}`}
-      onClick={onRowClick}
+      onClick={onRowClick ? () => onRowClick(notification.id) : undefined}
       style={onRowClick ? { cursor: "pointer" } : undefined}
     >
       <td onClick={(event) => event.stopPropagation()}>
         <Checkbox
           aria-label={t`Select notification ${notification.id}`}
           checked={selected}
-          onChange={onToggle}
+          onChange={() => onToggle(notification.id)}
         />
       </td>
       <td>{notification.id}</td>
@@ -216,7 +207,7 @@ const NotificationRow = ({
       </td>
     </tr>
   );
-};
+});
 
 type CardCellProps = {
   notification: AdminNotificationListItem;

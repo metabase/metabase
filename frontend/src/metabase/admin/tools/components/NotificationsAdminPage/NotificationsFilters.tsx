@@ -50,9 +50,9 @@ const getChannelOptions = (): {
 ];
 
 export const NotificationsFilters = ({ state, onChange }: Props) => {
-  const statusOptions = useMemo(() => getStatusOptions(), []);
-  const healthOptions = useMemo(() => getHealthOptions(), []);
-  const channelOptions = useMemo(() => getChannelOptions(), []);
+  const statusOptions = getStatusOptions();
+  const healthOptions = getHealthOptions();
+  const channelOptions = getChannelOptions();
   return (
     <Flex gap="md" wrap="wrap" align="flex-end">
       <Select

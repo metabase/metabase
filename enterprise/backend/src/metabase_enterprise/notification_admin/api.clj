@@ -1,12 +1,9 @@
 (ns metabase-enterprise.notification-admin.api
   "Admin endpoints for notifications (card-type alerts). Gated behind the `:audit-app` feature flag
-  and `check-superuser`.
-
-  The list endpoint computes a per-row `:health` state and `:last_sent_at` timestamp from the existing
-  notification / card / user / task_history tables — no schema migrations. See
-  `metabase-enterprise.notification-admin.health` for the health-computation contract."
+  and `check-superuser`. Health + last_sent_at computation lives in `notification-admin.health`."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [metabase-enterprise.notification-admin.health :as notification-admin.health]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -153,10 +150,9 @@
         rows))
 
 (defn- list-notifications
-  "Shared implementation for `GET /`. Fetches all rows matching non-health filters, computes
-  health for every row, optionally filters by health, sorts by last_sent_at desc, and paginates.
-  This is O(rows-matching-non-health-filters) in memory — acceptable for v1 instance sizes
-  (<10k alerts); flagged for perf revisit if usage demands it."
+  "Shared implementation for `GET /`. Fetches rows matching non-health filters, computes health,
+  optionally filters by health, sorts by `last_sent_at` desc (nulls last), paginates. O(matching
+  rows) in memory since health lives on computed fields — acceptable for v1 instance sizes."
   [{:keys [limit offset health] :as filters}]
   (let [rows      (fetch-rows (dissoc filters :limit :offset :health))
         enriched  (notification-admin.health/compute-for-rows rows)
@@ -187,7 +183,7 @@
   (api/check-superuser)
   (list-notifications {:limit           (or (request/limit) 50)
                        :offset          (or (request/offset) 0)
-                       :status          (or status "active")
+                       :status          status
                        :health          health
                        :creator_id      creator_id
                        :card_id         card_id
@@ -195,20 +191,24 @@
                        :channel         channel}))
 
 (def ^:private send-history-limit 20)
+(def ^:private send-history-lookback-days 90)
+(def ^:private send-history-scan-limit 5000)
 
 (defn- send-history-for-notification
-  "Return up to `send-history-limit` most-recent `notification-send` task_history rows linked to
-  `notification-id`, ordered newest first. `task_details.notification_id` lives inside a JSON
-  text column; we filter in Clojure (same approach as `health.clj`) to stay portable across
-  H2 / Postgres / MySQL.
+  "Return up to [[send-history-limit]] most-recent `notification-send` rows for `notification-id`,
+  newest first. `task_history.notification_id` is inside a JSON text column; we bound the fetch
+  by time + row count, then filter in Clojure (same approach as `health.clj`).
 
   On failure, `do-with-task-history` rewrites `task_details` to `{:status :failed :message ...
   :original-info <caller's task_details>}`, so the notification id can live at either the top
-  level or nested under `:original-info`. We check both."
+  level or nested under `:original-info`."
   [notification-id]
-  (let [rows (t2/select [:model/TaskHistory :status :started_at :duration :task_details]
-                        :task "notification-send"
-                        {:order-by [[:started_at :desc]]})]
+  (let [cutoff (t/minus (t/offset-date-time) (t/days send-history-lookback-days))
+        rows   (t2/select [:model/TaskHistory :status :started_at :duration :task_details]
+                          :task "notification-send"
+                          {:where    [:> :started_at cutoff]
+                           :order-by [[:started_at :desc]]
+                           :limit    send-history-scan-limit})]
     (->> rows
          (filter (fn [{:keys [task_details]}]
                    (let [nid (or (:notification_id task_details)
@@ -243,11 +243,11 @@
 
 (defn- bulk-update!
   [action owner-id ids]
-  (case action
-    "archive"      (t2/update! :model/Notification :id [:in ids] {:active false})
-    "unarchive"    (t2/update! :model/Notification :id [:in ids] {:active true})
-    "change-owner" (do (api/check (integer? owner-id) [400 "owner_id required for change-owner"])
-                       (t2/update! :model/Notification :id [:in ids] {:creator_id owner-id}))))
+  (case (keyword action)
+    :archive      (t2/update! :model/Notification :id [:in ids] {:active false})
+    :unarchive    (t2/update! :model/Notification :id [:in ids] {:active true})
+    :change-owner (do (api/check (integer? owner-id) [400 "owner_id required for change-owner"])
+                      (t2/update! :model/Notification :id [:in ids] {:creator_id owner-id}))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
   "Bulk-archive, -unarchive, or -change-owner a set of notifications. Runs inside a transaction.

@@ -19,10 +19,7 @@ import { addUndo } from "metabase/redux/undo";
 import { Flex, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import type {
-  AdminNotificationListItem,
-  NotificationId,
-} from "metabase-types/api";
+import type { NotificationId } from "metabase-types/api";
 
 import {
   SettingsPageWrapper,
@@ -53,13 +50,9 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
 
-  const notifications = useMemo<AdminNotificationListItem[]>(
-    () => response?.data ?? [],
-    [response?.data],
-  );
+  const notifications = useMemo(() => response?.data ?? [], [response?.data]);
   const total = response?.total ?? 0;
 
-  // Reset selection whenever filters or page change.
   useEffect(() => {
     setSelectedIds([]);
   }, [
