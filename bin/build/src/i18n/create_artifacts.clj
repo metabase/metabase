@@ -8,7 +8,10 @@
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.frontend :as frontend]
    [i18n.validation :as i18n.validation]
+   [i18n.pseudo-locale :as pseudo-locale]
    [metabuild-common.core :as u]))
+
+(set! *warn-on-reflection* true)
 
 (defn- locales-dot-edn []
   {:locales  (conj (i18n/locales) "en")
@@ -103,6 +106,8 @@
 
   ([_options]
    (u/step "Create i18n artifacts"
+     ;; Generate the `en-ZZ` pseudo-locale .po file
+     (pseudo-locale/generate-pseudo-locale-po!)
      (generate-locales-dot-edn!)
      (create-artifacts-for-all-locales!)
      (u/announce "Translation resources built successfully."))))

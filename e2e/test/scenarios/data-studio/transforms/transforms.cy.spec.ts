@@ -3393,7 +3393,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getStartAtFilterWidget().click();
       H.popover().within(() => {
         cy.findByText("Relative date range…").click();
-        cy.findByText("Include today").click();
+        cy.findByLabelText("Include today").click();
         cy.button("Apply").click();
       });
       getStartAtFilterWidget()
@@ -3437,7 +3437,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getEndAtFilterWidget().click();
       H.popover().within(() => {
         cy.findByText("Relative date range…").click();
-        cy.findByText("Include today").click();
+        cy.findByLabelText("Include today").click();
         cy.button("Apply").click();
       });
       getEndAtFilterWidget()

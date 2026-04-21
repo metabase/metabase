@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { useToast } from "metabase/common/hooks/use-toast";
+import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -14,6 +16,7 @@ import { FixSqlQueryButton } from "./FixSqlQueryButton";
 
 const mockSubmitInput = jest.fn();
 const mockDispatch = jest.fn();
+const mockSendToast = jest.fn();
 const mockSetIsNativeEditorOpen = jest.fn();
 
 jest.mock("../../analytics", () => ({
@@ -23,6 +26,11 @@ jest.mock("../../analytics", () => ({
 jest.mock("metabase/utils/redux", () => ({
   ...jest.requireActual("metabase/utils/redux"),
   useDispatch: jest.fn(),
+}));
+
+jest.mock("metabase/common/hooks/use-toast", () => ({
+  ...jest.requireActual("metabase/common/hooks/use-toast"),
+  useToast: jest.fn(),
 }));
 
 jest.mock("metabase/metabot/hooks", () => ({
@@ -54,19 +62,20 @@ function setup(options?: {
     submitInput: mockSubmitInput,
     isDoingScience,
   } as any);
+  jest.mocked(useToast).mockReturnValue([mockSendToast, jest.fn()]);
   jest.mocked(useDispatch).mockReturnValue(mockDispatch as any);
   jest
     .mocked(setIsNativeEditorOpen)
     .mockImplementation(mockSetIsNativeEditorOpen as any);
 
-  renderWithProviders(<FixSqlQueryButton />);
+  return renderWithProviders(<FixSqlQueryButton />);
 }
 
 describe("FixSqlQueryButton", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSubmitInput.mockResolvedValue(undefined);
-    mockDispatch.mockResolvedValue(undefined);
+    mockDispatch.mockImplementation((action) => action);
     mockSetIsNativeEditorOpen.mockReturnValue({
       type: "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN",
       isNativeEditorOpen: true,
@@ -101,7 +110,9 @@ describe("FixSqlQueryButton", () => {
       type: "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN",
       isNativeEditorOpen: true,
     });
-    expect(mockSubmitInput).toHaveBeenCalledWith("Fix this SQL query");
+    expect(mockSubmitInput).toHaveBeenCalledWith("Fix this SQL query", {
+      preventOpenSidebar: true,
+    });
   });
 
   it("should show a loading state while the SQL agent is processing", () => {
@@ -112,5 +123,79 @@ describe("FixSqlQueryButton", () => {
         name: /Have Metabot fix it/,
       }),
     ).toBeDisabled();
+  });
+
+  it("shows the managed-provider lockout toast when SQL fixing is locked", async () => {
+    mockSubmitInput.mockResolvedValue({
+      meta: { requestStatus: "fulfilled", requestId: "1" },
+      payload: {
+        success: false,
+        errorMessage: {
+          type: "locked",
+          message: "unused",
+        },
+      },
+    });
+
+    setup();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Have Metabot fix it/ }),
+    );
+
+    expect(mockSendToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "metabot-managed-provider-limit",
+        icon: null,
+        timeout: 0,
+        toastColor: "error",
+      }),
+    );
+  });
+
+  it("shows the error when fixing SQL fails", async () => {
+    mockSubmitInput.mockResolvedValue({
+      meta: { requestStatus: "fulfilled", requestId: "1" },
+      payload: {
+        success: false,
+        errorMessage: {
+          type: "alert",
+          message: "Something went wrong",
+        },
+      },
+    });
+
+    setup();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Have Metabot fix it/ }),
+    );
+
+    expect(mockSendToast).toHaveBeenCalledWith({
+      icon: "warning",
+      toastColor: "error",
+      message: "Something went wrong",
+    });
+  });
+
+  it("falls back to the default Metabot error message when none is returned", async () => {
+    mockSubmitInput.mockResolvedValue({
+      meta: { requestStatus: "fulfilled", requestId: "1" },
+      payload: {
+        success: false,
+      },
+    });
+
+    setup();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Have Metabot fix it/ }),
+    );
+
+    expect(mockSendToast).toHaveBeenCalledWith({
+      icon: "warning",
+      toastColor: "error",
+      message: METABOT_ERR_MSG.default,
+    });
   });
 });

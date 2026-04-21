@@ -9,13 +9,14 @@ import type {
 } from "metabase/metrics-viewer/components/DimensionPillBar";
 import type { IconName } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
+import { isNotNull } from "metabase/utils/types";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import {
   formatBreakoutValue,
   getBreakoutSeriesName,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
-import type { MetricDefinition } from "metabase-lib/metric";
+import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   Card,
@@ -692,16 +693,22 @@ export function buildDimensionItemsFromDefinitions(
       );
 
       // Derive aggregate label and icon from selected dimensions.
-      const selectedLabels = metricSources
-        .map((s) => s.currentDimensionLabel)
-        .filter(Boolean);
-      const uniqueLabels = [...new Set(selectedLabels)];
-      const label =
-        uniqueLabels.length === 1
-          ? uniqueLabels[0]
-          : uniqueLabels.length > 1
-            ? t`Multiple dimensions`
-            : undefined;
+      const selectedDimensions = metricSources
+        .map((s) => s.currentDimension)
+        .filter(isNotNull);
+      const allSameDimension =
+        selectedDimensions.length > 0 &&
+        selectedDimensions.every((d) =>
+          LibMetric.isSameSource(d, selectedDimensions[0]),
+        );
+      let label: string | undefined;
+      if (allSameDimension) {
+        label = metricSources.find(
+          (s) => s.currentDimensionLabel,
+        )?.currentDimensionLabel;
+      } else if (selectedDimensions.length > 1) {
+        label = t`Multiple dimensions`;
+      }
       const selectedIcons = metricSources
         .map((s) => s.currentDimensionIcon)
         .filter(Boolean);
@@ -846,21 +853,21 @@ function buildExpressionMetricSources(
         ) ?? undefined;
     }
 
+    let currentDimension: DimensionMetadata | undefined;
     let currentDimensionLabel: string | undefined;
     let currentDimensionIcon: IconName | undefined;
     if (dimensionId != null && modifiedDefinition) {
       const projections = LibMetric.projections(modifiedDefinition);
       if (projections.length > 0) {
-        const projDim = LibMetric.projectionDimension(
-          modifiedDefinition,
-          projections[0],
-        );
-        if (projDim) {
+        currentDimension =
+          LibMetric.projectionDimension(modifiedDefinition, projections[0]) ??
+          undefined;
+        if (currentDimension) {
           currentDimensionLabel = LibMetric.displayInfo(
             modifiedDefinition,
-            projDim,
+            currentDimension,
           ).longDisplayName;
-          currentDimensionIcon = getDimensionIcon(projDim);
+          currentDimensionIcon = getDimensionIcon(currentDimension);
         }
       }
     }
@@ -878,6 +885,7 @@ function buildExpressionMetricSources(
           return token?.type === "metric" ? token.count : undefined;
         })(),
         colors: entryColors,
+        currentDimension,
         currentDimensionLabel,
         currentDimensionIcon,
         availableOptions: computeAvailableOptions(
