@@ -33,10 +33,7 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
 import type { DatasetQuery } from "metabase-types/api";
 
-import {
-  useGetMetabotConversationFeedbackQuery,
-  useGetMetabotConversationQuery,
-} from "../../api";
+import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 type StatCardProps = {
@@ -66,9 +63,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     error,
   } = useGetMetabotConversationQuery(convoId);
 
-  const { data: feedback = [] } =
-    useGetMetabotConversationFeedbackQuery(convoId);
-
   if (isLoading || error) {
     return (
       <MetabotAdminLayout>
@@ -90,6 +84,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const queryCount = conversation.query_count ?? 0;
   const firstModel = conversation.model ?? undefined;
   const queries = conversation.queries ?? [];
+  const feedback = conversation.feedback ?? [];
 
   return (
     <MetabotAdminLayout>
@@ -153,8 +148,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 
         {feedback.length > 0 && (
           <Box>
-            <Title order={3}>{t`Feedback`}</Title>
-            <Stack mt="sm" gap="md">
+            <Title order={4}>{t`Feedback`}</Title>
+            <Stack mt="sm" gap="sm">
               {feedback.map((item) => (
                 <FeedbackCard key={item.message_id} feedback={item} />
               ))}
@@ -192,8 +187,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 }
 
 function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
-  const sentimentLabel = feedback.positive ? t`Positive` : t`Negative`;
-
   const jumpToMessage = () => {
     const el =
       feedback.external_id && document.getElementById(feedback.external_id);
@@ -206,15 +199,17 @@ function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
     <Card withBorder shadow="none" p="md">
       <Stack gap="sm">
         <Flex justify="space-between" align="center" gap="sm" wrap="wrap">
-          <Flex gap="sm" align="center">
+          <Flex gap="xs" align="center">
             <Icon
               name={feedback.positive ? "thumbs_up" : "thumbs_down"}
               size={20}
               c="text-secondary"
             />
-            <Text fw={700}>{sentimentLabel}</Text>
+            <Text fw={700}>
+              {feedback.positive ? t`Positive` : t`Negative`}
+            </Text>
             {feedback.issue_type && (
-              <Badge variant="light" bg="background-error" c="error">
+              <Badge variant="light" bg="background-error" c="error" ml="xs">
                 {getIssueTypeLabel(feedback.issue_type)}
               </Badge>
             )}

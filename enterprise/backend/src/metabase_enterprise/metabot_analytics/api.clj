@@ -72,6 +72,19 @@
    [:database_id [:maybe ms/PositiveInt]]
    [:tables      [:sequential :string]]])
 
+(def ^:private ConversationFeedback
+  "Schema for one user-submitted feedback row attached to a conversation. Keyed by `message_id`
+   (the metabot_message PK) since `metabot_feedback` is a 1:1 extension of `metabot_message`.
+   The submitter is the conversation owner (enforced at write), so no per-row user is returned."
+  [:map
+   [:message_id        ms/PositiveInt]
+   [:external_id       [:maybe :string]]
+   [:positive          :boolean]
+   [:issue_type        [:maybe :string]]
+   [:freeform_feedback [:maybe :string]]
+   [:created_at        ms/TemporalInstant]
+   [:updated_at        ms/TemporalInstant]])
+
 (def ^:private ConversationDetail
   "Schema for full conversation detail response."
   [:map
@@ -87,7 +100,8 @@
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]
    [:query_count     ms/IntGreaterThanOrEqualToZero]
-   [:ip_address      [:maybe :string]]])
+   [:ip_address      [:maybe :string]]
+   [:feedback        [:sequential ConversationFeedback]]])
 
 (def ^:private ListConversationsResponse
   "Response schema for `GET /conversations`."
@@ -100,19 +114,6 @@
 (def ^:private ConversationIdParams
   "Route-param schema for endpoints addressing a single conversation by id."
   [:map [:id ms/UUIDString]])
-
-(def ^:private ConversationFeedback
-  "Schema for one user-submitted feedback row attached to a conversation. Keyed by `message_id`
-   (the metabot_message PK) since `metabot_feedback` is a 1:1 extension of `metabot_message`.
-   The submitter is the conversation owner (enforced at write), so no per-row user is returned."
-  [:map
-   [:message_id        ms/PositiveInt]
-   [:external_id       [:maybe :string]]
-   [:positive          :boolean]
-   [:issue_type        [:maybe :string]]
-   [:freeform_feedback [:maybe :string]]
-   [:created_at        ms/TemporalInstant]
-   [:updated_at        ms/TemporalInstant]])
 
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
 
@@ -133,12 +134,6 @@
   [{:keys [id]} :- ConversationIdParams]
   (api/check-superuser)
   (analytics.conversations/fetch-conversation-detail id))
-
-(api.macros/defendpoint :get "/conversations/:id/feedback" :- [:sequential ConversationFeedback]
-  "Return all user-submitted feedback for a specific conversation."
-  [{:keys [id]} :- ConversationIdParams]
-  (api/check-superuser)
-  (analytics.conversations/fetch-conversation-feedback id))
 
 ;;; -------------------------------------------------- Routes --------------------------------------------------
 

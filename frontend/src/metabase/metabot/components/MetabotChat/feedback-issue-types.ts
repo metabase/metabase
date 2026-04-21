@@ -36,8 +36,7 @@ export const getIssueTypeLabel = (value: string): string => {
   }
 };
 
-export const getIssueTypeOptions = () =>
-  ISSUE_TYPE_VALUES.map((value) => ({
-    value,
-    label: getIssueTypeLabel(value),
-  }));
+export const issueTypeOptions = ISSUE_TYPE_VALUES.map((value) => ({
+  value,
+  label: getIssueTypeLabel(value),
+}));

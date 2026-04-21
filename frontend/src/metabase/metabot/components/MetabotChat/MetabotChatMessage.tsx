@@ -154,9 +154,15 @@ export const AgentMessage = ({
   hideActions,
   ...props
 }: AgentMessageProps) => {
-  const anchorId = message.type === "text" ? message.externalId : undefined;
+  const messageId = message.type === "text" ? (message.externalId ?? "") : "";
+  const canFeedbackButtons = !!(
+    showFeedbackButtons &&
+    setFeedbackMessage &&
+    messageId
+  );
+
   return (
-    <MessageContainer chatRole={message.role} id={anchorId} {...props}>
+    <MessageContainer chatRole={message.role} id={messageId} {...props}>
       {message.type === "text" && (
         <AIMarkdown
           className={Styles.message}
@@ -186,41 +192,32 @@ export const AgentMessage = ({
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Tooltip>
-            {showFeedbackButtons &&
-              setFeedbackMessage &&
-              message.type === "text" &&
-              message.externalId && (
-                <>
-                  <Tooltip label={t`Give positive feedback`}>
-                    <FeedbackButton
-                      data-testid="metabot-chat-message-thumbs-up"
-                      icon="thumbs_up"
-                      hasBeenClicked={submittedFeedback === "positive"}
-                      disabled={!!submittedFeedback}
-                      onClick={() =>
-                        setFeedbackMessage({
-                          messageId: message.externalId ?? "",
-                          positive: true,
-                        })
-                      }
-                    />
-                  </Tooltip>
-                  <Tooltip label={t`Give negative feedback`}>
-                    <FeedbackButton
-                      data-testid="metabot-chat-message-thumbs-down"
-                      icon="thumbs_down"
-                      hasBeenClicked={submittedFeedback === "negative"}
-                      disabled={!!submittedFeedback}
-                      onClick={() =>
-                        setFeedbackMessage({
-                          messageId: message.externalId ?? "",
-                          positive: false,
-                        })
-                      }
-                    />
-                  </Tooltip>
-                </>
-              )}
+            {canFeedbackButtons && (
+              <>
+                <Tooltip label={t`Give positive feedback`}>
+                  <FeedbackButton
+                    data-testid="metabot-chat-message-thumbs-up"
+                    icon="thumbs_up"
+                    hasBeenClicked={submittedFeedback === "positive"}
+                    disabled={!!submittedFeedback}
+                    onClick={() =>
+                      setFeedbackMessage({ messageId, positive: true })
+                    }
+                  />
+                </Tooltip>
+                <Tooltip label={t`Give negative feedback`}>
+                  <FeedbackButton
+                    data-testid="metabot-chat-message-thumbs-down"
+                    icon="thumbs_down"
+                    hasBeenClicked={submittedFeedback === "negative"}
+                    disabled={!!submittedFeedback}
+                    onClick={() =>
+                      setFeedbackMessage({ messageId, positive: false })
+                    }
+                  />
+                </Tooltip>
+              </>
+            )}
 
             {onRetry && (
               <Tooltip label={t`Retry`}>

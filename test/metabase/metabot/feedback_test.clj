@@ -26,7 +26,7 @@
            :total_tokens    5
            :data            [{:type "text" :text "hi"}]})))
 
-(deftest persist-feedback-resolves-by-external-id-test
+(deftest ^:parallel persist-feedback-resolves-by-external-id-test
   (testing "persist-feedback! looks up the rated message by metabot_message.external_id"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [conversation-id (str (random-uuid))
@@ -51,7 +51,7 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest persist-feedback-distinguishes-sibling-messages-test
+(deftest ^:parallel persist-feedback-distinguishes-sibling-messages-test
   (testing "two feedback submissions against sibling messages in the same conversation land on distinct rows"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [conversation-id (str (random-uuid))
@@ -77,7 +77,7 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest persist-feedback-updates-existing-row-test
+(deftest ^:parallel persist-feedback-updates-existing-row-test
   (testing "persist-feedback! updates the existing row for the same message and bumps updated_at"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [conversation-id (str (random-uuid))
@@ -108,14 +108,14 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest persist-feedback-unknown-external-id-no-op-test
+(deftest ^:parallel persist-feedback-unknown-external-id-no-op-test
   (testing "persist-feedback! returns nil and writes nothing when external_id does not resolve"
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id
         (is (nil? (metabot.feedback/persist-feedback!
                    (payload {:message-id (str (random-uuid))}))))))))
 
-(deftest persist-feedback-rejects-non-owner-test
+(deftest ^:parallel persist-feedback-rejects-non-owner-test
   (testing "persist-feedback! refuses to write when the current user doesn't own the conversation"
     (mt/with-temp [:model/User {owner-id     :id} {}
                    :model/User {stranger-id  :id} {}]
@@ -133,7 +133,7 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest persist-feedback-no-positive-no-op-test
+(deftest ^:parallel persist-feedback-no-positive-no-op-test
   (testing "persist-feedback! returns nil when `positive` is missing"
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id

@@ -81,4 +81,5 @@ export type ConversationDetail = {
   search_count: number;
   query_count: number;
   ip_address: string | null;
+  feedback: ConversationFeedback[];
 };

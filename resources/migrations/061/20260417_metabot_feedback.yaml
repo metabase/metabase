@@ -1,5 +1,4 @@
-## Persist Metabot message feedback locally (in addition to proxying to Harbormaster).
-## metabot_feedback is a 1:1 extension table — its PK is the metabot_message it belongs to.
+## Persist Metabot message feedback
 
 databaseChangeLog:
   - logicalFilePath: migrations/061_update_migrations.yaml
@@ -7,11 +6,11 @@ databaseChangeLog:
   - changeSet:
       id: v61.2026-04-17T10:00:00
       author: sloansparger
-      comment: metabot_feedback table (1:1 extension of metabot_message)
+      comment: metabot_feedback table
       changes:
         - createTable:
             tableName: metabot_feedback
-            remarks: User feedback (thumbs up/down + optional comment) for a metabot_message — 1:1 with metabot_message via shared PK.
+            remarks: User feedback - positive/negative w/ optional reason + comment
             columns:
               - column:
                   name: message_id

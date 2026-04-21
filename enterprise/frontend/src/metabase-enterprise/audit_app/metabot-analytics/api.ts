@@ -2,7 +2,6 @@ import { EnterpriseApi } from "metabase-enterprise/api/api";
 
 import type {
   ConversationDetail,
-  ConversationFeedback,
   ConversationsRequest,
   ConversationsResponse,
 } from "./types";
@@ -25,20 +24,10 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/metabot-analytics/conversations/${id}`,
       }),
     }),
-    getMetabotConversationFeedback: builder.query<
-      ConversationFeedback[],
-      string
-    >({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/metabot-analytics/conversations/${id}/feedback`,
-      }),
-    }),
   }),
 });
 
 export const {
   useListMetabotConversationsQuery,
   useGetMetabotConversationQuery,
-  useGetMetabotConversationFeedbackQuery,
 } = metabotAnalyticsApi;

@@ -21,7 +21,6 @@
                    :role            "user"
                    :profile_id      "test"
                    :total_tokens    0
-                   :external_id     (str (random-uuid))
                    :data            [{:_type "TEXT" :role "user" :content "what is 2+2?"}]})
       ;; Assistant message with tool calls
       (t2/insert! :model/MetabotMessage
@@ -30,7 +29,6 @@
                    :role            "assistant"
                    :profile_id      "test"
                    :total_tokens    10
-                   :external_id     (str (random-uuid))
                    :data            [{:_type "TEXT" :role "assistant" :content "hi"}
                                      {:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "x"}]}
                                      {:_type "TOOL_RESULT" :role "tool" :tool_call_id "x" :content "y"}]})
@@ -56,7 +54,6 @@
                        :role               "assistant"
                        :profile_id         "test"
                        :total_tokens       10
-                       :external_id        (str (random-uuid))
                        :data               [{:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "y"}]}]
                        :deleted_at         (java.time.OffsetDateTime/now)
                        :deleted_by_user_id (mt/user->id :rasta)})
@@ -79,7 +76,6 @@
                      :role            "assistant"
                      :profile_id      "test"
                      :total_tokens    5
-                     :external_id     (str (random-uuid))
                      :data            []})
         (testing "returns true when a message is soft-deleted"
           (is (true? (slackbot.persistence/soft-delete-response! channel-id slack-ts user-id))))
@@ -115,7 +111,6 @@
                      :user_id         requester-id
                      :profile_id      "test"
                      :total_tokens    5
-                     :external_id     (str (random-uuid))
                      :data            []})
         (testing "returns the requester, not the (potentially overwritten) conversation owner"
           (is (= requester-id (slackbot.persistence/response-owner-user-id channel-id slack-ts))))
@@ -134,7 +129,6 @@
                          :user_id         later-user-id
                          :profile_id      "test"
                          :total_tokens    5
-                         :external_id     (str (random-uuid))
                          :data            []})
             (is (= requester-id  (slackbot.persistence/response-owner-user-id channel-id slack-ts)))
             (is (= later-user-id (slackbot.persistence/response-owner-user-id channel-id second-slack-ts)))))))))

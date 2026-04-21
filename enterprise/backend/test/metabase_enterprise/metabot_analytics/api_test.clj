@@ -21,25 +21,21 @@
                 ip-address (assoc :ip_address ip-address))))
 
 (defn- insert-message!
-  [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at external-id]}]
-  (t2/insert! :model/MetabotMessage
-              (cond-> {:conversation_id conversation-id
-                       :role            role
-                       :profile_id      profile-id
-                       :total_tokens    total-tokens
-                       :data            data
-                       :external_id     (or external-id (str (random-uuid)))}
-                created-at (assoc :created_at created-at)
-                deleted-at (assoc :deleted_at deleted-at))))
+  [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at]}]
+  (first (t2/insert-returning-pks!
+          :model/MetabotMessage
+          (cond-> {:conversation_id conversation-id
+                   :role            role
+                   :profile_id      profile-id
+                   :total_tokens    total-tokens
+                   :data            data
+                   :external_id     (str (random-uuid))}
+            created-at (assoc :created_at created-at)
+            deleted-at (assoc :deleted_at deleted-at)))))
 
 (defn- delete-conversations!
   [conversation-ids]
-  (let [conversation-ids (vec conversation-ids)
-        message-ids      (when (seq conversation-ids)
-                           (t2/select-pks-vec :model/MetabotMessage
-                                              :conversation_id [:in conversation-ids]))]
-    (when (seq message-ids)
-      (t2/delete! :model/MetabotFeedback {:where [:in :message_id message-ids]}))
+  (let [conversation-ids (vec conversation-ids)]
     (t2/delete! :model/MetabotMessage {:where [:in :conversation_id conversation-ids]})
     (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]})))
 
@@ -247,11 +243,10 @@
             (is (= "gpt-5" (:model response))
                 "model comes from the first assistant message's profile_id, ignoring user-message placeholders")
             (is (= 2 (count (:chat_messages response))))
-            (let [assistant-chat (last (:chat_messages response))]
-              (is (= "agent" (:role assistant-chat)))
-              (is (= "text" (:type assistant-chat)))
-              (is (string? (:externalId assistant-chat))
-                  "agent text chat messages surface the parent metabot_message.external_id as :externalId so the admin UI can jump to them")))
+            (is (= [] (:feedback response)))
+            (let [{:keys [role type externalId]} (last (:chat_messages response))]
+              (is (= ["agent" "text"] [role type]))
+              (is (string? externalId))))
           (finally
             (delete-conversations! [conversation-id])))))))
 
@@ -580,24 +575,24 @@
           (finally
             (delete-conversations! [convo-web convo-slack convo-null])))))))
 
-(deftest get-conversation-feedback-requires-superuser-test
+(deftest ^:parallel get-conversation-detail-requires-superuser-test
   (mt/with-premium-features #{:audit-app}
-    (testing "GET /api/ee/metabot-analytics/conversations/:id/feedback requires superuser"
+    (testing "GET /api/ee/metabot-analytics/conversations/:id requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403
-                                   (format "ee/metabot-analytics/conversations/%s/feedback"
+                                   (format "ee/metabot-analytics/conversations/%s"
                                            (str (random-uuid)))))))))
 
-(deftest get-conversation-feedback-404-test
+(deftest ^:parallel get-conversation-detail-404-test
   (mt/with-premium-features #{:audit-app}
-    (testing "GET /api/ee/metabot-analytics/conversations/:id/feedback 404s for unknown conversations"
+    (testing "GET /api/ee/metabot-analytics/conversations/:id 404s for unknown conversations"
       (mt/user-http-request :crowberto :get 404
-                            (format "ee/metabot-analytics/conversations/%s/feedback"
+                            (format "ee/metabot-analytics/conversations/%s"
                                     (str (random-uuid)))))))
 
-(deftest get-conversation-feedback-returns-rows-test
+(deftest ^:parallel get-conversation-detail-feedback-test
   (mt/with-premium-features #{:audit-app}
-    (testing "GET /api/ee/metabot-analytics/conversations/:id/feedback returns one feedback row per rated message in submission order"
+    (testing "GET /api/ee/metabot-analytics/conversations/:id surfaces user-submitted feedback on the :feedback key, ordered by submission time"
       (let [conversation-id (str (random-uuid))
             user-id         (mt/user->id :crowberto)
             jan-1           (offset-date-time "2026-04-01T00:00:00Z")
@@ -608,43 +603,26 @@
                                  :user-id         user-id
                                  :created-at      jan-1
                                  :summary         "feedback conversation"})
-          (let [msg-1 (first (t2/insert-returning-pks!
-                              :model/MetabotMessage
-                              {:conversation_id conversation-id
-                               :created_at      jan-2
-                               :role            "assistant"
-                               :profile_id      "gpt-5"
-                               :total_tokens    5
-                               :external_id     (str (random-uuid))
-                               :data            [{:type "text" :text "first answer"}]}))
-                msg-2 (first (t2/insert-returning-pks!
-                              :model/MetabotMessage
-                              {:conversation_id conversation-id
-                               :created_at      jan-3
-                               :role            "assistant"
-                               :profile_id      "gpt-5"
-                               :total_tokens    7
-                               :external_id     (str (random-uuid))
-                               :data            [{:type "text" :text "second answer"}]}))]
-            (insert-feedback! {:message-id msg-1
-                               :positive   true
-                               :freeform   "great"
-                               :created-at jan-2})
-            (insert-feedback! {:message-id msg-2
-                               :positive   false
-                               :issue-type "not-factual"
-                               :freeform   "wrong"
-                               :created-at jan-3})
-            (let [response (mt/user-http-request :crowberto :get 200
-                                                 (format "ee/metabot-analytics/conversations/%s/feedback"
-                                                         conversation-id))]
-              (is (= 2 (count response)))
-              (is (= [true false] (map :positive response)))
-              (is (= [msg-1 msg-2] (map :message_id response)))
-              (is (= "not-factual" (:issue_type (second response))))
-              (is (every? (comp string? :external_id) response)
+          (let [msg-1 (insert-message! {:conversation-id conversation-id :created-at jan-2
+                                        :role "assistant" :profile-id "gpt-5" :total-tokens 5
+                                        :data [{:type "text" :text "first answer"}]})
+                msg-2 (insert-message! {:conversation-id conversation-id :created-at jan-3
+                                        :role "assistant" :profile-id "gpt-5" :total-tokens 7
+                                        :data [{:type "text" :text "second answer"}]})]
+            (run! insert-feedback!
+                  [{:message-id msg-1 :positive true  :freeform "great" :created-at jan-2}
+                   {:message-id msg-2 :positive false :issue-type "not-factual"
+                    :freeform "wrong" :created-at jan-3}])
+            (let [feedback (:feedback (mt/user-http-request :crowberto :get 200
+                                                            (format "ee/metabot-analytics/conversations/%s"
+                                                                    conversation-id)))]
+              (is (= 2 (count feedback)))
+              (is (= [true false] (map :positive feedback)))
+              (is (= [msg-1 msg-2] (map :message_id feedback)))
+              (is (= "not-factual" (:issue_type (second feedback))))
+              (is (every? (comp string? :external_id) feedback)
                   "each feedback row carries the parent metabot_message.external_id so the admin UI can link to it")
-              (is (every? #(not (contains? % :user)) response)
+              (is (every? #(not (contains? % :user)) feedback)
                   "feedback rows do not hydrate a per-row user — the submitter is always the conversation owner")))
           (finally
             (delete-conversations! [conversation-id])))))))

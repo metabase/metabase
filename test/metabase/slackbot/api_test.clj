@@ -934,14 +934,12 @@
                      :role            "user"
                      :profile_id      "slackbot"
                      :total_tokens    0
-                     :external_id     (str (random-uuid))
                      :data            [{:_type "TEXT" :role "user" :content "What is revenue?"}]})
         (t2/insert! :model/MetabotMessage
                     {:conversation_id conv-id
                      :role            "assistant"
                      :profile_id      "slackbot"
                      :total_tokens    10
-                     :external_id     (str (random-uuid))
                      :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]})
         (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
                                                                  (swap! harbormaster-calls conj feedback)

@@ -1,6 +1,3 @@
-## Add external_id UUID to metabot_message. Shared with clients via the AI SDK
-## streaming `f:` line and used as the lookup key for feedback submissions.
-
 databaseChangeLog:
   - logicalFilePath: migrations/061_update_migrations.yaml
 
@@ -15,54 +12,13 @@ databaseChangeLog:
               - column:
                   name: external_id
                   type: varchar(36)
-                  remarks: Server-minted UUID emitted to clients in the streaming protocol; used as the stable message id across live stream and history reload, and as the resolution key for feedback submissions.
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v61.2026-04-21T10:00:01
       author: sloansparger
-      comment: Backfill metabot_message.external_id with fresh UUIDs (H2)
-      changes:
-        - sql:
-            dbms: h2
-            sql: UPDATE metabot_message SET external_id = RANDOM_UUID() WHERE external_id IS NULL
-      rollback: []
-
-  - changeSet:
-      id: v61.2026-04-21T10:00:02
-      author: sloansparger
-      comment: Backfill metabot_message.external_id with fresh UUIDs (PostgreSQL)
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: UPDATE metabot_message SET external_id = gen_random_uuid()::text WHERE external_id IS NULL
-      rollback: []
-
-  - changeSet:
-      id: v61.2026-04-21T10:00:03
-      author: sloansparger
-      comment: Backfill metabot_message.external_id with fresh UUIDs (MySQL/MariaDB)
-      changes:
-        - sql:
-            dbms: mysql,mariadb
-            sql: UPDATE metabot_message SET external_id = UUID() WHERE external_id IS NULL
-      rollback: []
-
-  - changeSet:
-      id: v61.2026-04-21T10:00:04
-      author: sloansparger
-      comment: Make metabot_message.external_id NOT NULL now that existing rows are backfilled
-      changes:
-        - addNotNullConstraint:
-            tableName: metabot_message
-            columnName: external_id
-            columnDataType: varchar(36)
-
-  - changeSet:
-      id: v61.2026-04-21T10:00:05
-      author: sloansparger
-      comment: Unique index on metabot_message.external_id for exact feedback lookup
+      comment: Unique constraint on metabot_message.external_id for feedback lookup
       changes:
         - addUniqueConstraint:
             tableName: metabot_message

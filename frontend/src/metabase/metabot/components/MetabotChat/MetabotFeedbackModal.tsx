@@ -13,7 +13,7 @@ import * as Errors from "metabase/utils/errors";
 import { useSelector } from "metabase/utils/redux";
 import type { MetabotFeedback } from "metabase-types/api";
 
-import { getIssueTypeOptions } from "./feedback-issue-types";
+import { issueTypeOptions } from "./feedback-issue-types";
 
 // Issue types that require free text feedback
 const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
@@ -101,7 +101,7 @@ export const MetabotFeedbackModal = ({
                 <FormSelect
                   name="issue_type"
                   placeholder={t`Select issue type`}
-                  data={getIssueTypeOptions()}
+                  data={issueTypeOptions}
                 />
               </Stack>
             )}
