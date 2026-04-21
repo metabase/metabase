@@ -98,7 +98,9 @@ export function CustomVizPage({ params }: Props) {
       pinVersion: !!plugin?.pinned_version,
       pinnedVersion: plugin?.pinned_version ?? "",
     }),
-    [plugin],
+    // Depend on individual fields so transient plugin-object identity changes
+    // (e.g., RTK Query cache refreshes) don't trigger Formik's reinit.
+    [plugin?.repo_url, plugin?.pinned_version],
   );
 
   const submitValues = useCallback(
@@ -191,6 +193,13 @@ export function CustomVizPage({ params }: Props) {
     return null;
   }
 
+  // Wait for the plugin to load in edit mode — rendering the form before it
+  // arrives causes Formik's enableReinitialize to reset any user input once
+  // the plugin data finally arrives.
+  if (isEdit && !plugin) {
+    return null;
+  }
+
   return (
     <SettingsPageWrapper>
       <Stack gap="0">
@@ -249,8 +258,14 @@ export function CustomVizPage({ params }: Props) {
                   </Stack>
                   <Stack gap="sm">
                     <Flex gap="sm" align="center">
-                      <Text fw={700}>{t`Pin to a specific version`}</Text>
-                      <FormSwitch size="sm" name="pinVersion" />
+                      <FormSwitch
+                        size="sm"
+                        name="pinVersion"
+                        labelPosition="left"
+                        styles={{ label: { fontWeight: 700 } }}
+                        label={t`Pin to a specific version`}
+                        aria-label={t`Pin to a specific version`}
+                      />
                     </Flex>
                     {values.pinVersion && (
                       <FormTextInput
