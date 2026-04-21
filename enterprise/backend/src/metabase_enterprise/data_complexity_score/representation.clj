@@ -62,12 +62,33 @@
    :field-count   0
    :measure-names []})
 
+(defn- resolve-embeddings-file
+  "Resolve an explicit `:embeddings-path` override against `dir` when it is relative, and return the
+  `File`. Throws when the file doesn't exist — silently falling back to `{}` would mask a typo and
+  produce a misleadingly low complexity score."
+  ^java.io.File [dir embeddings-path]
+  (let [given (io/file embeddings-path)
+        f     (if (.isAbsolute given) given (io/file dir embeddings-path))]
+    (when-not (.exists f)
+      (throw (ex-info (str "Embeddings file not found: " (.getPath f))
+                      {:embeddings-path embeddings-path
+                       :resolved-path   (.getPath f)
+                       :dir             (str dir)})))
+    f))
+
 (defn load-dir
   "Load representation files from `dir` and derive everything the complexity scorer needs.
 
   Returns `{:library [...entities] :universe [...entities] :embedder fn}` where the entities are
-  shaped for [[metabase-enterprise.data-complexity-score.complexity/score-from-entities]]."
-  [dir]
+  shaped for [[metabase-enterprise.data-complexity-score.complexity/score-from-entities]].
+
+  Options:
+    `:embeddings-path` — explicit path to a JSON embeddings file. When provided, overrides the
+      default `embeddings.json` in `dir`. Relative paths are resolved against `dir` (so a value
+      like `embeddings/names_arctic-l_1024d.json` points inside the representation directory, not
+      the process working directory). Throws if the resolved file is missing — the caller asked
+      for a specific embeddings source, so silently scoring with no embeddings would be wrong."
+  [dir & {:keys [embeddings-path]}]
   (let [kw                {:keywordize? true  :default []}
         str-keyed         {:keywordize? false :default {}}
         collections       (read-section dir "collections" kw)
@@ -75,7 +96,9 @@
         fields            (read-section dir "fields"      kw)
         cards             (read-section dir "cards"       kw)
         measures          (read-section dir "measures"    kw)
-        embeddings        (read-section dir "embeddings"  str-keyed)
+        embeddings        (if embeddings-path
+                            (json/decode (slurp (resolve-embeddings-file dir embeddings-path)) false)
+                            (read-section dir "embeddings" str-keyed))
         fields-by-table   (group-by :table_id fields)
         meas-by-table     (group-by :table_id measures)
         lib-coll-ids      (library-collection-ids collections)
