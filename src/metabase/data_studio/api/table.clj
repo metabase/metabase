@@ -235,6 +235,7 @@
   [_
    _
    body :- ::table-selectors]
+  (sync/check-sync-enabled-or-503!)
   (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
         db-ids (sort (set (map :db_id tables)))]
@@ -254,6 +255,7 @@
   [_
    _
    body :- ::table-selectors]
+  (sync/check-sync-enabled-or-503!)
   (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values

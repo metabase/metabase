@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.provider-detection :as provider-detection]
+   [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -205,9 +206,12 @@
   (boolean (:router_database_id db)))
 
 (defn should-sync?
-  "Should this database be synced?"
+  "Should this database be synced? Returns false when:
+    - the database is a routing destination (metadata comes from the primary), or
+    - the instance-global [[metabase.warehouses.settings/disable-sync]] kill-switch is on."
   [db]
-  (not (is-destination? db)))
+  (and (not (is-destination? db))
+       (not (warehouses.settings/disable-sync))))
 
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"

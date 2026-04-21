@@ -19,18 +19,63 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
    [metabase.warehouses.models.database :as database]
+   [metabase.warehouses.settings :as warehouses.settings]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           GLOBAL DISABLE-SYNC KILL-SWITCH                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn sync-disabled?
+  "True when the instance-global `disable-sync` kill-switch is on. Reads the
+  [[metabase.warehouses.settings/disable-sync]] setting, which in turn honors the `MB_DISABLE_SYNC` env var and
+  `config.yml` `settings:` block."
+  []
+  (boolean (warehouses.settings/disable-sync)))
+
+(defn log-sync-refused!
+  "Log a WARN that a sync operation is being refused because of the global kill-switch. Use from sites that need to
+  return a non-nil value when refusing (prefer [[when-sync-enabled]] for the nil-return common case)."
+  [operation entity]
+  (log/warnf "Refusing sync operation %s: disable-sync kill-switch is on (entity: %s)"
+             (name operation) (or (:name entity) "unknown")))
+
+(defmacro when-sync-enabled
+  "If sync is globally enabled, evaluates `body` and returns the last form's value. If disabled, logs a WARN
+  identifying the refused operation + entity and returns nil.
+
+  For entry points that need to return a non-nil value when sync is refused, use [[log-sync-refused!]] with an
+  explicit `if` instead.
+
+  `operation` is a keyword (e.g. `:sync-database`); `entity` is the database/table/field being operated on (only
+  `:name` is read, for the log)."
+  {:style/indent :defn}
+  [operation entity & body]
+  `(if (sync-disabled?)
+     (do (log-sync-refused! ~operation ~entity) nil)
+     (do ~@body)))
+
+(defn check-sync-enabled-or-503!
+  "If the global `disable-sync` kill-switch is on, throw an ex-info that the API middleware turns into an HTTP 503
+  response. Call as the first statement of any manual-sync API endpoint."
+  []
+  (when (sync-disabled?)
+    (throw (ex-info (tru "Sync is disabled on this Metabase instance.")
+                    {:status-code 503
+                     :error-code  :sync-disabled
+                     :message     (tru "This Metabase instance has the disable-sync kill-switch enabled. Manual sync endpoints are not available. Unset MB_DISABLE_SYNC or remove disable-sync from config.yml to re-enable.")}))))
 
 (def ^:private transform-temp-table-prefix
   "Prefix used for temporary tables created during transforms."

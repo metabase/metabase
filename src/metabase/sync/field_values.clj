@@ -57,14 +57,17 @@
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`."
   [table :- i/TableInstance]
-  (reduce (fn [fv-change-counts field]
-            (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
-                           (if (field-values/field-should-have-field-values? field)
-                             (update-field-values-for-field! field)
-                             (clear-field-values-for-field! field)))]
-              (update-field-value-stats-count fv-change-counts result)))
-          {:errors 0, :created 0, :updated 0, :deleted 0}
-          (table->fields-to-scan table)))
+  (if (sync-util/sync-disabled?)
+    (do (sync-util/log-sync-refused! :update-field-values-for-table table)
+        {:errors 0, :created 0, :updated 0, :deleted 0})
+    (reduce (fn [fv-change-counts field]
+              (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
+                             (if (field-values/field-should-have-field-values? field)
+                               (update-field-values-for-field! field)
+                               (clear-field-values-for-field! field)))]
+                (update-field-value-stats-count fv-change-counts result)))
+            {:errors 0, :created 0, :updated 0, :deleted 0}
+            (table->fields-to-scan table))))
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]
@@ -127,6 +130,7 @@
   "Update the advanced FieldValues (distinct values for categories and certain other fields that are shown
    in widgets like filters) for the Tables in `database` (as needed)."
   [database :- i/DatabaseInstance]
-  (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
-                                                                 (sync-util/name-for-logging database))
-    (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps)))
+  (sync-util/when-sync-enabled :update-field-values database
+    (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
+                                                                   (sync-util/name-for-logging database))
+      (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps))))

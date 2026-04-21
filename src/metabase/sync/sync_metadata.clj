@@ -63,18 +63,20 @@
 (mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
-  (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
-    (let [db-metadata (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
-                        (fetch-metadata/db-metadata database))]
-      (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
-        (if (some sync-util/abandon-sync? (map second (:steps <>)))
-          (sync-util/set-initial-database-sync-aborted! database)
-          (sync-util/set-initial-database-sync-complete! database))))))
+  (sync-util/when-sync-enabled :sync-db-metadata database
+    (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
+      (let [db-metadata (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
+                          (fetch-metadata/db-metadata database))]
+        (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
+          (if (some sync-util/abandon-sync? (map second (:steps <>)))
+            (sync-util/set-initial-database-sync-aborted! database)
+            (sync-util/set-initial-database-sync-complete! database)))))))
 
 (mu/defn sync-table-metadata!
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
   [table :- i/TableInstance]
-  (let [database (table/database table)]
-    (sync-fields/sync-fields-for-table! database table)
-    (sync-fks/sync-fks-for-table! database table)
-    (sync-indexes/maybe-sync-indexes-for-table! database table)))
+  (sync-util/when-sync-enabled :sync-table-metadata table
+    (let [database (table/database table)]
+      (sync-fields/sync-fields-for-table! database table)
+      (sync-fks/sync-fks-for-table! database table)
+      (sync-indexes/maybe-sync-indexes-for-table! database table))))

@@ -1670,6 +1670,7 @@
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
+  (sync-util/check-sync-enabled-or-503!)
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
@@ -1734,6 +1735,7 @@
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
+  (sync-util/check-sync-enabled-or-503!)
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})

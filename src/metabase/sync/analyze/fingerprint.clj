@@ -263,5 +263,6 @@
 (mu/defn refingerprint-field!
   "Refingerprint a field"
   [field :- i/FieldInstance]
-  (let [table (field/table field)]
-    (fingerprint-fields! table [field])))
+  (sync-util/when-sync-enabled :refingerprint-field field
+    (let [table (field/table field)]
+      (fingerprint-fields! table [field]))))

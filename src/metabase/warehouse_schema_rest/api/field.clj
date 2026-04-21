@@ -323,6 +323,7 @@
    FieldValues."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
+  (sync/check-sync-enabled-or-503!)
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field (api/write-check (t2/select-one :model/Field :id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
