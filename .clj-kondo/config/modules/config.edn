@@ -3026,7 +3026,7 @@
            slackbot
            sql-tools
            util}
-   :model-imports #{:model/MetabotConversation :model/MetabotMessage}}
+   :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
   enterprise/permission-debug
   {:team "UX West"
