@@ -12,8 +12,7 @@ type AggregationFunction = Exclude<
   undefined
 >;
 
-export interface ChartSettingMaxCategoriesProps
-  extends ChartSettingWidgetProps<number> {
+export interface ChartSettingMaxCategoriesProps extends ChartSettingWidgetProps<number> {
   isEnabled?: boolean;
   aggregationFunction: AggregationFunction;
 }
