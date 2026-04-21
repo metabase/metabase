@@ -19,7 +19,10 @@ Check for any relevant changes, especially deprecations or breaking changes that
 
 ## 2. Test the upgrade
 
-When upgrading to a new major version, you'll want to upgrade both Metabase and the SDK version in parallel, as having Metabase and the SDK major versions out of sync can cause errors.
+How you upgrade depends on which Metabase version you're on:
+
+- **Metabase 57 and later.** The full SDK bundle is served from your Metabase, so you can upgrade Metabase and the SDK Package independently, in any order. We recommend keeping the versions aligned (you'll pick up bug fixes and new features sooner).
+- **Metabase 56 and earlier.** The SDK major version must match your Metabase major version, so upgrade Metabase and the SDK Package in parallel.
 
 ### Spin up the new version of Metabase for testing
 
@@ -31,24 +34,36 @@ See [upgrading Metabase](../../installation-and-operation/upgrading-metabase.md)
 
 You'll want to test the changes locally first, as there may be breaking changes that require you to upgrade your application code.
 
-Check out a new branch in your application and install the next stable version, either with npm or Yarn:
+Check out a new branch in your application and install the SDK.
 
-Via npm:
+**Metabase 57 and later.** Install the latest SDK Package with no dist-tag:
 
 ```bash
-npm install @metabase/embedding-sdk-react@{next-major-version-number}-stable
+npm install @metabase/embedding-sdk-react
 ```
 
-For example, if you were upgrading to version 56 of the SDK:
+or with Yarn:
 
 ```bash
-npm install @metabase/embedding-sdk-react@56-stable
+yarn add @metabase/embedding-sdk-react
 ```
 
-If you're using Yarn:
+If you'd rather pin the SDK Package to a specific Metabase major (for example, to hold a version while you test), use the matching `@{major}-stable` dist-tag — for example, `@60-stable` for Metabase 60:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
+npm install @metabase/embedding-sdk-react@60-stable
+```
+
+**Metabase 56 and earlier.** The SDK major must match the Metabase major, so install the matching `@{major}-stable` dist-tag — for example, upgrading to Metabase 55:
+
+```bash
+npm install @metabase/embedding-sdk-react@55-stable
+```
+
+or with Yarn:
+
+```bash
+yarn add @metabase/embedding-sdk-react@55-stable
 ```
 
 See more on [SDK versions](./version.md).
@@ -71,8 +86,6 @@ If all goes well with your local tests, deploy to your staging environment. Chec
 ## 3. Deploy to production
 
 If everything is working in staging, you're ready to deploy to production.
-
-Be sure to deploy your application changes and upgrade your Metabase in parallel so that the SDK version and the Metabase version stay in sync.
 
 ### Caching may delay the upgrade by up to a minute
 

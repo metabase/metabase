@@ -50,17 +50,25 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Install the SDK in your React application
 
-You can install the modular embedding SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version, example: 56-stable for Metabase 56:
+For **Metabase 57 and later**, install the latest `@metabase/embedding-sdk-react`.
 
 ```bash
-npm install @metabase/embedding-sdk-react@56-stable
+npm install @metabase/embedding-sdk-react
 ```
 
 or with Yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@56-stable
+yarn add @metabase/embedding-sdk-react
 ```
+
+If you'd rather pin the SDK Package to a specific Metabase major, or you're on **Metabase 56 or earlier** (where the SDK major must match Metabase), use the matching `@{major}-stable` dist-tag — for example, `60-stable` for Metabase 60:
+
+```bash
+npm install @metabase/embedding-sdk-react@60-stable
+```
+
+See [SDK versions](./version.md) for more on compatibility.
 
 ### Resolving `@types/react` version mismatches
 
