@@ -34,7 +34,13 @@ export const ThemeSelectorSection = ({
     const themeId = theme?.id;
     const isKnown =
       themeId !== undefined && savedThemes.some((t) => t.id === themeId);
-    return isKnown ? { type: "saved", themeId } : { type: "default" };
+    if (isKnown) {
+      return { type: "saved", themeId };
+    }
+    if (theme?.colors) {
+      return { type: "custom" };
+    }
+    return { type: "default" };
   });
 
   const isCustomSelected = selection.type === "custom";

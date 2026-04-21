@@ -147,6 +147,20 @@ describe("ThemeSelectorSection", () => {
       );
     });
 
+    it("pre-selects the Custom card on mount when theme has inline colors but no id", () => {
+      setup({ theme: { colors: { brand: "#FF0000" } } });
+
+      expect(screen.getByTestId("theme-card-Custom")).toHaveAttribute(
+        "data-selected",
+        "true",
+      );
+      expect(screen.getByTestId("theme-card-Default Theme")).toHaveAttribute(
+        "data-selected",
+        "false",
+      );
+      expect(screen.getByText("Brand color")).toBeInTheDocument();
+    });
+
     it("shows color inputs when Custom card is clicked", async () => {
       setup();
 
