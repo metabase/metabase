@@ -43,93 +43,20 @@ dataset_query:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
-- base_type: type/Integer
-  coercion_strategy: null
-  description: View ID, each question, dashboard, model, collection view generated one new sequential ID.
-  display_name: ID
-  effective_type: type/Integer
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_view_log, id]
-  - {base-type: type/Integer}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_view_log, id]
-  name: id
-  semantic_type: type/PK
-  settings: null
-  visibility_type: normal
-- base_type: type/DateTimeWithLocalTZ
-  coercion_strategy: null
-  description: When the view happened
-  display_name: Timestamp
-  effective_type: type/DateTimeWithLocalTZ
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_view_log, timestamp]
-  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_view_log, timestamp]
-  name: timestamp
-  semantic_type: type/CreationTimestamp
-  settings: null
-  unit: default
-  visibility_type: normal
-- base_type: type/Integer
-  coercion_strategy: null
-  description: Who viewed the content
+- {description: 'View ID, each question, dashboard, model, collection view generated one new sequential ID.', display_name: ID, fk_target_field_id: null, name: id, semantic_type: type/PK, settings: null, visibility_type: normal}
+- {description: When the view happened, display_name: Timestamp, fk_target_field_id: null, name: timestamp, semantic_type: type/CreationTimestamp, settings: null, visibility_type: normal}
+- description: Who viewed the content
   display_name: User ID
-  effective_type: type/Integer
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_view_log, user_id]
-  - {base-type: type/Integer}
   fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
-  id: [Internal Metabase Database, public, v_view_log, user_id]
   name: user_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: card (question, model, metric), table, dashboard or collection
-  display_name: Entity Type
-  effective_type: type/Text
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_view_log, entity_type]
-  - {base-type: type/Text}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_view_log, entity_type]
-  name: entity_type
-  semantic_type: type/Category
-  settings: null
-  visibility_type: normal
-- base_type: type/Integer
-  coercion_strategy: null
-  description: The sequential ID of the card, dashboard, collection
-  display_name: Entity ID
-  effective_type: type/Integer
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_view_log, entity_id]
-  - {base-type: type/Integer}
-  fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_view_log, entity_id]
-  name: entity_id
-  semantic_type: null
-  settings: null
-  visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
+- {description: 'card (question, model, metric), table, dashboard or collection', display_name: Entity Type, fk_target_field_id: null, name: entity_type, semantic_type: type/Category, settings: null, visibility_type: normal}
+- {description: 'The sequential ID of the card, dashboard, collection', display_name: Entity ID, fk_target_field_id: null, name: entity_id, semantic_type: null, settings: null, visibility_type: normal}
+- description: null
   display_name: Entity Qualified ID
-  effective_type: type/Text
-  field_ref:
-  - field
-  - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
-  - {base-type: type/Text}
   fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
-  id: [Internal Metabase Database, public, v_view_log, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: type/FK
   settings: null
