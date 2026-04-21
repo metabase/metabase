@@ -1,54 +1,46 @@
 (ns metabase-enterprise.workspaces.query-processor.middleware-test
-  "Isolation tests for workspace table remapping middleware.
+  "Tests for workspace table remapping middleware.
 
-   Pure (query) -> query. No app DB, no driver, no QP run - just middleware in, middleware out.
-
-   Contract: the middleware does NOT rewrite the query structure. It installs overrides on the
-   metadata provider attached at `[:lib/metadata]` so that downstream code (HoneySQL compilation
-   via `apply-top-level-clause [:sql :source-table]`) reads the workspace schema/name when it
-   resolves `:source-table <id>`."
+   Contract: the middleware reads `TableRemapping` rows for the query's `:database` id from the
+   app DB, and installs overrides on the cached metadata provider attached at `[:lib/metadata]`
+   so that downstream HoneySQL compilation emits the workspace schema/name when it resolves
+   `:source-table <id>`."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.query-processor.middleware :as ws.qp.middleware]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
-   [metabase.lib.test-metadata :as meta]))
-
-(defn- query-with-remapping
-  "Build an MBQL query against the test `orders` table with a cached provider (so the middleware
-   can write override metadata into the cache), optionally with a remapping installed under
-   `[:middleware :workspace-table-remapping :tables]`. Remapping is keyed by source table-id and
-   yields the target `{:schema :name}`."
-  [remappings]
-  (let [mp (lib.metadata.cached-provider/cached-metadata-provider meta/metadata-provider)]
-    (cond-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
-      remappings (assoc-in [:middleware :workspace-table-remapping :tables] remappings))))
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel no-op-when-no-remapping-test
-  (testing "query passes through unchanged when no :workspace-table-remapping is attached"
-    (let [query (query-with-remapping nil)]
+  (testing "query passes through unchanged when no remappings exist for the query's database"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (is (= query (ws.qp.middleware/apply-workspace-table-remapping query))))))
 
-(deftest ^:parallel no-op-when-remapping-empty-test
-  (testing "query passes through unchanged when remapping is attached but has no tables"
-    (let [query (query-with-remapping {})]
-      (is (= query (ws.qp.middleware/apply-workspace-table-remapping query))))))
-
-(deftest ^:parallel remaps-source-table-metadata-test
-  (testing "after the middleware runs, the provider returns the workspace schema/name for the remapped table id"
-    (let [orders-id (meta/id :orders)
-          query     (query-with-remapping
-                     {orders-id {:schema "ws_bryan_apr21" :name "orders_copy"}})
-          remapped  (ws.qp.middleware/apply-workspace-table-remapping query)
-          mp        (:lib/metadata remapped)
-          table     (lib.metadata/table mp orders-id)]
-      (testing "query structure is unchanged - this is a metadata-level override, not a rewrite"
-        (is (= (:stages query) (:stages remapped)))
-        (is (= orders-id (get-in remapped [:stages 0 :source-table]))))
-      (testing "provider now yields the workspace schema/name for this table id"
-        (is (= "ws_bryan_apr21" (:schema table)))
-        (is (= "orders_copy" (:name table))))
-      (testing "other tables are untouched"
-        (let [products (lib.metadata/table mp (meta/id :products))]
-          (is (not= "ws_bryan_apr21" (:schema products))))))))
+(deftest remaps-source-table-from-app-db-test
+  (testing "middleware reads TableRemapping rows for the query's database and redirects table refs"
+    (let [mp                   (mt/metadata-provider)
+          db-id                (mt/id)
+          orders               (lib.metadata/table mp (mt/id :orders))
+          {from-schema :schema
+           from-name   :name}  orders
+          to-schema            "ws_bryan_apr21"
+          to-name              "orders_copy"
+          query-with-old-names (lib/query mp orders)]
+      (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                              :from_schema     from-schema
+                                              :from_table_name from-name
+                                              :to_schema       to-schema
+                                              :to_table_name   to-name}]
+        (let [query-with-new-names (ws.qp.middleware/apply-workspace-table-remapping
+                                    query-with-old-names)
+              sql                  (:query (qp.compile/compile query-with-new-names))]
+          (testing "new schema and name appear in the compiled SQL"
+            (is (str/includes? sql to-schema))
+            (is (str/includes? sql to-name)))
+          (testing "old schema and name do not appear in the compiled SQL"
+            (is (not (str/includes? sql from-schema)))
+            (is (not (str/includes? sql from-name)))))))))
