@@ -1119,6 +1119,17 @@
                 (is (= (float (get name->tag n)) (aget ^floats (get result n) 0))
                     (format "vector for %s should match its batch output" n))))))))))
 
+(deftest ^:sequential provider-embedder-empty-streaming-result-test
+  (testing "provider-embedder returns an empty map (not a throw) when process-embeddings-streaming yields nil"
+    ;; Regression: when every input text exceeds openai-max-tokens-per-batch, create-batches returns
+    ;; [] and process-embeddings-streaming's transduce collapses to nil. Without the `or {}` guard in
+    ;; provider-embedder, `(mapv text->vec names)` would throw on the nil lookup, surfacing as an
+    ;; error up through score-synonym-pairs instead of degrading to "no vector → no synonym signal".
+    (with-redefs [semantic-search/process-embeddings-streaming (fn [& _] nil)]
+      (let [embedder (embedders/provider-embedder
+                      {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 2})]
+        (is (= {} (embedder [{:name "alpha"} {:name "bravo"}])))))))
+
 (deftest ^:parallel default-threshold-for-minilm-test
   (testing "default threshold is 0.80 for ollama + MiniLM model names (case-insensitive)"
     (is (= 0.80 (#'complexity/default-threshold-for "ollama" "all-minilm")))
