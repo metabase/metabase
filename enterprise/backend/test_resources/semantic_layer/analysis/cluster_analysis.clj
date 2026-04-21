@@ -199,3 +199,20 @@
       (spit output (with-out-str (pprint/pprint result)))
       (println "\nWritten to" output))
     result))
+
+;;; -------------------------- fixture assertions ------------------------
+;; Regression coverage for the integer-index fix in percentile lookups.
+;; (/ n 2) returns a ratio for odd n, which threw on aget/nth — so exercise
+;; cnt / n values of 3, 5, and 6 on load.
+
+(doseq [n [3 5 6]]
+  (let [clusters (vec (repeat n [::stub]))]
+    (assert (number? (:median-size (#'size-histogram clusters))))))
+
+(let [name->vec {"a" (float-array [1.0 0.0 0.0])
+                 "b" (float-array [0.0 1.0 0.0])
+                 "c" (float-array [0.0 0.0 1.0])
+                 "d" (float-array [1.0 1.0 0.0])}]
+  (doseq [members [["a" "b" "c"]        ; cnt = 3 (odd)
+                   ["a" "b" "c" "d"]]]  ; cnt = 6
+    (assert (number? (:median (#'cluster-pairwise-stats members name->vec))))))

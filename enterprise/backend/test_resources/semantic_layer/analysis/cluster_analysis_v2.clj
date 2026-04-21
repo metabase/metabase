@@ -313,3 +313,14 @@
       (spit output (with-out-str (pprint/pprint result)))
       (println "\nWritten to" output))
     result))
+
+;;; -------------------------- fixture assertions ------------------------
+;; Regression coverage for the integer-index fix in degree percentiles.
+;; (/ n 4) and (* 3 (/ n 4)) return ratios for n not divisible by 4, which
+;; threw on nth — so exercise n values of 3, 5, and 6 on load.
+
+(doseq [n [3 5 6]]
+  (let [sorted-deg (vec (range n))]
+    (assert (number? (nth sorted-deg (quot n 4))))
+    (assert (number? (nth sorted-deg (quot n 2))))
+    (assert (number? (nth sorted-deg (quot (* 3 n) 4))))))
