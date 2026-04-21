@@ -1173,6 +1173,7 @@
 
 (deftest ^:sequential complexity-scores-explicit-embedder-accepts-threshold-opt-test
   (testing "explicit :embedder paired with :threshold uses the supplied cutoff"
+    ;; cosine(customers, clients) ≈ 0.994 with these vectors, so 0.999 rejects and 0.5 accepts.
     (let [es       [(entity :name "customers") (entity :name "clients")]
           embedder (mock-embedder {"customers" [1.0 0.0]
                                    "clients"   [0.9 0.1]})]
@@ -1181,8 +1182,8 @@
         (testing "a high :threshold rejects the pair"
           (let [{:keys [library meta]} (complexity/complexity-scores
                                         :embedder  embedder
-                                        :threshold 0.99)]
-            (is (= 0.99 (:synonym-threshold meta)))
+                                        :threshold 0.999)]
+            (is (= 0.999 (:synonym-threshold meta)))
             (is (= 0 (get-in library [:components :synonym-pairs :pairs])))))
         (testing "a low :threshold accepts the pair"
           (let [{:keys [library meta]} (complexity/complexity-scores
