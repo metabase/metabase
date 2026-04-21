@@ -6,7 +6,6 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -56,19 +55,6 @@
    Runs after sandboxing so that production sandbox filters materialize against production
    schema before the final table reference resolves to the workspace copy."
   :feature :workspaces
-  [{db-id :database, mp :lib/metadata, :as query}]
-  (let [rows (when db-id
-               (t2/select :model/TableRemapping :database_id db-id))]
-    (when (seq rows)
-      (let [by-source (into {} (map (fn [{:keys [from_schema from_table_name] :as row}]
-                                      [[from_schema from_table_name] row])
-                                    rows))]
-        (doseq [table (lib.metadata/tables mp)
-                :let [row (get by-source [(:schema table) (:name table)])]
-                :when row]
-          (lib.metadata.protocols/store-metadata!
-           mp
-           (assoc table
-                  :schema (:to_schema row)
-                  :name   (:to_table_name row))))))
-    query))
+  [query]
+  ;;TODO
+  query)
