@@ -1,5 +1,5 @@
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 
 import { MetabotNavPane } from "./MetabotNavPane";
 

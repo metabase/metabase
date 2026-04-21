@@ -36,7 +36,7 @@ export function getProviderOptions(
     ...(hasMetabaseProviderAccess && {
       metabase: {
         value: "metabase" as const,
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- This is used in admin settings
+
         label: "Metabase",
       },
     }),

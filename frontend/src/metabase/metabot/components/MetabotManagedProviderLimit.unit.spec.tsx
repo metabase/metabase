@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import * as metabotSetupModule from "metabase/admin/ai/MetabotSetup";
 
-import * as metabotSetupModule from "./MetabotAdmin/MetabotSetup";
 import { getMetabotManagedProviderLimitToastProps } from "./MetabotManagedProviderLimit";
 
 describe("getMetabotManagedProviderLimitToastProps", () => {
