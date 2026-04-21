@@ -1,0 +1,624 @@
+{:threshold 0.8,
+ :catalog :universe,
+ :embeddings "search-text_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 56, :median 199, :p75 554, :max 1832, :mean 357.1899674872271},
+ :connected-components
+ {:count 46,
+  :multi-member 6,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "feedback (cd)"
+     "orders model test"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "products model from question"
+     "rosters"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "revenue product"
+     "2025 jan feb survey analysis"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "emails_unresponsive_20240902205900"
+     "gift_message"
+     "github issues stats"
+     "test_case_results_20251127134813"
+     "some kind of test"
+     "query result 2023 09 01t11 48 56"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "document events"
+     "productivity positive"
+     "cynthia's sample data"
+     "account, count, filtered by plan name is enterprise"
+     "pw 2023 09"
+     "npe_20240918150104"
+     "yet another test metric"
+     "datetime_20231213181718"
+     "... (4255 total)"],
+    :size 4255,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members ["session intent" "website_session_intent" "session_intent"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9091567442585561,
+    :min-sim 0.871992327036593}
+   {:members ["product arr change model" "product arr change model (dev separated non-prorated self serve invoices)"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.8661027064527363,
+    :min-sim 0.8661027064527363}
+   {:members ["top search terms on discourse (90d)" "top search terms on docs, learn, and glossary (90d)"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.8305875686739104,
+    :min-sim 0.8305875686739104}
+   {:members ["nps survey response" "nps_survey_response"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9031103520609178,
+    :min-sim 0.9031103520609178}
+   {:members ["aws monthly infrastructure cost" "aws_aggregated_monthly_cost"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9150507156933091,
+    :min-sim 0.9150507156933091}
+   {:members ["average number of metrics per instance"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["average customer lifetime (self-service accounts)"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["self-service trial activation rate"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["new oss instances"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["active installs"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["crisp contacts"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["accounts"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["access requests"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["contract with flat variable unit"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}]},
+ :greedy-cliques
+ {:count 3485,
+  :multi-member 3445,
+  :top
+  [{:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "groups"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "permissions"
+     "test_contract_version_20260312160438"
+     "calendar_information___events__up_to_19_jul_2023_20230719194722"
+     "error_rows_136877_190451619_20250318162814"
+     "... (354 total)"],
+    :size 354,
+    :density 1.0,
+    :avg-sim 0.8857194089997829,
+    :min-sim 0.8000219883553732}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "cynthia's sample data"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "groups"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "permissions"
+     "... (353 total)"],
+    :size 353,
+    :density 1.0,
+    :avg-sim 0.888785355346848,
+    :min-sim 0.8000219883553732}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "permissions"
+     "test_contract_version_20260312160438"
+     "error_rows_136877_190451619_20250318162814"
+     "... (353 total)"],
+    :size 353,
+    :density 1.0,
+    :avg-sim 0.8892382851889922,
+    :min-sim 0.8001131590674705}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "trend_analysis_data_sheet1_20250929213307"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "emails_unresponsive_20240902205900"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "calendar_information___events__up_to_19_jul_2023_20230719194722"
+     "... (353 total)"],
+    :size 353,
+    :density 1.0,
+    :avg-sim 0.8894051748067687,
+    :min-sim 0.8002493072764694}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "trend_analysis_data_sheet1_20250929213307"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "gdp_unpivoted_20251015125551"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "simple_user_flow_funnel_20240214174320"
+     "npe_20240325092420"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "... (353 total)"],
+    :size 353,
+    :density 1.0,
+    :avg-sim 0.8905608897584345,
+    :min-sim 0.800372683645862}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "trend_analysis_data_sheet1_20250929213307"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "negative_issues_20241217203222"
+     "trivia_20240918215532"
+     "msft_data_20240208210142"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "calendar_information___events__up_to_19_jul_2023_20230719194722"
+     "... (352 total)"],
+    :size 352,
+    :density 1.0,
+    :avg-sim 0.8905516570322405,
+    :min-sim 0.8000233815735102}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "permissions"
+     "test_contract_version_20260312160438"
+     "calendar_information___events__up_to_19_jul_2023_20230719194722"
+     "error_rows_136877_190451619_20250318162814"
+     "book4_20230628211759"
+     "... (351 total)"],
+    :size 351,
+    :density 1.0,
+    :avg-sim 0.8884844366904248,
+    :min-sim 0.8002493072764694}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "trend_analysis_data_sheet1_20250929213307"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "gdp_unpivoted_20251015125551"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "msft_data_20240208210142"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "... (351 total)"],
+    :size 351,
+    :density 1.0,
+    :avg-sim 0.8914254653786354,
+    :min-sim 0.8000230318566027}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "trend_analysis_data_sheet1_20250929213307"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "gdp_unpivoted_20251015125551"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "msft_data_20240208210142"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "... (351 total)"],
+    :size 351,
+    :density 1.0,
+    :avg-sim 0.8911234608328464,
+    :min-sim 0.8001289788381216}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "groups"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "permissions"
+     "test_contract_version_20260312160438"
+     "... (350 total)"],
+    :size 350,
+    :density 1.0,
+    :avg-sim 0.8865906090146748,
+    :min-sim 0.8001131590674705}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "trend_analysis_data_sheet1_20250929213307"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "gdp_unpivoted_20251015125551"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "msft_data_20240208210142"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "... (350 total)"],
+    :size 350,
+    :density 1.0,
+    :avg-sim 0.8910422507505843,
+    :min-sim 0.8000583130294772}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "trend_analysis_data_sheet1_20250929213307"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "gdp_unpivoted_20251015125551"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "msft_data_20240208210142"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "... (350 total)"],
+    :size 350,
+    :density 1.0,
+    :avg-sim 0.891135013359597,
+    :min-sim 0.8001289788381216}
+   {:members
+    ["test_csv_1_20240906154004"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "linear_issue_202509161110_20250916141133"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "import_test2_20241021191636"
+     "trend_analysis_data_sheet1_20250929213307"
+     "thisone_20251128180856"
+     "emails_unresponsive_20240902205900"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "371a8853_2023_06_23_30_20230623113921"
+     "simple_user_flow_funnel_20240214174320"
+     "npe_20240325092420"
+     "negative_issues_20241217203222"
+     "trivia_20240918215532"
+     "msft_data_20240208210142"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "test_contract_version_20260312160438"
+     "... (350 total)"],
+    :size 350,
+    :density 1.0,
+    :avg-sim 0.8897548563666607,
+    :min-sim 0.8001289788381216}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "gift_message"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "running_stats_sheet1_20250731175258"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "permissions"
+     "test_contract_version_20260312160438"
+     "calendar_information___events__up_to_19_jul_2023_20230719194722"
+     "... (349 total)"],
+    :size 349,
+    :density 1.0,
+    :avg-sim 0.887839257683418,
+    :min-sim 0.800041244290148}
+   {:members
+    ["test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "test_case_results_20251127134813"
+     "queries__results__and_scores_f64986fbf4d74c7ebf6_20240918232203"
+     "jun_pw_20230621211411"
+     "cynthia's sample data"
+     "npe_20240918150104"
+     "datetime_20231213181718"
+     "371a8853_2023_06_23_30_20230623113921"
+     "npe_20240325092420"
+     "metric 1: orders by year"
+     "groups"
+     "negative_issues_20241217203222"
+     "characters_20230627153614"
+     "trivia_20240918215532"
+     "something_20251001162050"
+     "download_1__20241110183422"
+     "pepe_20240130142814"
+     "oxygen_20231016204744"
+     "sankey_data_20241122194931"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "permissions"
+     "... (349 total)"],
+    :size 349,
+    :density 1.0,
+    :avg-sim 0.8886292405182411,
+    :min-sim 0.8000219883553732}]},
+ :avg-linkage-hac nil}
