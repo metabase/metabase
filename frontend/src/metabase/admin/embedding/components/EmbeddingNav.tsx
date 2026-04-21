@@ -5,6 +5,7 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex, Stack } from "metabase/ui";
@@ -55,7 +56,12 @@ export function EmbeddingNav() {
 
         <EmbeddingNavItem
           path="/admin/embedding/themes"
-          label={t`Themes`}
+          label={
+            <Flex gap="sm" align="center">
+              <span>{t`Themes`}</span>
+              {!hasSimpleEmbedding && <UpsellGem />}
+            </Flex>
+          }
           icon="palette"
         />
       </Stack>
