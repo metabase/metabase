@@ -1,6 +1,7 @@
 import type { EnhancedStore } from "@reduxjs/toolkit";
 import * as Snowplow from "@snowplow/browser-tracker";
 
+import type { State } from "metabase/redux/store";
 import { getUserId } from "metabase/selectors/user";
 import Settings from "metabase/utils/settings";
 
@@ -9,7 +10,16 @@ export const createTracker = (store: EnhancedStore<State>): void => {
     return;
   }
 
-  createSnowplowTracker(store);
+  Snowplow.newTracker("sp", Settings.snowplowUrl() ?? "", {
+    appId: "metabase",
+    platform: "web",
+    eventMethod: "post",
+    discoverRootDomain: true,
+    contexts: { webPage: true },
+    anonymousTracking: { withServerAnonymisation: true },
+    stateStorageStrategy: "none",
+    plugins: [createSnowplowPlugin(store)],
+  });
 };
 
 const createSnowplowPlugin = (store: EnhancedStore<State>) => {
@@ -41,17 +51,4 @@ const createSnowplowPlugin = (store: EnhancedStore<State>) => {
       ];
     },
   };
-};
-
-const createSnowplowTracker = (store: EnhancedStore<State>): void => {
-  Snowplow.newTracker("sp", Settings.snowplowUrl() ?? "", {
-    appId: "metabase",
-    platform: "web",
-    eventMethod: "post",
-    discoverRootDomain: true,
-    contexts: { webPage: true },
-    anonymousTracking: { withServerAnonymisation: true },
-    stateStorageStrategy: "none",
-    plugins: [createSnowplowPlugin(store)],
-  });
 };
