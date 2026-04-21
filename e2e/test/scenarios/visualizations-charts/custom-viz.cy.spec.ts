@@ -265,39 +265,39 @@ describe("admin > custom visualizations", () => {
       cy.wait("@pluginCreateWithToken");
     });
 
-    it("should hide access-token and pinned-version fields until their toggles are enabled", () => {
-      H.visitCustomVizNewForm();
-
-      cy.findByLabelText(/Repository personal access token/).should(
-        "not.exist",
-      );
-      cy.findByLabelText(/Pinned version/).should("not.exist");
-
-      cy.findByLabelText(/This is a private repository/).click();
-      cy.findByLabelText(/Repository personal access token/).should(
-        "be.visible",
-      );
-
-      cy.findByLabelText(/This is a private repository/).click();
-      cy.findByLabelText(/Repository personal access token/).should(
-        "not.exist",
-      );
-
-      cy.findByLabelText(/Pin to a specific version/).click({ force: true });
-      cy.findByLabelText(/Pinned version/).should("be.visible");
-
-      cy.findByLabelText(/Pin to a specific version/).click({ force: true });
-      cy.findByLabelText(/Pinned version/).should("not.exist");
-    });
-
-    it("should require access token and pinned version when their toggles are enabled", () => {
+    it("should gate access-token and pinned-version fields behind their toggles and require them when enabled", () => {
       H.setupCustomVizRepo();
       H.visitCustomVizNewForm();
 
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+
+      cy.log("Access-token field is hidden until the private-repo box is on");
+      cy.findByLabelText(/Repository personal access token/).should(
+        "not.exist",
+      );
+      cy.findByLabelText(/This is a private repository/).click();
+      cy.findByLabelText(/Repository personal access token/).should(
+        "be.visible",
+      );
+      cy.findByLabelText(/This is a private repository/).click();
+      cy.findByLabelText(/Repository personal access token/).should(
+        "not.exist",
+      );
+
+      cy.log(
+        "Pinned-version field is hidden until the pin-version switch is on",
+      );
+      cy.findByLabelText(/Pinned version/).should("not.exist");
+      cy.findByLabelText(/Pin to a specific version/).click({ force: true });
+      cy.findByLabelText(/Pinned version/).should("be.visible");
+      cy.findByLabelText(/Pin to a specific version/).click({ force: true });
+      cy.findByLabelText(/Pinned version/).should("not.exist");
+
+      cy.log(
+        "With both toggles enabled, empty access-token and pinned-version are required",
+      );
       cy.findByLabelText(/This is a private repository/).click();
       cy.findByLabelText(/Pin to a specific version/).click({ force: true });
-
       // Both inputs auto-focus on mount; the last one (pinnedVersion) keeps
       // focus. Formik only renders field errors once `touched` flips on blur,
       // so we have to blur before asserting — otherwise no "required" text.
@@ -306,19 +306,20 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("button", { name: "Add visualization" }).should(
         "be.disabled",
       );
-
       cy.findByTestId("custom-viz-settings-form").within(() => {
         cy.findAllByText(/required/i).should("have.length.at.least", 2);
       });
     });
 
-    it("should show a confirmation modal with the security warning before adding a plugin", () => {
+    it("should show a confirmation modal before adding a plugin and skip it after 'Don't warn me about this again' is selected", () => {
       H.setupCustomVizRepo();
-      H.visitCustomVizNewForm();
+      H.setupCustomVizRepo2();
 
+      H.visitCustomVizNewForm();
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
       cy.findByRole("button", { name: "Add visualization" }).click();
 
+      cy.log("Modal shows the warning, ack checkbox, and both buttons");
       H.modal().within(() => {
         cy.findByRole("heading", { name: "Add this visualization?" }).should(
           "be.visible",
@@ -346,14 +347,8 @@ describe("admin > custom visualizations", () => {
         "have.value",
         H.CUSTOM_VIZ_REPO_URL,
       );
-    });
 
-    it("should skip the confirmation modal on subsequent adds after 'Don't warn me about this again' is selected", () => {
-      H.setupCustomVizRepo();
-      H.setupCustomVizRepo2();
-
-      H.visitCustomVizNewForm();
-      cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+      cy.log("Re-open the modal, check 'Don't warn me again', and confirm");
       cy.findByRole("button", { name: "Add visualization" }).click();
 
       cy.intercept(
@@ -371,9 +366,7 @@ describe("admin > custom visualizations", () => {
 
       H.main().findByText("demo-viz").should("be.visible");
 
-      cy.log(
-        "Next add: the modal should not appear and the POST fires directly",
-      );
+      cy.log("Next add: modal should be skipped and the POST fires directly");
       H.getAddVisualizationLink().click();
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL_2);
       cy.findByRole("button", { name: "Add visualization" }).click();

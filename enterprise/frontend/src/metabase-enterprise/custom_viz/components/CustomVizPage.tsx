@@ -98,8 +98,6 @@ export function CustomVizPage({ params }: Props) {
       pinVersion: !!plugin?.pinned_version,
       pinnedVersion: plugin?.pinned_version ?? "",
     }),
-    // Depend on individual fields so transient plugin-object identity changes
-    // (e.g., RTK Query cache refreshes) don't trigger Formik's reinit.
     [plugin?.repo_url, plugin?.pinned_version],
   );
 
@@ -285,6 +283,14 @@ export function CustomVizPage({ params }: Props) {
                     </Button>
                     <FormSubmitButton
                       label={isEdit ? t`Save` : t`Add visualization`}
+                      // In create mode the real submit happens inside the
+                      // confirmation modal — keep the form button's label
+                      // stable so Formik's transient "fulfilled" state doesn't
+                      // flash "Success" before the user has actually added
+                      // anything.
+                      activeLabel={isEdit ? undefined : t`Add visualization`}
+                      successLabel={isEdit ? undefined : t`Add visualization`}
+                      failedLabel={isEdit ? undefined : t`Add visualization`}
                       disabled={!dirty}
                       variant="filled"
                     />
