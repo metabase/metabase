@@ -52,19 +52,7 @@ export const useMetabot = (): UseMetabotResult => {
   );
 
   const messages = useMemo<MetabotMessage[]>(
-    () =>
-      agent.messages
-        .filter(
-          // tool_call messages are an internal debug variant — only surfaced
-          // when metabot's `debugMode` is on, which is not exposed through
-          // the SDK. Filter here so the public `MetabotMessage` union can
-          // exclude them.
-          (
-            message,
-          ): message is Exclude<MetabotChatMessage, { type: "tool_call" }> =>
-            message.type !== "tool_call",
-        )
-        .map(mapMessage),
+    () => agent.messages.filter(isPublicMessage).map(mapMessage),
     [agent.messages],
   );
 
@@ -106,25 +94,27 @@ function getCachedChartComponent(
   return cache.get(questionPath)!;
 }
 
-const mapMessage = (
-  message: Exclude<MetabotChatMessage, { type: "tool_call" }>,
-): MetabotMessage =>
+// These internal variants are intentionally not surfaced in the public SDK —
+// see the comment on `MetabotMessage` in `embedding-sdk-bundle/types/metabot.ts`
+// for the full rationale.
+type PublicChatMessage = Exclude<
+  MetabotChatMessage,
+  { type: "tool_call" | "edit_suggestion" | "action" }
+>;
+
+const isPublicMessage = (
+  message: MetabotChatMessage,
+): message is PublicChatMessage =>
+  message.type !== "tool_call" &&
+  message.type !== "edit_suggestion" &&
+  message.type !== "action";
+
+const mapMessage = (message: PublicChatMessage): MetabotMessage =>
   match(message)
     .with(
       { role: "user", type: "text" },
       ({ id, message }) =>
         ({ id, role: "user", type: "text", message }) as const,
-    )
-    .with(
-      { role: "user", type: "action" },
-      ({ id, message, userMessage }) =>
-        ({
-          id,
-          role: "user",
-          type: "action",
-          message,
-          actionLabel: userMessage,
-        }) as const,
     )
     .with(
       { role: "agent", type: "text" },
@@ -138,20 +128,13 @@ const mapMessage = (
           id,
           role: "agent",
           type: "todo_list",
-          payload,
-        }) as const,
-    )
-    .with(
-      { role: "agent", type: "edit_suggestion" },
-      ({ id, payload }) =>
-        ({
-          id,
-          role: "agent",
-          type: "edit_suggestion",
-          payload: {
-            name: payload.suggestedTransform.name ?? "",
-            description: payload.suggestedTransform.description ?? "",
-          },
+          // Copy fields explicitly so internal type changes don't leak into the public API.
+          payload: payload.map((todo) => ({
+            id: todo.id,
+            content: todo.content,
+            status: todo.status,
+            priority: todo.priority,
+          })),
         }) as const,
     )
     .exhaustive();

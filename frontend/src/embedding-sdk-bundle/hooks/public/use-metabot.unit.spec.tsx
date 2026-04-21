@@ -158,32 +158,6 @@ describe("useMetabot", () => {
       ]);
     });
 
-    it("renames `userMessage` to `actionLabel` on user.action", async () => {
-      const { store } = setup({ ui: <TestMessages /> });
-
-      act(() => {
-        store.dispatch(
-          metabotActions.addUserMessage({
-            agentId: "omnibot",
-            id: "u2",
-            type: "action",
-            message: "5 rows",
-            userMessage: "Run Query",
-          } as any),
-        );
-      });
-
-      const [message] = await readMessages();
-      expect(message).toEqual({
-        id: "u2",
-        role: "user",
-        type: "action",
-        message: "5 rows",
-        actionLabel: "Run Query",
-      });
-      expect(message).not.toHaveProperty("userMessage");
-    });
-
     it("maps agent.text passthrough", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
@@ -234,40 +208,7 @@ describe("useMetabot", () => {
       });
     });
 
-    it("extracts only name/description on agent.edit_suggestion payload", async () => {
-      const { store } = setup({ ui: <TestMessages /> });
-
-      act(() => {
-        store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "edit_suggestion",
-            model: "transform",
-            payload: {
-              editorTransform: { some: "thing" },
-              suggestedTransform: {
-                name: "Transform A",
-                description: "Does X",
-                source: "SRC",
-                target: "TGT",
-                active: true,
-                suggestionId: "s1",
-              },
-            },
-          } as any),
-        );
-      });
-
-      const [message] = await readMessages();
-      expect(message).toEqual({
-        id: expect.any(String),
-        role: "agent",
-        type: "edit_suggestion",
-        payload: { name: "Transform A", description: "Does X" },
-      });
-    });
-
-    it("filters out tool_call messages (internal-only debug variant)", async () => {
+    it("filters out internal-only variants (tool_call, edit_suggestion, user action)", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
@@ -278,6 +219,33 @@ describe("useMetabot", () => {
             type: "tool_call",
             name: "fn",
             status: "started",
+          } as any),
+        );
+        store.dispatch(
+          metabotActions.addUserMessage({
+            agentId: "omnibot",
+            id: "u-action",
+            type: "action",
+            message: "5 rows",
+            userMessage: "Run Query",
+          } as any),
+        );
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "edit_suggestion",
+            model: "transform",
+            payload: {
+              editorTransform: undefined,
+              suggestedTransform: {
+                name: "Transform A",
+                description: "Does X",
+                source: "SRC",
+                target: "TGT",
+                active: true,
+                suggestionId: "s1",
+              },
+            },
           } as any),
         );
         store.dispatch(

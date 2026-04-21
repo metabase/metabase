@@ -2,7 +2,6 @@ import type React from "react";
 
 import type { InteractiveQuestionProps } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import type { StaticQuestionProps } from "embedding-sdk-bundle/components/public/StaticQuestion";
-import type { MetabotTodoItem } from "metabase-types/api";
 
 // User messages
 
@@ -13,17 +12,6 @@ type MetabotUserTextMessage = {
   message: string;
 };
 
-type MetabotUserActionMessage = {
-  id: string;
-  role: "user";
-  type: "action";
-  message: string;
-  /** Human-readable label for the action (e.g. "Run Query") */
-  actionLabel: string;
-};
-
-type MetabotUserMessage = MetabotUserTextMessage | MetabotUserActionMessage;
-
 // Agent messages
 
 type MetabotAgentTextMessage = {
@@ -33,6 +21,15 @@ type MetabotAgentTextMessage = {
   message: string;
 };
 
+// Mirrors the internal `MetabotTodoItem` wire type intentionally — re-exporting
+// the API type would couple the SDK contract to backend/LLM shape changes.
+type MetabotTodoItem = {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: "high" | "medium" | "low";
+};
+
 type MetabotAgentTodoListMessage = {
   id: string;
   role: "agent";
@@ -40,26 +37,15 @@ type MetabotAgentTodoListMessage = {
   payload: MetabotTodoItem[];
 };
 
-type MetabotAgentEditSuggestionMessage = {
-  id: string;
-  role: "agent";
-  type: "edit_suggestion";
-  // Mapped from internal `suggestedTransform`; complex fields are intentionally excluded.
-  payload: {
-    name: string;
-    description: string;
-  };
-};
-
-// NOTE: the internal `tool_call` agent variant is intentionally omitted here.
-// It is a debug-only message surfaced via metabot's `debugMode`, which the SDK
-// does not expose. `use-metabot.tsx` filters tool_call out before mapping.
+// Internal variants intentionally omitted. `use-metabot.tsx` filters these out before mapping:
+// - `tool_call`: debug-only, gated on metabot's `debugMode`.
+// - `edit_suggestion`: targets the in-app Transform editor, which the SDK does not render.
+// - `action`: unused in shipped code.
 type MetabotAgentMessage =
   | MetabotAgentTextMessage
-  | MetabotAgentTodoListMessage
-  | MetabotAgentEditSuggestionMessage;
+  | MetabotAgentTodoListMessage;
 
-export type MetabotMessage = MetabotUserMessage | MetabotAgentMessage;
+export type MetabotMessage = MetabotUserTextMessage | MetabotAgentMessage;
 
 export type MetabotChartProps =
   | (Omit<StaticQuestionProps, "questionId" | "token" | "query"> & {
