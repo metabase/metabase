@@ -198,11 +198,12 @@
 
 (defmethod driver/table-exists? :bigquery-cloud-sdk
   [_ database {table-id :name, dataset-id :schema :as _table}]
-  (let [details    (driver.conn/effective-details database)
-        client     (database-details->client details)
-        project-id (get-project-id details)]
-    (boolean
-     (get-table* client project-id dataset-id table-id))))
+  (when-not (or (str/blank? dataset-id) (str/blank? table-id))
+    (let [details    (driver.conn/effective-details database)
+          client     (database-details->client details)
+          project-id (get-project-id details)]
+      (boolean
+       (get-table* client project-id dataset-id table-id)))))
 
 (declare ^:dynamic *process-native*)
 
