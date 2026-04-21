@@ -177,9 +177,11 @@ export function MetabotSetupInner({
   const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
   const [sendToast] = useToast();
 
-  const { value: savedProviderValue, settingDetails } = useAdminSetting(
-    "llm-metabot-provider",
-  );
+  const {
+    value: savedProviderValue,
+    settingDetails,
+    isFetching: isMetabotProviderLoading,
+  } = useAdminSetting("llm-metabot-provider");
   const isEnvSetting =
     !!settingDetails &&
     !!settingDetails.is_env_setting &&
@@ -304,7 +306,11 @@ export function MetabotSetupInner({
   };
 
   const isLoading =
-    isConnecting || isDisconnecting || updateSettingsResult.isLoading;
+    isConnecting ||
+    isDisconnecting ||
+    updateSettingsResult.isLoading ||
+    isMetabotProviderLoading;
+
   const [isConnectButtonEnabled, setIsConnectButtonEnabled] = useState(false);
 
   return (
