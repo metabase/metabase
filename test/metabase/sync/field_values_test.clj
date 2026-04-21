@@ -299,7 +299,8 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; we throw ConnectException, which is a non-recoverable exception
-      (with-redefs [field-values/create-or-update-full-field-values! (fn [& _] (throw (java.net.ConnectException.)))]
+      (with-redefs [field-values/bulk-distinct-values                (fn [& _] (throw (java.net.ConnectException.)))
+                    field-values/create-or-update-full-field-values! (fn [& _] (throw (java.net.ConnectException.)))]
         (is (=?
              {:steps [["delete-expired-advanced-field-values" {}]
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}

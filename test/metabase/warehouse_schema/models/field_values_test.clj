@@ -188,6 +188,61 @@
               :has_more_values true}
              (distinct-field-values (mt/id :reviews :rating)))))))
 
+(deftest ^:parallel limit-values-test
+  (let [limit-values #'field-values/limit-values]
+    (testing "empty input returns empty values with has_more_values false"
+      (is (= {:values [] :has_more_values false}
+             (limit-values []))))
+    (testing "values under all limits are returned in natural sorted order"
+      (is (= {:values ["a" "b" "c"] :has_more_values false}
+             (limit-values ["b" "a" "c"])))
+      (testing "numeric values sort numerically"
+        (is (= {:values [-2 -1 0 1 10] :has_more_values false}
+               (limit-values [10 1 -1 0 -2])))))
+    (testing "nil values are filtered out"
+      (is (= {:values ["a" "b"] :has_more_values false}
+             (limit-values [nil "a" nil "b" nil]))))
+    (testing "duplicates are deduplicated"
+      (is (= {:values ["a" "b"] :has_more_values false}
+             (limit-values ["a" "b" "a" "b" "a"]))))
+    (testing "duplicates do not inflate the length cap"
+      ;; With cap 2, four dups of \"a\" followed by \"b\" still yields [\"a\" \"b\"]
+      ;; because only distinct values count toward the length cap.
+      (binding [field-values/*total-max-length* 2]
+        (is (= {:values ["a" "b"] :has_more_values false}
+               (limit-values ["a" "a" "a" "a" "b"])))))
+    (testing "total-length cap triggers has_more_values"
+      (binding [field-values/*total-max-length* 3]
+        (is (= {:values ["aa"] :has_more_values true}
+               (limit-values ["aa" "bb"])))))))
+
+(deftest ^:parallel rows->per-field-distinct-values-test
+  (let [rows->per-field-distinct-values #'field-values/rows->per-field-distinct-values]
+    (testing "empty rows produces empty values for each field"
+      (is (= {1 {:values [] :has_more_values false}
+              2 {:values [] :has_more_values false}}
+             (rows->per-field-distinct-values [{:id 1} {:id 2}] []))))
+    (testing "multi-column rows produce per-field distinct values"
+      (is (= {1 {:values [1 2 3] :has_more_values false}
+              2 {:values ["a" "b" "c"] :has_more_values false}}
+             (rows->per-field-distinct-values [{:id 1} {:id 2}]
+                                              [[1 "a"] [2 "b"] [3 "c"]]))))
+    (testing "nil values are filtered independently per column"
+      (is (= {1 {:values [1 2] :has_more_values false}
+              2 {:values ["a" "b"] :has_more_values false}}
+             (rows->per-field-distinct-values [{:id 1} {:id 2}]
+                                              [[nil "a"] [1 nil] [2 "b"]]))))
+    (testing "per-column saturation is independent"
+      (binding [field-values/*total-max-length* 8]
+        (is (= {1 {:values ["aaaa" "bbbb"] :has_more_values true}
+                2 {:values ["x" "y" "z"] :has_more_values false}}
+               (rows->per-field-distinct-values [{:id 1} {:id 2}]
+                                                [["aaaa" "x"] ["bbbb" "y"] ["cccc" "z"]])))))
+    (testing "result map is keyed by field :id, not column index"
+      (is (= {42 {:values [1] :has_more_values false}
+              17 {:values ["a"] :has_more_values false}}
+             (rows->per-field-distinct-values [{:id 42} {:id 17}] [[1 "a"]]))))))
+
 (deftest clear-field-values-for-field!-test
   (mt/with-temp [:model/Database    {database-id :id} {}
                  :model/Table       {table-id :id} {:db_id database-id}
@@ -198,6 +253,132 @@
     (field-values/clear-field-values-for-field! field-id)
     (is (= nil
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))))
+
+(deftest bulk-distinct-values-test
+  (mt/dataset test-data
+    (let [cat-field    (t2/select-one :model/Field :id (mt/id :products :category))
+          vendor-field (t2/select-one :model/Field :id (mt/id :products :vendor))
+          bulk-result  (field-values/bulk-distinct-values (mt/id :products) [cat-field vendor-field])]
+      (testing "result is keyed by field :id"
+        (is (contains? bulk-result (:id cat-field)))
+        (is (contains? bulk-result (:id vendor-field))))
+      (testing "low-cardinality column returns the same distinct set as distinct-values"
+        (is (= (set (map first (:values (field-values/distinct-values cat-field))))
+               (set (:values (get bulk-result (:id cat-field))))))
+        (is (false? (:has_more_values (get bulk-result (:id cat-field))))))
+      (testing "higher-cardinality column (still under the cap) matches distinct-values"
+        (is (= (set (map first (:values (field-values/distinct-values vendor-field))))
+               (set (:values (get bulk-result (:id vendor-field))))))
+        (is (false? (:has_more_values (get bulk-result (:id vendor-field))))))
+      (testing "row cap forces has_more_values=true on every column"
+        ;; Lower the row cap below the table size (products has 200 rows). With cap 5, the bulk
+        ;; query fetches 5 rows, hits the row cap, and every column should be marked has_more.
+        (binding [field-values/*absolute-max-distinct-values-limit* 5]
+          (let [capped (field-values/bulk-distinct-values (mt/id :products) [cat-field vendor-field])]
+            (is (true? (:has_more_values (get capped (:id cat-field)))))
+            (is (true? (:has_more_values (get capped (:id vendor-field)))))))))))
+
+(deftest persist-field-values!-test
+  (testing "nil values with nil existing-fv returns ::fv-deleted without creating anything"
+    (mt/with-temp [:model/Database {database-id :id}        {}
+                   :model/Table    {table-id :id}           {:db_id database-id}
+                   :model/Field    {field-id :id :as field} {:table_id table-id :name "test"}]
+      (is (= :metabase.warehouse-schema.models.field-values/fv-deleted
+             (field-values/persist-field-values! field nil nil false)))
+      (is (nil? (t2/select-one :model/FieldValues :field_id field-id :type :full)))))
+
+  (testing "empty [] values with an existing-fv deletes the FV, returns ::fv-deleted"
+    (mt/with-temp [:model/Database    {database-id :id}        {}
+                   :model/Table       {table-id :id}           {:db_id database-id}
+                   :model/Field       {field-id :id :as field} {:table_id table-id :name "test"}
+                   :model/FieldValues _                        {:field_id field-id :type :full :values ["a" "b"]}]
+      (let [fv (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+        (is (= :metabase.warehouse-schema.models.field-values/fv-deleted
+               (field-values/persist-field-values! field fv [] false)))
+        (is (nil? (t2/select-one :model/FieldValues :field_id field-id :type :full))))))
+
+  (testing "nil existing-fv with non-empty values creates a new FV, returns ::fv-created"
+    (mt/with-temp [:model/Database {database-id :id}        {}
+                   :model/Table    {table-id :id}           {:db_id database-id}
+                   :model/Field    {field-id :id :as field} {:table_id table-id :name "test"}]
+      (is (= :metabase.warehouse-schema.models.field-values/fv-created
+             (field-values/persist-field-values! field nil ["a" "b"] false)))
+      (let [fv (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+        (is (some? fv))
+        (is (= ["a" "b"] (:values fv)))
+        (is (false? (:has_more_values fv))))))
+
+  (testing "matching values and has_more_values returns ::fv-skipped without changing values"
+    (mt/with-temp [:model/Database    {database-id :id}        {}
+                   :model/Table       {table-id :id}           {:db_id database-id}
+                   :model/Field       {field-id :id :as field} {:table_id table-id :name "test"}
+                   :model/FieldValues _                        {:field_id field-id :type :full :values ["a" "b"] :has_more_values false}]
+      (let [fv (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+        (is (= :metabase.warehouse-schema.models.field-values/fv-skipped
+               (field-values/persist-field-values! field fv ["a" "b"] false)))
+        (is (= ["a" "b"] (:values (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))
+
+  (testing "different values updates the FV, returns ::fv-updated"
+    (mt/with-temp [:model/Database    {database-id :id}        {}
+                   :model/Table       {table-id :id}           {:db_id database-id}
+                   :model/Field       {field-id :id :as field} {:table_id table-id :name "test"}
+                   :model/FieldValues _                        {:field_id field-id :type :full :values ["a" "b"] :has_more_values false}]
+      (let [fv (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+        (is (= :metabase.warehouse-schema.models.field-values/fv-updated
+               (field-values/persist-field-values! field fv ["c" "d"] true)))
+        (let [fv-after (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+          (is (= ["c" "d"] (:values fv-after)))
+          (is (true? (:has_more_values fv-after))))))))
+
+(deftest update-field-values-for-on-demand-dbs!-test
+  (mt/dataset test-data
+    (testing "fields in an on-demand DB get their FieldValues created/updated in a single bulk query per table"
+      (let [category-id (mt/id :products :category)
+            vendor-id   (mt/id :products :vendor)]
+        ;; Start fresh — no existing FVs for the fields under test
+        (t2/delete! :model/FieldValues :field_id [:in [category-id vendor-id]])
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:is_on_demand true}
+          (let [bulk-calls (atom 0)
+                orig       field-values/bulk-distinct-values]
+            (with-redefs [field-values/bulk-distinct-values (fn [& args]
+                                                              (swap! bulk-calls inc)
+                                                              (apply orig args))]
+              (field-values/update-field-values-for-on-demand-dbs! #{category-id vendor-id}))
+            (testing "exactly one bulk query was issued (both fields belong to the same table)"
+              (is (= 1 @bulk-calls))))
+          (testing "FieldValues were created for both fields"
+            (let [cat-fv    (t2/select-one :model/FieldValues :field_id category-id :type :full)
+                  vendor-fv (t2/select-one :model/FieldValues :field_id vendor-id :type :full)]
+              (is (some? cat-fv))
+              (is (= #{"Doohickey" "Gadget" "Gizmo" "Widget"} (set (:values cat-fv))))
+              (is (some? vendor-fv))
+              (is (= 200 (count (:values vendor-fv)))))))))
+    (testing "fields in a non-on-demand DB are not touched"
+      (let [category-id (mt/id :products :category)]
+        (t2/delete! :model/FieldValues :field_id category-id)
+        ;; DB defaults to is_on_demand=false in test fixtures
+        (field-values/update-field-values-for-on-demand-dbs! #{category-id})
+        (is (nil? (t2/select-one :model/FieldValues :field_id category-id :type :full)))))
+    (testing "fields that shouldn't have FieldValues are filtered out (no DB writes, no warehouse queries)"
+      (let [bulk-calls (atom 0)]
+        (with-redefs [field-values/bulk-distinct-values (fn [& _]
+                                                          (swap! bulk-calls inc)
+                                                          nil)]
+          ;; product_id is a PK/FK — field-should-have-field-values? returns false for it
+          (field-values/update-field-values-for-on-demand-dbs! #{(mt/id :orders :id)}))
+        (is (zero? @bulk-calls))))
+    (testing "existing FieldValues are updated, not duplicated"
+      (let [category-id (mt/id :products :category)]
+        (t2/delete! :model/FieldValues :field_id category-id)
+        (mt/with-temp [:model/FieldValues _ {:field_id category-id
+                                             :type     :full
+                                             :values   ["stale-1" "stale-2"]}]
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:is_on_demand true}
+            (field-values/update-field-values-for-on-demand-dbs! #{category-id}))
+          (let [fvs (t2/select :model/FieldValues :field_id category-id :type :full)]
+            (is (= 1 (count fvs)))
+            (is (= #{"Doohickey" "Gadget" "Gizmo" "Widget"}
+                   (set (:values (first fvs)))))))))))
 
 (defn- find-values [field-values-id]
   (-> (t2/select-one :model/FieldValues :id field-values-id)

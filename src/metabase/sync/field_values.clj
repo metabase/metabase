@@ -21,22 +21,6 @@
     (field-values/clear-field-values-for-field! field)
     ::field-values/fv-deleted))
 
-(mu/defn- update-field-values-for-field!
-  [field :- i/FieldInstance]
-  (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
-  (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
-    (cond
-      (not field-values)
-      (log/infof "%s does not have FieldValues. Skipping..."
-                 (sync-util/name-for-logging field))
-
-      (field-values/inactive? field-values)
-      (log/infof "%s has not been used since %s. Skipping..."
-                 (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
-
-      :else
-      (field-values/create-or-update-full-field-values! field :field-values field-values))))
-
 (defn- update-field-value-stats-count [counts-map result]
   (if (instance? Exception result)
     (update counts-map :errors inc)
@@ -54,17 +38,64 @@
   [table]
   (t2/select :model/Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
 
+(defn- update-field-values-for-table-bulk!
+  "Fetch all field values in one query, then persist per field. If the bulk query fails,
+   returns stats with :errors set to the number of fields that would have been synced."
+  [table fields-to-sync fvs-map]
+  (let [bulk-values (sync-util/with-error-handling
+                     (format "Error batch-fetching distinct values for %s" (sync-util/name-for-logging table))
+                      (field-values/bulk-distinct-values (u/the-id table) fields-to-sync))]
+    (if (or (nil? bulk-values) (instance? Exception bulk-values))
+      {:errors (count fields-to-sync), :created 0, :updated 0, :deleted 0}
+      (reduce (fn [counts field]
+                (let [field-id (u/the-id field)
+                      fv       (get fvs-map field-id)
+                      dv       (get bulk-values field-id)
+                      result   (sync-util/with-error-handling
+                                (format "Error updating field values for %s" (sync-util/name-for-logging field))
+                                 (field-values/persist-field-values! field fv (:values dv) (:has_more_values dv)))]
+                  (update-field-value-stats-count counts result)))
+              {:errors 0, :created 0, :updated 0, :deleted 0}
+              fields-to-sync))))
+
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`."
   [table :- i/TableInstance]
-  (reduce (fn [fv-change-counts field]
-            (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
-                           (if (field-values/field-should-have-field-values? field)
-                             (update-field-values-for-field! field)
-                             (clear-field-values-for-field! field)))]
-              (update-field-value-stats-count fv-change-counts result)))
-          {:errors 0, :created 0, :updated 0, :deleted 0}
-          (table->fields-to-scan table)))
+  (let [all-fields        (table->fields-to-scan table)
+        {to-sync  true
+         to-clear false} (group-by #(boolean (field-values/field-should-have-field-values? %)) all-fields)
+        ;; Clear fields that shouldn't have values
+        clear-counts      (reduce (fn [counts field]
+                                    (let [result (sync-util/with-error-handling
+                                                  (format "Error clearing field values for %s" (sync-util/name-for-logging field))
+                                                   (clear-field-values-for-field! field))]
+                                      (update-field-value-stats-count counts result)))
+                                  {:errors 0, :created 0, :updated 0, :deleted 0}
+                                  to-clear)]
+    (if (empty? to-sync)
+      clear-counts
+      ;; Batch-fetch existing FieldValues and filter to active ones
+      (let [fvs-map        (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
+            fields-to-sync (filterv (fn [field]
+                                      (let [fv (get fvs-map (u/the-id field))]
+                                        (cond
+                                          (not fv)
+                                          (do (log/infof "%s does not have FieldValues. Skipping..."
+                                                         (sync-util/name-for-logging field))
+                                              false)
+
+                                          (field-values/inactive? fv)
+                                          (do (log/infof "%s has not been used since %s. Skipping..."
+                                                         (sync-util/name-for-logging field)
+                                                         (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at fv))))
+                                              false)
+
+                                          :else true)))
+                                    to-sync)
+            sync-counts    (if (empty? fields-to-sync)
+                             {:errors 0, :created 0, :updated 0, :deleted 0}
+                             (update-field-values-for-table-bulk! table fields-to-sync fvs-map))]
+        (merge-with + clear-counts sync-counts)))))
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]

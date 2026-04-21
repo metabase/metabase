@@ -412,6 +412,80 @@
       (log/error e "Error fetching field values")
       nil)))
 
+(defn- limit-values
+  "Accumulate distinct, non-nil values from `values` until the total stringified length exceeds
+   [[*total-max-length*]]. Returns {:values sorted-vec, :has_more_values bool}.
+
+   `:has_more_values` reflects only the char-length cap. The distinct-count cap is enforced one
+   level up by [[bulk-distinct-values]] (via the row-cap check) — by pigeonhole, no column can
+   have more than (count rows) distinct values, so a count cap here would be redundant."
+  [values]
+  (loop [str-length 0
+         acc        (sorted-set)
+         values     values]
+    (cond
+      (empty? values)
+      {:values (vec acc) :has_more_values false}
+
+      (nil? (first values)) ;; skip NULLs
+      (recur str-length acc (rest values))
+
+      (contains? acc (first values))
+      (recur str-length acc (rest values))
+
+      :else
+      (let [new-str-length (+ str-length (count (str (first values))))]
+        (if (> new-str-length *total-max-length*)
+          {:values (vec acc) :has_more_values true}
+          (recur new-str-length (conj acc (first values)) (rest values)))))))
+
+(defn- rows->per-field-distinct-values
+  "Process multi-column result rows into per-field distinct value maps.
+   `fields` is the ordered seq of fields corresponding to column indices.
+   Returns {field-id -> {:values [v1 v2 ...], :has_more_values bool}}."
+  [fields rows]
+  (let [cols (if (seq rows)
+               (apply mapv vector rows)
+               (mapv (fn [_] []) fields))]
+    (into {}
+          (map-indexed
+           (fn [i field]
+             [(:id field) (limit-values (get cols i))])
+           (vec fields)))))
+
+(defn bulk-distinct-values
+  "Fetch distinct values for multiple fields from the same table in a single query.
+   Uses `SELECT col1, col2, ... FROM table LIMIT K` instead of one GROUP BY per field.
+   Returns {field-id -> {:values [v1 v2 ...], :has_more_values bool}}, or nil on failure.
+
+   If the row cap is hit (i.e. the table has at least K rows), every column is marked
+   `has_more_values=true` since we can't tell from a sample whether more distinct values exist
+   beyond the sampled rows. This may over-flag low-cardinality columns in big tables, forcing
+   the parameter widget into search mode instead of a static list — but the cached values are
+   still shown and the search still works, so the cost is small relative to silently returning
+   an incomplete list."
+  [table-id fields]
+  (try
+    (let [metadata-cols (mapv (fn [field]
+                                (cond-> field
+                                  (t2/model field) (lib-be/instance->metadata :metadata/column)))
+                              fields)
+          result        ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
+                         table-id
+                         (fn [query]
+                           (-> query
+                               (lib/with-fields metadata-cols)
+                               (lib/limit *absolute-max-distinct-values-limit*)))
+                         nil)
+          rows          (-> result :data :rows)
+          per-field     (rows->per-field-distinct-values fields rows)]
+      (if (>= (count rows) *absolute-max-distinct-values-limit*)
+        (update-vals per-field #(assoc % :has_more_values true))
+        per-field))
+    (catch Throwable e
+      (log/error e "Error in bulk-distinct-values, will fall back to per-field queries")
+      nil)))
+
 (defn- delete-duplicates-and-return-latest!
   "Takes a list of field values, return a map of field-id -> latest FieldValues.
 
@@ -454,54 +528,64 @@
    (when (seq field-ids)
      (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))))
 
+(defn persist-field-values!
+  "Persist pre-fetched distinct values for a field. Compares with existing FieldValues and
+   creates/updates/skips/deletes as needed. Returns a status keyword (::fv-skipped, ::fv-updated,
+   ::fv-created, or ::fv-deleted).
+
+   `existing-fv` is the existing FieldValues record (or nil).
+   `values` is a collection of scalar values.
+   `has_more_values` is a boolean indicating if the list is incomplete."
+  [field existing-fv values has_more_values]
+  (let [field-name (or (:name field) (:id field))]
+    (cond
+      (empty? values)
+      (do
+        (clear-field-values-for-field! field)
+        ::fv-deleted)
+
+      ;; if FieldValues object doesn't exist create one
+      (nil? existing-fv)
+      (do
+        (log/debugf "Storing FieldValues for Field %s..." field-name)
+        (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
+                                  (constantly {:has_more_values       has_more_values
+                                               :values                values
+                                               :human_readable_values nil}))
+        ::fv-created)
+
+      ;; if existing FieldValues won't change, skip it
+      (and (= (:values existing-fv) values)
+           (= (:has_more_values existing-fv) has_more_values))
+      (do
+        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
+        ::fv-skipped)
+
+      ;; if the FieldValues object already exists then update values in it
+      :else
+      (do
+        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+        (t2/update! :model/FieldValues (u/the-id existing-fv)
+                    (m/remove-vals nil?
+                                   {:has_more_values       has_more_values
+                                    :values                values
+                                    :human_readable_values (fixup-human-readable-values existing-fv values)}))
+        ::fv-updated))))
+
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
    created/updated/deleted as a result of this call.
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
-  [field & {:keys [field-values human-readable-values]}]
+  [field & {:keys [field-values]}]
   (if (field-should-have-field-values? field)
     (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
           {unwrapped-values :values
            :keys [has_more_values]} (distinct-values field)
           ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
-          values                    (seq (map first unwrapped-values))
-          field-name                (or (:name field) (:id field))]
-      (cond
-        (and values
-             (= (:values field-values) values)
-             (= (:has_more_values field-values) has_more_values))
-        (do
-          (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
-          ::fv-skipped)
-
-        ;; if the FieldValues object already exists then update values in it
-        (and field-values values)
-        (do
-          (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-          (t2/update! :model/FieldValues (u/the-id field-values)
-                      (m/remove-vals nil?
-                                     {:has_more_values       has_more_values
-                                      :values                values
-                                      :human_readable_values (fixup-human-readable-values field-values values)}))
-          ::fv-updated)
-
-        ;; if FieldValues object doesn't exist create one
-        values
-        (do
-          (log/debugf "Storing FieldValues for Field %s..." field-name)
-          (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                    (constantly {:has_more_values       has_more_values
-                                                 :values                values
-                                                 :human_readable_values human-readable-values}))
-          ::fv-created)
-
-        ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
-        :else
-        (do
-          (clear-field-values-for-field! field)
-          ::fv-deleted)))
+          values                    (seq (map first unwrapped-values))]
+      (persist-field-values! field field-values values has_more_values))
     (do
       (clear-field-values-for-field! field)
       ::fv-deleted)))
@@ -552,17 +636,21 @@
   "Update the FieldValues for any Fields with `field-ids` if the Field should have FieldValues and it belongs to a
   Database that is set to do 'On-Demand' syncing."
   [field-ids]
-  (let [fields (when (seq field-ids)
-                 (filter field-should-have-field-values?
-                         (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
-                                     :semantic_type :visibility_type :table_id :has_field_values]
-                                    :id [:in field-ids])))
-        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
-    (doseq [{table-id :table_id, :as field} fields]
-      (when (table-id->is-on-demand? table-id)
-        (log/debugf "Field %s '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                    (u/the-id field) (:name field))
-        (create-or-update-full-field-values! field)))))
+  (let [fields                  (when (seq field-ids)
+                                  (filter field-should-have-field-values?
+                                          (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                                                      :semantic_type :visibility_type :table_id :has_field_values]
+                                                     :id [:in field-ids])))
+        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
+        on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
+    (when (seq on-demand-fields)
+      (let [fvs-map (batched-get-latest-full-field-values (map :id on-demand-fields))]
+        (doseq [[table-id fields] (group-by :table_id on-demand-fields)]
+          (when-let [bulk-values (bulk-distinct-values table-id fields)]
+            (doseq [field fields]
+              (let [fv (get fvs-map (:id field))
+                    dv (get bulk-values (:id field))]
+                (persist-field-values! field fv (:values dv) (:has_more_values dv))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |
