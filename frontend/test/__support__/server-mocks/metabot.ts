@@ -1,4 +1,7 @@
-import fetchMock, { type UserRouteConfig } from "fetch-mock";
+import fetchMock, {
+  type RouteResponse,
+  type UserRouteConfig,
+} from "fetch-mock";
 
 import type {
   MetabotGroupLimit,
@@ -170,7 +173,7 @@ type SetupMetabaseManagedAiEndpointsOptions = {
     free_tokens?: number | null;
     updated_at: string | null;
   } | null;
-  purchaseCloudAddOnResponse?: number | { status: number; body: unknown };
+  purchaseCloudAddOnResponse?: RouteResponse;
   removeCloudAddOnResponse?: number | { status: number; body: unknown };
 };
 
