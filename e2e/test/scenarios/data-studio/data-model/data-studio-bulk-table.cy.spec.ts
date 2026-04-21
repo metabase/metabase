@@ -19,7 +19,7 @@ interface Table {
   id: number;
 }
 
-describe("bulk table operations", () => {
+describe("bulk table operations", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
