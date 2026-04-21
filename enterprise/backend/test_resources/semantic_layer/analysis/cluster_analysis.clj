@@ -115,7 +115,7 @@
       (when (pos? cnt)
         {:pairs  cnt
          :min    (aget arr 0)
-         :median (aget arr (/ cnt 2))
+         :median (aget arr (quot cnt 2))
          :mean   (/ (reduce + 0.0 (seq arr)) cnt)
          :max    (aget arr (dec cnt))}))))
 
@@ -134,7 +134,7 @@
      :min-size        (first sorted-sz)
      :max-size        (last sorted-sz)
      :mean-size       (when (pos? n) (double (/ total n)))
-     :median-size     (when (pos? n) (nth sorted-sz (/ n 2)))}))
+     :median-size     (when (pos? n) (nth sorted-sz (quot n 2)))}))
 
 ;;; --------------------------------- run ---------------------------------
 
