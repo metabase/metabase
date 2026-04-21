@@ -9,4 +9,4 @@
 
 (doto :model/TableRemapping
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/created-at-timestamped?))

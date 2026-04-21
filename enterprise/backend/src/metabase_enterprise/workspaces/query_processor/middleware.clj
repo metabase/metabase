@@ -6,10 +6,14 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.util :as u]))
+   [metabase.table-remapping.model]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,15 +45,30 @@
                                                                 {:allow-unused? true}))))))
 
 (defenterprise apply-workspace-table-remapping
-  "Pre-processing middleware. Rewrites MBQL table references (`:source-table`, joins) for workspace
-   transforms. Runs after sandboxing so that production sandbox filters materialize before the
-   table reference is redirected to its workspace copy.
+  "Pre-processing middleware. Redirects MBQL table references to workspace copies by overriding
+   table metadata in the cached metadata provider attached to the query. `:source-table <id>`
+   entries in the query are not rewritten - downstream HoneySQL compilation reads the overridden
+   `:schema` and `:name` when it resolves the table by id.
 
-   Expects `[:middleware :workspace-table-remapping :tables]` to be a map of
-   `table-id -> {:schema \"ws_schema\" :name \"table_name\"}`."
+   Mappings are read from the `TableRemapping` table in the app DB, keyed on the query's
+   `:database` id plus each table's `(:schema, :name)`.
+
+   Runs after sandboxing so that production sandbox filters materialize against production
+   schema before the final table reference resolves to the workspace copy."
   :feature :workspaces
-  [{{remapping :workspace-table-remapping} :middleware :as query}]
-  (if (or (not remapping) (empty? (:tables remapping)))
-    query
-    ;; TODO: walk stages + joins, swap :source-table references according to remapping :tables.
+  [{db-id :database, mp :lib/metadata, :as query}]
+  (let [rows (when db-id
+               (t2/select :model/TableRemapping :database_id db-id))]
+    (when (seq rows)
+      (let [by-source (into {} (map (fn [{:keys [from_schema from_table_name] :as row}]
+                                      [[from_schema from_table_name] row])
+                                    rows))]
+        (doseq [table (lib.metadata/tables mp)
+                :let [row (get by-source [(:schema table) (:name table)])]
+                :when row]
+          (lib.metadata.protocols/store-metadata!
+           mp
+           (assoc table
+                  :schema (:to_schema row)
+                  :name   (:to_table_name row))))))
     query))
