@@ -20,6 +20,9 @@ process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
 process.env.MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED =
   process.env.MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED || "true";
 
+// Expose the `en-ZZ` pseudo-locale in the Cypress backend's language pickers and API validation.
+process.env.MB_ENABLE_TEST_LOCALES = "true";
+
 if (!process.env.CI) {
   // Use a temporary copy of the sample db so it won't use and lock the db used for local development
   process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = path.resolve(

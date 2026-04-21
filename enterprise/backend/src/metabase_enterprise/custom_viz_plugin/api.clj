@@ -216,8 +216,7 @@
         pinned-changed? (and (contains? updates :pinned_version)
                              (not= (:pinned_version updates) (:pinned_version existing)))
         result          (if pinned-changed?
-                          (cache/fetch-and-save! (merge existing updates)
-                                                 (select-keys updates [:enabled]))
+                          (cache/fetch-and-save! (merge existing updates) updates)
                           (do (when (seq updates)
                                 (t2/update! :model/CustomVizPlugin id updates))
                               (t2/select-one :model/CustomVizPlugin :id id)))]

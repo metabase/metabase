@@ -165,7 +165,9 @@ type SetupMetabaseManagedAiEndpointsOptions = {
   billingPeriodMonths?: number;
   metabasePricePerUnit?: number;
   metabotUsageQuota?: {
+    is_locked?: boolean;
     tokens: number | null;
+    free_tokens?: number | null;
     updated_at: string | null;
   } | null;
   purchaseCloudAddOnResponse?: number | { status: number; body: unknown };
@@ -180,7 +182,9 @@ export function setupMetabaseManagedAiEndpoints({
   removeCloudAddOnResponse = 200,
 }: SetupMetabaseManagedAiEndpointsOptions = {}) {
   fetchMock.get("path:/api/ee/metabot/usage", {
+    is_locked: metabotUsageQuota?.is_locked ?? false,
     tokens: metabotUsageQuota?.tokens ?? null,
+    free_tokens: metabotUsageQuota?.free_tokens ?? null,
     updated_at: metabotUsageQuota?.updated_at ?? null,
   });
 

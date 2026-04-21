@@ -406,18 +406,18 @@ describe("issue 23076", () => {
     cy.signInAsAdmin();
 
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
-      locale: "de",
+      locale: "en-ZZ",
     });
 
     H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
-    cy.findAllByText(/^Summen für/, { timeout: 10000 })
+    cy.findAllByText(/^\[zz\] Totals for/)
       .should("be.visible")
       .eq(1)
       .invoke("text")
-      .should("eq", "Summen für Mai 2026");
+      .should("eq", "[zz] Totals for May 2026");
   });
 });
 

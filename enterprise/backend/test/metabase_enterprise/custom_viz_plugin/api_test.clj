@@ -169,14 +169,21 @@
 (deftest update-test
   (mt/with-premium-features #{:custom-viz}
     (testing "admin can disable a plugin"
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/update-viz"
-                                                      :identifier   "update-viz"
-                                                      :display_name "Update Viz"
-                                                      :status       :active
-                                                      :enabled      true}]
-        (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
-                                         {:enabled false})]
-          (is (false? (:enabled resp))))))
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url       "https://github.com/test/update-viz"
+                                                      :identifier     "update-viz"
+                                                      :display_name   "Update Viz"
+                                                      :pinned_version "main"
+                                                      :status         :active
+                                                      :enabled        true}]
+        (with-redefs [cache/fetch-plugin-data! (fn [_]
+                                                 {:commit-sha  "sha456"
+                                                  :parsed      {}
+                                                  :version-str nil
+                                                  :snapshot    {}})]
+          (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
+                                           {:enabled false :pinned_version "master"})]
+            (is (false? (:enabled resp)))
+            (is (= "master" (:pinned_version resp)))))))
     (testing "404 for non-existent plugin"
       (mt/user-http-request :crowberto :put 404 "ee/custom-viz-plugin/99999"
                             {:enabled false}))))

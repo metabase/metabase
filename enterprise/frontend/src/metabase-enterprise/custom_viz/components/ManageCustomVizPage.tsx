@@ -21,6 +21,8 @@ import {
 } from "metabase-enterprise/api";
 import type { CustomVizPluginId } from "metabase-types/api";
 
+import { trackCustomVizPluginDeleted } from "../analytics";
+
 import { CustomVizListItem } from "./CustomVizListItem";
 import S from "./ManageCustomVizPage.module.css";
 
@@ -36,6 +38,7 @@ export function ManageCustomVizPage() {
   const handleDelete = useCallback(
     async (id: CustomVizPluginId) => {
       await deletePlugin(id).unwrap();
+      trackCustomVizPluginDeleted();
     },
     [deletePlugin],
   );
