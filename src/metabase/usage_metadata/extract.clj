@@ -5,8 +5,7 @@
   is whatever the user was actually querying — a Card or a Table. We don't drill
   through a card to its underlying table; if you query `card_42` (backed by
   `table_7`), aggregations over card columns are attributed to the card, not to
-  `table_7`. The only table-lookup done here is `lookup-field-table-id` for
-  fields that arrive via a `:join-alias`.
+  `table_7`.
 
   `ownership-mode` is one of:
 
@@ -18,33 +17,20 @@
   - `:projected` — the per-participant shadow of a `:mixed` row: for each
                   distinct owner involved, emit a row attributing the
                   multi-source clause to that owner. Not a card→table
-                  back-projection."
+                  back-projection.
+
+  Queries are treated as opaque values; all introspection goes through the
+  public `metabase.lib` API (see `.clj-kondo/config/modules/config.edn` for the
+  allow-listed lib namespaces)."
   (:require
-   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:dynamic *field->table-id*
-  "Optional atom holding a `field-id → table-id` cache for the current batch scope. When bound,
-  `owner-for-field-ref` populates it lazily instead of firing a per-ref `Field` select."
-  nil)
-
-(defn- lookup-field-table-id [field-id]
-  (when (pos-int? field-id)
-    (if-let [cache *field->table-id*]
-      (let [cached (get @cache field-id ::miss)]
-        (if (= cached ::miss)
-          (let [table-id (t2/select-one-fn :table_id :model/Field :id field-id)]
-            (swap! cache assoc field-id table-id)
-            table-id)
-          cached))
-      (t2/select-one-fn :table_id :model/Field :id field-id))))
 
 (defn- canonicalize-for-storage
   [x]
@@ -56,50 +42,17 @@
 (defn select-root-owner
   "Return the stage-0 source owner for a normalized MBQL query, or nil if it should be skipped."
   [query]
-  (let [stage-0 (first (:stages query))]
-    (cond
-      (or (nil? query)
-          (lib/any-native-stage? query))
-      nil
-
-      (pos-int? (:source-table stage-0))
-      {:source-type :table
-       :source-id   (:source-table stage-0)}
-
-      (pos-int? (:source-card stage-0))
-      {:source-type :card
-       :source-id   (:source-card stage-0)}
-
-      :else
-      nil)))
+  (when (and query (not (lib/any-native-stage? query)))
+    (or (when-let [table-id (lib/primary-source-table-id query)]
+          {:source-type :table
+           :source-id   table-id})
+        (when-let [card-id (lib/primary-source-card-id query)]
+          {:source-type :card
+           :source-id   card-id}))))
 
 (defn- stage-default-owner
   [query _stage-number]
   (select-root-owner query))
-
-(defn- field-ref?
-  [x]
-  (and (vector? x)
-       (contains? #{"field" :field} (first x))))
-
-(defn- field-ref-info
-  [field-ref]
-  (let [[_ a b] field-ref]
-    (cond
-      (and (map? a) (integer? b))
-      {:field-id b, :options a}
-
-      (and (integer? a) (map? b))
-      {:field-id a, :options b}
-
-      (integer? a)
-      {:field-id a, :options nil}
-
-      (integer? b)
-      {:field-id b, :options nil}
-
-      :else
-      nil)))
 
 (defn- owner-from-metadata
   [root-owner metadata]
@@ -121,53 +74,39 @@
     nil))
 
 (defn- owner-for-field-ref
-  [query stage-number field-ref {:keys [field-id options]}]
-  (let [root-owner       (stage-default-owner query stage-number)
-        visible-columns  (try
-                           (lib/visible-columns query stage-number)
-                           (catch Throwable e
-                             (log/debugf e "usage-metadata: visible-columns failed (stage %s)" stage-number)
-                             nil))]
-    (or (some->> (try
-                   (when (seq visible-columns)
-                     (lib/find-matching-column field-ref visible-columns))
-                   (catch Throwable e
-                     (log/debugf e "usage-metadata: find-matching-column failed for %s (stage %s)"
-                                 (pr-str field-ref) stage-number)
-                     nil))
-                 (owner-from-metadata root-owner))
-        (cond
-          (nil? field-id)
-          nil
-
-          (:join-alias options)
-          (when-let [table-id (lookup-field-table-id field-id)]
-            {:source-type :table
-             :source-id   table-id})
-
-          :else
-          root-owner))))
+  [query stage-number field-ref]
+  (let [root-owner      (stage-default-owner query stage-number)
+        visible-columns (try
+                          (lib/visible-columns query stage-number)
+                          (catch Throwable e
+                            (log/debugf e "usage-metadata: visible-columns failed (stage %s)" stage-number)
+                            nil))
+        matched         (try
+                          (when (seq visible-columns)
+                            (lib/find-matching-column field-ref visible-columns))
+                          (catch Throwable e
+                            (log/debugf e "usage-metadata: find-matching-column failed for %s (stage %s)"
+                                        (pr-str field-ref) stage-number)
+                            nil))]
+    (or (owner-from-metadata root-owner matched)
+        root-owner)))
 
 (defn- clause-field-refs
   [query stage-number clause]
-  (let [refs (volatile! [])]
-    (walk/postwalk
-     (fn [form]
-       (when-let [{:keys [field-id] :as info} (and (field-ref? form)
-                                                   (field-ref-info form))]
-         (when-let [owner (owner-for-field-ref query stage-number form info)]
-           (vswap! refs conj {:field-id field-id
-                              :owner    owner})))
-       form)
-     clause)
-    (vec (distinct @refs))))
+  (->> (lib.util.match/match-many clause [:field _opts _id-or-name] &match)
+       (keep (fn [field-ref]
+               (when-let [field-id (lib/field-ref-id field-ref)]
+                 (when-let [owner (owner-for-field-ref query stage-number field-ref)]
+                   {:field-id field-id :owner owner}))))
+       distinct
+       vec))
 
 (defn- atomic-filter-clauses
   [clause]
-  (let [op (some-> (first clause) name)]
-    (if (= op "and")
-      (mapcat atomic-filter-clauses (rest clause))
-      [clause])))
+  (if (lib/clause-of-type? clause :and)
+    (let [[_tag _opts & args] clause]
+      (into [] (mapcat atomic-filter-clauses) args))
+    [clause]))
 
 (defn- segment-facts-for-clause
   [query stage-number clause]
@@ -265,10 +204,16 @@
                       (merge base temporal))))
           (or (lib/aggregations query stage-number) []))))
 
+(defn- breakout-field-id
+  [breakout]
+  (or (when (lib/clause-of-type? breakout :field)
+        (lib/field-ref-id breakout))
+      (some-> breakout lib/all-field-ids not-empty first)))
+
 (defn- breakout-owner
   [query stage-number breakout]
-  (or (when-let [info (field-ref-info breakout)]
-        (owner-for-field-ref query stage-number breakout info))
+  (or (when (lib/clause-of-type? breakout :field)
+        (owner-for-field-ref query stage-number breakout))
       (some-> breakout
               (clause-field-refs query stage-number)
               first
@@ -278,8 +223,7 @@
   [query stage-number]
   (into []
         (keep (fn [breakout]
-                (when-let [field-id (or (:field-id (field-ref-info breakout))
-                                        (some-> breakout lib/all-field-ids not-empty first))]
+                (when-let [field-id (breakout-field-id breakout)]
                   (when-let [owner (breakout-owner query stage-number breakout)]
                     (let [binning (lib/binning breakout)
                           serialized-binning (when binning
@@ -305,4 +249,4 @@
    {:segments []
     :metrics []
     :dimensions []}
-   (range (count (:stages query)))))
+   (range (lib/stage-count query))))
