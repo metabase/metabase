@@ -109,6 +109,9 @@
   metosin/malli                             {:git/url "https://github.com/metabase/malli" ; Data-driven Schemas for Clojure/Script and babashka
                                              :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
   net.carcdr/oidc-provider                  {:mvn/version "0.6.2"}              ; OAuth/OIDC server abstract implementation
+  net.carcdr/ycrdt-core                     {:mvn/version "0.1.3"}              ; Y-CRDT interfaces (YDoc, YText, YXmlFragment) for collaborative document editing
+  net.carcdr/ycrdt-jni                      {:mvn/version "0.1.3"}              ; Rust-backed Y-CRDT runtime; pulls the platform native library via classifier
+  net.carcdr/yhocuspocus                    {:mvn/version "0.1.1"}              ; Transport-agnostic Hocuspocus collaborative editing server (embedded, no Node.js)
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [org.slf4j/slf4j-api]}
