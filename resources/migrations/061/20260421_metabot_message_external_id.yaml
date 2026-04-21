@@ -12,6 +12,7 @@ databaseChangeLog:
               - column:
                   name: external_id
                   type: varchar(36)
+                  remarks: Stable id shared with clients and used to resolve feedback submissions
                   constraints:
                     nullable: true
 
