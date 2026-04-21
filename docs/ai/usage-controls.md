@@ -1,13 +1,13 @@
 ---
-title: AI controls
+title: AI usage controls
 summary: Control who can use Metabot, set token and message limits, customize Metabot's name and icon, and add system prompts for Metabot's tools.
 ---
 
-# AI controls
+# AI usage controls
 
 {% include plans-blockquote.html feature="AI controls" is_plural=true%}
 
-_Admin > AI_
+_Admin > AI > Usage controls_
 
 Once you've connected an AI provider (see [AI settings](./settings.md)), use AI controls to decide **who** can use Metabot, **how much** they can use it, **how** it shows up, and **what** it pays attention to.
 
