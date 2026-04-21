@@ -109,6 +109,7 @@
     :model/SourceDimensionDaily
     :model/SourceDimensionProfileDaily
     :model/SourceMetricDaily
+    :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
     :model/SupportAccessGrantLog
     :model/TaskHistory

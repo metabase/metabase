@@ -7,6 +7,7 @@
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
    [metabase.usage-metadata.models.source-metric-daily]
+   [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.usage-metadata.store :as usage-metadata.store]
@@ -25,6 +26,7 @@
 
 (def ^:private rollup-models
   [:model/SourceSegmentDaily
+   :model/SourceSegmentCompositeDaily
    :model/SourceMetricDaily
    :model/SourceDimensionDaily
    :model/SourceDimensionProfileDaily])
@@ -127,6 +129,15 @@
    :predicate      predicate
    :bucket_date    bucket-date})
 
+(defn- composite-row [bucket-date {:keys [source-type source-id ownership-mode clause atom-fingerprints atom-count]}]
+  {:source_type       source-type
+   :source_id         source-id
+   :ownership_mode    ownership-mode
+   :clause            clause
+   :atom_fingerprints (json/encode atom-fingerprints)
+   :atom_count        atom-count
+   :bucket_date       bucket-date})
+
 (defn- metric-row [bucket-date {:keys [source-type source-id ownership-mode agg agg-field-id temporal-field-id temporal-unit]}]
   {:source_type       source-type
    :source_id         source-id
@@ -153,16 +164,18 @@
 
 (defn- accumulate-query-result [stats bucket-date n result]
   (if (= :ok (:status result))
-    (let [{:keys [segments metrics dimensions]} (:facts result)
+    (let [{:keys [segments composites metrics dimensions]} (:facts result)
           add-rows (fn [acc rows row-fn]
                      (reduce (fn [m fact] (aggregate-row m (row-fn bucket-date fact) n))
                              acc
                              rows))]
       (-> stats
           (update :segment-tuples   + (* n (count segments)))
+          (update :composite-tuples + (* n (count composites)))
           (update :metric-tuples    + (* n (count metrics)))
           (update :dimension-tuples + (* n (count dimensions)))
           (update :segments   add-rows segments   segment-row)
+          (update :composites add-rows composites composite-row)
           (update :metrics    add-rows metrics    metric-row)
           (update :dimensions add-rows dimensions dimension-row)))
     (add-skip stats (:reason result) n)))
@@ -254,11 +267,13 @@
                            :query-execution-rows (reduce + 0 (vals hash->count))
                            :joined-rows          0
                            :segment-tuples       0
+                           :composite-tuples     0
                            :metric-tuples        0
                            :dimension-tuples     0
                            :profile-observations 0
                            :skipped-rows         {}
                            :segments             {}
+                           :composites           {}
                            :metrics              {}
                            :dimensions           {}
                            :seen-hashes          #{}}
@@ -285,6 +300,7 @@
          dimension-rows   (counts->rows (:dimensions day-stats))
          profile-rows     (profile-rows-for-dimensions bucket-date dimension-rows)
          payload          {:segments   (counts->rows (:segments day-stats))
+                           :composites (counts->rows (:composites day-stats))
                            :metrics    (counts->rows (:metrics day-stats))
                            :dimensions dimension-rows
                            :profiles   profile-rows}]
@@ -294,6 +310,7 @@
      (assoc day-stats
             :watermark-advanced? advance-watermark?
             :segment-rollup-rows (count (:segments payload))
+            :composite-rollup-rows (count (:composites payload))
             :metric-rollup-rows (count (:metrics payload))
             :dimension-rollup-rows (count (:dimensions payload))
             :profile-observations (count (:profiles payload))))))

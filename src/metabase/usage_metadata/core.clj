@@ -39,6 +39,16 @@
   [opts :- ::opts]
   (insights/implicit-dimensions opts))
 
+(mu/defn suggested-segments :- [:sequential :map]
+  "Top implicit composite-segment candidates across the window — closed frequent itemsets of size 2..5
+  mined from `source_segment_composite_daily`. Itemsets whose atom-set matches a saved Segment's
+  definition are filtered out.
+
+  Each result is `{:clause <mbql :and clause>, :atom-count <int>, :source <source-map>,
+                   :support <long>, :support-ratio <double>, :count <long>}`."
+  [opts :- ::opts]
+  (insights/suggested-segments-for-owner opts))
+
 (mu/defn profile-observations :- [:sequential :map]
   "Top profile observations (e.g. `:single-value`, `:all-null`, `:low-cardinality`) recorded for dimensions surfaced by
   usage-metadata, ranked by usage count.
