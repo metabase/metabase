@@ -1,6 +1,6 @@
 ---
 title: AI usage controls
-summary: Control who can use Metabot, set token and message limits, customize Metabot's name and icon, and add system prompts for Metabot's tools.
+summary: Control who can use Metabot, and cap token or message usage by instance, group, or tenant.
 ---
 
 # AI usage controls
@@ -9,20 +9,16 @@ summary: Control who can use Metabot, set token and message limits, customize Me
 
 _Admin > AI > Usage controls_
 
-Once you've connected an AI provider (see [AI settings](./settings.md)), use AI controls to decide **who** can use Metabot, **how much** they can use it, **how** it shows up, and **what** it pays attention to.
-
-AI controls are split across four sub-sections of the admin nav:
+Once you've connected an AI provider (see [AI settings](./settings.md)), you can can control who can use Metabot and set usage budgets.
 
 - [AI feature access](#ai-feature-access): which groups can use Metabot, and which of its tools.
 - [AI usage limits](#ai-usage-limits): token or message caps by instance, group, or tenant.
-- [Customization](./customization.md): Metabot's name, icon, and illustrations.
-- [System prompts](./system-prompts.md): preset instructions for each Metabot tool.
 
 ## AI feature access
 
 _Admin > AI > Usage controls > AI feature access_
 
-The AI feature access table lets you toggle Metabot on or off per group, and pick what Metabot can do for each group. Rows are your [user groups](../people-and-groups/managing.md) and [tenant groups](../embedding/tenants.md); columns are Metabot capabilities.
+The AI feature access table lets you toggle Metabot on or off per group, and pick what Metabot can do for each group. Rows are your [internal groups](../people-and-groups/managing.md) and [tenant groups](../embedding/tenants.md); columns are Metabot capabilities.
 
 - **AI features** — the master toggle for the group. When off, people in that group won't see the Metabot icon, keyboard shortcuts, or any inline AI affordances.
 - **Chat and NLQ** — access to the Metabot [chat sidebar](./metabot.md#the-metabot-chat-sidebar) and [natural language querying](./metabot.md#how-metabot-uses-the-query-builder).
