@@ -1002,12 +1002,11 @@
 
   internal-stats
   {:team "UX West"
-   :api  #{metabase.internal-stats.core
-           metabase.internal-stats.metabot}
+   :api  #{metabase.internal-stats.core}
    :uses #{app-db
-           models
-           util}
-   :model-imports #{:model/Card
+           models}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
                     :model/Dashboard
                     :model/MetabotMessage
                     :model/QueryExecution
@@ -1100,7 +1099,8 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init
-           metabase.llm.settings}
+           metabase.llm.settings
+           metabase.llm.startup}
    :uses #{analytics
            api
            driver
@@ -1108,6 +1108,7 @@
            lib-be
            metabot
            models
+           premium-features
            request
            settings
            sql-tools
@@ -1195,7 +1196,6 @@
               config
               documents
               driver
-              internal-stats
               legacy-mbql
               lib
               lib-be
@@ -1222,7 +1222,8 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog
+                    :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1298,6 +1299,7 @@
            lib
            lib-be
            permissions
+           premium-features
            query-processor
            remote-sync
            search
@@ -2162,7 +2164,9 @@
            premium-features
            search
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/SecurityAdvisory}}
 
   tiles
   {:team "UX West"
@@ -2242,14 +2246,14 @@
            metabase.transforms-base.interface
            metabase.transforms-base.util}
    :model-imports #{:model/Database
-                    :model/DatabaseRouter
                     :model/Table
                     ;; TODO regressions — transforms-base should not depend on
                     ;; these directly. Remove once the module is agnostic to
                     ;; global versus workspace transforms.
                     :model/Transform
                     :model/TransformRun}
-   :uses #{driver
+   :uses #{database-routing
+           driver
            events
            lib
            lib-be
@@ -2530,6 +2534,7 @@
            request
            sample-data
            secrets
+           server
            settings
            sync
            upload
@@ -2961,7 +2966,8 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api}
+   :api     #{metabase-enterprise.metabot.api
+              metabase-enterprise.metabot.init}
    :friends #{enterprise/agent-api
               slackbot
               mcp
@@ -2972,10 +2978,11 @@
               models
               permissions
               premium-features
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
-   :model-imports #{:model/Card :model/Transform}}
+   :model-imports #{:model/AiUsageLog :model/Card :model/Transform}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -3113,6 +3120,28 @@
    :api  #{}
    :uses #{premium-features
            search}}
+
+  enterprise/security-center
+  {:team "Gadget"
+   :api  #{metabase-enterprise.security-center.api
+           metabase-enterprise.security-center.init}
+   :uses #{analytics
+           api
+           app-db
+           channel
+           config
+           driver
+           events
+           models
+           notification
+           permissions
+           premium-features
+           settings
+           system
+           task
+           util}
+   :model-exports #{:model/SecurityAdvisory}
+   :model-imports #{:model/User}}
 
   enterprise/semantic-search
   {:team "Metabot"

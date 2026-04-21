@@ -7,6 +7,7 @@ import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
+import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
 
 export interface OidcAuthProvider {
@@ -263,8 +264,10 @@ const tokenStatusFeatures = [
   "embedding-simple",
   "embedding-hub",
   "hosting",
+  "offer-metabase-ai-managed",
   "metabase-ai-managed",
   "metabase-store-managed",
+  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -329,6 +332,7 @@ export const tokenFeatures = [
   "hosting",
   "offer-metabase-ai-managed",
   "metabase-ai-managed",
+  "metabot-v3",
   "official_collections",
   "sandboxes",
   "scim",
@@ -366,6 +370,7 @@ export const tokenFeatures = [
   "tenants",
   "workspaces",
   "writable_connection",
+  "admin_security_center",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -504,6 +509,8 @@ interface AdminSettings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "security-center-email-recipients": NotificationRecipient[] | null;
+  "security-center-slack-channel": string | null;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;

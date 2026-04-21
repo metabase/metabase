@@ -32,7 +32,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/AnalysisFinding
+  #{:model/AiUsageLog
+    :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
@@ -114,6 +115,7 @@
     :model/ViewLog
     :model/Sandbox
     :model/ConnectionImpersonation
+    :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
     :model/CommentReaction

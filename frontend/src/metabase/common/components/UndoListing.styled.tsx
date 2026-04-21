@@ -29,8 +29,14 @@ export const ToastCard = styled(Card)<{
   padding: 10px var(--mantine-spacing-md);
   margin-top: var(--mantine-spacing-sm);
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
-  background-color: var(--mb-color-background-primary-inverse);
-  color: var(--mb-color-text-secondary-inverse);
+  background-color: ${(props) =>
+    props.dark
+      ? "var(--mb-color-background-primary-inverse)"
+      : "var(--mb-color-background-primary)"};
+  color: ${(props) =>
+    props.dark
+      ? "var(--mb-color-text-secondary-inverse)"
+      : "var(--mb-color-text-primary)"};
   ${({ noBorder }) =>
     noBorder &&
     css`

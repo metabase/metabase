@@ -144,6 +144,16 @@ export function undoReducer(
       count: payload.count || 1,
     };
 
+    const existingUndoIndex = state.findIndex(
+      (existingUndo) => existingUndo.id === undo.id,
+    );
+
+    if (existingUndoIndex !== -1) {
+      const nextState = state.slice();
+      nextState[existingUndoIndex] = undo;
+      return nextState;
+    }
+
     const previous: Undo = state[state.length - 1];
     // if last undo was same verb then merge them
     if (previous && undo.verb != null && undo.verb === previous.verb) {

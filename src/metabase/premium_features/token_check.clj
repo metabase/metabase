@@ -129,6 +129,14 @@
    :transform-rolling-advanced-runs        0
    :transform-rolling-usage-date (today)})
 
+(defenterprise transform-metered-as
+  "Return the meter bucket a new transform run of the given source-type counts toward,
+   based on the instance's current premium features. Returns nil when the run is not metered
+   (including all OSS runs, since premium features are never present there)."
+  metabase-enterprise.transforms.core
+  [_source-type]
+  nil)
+
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "
   []
@@ -676,6 +684,12 @@
    feature-name :- [:or string? mu/localized-string-schema]]
   (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
+
+(defn is-trial?
+  "True if the current premium token is a trial subscription.
+   Returns false if there is no token or the status cannot be fetched."
+  []
+  (-> (-token-status) :trial boolean))
 
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."

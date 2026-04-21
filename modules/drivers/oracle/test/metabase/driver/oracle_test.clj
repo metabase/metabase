@@ -11,12 +11,14 @@
    [metabase.driver :as driver]
    [metabase.driver.oracle :as oracle]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.order-by-test :as qp-test.order-by-test]
@@ -687,3 +689,75 @@
                                 (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
                                 (lib/breakout products-category))]
       (is (= 20 (count (mt/rows (qp/process-query query))))))))
+
+(defn- do-with-nls-territory
+  "Execute `thunk` with all Oracle connections using the given `nls-territory` (e.g. \"ARGENTINA\").
+  Wraps `do-with-connection-with-options` to run ALTER SESSION on each connection."
+  [nls-territory thunk]
+  (let [orig-method (get-method sql-jdbc.execute/do-with-connection-with-options :oracle)]
+    (try
+      (defmethod sql-jdbc.execute/do-with-connection-with-options :oracle
+        [driver db-or-id-or-spec options f]
+        (orig-method driver db-or-id-or-spec options
+                     (fn [^java.sql.Connection conn]
+                       (.execute (.createStatement conn)
+                                 (str "ALTER SESSION SET NLS_TERRITORY = '" nls-territory "'"))
+                       (f conn))))
+      (thunk)
+      (finally
+        (defmethod sql-jdbc.execute/do-with-connection-with-options :oracle
+          [driver db-or-id-or-spec options f]
+          (orig-method driver db-or-id-or-spec options f))))))
+
+(deftest day-of-week-nls-territory-test
+  (testing "day-of-week extraction should respect NLS_TERRITORY setting (#57794)"
+    (mt/test-driver :oracle
+      (mt/dataset date-cols-with-datetime-values
+        (do-with-nls-territory
+         "ARGENTINA"
+         (fn []
+           ;; 2024-11-05 is a Tuesday.
+           ;; With start-of-week = sunday, Tuesday should be day-of-week 3.
+           ;; The bug: Oracle's TO_CHAR(date, 'D') returns day numbers relative to NLS_TERRITORY.
+           ;; With ARGENTINA (Monday=1), TO_CHAR returns 2 for Tuesday, but the driver assumes
+           ;; Sunday=1 (AMERICA convention), so it incorrectly reports Tuesday as day 2 instead of 3.
+           (mt/with-temporary-setting-values [start-of-week :sunday]
+             (let [mp    (mt/metadata-provider)
+                   base  (lib/query mp (lib.metadata/table mp (mt/id :dates_with_time)))
+                   date  (lib.tu.notebook/find-col-with-spec base (lib/filterable-columns base)
+                                                             {:is-main-group true} "Date With Time")
+                   query (-> base
+                             (lib/aggregate (lib/count))
+                             (lib.tu.notebook/add-breakout
+                              {:is-main-group true} "Date With Time"
+                              {:col-fn #(lib/with-temporal-bucket % :day-of-week)})
+                             (lib/filter (lib/= (lib/with-temporal-bucket date :day) "2024-11-05")))]
+               (mt/with-native-query-testing-context query
+                 (is (= [[3 1]]
+                        (mt/formatted-rows [int int] (qp/process-query query)))))))))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :oracle
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            privileges  (sql-jdbc.sync/current-user-table-privileges :oracle conn-spec)]
+        (is (seq privileges) "Should return at least one table")
+        (doseq [priv privileges]
+          (is (= #{:role :schema :table :select :update :insert :delete}
+                 (set (keys priv)))
+              "Should have all required keys")
+          (is (nil? (:role priv)))
+          (is (string? (:schema priv)))
+          (is (string? (:table priv)))
+          (is (boolean? (:select priv)))
+          (is (boolean? (:update priv)))
+          (is (boolean? (:insert priv)))
+          (is (boolean? (:delete priv))))
+        (testing "Test tables should appear with at least SELECT privilege"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (seq test-tables) "ORDERS table should be found in privileges")
+            (is (every? :select test-tables))))
+        (testing "Owned tables should have full DML privileges"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (every? (fn [priv] (and (:insert priv) (:update priv) (:delete priv))) test-tables)
+                "Owner should have insert, update, and delete on owned tables")))))))

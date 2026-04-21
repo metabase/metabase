@@ -15,6 +15,7 @@ import {
   getIsAppSwitcherVisible,
   getIsCollectionPathVisible,
   getIsLogoVisible,
+  getIsMetricsViewer,
   getIsNavBarEnabled,
   getIsNavbarOpen,
   getIsNewButtonVisible,
@@ -43,6 +44,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
   detailView: getDetailViewState(state),
+  isMetricsViewer: getIsMetricsViewer(state, props),
 });
 
 const mapDispatchToProps = {

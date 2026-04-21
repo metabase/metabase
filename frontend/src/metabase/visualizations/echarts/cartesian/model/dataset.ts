@@ -335,8 +335,8 @@ const hasInterpolatedAreaSeries = (
     );
     return Boolean(
       seriesSettings &&
-        seriesSettings["line.missing"] !== "none" &&
-        seriesSettings.display === "area",
+      seriesSettings["line.missing"] !== "none" &&
+      seriesSettings.display === "area",
     );
   });
 };

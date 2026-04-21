@@ -25,6 +25,7 @@
   assert-has-any-features
   canonically-has-feature?
   ee-feature-error
+  is-trial?
   has-any-features?
   has-feature?
   log-enabled?
@@ -34,6 +35,8 @@
   quotas
   TokenStatus
   clear-cache!
+  token-check-url
+  transform-metered-as
   transform-stats]
 
  (metabase.premium-features.settings
@@ -56,6 +59,7 @@
   enable-database-routing?
   enable-library?
   enable-metabase-ai-managed?
+  enable-metabot-v3?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
@@ -87,6 +91,7 @@
   hide-embed-branding?
   is-hosted?
   premium-embedding-token
+  security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?
   token-features

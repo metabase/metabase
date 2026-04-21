@@ -733,6 +733,10 @@ export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type SecurityCenterPageViewedEvent = ValidateEvent<{
+  event: "security_center_page_viewed";
+}>;
+
 export type MetricPageShowMoreClickedEvent = ValidateEvent<{
   event: "metric_page_show_more_clicked";
   target_id: number;
@@ -847,5 +851,6 @@ export type SimpleEvent =
   | ClickActionPerformedEvent
   | DataStudioEvent
   | UnsavedChangesWarningDisplayedEvent
+  | SecurityCenterPageViewedEvent
   | MetricPageShowMoreClickedEvent
   | MetricsViewerEvent;

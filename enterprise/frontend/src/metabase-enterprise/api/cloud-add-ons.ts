@@ -1,6 +1,7 @@
 import type {
   GetCloudAddOnsResponse,
   PurchaseCloudAddOnRequest,
+  RemoveCloudAddOnRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -20,7 +21,16 @@ export const cloudAddOnApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
+    removeCloudAddOn: builder.mutation<void, RemoveCloudAddOnRequest>({
+      query: ({ product_type }) => ({
+        method: "DELETE",
+        url: `/api/ee/cloud-add-ons/${product_type}`,
+      }),
+    }),
   }),
 });
-export const { useListAddOnsQuery, usePurchaseCloudAddOnMutation } =
-  cloudAddOnApi;
+export const {
+  useListAddOnsQuery,
+  usePurchaseCloudAddOnMutation,
+  useRemoveCloudAddOnMutation,
+} = cloudAddOnApi;

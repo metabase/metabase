@@ -4,7 +4,7 @@ title: Model persistence
 
 # Model persistence
 
-> Prefer [Transforms](../data-studio/transforms/transforms-overview.md) instead of model persistence. Model persistence remains supported for now, but it will be deprecated in future versions of Metabase.
+> Prefer [Transforms](../data-studio/transforms/transforms-overview.md) instead of model persistence. Model persistence remains supported for now, but it will be deprecated in future versions of Metabase. You can [convert models to transforms in bulk](../data-studio/transforms/transforms-overview.md#convert-models-to-transforms).
 
 Metabase can persist the results of your models so that your models (and the questions based on those models) load faster.
 
