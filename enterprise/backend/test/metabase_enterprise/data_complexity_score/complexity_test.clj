@@ -15,6 +15,7 @@
    [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
@@ -440,6 +441,16 @@
        (filter #(= "iglu:com.metabase/semantic_complexity/jsonschema/2-0-0"
                    (get % "schema")))))
 
+(def ^:private semantic-complexity-schema
+  (delay
+    (-> "snowplow/iglu-client-embedded/schemas/com.metabase/semantic_complexity/jsonschema/2-0-0"
+        slurp
+        json/decode+kw)))
+
+(defn- schema-enum
+  [prop]
+  (set (get-in @semantic-complexity-schema [:properties prop :enum])))
+
 (deftest ^:sequential emit-snowplow-publishes-totals-and-variables-test
   (testing "one event per catalog-total + one per (catalog × dimension × variable)"
     (snowplow-test/with-fake-snowplow-collector
@@ -507,7 +518,7 @@
 
 (deftest ^:sequential emit-snowplow-schema-2-0-0-payload-shape-test
   (snowplow-test/with-fake-snowplow-collector
-    (doseq [level [0 1]]
+    (doseq [level [0 1 2]]
       (testing (format "level %d events match schema 2-0-0 payload expectations" level)
         (snowplow-test/pop-event-data-and-user-id!)
         (let [result (complexity/score-from-entities
@@ -517,11 +528,28 @@
                       (catalog [(entity :name "facts"
                                         :description "A long enough description for coverage.")]
                                1)
-                      nil
+                      (mock-embedder {"orders" [1.0 0.0]
+                                      "facts"  [0.0 1.0]})
                       {:level level})]
           (#'complexity/emit-snowplow! result)
           (let [raw-events            (raw-complexity-events)
                 events                (complexity-events!)
+                expected-axes         (set
+                                       (mapcat
+                                        (fn [[catalog {:keys [dimensions]}]]
+                                          (cons ["total" nil (name catalog)]
+                                                (for [[dimension {:keys [variables]}] dimensions
+                                                      axis                         (keys variables)]
+                                                  [(#'complexity/axis-name axis)
+                                                   (name dimension)
+                                                   (name catalog)])))
+                                        [[:library (:library result)]
+                                         [:universe (:universe result)]
+                                         [:metabot (:metabot result)]]))
+                emitted-axes          (set (map (juxt #(get % "axis")
+                                                      #(get % "dimension")
+                                                      #(get % "catalog"))
+                                                events))
                 total                 (first (filter #(and (= "library" (get % "catalog"))
                                                            (= "total" (get % "axis")))
                                                      events))
@@ -533,6 +561,9 @@
                                                      events))
                 name-collisions       (first (filter #(and (= "library" (get % "catalog"))
                                                            (= "name_collisions" (get % "axis")))
+                                                     events))
+                synonym-edge-density  (first (filter #(and (= "library" (get % "catalog"))
+                                                           (= "synonym_edge_density" (get % "axis")))
                                                      events))]
             (is (seq raw-events) "sanity: semantic complexity events were emitted")
             (is (= (count raw-events) (count events)))
@@ -540,12 +571,15 @@
                             (get % "schema"))
                         raw-events))
             (is (every? #(= level (get % "level")) events))
+            (is (= expected-axes emitted-axes))
+            (is (every? #(contains? (schema-enum :axis) (get % "axis")) events))
+            (is (every? #(contains? (schema-enum :catalog) (get % "catalog")) events))
+            (is (every? #(contains? (schema-enum :dimension) (get % "dimension")) events))
             (if (zero? level)
               (do
                 (is (every? #(not (contains? % "synonym_threshold")) events))
                 (is (every? #(= "total" (get % "axis")) events)))
               (do
-                (is (every? #(not (contains? % "synonym_threshold")) events))
                 (is (= "scale" (get fields-per-entity "dimension")))
                 (is (contains? fields-per-entity "measurement"))
                 (is (not (contains? fields-per-entity "score")))
@@ -554,7 +588,14 @@
                 (is (not (contains? description-coverage "score")))
                 (is (= "nominal" (get name-collisions "dimension")))
                 (is (= 100 (get name-collisions "score")))
-                (is (= 1 (get name-collisions "measurement")))))
+                (is (= 1 (get name-collisions "measurement")))
+                (if (= 2 level)
+                  (do
+                    (is (every? #(contains? % "synonym_threshold") events))
+                    (is (= "semantic" (get synonym-edge-density "dimension")))
+                    (is (contains? synonym-edge-density "measurement"))
+                    (is (not (contains? synonym-edge-density "score"))))
+                  (is (every? #(not (contains? % "synonym_threshold")) events)))))
             (is (contains? total "score"))
             (is (not (contains? total "dimension")))
             (is (not (contains? total "measurement")))))))))
