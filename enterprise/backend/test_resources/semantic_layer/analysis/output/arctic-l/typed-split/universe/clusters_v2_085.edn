@@ -1,0 +1,721 @@
+{:threshold 0.85,
+ :catalog :universe,
+ :embeddings "typed_split_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 13, :median 50, :p75 254, :max 1337, :mean 190.2758941012541},
+ :connected-components
+ {:count 107,
+  :multi-member 31,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "monthly_revenue"
+     "monthly account subscription status and usage"
+     "negative_issues_20241217203222"
+     "issue_comment"
+     "unsubscribe"
+     "usage_stats"
+     "unified_customers_2__20240515170444"
+     "customers_10000_20240530173511"
+     "user_activity"
+     "user activity"
+     "customer_orders_last_3_months_native"
+     "customers 100000"
+     "trace_20250825145602"
+     "note"
+     "customer_group"
+     "promotion_code"
+     "customers notified from 50"
+     "test_another_20240918201114"
+     "1 request, 1 customer, 1 ticket comment"
+     "test_20230620170201"
+     "all_20230825133017"
+     "contact_link"
+     "problem_feedback_links"
+     "test_20231204115443"
+     "customers_10000_20240530173441"
+     "subscription version"
+     "unified customers(2)"
+     "april_20230622183131"
+     "customer"
+     "... (4131 total)"],
+    :size 4131,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["crossbeam open opportunities snowflake - march 2026"
+     "crossbeam_snowflake_nov_25_2025_sheet1_20251125140650"
+     "crossbeam open opportunities snowflake - january 2026"
+     "crossbeam open opportunities snowflake - april 2026"
+     "crossbeam snowflake nov 25, 2025 sheet1"
+     "crossbeam_open_opportunities_snowflake_january_2_20260129122458"
+     "crossbeam open opportunities snowflake january-2 2026"
+     "crossbeam_open_opportunities_snowflake_20260119135158"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.929684889817203,
+    :min-sim 0.8547698245410991}
+   {:members
+    ["trialers with slack channels model experiment"
+     "experiment_trialers_with_slack_channels_emails_test"
+     "experiment_trialers_with_slack_channels_trialers_slack_channels"
+     "experiment_trialers_with_slack_channels_sheet_5"
+     "experiment_trialers_with_slack_channels_sheet_1"
+     "experiment_trialers_with_slack_channels_emails"
+     "slack_list_experiment_data_sheet_1"
+     "custom_slack_list_experiment_data_sheet_1"],
+    :size 8,
+    :density 0.7142857142857143,
+    :avg-sim 0.9022165953876781,
+    :min-sim 0.8020455144856954}
+   {:members
+    ["dlrs_lookup_rollup_calculate_job_c"
+     "dlrs_lookup_parent_c"
+     "dlrs_declarative_lookup_rollup_summaries_c"
+     "dlrs_lookup_rollup_summary_c"
+     "dlrs_lookup_rollup_summary_log_c"
+     "dlrs_lookup_rollup_summary_schedule_items_c"
+     "dlrs_lookup_child_c"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.9144456122030665,
+    :min-sim 0.8672970974097398}
+   {:members
+    ["territory_planning_active_customers_import_recor_20260203202327"
+     "territory_planning_active_customers_active_custo_20260204194346"
+     "territory_planning_active_customers_active_custo_20260204201237"
+     "territory_planning_active_customers_active_custo_20260204194214"
+     "territory_planning_active_customers_geo_and_rout_20260203212309"
+     "territory_planning_active_customers_2025_opps_2_20260204203656"
+     "territory_planning_active_customers_2025_opps_1_20260204203606"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.9374933283886202,
+    :min-sim 0.9137801188290726}
+   {:members
+    ["heap oom kills by day and host data 2026 01 14 04 42 41"
+     "heap oom kills by day and host data 2026 01 14 04 40 05"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044910"
+     "heap oom kills by day and host data 2026 01 14 04 48 29"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044355"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044325"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.993316166815619,
+    :min-sim 0.9892502854767286}
+   {:members
+    ["netflix top 100 in 2023"
+     "imdb_top_250_tv_shows_20240301020143"
+     "netflix all weeks global"
+     "netflix_all_weeks_global_20231214030044"
+     "imdb top 250 tv shows"],
+    :size 5,
+    :density 0.5,
+    :avg-sim 0.8551681877762178,
+    :min-sim 0.7763715346766423}
+   {:members
+    ["hubspot crm exports all deals 2024 07 22"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722091339"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722090759"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722102708"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.991856871689141,
+    :min-sim 0.9839373106329187}
+   {:members
+    ["calendly_calendly_routing_form_questions_answers_c"
+     "calendly_calendly_action_c"
+     "calendly_calendly_link_c"
+     "calendly_calendly_routing_form_submission_c"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9098107996646528,
+    :min-sim 0.8820375248144628}
+   {:members
+    ["meetabase data, dashboards and vibes in madrid 🇪🇸 guests 2025 09 23 21 11 37"
+     "meetabase_data_dashboards_and_vibes_in_ba_guests_20250626160559"
+     "meetabase_data_dashboards_and_vibes_in_madrid_gu_20250923212105"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9073796335384682,
+    :min-sim 0.8809619682204348}
+   {:members
+    ["waterfall unaggregated ordinal nulls"
+     "waterfall_unaggregated_ordinal_2_20240214181234"
+     "waterfall_unaggregated_ordinal_nulls_20240109230433"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9356831714033262,
+    :min-sim 0.899987786223495}
+   {:members
+    ["2019 census us population data by state lat long 20240207171019, filtered by _mb_row_id is 1"
+     "2019_census_us_population_data_by_state_lat_long_20240207171019"
+     "2019 census us population data by state lat long"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9417428288337595,
+    :min-sim 0.9133403217218985}
+   {:members ["oakland weather" "oakland_weather_20230630204559" "oakland_weather_20230630215257"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9596277584216311,
+    :min-sim 0.9413603926878183}
+   {:members
+    ["pixar_movies___sheet1_20230718093159"
+     "pixar_movies___sheet1_20230704104806"
+     "pixar_movies___sheet1_20230704135712"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9960497254542555,
+    :min-sim 0.9942474121177344}
+   {:members ["airbnb_sf_neighborhoods" "sf_airbnb_listings_2018" "airbnb_sandiego"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.8799298932918553,
+    :min-sim 0.8536814003609655}]},
+ :greedy-cliques
+ {:count 3289,
+  :multi-member 3213,
+  :top
+  [{:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "application"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "... (270 total)"],
+    :size 270,
+    :density 1.0,
+    :avg-sim 0.895117446290932,
+    :min-sim 0.8501532511723575}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "... (270 total)"],
+    :size 270,
+    :density 1.0,
+    :avg-sim 0.8957898812993463,
+    :min-sim 0.8501532511723575}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "feature_flag"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "... (270 total)"],
+    :size 270,
+    :density 1.0,
+    :avg-sim 0.8959156260391777,
+    :min-sim 0.8501532511723575}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "characters"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "user activity"
+     "... (270 total)"],
+    :size 270,
+    :density 1.0,
+    :avg-sim 0.894825190137392,
+    :min-sim 0.8500054881892867}
+   {:members
+    ["export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "feature_flag"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "answer"
+     "trace_20250825145602"
+     "... (270 total)"],
+    :size 270,
+    :density 1.0,
+    :avg-sim 0.8961353443809694,
+    :min-sim 0.850111721150976}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "... (268 total)"],
+    :size 268,
+    :density 1.0,
+    :avg-sim 0.8949223759553144,
+    :min-sim 0.8501468543193009}
+   {:members
+    ["export_demo_20240917230918"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "test file"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "answer"
+     "... (268 total)"],
+    :size 268,
+    :density 1.0,
+    :avg-sim 0.8957485788840163,
+    :min-sim 0.8500407660589874}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "... (268 total)"],
+    :size 268,
+    :density 1.0,
+    :avg-sim 0.8948040098902853,
+    :min-sim 0.8501468543193009}
+   {:members
+    ["book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "... (268 total)"],
+    :size 268,
+    :density 1.0,
+    :avg-sim 0.895048902955419,
+    :min-sim 0.8501532511723575}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "feature_flag"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "... (268 total)"],
+    :size 268,
+    :density 1.0,
+    :avg-sim 0.8961051615899263,
+    :min-sim 0.8501532511723575}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "all_posts_table_1_20240412021122"
+     "answer"
+     "mail_thread"
+     "... (268 total)"],
+    :size 268,
+    :density 1.0,
+    :avg-sim 0.8954960370441875,
+    :min-sim 0.8500658381496393}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "quote"
+     "unsubscribe"
+     "characters"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "answer"
+     "... (267 total)"],
+    :size 267,
+    :density 1.0,
+    :avg-sim 0.8948169451934872,
+    :min-sim 0.8500054881892867}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "feature_flag"
+     "trivia_20240918215532"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "answer"
+     "... (267 total)"],
+    :size 267,
+    :density 1.0,
+    :avg-sim 0.8949800699431991,
+    :min-sim 0.8501468543193009}
+   {:members
+    ["all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "user activity"
+     "all_posts_table_1_20240412021122"
+     "answer"
+     "mail_thread"
+     "... (266 total)"],
+    :size 266,
+    :density 1.0,
+    :avg-sim 0.8952718459507628,
+    :min-sim 0.8502175930116821}
+   {:members
+    ["export_demo_20240917230918"
+     "book3"
+     "all_posts_table_1_20240412020937"
+     "record_version"
+     "user_group"
+     "commit_pull_request"
+     "thisone_20251128180856"
+     "webinar_registrant"
+     "some kind of test"
+     "jun_pw_20230621211411"
+     "filter"
+     "hello"
+     "groups"
+     "hi_document"
+     "catalog_product_website"
+     "identities"
+     "issue_comment"
+     "live_view"
+     "trivia_20240918215532"
+     "download_1__20241110183422"
+     "quote"
+     "unsubscribe"
+     "usage_stats"
+     "setting"
+     "book2"
+     "user_activity"
+     "document_bookmark"
+     "permissions"
+     "book4_20230628211759"
+     "out_20231114124952"
+     "... (266 total)"],
+    :size 266,
+    :density 1.0,
+    :avg-sim 0.8961535933815076,
+    :min-sim 0.8501521719956939}]},
+ :avg-linkage-hac nil}

@@ -1,0 +1,524 @@
+{:threshold 0.95,
+ :catalog :universe,
+ :embeddings "names_split_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 0, :median 0, :p75 1, :max 48, :mean 1.589874593590339},
+ :connected-components
+ {:count 2968,
+  :multi-member 615,
+  :top
+  [{:members
+    ["fake_table_121"
+     "fake_table_130"
+     "fake_table_11"
+     "fake_table_128"
+     "fake_table_194"
+     "fake_table_112"
+     "fake_table_189"
+     "fake_table_119"
+     "fake_table_125"
+     "fake_table_129"
+     "fake_table_13"
+     "fake_table_146"
+     "fake_table_131"
+     "fake_table_151"
+     "fake_table_113"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_126"
+     "fake_table_132"
+     "fake_table_81"
+     "fake_table_122"
+     "fake_table_12"
+     "fake_table_133"
+     "fake_table_91"
+     "fake_table_181"
+     "fake_table_102"
+     "fake_table_124"
+     "fake_table_141"
+     "fake_table_114"
+     "fake_table_93"
+     "... (197 total)"],
+    :size 197,
+    :density 0.07966435305086501,
+    :avg-sim 0.9289950733692057,
+    :min-sim 0.8745741610056095}
+   {:members
+    ["catalog_product_bundle_stock_index"
+     "catalog_product_bundle_price_index"
+     "catalog_product_index_price"
+     "catalog_product_index_price_bundle_tmp"
+     "catalog_product_index_price_bundle_idx"
+     "catalog_product_index_price_final_idx"
+     "catalog_product_index_price_final_tmp"
+     "catalog_product_index_price_idx"
+     "catalog_product_index_tier_price"
+     "catalog_product_index_group_price"
+     "catalog_product_index_price_tmp"
+     "catalog_product_index_price_bundle_sel_idx"
+     "catalog_product_index_price_opt_tmp"
+     "catalog_product_index_price_bundle_opt_tmp"
+     "catalog_product_index_price_bundle_sel_tmp"
+     "catalog_product_index_price_bundle_opt_idx"
+     "catalog_product_index_price_opt_idx"
+     "catalog_product_index_eav_idx"
+     "catalog_product_index_price_downlod_idx"
+     "catalog_category_product_index_idx"
+     "catalog_product_index_price_opt_agr_tmp"
+     "catalog_product_index_eav_tmp"
+     "catalog_product_index_price_downlod_tmp"
+     "catalog_product_index_price_opt_agr_idx"
+     "catalog_product_index_eav_decimal_idx"
+     "catalog_product_index_price_cfg_opt_tmp"
+     "catalog_product_index_price_cfg_opt_agr_tmp"
+     "catalog_product_index_price_cfg_opt_agr_idx"
+     "catalog_product_index_price_cfg_opt_idx"
+     "catalog_product_index_eav"
+     "... (40 total)"],
+    :size 40,
+    :density 0.1282051282051282,
+    :avg-sim 0.9063158281915387,
+    :min-sim 0.7821813251080656}
+   {:members
+    ["pokemon_v2_moveattributemap"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_moveattributename"
+     "pokemon_v2_moveattributedescription"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_movetargetdescription"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_movemetacategorydescription"
+     "pokemon_v2_movelearnmethodname"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_itemattribute"
+     "pokemon_v2_pokemonspeciesdescription"
+     "pokemon_v2_movemetaailment"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_pokedexdescription"
+     "pokemon_v2_movemetaailmentname"
+     "pokemon_v2_characteristic"
+     "pokemon_v2_movetargetname"
+     "pokemon_v2_movename"],
+    :size 22,
+    :density 0.1385281385281385,
+    :avg-sim 0.9043538323738135,
+    :min-sim 0.8294672692092094}
+   {:members
+    ["2ecb7779"
+     "2ecb7779_20241219182434"
+     "c_20230531084957"
+     "111_20240619132549"
+     "2_20231227190128"
+     "c_20230531083946"
+     "c_20230531084223"
+     "cc_20240426182349"
+     "all_20230825133017"
+     "thisone_20251128180856"
+     "april_20230622183131"
+     "march_20230622180623"
+     "all_20241206222950"
+     "all_20250926094306"
+     "orders2_20231130164757"
+     "date_20250430184400"
+     "deliveries_20240927175630"
+     "deliveries_20240927162804"],
+    :size 18,
+    :density 0.1764705882352941,
+    :avg-sim 0.9277266108639335,
+    :min-sim 0.8639059579708505}
+   {:members
+    ["trivia_20240918165005"
+     "trivia_20240918215532"
+     "trivia_20240918212836"
+     "trivia_game_20240918223942"
+     "trivia_20240918213955"
+     "trivia_game_20240918224115"
+     "trivia_20240918213823"
+     "trivia_20240918214314"
+     "trivia_game_20240918223949"
+     "trivia_20240918221412"
+     "trivia_game_20240918224102"
+     "trivia_20240918152008"
+     "trivia_20240918151922"
+     "trivia_20240918214441"
+     "trivia_20240918215633"],
+    :size 15,
+    :density 1.0,
+    :avg-sim 0.9798112359582567,
+    :min-sim 0.9537273308066346}
+   {:members
+    ["sheet1_20240919001311"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "sheet_20240918230547"
+     "sheet3_20240918215719"
+     "sheet_20240918230541"
+     "sheet_20240918230514"
+     "sheet3_20240918220135"
+     "sheet22_20240918203326"
+     "sheet1_20240918151816"
+     "sheet23_20240918213519"
+     "sheet1_20240919001319"
+     "sheet_20240918230506"
+     "sheet22_20240918203340"],
+    :size 14,
+    :density 0.956043956043956,
+    :avg-sim 0.9681217908908436,
+    :min-sim 0.9451195604657534}
+   {:members
+    ["metabase_experts_tracking_sheet_15"
+     "metabase_experts_tracking_sheet_14"
+     "metabase_experts_tracking_sheet_18"
+     "metabase_experts_tracking_sheet_8"
+     "metabase_experts_tracking_sheet_10"
+     "metabase_experts_tracking_sheet_11"
+     "metabase_experts_tracking_sheet_17"
+     "metabase_experts_tracking_sheet_16"
+     "metabase_experts_tracking_sheet_12"
+     "metabase_experts_tracking_sheet_9"
+     "metabase_experts_tracking_sheet_13"],
+    :size 11,
+    :density 1.0,
+    :avg-sim 0.9786983507245853,
+    :min-sim 0.9677619191166293}
+   {:members
+    ["characters_20230627161111"
+     "characters_20230613124615"
+     "characters_20230627153614"
+     "characters_20230713152305"
+     "characters_20230615080052"
+     "characters_20230626140310"
+     "characters_20230703143654"
+     "characters_20230704072057"
+     "characters_20230626113335"
+     "characters_20230628073147"
+     "characters_20230703144119"],
+    :size 11,
+    :density 1.0,
+    :avg-sim 0.9871392597994264,
+    :min-sim 0.9751526511611865}
+   {:members
+    ["pull request review"
+     "pull_request_review_comments"
+     "pull_request_review"
+     "pull_request_ready_for_review_history"
+     "pull request - demo"
+     "commit_pull_request"
+     "pull request commit"
+     "pull_request"
+     "pull request - duplicate"
+     "pull request"],
+    :size 10,
+    :density 0.4666666666666667,
+    :avg-sim 0.9489035100476736,
+    :min-sim 0.8994241751291264}
+   {:members
+    ["untitled 1"
+     "1"
+     "document"
+     "table_1"
+     "large_table_2"
+     "table1"
+     "table2"
+     "test_table_1"
+     "table_test_1"
+     "test_table2"],
+    :size 10,
+    :density 0.3111111111111111,
+    :avg-sim 0.9208683729173804,
+    :min-sim 0.8317777360680589}
+   {:members
+    ["test_20260121163710"
+     "test_20230620170201"
+     "test_20231204115443"
+     "test_20260121204916"
+     "test_20231016155322"
+     "test_20240418115639"
+     "test_another_20240918201007"
+     "test_another_20240918201114"
+     "test_another_20240918201330"],
+    :size 9,
+    :density 0.5277777777777778,
+    :avg-sim 0.9575999348411798,
+    :min-sim 0.9330772047101676}
+   {:members
+    ["calendar_information___events__6__20230719190915"
+     "calendar_information___events__4__20230713171925"
+     "calendar_information___events__5__20230720195839"
+     "calendar_information___events__7__20230721122534"
+     "calendar_information___events__2__20230710224244"
+     "calendar_information___events__5__20230719145022"
+     "calendar_information___events__7__20230719192220"
+     "calendar_information___events__6__20230720203438"
+     "calendar_information___events_final_20230712171222"],
+    :size 9,
+    :density 0.861111111111111,
+    :avg-sim 0.9682645542070838,
+    :min-sim 0.9357470901937814}
+   {:members
+    ["sankey_data_20241126165345"
+     "sankey_data_20241122194931"
+     "sankey_data__2__20241122201033"
+     "sankey_data_20241126165004"
+     "sankey_data_20241126165701"
+     "sankey_data_l_q_i2d_5hsk3aop8y_d_1__20241206030844"
+     "sankey_dataset_4_20241122202347"
+     "sankey_dataset_4_20241122201115"
+     "sankey_test_data_l_q_i2d_5hsk3aop8y_d_4__20241206033126"],
+    :size 9,
+    :density 0.4166666666666667,
+    :avg-sim 0.9533620565612425,
+    :min-sim 0.9067349900738286}
+   {:members
+    ["mark's question"
+     "question"
+     "post_link"
+     "post link"
+     "answer"
+     "answer_choice"
+     "question_and_answer"
+     "let's see - modified"],
+    :size 8,
+    :density 0.4285714285714286,
+    :avg-sim 0.9459909040060527,
+    :min-sim 0.9046385455760461}
+   {:members
+    ["customers 286452"
+     "customers_286452_20240530173306"
+     "customers_10000_20240530173511"
+     "customers_10000_20240530173441"
+     "customers_1000_20250520124535"
+     "customers_1000_20250520124248"
+     "customers_1000_20250520124624"
+     "customers_100000_20240530173548"],
+    :size 8,
+    :density 0.7857142857142857,
+    :avg-sim 0.9705732652363498,
+    :min-sim 0.9293241457115958}]},
+ :greedy-cliques
+ {:count 3351,
+  :multi-member 998,
+  :top
+  [{:members
+    ["trivia_20240918215532"
+     "trivia_20240918212836"
+     "trivia_game_20240918223942"
+     "trivia_20240918213955"
+     "trivia_game_20240918224115"
+     "trivia_20240918213823"
+     "trivia_20240918214314"
+     "trivia_game_20240918223949"
+     "trivia_20240918221412"
+     "trivia_game_20240918224102"
+     "trivia_20240918152008"
+     "trivia_20240918151922"
+     "trivia_20240918214441"
+     "trivia_20240918165005"
+     "trivia_20240918215633"],
+    :size 15,
+    :density 1.0,
+    :avg-sim 0.9798112359582566,
+    :min-sim 0.9537273308066346}
+   {:members
+    ["sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "sheet_20240918230547"
+     "sheet3_20240918215719"
+     "sheet_20240918230541"
+     "sheet1_20240919001311"
+     "sheet_20240918230514"
+     "sheet3_20240918220135"
+     "sheet22_20240918203326"
+     "sheet23_20240918213519"
+     "sheet_20240918230506"
+     "sheet22_20240918203340"],
+    :size 12,
+    :density 1.0,
+    :avg-sim 0.9699709428332254,
+    :min-sim 0.9543064045415892}
+   {:members
+    ["sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "sheet_20240918230547"
+     "sheet3_20240918215719"
+     "sheet_20240918230541"
+     "sheet1_20240919001311"
+     "sheet_20240918230514"
+     "sheet3_20240918220135"
+     "sheet1_20240918151816"
+     "sheet23_20240918213519"
+     "sheet1_20240919001319"
+     "sheet_20240918230506"],
+    :size 12,
+    :density 1.0,
+    :avg-sim 0.9702661771012511,
+    :min-sim 0.9539249805181638}
+   {:members
+    ["metabase_experts_tracking_sheet_14"
+     "metabase_experts_tracking_sheet_18"
+     "metabase_experts_tracking_sheet_8"
+     "metabase_experts_tracking_sheet_10"
+     "metabase_experts_tracking_sheet_11"
+     "metabase_experts_tracking_sheet_15"
+     "metabase_experts_tracking_sheet_17"
+     "metabase_experts_tracking_sheet_16"
+     "metabase_experts_tracking_sheet_12"
+     "metabase_experts_tracking_sheet_9"
+     "metabase_experts_tracking_sheet_13"],
+    :size 11,
+    :density 1.0,
+    :avg-sim 0.9786983507245853,
+    :min-sim 0.9677619191166293}
+   {:members
+    ["characters_20230627161111"
+     "characters_20230613124615"
+     "characters_20230627153614"
+     "characters_20230713152305"
+     "characters_20230615080052"
+     "characters_20230626140310"
+     "characters_20230703143654"
+     "characters_20230704072057"
+     "characters_20230626113335"
+     "characters_20230628073147"
+     "characters_20230703144119"],
+    :size 11,
+    :density 1.0,
+    :avg-sim 0.9871392597994264,
+    :min-sim 0.9751526511611865}
+   {:members
+    ["fake_table_11"
+     "fake_table_121"
+     "fake_table_119"
+     "fake_table_81"
+     "fake_table_122"
+     "fake_table_91"
+     "fake_table_124"
+     "fake_table_114"
+     "fake_table_93"],
+    :size 9,
+    :density 1.0,
+    :avg-sim 0.9593468529532446,
+    :min-sim 0.9501613368993961}
+   {:members
+    ["fake_table_11"
+     "fake_table_121"
+     "fake_table_119"
+     "fake_table_111"
+     "fake_table_81"
+     "fake_table_122"
+     "fake_table_91"
+     "fake_table_124"
+     "fake_table_114"],
+    :size 9,
+    :density 1.0,
+    :avg-sim 0.9611072693444004,
+    :min-sim 0.9511933990742654}
+   {:members
+    ["fake_table_11"
+     "fake_table_121"
+     "fake_table_111"
+     "fake_table_81"
+     "fake_table_122"
+     "fake_table_12"
+     "fake_table_91"
+     "fake_table_124"
+     "fake_table_114"],
+    :size 9,
+    :density 1.0,
+    :avg-sim 0.9605044041803913,
+    :min-sim 0.9509663995358218}
+   {:members
+    ["fake_table_130"
+     "fake_table_121"
+     "fake_table_112"
+     "fake_table_131"
+     "fake_table_113"
+     "fake_table_132"
+     "fake_table_122"
+     "fake_table_141"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.9607107780817038,
+    :min-sim 0.950616259134235}
+   {:members
+    ["fake_table_134"
+     "fake_table_136"
+     "fake_table_13"
+     "fake_table_131"
+     "fake_table_132"
+     "fake_table_122"
+     "fake_table_142"
+     "fake_table_124"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.959909192456425,
+    :min-sim 0.950037901798991}
+   {:members
+    ["fake_table_118"
+     "fake_table_134"
+     "fake_table_136"
+     "fake_table_131"
+     "fake_table_132"
+     "fake_table_122"
+     "fake_table_142"
+     "fake_table_124"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.9583081250302966,
+    :min-sim 0.950037901798991}
+   {:members
+    ["fake_table_82"
+     "fake_table_11"
+     "fake_table_81"
+     "fake_table_122"
+     "fake_table_91"
+     "fake_table_124"
+     "fake_table_114"
+     "fake_table_93"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.9594255417463711,
+    :min-sim 0.9509380496133906}
+   {:members
+    ["fake_table_130"
+     "fake_table_121"
+     "fake_table_125"
+     "fake_table_13"
+     "fake_table_131"
+     "fake_table_122"
+     "fake_table_12"
+     "fake_table_124"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.9601316171325768,
+    :min-sim 0.9508386153269762}
+   {:members
+    ["fake_table_130"
+     "fake_table_121"
+     "fake_table_129"
+     "fake_table_13"
+     "fake_table_131"
+     "fake_table_132"
+     "fake_table_122"
+     "fake_table_124"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.9619506234445546,
+    :min-sim 0.9504199458064527}
+   {:members
+    ["fake_table_92"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_98"
+     "fake_table_94"
+     "fake_table_91"
+     "fake_table_90"
+     "fake_table_93"],
+    :size 8,
+    :density 1.0,
+    :avg-sim 0.961864549620422,
+    :min-sim 0.9519556997266145}]},
+ :avg-linkage-hac nil}

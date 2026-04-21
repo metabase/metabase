@@ -1,0 +1,392 @@
+{"0.50-0.60"
+ {:count 100,
+  :pairs
+  [{:a "new oss instances", :b "upgrades from oss", :similarity 5992}
+   {:a "setup_event", :b "action_event", :similarity 5960}
+   {:a "ms_address", :b "ms_user", :similarity 5945}
+   {:a "instance_events_monthly_usage", :b "daily_instance_feature_stats", :similarity 5919}
+   {:a "hi_audit_log", :b "activity_log", :similarity 5906}
+   {:a "hi_report_dashboard", :b "hi_report_card", :similarity 5893}
+   {:a "hi_dashboard_bookmark", :b "hi_dashboardcard_series", :similarity 5872}
+   {:a "new enterprise leads", :b "salesforce_lead", :similarity 5869}
+   {:a "ms_token", :b "token_usage_event", :similarity 5846}
+   {:a "gh_workflow_run", :b "gh_project_issue", :similarity 5831}
+   {:a "instance_events_monthly_usage", :b "unified_instance_event", :similarity 5825}
+   {:a "ms_subscription", :b "monthly_account_subscription_status_and_usage", :similarity 5818}
+   {:a "hi_timeline_event", :b "simple_event", :similarity 5815}
+   {:a "hi_notification_recipient", :b "hi_pulse_channel_recipient", :similarity 5808}
+   {:a "instance_events_monthly_usage", :b "monthly_account_usage", :similarity 5801}
+   {:a "hi_dashboard_bookmark", :b "hi_report_dashboardcard", :similarity 5787}
+   {:a "gh_workflow_run", :b "gh_issue", :similarity 5773}
+   {:a "ms_subscription", :b "stripe_subscription", :similarity 5753}
+   {:a "salesforce_opportunity_history", :b "account_history", :similarity 5732}
+   {:a "hi_timeline_event", :b "question_event", :similarity 5726}
+   {:a "pylon_organization", :b "pylon_ticket_comment", :similarity 5719}
+   {:a "ms_trial_up", :b "ms_product", :similarity 5717}
+   {:a "hi_report_dashboard", :b "hi_dashboardcard_series", :similarity 5708}
+   {:a "hi_dashboard_bookmark", :b "dashboard_event", :similarity 5704}
+   {:a "setup_event", :b "invite_event", :similarity 5679}
+   {:a "setup_event", :b "account_event", :similarity 5659}
+   {:a "setup_event", :b "database_event", :similarity 5655}
+   {:a "hi_report_dashboard", :b "hi_dashboard_bookmark", :similarity 5630}
+   {:a "pylon_organization", :b "pylon_ticket_reason", :similarity 5624}
+   {:a "instance_events_monthly_usage", :b "daily_instance_metrics", :similarity 5617}
+   {:a "gh_pull_request_commit", :b "gh_workflow_step", :similarity 5615}
+   {:a "new organization self-service signups", :b "arpa (self-service accounts)", :similarity 5600}
+   {:a "setup_event", :b "task_event", :similarity 5596}
+   {:a "setup_event", :b "question_event", :similarity 5582}
+   {:a "metabase_version", :b "hi_metabase_table", :similarity 5550}
+   {:a "ms_crm_article_feedback", :b "ms_crm_contact_request", :similarity 5546}
+   {:a "hi_pulse_card", :b "hi_card_bookmark", :similarity 5528}
+   {:a "hi_report_dashboard", :b "dashboard_event", :similarity 5517}
+   {:a "hi_pulse_card", :b "hi_report_card", :similarity 5513}
+   {:a "pylon_organization", :b "pylon_ticket_metric", :similarity 5512}
+   {:a "unified_instance_event", :b "simple_event", :similarity 5490}
+   {:a "ms_subscription", :b "ms_contract", :similarity 5485}
+   {:a "pylon_organization", :b "pylon_ticket_tag", :similarity 5475}
+   {:a "setup_event", :b "model_event", :similarity 5463}
+   {:a "ms_subscription", :b "ms_product", :similarity 5457}
+   {:a "ms_subscription", :b "ms_free_trial_response", :similarity 5426}
+   {:a "setup_event", :b "timeline_event", :similarity 5423}
+   {:a "gh_workflow_run", :b "gh_pull_request", :similarity 5416}
+   {:a "hi_collection", :b "hi_core_user", :similarity 5414}
+   {:a "ms_trial_up", :b "ms_subscription", :similarity 5392}
+   {:a "checkout funnel conversion rate", :b "self-service conversion rate", :similarity 5388}
+   {:a "unified_instance_event", :b "setup_event", :similarity 5367}
+   {:a "salesforce_lead", :b "pipedrive_lead", :similarity 5362}
+   {:a "instance_events_monthly_usage", :b "monthly_account_subscription_status_and_usage", :similarity 5351}
+   {:a "hi_timeline_event", :b "action_event", :similarity 5343}
+   {:a "instance_events_monthly_usage", :b "daily_instance_tracking_attributes", :similarity 5340}
+   {:a "hi_collection", :b "hi_channel", :similarity 5327}
+   {:a "gh_workflow_run", :b "gh_issue_reaction", :similarity 5319}
+   {:a "ms_token", :b "ms_product", :similarity 5308}
+   {:a "ms_token", :b "ms_user", :similarity 5304}
+   {:a "average customer lifetime (self-service accounts)", :b "self-service conversion rate", :similarity 5302}
+   {:a "ms_address", :b "ms_product", :similarity 5283}
+   {:a "hi_collection", :b "hi_segment", :similarity 5268}
+   {:a "ms_trial_up", :b "ms_contract", :similarity 5267}
+   {:a "visitors to checkout funnel", :b "visitors to website", :similarity 5263}
+   {:a "ms_subscription", :b "stripe_subscription_item", :similarity 5263}
+   {:a "visitors to website", :b "website_page_view", :similarity 5262}
+   {:a "average number of metrics per instance", :b "stg_selfhosted_daily_instance_metrics", :similarity 5252}
+   {:a "stripe_customer", :b "customer_survey", :similarity 5247}
+   {:a "gh_workflow_run", :b "gh_issue_assignee", :similarity 5232}
+   {:a "hi_report_dashboard", :b "hi_view_log", :similarity 5228}
+   {:a "instance_events_monthly_usage", :b "monthly_metric", :similarity 5198}
+   {:a "metabase_version", :b "hi_metabase_field_values", :similarity 5191}
+   {:a "ms_token", :b "ms_address", :similarity 5185}
+   {:a "ms_subscription", :b "hi_notification_subscription", :similarity 5183}
+   {:a "ms_token", :b "ms_contract", :similarity 5183}
+   {:a "instance_events_monthly_usage", :b "daily_instance_feature_availability", :similarity 5176}
+   {:a "hi_collection", :b "hi_notification", :similarity 5154}
+   {:a "gh_workflow_run", :b "gh_pull_request_commit", :similarity 5134}
+   {:a "stripe_subscription", :b "monthly_account_subscription_status", :similarity 5133}
+   {:a "ms_subscription", :b "ms_contracted_product", :similarity 5128}
+   {:a "hi_collection", :b "hi_pulse", :similarity 5121}
+   {:a "stripe_subscription", :b "ms_subscription_version", :similarity 5105}
+   {:a "gh_pull_request_commit", :b "gh_workflow_job", :similarity 5103}
+   {:a "ms_trial_up", :b "ms_subscription_version", :similarity 5100}
+   {:a "hi_timeline_event", :b "account_event", :similarity 5091}
+   {:a "stripe_customer", :b "monthly_revenue_customer", :similarity 5086}
+   {:a "hi_collection", :b "hi_timeline", :similarity 5076}
+   {:a "unified_instance_event", :b "model_event", :similarity 5072}
+   {:a "ms_crm_article_feedback", :b "feedback", :similarity 5062}
+   {:a "instance_events_monthly_usage", :b "monthly_revenue", :similarity 5060}
+   {:a "gh_workflow_run", :b "gh_issue_comment", :similarity 5055}
+   {:a "gh_workflow_run", :b "gh_pull_request_review", :similarity 5040}
+   {:a "instance_events_monthly_usage", :b "hi_query_execution_monthly", :similarity 5036}
+   {:a "ms_subscription", :b "ms_user", :similarity 5035}
+   {:a "hi_collection", :b "hi_setting", :similarity 5031}
+   {:a "average customer lifetime (self-service accounts)", :b "self-service trial activation rate", :similarity 5027}
+   {:a "average customer lifetime (self-service accounts)", :b "self_hosted_instance_monthly_usage", :similarity 5022}
+   {:a "ms_subscription", :b "ms_address", :similarity 5015}
+   {:a "unified_instance_event", :b "setting_event", :similarity 5013}]},
+ "0.60-0.70"
+ {:count 100,
+  :pairs
+  [{:a "accounts", :b "account_history", :similarity 6997}
+   {:a "hi_collection", :b "hi_collection_bookmark", :similarity 6969}
+   {:a "hi_dashboard_bookmark", :b "hi_collection_bookmark", :similarity 6940}
+   {:a "hi_pulse_card", :b "hi_notification_card", :similarity 6930}
+   {:a "gh_issue", :b "gh_issue_assignee", :similarity 6914}
+   {:a "hi_metabase_field_values", :b "hi_metabase_table", :similarity 6908}
+   {:a "stripe_product", :b "ms_stripe_charge", :similarity 6892}
+   {:a "question_event", :b "simple_event", :similarity 6881}
+   {:a "ms_address", :b "ms_contact", :similarity 6878}
+   {:a "stripe_refund", :b "stripe_credit_note", :similarity 6872}
+   {:a "stripe_subscription", :b "stripe_refund", :similarity 6865}
+   {:a "stripe_subscription", :b "stripe_invoice_item", :similarity 6863}
+   {:a "stripe_price", :b "stripe_credit_note", :similarity 6841}
+   {:a "stripe_refund", :b "stripe_charge", :similarity 6839}
+   {:a "ms_subscription_history", :b "ms_subscription_version", :similarity 6828}
+   {:a "ms_token", :b "ms_air_gapped_token", :similarity 6808}
+   {:a "ms_contact", :b "salesforce_contact", :similarity 6799}
+   {:a "hi_notification_card", :b "hi_notification_handler", :similarity 6790}
+   {:a "ms_audit_record_version", :b "ms_audit_event", :similarity 6778}
+   {:a "setup_event", :b "simple_event", :similarity 6774}
+   {:a "gh_issue", :b "gh_user", :similarity 6750}
+   {:a "hi_dashboard_bookmark", :b "hi_dashboard_tab", :similarity 6749}
+   {:a "stripe_subscription", :b "stripe_price_tier", :similarity 6748}
+   {:a "pipedrive_deal", :b "pipedrive_deal_field_history", :similarity 6747}
+   {:a "stripe_price", :b "stripe_invoice_item", :similarity 6734}
+   {:a "hi_dashboard_bookmark", :b "hi_card_bookmark", :similarity 6731}
+   {:a "hi_pulse_card", :b "hi_pulse_channel_recipient", :similarity 6708}
+   {:a "visitors to checkout funnel", :b "checkout funnel conversion rate", :similarity 6691}
+   {:a "instance_events_monthly_usage", :b "self_hosted_instance_monthly_usage", :similarity 6683}
+   {:a "stripe_refund", :b "ms_stripe_charge", :similarity 6678}
+   {:a "stripe_product", :b "stripe_credit_note", :similarity 6677}
+   {:a "monthly_account_usage", :b "monthly_revenue", :similarity 6672}
+   {:a "stripe_product", :b "stripe_price_tier", :similarity 6671}
+   {:a "daily_instance_feature_availability", :b "daily_instance_metrics", :similarity 6640}
+   {:a "linear_team_project", :b "linear_project_member", :similarity 6633}
+   {:a "stripe_refund", :b "stripe_invoice", :similarity 6621}
+   {:a "daily_instance_feature_availability", :b "daily_instance_tracking_attributes", :similarity 6614}
+   {:a "hi_implicit_action", :b "hi_action", :similarity 6600}
+   {:a "stripe_customer", :b "stripe_price_tier", :similarity 6595}
+   {:a "hi_dashboard_tab", :b "hi_report_dashboardcard", :similarity 6589}
+   {:a "hi_report_dashboardcard", :b "hi_report_card", :similarity 6571}
+   {:a "pylon_user", :b "pylon_ticket", :similarity 6562}
+   {:a "monthly_instance_feature_stats", :b "self_hosted_instance_monthly_usage", :similarity 6538}
+   {:a "hi_view_log", :b "activity_log", :similarity 6519}
+   {:a "hi_permissions_group_membership", :b "hi_data_permission", :similarity 6506}
+   {:a "stripe_refund", :b "stripe_subscription_item", :similarity 6485}
+   {:a "stripe_price", :b "stripe_refund", :similarity 6478}
+   {:a "pylon_user", :b "pylon_ticket_link", :similarity 6457}
+   {:a "average number of metrics per instance", :b "daily_instance_metrics", :similarity 6430}
+   {:a "hi_dashboard_tab", :b "hi_dashboardcard_series", :similarity 6429}
+   {:a "open p1 bugs", :b "open bugs", :similarity 6400}
+   {:a "ms_token_check", :b "salesforce_token", :similarity 6400}
+   {:a "pylon_user", :b "pylon_ticket_comment", :similarity 6395}
+   {:a "stripe_refund", :b "stripe_product", :similarity 6394}
+   {:a "hi_query_execution", :b "hi_native_query_snippet", :similarity 6369}
+   {:a "question_event", :b "action_event", :similarity 6360}
+   {:a "monthly_account_usage", :b "monthly_metric", :similarity 6355}
+   {:a "daily_instance_metrics", :b "monthly_instance_feature_stats", :similarity 6351}
+   {:a "hi_audit_log", :b "ms_audit_event", :similarity 6350}
+   {:a "pylon_organization", :b "pylon_ticket", :similarity 6342}
+   {:a "metabase_version", :b "hi_metabase_database", :similarity 6334}
+   {:a "gh_issue", :b "gh_test_result", :similarity 6333}
+   {:a "gh_issue", :b "gh_milestone", :similarity 6317}
+   {:a "stripe_customer", :b "customer", :similarity 6310}
+   {:a "salesforce_email", :b "salesforce_contact", :similarity 6309}
+   {:a "ms_subscription_history", :b "monthly_account_subscription_status_and_usage", :similarity 6304}
+   {:a "hi_pulse_channel_recipient", :b "hi_pulse", :similarity 6297}
+   {:a "ms_hosted_instance", :b "ms_hosted_instance_scheduled_maintenance", :similarity 6290}
+   {:a "hi_notification_card", :b "hi_card_bookmark", :similarity 6251}
+   {:a "monthly_instance_feature_stats", :b "monthly_metric", :similarity 6251}
+   {:a "self-service trial activation rate", :b "self-service conversion rate", :similarity 6226}
+   {:a "ms_subscription_history", :b "monthly_account_subscription_status", :similarity 6226}
+   {:a "salesforce_opportunity_history", :b "salesforce_opportunity", :similarity 6219}
+   {:a "daily_instance_feature_stats", :b "stg_selfhosted_daily_instance_metrics", :similarity 6217}
+   {:a "hi_notification", :b "hi_action", :similarity 6211}
+   {:a "linear_project", :b "linear_user", :similarity 6177}
+   {:a "accounts", :b "account_event", :similarity 6173}
+   {:a "stripe_refund", :b "stripe_invoice_item", :similarity 6164}
+   {:a "monthly_revenue_customer", :b "monthly_account_usage", :similarity 6155}
+   {:a "hi_notification_card", :b "hi_report_card", :similarity 6154}
+   {:a "hi_collection", :b "hi_action", :similarity 6152}
+   {:a "ms_token_check_deduped", :b "ms_token", :similarity 6147}
+   {:a "ms_subscription", :b "monthly_account_subscription_status", :similarity 6145}
+   {:a "hi_collection", :b "hi_document", :similarity 6126}
+   {:a "hi_notification", :b "hi_pulse", :similarity 6122}
+   {:a "ms_hosted_instance", :b "ms_hosted_instance_quota_usage", :similarity 6110}
+   {:a "hi_document", :b "hi_action", :similarity 6100}
+   {:a "hi_task_history", :b "task_event", :similarity 6096}
+   {:a "pylon_organization", :b "pylon_ticket_link", :similarity 6090}
+   {:a "question_event", :b "timeline_event", :similarity 6086}
+   {:a "ms_subscription_history", :b "account_history", :similarity 6078}
+   {:a "gh_workflow_step", :b "gh_pull_request", :similarity 6057}
+   {:a "pylon_organization", :b "pylon_ticket_product_area", :similarity 6045}
+   {:a "question_event", :b "task_event", :similarity 6026}
+   {:a "question_event", :b "account_event", :similarity 6025}
+   {:a "hi_notification", :b "hi_setting", :similarity 6024}
+   {:a "linear_project", :b "linear_team", :similarity 6021}
+   {:a "metabase_version", :b "hi_metabase_field", :similarity 6018}
+   {:a "hi_dashboard_tab", :b "dashboard_event", :similarity 6012}
+   {:a "hi_secret", :b "hi_action", :similarity 6007}]},
+ "0.70-0.75"
+ {:count 56,
+  :pairs
+  [{:a "hi_pulse_channel", :b "hi_pulse", :similarity 7491}
+   {:a "stripe_invoice", :b "stripe_charge", :similarity 7491}
+   {:a "pylon_ticket_metric", :b "pylon_ticket_reason", :similarity 7450}
+   {:a "instance_events_monthly_usage", :b "monthly_instance_feature_stats", :similarity 7448}
+   {:a "hi_query_execution", :b "hi_query_execution_daily", :similarity 7444}
+   {:a "ms_stripe_charge", :b "stripe_invoice", :similarity 7431}
+   {:a "pipedrive_organization", :b "pipedrive_person", :similarity 7424}
+   {:a "stripe_product", :b "stripe_subscription_item", :similarity 7403}
+   {:a "stripe_credit_note", :b "stripe_invoice", :similarity 7391}
+   {:a "stripe_product", :b "stripe_charge", :similarity 7383}
+   {:a "monthly_revenue_customer", :b "monthly_revenue_change", :similarity 7380}
+   {:a "simple_event", :b "action_event", :similarity 7373}
+   {:a "stripe_customer", :b "stripe_price", :similarity 7367}
+   {:a "timeline_event", :b "hi_timeline", :similarity 7366}
+   {:a "ms_hosted_instance_action", :b "ms_hosted_instance", :similarity 7359}
+   {:a "ms_token", :b "ms_latest_token_check", :similarity 7350}
+   {:a "salesforce_account", :b "accounts", :similarity 7348}
+   {:a "daily_instance_metrics", :b "daily_instance_tracking_attributes", :similarity 7337}
+   {:a "pylon_ticket_tag", :b "pylon_ticket_metric", :similarity 7320}
+   {:a "ms_token", :b "ms_first_token_check", :similarity 7316}
+   {:a "stripe_subscription", :b "stripe_product", :similarity 7314}
+   {:a "simple_event", :b "setting_event", :similarity 7309}
+   {:a "stripe_subscription", :b "stripe_price", :similarity 7308}
+   {:a "ms_contact", :b "contact", :similarity 7301}
+   {:a "ms_stripe_charge", :b "stripe_subscription_item", :similarity 7291}
+   {:a "pylon_ticket_metric", :b "pylon_ticket_product_area", :similarity 7288}
+   {:a "ms_contracted_product", :b "ms_contract", :similarity 7286}
+   {:a "ms_token_check_deduped", :b "ms_latest_token_check", :similarity 7281}
+   {:a "pylon_ticket_reason", :b "pylon_ticket_product_area", :similarity 7279}
+   {:a "stripe_charge", :b "stripe_subscription_item", :similarity 7260}
+   {:a "gh_issue_reaction", :b "gh_project_issue", :similarity 7254}
+   {:a "hi_report_dashboard", :b "hi_dashboard_tab", :similarity 7253}
+   {:a "pylon_ticket_comment", :b "pylon_ticket_product_area", :similarity 7234}
+   {:a "pipedrive_lead", :b "pipedrive_person", :similarity 7204}
+   {:a "ms_token_check_deduped", :b "ms_first_token_check", :similarity 7192}
+   {:a "stripe_credit_note", :b "stripe_subscription_item", :similarity 7169}
+   {:a "stripe_customer", :b "stripe_refund", :similarity 7167}
+   {:a "hi_notification_subscription", :b "hi_notification_handler", :similarity 7164}
+   {:a "lever_application_history", :b "lever_application", :similarity 7164}
+   {:a "action_event", :b "task_event", :similarity 7139}
+   {:a "stripe_customer", :b "stripe_invoice_item", :similarity 7137}
+   {:a "hi_notification_recipient", :b "hi_notification_handler", :similarity 7135}
+   {:a "contact", :b "salesforce_contact", :similarity 7125}
+   {:a "ms_stripe_charge", :b "stripe_invoice_item", :similarity 7110}
+   {:a "stripe_product", :b "stripe_invoice", :similarity 7103}
+   {:a "pylon_organization", :b "pylon_user", :similarity 7102}
+   {:a "hi_metabase_field_values", :b "hi_metabase_database", :similarity 7088}
+   {:a "stripe_price", :b "stripe_product", :similarity 7088}
+   {:a "hi_notification_card", :b "hi_notification_recipient", :similarity 7063}
+   {:a "stripe_charge", :b "stripe_invoice_item", :similarity 7058}
+   {:a "stripe_price", :b "stripe_invoice", :similarity 7057}
+   {:a "monthly_account_usage", :b "monthly_account_subscription_status", :similarity 7033}
+   {:a "ms_contact", :b "ms_crm_contact_request", :similarity 7021}
+   {:a "hi_query_execution", :b "hi_query_execution_monthly", :similarity 7021}
+   {:a "stripe_price", :b "stripe_subscription_item", :similarity 7020}
+   {:a "monthly_account_usage", :b "self_hosted_instance_monthly_usage", :similarity 7014}]},
+ "0.75-0.80"
+ {:count 51,
+  :pairs
+  [{:a "pipedrive_deal", :b "pipedrive_person", :similarity 7996}
+   {:a "monthly_account_usage", :b "monthly_account_subscription_status_and_usage", :similarity 7981}
+   {:a "hi_notification_card", :b "hi_notification", :similarity 7976}
+   {:a "gh_issue", :b "gh_project_issue", :similarity 7957}
+   {:a "hi_pulse_card", :b "hi_pulse", :similarity 7955}
+   {:a "pipedrive_deal", :b "pipedrive_organization", :similarity 7944}
+   {:a "hi_metabase_field", :b "hi_metabase_table", :similarity 7940}
+   {:a "hi_audit_log", :b "hi_view_log", :similarity 7934}
+   {:a "ms_crm_article_feedback", :b "ms_crm_product_feedback", :similarity 7925}
+   {:a "setup_event", :b "setting_event", :similarity 7924}
+   {:a "linear_team_project", :b "linear_project", :similarity 7905}
+   {:a "daily_instance_feature_stats", :b "daily_instance_feature_availability", :similarity 7871}
+   {:a "lever_job", :b "lever_application", :similarity 7850}
+   {:a "daily_instance_metrics", :b "stg_selfhosted_daily_instance_metrics", :similarity 7834}
+   {:a "stripe_price", :b "stripe_charge", :similarity 7830}
+   {:a "stripe_customer", :b "stripe_charge", :similarity 7818}
+   {:a "ms_token", :b "salesforce_token", :similarity 7812}
+   {:a "stripe_customer", :b "stripe_invoice", :similarity 7779}
+   {:a "hi_notification_recipient", :b "hi_notification", :similarity 7770}
+   {:a "hi_first_time_action", :b "hi_action", :similarity 7760}
+   {:a "hi_notification", :b "hi_notification_handler", :similarity 7755}
+   {:a "stripe_customer", :b "stripe_credit_note", :similarity 7704}
+   {:a "gh_issue", :b "gh_issue_label", :similarity 7703}
+   {:a "monthly_revenue_change_customer", :b "monthly_revenue", :similarity 7700}
+   {:a "stripe_customer", :b "stripe_subscription_item", :similarity 7693}
+   {:a "hi_card_bookmark", :b "hi_collection_bookmark", :similarity 7690}
+   {:a "hi_notification_card", :b "hi_notification_subscription", :similarity 7679}
+   {:a "gh_issue", :b "gh_issue_customer_mention", :similarity 7657}
+   {:a "pipedrive_deal", :b "pipedrive_lead", :similarity 7644}
+   {:a "hi_notification_recipient", :b "hi_notification_subscription", :similarity 7618}
+   {:a "ms_subscription", :b "ms_subscription_history", :similarity 7616}
+   {:a "stripe_price", :b "ms_stripe_charge", :similarity 7605}
+   {:a "gh_issue_customer_mention", :b "gh_issue_comment", :similarity 7595}
+   {:a "stripe_customer", :b "ms_stripe_charge", :similarity 7594}
+   {:a "stripe_subscription", :b "stripe_credit_note", :similarity 7593}
+   {:a "stripe_subscription", :b "stripe_charge", :similarity 7592}
+   {:a "stripe_subscription", :b "stripe_invoice", :similarity 7591}
+   {:a "salesforce_account", :b "account", :similarity 7583}
+   {:a "pylon_ticket_tag", :b "pylon_ticket_product_area", :similarity 7580}
+   {:a "stripe_invoice", :b "stripe_subscription_item", :similarity 7579}
+   {:a "ms_contracted_product", :b "ms_product", :similarity 7575}
+   {:a "stripe_credit_note", :b "stripe_charge", :similarity 7571}
+   {:a "hi_report_dashboardcard", :b "hi_dashboardcard_series", :similarity 7563}
+   {:a "pylon_ticket_link", :b "pylon_ticket_metric", :similarity 7556}
+   {:a "stripe_subscription", :b "ms_stripe_charge", :similarity 7545}
+   {:a "hi_pulse_card", :b "hi_pulse_channel", :similarity 7526}
+   {:a "ms_trial_up", :b "ms_free_trial_response", :similarity 7525}
+   {:a "pylon_ticket_comment", :b "pylon_ticket_metric", :similarity 7512}
+   {:a "stripe_credit_note", :b "ms_stripe_charge", :similarity 7512}
+   {:a "daily_instance_feature_stats", :b "daily_instance_tracking_attributes", :similarity 7511}
+   {:a "gh_issue_reaction", :b "gh_issue_comment", :similarity 7511}]},
+ "0.80-0.85"
+ {:count 29,
+  :pairs
+  [{:a "gh_workflow_job", :b "gh_workflow_step", :similarity 8477}
+   {:a "ms_first_token_check", :b "ms_latest_token_check", :similarity 8476}
+   {:a "pylon_ticket_link", :b "pylon_ticket_product_area", :similarity 8396}
+   {:a "monthly_revenue_customer", :b "monthly_revenue", :similarity 8356}
+   {:a "gh_workflow_run", :b "gh_workflow_step", :similarity 8352}
+   {:a "hi_report_dashboard", :b "hi_report_dashboardcard", :similarity 8332}
+   {:a "hi_pulse_channel_recipient", :b "hi_pulse_channel", :similarity 8329}
+   {:a "customer_health_score", :b "customer_health_score_history", :similarity 8325}
+   {:a "hi_notification", :b "hi_notification_subscription", :similarity 8313}
+   {:a "stripe_customer", :b "stripe_subscription", :similarity 8288}
+   {:a "gh_issue_label_history", :b "gh_issue_label", :similarity 8274}
+   {:a "pylon_ticket_comment", :b "pylon_ticket_link", :similarity 8237}
+   {:a "pylon_ticket", :b "pylon_ticket_product_area", :similarity 8216}
+   {:a "ms_token", :b "ms_token_check", :similarity 8168}
+   {:a "pylon_ticket_link", :b "pylon_ticket_reason", :similarity 8153}
+   {:a "hi_metabase_field", :b "hi_metabase_database", :similarity 8151}
+   {:a "daily_instance_feature_stats", :b "daily_instance_metrics", :similarity 8143}
+   {:a "daily_instance_feature_stats", :b "monthly_instance_feature_stats", :similarity 8136}
+   {:a "gh_pull_request_commit", :b "gh_pull_request_review", :similarity 8120}
+   {:a "pylon_ticket_comment", :b "pylon_ticket_tag", :similarity 8085}
+   {:a "pylon_ticket_tag", :b "pylon_ticket_reason", :similarity 8082}
+   {:a "lever_job", :b "lever_interview", :similarity 8071}
+   {:a "stripe_customer", :b "stripe_product", :similarity 8060}
+   {:a "hi_query_execution_daily", :b "hi_query_execution_monthly", :similarity 8053}
+   {:a "ms_token_check_deduped", :b "ms_token_check", :similarity 8037}
+   {:a "stripe_subscription_item", :b "stripe_invoice_item", :similarity 8036}
+   {:a "pylon_ticket", :b "pylon_ticket_metric", :similarity 8031}
+   {:a "stripe_price", :b "stripe_price_tier", :similarity 8025}
+   {:a "linear_project", :b "linear_project_member", :similarity 8016}]},
+ "0.85-0.90"
+ {:count 20,
+  :pairs
+  [{:a "gh_pull_request_review", :b "gh_pull_request", :similarity 8925}
+   {:a "gh_pull_request_commit", :b "gh_pull_request", :similarity 8890}
+   {:a "hi_timeline_event", :b "hi_timeline", :similarity 8867}
+   {:a "usage_stats_anonymous", :b "usage_stats_anonymous_history", :similarity 8849}
+   {:a "pylon_ticket", :b "pylon_ticket_tag", :similarity 8832}
+   {:a "ms_token_check", :b "ms_latest_token_check", :similarity 8817}
+   {:a "monthly_revenue_customer", :b "monthly_revenue_change_customer", :similarity 8800}
+   {:a "monthly_revenue_change_customer", :b "monthly_revenue_change", :similarity 8780}
+   {:a "monthly_revenue_change", :b "monthly_revenue", :similarity 8700}
+   {:a "gh_workflow_run", :b "gh_workflow_job", :similarity 8699}
+   {:a "ms_subscription", :b "ms_subscription_version", :similarity 8691}
+   {:a "hi_metabase_field_values", :b "hi_metabase_field", :similarity 8665}
+   {:a "pylon_ticket_comment", :b "pylon_ticket_reason", :similarity 8653}
+   {:a "linear_team_project", :b "linear_team", :similarity 8636}
+   {:a "ms_hosting_scheduled_maintenance", :b "ms_hosted_instance_scheduled_maintenance", :similarity 8619}
+   {:a "gh_issue", :b "gh_issue_comment", :similarity 8606}
+   {:a "gh_issue", :b "gh_issue_reaction", :similarity 8591}
+   {:a "hi_metabase_table", :b "hi_metabase_database", :similarity 8578}
+   {:a "pylon_ticket_tag", :b "pylon_ticket_link", :similarity 8537}
+   {:a "gh_test_summary", :b "gh_test_result", :similarity 8515}]},
+ "0.90-0.95"
+ {:count 9,
+  :pairs
+  [{:a "pylon_ticket", :b "pylon_ticket_link", :similarity 9196}
+   {:a "pylon_ticket", :b "pylon_ticket_reason", :similarity 9144}
+   {:a "ms_stripe_charge", :b "stripe_charge", :similarity 9127}
+   {:a "website_page_view_anonymous", :b "page_view_anonymous", :similarity 9123}
+   {:a "accounts", :b "account", :similarity 9102}
+   {:a "stripe_subscription", :b "stripe_subscription_item", :similarity 9044}
+   {:a "hi_timeline_event", :b "timeline_event", :similarity 9026}
+   {:a "ms_token_check", :b "ms_first_token_check", :similarity 9021}
+   {:a "pylon_ticket", :b "pylon_ticket_comment", :similarity 9007}]},
+ "0.95-1.01"
+ {:count 3,
+  :pairs
+  [{:a "monthly_account_subscription_status_and_usage", :b "monthly_account_subscription_status", :similarity 9593}
+   {:a "metabase_version", :b "ms_metabase_version", :similarity 9553}
+   {:a "stripe_invoice", :b "stripe_invoice_item", :similarity 9512}]}}
