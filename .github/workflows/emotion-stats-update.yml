@@ -1,0 +1,49 @@
+name: Emotion Stats Update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 40 1 * * 2 # every Tuesday at 1:40
+
+jobs:
+  emotion-stats:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: get Emotion file count
+        id: get-emotion-file-count
+        run: |
+          total=$(./bin/count-emotion-files.sh | awk '/^Total:/ {print $2}')
+          echo "$total files importing @emotion/*"
+          echo "EMOTION_FILES=$total" >> $GITHUB_OUTPUT
+      - name: Upload count to Stats
+        uses: actions/github-script@v7
+        env:
+          EMOTION_FILES: ${{ steps.get-emotion-file-count.outputs.EMOTION_FILES }}
+          API_KEY: ${{ secrets.STATS_API_KEY }}
+        with:
+          script: | # js
+            const { uploadCsvToMb } = require('${{ github.workspace }}/.github/scripts/csv-to-mb.js');
+
+            console.log("EMOTION_FILES", Number(process.env.EMOTION_FILES));
+
+            const data = [
+              {
+                'Date': new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+                'Emotion Files': Number(process.env.EMOTION_FILES),
+              }
+            ];
+
+            uploadCsvToMb({
+              baseUrl: 'https://stats.metabase.com',
+              tableId: 76283,
+              jsonData: data,
+              mode: 'append',
+            }).then(() => {
+              console.log('Data uploaded successfully');
+            }).catch((error) => {
+              console.error('Error uploading data:', error);
+              process.exit(1);
+            });
