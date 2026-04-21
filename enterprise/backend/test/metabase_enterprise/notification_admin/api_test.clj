@@ -387,6 +387,27 @@
             (is (not (contains? ids (:id orph-card-n))))
             (is (not (contains? ids (:id orph-user-n))))))))))
 
+(deftest filter-by-health-in-flight-run-is-healthy-test
+  (testing "a notification whose latest TaskRun is :started (in-flight) classifies as :healthy"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          _run          {:run_type    :alert
+                                                            :entity_type :card
+                                                            :entity_id   card-id
+                                                            :status      :started
+                                                            :started_at  (t/instant)}]
+        (testing "unfiltered list reports health=healthy"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+            (is (= "healthy" (:health (find-row-by-id data nid))))))
+        (testing "?health=healthy includes the in-flight notification"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :health "healthy")]
+            (is (some? (find-row-by-id data nid)))))))))
+
 (deftest filter-compound-test
   (testing "multiple filters AND together (status + creator_id)"
     (mt/with-premium-features #{:audit-app}

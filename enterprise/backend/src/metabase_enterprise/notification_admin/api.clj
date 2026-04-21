@@ -1,8 +1,9 @@
 (ns metabase-enterprise.notification-admin.api
   "Admin endpoints for notifications (card-type alerts). Gated behind the `:audit-app` feature flag
   and `check-superuser`. Health + last_sent_at are derived from SQL joins on notification_card,
-  report_card, core_user, and a windowed task_run subquery — classification happens inline in
-  [[enrich-row]]."
+  report_card, core_user, and a windowed task_run subquery. Classification is a single SQL `CASE`
+  expression ([[health-expr]]) referenced both as a projected column and in the `:health` filter
+  WHERE clause, so the filter and the response field can't drift."
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -99,9 +100,27 @@
              :sub]]
    :where  [:= :sub.rn 1]})
 
+(def ^:private health-expr
+  "SQL `CASE` expression classifying a notification's health from the joined
+  `report_card`/`core_user`/latest-run columns. Shared between the `:__health` projection in
+  [[base-list-query]] and the [[health-where]] filter so classification has one source of truth.
+  Precedence (top-down): `orphaned_card > orphaned_creator > failing > abandoned > healthy`."
+  [:case
+   [:or [:= :c.id nil] [:= :c.archived true]] "orphaned_card"
+   [:= :cu.is_active false]                   "orphaned_creator"
+   [:= :lr.status "failed"]                   "failing"
+   [:= :lr.status "abandoned"]                "abandoned"
+   :else                                      "healthy"])
+
+(def ^:private last-sent-at-expr
+  "SQL expression for `:last_sent_at`: `ended_at` of the latest alert-run, but only when it
+  succeeded. Any non-success status (including in-flight `started`) resolves to NULL."
+  [:case [:= :lr.status "success"] :lr.ended_at :else nil])
+
 (defn- base-list-query
-  "Select notifications + the columns needed for health classification. Always joins the four
-  health-related tables because we project their values on every row (see [[enrich-row]])."
+  "Select notifications plus the projected `:__health` / `:__last_sent_at` consumed by
+  [[enrich-row]]. The health-related joins run unconditionally because [[health-expr]] references
+  them on every row."
   [{:keys [status creator_id card_id recipient_email channel]}]
   (cond-> {:select-distinct [:notification.id
                              :notification.active
@@ -110,11 +129,8 @@
                              :notification.updated_at
                              :notification.payload_type
                              :notification.payload_id
-                             [:c.id        :__card_id]
-                             [:c.archived  :__card_archived]
-                             [:cu.is_active :__creator_active]
-                             [:lr.status   :__run_status]
-                             [:lr.ended_at :__run_ended_at]]
+                             [health-expr       :__health]
+                             [last-sent-at-expr :__last_sent_at]]
            :from            [:notification]
            :where           [:= :notification.payload_type "notification/card"]}
 
@@ -149,21 +165,11 @@
          [:in :notification.id matching-ids]
          [:= 1 0])))))
 
-(def ^:private not-orphaned-card    [:and [:not= :c.id nil] [:= :c.archived false]])
-(def ^:private not-orphaned-creator [:= :cu.is_active true])
-
 (defn- health-where
-  "Honey.sql WHERE clause that filters notifications to those matching `health`. Precedence
-  (`orphaned_card > orphaned_creator > failing > abandoned > healthy`) is baked in — a `failing`
-  match excludes rows that are also orphaned."
+  "WHERE clause filtering to rows where [[health-expr]] equals `health`. Comparing against the
+  same `CASE` expression the SELECT projects keeps filter and classifier from drifting."
   [health]
-  (case health
-    :orphaned_card    [:or [:= :c.id nil] [:= :c.archived true]]
-    :orphaned_creator [:and not-orphaned-card [:= :cu.is_active false]]
-    :failing          [:and not-orphaned-card not-orphaned-creator [:= :lr.status "failed"]]
-    :abandoned        [:and not-orphaned-card not-orphaned-creator [:= :lr.status "abandoned"]]
-    :healthy          [:and not-orphaned-card not-orphaned-creator
-                       [:or [:= :lr.entity_id nil] [:= :lr.status "success"]]]))
+  [:= health-expr (name health)])
 
 (defn- list-query
   [{:keys [health] :as filters}]
@@ -178,22 +184,13 @@
       (dissoc :select-distinct :order-by)))
 
 (defn- enrich-row
-  "Read the `__*` columns projected by [[base-list-query]] and assoc `:health` + `:last_sent_at`
-  onto the row. Strips the internal columns before returning so the response shape matches
-  `::list-row`. Run status from SQL is a string (e.g. `\"success\"`); compare on lower-cased
-  strings to match `health-where`."
+  "Promote SQL-projected `:__health` / `:__last_sent_at` to the response keys `:health` /
+  `:last_sent_at`, and strip the internal columns."
   [row]
-  (let [status (:__run_status row)]
-    (-> row
-        (assoc :health       (cond
-                               (or (nil? (:__card_id row))
-                                   (true? (:__card_archived row)))   :orphaned_card
-                               (false? (:__creator_active row))      :orphaned_creator
-                               (= "failed"    status)                 :failing
-                               (= "abandoned" status)                 :abandoned
-                               :else                                   :healthy)
-               :last_sent_at (when (= "success" status) (:__run_ended_at row)))
-        (dissoc :__card_id :__card_archived :__creator_active :__run_status :__run_ended_at))))
+  (-> row
+      (assoc :health       (keyword (:__health row))
+             :last_sent_at (:__last_sent_at row))
+      (dissoc :__health :__last_sent_at)))
 
 (defn- list-notifications
   "Single SQL query. Health joins (card, creator, latest-run window) are always applied so we can
