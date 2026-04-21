@@ -1049,3 +1049,120 @@
           (let [result (complexity/complexity-scores :embedder nil)]
             (is (false? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
                          (meta result))))))))))
+;;; ---------------------- provider-embedder + synonym-axis settings ----------------------
+
+(deftest ^:parallel provider-embedder-nil-when-config-incomplete-test
+  (testing "provider-embedder returns nil when :provider or :model-name is missing/blank"
+    (is (nil? (embedders/provider-embedder {})))
+    (is (nil? (embedders/provider-embedder {:provider "ollama"})))
+    (is (nil? (embedders/provider-embedder {:model-name "all-minilm"})))
+    (is (nil? (embedders/provider-embedder {:provider "" :model-name "x"})))
+    (is (nil? (embedders/provider-embedder {:provider "ollama" :model-name ""})))))
+
+(deftest ^:sequential provider-embedder-routes-to-get-embeddings-batch-test
+  (testing "provider-embedder forwards to get-embeddings-batch with the given embedding-model map"
+    (let [captured  (atom nil)
+          model     {:provider "ollama" :model-name "all-minilm" :vector-dimensions 384}
+          stub-fn   (fn [embedding-model names]
+                      (reset! captured {:embedding-model embedding-model :names names})
+                      (mapv (fn [_] (float-array [1.0 2.0 3.0])) names))]
+      (with-redefs [semantic-search/get-embeddings-batch stub-fn]
+        (let [embedder (embedders/provider-embedder model)
+              result   (embedder [{:name "Orders"} {:name "Customers"}])]
+          (is (= model (:embedding-model @captured)))
+          (is (= ["orders" "customers"] (:names @captured)))
+          (is (= 2 (count result)))
+          (is (every? #(= 3 (alength ^floats (val %))) result)))))))
+
+(deftest ^:sequential provider-embedder-returns-empty-map-on-error-test
+  (testing "provider-embedder catches thrown errors from get-embeddings-batch and yields {}"
+    (with-redefs [semantic-search/get-embeddings-batch (fn [& _] (throw (ex-info "boom" {})))]
+      (let [embedder (embedders/provider-embedder
+                      {:provider "ollama" :model-name "all-minilm" :vector-dimensions 384})]
+        (is (= {} (embedder [{:name "Orders"}])))))))
+
+(deftest ^:parallel default-threshold-for-minilm-test
+  (testing "default threshold is 0.80 for ollama + MiniLM model names (case-insensitive)"
+    (is (= 0.80 (#'complexity/default-threshold-for "ollama" "all-minilm")))
+    (is (= 0.80 (#'complexity/default-threshold-for "ollama" "all-MiniLM-L6-v2")))
+    (is (= 0.80 (#'complexity/default-threshold-for "ollama" "sentence-transformers/all-MiniLM-L6-v2"))))
+  (testing "falls back to the Arctic-calibrated 0.90 default otherwise"
+    (is (= 0.90 (#'complexity/default-threshold-for "ollama" "mxbai-embed-large")))
+    (is (= 0.90 (#'complexity/default-threshold-for "ai-service" "all-minilm")))
+    (is (= 0.90 (#'complexity/default-threshold-for nil nil)))))
+
+(deftest ^:sequential complexity-scores-routes-synonym-axis-via-settings-test
+  (testing "setting ee-complexity-synonym-provider + model-name routes the axis through provider-embedder"
+    (let [captured   (atom nil)
+          stub-batch (fn [embedding-model names]
+                       (reset! captured {:embedding-model embedding-model :names names})
+                       ;; Return unit vectors keyed so that "customers" and "clients" form a synonym pair.
+                       (mapv (fn [n]
+                               (cond
+                                 (= n "customers") (float-array [1.0 0.0])
+                                 (= n "clients")   (float-array [0.99 0.14])
+                                 :else             (float-array [0.0 1.0])))
+                             names))]
+      (mt/with-temporary-setting-values [ee-complexity-synonym-provider         "ollama"
+                                         ee-complexity-synonym-model-name       "all-minilm"
+                                         ee-complexity-synonym-model-dimensions 2]
+        (with-redefs [semantic-search/get-embeddings-batch stub-batch]
+          (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "customers")
+                                                                                (entity :name "clients")])
+                                      complexity/universe-entities (constantly [(entity :name "customers")
+                                                                                (entity :name "clients")])]
+            (let [{:keys [library meta]} (complexity/complexity-scores)]
+              (testing "provider-embedder reached get-embeddings-batch with the configured model"
+                (is (= {:provider "ollama" :model-name "all-minilm" :vector-dimensions 2}
+                       (:embedding-model @captured)))
+                (is (= #{"customers" "clients"} (set (:names @captured)))))
+              (testing ":meta reflects the configured provider/model and the MiniLM-calibrated threshold"
+                (is (=? {:embedding-model {:provider "ollama" :model-name "all-minilm"}
+                         :synonym-threshold 0.80}
+                        meta)))
+              (testing "the synonym pair was detected (cosine ≈ 0.99 > 0.80 threshold)"
+                (is (= 1.0 (get-in library [:components :synonym-pairs :measurement])))))))))))
+
+(deftest ^:sequential complexity-scores-honours-threshold-override-test
+  (testing "ee-complexity-synonym-threshold overrides the provider-default threshold"
+    (let [stub-batch (fn [_ names]
+                       (mapv (fn [n]
+                               (cond
+                                 (= n "customers") (float-array [1.0 0.0])
+                                 (= n "clients")   (float-array [0.99 0.14])
+                                 :else             (float-array [0.0 1.0])))
+                             names))]
+      (mt/with-temporary-setting-values [ee-complexity-synonym-provider         "ollama"
+                                         ee-complexity-synonym-model-name       "all-minilm"
+                                         ee-complexity-synonym-model-dimensions 2
+                                         ;; Force an override above the ~0.99 similarity — the pair should disappear.
+                                         ee-complexity-synonym-threshold        0.999]
+        (with-redefs [semantic-search/get-embeddings-batch stub-batch]
+          (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "customers")
+                                                                                (entity :name "clients")])
+                                      complexity/universe-entities (constantly [])]
+            (let [{:keys [library meta]} (complexity/complexity-scores)]
+              (is (= 0.999 (:synonym-threshold meta)))
+              (is (= 0.0 (get-in library [:components :synonym-pairs :measurement]))))))))))
+
+(deftest ^:sequential complexity-scores-default-path-unchanged-test
+  (testing "with no synonym-axis settings set, the default path still uses search-index-embedder and 0.90"
+    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                complexity/universe-entities (constantly [(entity :name "orders")])]
+      (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
+        (let [{:keys [meta]} (complexity/complexity-scores)]
+          (testing ":synonym-threshold is the Arctic-calibrated default"
+            (is (= 0.90 (:synonym-threshold meta))))
+          (testing ":embedding-model is omitted when the index is unreachable"
+            (is (not (contains? meta :embedding-model)))))))))
+
+(deftest ^:sequential complexity-scores-explicit-embedder-uses-default-threshold-test
+  (testing "passing an explicit :embedder bypasses the settings and uses the default threshold"
+    (mt/with-temporary-setting-values [ee-complexity-synonym-provider   "ollama"
+                                       ee-complexity-synonym-model-name "all-minilm"
+                                       ee-complexity-synonym-model-dimensions 2]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                  complexity/universe-entities (constantly [(entity :name "orders")])]
+        (let [{:keys [meta]} (complexity/complexity-scores :embedder nil)]
+          (testing "explicit :embedder nil uses the Arctic default threshold, not MiniLM's 0.80"
+            (is (= 0.90 (:synonym-threshold meta)))))))))
