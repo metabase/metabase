@@ -492,7 +492,14 @@
                #"d:.*"]
               lines))
       (is (=? {:usage {:promptTokens 10 :completionTokens 5}}
-              (-> (last lines) (subs 2) (json/decode+kw)))))))
+              (-> (last lines) (subs 2) (json/decode+kw))))))
+
+  (testing ":external-id overrides the messageId on the start line"
+    (let [parts [{:type :start :id "provider-id" :messageId "provider-msg-id"}
+                 {:type :text :text "hi"}]
+          lines (into [] (self.core/aisdk-line-xf {:external-id "override-id"}) parts)]
+      (is (= "override-id"
+             (-> (first lines) (subs 2) (json/decode+kw) :messageId))))))
 
 ;;; ===================== Retry Logic Tests =====================
 

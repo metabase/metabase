@@ -3,7 +3,9 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defn- payload
   [{:keys [message-id positive issue-type freeform]
@@ -51,8 +53,8 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest ^:parallel persist-feedback-distinguishes-sibling-messages-test
-  (testing "two feedback submissions against sibling messages in the same conversation land on distinct rows"
+(deftest ^:parallel persist-feedback-writes-one-row-per-message-test
+  (testing "each message in a conversation gets its own feedback row, keyed by message id"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [conversation-id (str (random-uuid))
             external-id-1   (str (random-uuid))
@@ -108,15 +110,16 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest ^:parallel persist-feedback-unknown-external-id-no-op-test
-  (testing "persist-feedback! returns nil and writes nothing when external_id does not resolve"
+(deftest ^:parallel persist-feedback-unknown-external-id-404-test
+  (testing "persist-feedback! throws 404 when external_id does not resolve to a message"
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id
-        (is (nil? (metabot.feedback/persist-feedback!
-                   (payload {:message-id (str (random-uuid))}))))))))
+        (is (thrown-with-msg? ExceptionInfo #"Not found"
+                              (metabot.feedback/persist-feedback!
+                               (payload {:message-id (str (random-uuid))}))))))))
 
 (deftest ^:parallel persist-feedback-rejects-non-owner-test
-  (testing "persist-feedback! refuses to write when the current user doesn't own the conversation"
+  (testing "persist-feedback! throws 404 and writes nothing when the current user doesn't own the conversation"
     (mt/with-temp [:model/User {owner-id     :id} {}
                    :model/User {stranger-id  :id} {}]
       (let [conversation-id (str (random-uuid))
@@ -125,17 +128,11 @@
           (t2/insert! :model/MetabotConversation {:id conversation-id :user_id owner-id})
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user stranger-id
-              (is (nil? (metabot.feedback/persist-feedback!
-                         (payload {:message-id external-id :positive true}))))
+              (is (thrown-with-msg? ExceptionInfo #"Not found"
+                                    (metabot.feedback/persist-feedback!
+                                     (payload {:message-id external-id :positive true}))))
               (is (nil? (t2/select-one :model/MetabotFeedback :message_id msg-id))
                   "no row written for a non-owner submission")))
           (finally
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
-
-(deftest ^:parallel persist-feedback-no-positive-no-op-test
-  (testing "persist-feedback! returns nil when `positive` is missing"
-    (mt/with-temp [:model/User {user-id :id} {}]
-      (mt/with-current-user user-id
-        (is (nil? (metabot.feedback/persist-feedback!
-                   {:message_id (str (random-uuid))})))))))

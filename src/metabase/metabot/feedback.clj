@@ -9,7 +9,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.store-api.core :as store-api]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -42,24 +41,16 @@
 
 (defn- resolve-rated-message
   "Return the `metabot_message` row (`:id` + `:conversation_id`) identified by
-   `external-id`, but only if the current user owns the enclosing conversation.
-   Returns nil (and logs a warning) for unknown or unauthorized lookups."
+   `external-id`, or throw 404 when the lookup fails or the current user does
+   not own the enclosing conversation."
   [external-id]
-  (when (seq external-id)
-    (let [message  (t2/select-one [:model/MetabotMessage :id :conversation_id]
-                                  :external_id external-id)
-          owner-id (when-let [conv-id (:conversation_id message)]
-                     (t2/select-one-fn :user_id :model/MetabotConversation :id conv-id))]
-      (cond
-        (nil? message)
-        (log/warnf "No metabot_message found for external_id %s; skipping feedback persist"
-                   external-id)
-
-        (not= owner-id api/*current-user-id*)
-        (log/warnf "User %s tried to rate a message in conversation they do not own; skipping"
-                   api/*current-user-id*)
-
-        :else message))))
+  (let [message  (t2/select-one [:model/MetabotMessage :id :conversation_id]
+                                :external_id external-id)
+        owner-id (when-let [conv-id (:conversation_id message)]
+                   (t2/select-one-fn :user_id :model/MetabotConversation :id conv-id))]
+    (api/check-404 message)
+    (api/check-404 (= owner-id api/*current-user-id*))
+    message))
 
 (defn- upsert-feedback!
   "Insert or update the `metabot_feedback` row for `message-row-id`."
@@ -74,13 +65,10 @@
         (t2/insert! :model/MetabotFeedback (assoc base-fields :message_id message-row-id))))))
 
 (defn persist-feedback!
-  "Upsert a `metabot_feedback` row for the rated message. Returns the resolved
-   `metabot_message` row on success, nil when the lookup/authorization path
-   declines (unknown external_id, non-owner, or missing `positive`).
-
-   DB exceptions from the upsert propagate to the caller."
-  [{:keys [message_id positive] :as body}]
-  (when (some? positive)
-    (when-let [message (resolve-rated-message message_id)]
-      (upsert-feedback! (:id message) body)
-      message)))
+  "Upsert a `metabot_feedback` row for the rated message and return the
+   resolved `metabot_message` row. Throws 404 when the external_id does not
+   resolve to a message the current user owns."
+  [{:keys [message_id] :as body}]
+  (let [message (resolve-rated-message message_id)]
+    (upsert-feedback! (:id message) body)
+    message))

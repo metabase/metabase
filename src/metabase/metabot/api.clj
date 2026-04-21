@@ -212,19 +212,6 @@
              (do (vreset! pending part)
                  (if prev (rf result prev) result)))))))))
 
-(defn- override-message-id-xf
-  "Replace the message id on `:start` and `:usage` parts so the client and the
-  persisted `metabot_message.external_id` share one value.
-
-  Dissocs `:messageId` too — `format-start-line` in `metabase.metabot.self.core`
-  prefers `:messageId` over `:id` when both are present, so leaving the provider's
-  original `:messageId` intact would silently win over our override."
-  [external-id]
-  (map (fn [part]
-         (case (:type part)
-           (:start :usage) (-> part (assoc :id external-id) (dissoc :messageId))
-           part))))
-
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
@@ -244,9 +231,9 @@
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
             ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
-            xf         (comp (override-message-id-xf external-id)
-                             (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?}))]
+            xf         (comp (u/tee-xf parts-atom)
+                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
+                                                       :external-id external-id}))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan)
@@ -352,7 +339,7 @@
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (when-let [message (metabot.feedback/persist-feedback! body)]
+  (let [message (metabot.feedback/persist-feedback! body)]
     (try
       (api/check-400 (metabot.feedback/submit-to-harbormaster!
                       (metabot.feedback/harbormaster-payload body message))
