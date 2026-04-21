@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useListUsersQuery, useSearchQuery } from "metabase/api";
@@ -97,17 +98,9 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
         onChange={(card_id) => onChange({ card_id, page: 0 })}
       />
 
-      <TextInput
-        label={t`Recipient email`}
-        placeholder={t`someone@example.com`}
+      <RecipientEmailInput
         value={state.recipient_email}
-        onChange={(event) =>
-          onChange({
-            recipient_email: event.currentTarget.value,
-            page: 0,
-          })
-        }
-        w={220}
+        onChange={(recipient_email) => onChange({ recipient_email, page: 0 })}
       />
 
       <Select
@@ -125,6 +118,33 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
         w={160}
       />
     </Flex>
+  );
+};
+
+type RecipientEmailInputProps = {
+  value: string;
+  onChange: (value: string) => void;
+};
+
+const RecipientEmailInput = ({ value, onChange }: RecipientEmailInputProps) => {
+  const [email, setEmail] = useState(value);
+  const debounced = useDebouncedValue(email, SEARCH_DEBOUNCE_DURATION);
+  const onChangeRef = useLatest(onChange);
+
+  useEffect(() => {
+    if (debounced !== value) {
+      onChangeRef.current(debounced);
+    }
+  }, [debounced, value, onChangeRef]);
+
+  return (
+    <TextInput
+      label={t`Recipient email`}
+      placeholder={t`someone@example.com`}
+      value={email}
+      onChange={(event) => setEmail(event.currentTarget.value)}
+      w={220}
+    />
   );
 };
 
