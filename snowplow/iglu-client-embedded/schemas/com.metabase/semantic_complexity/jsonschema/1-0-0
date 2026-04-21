@@ -1,0 +1,103 @@
+{
+    "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+    "description": "Semantic-layer complexity score — one event per (catalog, axis) pair",
+    "self": {
+        "vendor": "com.metabase",
+        "name": "semantic_complexity",
+        "format": "jsonschema",
+        "version": "1-0-0"
+    },
+    "type": "object",
+    "required": [
+        "event",
+        "catalog",
+        "axis",
+        "score",
+        "formula_version",
+        "synonym_threshold"
+    ],
+    "properties": {
+        "event": {
+            "description": "Event name",
+            "type": "string",
+            "enum": [
+                "semantic_complexity_scored"
+            ],
+            "maxLength": 64
+        },
+        "catalog": {
+            "description": "Which catalog of the semantic layer was scored",
+            "type": "string",
+            "enum": [
+                "library",
+                "universe",
+                "metabot"
+            ],
+            "maxLength": 16
+        },
+        "axis": {
+            "description": "Which score axis this event carries: the aggregate total, or one of the five sub-components",
+            "type": "string",
+            "enum": [
+                "total",
+                "entity_count",
+                "name_collisions",
+                "synonym_pairs",
+                "field_count",
+                "repeated_measures"
+            ],
+            "maxLength": 32
+        },
+        "score": {
+            "description": "The weighted score for this axis",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "measurement": {
+            "description": "Pre-score raw count or pair count for this axis (absent for the aggregate total)",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "error": {
+            "description": "Error message when this axis could not be computed (synonym_pairs only, when the embedder fails)",
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 1024
+        },
+        "formula_version": {
+            "description": "Version of the scoring formula; bumps when the formula changes in a way that breaks historical comparisons",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+        },
+        "synonym_threshold": {
+            "description": "Cosine-similarity threshold used for the synonym_pairs axis",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+        },
+        "embedding_model_provider": {
+            "description": "Provider of the embedding model used for synonym scoring, if any",
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 64
+        },
+        "embedding_model_name": {
+            "description": "Name of the embedding model used for synonym scoring, if any",
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 128
+        }
+    }
+}

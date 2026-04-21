@@ -21,6 +21,7 @@
 /*.h2.db
 /*.lock.db
 /*.mv.db
+/*.sql
 /*.trace.db
 /.babel_cache
 /.env*
@@ -119,11 +120,12 @@ dev/serialization_deltas/
 .clerk
 mise.local.toml
 
+# semantic-layer: raw appdb dumps pulled from prod stats instance (hundreds of MB, private data)
+/enterprise/backend/test_resources/semantic_layer/appdb_dump/
+
 # lsp: ignore all but the config file
-.lsp/*
-!.lsp/config.edn
-modules/drivers/*/.lsp/*
-!modules/drivers/*/.lsp/config.edn
+**/.lsp/*
+!**/.lsp/config.edn
 **/.clj-kondo/.cache
 
 # clj-kondo: ignore all except our defined config
@@ -176,3 +178,4 @@ CLAUDE.local.md
 __pycache__/
 .mcp.json
 .claude/worktrees
+.claude/scheduled_tasks.lock

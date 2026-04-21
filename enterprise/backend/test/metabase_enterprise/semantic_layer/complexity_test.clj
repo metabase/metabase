@@ -1,16 +1,19 @@
 (ns metabase-enterprise.semantic-layer.complexity-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-layer.complexity :as complexity]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
-   [metabase-enterprise.semantic-layer.init]
+   [metabase-enterprise.semantic-layer.init :as init]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.embedders :as ss.embedders]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (def ^:private test-entity-ids (atom 0))
@@ -219,7 +222,7 @@
 (deftest ^:parallel startup-logic-registered-test
   (testing "loading the semantic-layer init namespace registers a startup-logic method"
     (is (contains? (methods startup/def-startup-logic!)
-                   :metabase-enterprise.semantic-layer.init/PrintSemanticComplexityScore))))
+                   :metabase-enterprise.semantic-layer.init/PublishSemanticComplexityScore))))
 
 (deftest ^:parallel search-index-embedder-degrades-gracefully-test
   (testing "returns {} when semantic-search index isn't available (no throw)"
@@ -423,41 +426,111 @@
     (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
       (is (nil? (semantic-search/active-embedding-model))))))
 
-(deftest ^:sequential emit-prometheus-publishes-total-and-each-subscore-test
-  (testing "exactly one gauge value is emitted per catalog × axis, with values matching the returned score"
-    ;; Capture every emission as a tuple (not a map by label-triple) so a regression that emits the
-    ;; same {catalog, axis} twice — even with the same amount — fails on call-count instead of
-    ;; silently overwriting the prior entry.
-    (let [emissions (atom [])]
+(defn- complexity-events
+  "Drain the fake Snowplow collector and return only complexity events."
+  []
+  (->> (snowplow-test/pop-event-data-and-user-id!)
+       (map :data)
+       (filter #(= "semantic_complexity_scored" (get % "event")))))
+
+(deftest ^:sequential emit-snowplow-publishes-total-and-each-subscore-test
+  (testing "exactly one Snowplow event is emitted per (catalog × axis) with values matching the returned score"
+    (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")
                                                                             (entity :name "customers")])
                                   complexity/universe-entities (constantly [(entity :name "orders")
                                                                             (entity :name "customers")
-                                                                            (entity :name "widgets")])
-                                  analytics/set! (fn [metric labels amount]
-                                                   (swap! emissions conj [metric labels amount]))]
+                                                                            (entity :name "widgets")])]
+        ;; Drain any startup/setting events so we only assert on emissions from the call below.
+        (snowplow-test/pop-event-data-and-user-id!)
         (let [{:keys [library universe metabot]} (complexity/complexity-scores :embedder nil)
-              expected (into #{}
-                             (for [[catalog result] {"library" library
-                                                     "universe" universe
-                                                     "metabot" metabot}
-                                   [axis value]     (cons ["total" (:total result)]
-                                                          (map (fn [[component sub]]
-                                                                 [(name component) (:score sub)])
-                                                               (:components result)))]
-                               [:metabase-semantic-layer/complexity-score
-                                {:catalog catalog :axis axis}
-                                value]))]
-          (is (= (count expected) (count @emissions))
-              "every {catalog, axis} is emitted exactly once — no duplicates")
-          (is (= expected (set @emissions))
-              "every {catalog, axis} combination is emitted with the matching score from the result"))))))
+              events      (complexity-events)
+              axis->snake (fn [k] (-> k name (str/replace "-" "_")))
+              expected    (into #{}
+                                (for [[catalog result] {"library" library
+                                                        "universe" universe
+                                                        "metabot" metabot}
+                                      [axis score]     (cons ["total" (:total result)]
+                                                             (map (fn [[component sub]]
+                                                                    [(axis->snake component) (:score sub)])
+                                                                  (:components result)))]
+                                  [catalog axis score]))
+              actual      (into #{}
+                                (map (fn [e] [(get e "catalog") (get e "axis") (get e "score")]) events))]
+          (is (= (count expected) (count events))
+              "every (catalog, axis) is emitted exactly once — no duplicates")
+          (is (= expected actual)
+              "every (catalog, axis) pair carries the matching score from the result")
+          (testing "every event carries the event name, formula version, and synonym threshold"
+            (is (every? (fn [e]
+                          (and (= "semantic_complexity_scored" (get e "event"))
+                               (integer? (get e "formula_version"))
+                               (number?  (get e "synonym_threshold"))))
+                        events))))))))
 
-(deftest ^:sequential emit-prometheus-failure-is-swallowed-test
+(deftest ^:sequential emit-snowplow-includes-measurement-for-count-and-pair-axes-test
+  (testing "each sub-score event carries the raw pre-score measurement; the aggregate total does not"
+    (snowplow-test/with-fake-snowplow-collector
+      ;; Library has: 3 entities, a collision pair (`orders`/`orders`), 5 fields total.
+      ;; These produce known non-zero :count / :pairs values so we can check both flavours.
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders"  :field-count 2)
+                                                                            (entity :name "orders"  :field-count 0)
+                                                                            (entity :name "widgets" :field-count 3)])
+                                  complexity/universe-entities (constantly [])]
+        (snowplow-test/pop-event-data-and-user-id!)
+        (complexity/complexity-scores :embedder nil)
+        (let [by-axis (->> (complexity-events)
+                           (filter #(= "library" (get % "catalog")))
+                           (into {} (map (juxt #(get % "axis") identity))))]
+          (testing "the aggregate total has no measurement key"
+            (is (not (contains? (get by-axis "total") "measurement"))))
+          (testing "count-based axes carry their `:count` as the measurement"
+            (is (= 3 (get-in by-axis ["entity_count" "measurement"])))
+            (is (= 5 (get-in by-axis ["field_count"  "measurement"])))
+            (is (= 0 (get-in by-axis ["repeated_measures" "measurement"]))))
+          (testing "pair-based axes carry their `:pairs` as the measurement"
+            (is (= 1 (get-in by-axis ["name_collisions" "measurement"])))
+            (is (= 0 (get-in by-axis ["synonym_pairs"   "measurement"])))))))))
+
+(deftest ^:sequential emit-snowplow-propagates-error-on-embedder-failure-test
+  (testing "synonym_pairs event carries the embedder error string; other axes do not"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "customers")
+                                                                            (entity :name "clients")])
+                                  complexity/universe-entities (constantly [])]
+        (snowplow-test/pop-event-data-and-user-id!)
+        (complexity/complexity-scores :embedder (fn [_] (throw (ex-info "embedder boom" {}))))
+        (let [by-axis (->> (complexity-events)
+                           (filter #(= "library" (get % "catalog")))
+                           (into {} (map (juxt #(get % "axis") identity))))]
+          (is (= "embedder boom" (get-in by-axis ["synonym_pairs" "error"]))
+              "the :error from the synonym-pair scorer reaches the Snowplow payload")
+          (is (not-any? #(contains? % "error")
+                        (vals (dissoc by-axis "synonym_pairs")))
+              ":error is only present on the synonym_pairs event"))))))
+
+(deftest ^:sequential emit-snowplow-includes-embedding-model-meta-test
+  (testing "every event carries embedding_model_provider/name when the search-index embedder is active"
+    (snowplow-test/with-fake-snowplow-collector
+      (with-redefs [ss.embedders/try-active-index-state
+                    (constantly {:pgvector   :mock
+                                 :table-name "mock_table"
+                                 :model      {:provider "openai" :model-name "text-embedding-3-small"}})
+                    ss.embedders/fetch-by-model+id (constantly [])]
+        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                    complexity/universe-entities (constantly [(entity :name "orders")])]
+          (snowplow-test/pop-event-data-and-user-id!)
+          (complexity/complexity-scores :embedder semantic-search/search-index-embedder)
+          (let [events (complexity-events)]
+            (is (seq events) "sanity: events were emitted")
+            (is (every? #(= "openai" (get % "embedding_model_provider")) events))
+            (is (every? #(= "text-embedding-3-small" (get % "embedding_model_name")) events))))))))
+
+(deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"
     (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
                                 complexity/universe-entities (constantly [(entity :name "orders")])
-                                analytics/set! (fn [& _] (throw (RuntimeException. "prom down")))]
+                                analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
       (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :warn]]
         (let [result (complexity/complexity-scores :embedder nil)]
           (is (=? {:library  {:total 10 :components {:entity-count {:count 1 :score 10}}}
@@ -466,6 +539,34 @@
           (is (some #(re-find #"Failed to publish complexity score" (:message %))
                     (messages))
               "a warning about the publish failure was logged"))))))
+
+(deftest ^:sequential local-info-log-is-emitted-even-when-snowplow-fails-test
+  (testing "the 'Semantic complexity score' info log fires independently of Snowplow emission"
+    ;; Guards two regressions together: local logging being removed, and local logging being
+    ;; gated on successful telemetry (so a broken collector would silence the operator-visible log).
+    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                complexity/universe-entities (constantly [(entity :name "orders")])
+                                analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :info]]
+        (complexity/complexity-scores :embedder nil)
+        (is (some #(and (= :info (:level %))
+                        (re-find #"Semantic complexity score" (:message %)))
+                  (messages))
+            "the score was logged locally at :info even though Snowplow emission threw")))))
+
+(deftest ^:sequential startup-hook-logs-score-at-boot-test
+  (testing "the boot-time hook runs complexity-scores unconditionally so operators see a score"
+    ;; Run the submitted background task synchronously so we can assert on its log output
+    ;; and so the with-redefs don't unwind before it finishes.
+    (with-redefs [quick-task/submit-task! (fn [task] (task) nil)]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                  complexity/universe-entities (constantly [(entity :name "orders")])]
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :info]]
+          (startup/def-startup-logic! ::init/PublishSemanticComplexityScore)
+          (is (some #(and (= :info (:level %))
+                          (re-find #"Semantic complexity score" (:message %)))
+                    (messages))
+              "the startup hook produced the expected info log"))))))
 
 (deftest ^:sequential complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"

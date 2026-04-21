@@ -24,6 +24,7 @@
   Default in prod reuses vectors from the semantic-search index so computing a score adds essentially no
   embedding cost."
   (:require
+   [clojure.pprint :as pprint]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.analytics.core :as analytics]
@@ -35,8 +36,10 @@
 (set! *warn-on-reflection* true)
 
 (def formula-version
-  "Bump when the scoring formula changes in a way that would break historical comparisons."
-  1)
+  "Bump when the scoring formula changes in a way that would break historical comparisons.
+  v2 raised the synonym-similarity threshold from 0.30 to 0.90, so pre-v2 and v2+ synonym-pair
+  sub-scores are not directly comparable."
+  2)
 
 (def ^:private weights
   {:entity           10
@@ -46,11 +49,14 @@
    :repeated-measure 2})
 
 (def ^:private synonym-similarity-threshold
-  "Cosine similarity at or above which two names are flagged as synonyms.
-   Mirrors [[metabase-enterprise.semantic-search.core/max-cosine-distance]] so the aliasing signal and
-   the semantic-search cutoff are consistent."
-  ;; Round to 2 decimal places in case floating point has added some epsilon.
-  (* 0.01 (Math/round ^double (* 100 (- 1 semantic-search/max-cosine-distance)))))
+  "Cosine similarity at or above which two entity names are flagged as synonyms.
+  Deliberately higher than the semantic-search retrieval cutoff (0.30): search optimises for recall
+  (\"return anything plausibly relevant\") while the complexity score needs precision (\"these are
+  confusingly similar\"). 0.90 was chosen by eyeballing sample pairs from the stats appdb at
+  multiple thresholds — see
+  `enterprise/backend/test_resources/semantic_layer/analysis/2026_04_21_data_analysis_summary.md`
+  for the calibration data."
+  0.90)
 
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
@@ -318,22 +324,44 @@
 
 ;;; ----------------------------------- public API ------------------------------------
 
-(defn- emit-prometheus!
-  "Publish the total and each sub-score to the corresponding gauge, labeled by `:catalog` and `:axis`.
-   Called once per [[complexity-scores]] invocation so the gauge reflects the latest known state."
-  [{:keys [library universe metabot]}]
-  (doseq [[catalog result] {"library" library "universe" universe "metabot" metabot}]
-    (analytics/set! :metabase-semantic-layer/complexity-score
-                    {:catalog catalog :axis "total"}
-                    (:total result))
-    (doseq [[component sub] (:components result)]
-      (analytics/set! :metabase-semantic-layer/complexity-score
-                      {:catalog catalog :axis (name component)}
-                      (:score sub)))))
+(defn- log-scores!
+  "Local sink for the computed result. Ensures operators can see the score in application logs
+   regardless of whether Snowplow emission is enabled (anonymous analytics may be off, or the
+   collector unreachable), since scoring runs only at startup and on the superuser recompute
+   endpoint — no Prometheus gauge replaces this."
+  [result]
+  (log/info (str "Semantic complexity score:\n"
+                 ;; `pprint` here is just string formatting for the logger.
+                 ;; we never write to `*out*` directly, so the "use metabase.util.log" lint doesn't apply.
+                 #_{:clj-kondo/ignore [:discouraged-var]}
+                 (with-out-str (pprint/pprint result)))))
+
+(defn- emit-snowplow!
+  "Publish one Snowplow event per (catalog × axis) — the aggregate total plus each of the five
+   sub-scores, for each of the three catalogs. Mirrors the Prometheus `{:catalog :axis}` label
+   shape we used previously so existing analysis habits carry over."
+  [{:keys [library universe metabot meta]}]
+  (let [{:keys [formula-version synonym-threshold embedding-model]} meta
+        base (cond-> {:event             :semantic_complexity_scored
+                      :formula_version   formula-version
+                      :synonym_threshold synonym-threshold}
+               embedding-model (assoc :embedding_model_provider (:provider embedding-model)
+                                      :embedding_model_name    (:model-name embedding-model)))]
+    (doseq [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]]
+      (analytics/track-event!
+       :snowplow/semantic_complexity
+       (assoc base :catalog catalog :axis :total :score (:total result)))
+      (doseq [[axis sub] (:components result)
+              :let [measurement (or (:count sub) (:pairs sub))]]
+        (analytics/track-event!
+         :snowplow/semantic_complexity
+         (cond-> (assoc base :catalog catalog :axis axis :score (:score sub))
+           measurement  (assoc :measurement measurement)
+           (:error sub) (assoc :error (:error sub))))))))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
-   access, no Prometheus emission — suitable for callers that have already loaded their entities
+   access, no Snowplow emission — suitable for callers that have already loaded their entities
    from another source (e.g., a representation file).
 
    Options:
@@ -367,8 +395,8 @@
      {:library  {:total n :components {...}}
       :universe {:total n :components {...}}
       :metabot  {:total n :components {...}}
-      :meta     {:formula-version 1
-                 :synonym-threshold 0.30
+      :meta     {:formula-version 2
+                 :synonym-threshold 0.90
                  :embedding-model {...}}}
 
    Options:
@@ -399,10 +427,11 @@
                                         {:embedding-model-meta model-meta
                                          :metabot-entities     (when (metabot-scope-applies? metabot-scope)
                                                                  (metabot-entities metabot-scope))})]
+    (log-scores! result)
     (try
-      (emit-prometheus! result)
+      (emit-snowplow! result)
       (catch Throwable t
-        (log/warn t "Failed to publish complexity score to Prometheus")))
+        (log/warn t "Failed to publish complexity score to Snowplow")))
     result))
 
 (comment
