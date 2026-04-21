@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
+import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { Card, Flex, Title } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";

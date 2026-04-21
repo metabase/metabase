@@ -98,7 +98,7 @@ function MetabotEnabledToggle({
         description={
           isEmbedMetabot
             ? undefined
-            : t`Metabot is Metabase's AI assistant. When enabled, Metabot will be available to help users create queries, analyze data, and answer questions about your data.` // eslint-disable-line metabase/no-literal-metabase-strings -- admin UI
+            : t`Metabot is Metabase's AI assistant. When enabled, Metabot will be available to help users create queries, analyze data, and answer questions about your data.`
         }
       />
       <Flex align="center" gap="md" mt="md">

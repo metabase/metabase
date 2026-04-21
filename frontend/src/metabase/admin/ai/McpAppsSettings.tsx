@@ -39,7 +39,7 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
     updateSetting,
     isLoading,
   } = useAdminSetting("mcp-enabled?");
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
+
   const { url: mcpDocsUrl } = useDocsUrl("ai/mcp");
 
   const isEnabled = mcpEnabled !== false;
@@ -65,14 +65,11 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
           />
         </Flex>
       }
-      description={
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin UI
-        jt`Allow MCP clients to connect to your Metabase instance. ${(
-          <ExternalLink key="docs" href={mcpDocsUrl}>
-            {t`Learn more`}
-          </ExternalLink>
-        )}`
-      }
+      description={jt`Allow MCP clients to connect to your Metabase instance. ${(
+        <ExternalLink key="docs" href={mcpDocsUrl}>
+          {t`Learn more`}
+        </ExternalLink>
+      )}`}
     >
       {isEnabled && (
         <Stack gap="lg">
