@@ -205,12 +205,19 @@
                         (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
     (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
 
+(defn- safe->document [m]
+  (try
+    (->document m)
+    (catch Throwable t
+      (log/warnf t "Error building search document for %s %s; skipping" (:model m) (:id m))
+      nil)))
+
 (defn- query->documents [query-reducible]
   (->> query-reducible
        (eduction
         (comp
          (map t2.realize/realize)
-         (map ->document)))))
+         (keep safe->document)))))
 
 (defn searchable-documents
   "Return all existing searchable documents from the database."
