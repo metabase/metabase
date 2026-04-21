@@ -1160,9 +1160,94 @@
   (testing "passing an explicit :embedder bypasses the settings and uses the default threshold"
     (mt/with-temporary-setting-values [ee-complexity-synonym-provider   "ollama"
                                        ee-complexity-synonym-model-name "all-minilm"
-                                       ee-complexity-synonym-model-dimensions 2]
+                                       ee-complexity-synonym-model-dimensions 2
+                                       ;; Also set a threshold override that the explicit-embedder path
+                                       ;; must ignore — pinned embedders are for reproducible benchmarks
+                                       ;; and shouldn't drift with unrelated instance settings.
+                                       ee-complexity-synonym-threshold  0.55]
       (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
                                   complexity/universe-entities (constantly [(entity :name "orders")])]
         (let [{:keys [meta]} (complexity/complexity-scores :embedder nil)]
-          (testing "explicit :embedder nil uses the Arctic default threshold, not MiniLM's 0.80"
+          (testing "explicit :embedder nil ignores ee-complexity-synonym-threshold and uses the default"
             (is (= 0.90 (:synonym-threshold meta)))))))))
+
+(deftest ^:sequential complexity-scores-explicit-embedder-accepts-threshold-opt-test
+  (testing "explicit :embedder paired with :threshold uses the supplied cutoff"
+    (let [es       [(entity :name "customers") (entity :name "clients")]
+          embedder (mock-embedder {"customers" [1.0 0.0]
+                                   "clients"   [0.9 0.1]})]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly es)
+                                  complexity/universe-entities (constantly [])]
+        (testing "a high :threshold rejects the pair"
+          (let [{:keys [library meta]} (complexity/complexity-scores
+                                        :embedder  embedder
+                                        :threshold 0.99)]
+            (is (= 0.99 (:synonym-threshold meta)))
+            (is (= 0 (get-in library [:components :synonym-pairs :pairs])))))
+        (testing "a low :threshold accepts the pair"
+          (let [{:keys [library meta]} (complexity/complexity-scores
+                                        :embedder  embedder
+                                        :threshold 0.5)]
+            (is (= 0.5 (:synonym-threshold meta)))
+            (is (= 1 (get-in library [:components :synonym-pairs :pairs])))))))))
+
+;;; ---------------------- synonym-config validation ----------------------
+
+(deftest ^:parallel validate-synonym-config-test
+  (let [validate #'complexity/validate-synonym-config]
+    (testing "fully blank config returns nil (opt-out — no warning expected)"
+      (is (nil? (validate {:provider nil        :model-name nil        :vector-dimensions nil})))
+      (is (nil? (validate {:provider ""         :model-name "  "       :vector-dimensions nil}))))
+    (testing "trims whitespace on provider and model-name when valid"
+      (is (= {:provider "ollama" :model-name "all-minilm" :vector-dimensions 384}
+             (validate {:provider "  ollama  " :model-name " all-minilm " :vector-dimensions 384}))))
+    (testing "rejects unknown providers (typo-safe)"
+      (is (nil? (validate {:provider "olama"   :model-name "all-minilm" :vector-dimensions 384})))
+      (is (nil? (validate {:provider "OpenAI"  :model-name "text-embedding-3-small" :vector-dimensions 256}))))
+    (testing "rejects half-configured settings (one of provider/model-name blank)"
+      (is (nil? (validate {:provider "ollama"  :model-name nil         :vector-dimensions 384})))
+      (is (nil? (validate {:provider ""        :model-name "all-minilm" :vector-dimensions 384}))))
+    (testing "openai text-embedding-3* models require vector-dimensions"
+      (is (nil? (validate {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions nil})))
+      (is (nil? (validate {:provider "openai" :model-name "text-embedding-3-large" :vector-dimensions 0})))
+      (is (=? {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 512}
+              (validate {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 512}))))
+    (testing "providers/models that don't forward :dimensions don't need vector-dimensions"
+      (is (=? {:provider "ollama" :model-name "all-minilm"}
+              (validate {:provider "ollama" :model-name "all-minilm" :vector-dimensions nil})))
+      (is (=? {:provider "openai" :model-name "text-embedding-ada-002"}
+              (validate {:provider "openai" :model-name "text-embedding-ada-002" :vector-dimensions nil}))))))
+
+(deftest ^:sequential complexity-scores-invalid-provider-falls-back-test
+  (testing "unknown provider disables the custom embedder and leaves :embedding-model unset"
+    (let [batch-called? (atom false)]
+      (mt/with-temporary-setting-values [ee-complexity-synonym-provider   "olama"   ; typo
+                                         ee-complexity-synonym-model-name "all-minilm"
+                                         ee-complexity-synonym-model-dimensions 384]
+        (with-redefs [semantic-search/get-embeddings-batch (fn [& _] (reset! batch-called? true) [])
+                      ss.embedders/try-active-index-state  (constantly nil)]
+          (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                      complexity/universe-entities (constantly [(entity :name "orders")])]
+            (let [{:keys [meta]} (complexity/complexity-scores)]
+              (is (false? @batch-called?)
+                  "provider-embedder should not be reached with an unsupported provider")
+              (is (not (contains? meta :embedding-model))
+                  ":meta must not advertise a model the synonym axis never reached")
+              (is (= 0.90 (:synonym-threshold meta))
+                  "falls back to the Arctic-calibrated default threshold"))))))))
+
+(deftest ^:sequential complexity-scores-openai-text-embedding-3-requires-dims-test
+  (testing "openai text-embedding-3-* without dimensions falls back to search-index embedder"
+    (let [batch-called? (atom false)]
+      (mt/with-temporary-setting-values [ee-complexity-synonym-provider   "openai"
+                                         ee-complexity-synonym-model-name "text-embedding-3-small"
+                                         ee-complexity-synonym-model-dimensions nil]
+        (with-redefs [semantic-search/get-embeddings-batch (fn [& _] (reset! batch-called? true) [])
+                      ss.embedders/try-active-index-state  (constantly nil)]
+          (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                      complexity/universe-entities (constantly [(entity :name "orders")])]
+            (let [{:keys [meta]} (complexity/complexity-scores)]
+              (is (false? @batch-called?)
+                  "get-embeddings-batch would send dimensions: null and fail; must not be reached")
+              (is (not (contains? meta :embedding-model))
+                  ":embedding-model must be absent when the config failed validation"))))))))

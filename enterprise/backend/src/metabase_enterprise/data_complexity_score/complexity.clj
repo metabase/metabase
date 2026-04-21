@@ -62,6 +62,65 @@
     0.80
     default-synonym-similarity-threshold))
 
+(def ^:private valid-synonym-providers
+  "Providers accepted for the complexity-score synonym axis. Mirrors
+  [[metabase-enterprise.semantic-search.settings/ee-embedding-provider]]'s valid set."
+  #{"openai" "ollama" "ai-service"})
+
+(defn- openai-dimensions-required?
+  "True when the provider/model combination forwards `:dimensions` to its embedding API, so omitting
+  `vector-dimensions` would send `dimensions: null` and the request would fail. Mirrors
+  [[metabase-enterprise.semantic-search.embedding/supports-dimensions?]]; kept as a tiny local
+  predicate rather than a cross-namespace reference because it's one literal check."
+  [provider model-name]
+  (and (= provider "openai")
+       (string? model-name)
+       (str/starts-with? model-name "text-embedding-3")))
+
+(defn- validate-synonym-config
+  "Normalize and validate a `{:provider :model-name :vector-dimensions}` config pulled from the
+  `ee-complexity-synonym-*` settings. Returns the trimmed/validated map when the config is usable,
+  or `nil` (with a warning identifying the specific problem) when it isn't. Callers use `nil` to
+  fall back to the search-index embedder so a typo never silently drops synonym scoring to zero
+  while `:meta` still reports the misconfigured model as active."
+  [{:keys [provider model-name vector-dimensions]}]
+  (let [provider*   (some-> provider str/trim)
+        model-name* (some-> model-name str/trim)]
+    (cond
+      (and (str/blank? provider*) (str/blank? model-name*))
+      nil
+
+      (str/blank? provider*)
+      (do (log/warnf (str "Complexity: ee-complexity-synonym-model-name=%s is set but "
+                          "ee-complexity-synonym-provider is blank; falling back to search-index embedder.")
+                     (pr-str model-name))
+          nil)
+
+      (str/blank? model-name*)
+      (do (log/warnf (str "Complexity: ee-complexity-synonym-provider=%s is set but "
+                          "ee-complexity-synonym-model-name is blank; falling back to search-index embedder.")
+                     (pr-str provider))
+          nil)
+
+      (not (contains? valid-synonym-providers provider*))
+      (do (log/warnf (str "Complexity: ee-complexity-synonym-provider=%s is not one of %s; "
+                          "falling back to search-index embedder.")
+                     (pr-str provider) (pr-str valid-synonym-providers))
+          nil)
+
+      (and (openai-dimensions-required? provider* model-name*)
+           (not (pos-int? vector-dimensions)))
+      (do (log/warnf (str "Complexity: ee-complexity-synonym-model-name=%s requires "
+                          "ee-complexity-synonym-model-dimensions to be a positive integer; "
+                          "falling back to search-index embedder.")
+                     (pr-str model-name*))
+          nil)
+
+      :else
+      {:provider          provider*
+       :model-name        model-name*
+       :vector-dimensions vector-dimensions})))
+
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
 (defn- table-field-counts
@@ -466,31 +525,27 @@
 (defn- resolve-synonym-embedder
   "Pick the default synonym-axis embedder, threshold, and model metadata based on the
   `ee-complexity-synonym-*` settings. Returns `{:fn embedder-fn :threshold t :model-meta m}`.
-  When the settings are unset (or incomplete) the search-index embedder is used with a threshold
-  calibrated for the search model (Arctic)."
+  When the settings are unset — or fail validation (blank provider, typo, OpenAI
+  text-embedding-3* without a dimensions value, etc.) — the search-index embedder is used with a
+  threshold calibrated for the search model (Arctic). `:model-meta` is only populated from the
+  custom config after validation passes, so `:meta.embedding-model` never advertises a model that
+  the synonym axis couldn't actually reach."
   []
   (let [override-threshold (settings/ee-complexity-synonym-threshold)
-        provider           (settings/ee-complexity-synonym-provider)
-        model-name         (settings/ee-complexity-synonym-model-name)
-        dims               (settings/ee-complexity-synonym-model-dimensions)
+        cfg                (validate-synonym-config
+                            {:provider          (settings/ee-complexity-synonym-provider)
+                             :model-name        (settings/ee-complexity-synonym-model-name)
+                             :vector-dimensions (settings/ee-complexity-synonym-model-dimensions)})
         search-index-default
         {:fn         semantic-search/search-index-embedder
          :threshold  (or override-threshold default-synonym-similarity-threshold)
          :model-meta (semantic-search/active-embedding-model)}]
-    (if-let [embed-fn (and (seq provider) (seq model-name)
-                           (embedders/provider-embedder
-                            {:provider          provider
-                             :model-name        model-name
-                             :vector-dimensions dims}))]
+    (if-let [embed-fn (some-> cfg embedders/provider-embedder)]
       {:fn         embed-fn
-       :threshold  (or override-threshold (default-threshold-for provider model-name))
-       :model-meta {:provider provider :model-name model-name}}
-      (do
-        (when (or (seq provider) (seq model-name))
-          (log/warnf (str "Complexity: ee-complexity-synonym-* settings incomplete "
-                          "(provider=%s, model-name=%s); falling back to search-index embedder.")
-                     (pr-str provider) (pr-str model-name)))
-        search-index-default))))
+       :threshold  (or override-threshold
+                       (default-threshold-for (:provider cfg) (:model-name cfg)))
+       :model-meta (select-keys cfg [:provider :model-name])}
+      search-index-default)))
 
 (defn complexity-scores
   "Compute the complexity score for the `:library`, `:universe`, and `:metabot` catalogs of this
@@ -507,9 +562,12 @@
      `:embedder` — overrides the synonym-axis embedder. When omitted, the embedder is resolved
         from the `ee-complexity-synonym-*` settings, falling back to
         [[metabase-enterprise.semantic-search.core/search-index-embedder]]; pass `nil` to disable
-        synonym scoring. Explicit `:embedder` values use [[default-synonym-similarity-threshold]]
-        (or the `ee-complexity-synonym-threshold` override if set); route via settings to pick a
-        per-model threshold.
+        synonym scoring. Explicit `:embedder` values bypass all `ee-complexity-synonym-*` settings
+        (including the threshold override) and use [[default-synonym-similarity-threshold]] unless
+        `:threshold` is also supplied — so a caller-pinned embedder produces the same score
+        regardless of unrelated instance configuration.
+     `:threshold` — cosine-similarity cutoff, only honoured alongside an explicit `:embedder`. Use
+        the settings path when driving from configuration.
      `:metabot-scope` — a `{:verified-only? <bool> :collection-id <nil|Long>}` map describing how
         the internal Metabot filters Cards. `:metabot` is always scored separately from `:universe`
         because Metabot/search table visibility (hidden tables, routed databases) already diverges
@@ -528,8 +586,7 @@
       (let [{embed-fn :fn :keys [threshold model-meta]}
             (if (contains? opts :embedder)
               {:fn         embedder
-               :threshold  (or (settings/ee-complexity-synonym-threshold)
-                               default-synonym-similarity-threshold)
+               :threshold  (or (:threshold opts) default-synonym-similarity-threshold)
                :model-meta (when (= embedder semantic-search/search-index-embedder)
                              (semantic-search/active-embedding-model))}
               (resolve-synonym-embedder))
