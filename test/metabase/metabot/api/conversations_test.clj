@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.api.common :as api]
    [metabase.metabot.api :as metabot.api]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -193,9 +194,9 @@
           msg      {:role "user" :content "hello"}]
       (try
         (binding [api/*current-user-id* owner-id]
-          (#'metabase.metabot.persistence/store-message! convo-id "slackbot" [msg] :user-id owner-id))
+          (#'metabot.persistence/store-message! convo-id "slackbot" [msg] :user-id owner-id))
         (binding [api/*current-user-id* other-id]
-          (#'metabase.metabot.persistence/store-message! convo-id "slackbot" [msg] :user-id other-id))
+          (#'metabot.persistence/store-message! convo-id "slackbot" [msg] :user-id other-id))
         (is (= owner-id
                (:user_id (t2/select-one :model/MetabotConversation :id convo-id)))
             "originator user_id must not be overwritten when a second user writes to the same conversation")
