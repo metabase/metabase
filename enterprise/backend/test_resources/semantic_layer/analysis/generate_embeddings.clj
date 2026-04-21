@@ -8,11 +8,10 @@
     (semantic-layer.analysis.generate-embeddings/generate-all!
       {:dump-dir \"enterprise/backend/test_resources/semantic_layer/appdb_dump\"})"
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
+   [metabase-enterprise.semantic-layer.representation :as rep]
    [metabase-enterprise.semantic-search.embedding :as embedding]
-   [metabase.audit-app.core :as audit]
    [metabase.util.json :as json]))
 
 (defn- split-name [s]
@@ -22,78 +21,39 @@
       (str/replace #" +" " ")
       str/trim str/lower-case))
 
-(defn- read-json-array!
-  "Read a JSON array from `<dump-dir>/<filename>`. Throws when the file is absent so a typo in
-  `dump-dir` or an incomplete export surfaces immediately instead of silently producing an
-  embedding file with no vectors."
-  [dump-dir filename]
-  (let [f (io/file dump-dir filename)]
-    (when-not (.exists f)
-      (throw (ex-info (str "Required dump file not found: " (.getPath f))
-                      {:dump-dir dump-dir :filename filename :resolved-path (.getPath f)})))
-    (json/decode (slurp f) true)))
-
 (defn- load-entities
-  "Load tables and cards from the JSON dump in `dump-dir`. Mirrors the universe filters used by
-  `metabase-enterprise.semantic-layer.representation`: active non-audit tables, plus non-archived
-  models/metrics on non-audit databases. Reading from the dump guarantees the generated embeddings
-  cover exactly the same snapshot that the downstream analysis scripts load."
-  [dump-dir]
-  (let [tables (->> (read-json-array! dump-dir "tables.json")
-                    (filter (fn [t] (and (:active t)
-                                         (not= (:db_id t) audit/audit-db-id)))))
-        cards  (->> (read-json-array! dump-dir "cards.json")
-                    (filter (fn [c] (and (contains? #{"metric" "model"} (:type c))
-                                         (not (:archived c))
-                                         (not= (:database_id c) audit/audit-db-id)))))]
-    {:tables tables :cards cards}))
+  "Union of library + universe entities from the JSON dump, deduped by `[kind id]`.
 
-(defn- assert-rich-fields!
-  "The `:search-text` variant combines name + description (+ schema for tables). If the dump
-  producer didn't carry those fields, the output silently degrades to just `[kind] name`, which
-  is indistinguishable from the `:names` variant. Fail fast instead so a dump-format regression
-  is visible."
-  [{:keys [tables cards]}]
-  (let [tables-rich? (some #(or (contains? % :description) (contains? % :schema)) tables)
-        cards-rich?  (some #(contains? % :description) cards)]
-    (when-not (and tables-rich? cards-rich?)
-      (throw (ex-info (str "Dump is missing descriptive fields required by the :search-text variant."
-                           " Regenerate tables.json with :description and :schema, and cards.json"
-                           " with :description, or drop :search-text from the variants list.")
-                      {:tables-have-description-or-schema? (boolean tables-rich?)
-                       :cards-have-description?            (boolean cards-rich?)})))))
+  Going through `representation/load-dir` ensures the generated embeddings cover every entity any
+  downstream analysis can ask for: `:universe` drops audit-DB content, but `:library` intentionally
+  keeps library-collection audit content, so filtering to universe-only here would silently drop
+  library audit entities from the output."
+  [dump-dir]
+  (let [{:keys [library universe]} (rep/load-dir dump-dir)]
+    (vec (vals (into {} (map (fn [e] [[(:kind e) (:id e)] e])) (concat library universe))))))
+
+(defn- typed-prefix [kind]
+  (if (= kind :metric) "[value]" "[source]"))
 
 (defn- build-texts
-  "Build `{normalized-name → text-to-embed}` for a given text-type."
-  [text-type {:keys [tables cards] :as entities}]
+  "Build `{normalized-name → text-to-embed}` for a given text-type.
+
+  Entities come from `rep/load-dir`, which only carries `:name` and `:kind` (not `:description` or
+  `:schema`), so the `:search-text` variant is intentionally not supported here — feed a richer
+  export if you need it."
+  [text-type entities]
   (let [entries
         (case text-type
           :names
-          (concat (map (fn [t] [(embedders/normalize-name (:name t)) (:name t)]) tables)
-                  (map (fn [c] [(embedders/normalize-name (:name c)) (:name c)]) cards))
+          (map (fn [e] [(embedders/normalize-name (:name e)) (:name e)]) entities)
 
           :names-split
-          (concat (map (fn [t] [(embedders/normalize-name (:name t)) (split-name (:name t))]) tables)
-                  (map (fn [c] [(embedders/normalize-name (:name c)) (split-name (:name c))]) cards))
-
-          :search-text
-          (do
-            (assert-rich-fields! entities)
-            (concat
-             (map (fn [t] [(embedders/normalize-name (:name t))
-                           (str "[table] " (:name t)
-                                (when (:description t) (str " - " (subs (:description t) 0 (min 100 (count (:description t))))))
-                                (when (:schema t) (str " (" (:schema t) ")")))]) tables)
-             (map (fn [c] [(embedders/normalize-name (:name c))
-                           (str "[" (:type c) "] " (:name c)
-                                (when (:description c) (str " - " (subs (:description c) 0 (min 100 (count (:description c)))))))]) cards)))
+          (map (fn [e] [(embedders/normalize-name (:name e)) (split-name (:name e))]) entities)
 
           :typed-split
-          (concat
-           (map (fn [t] [(embedders/normalize-name (:name t)) (str "[source] " (split-name (:name t)))]) tables)
-           (map (fn [c] [(embedders/normalize-name (:name c))
-                         (str "[" (if (= (:type c) "metric") "value" "source") "] "
-                              (split-name (:name c)))]) cards)))]
+          (map (fn [e] [(embedders/normalize-name (:name e))
+                        (str (typed-prefix (:kind e)) " " (split-name (:name e)))])
+               entities))]
     ;; First-wins dedup by normalized name
     (reduce (fn [acc [n txt]] (if (contains? acc n) acc (assoc acc n txt))) {} entries)))
 
@@ -115,10 +75,14 @@
                      (/ (- (System/currentTimeMillis) t0) 1000.0)))))
 
 (def ^:private variants
-  "All (text-type × model) combinations to produce."
+  "All (text-type × model) combinations to produce.
+
+  `:search-text` is intentionally absent: it would need `:description`/`:schema` per entity, which
+  the JSON dump here does not carry. Regenerating from this dump would collapse `:search-text` to
+  `[kind] name` and silently masquerade as valid output. Produce `:search-text` embeddings from a
+  richer export if needed."
   [{:text-type :names       :model-name "snowflake-arctic-embed:l" :file "names_arctic-l_1024d.json"}
    {:text-type :names-split :model-name "snowflake-arctic-embed:l" :file "names_split_arctic-l_1024d.json"}
-   {:text-type :search-text :model-name "snowflake-arctic-embed:l" :file "search-text_arctic-l_1024d.json"}
    {:text-type :typed-split :model-name "snowflake-arctic-embed:l" :file "typed_split_arctic-l_1024d.json"}
    {:text-type :names-split :model-name "all-minilm:l6-v2"        :file "names_split_minilm-l6v2_384d.json"}
    {:text-type :typed-split :model-name "all-minilm:l6-v2"        :file "typed_split_minilm-l6v2_384d.json"}])
