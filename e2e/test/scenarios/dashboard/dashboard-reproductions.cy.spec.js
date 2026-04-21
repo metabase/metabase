@@ -576,28 +576,28 @@ describe("issue 17879", () => {
   it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "month",
-      expectedFilterText: "Created At is Apr 1–30, 2022",
+      expectedFilterText: "Created At is Apr 1–30, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - week -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "week",
-      expectedFilterText: "Created At is Apr 24–30, 2022",
+      expectedFilterText: "Created At is Apr 27 – May 3, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> month (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
       targetDateUnit: "month",
     });
   });
