@@ -2146,8 +2146,7 @@
            task
            tracing
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Database}
-   :model-exports #{:model/TaskHistory :model/TaskRun}}
+   :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
   {:team "Admin Webapp"
@@ -3023,13 +3022,9 @@
            notification
            request
            util}
-   :model-imports #{:model/Card
-                    :model/Notification
+   :model-imports #{:model/Notification
                     :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/TaskHistory
-                    :model/TaskRun
-                    :model/User}}
+                    :model/NotificationRecipient}}
 
   enterprise/permission-debug
   {:team "UX West"

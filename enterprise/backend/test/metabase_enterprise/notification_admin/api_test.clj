@@ -308,8 +308,8 @@
                                                               :entity_type :card
                                                               :entity_id   card-a
                                                               :status      :success
-                                                              :started_at  (t/instant "2024-01-01T00:00:00Z")
-                                                              :ended_at    (t/instant "2024-01-01T00:00:01Z")}]
+                                                              :started_at  (t/instant)
+                                                              :ended_at    (t/instant)}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               by-id          (into {} (map (juxt :id identity) data))]
           (is (some? (:last_sent_at (by-id n-sent))))

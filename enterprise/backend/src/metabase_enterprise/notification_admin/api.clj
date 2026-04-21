@@ -1,9 +1,11 @@
 (ns metabase-enterprise.notification-admin.api
   "Admin endpoints for notifications (card-type alerts). Gated behind the `:audit-app` feature flag
-  and `check-superuser`. Health + last_sent_at computation lives in `notification-admin.health`."
+  and `check-superuser`. Health + last_sent_at are derived from SQL joins on notification_card,
+  report_card, core_user, and a windowed task_run subquery — classification happens inline in
+  [[enrich-row]]."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.notification-admin.health :as notification-admin.health]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.notification.models :as models.notification]
@@ -73,7 +75,33 @@
                                       :id [:in raw-side]))]
     (into (or user-side #{}) (or raw-nids #{}))))
 
+(def ^:private health-lookback-days
+  "How far back to consider alert-type TaskRuns when computing `failing`/`abandoned`/`healthy`."
+  90)
+
+(defn- latest-run-per-card
+  "Honey.sql subquery: one row per card with the most recent alert-type TaskRun's status and
+  ended_at, within [[health-lookback-days]]. Uses `ROW_NUMBER() OVER (PARTITION BY entity_id)`
+  — supported on H2, Postgres 8.4+, MySQL 8.0+, MariaDB 10.2+."
+  []
+  {:select [:entity_id :status :ended_at]
+   :from   [[{:select [:entity_id :status :ended_at
+                       [[:over [[:row_number]
+                                {:partition-by [:entity_id]
+                                 :order-by     [[:started_at :desc]]}]]
+                        :rn]]
+              :from   [:task_run]
+              :where  [:and
+                       [:= :run_type "alert"]
+                       [:= :entity_type "card"]
+                       [:> :started_at (t/minus (t/offset-date-time)
+                                                (t/days health-lookback-days))]]}
+             :sub]]
+   :where  [:= :sub.rn 1]})
+
 (defn- base-list-query
+  "Select notifications + the columns needed for health classification. Always joins the four
+  health-related tables because we project their values on every row (see [[enrich-row]])."
   [{:keys [status creator_id card_id recipient_email channel]}]
   (cond-> {:select-distinct [:notification.id
                              :notification.active
@@ -81,9 +109,20 @@
                              :notification.created_at
                              :notification.updated_at
                              :notification.payload_type
-                             :notification.payload_id]
+                             :notification.payload_id
+                             [:c.id        :__card_id]
+                             [:c.archived  :__card_archived]
+                             [:cu.is_active :__creator_active]
+                             [:lr.status   :__run_status]
+                             [:lr.ended_at :__run_ended_at]]
            :from            [:notification]
            :where           [:= :notification.payload_type "notification/card"]}
+
+    true
+    (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
+        (sql.helpers/left-join [:report_card :c]        [:= :c.id :nc.card_id])
+        (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id])
+        (sql.helpers/left-join [(latest-run-per-card) :lr] [:= :lr.entity_id :nc.card_id]))
 
     (= status "active")
     (sql.helpers/where [:= :notification.active true])
@@ -95,12 +134,7 @@
     (sql.helpers/where [:= :notification.creator_id creator_id])
 
     card_id
-    (-> (sql.helpers/left-join
-         :notification_card
-         [:and
-          [:= :notification_card.id :notification.payload_id]
-          [:= :notification.payload_type "notification/card"]])
-        (sql.helpers/where [:= :notification_card.card_id card_id]))
+    (sql.helpers/where [:= :nc.card_id card_id])
 
     channel
     (-> (sql.helpers/left-join
@@ -113,61 +147,65 @@
      (let [matching-ids (notification-ids-matching-recipient-email recipient_email)]
        (if (seq matching-ids)
          [:in :notification.id matching-ids]
-         ;; no matches — force an empty result
          [:= 1 0])))))
 
-(defn- scoped-list-query
-  "Base list query for `filters`, plus an optional `WHERE id IN (id-whitelist)` clause and
-  deterministic `updated_at desc` ordering. `id-whitelist` nil = no whitelist (full base query);
-  empty set = force empty result."
-  [filters id-whitelist]
-  (cond-> (base-list-query filters)
-    (and id-whitelist (seq id-whitelist))
-    (sql.helpers/where [:in :notification.id id-whitelist])
+(def ^:private not-orphaned-card    [:and [:not= :c.id nil] [:= :c.archived false]])
+(def ^:private not-orphaned-creator [:= :cu.is_active true])
 
-    (and id-whitelist (empty? id-whitelist))
-    (sql.helpers/where [:= 1 0])
+(defn- health-where
+  "Honey.sql WHERE clause that filters notifications to those matching `health`. Precedence
+  (`orphaned_card > orphaned_creator > failing > abandoned > healthy`) is baked in — a `failing`
+  match excludes rows that are also orphaned."
+  [health]
+  (case health
+    :orphaned_card    [:or [:= :c.id nil] [:= :c.archived true]]
+    :orphaned_creator [:and not-orphaned-card [:= :cu.is_active false]]
+    :failing          [:and not-orphaned-card not-orphaned-creator [:= :lr.status "failed"]]
+    :abandoned        [:and not-orphaned-card not-orphaned-creator [:= :lr.status "abandoned"]]
+    :healthy          [:and not-orphaned-card not-orphaned-creator
+                       [:or [:= :lr.entity_id nil] [:= :lr.status "success"]]]))
 
-    true
-    (assoc :order-by [[:notification.updated_at :desc]])))
+(defn- list-query
+  [{:keys [health] :as filters}]
+  (cond-> (base-list-query (dissoc filters :health))
+    health (sql.helpers/where (health-where health))
+    true   (assoc :order-by [[:notification.updated_at :desc]])))
 
 (defn- count-query
-  "Count matching distinct notifications. Mirrors [[scoped-list-query]]'s WHERE/JOIN shape."
-  [filters id-whitelist]
-  (-> (scoped-list-query filters id-whitelist)
+  [filters]
+  (-> (list-query filters)
       (assoc :select [[[:count [:distinct :notification.id]] :count]])
       (dissoc :select-distinct :order-by)))
 
-(defn- ids-matching-health
-  "Return the set of notification ids within `filters` that match `health`. Runs a lightweight
-  SELECT id, creator_id over the base query (not full rows) and lets `health/compute-for-rows`
-  classify; that helper only needs `:id` and `:creator_id`."
-  [health filters]
-  (let [rows     (t2/query (-> (base-list-query filters)
-                               (assoc :select [[:notification.id :id]
-                                               [:notification.creator_id :creator_id]])
-                               (dissoc :select-distinct)))
-        enriched (notification-admin.health/compute-for-rows rows)]
-    (into #{} (comp (filter #(= health (:health %))) (map :id)) enriched)))
+(defn- enrich-row
+  "Read the `__*` columns projected by [[base-list-query]] and assoc `:health` + `:last_sent_at`
+  onto the row. Strips the internal columns before returning so the response shape matches
+  `::list-row`. Run status from SQL is a string (e.g. `\"success\"`); compare on lower-cased
+  strings to match `health-where`."
+  [row]
+  (let [status (:__run_status row)]
+    (-> row
+        (assoc :health       (cond
+                               (or (nil? (:__card_id row))
+                                   (true? (:__card_archived row)))   :orphaned_card
+                               (false? (:__creator_active row))      :orphaned_creator
+                               (= "failed"    status)                 :failing
+                               (= "abandoned" status)                 :abandoned
+                               :else                                   :healthy)
+               :last_sent_at (when (= "success" status) (:__run_ended_at row)))
+        (dissoc :__card_id :__card_archived :__creator_active :__run_status :__run_ended_at))))
 
 (defn- list-notifications
-  "Shared implementation for `GET /`. Pagination always runs in SQL. When a `:health` filter is
-  set we first compute the matching id set via a lightweight scan (id + creator_id only, so the
-  shared `compute-for-rows` helper can classify), then scope the main query to `WHERE id IN
-  (ids)`. Health is re-computed for the page's hydrated rows so the response field is present.
-  O(|matching base rows|) for the classify scan + O(page size) for the main fetch."
-  [{:keys [limit offset health] :as filters}]
-  (let [base-filters (dissoc filters :limit :offset :health)
-        id-whitelist (when health (ids-matching-health health base-filters))
+  "Single SQL query. Health joins (card, creator, latest-run window) are always applied so we can
+  classify every row inline — no separate post-query materialization. Pagination in SQL."
+  [{:keys [limit offset] :as filters}]
+  (let [base-filters (dissoc filters :limit :offset)
         page-rows    (t2/select :model/Notification
-                                (assoc (scoped-list-query base-filters id-whitelist)
+                                (assoc (list-query base-filters)
                                        :limit  limit
                                        :offset offset))
-        enriched     (notification-admin.health/compute-for-rows page-rows)
-        total        (if (and id-whitelist (empty? id-whitelist))
-                       0
-                       (or (:count (t2/query-one (count-query base-filters id-whitelist))) 0))]
-    {:data   (vec (models.notification/hydrate-notification enriched))
+        total        (or (:count (t2/query-one (count-query base-filters))) 0)]
+    {:data   (vec (models.notification/hydrate-notification (mapv enrich-row page-rows)))
      :total  total
      :limit  limit
      :offset offset}))
@@ -199,14 +237,14 @@
                        :channel         channel}))
 
 (defn- get-notification-detail
-  "Fetch a single card-type notification and enrich it with `:health` and `:last_sent_at`. Send
-  history is linked out to the existing Runs page (filter by entity_id=card_id, run_type=alert).
-  Returns nil if the notification doesn't exist or isn't a card-type notification — the caller
-  maps that to a 404."
+  "Fetch a single card-type notification with `:health` and `:last_sent_at`. Returns nil if the
+  notification doesn't exist or isn't a card-type notification — the caller maps that to a 404."
   [id]
-  (when-let [row (t2/select-one :model/Notification :id id :payload_type :notification/card)]
-    (let [[enriched] (notification-admin.health/compute-for-rows [row])]
-      (models.notification/hydrate-notification enriched))))
+  (when-let [row (t2/select-one :model/Notification
+                                (-> (list-query {})
+                                    (sql.helpers/where [:= :notification.id id])
+                                    (dissoc :order-by)))]
+    (models.notification/hydrate-notification (enrich-row row))))
 
 (api.macros/defendpoint :get "/:id" :- ::detail-response
   "Get a single card-type notification with health and last_sent_at. 404 if the notification
