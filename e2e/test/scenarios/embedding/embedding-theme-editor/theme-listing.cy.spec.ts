@@ -2,20 +2,12 @@ const { H } = cy;
 
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
-function createThemeViaApi(name = "Test theme") {
-  return cy.request("POST", "/api/embed-theme", {
-    name,
-    settings: { colors: { brand: "#509EE3" } },
-  });
-}
-
-function deleteAllThemes() {
-  cy.request("GET", "/api/embed-theme").then(({ body: themes }) => {
-    themes.forEach((theme: { id: number }) => {
-      cy.request("DELETE", `/api/embed-theme/${theme.id}`);
-    });
-  });
-}
+import {
+  clickThemeMenuItem,
+  createThemeViaApi,
+  deleteAllThemes,
+  openThemeActionMenu,
+} from "./helpers";
 
 describe(
   "scenarios > embedding > themes > theme listing",
@@ -142,11 +134,10 @@ describe(
 
       H.main().within(() => {
         cy.findByText("Untitled theme").should("be.visible");
-        cy.findByLabelText("Duplicate and delete").click();
       });
 
       cy.log("duplicate a theme");
-      cy.findByRole("menuitem", { name: /Duplicate/ }).click();
+      clickThemeMenuItem("Untitled theme", "Duplicate");
 
       H.undoToast().findByText("Theme duplicated successfully").should("exist");
 
@@ -161,13 +152,10 @@ describe(
       createThemeViaApi("Untitled theme");
       cy.visit("/admin/embedding/themes");
 
-      H.main().within(() => {
-        cy.findByText("Untitled theme").should("be.visible");
-        cy.findByLabelText("Duplicate and delete").click();
-      });
+      H.main().findByText("Untitled theme").should("be.visible");
 
       cy.log("delete a theme");
-      cy.findByRole("menuitem", { name: /Delete/ }).click();
+      clickThemeMenuItem("Untitled theme", "Delete");
 
       cy.log("delete confirmation modal should appear");
       cy.findByRole("dialog").within(() => {
@@ -181,11 +169,10 @@ describe(
         cy.findByRole("button", { name: /Cancel/ }).click();
       });
 
-      H.main().within(() => {
-        cy.log("theme should still exist");
-        cy.findByText("Untitled theme").should("be.visible");
-        cy.findByLabelText("Duplicate and delete").click();
-      });
+      cy.log("theme should still exist");
+      H.main().findByText("Untitled theme").should("be.visible");
+
+      openThemeActionMenu("Untitled theme");
 
       cy.log("confirm deletion");
       cy.findByRole("menuitem", { name: /Delete/ }).click();

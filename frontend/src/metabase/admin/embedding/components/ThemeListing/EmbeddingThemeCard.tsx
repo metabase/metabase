@@ -22,6 +22,7 @@ export function EmbeddingThemeCard({
       withBorder
       onClick={() => onEdit(theme.id)}
       style={{ cursor: "pointer" }}
+      data-testid={`theme-card-${theme.name}`}
     >
       <EmbeddingThemeCardPreview theme={theme.settings} />
 
