@@ -8,12 +8,12 @@
     (semantic-layer.analysis.generate-embeddings/generate-all!
       {:dump-dir \"enterprise/backend/test_resources/semantic_layer/appdb_dump\"})"
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.audit-app.core :as audit]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [metabase.util.json :as json]))
 
 (defn- split-name [s]
   (-> s
@@ -22,11 +22,25 @@
       (str/replace #" +" " ")
       str/trim str/lower-case))
 
-(defn- load-entities []
-  (let [tables (t2/select [:model/Table :name :description :schema] :active true :db_id [:not= audit/audit-db-id])
-        cards  (t2/select [:model/Card :name :description :type :card_schema]
-                          :type [:in ["metric" "model"]]
-                          :archived false :database_id [:not= audit/audit-db-id])]
+(defn- read-json-array [dump-dir filename]
+  (let [f (io/file dump-dir filename)]
+    (if (.exists f)
+      (json/decode (slurp f) true)
+      [])))
+
+(defn- load-entities
+  "Load tables and cards from the JSON dump in `dump-dir`. Mirrors the universe filters used by
+  `metabase-enterprise.semantic-layer.representation`: active non-audit tables, plus non-archived
+  models/metrics on non-audit databases. Reading from the dump guarantees the generated embeddings
+  cover exactly the same snapshot that the downstream analysis scripts load."
+  [dump-dir]
+  (let [tables (->> (read-json-array dump-dir "tables.json")
+                    (filter (fn [t] (and (:active t)
+                                         (not= (:db_id t) audit/audit-db-id)))))
+        cards  (->> (read-json-array dump-dir "cards.json")
+                    (filter (fn [c] (and (contains? #{"metric" "model"} (:type c))
+                                         (not (:archived c))
+                                         (not= (:database_id c) audit/audit-db-id)))))]
     {:tables tables :cards cards}))
 
 (defn- build-texts
@@ -91,7 +105,7 @@
   "Generate all embedding variants. Requires ollama running with the relevant models pulled."
   [{:keys [dump-dir]}]
   (let [emb-dir  (str dump-dir "/embeddings/")
-        entities (load-entities)]
+        entities (load-entities dump-dir)]
     (.mkdirs (java.io.File. emb-dir))
     (doseq [{:keys [text-type model-name file]} variants]
       (println (format "\n=== %s × %s ===" (name text-type) model-name))
