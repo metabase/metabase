@@ -1,0 +1,949 @@
+{:threshold 0.95,
+ :catalog :universe,
+ :embeddings "names_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 0, :median 0, :p75 2, :max 191, :mean 7.884347422201579},
+ :connected-components
+ {:count 2807,
+  :multi-member 478,
+  :top
+  [{:members
+    ["fake_table_121"
+     "fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_72"
+     "fake_table_136"
+     "fake_table_150"
+     "fake_table_159"
+     "... (200 total)"],
+    :size 200,
+    :density 0.7180904522613065,
+    :avg-sim 0.9547385957801242,
+    :min-sim 0.858879266013452}
+   {:members
+    ["pokedex_ver_sv1"
+     "pokemon_v2_pokedex"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_version"
+     "pokemon_v2_pokemongameindex"
+     "pokemon_v2_pokemonevolution"
+     "pokemon_v2_pokemonsprites"
+     "pokemon_v2_pokemondexnumber"
+     "pokemon_v2_pokemonspecies"
+     "pokemon_v2_pokedexdescription"
+     "pokemon_v2_pokedexversiongroup"
+     "pokemon_v2_pokemon"
+     "pokemon_v2_pokedexname"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_egggroup"
+     "pokemon_v2_pokemonmove"
+     "pokemon_v2_generation"
+     "pokemon_v2_pokemonspeciesdescription"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_versionname"
+     "pokemon_v2_item"
+     "pokemon_v2_typesprites"
+     "pokemon_v2_pokemonshapename"
+     "pokemon_v2_pokemonitem"
+     "pokemon_v2_typename"
+     "... (137 total)"],
+    :size 137,
+    :density 0.04390296264491198,
+    :avg-sim 0.909394028027564,
+    :min-sim 0.8366638816311688}
+   {:members
+    ["catalog_product_bundle_stock_index"
+     "catalog_product_bundle_price_index"
+     "catalog_product_bundle_selection_price"
+     "catalog_product_index_price_bundle_opt_idx"
+     "catalog_product_index_price_bundle_sel_idx"
+     "catalog_product_index_price_bundle_opt_tmp"
+     "catalog_product_index_price_bundle_sel_tmp"
+     "catalog_product_index_price"
+     "catalog_product_index_tier_price"
+     "catalog_product_index_price_bundle_tmp"
+     "catalog_product_index_price_bundle_idx"
+     "catalog_product_bundle_selection"
+     "catalog_product_index_price_final_idx"
+     "catalog_product_index_price_opt_agr_idx"
+     "catalog_product_index_price_idx"
+     "catalog_product_index_price_cfg_opt_idx"
+     "catalog_product_index_price_opt_idx"
+     "catalog_product_index_price_cfg_opt_tmp"
+     "catalog_product_index_price_opt_agr_tmp"
+     "catalog_product_index_price_opt_tmp"
+     "catalog_product_index_price_final_tmp"
+     "catalog_product_index_price_downlod_idx"
+     "catalog_product_option_price"
+     "catalog_product_index_group_price"
+     "catalog_product_index_price_tmp"
+     "catalog_product_bundle_option_value"
+     "catalog_product_bundle_option"
+     "catalog_product_index_eav_idx"
+     "catalog_product_index_price_cfg_opt_agr_idx"
+     "catalog_product_index_price_cfg_opt_agr_tmp"
+     "... (59 total)"],
+    :size 59,
+    :density 0.1186440677966102,
+    :avg-sim 0.9099401716544795,
+    :min-sim 0.7985492160689753}
+   {:members
+    ["stg_stripe__balance_transaction"
+     "stg_stripe__balance_transaction_tmp"
+     "stg_stripe__payout_balance_transaction"
+     "stg_stripe__payout_balance_transaction_tmp"
+     "stg_stripe__refund_tmp"
+     "stg_stripe__account_tmp"
+     "stg_stripe__charge_tmp"
+     "stg_stripe__subscription_tmp"
+     "stg_stripe__subscription_item_tmp"
+     "stg_stripe__payout_tmp"
+     "stg_stripe__payout"
+     "stg_stripe__refund"
+     "stg_stripe__transfer_tmp"
+     "stg_stripe__discount_tmp"
+     "stg_stripe__product_tmp"
+     "stg_stripe__dispute_tmp"
+     "stg_stripe__fee_tmp"
+     "stg_stripe__card_tmp"
+     "stg_stripe__invoice_tmp"
+     "stg_stripe__account"
+     "stg_stripe__customer_tmp"
+     "stg_stripe__charge"
+     "stg_stripe__subscription"
+     "stg_stripe__subscription_item"
+     "stg_stripe_subscription"
+     "stg_stripe__card"
+     "stg_stripe__transfer"
+     "stg_stripe__discount"
+     "stg_stripe__price_plan_tmp"
+     "stg_stripe__product"
+     "... (42 total)"],
+    :size 42,
+    :density 0.1265969802555168,
+    :avg-sim 0.9247145556168609,
+    :min-sim 0.8651663669952967}
+   {:members
+    ["2ecb7779"
+     "2ecb7779_20241219182434"
+     "111_20240619132549"
+     "a_20231110154424"
+     "d9562d6e_2023_06_02_90_20230602153438"
+     "2_20231227190128"
+     "all_20230825133017"
+     "c_20230531084957"
+     "test_20231204115443"
+     "april_20230622183131"
+     "c_20230531083946"
+     "c_20230531084223"
+     "test_20231016155322"
+     "all_20241206222950"
+     "all_20250926094306"
+     "test_20240418115639"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "371a8853_2023_06_23_30_20230623113921"
+     "1cce334a_2023_08_07_30_20230807115831"
+     "2023_01_06_20230627155852"
+     "b8523356_2023_06_23_90_20230623152549"
+     "march_20230622180623"
+     "test_20260121163710"
+     "cc_20240426182349"
+     "test_20230620170201"
+     "test_20260121204916"
+     "thisone_20251128180856"
+     "jun_pw_20230621211411"
+     "untitled_1_20251015105608"
+     "x_20250514215647"
+     "... (38 total)"],
+    :size 38,
+    :density 0.155049786628734,
+    :avg-sim 0.9286699908651749,
+    :min-sim 0.8485340837401397}
+   {:members
+    ["customer_survey_q_3_2024_prod"
+     "customer_survey_q_3_2024_sheet_1"
+     "customer_survey_q_1_2025_prod"
+     "customer_survey_q_3_2024_raw"
+     "copy_of_customer_survey_q_1_2025_prod"
+     "customer_survey_q_3_2024_dropdown_values"
+     "customer_survey_q_1_2025_sheet_1"
+     "customer_survey_q_1_2024_sheet_1"
+     "customer_survey_q_3_2024_sheet_3"
+     "customer_survey_q_1_2025_raw"
+     "customer_survey_q_3_2025_analyzed"
+     "copy_of_customer_survey_q_1_2025_raw"
+     "customer_survey_jan_2023_raw_results"
+     "customer_survey_q_1_2026_raw"
+     "customer_survey_q_3_2025_raw"
+     "customer_survey_q_3_2025_dropdown_lists"
+     "customer_survey_q_3_2025_dropdown_values"
+     "customer_survey_q_1_2026_dropdown_values"
+     "customer_survey_q_1_2026_analyzed"
+     "copy_of_customer_survey_jan_2023_raw_results"
+     "copy_of_customer_survey_jan_2023_feedback_via_email"
+     "customer_survey_jan_2023_feedback_via_email"
+     "copy_of_customer_survey_jan_2023_email_and_org_id"
+     "customer_survey_jan_2023_email_and_org_id"],
+    :size 24,
+    :density 0.1702898550724638,
+    :avg-sim 0.9307690384103252,
+    :min-sim 0.8844237060682391}
+   {:members
+    ["com_metabase_settings_1"
+     "com_metabase_account_1"
+     "com_metabase_setup_1"
+     "com_metabase_cleanup_1"
+     "com_metabase_dashboard_1"
+     "com_metabase_database_1"
+     "com_metabase_action_1"
+     "com_metabase_serialization_1"
+     "com_metabase_downloads_1"
+     "com_metabase_model_1"
+     "com_metabase_task_1"
+     "com_metabase_instance_1"
+     "com_metabase_dashboardtab_1"
+     "com_metabase_timeline_1"
+     "com_metabase_search_1"
+     "com_metabase_metabot_1"
+     "com_metabase_question_1"
+     "com_metabase_embedding_homepage_1"
+     "com_metabase_browse_data_1"
+     "com_metabase_embed_share_1"
+     "com_metabase_instance_stats_2"
+     "com_metabase_instance_stats_1"
+     "com_metabase_embed_flow_1"],
+    :size 23,
+    :density 0.2411067193675889,
+    :avg-sim 0.9317305093720161,
+    :min-sim 0.854257051092926}
+   {:members
+    ["stg_hosting_insights_channel"
+     "stg_hosting_insights_segment"
+     "stg_hosting_insights_pulse_channel"
+     "stg_hosting_insights_dashboard"
+     "stg_hosting_insights_action"
+     "stg_hosting_insights_collection"
+     "stg_hosting_insights_document"
+     "stg_hosting_insights_transform"
+     "stg_hosting_insights_transform_tag"
+     "stg_hosting_insights_measure"
+     "stg_hosting_insights_pulse"
+     "stg_hosting_insights_timeline"
+     "stg_hosting_insights_setting"
+     "stg_hosting_insights_sandboxes"
+     "stg_hosting_insights_persisted_info"
+     "stg_hosting_insights_metabase_database"
+     "stg_hosting_insights_question"
+     "stg_hosting_insights_transform_job"
+     "stg_hosting_insights_transform_job_transform_tag"
+     "stg_hosting_insights_metabase_table"
+     "stg_hosting_insights_transform_job_run"],
+    :size 21,
+    :density 0.2714285714285714,
+    :avg-sim 0.9369067720389053,
+    :min-sim 0.8789312399064824}
+   {:members
+    ["sales_flat_quote"
+     "sales_flat_quote_address"
+     "sales_flat_quote_payment"
+     "sales_flat_quote_address_item"
+     "sales_flat_quote_item"
+     "sales_flat_order_address"
+     "sales_flat_order_payment"
+     "sales_flat_order_item"
+     "sales_flat_quote_item_option"
+     "sales_flat_order"
+     "sales_flat_shipment_item"
+     "sales_flat_order_grid"
+     "sales_flat_order_status_history"
+     "sales_flat_shipment_track"
+     "sales_flat_shipment_comment"
+     "sales_flat_shipment"
+     "sales_flat_shipment_grid"],
+    :size 17,
+    :density 0.2132352941176471,
+    :avg-sim 0.9275279040386246,
+    :min-sim 0.8715453092502903}
+   {:members
+    ["mark's question"
+     "question"
+     "post link"
+     "hi_core_user"
+     "answer"
+     "question_and_answer"
+     "hi_document"
+     "hi_view_log"
+     "document"
+     "hi_activity"
+     "view_log"
+     "view log"
+     "untitled 1"
+     "view logs"
+     "1"],
+    :size 15,
+    :density 0.180952380952381,
+    :avg-sim 0.9112116653042825,
+    :min-sim 0.8332090794647722}
+   {:members
+    ["trivia_20240918165005"
+     "trivia_20240918215532"
+     "trivia_20240918212836"
+     "trivia_game_20240918223942"
+     "trivia_20240918213955"
+     "trivia_game_20240918224115"
+     "trivia_20240918213823"
+     "trivia_20240918214314"
+     "trivia_game_20240918223949"
+     "trivia_20240918221412"
+     "trivia_game_20240918224102"
+     "trivia_20240918152008"
+     "trivia_20240918151922"
+     "trivia_20240918214441"
+     "trivia_20240918215633"],
+    :size 15,
+    :density 1.0,
+    :avg-sim 0.9821133495971769,
+    :min-sim 0.9600948627524977}
+   {:members
+    ["sheet1_20240919001311"
+     "sheet3_20240918214531"
+     "sheet1_20240918213711"
+     "sheet_20240918230547"
+     "sheet3_20240918215719"
+     "sheet_20240918230541"
+     "sheet_20240918230514"
+     "sheet3_20240918220135"
+     "sheet22_20240918203326"
+     "sheet1_20240918151816"
+     "sheet23_20240918213519"
+     "sheet1_20240919001319"
+     "sheet_20240918230506"
+     "sheet22_20240918203340"],
+    :size 14,
+    :density 1.0,
+    :avg-sim 0.9758329284608115,
+    :min-sim 0.9627320359682698}
+   {:members
+    ["calendar information events (7)"
+     "calendar_information_events"
+     "calendar_information___events__7__20230719192220"
+     "calendar_information___events__5__20230720195839"
+     "calendar_information___events__7__20230721122534"
+     "calendar_information___events__2__20230710224244"
+     "calendar_information___events__5__20230719145022"
+     "calendar_information___events__6__20230719190915"
+     "calendar_information___events__6__20230720203438"
+     "calendar_information___events__up_to_19_jul_2023_20230719194722"
+     "calendar_information___events__up_to_19_jul_2023_20230719195229"
+     "calendar_information___events__4__20230713171925"
+     "calendar_information___events_final_20230712171222"],
+    :size 13,
+    :density 0.8205128205128205,
+    :avg-sim 0.9673103727282967,
+    :min-sim 0.9312259317132985}
+   {:members
+    ["eav_entity_int"
+     "eav_entity_type"
+     "eav_entity"
+     "eav_form_type_entity"
+     "eav_entity_text"
+     "eav_entity_attribute"
+     "eav_form_type"
+     "eav_attribute"
+     "eav_attribute_group"
+     "eav_attribute_set"
+     "eav_attribute_option"
+     "eav_attribute_option_value"],
+    :size 12,
+    :density 0.2424242424242424,
+    :avg-sim 0.9175619659138992,
+    :min-sim 0.867782416124651}
+   {:members
+    ["metabase_experts_tracking_sheet_15"
+     "metabase_experts_tracking_sheet_14"
+     "metabase_experts_tracking_sheet_18"
+     "metabase_experts_tracking_sheet_8"
+     "metabase_experts_tracking_sheet_10"
+     "metabase_experts_tracking_sheet_11"
+     "metabase_experts_tracking_sheet_17"
+     "metabase_experts_tracking_sheet_16"
+     "metabase_experts_tracking_sheet_12"
+     "metabase_experts_tracking_sheet_9"
+     "metabase_experts_tracking_sheet_13"],
+    :size 11,
+    :density 1.0,
+    :avg-sim 0.9851696769099216,
+    :min-sim 0.9784360475737492}]},
+ :greedy-cliques
+ {:count 3390,
+  :multi-member 1061,
+  :top
+  [{:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_121"
+     "fake_table_136"
+     "fake_table_110"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_176"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_151"
+     "fake_table_76"
+     "fake_table_66"
+     "... (62 total)"],
+    :size 62,
+    :density 1.0,
+    :avg-sim 0.963800334862826,
+    :min-sim 0.9501195662702744}
+   {:members
+    ["fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_89"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_121"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_68"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (61 total)"],
+    :size 61,
+    :density 1.0,
+    :avg-sim 0.9634540923982574,
+    :min-sim 0.9501636384012669}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_121"
+     "fake_table_136"
+     "fake_table_159"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "... (61 total)"],
+    :size 61,
+    :density 1.0,
+    :avg-sim 0.9638365247809231,
+    :min-sim 0.9501134996370623}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_88"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_28"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (60 total)"],
+    :size 60,
+    :density 1.0,
+    :avg-sim 0.9633117586923312,
+    :min-sim 0.9500010927479213}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_136"
+     "fake_table_110"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_176"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "... (60 total)"],
+    :size 60,
+    :density 1.0,
+    :avg-sim 0.9634737671722842,
+    :min-sim 0.9501195662702744}
+   {:members
+    ["fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_176"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "... (60 total)"],
+    :size 60,
+    :density 1.0,
+    :avg-sim 0.9631251917051095,
+    :min-sim 0.9501636384012669}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_121"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (59 total)"],
+    :size 59,
+    :density 1.0,
+    :avg-sim 0.9636725796180503,
+    :min-sim 0.9501636384012669}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_136"
+     "fake_table_110"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_113"
+     "fake_table_111"
+     "... (59 total)"],
+    :size 59,
+    :density 1.0,
+    :avg-sim 0.963596619068512,
+    :min-sim 0.9501195662702744}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_46"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_56"
+     "fake_table_197"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (59 total)"],
+    :size 59,
+    :density 1.0,
+    :avg-sim 0.9634045793390762,
+    :min-sim 0.9501801751889746}
+   {:members
+    ["fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (59 total)"],
+    :size 59,
+    :density 1.0,
+    :avg-sim 0.9633866959538406,
+    :min-sim 0.9501636384012669}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_121"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (59 total)"],
+    :size 59,
+    :density 1.0,
+    :avg-sim 0.9638768227439097,
+    :min-sim 0.9501134996370623}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_136"
+     "fake_table_110"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_113"
+     "fake_table_111"
+     "... (59 total)"],
+    :size 59,
+    :density 1.0,
+    :avg-sim 0.9637496439955857,
+    :min-sim 0.9501195662702744}
+   {:members
+    ["fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_78"
+     "fake_table_41"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_72"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (59 total)"],
+    :size 59,
+    :density 1.0,
+    :avg-sim 0.9632428578616093,
+    :min-sim 0.9500208619055157}
+   {:members
+    ["fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_46"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_86"
+     "fake_table_197"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (59 total)"],
+    :size 59,
+    :density 1.0,
+    :avg-sim 0.9631487254950295,
+    :min-sim 0.9501636384012669}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_105"
+     "fake_table_136"
+     "fake_table_106"
+     "fake_table_196"
+     "fake_table_85"
+     "fake_table_112"
+     "fake_table_119"
+     "fake_table_137"
+     "fake_table_125"
+     "fake_table_75"
+     "fake_table_129"
+     "fake_table_74"
+     "fake_table_116"
+     "fake_table_197"
+     "fake_table_131"
+     "fake_table_76"
+     "fake_table_66"
+     "fake_table_111"
+     "fake_table_120"
+     "fake_table_166"
+     "... (58 total)"],
+    :size 58,
+    :density 1.0,
+    :avg-sim 0.9634880376457792,
+    :min-sim 0.9501636384012669}]},
+ :avg-linkage-hac nil}

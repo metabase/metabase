@@ -1,0 +1,281 @@
+{:threshold 0.9,
+ :catalog :library,
+ :embeddings "search-text_arctic-l_1024d.json",
+ :name-count 253,
+ :degree-distribution {:min 0, :p25 0, :median 0, :p75 2, :max 14, :mean 1.375494071146245},
+ :connected-components
+ {:count 161,
+  :multi-member 28,
+  :top
+  [{:members
+    ["hi_cache_config"
+     "hi_metabase_database"
+     "hi_metabase_field"
+     "hi_core_user"
+     "hi_data_permission"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_metabase_table"
+     "hi_dashboard_tab"
+     "hi_persisted_info"
+     "hi_permissions_group_membership"
+     "hi_glossary"
+     "hi_card_bookmark"
+     "hi_timeline_event"
+     "hi_dashboard_bookmark"
+     "hi_channel"
+     "hi_timeline"
+     "hi_dashboardcard_series"
+     "hi_collection"
+     "hi_report_dashboardcard"
+     "hi_notification"
+     "hi_collection_bookmark"
+     "hi_notification_card"
+     "hi_pulse_card"
+     "hi_report_card"
+     "hi_pulse_channel_recipient"
+     "hi_notification_subscription"
+     "hi_notification_recipient"
+     "hi_notification_handler"
+     "hi_report_dashboard"],
+    :size 30,
+    :density 0.1563218390804598,
+    :avg-sim 0.8647655932010772,
+    :min-sim 0.78128627179341}
+   {:members
+    ["unified_instance_event"
+     "model_event"
+     "serialization_event"
+     "database_event"
+     "question_event"
+     "metabot_event"
+     "action_event"
+     "dashboard_event"
+     "upsell_event"
+     "setting_event"
+     "search_event"
+     "invite_event"
+     "account_event"
+     "task_event"
+     "setup_event"],
+    :size 15,
+    :density 0.4380952380952381,
+    :avg-sim 0.8952890558517308,
+    :min-sim 0.8301004462997437}
+   {:members
+    ["gh_pull_request_commit"
+     "gh_pull_request"
+     "gh_user"
+     "gh_issue_assignee"
+     "gh_stargazer"
+     "gh_issue_comment"
+     "gh_issue"
+     "gh_project_issue"
+     "gh_issue_label"
+     "gh_issue_reaction"
+     "gh_issue_label_history"],
+    :size 11,
+    :density 0.2545454545454545,
+    :avg-sim 0.878851858830335,
+    :min-sim 0.8210047953006228}
+   {:members ["salesforce_lead" "salesforce_account" "salesforce_token" "salesforce_opportunity" "salesforce_contact"],
+    :size 5,
+    :density 0.9,
+    :avg-sim 0.9166782209528404,
+    :min-sim 0.8968982559175698}
+   {:members
+    ["instance_events_monthly_usage"
+     "monthly_account_usage"
+     "monthly_account_subscription_status_and_usage"
+     "monthly_account_subscription_status"],
+    :size 4,
+    :density 0.6666666666666667,
+    :avg-sim 0.9180477596859644,
+    :min-sim 0.8717147092262096}
+   {:members ["account_history" "activity_log" "customer" "customer_health_score_history"],
+    :size 4,
+    :density 0.5,
+    :avg-sim 0.8931597105920229,
+    :min-sim 0.8689882722119453}
+   {:members ["arr" "open bugs" "open p1 bugs"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.9185043061858195,
+    :min-sim 0.8845673157364905}
+   {:members
+    ["ms_hosted_instance_action" "ms_hosted_instance_scheduled_maintenance" "ms_hosting_scheduled_maintenance"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.894237522649662,
+    :min-sim 0.8474629285078712}
+   {:members ["ms_token_check" "ms_latest_token_check" "ms_first_token_check"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.9162254735671637,
+    :min-sim 0.8956813580162765}
+   {:members ["monthly_revenue_customer" "monthly_revenue_change_customer" "monthly_revenue_change"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.9274332841848759,
+    :min-sim 0.8946026843278632}
+   {:members ["python_load_transform_base" "large_table" "python_load20x100_in_1000x200_out"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.8940831126214975,
+    :min-sim 0.8741171557740408}
+   {:members ["lever_job" "lever_application" "lever_interview"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.8983433399377653,
+    :min-sim 0.8692784046683953}
+   {:members ["website_page_view" "page_view_anonymous" "website_page_view_anonymous"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9454730523072655,
+    :min-sim 0.9219570302525026}
+   {:members ["ms_address" "ms_contact"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9127041056127823,
+    :min-sim 0.9127041056127823}
+   {:members ["ms_crm_article_feedback" "ms_crm_product_feedback"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9007690600575692,
+    :min-sim 0.9007690600575692}]},
+ :greedy-cliques
+ {:count 206,
+  :multi-member 73,
+  :top
+  [{:members
+    ["model_event" "serialization_event" "database_event" "action_event" "setting_event" "search_event" "task_event"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.9278771678359563,
+    :min-sim 0.9012096467438143}
+   {:members ["model_event" "database_event" "action_event" "dashboard_event" "search_event" "task_event"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9318325480512315,
+    :min-sim 0.9039510158956318}
+   {:members ["model_event" "database_event" "action_event" "dashboard_event" "task_event" "setup_event"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9265548760210119,
+    :min-sim 0.9000440640879933}
+   {:members
+    ["hi_metabase_field"
+     "hi_core_user"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9325617242411458,
+    :min-sim 0.9006201834715402}
+   {:members ["model_event" "metabot_event" "action_event" "dashboard_event" "search_event" "task_event"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9295784597522051,
+    :min-sim 0.9053184538964857}
+   {:members ["hi_metabase_field" "hi_metabase_database" "hi_metabase_table" "hi_dashboard_tab" "hi_persisted_info"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9262270138058788,
+    :min-sim 0.9003716191983343}
+   {:members
+    ["hi_metabase_field" "hi_metabase_field_values" "hi_metabase_database" "hi_metabase_table" "hi_persisted_info"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9441137121926394,
+    :min-sim 0.9200090834095853}
+   {:members ["salesforce_account" "salesforce_lead" "salesforce_token" "salesforce_contact"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9196303193776227,
+    :min-sim 0.9047475094978293}
+   {:members ["hi_channel" "hi_notification_recipient" "hi_notification_card" "hi_notification"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9259559242906579,
+    :min-sim 0.9024553726815917}
+   {:members ["hi_notification_subscription" "hi_channel" "hi_notification_recipient" "hi_notification"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9285791745134983,
+    :min-sim 0.9024553726815917}
+   {:members ["model_event" "action_event" "account_event" "task_event"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9385851859893283,
+    :min-sim 0.9080001108478915}
+   {:members ["hi_notification_subscription" "hi_channel" "hi_notification_handler" "hi_notification"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9337023355374193,
+    :min-sim 0.9136991867880251}
+   {:members ["salesforce_account" "salesforce_lead" "salesforce_opportunity" "salesforce_contact"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9209104780209,
+    :min-sim 0.9160087895243276}
+   {:members ["hi_channel" "hi_dashboard_tab" "hi_notification"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.923918680113741,
+    :min-sim 0.9069015787041976}
+   {:members ["hi_dashboard_bookmark" "hi_dashboard_tab" "hi_report_dashboardcard"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9210399055485374,
+    :min-sim 0.9031072249492901}]},
+ :avg-linkage-hac
+ {:count 184,
+  :multi-member 39,
+  :top
+  [{:size 10,
+    :members
+    ["model_event"
+     "serialization_event"
+     "database_event"
+     "metabot_event"
+     "action_event"
+     "dashboard_event"
+     "setting_event"
+     "search_event"
+     "task_event"
+     "setup_event"]}
+   {:size 8,
+    :members
+    ["hi_metabase_field"
+     "hi_core_user"
+     "hi_metabase_field_values"
+     "hi_api_key"
+     "hi_metabase_database"
+     "hi_metabase_table"
+     "hi_persisted_info"
+     "hi_cache_config"]}
+   {:size 6,
+    :members
+    ["hi_notification_subscription"
+     "hi_channel"
+     "hi_notification_recipient"
+     "hi_notification_card"
+     "hi_notification_handler"
+     "hi_notification"]}
+   {:size 5,
+    :members ["salesforce_account" "salesforce_lead" "salesforce_token" "salesforce_opportunity" "salesforce_contact"]}
+   {:size 4, :members ["gh_issue" "gh_issue_comment" "gh_project_issue" "gh_issue_reaction"]}
+   {:size 4, :members ["hi_dashboard_bookmark" "hi_collection_bookmark" "hi_dashboard_tab" "hi_card_bookmark"]}
+   {:size 3, :members ["website_page_view" "page_view_anonymous" "website_page_view_anonymous"]}
+   {:size 3,
+    :members
+    ["monthly_account_subscription_status_and_usage" "monthly_account_usage" "monthly_account_subscription_status"]}
+   {:size 3, :members ["ms_token_check" "ms_first_token_check" "ms_latest_token_check"]}
+   {:size 3, :members ["monthly_revenue_customer" "monthly_revenue_change" "monthly_revenue_change_customer"]}
+   {:size 3, :members ["hi_report_card" "hi_dashboardcard_series" "hi_report_dashboardcard"]}
+   {:size 2, :members ["aws_cost_line_item_legacy" "monthly_infrastructure_cost_legacy"]}
+   {:size 2, :members ["hi_pulse" "hi_pulse_channel"]}
+   {:size 2, :members ["hi_timeline_event" "hi_timeline"]}
+   {:size 2, :members ["gh_pull_request" "gh_pull_request_commit"]}]}}
