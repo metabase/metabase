@@ -109,12 +109,12 @@
   "Default provider/model used for Metabot when no explicit model is selected."
   (str "anthropic/" default-anthropic-llm-metabot-model))
 
-(def default-llm-metabot-model-by-provider
+(def ^:private default-llm-metabot-model-by-provider
   "Default model payload keyed by provider for `PUT /api/metabot/settings`.
 
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form."
-  {"anthropic"                       default-anthropic-llm-metabot-model
+  {"anthropic"                            default-anthropic-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -124,6 +124,15 @@
 (def supported-metabot-providers
   "Set of supported LLM provider prefixes for the `llm-metabot-provider` setting."
   (conj direct-providers provider-util/metabase-provider-prefix))
+
+(defn default-model-for-provider
+  "Return the default request-model payload for a provider.
+
+  When `provider` is nil, fall back to the global default provider/model string."
+  [provider]
+  (if (nil? provider)
+    default-llm-metabot-provider
+    (get default-llm-metabot-model-by-provider provider)))
 
 (defn validate-llm-provider-type!
   "Validate that `value` is a string. Throws with `:status-code 400` otherwise."
@@ -154,15 +163,6 @@
       (throw (ex-info (tru "Model name is required. Expected format: provider/model, e.g. \"anthropic/claude-haiku-4-5\"")
                       {:status-code 400
                        :value       value})))))
-
-(defn default-model-for-provider
-  "Return the default request-model payload for a provider.
-
-  When `provider` is nil, fall back to the global default provider/model string."
-  [provider]
-  (if (nil? provider)
-    default-llm-metabot-provider
-    (get default-llm-metabot-model-by-provider provider)))
 
 (defenterprise validate-metabot-provider!
   "Validate that `value` has the format `provider/model` with a supported provider prefix.
