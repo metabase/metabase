@@ -1012,6 +1012,12 @@
    :api  #{metabase.initialization-status.core}
    :uses #{}}
 
+  interestingness
+  {:team "UX West"
+   :api  #{metabase.interestingness.core}
+   :uses #{util}}
+
+
   internal-stats
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
@@ -1212,6 +1218,7 @@
               config
               documents
               driver
+              interestingness
               legacy-mbql
               lib
               lib-be
@@ -2099,6 +2106,7 @@
            database-routing
            driver
            events
+           interestingness
            lib
            models
            premium-features

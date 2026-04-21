@@ -278,12 +278,12 @@
         (instance? OffsetTime t)     (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t)))
         :else                        nil))
 
-(defn- ^Temporal temporal->zoned
+(defn- temporal->zoned
   "Promote a `Temporal` to a form whose ChronoField support covers DAY_OF_WEEK and
    HOUR_OF_DAY. `Instant` is coerced to UTC; all other types pass through unchanged
    (e.g. `LocalDate` still supports DAY_OF_WEEK; `LocalTime` still supports HOUR_OF_DAY;
    downstream extractors check `isSupported` per-field)."
-  [^Temporal t]
+  ^Temporal [^Temporal t]
   (if (instance? Instant t)
     (.atZone ^Instant t ZoneOffset/UTC)
     t))

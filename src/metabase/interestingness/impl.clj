@@ -17,6 +17,8 @@
   (:require
    [clojure.set :as set]))
 
+(set! *warn-on-reflection* true)
+
 ;;; -------------------------------------------------- Shared scorers --------------------------------------------------
 
 (defn type-penalty

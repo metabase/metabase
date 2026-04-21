@@ -97,16 +97,16 @@
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID.
 
-  Pass `interestingness_cutoff` (0.0-1.0) to filter out low-scoring dimensions.
-  Pass `dimension_limit` to return only the top N most interesting dimensions."
+  Pass `interestingness-cutoff` (0.0-1.0) to filter out low-scoring dimensions.
+  Pass `dimension-limit` to return only the top N most interesting dimensions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [interestingness_cutoff dimension_limit]}
+   {:keys [interestingness-cutoff dimension-limit]}
    :- [:map
-       [:interestingness_cutoff {:optional true} [:maybe :double]]
-       [:dimension_limit        {:optional true} [:maybe ms/PositiveInt]]]]
+       [:interestingness-cutoff {:optional true} [:maybe :double]]
+       [:dimension-limit        {:optional true} [:maybe ms/PositiveInt]]]]
   (let [measure (hydrated-measure id)]
     (-> measure
-        (score-dimensions interestingness_cutoff dimension_limit)
+        (score-dimensions interestingness-cutoff dimension-limit)
         (assoc :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure))))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]

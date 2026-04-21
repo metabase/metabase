@@ -12,6 +12,8 @@
    - `metabase.interestingness.impl`      — shared composition machinery (internal)"
   (:require
    [metabase.interestingness.chart]
+   [metabase.interestingness.chart.repr]
+   [metabase.interestingness.chart.stats]
    [metabase.interestingness.dimension]
    [metabase.interestingness.measure]
    [potemkin :as p]))
@@ -19,7 +21,15 @@
 (p/import-vars
  [metabase.interestingness.chart
   chart-interestingness]
+
  [metabase.interestingness.dimension
   dimension-interestingness]
+
  [metabase.interestingness.measure
-  measure-interestingness])
+  measure-interestingness]
+
+ [metabase.interestingness.chart.repr
+  generate-representation]
+
+ [metabase.interestingness.chart.stats
+  compute-chart-stats])

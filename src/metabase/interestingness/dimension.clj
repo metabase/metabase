@@ -4,6 +4,8 @@
    [metabase.interestingness.impl :as impl]
    [metabase.util.time :as u.time]))
 
+(set! *warn-on-reflection* true)
+
 (defn- bucket-count-score
   "Universal quality curve for bucket/group counts. Sweet spot is 10-25 buckets.
    Returns 0.0 for ≤1 (hard-zero gate for constant fields)."

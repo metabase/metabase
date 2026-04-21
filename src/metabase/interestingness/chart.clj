@@ -56,6 +56,7 @@
 
 (defmulti ^:private signal-score
   "Read statistical signals from a computed stats map. Returns 0..1."
+  {:arglists '([stats])}
   :chart-type)
 
 (defn- trend-interesting?

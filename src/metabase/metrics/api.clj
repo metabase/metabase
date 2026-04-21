@@ -112,16 +112,16 @@
 
   Returns the metric with hydrated dimensions and dimension mappings.
   Dimensions are scored by interestingness and sorted highest-first.
-  Pass `interestingness_cutoff` (0.0-1.0) to filter out low-scoring dimensions.
-  Pass `dimension_limit` to return only the top N most interesting dimensions."
+  Pass `interestingness-cutoff` (0.0-1.0) to filter out low-scoring dimensions.
+  Pass `dimension-limit` to return only the top N most interesting dimensions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [interestingness_cutoff dimension_limit]}
+   {:keys [interestingness-cutoff dimension-limit]}
    :- [:map
-       [:interestingness_cutoff {:optional true} [:maybe :double]]
-       [:dimension_limit        {:optional true} [:maybe ms/PositiveInt]]]]
+       [:interestingness-cutoff {:optional true} [:maybe :double]]
+       [:dimension-limit        {:optional true} [:maybe ms/PositiveInt]]]]
   (let [metric (hydrated-metric id)]
     (-> metric
-        (score-dimensions interestingness_cutoff dimension_limit)
+        (score-dimensions interestingness-cutoff dimension-limit)
         (assoc :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
