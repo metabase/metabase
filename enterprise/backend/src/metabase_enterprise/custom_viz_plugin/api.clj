@@ -80,7 +80,10 @@
 (defn- plugin->response
   "Convert a plugin record to API response format."
   [plugin]
-  (assoc plugin :dev_only (dev-only-plugin? plugin)))
+  (-> plugin
+      (assoc :dev_only (dev-only-plugin? plugin))
+      ;; already stripped by to-json, but dissocing for extra safety
+      (dissoc :access_token)))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
