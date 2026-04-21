@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -524,6 +525,34 @@
         "The fast-path set is derived from `perms/collection-id-only-read-models` plus
          indexed-entity. If you added `perms/define-collection-id-only-read-perms!` to a new
          model (or removed it from an existing one), update this expected set.")))
+
+(deftest collection-id-only-search-models-cold-start-regression-test
+  (testing "derivation populates correctly even if registry is empty at first access"
+    ;; Regression guard: on cold start, the namespaces whose
+    ;; `perms/define-collection-id-only-read-perms!` calls populate the registry haven't
+    ;; loaded yet. The derivation relies on `search/specifications` (via its internal
+    ;; `t2/resolve-model`) to trigger those loads BEFORE reading the registry. If the order
+    ;; ever flips, the derivation would snapshot an empty registry and cache an incomplete
+    ;; set for the JVM lifetime. The existing smoke test above can't catch this because
+    ;; other tests have already loaded the model namespaces by the time it runs.
+    (let [real-specs    (var-get #'search/specifications)
+          real-registry perms/collection-id-only-read-models
+          specs-loaded? (atom false)]
+      (with-redefs [search/specifications (fn []
+                                            (reset! specs-loaded? true)
+                                            (real-specs))
+                    perms/collection-id-only-read-models (fn []
+                                                           (if @specs-loaded?
+                                                             (real-registry)
+                                                             #{}))]
+        (let [result (#'semantic.index/compute-collection-id-only-search-models)]
+          (is (contains? result "card")
+              "card must appear even when the registry is empty at first call — proves
+               `search/specifications` was called before the registry was read.")
+          (is (contains? result "dashboard")
+              "dashboard must appear even when the registry is empty at first call.")
+          (is (contains? result "indexed-entity")
+              "indexed-entity is always included."))))))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"
